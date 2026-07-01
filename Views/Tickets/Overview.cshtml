@@ -1,0 +1,70 @@
+@model OverviewModel
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = "Tickets & Saisonkarten";
+}
+
+<h1 class="mb-4">Anstehende Anlässe</h1>
+
+@if (Model.Events.Count == 0)
+{
+    <p class="text-muted">Zurzeit sind keine Anlässe im Verkauf.</p>
+}
+else
+{
+    <div class="row g-3 mb-5">
+        @foreach (var item in Model.Events)
+        {
+            <div class="col-md-4">
+                <div class="card card-event h-100">
+                    @if (!string.IsNullOrEmpty(item.Event.ImageUrl))
+                    {
+                        <img src="@item.Event.ImageUrl" class="card-img-top" alt="@item.Event.Name" style="height:160px;object-fit:cover;" />
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Event.Name</h5>
+                        <p class="card-text mb-1">
+                            <strong>@item.Event.Date.ToString("dd.MM.yyyy")</strong>, @item.Event.StartTime.ToString("HH\\:mm") Uhr
+                        </p>
+                        <p class="card-text text-muted mb-2">@item.VenueName · @item.SeasonName</p>
+                        @if (item.FromPrice is decimal p)
+                        {
+                            <p class="card-text">ab CHF @p.ToString("N2")</p>
+                        }
+                        <a class="btn btn-danger btn-sm" href="/tickets/event/@item.Sqid">Tickets kaufen</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<h1 class="mb-4">Saisonkarten</h1>
+
+@if (Model.Seasons.Count == 0)
+{
+    <p class="text-muted">Zurzeit sind keine Saisonkarten im Verkauf.</p>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var item in Model.Seasons)
+        {
+            <div class="col-md-4">
+                <div class="card card-event h-100">
+                    @if (!string.IsNullOrEmpty(item.Season.ImageUrl))
+                    {
+                        <img src="@item.Season.ImageUrl" class="card-img-top" alt="@item.Season.Name" style="height:160px;object-fit:cover;" />
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Season.Name</h5>
+                        <p class="card-text text-muted mb-2">
+                            @item.Season.StartDate.ToString("dd.MM.yyyy") – @item.Season.EndDate.ToString("dd.MM.yyyy")
+                        </p>
+                        <a class="btn btn-danger btn-sm" href="/saisonkarten/@item.Sqid">Saisonkarte kaufen</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

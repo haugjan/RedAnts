@@ -1,0 +1,60 @@
+﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inject RedAnts.Features.Ticketing.Ports.ISqidEncoder Sqids
+@using Umbraco.Cms.Core.Models.PublishedContent
+@using RedAnts.Domain.Ticketing
+@using RedAnts.Features.Ticketing.Public
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    var status = Model.Value<string>("status");
+    var providedSecret = Context.Request.Query["secret"].ToString();
+    var accessSecret = Model.Key.ToString().Split('-')[0];
+    var statusEnum = Enum.TryParse<EventStatus>(status, out var s) ? s : EventStatus.Draft;
+    // Open = öffentlich; Intern = nur mit passendem ?secret; Draft/Closed = 404.
+    var blocked = !AccessGate.EventOk(statusEnum, accessSecret, providedSecret);
+    if (blocked) { Context.Response.StatusCode = 404; }
+    ViewData["Title"] = Model.Name;
+
+    var start = Model.Value<DateTime>("start");
+    var venue = Model.Value<IPublishedContent>("venue");
+    var image = Model.Value<IPublishedContent>("eventImage")?.Url();
+    var homeLogo = Model.Value<IPublishedContent>("homeTeamLogo")?.Url();
+    var awayLogo = Model.Value<IPublishedContent>("awayTeamLogo")?.Url();
+    var text = Model.Value<string>("text");
+    var sqid = Sqids.Encode(Model.Id);
+    var buyHref = "/tickets/event/" + sqid + (statusEnum == EventStatus.Intern ? "?secret=" + Uri.EscapeDataString(providedSecret) : "");
+}
+
+@if (blocked)
+{
+    <div class="alert alert-warning">Dieser Anlass ist nicht verfügbar.</div>
+}
+else
+{
+    <a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
+
+    @if (!string.IsNullOrEmpty(image))
+    {
+        <img src="@image" class="img-fluid rounded mt-2 mb-3" style="max-height:320px;width:100%;object-fit:cover;" alt="@Model.Name" />
+    }
+
+    @if (!string.IsNullOrEmpty(homeLogo) || !string.IsNullOrEmpty(awayLogo))
+    {
+        <div class="d-flex align-items-center gap-3 my-3">
+            @if (!string.IsNullOrEmpty(homeLogo)) { <img src="@homeLogo" style="height:64px;width:auto;" alt="Heimteam" /> }
+            <span class="fw-bold text-muted">vs</span>
+            @if (!string.IsNullOrEmpty(awayLogo)) { <img src="@awayLogo" style="height:64px;width:auto;" alt="Auswärtsteam" /> }
+        </div>
+    }
+
+    <h1 class="mt-2 mb-1">@Model.Name</h1>
+    <p class="text-muted">
+        @start.ToString("dd.MM.yyyy, HH:mm") Uhr
+        @if (venue is not null) { <text> · @venue.Name</text> }
+    </p>
+
+    @if (!string.IsNullOrEmpty(text)) { @Html.Raw(text) }
+
+    <div class="mt-4">
+        <a class="btn btn-danger" href="@buyHref">Tickets kaufen</a>
+    </div>
+}

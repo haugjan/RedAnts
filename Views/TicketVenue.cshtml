@@ -1,0 +1,30 @@
+﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@using Umbraco.Cms.Core.Models.PublishedContent
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = Model.Name;
+    var image = Model.Value<IPublishedContent>("image")?.Url();
+    var description = Model.Value<string>("description");
+    var geo = Model.Value<string>("googleGeoId");
+}
+
+<a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
+
+@if (!string.IsNullOrEmpty(image))
+{
+    <img src="@image" class="img-fluid rounded mt-2 mb-3" style="max-height:320px;width:100%;object-fit:cover;" alt="@Model.Name" />
+}
+
+<h1 class="mt-2 mb-2">@Model.Name</h1>
+
+@if (!string.IsNullOrEmpty(description)) { @Html.Raw(description) }
+
+@if (!string.IsNullOrEmpty(geo))
+{
+    <p class="mt-3">
+        <a class="btn btn-outline-secondary btn-sm" target="_blank"
+           href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(Model.Name)&query_place_id=@geo">
+            Auf Google Maps öffnen
+        </a>
+    </p>
+}

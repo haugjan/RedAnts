@@ -1,0 +1,60 @@
+﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inject RedAnts.Features.Ticketing.Ports.ISqidEncoder Sqids
+@using Umbraco.Cms.Core.Models.PublishedContent
+@using RedAnts.Domain.Ticketing
+@using RedAnts.Features.Ticketing.Public
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    var status = Model.Value<string>("status");
+    var providedSecret = Context.Request.Query["secret"].ToString();
+    var accessSecret = Model.Key.ToString().Split('-')[0];
+    var statusEnum = Enum.TryParse<SeasonStatus>(status, out var st) ? st : SeasonStatus.Draft;
+    // Open = öffentlich; Intern = nur mit passendem ?secret; Draft/Closed = 404.
+    var blocked = !AccessGate.SeasonOk(statusEnum, accessSecret, providedSecret);
+    if (blocked) { Context.Response.StatusCode = 404; }
+    ViewData["Title"] = Model.Name;
+
+    var start = Model.Value<DateTime>("startDate");
+    var end = Model.Value<DateTime>("endDate");
+    var image = Model.Value<IPublishedContent>("image")?.Url();
+    var sqid = Sqids.Encode(Model.Id);
+    var buyHref = "/saisonkarten/" + sqid + (statusEnum == SeasonStatus.Intern ? "?secret=" + Uri.EscapeDataString(providedSecret) : "");
+    var events = Model.Children()?.Where(c => c.ContentType.Alias == "event"
+        && c.Value<string>("status") == "Open" && c.Value<DateTime>("start") >= DateTime.Today).ToList()
+        ?? new List<IPublishedContent>();
+}
+
+@if (blocked)
+{
+    <div class="alert alert-warning">Diese Saison ist nicht verfügbar.</div>
+}
+else
+{
+    <a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
+
+    @if (!string.IsNullOrEmpty(image))
+    {
+        <img src="@image" class="img-fluid rounded mt-2 mb-3" style="max-height:320px;width:100%;object-fit:cover;" alt="@Model.Name" />
+    }
+
+    <h1 class="mt-2 mb-1">@Model.Name</h1>
+    <p class="text-muted">@start.ToString("dd.MM.yyyy") – @end.ToString("dd.MM.yyyy")</p>
+
+    <div class="mt-3 mb-4">
+        <a class="btn btn-danger" href="@buyHref">Saisonkarte kaufen</a>
+    </div>
+
+    @if (events.Count > 0)
+    {
+        <h4>Anstehende Anlässe</h4>
+        <ul class="list-group">
+            @foreach (var e in events)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>@e.Name <span class="text-muted">· @(e.Value<DateTime>("start").ToString("dd.MM.yyyy, HH:mm"))</span></span>
+                    <a class="btn btn-sm btn-outline-danger" href="/tickets/event/@(Sqids.Encode(e.Id))">Tickets</a>
+                </li>
+            }
+        </ul>
+    }
+}

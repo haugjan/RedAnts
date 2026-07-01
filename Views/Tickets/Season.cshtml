@@ -1,0 +1,76 @@
+@model SeasonPurchaseModel
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = Model.Season.Name;
+}
+
+<a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
+
+@if (!string.IsNullOrEmpty(Model.Season.ImageUrl))
+{
+    <img src="@Model.Season.ImageUrl" class="img-fluid rounded mt-2 mb-3" alt="@Model.Season.Name" style="max-height:320px;width:100%;object-fit:cover;" />
+}
+
+<h1 class="mt-2 mb-1">Saisonkarte: @Model.Season.Name</h1>
+<p class="text-muted">@Model.Season.StartDate.ToString("dd.MM.yyyy") – @Model.Season.EndDate.ToString("dd.MM.yyyy")</p>
+
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<div class="card mt-3">
+    <div class="card-body">
+        <form method="post" action="/saisonkarten/@Model.Sqid/kauf">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Secret" value="@Model.Secret" />
+
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <h6>Kategorie</h6>
+                    <select class="form-select" name="Category" id="cat" required>
+                        @foreach (var cat in Enum.GetValues<SeasonTicketCategory>())
+                        {
+                            <option value="@cat">@Labels.SeasonTicketCategory(cat)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <h6>Altersgruppe</h6>
+                    <select class="form-select" name="AgeGroup" id="age" required>
+                        @foreach (var age in Enum.GetValues<AgeGroup>())
+                        {
+                            <option value="@age">@Labels.AgeGroup(age)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <table class="table table-sm mt-3">
+                <thead><tr><th>Kategorie</th><th>Altersgruppe</th><th class="text-end">Preis</th></tr></thead>
+                <tbody>
+                    @foreach (var p in Model.Prices)
+                    {
+                        <tr>
+                            <td>@Labels.SeasonTicketCategory(p.Category)</td>
+                            <td>@Labels.AgeGroup(p.AgeGroup)</td>
+                            <td class="text-end">CHF @p.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <partial name="_BillingFields" />
+
+            @if (Model.TurnstileSiteKey is not null)
+            {
+                <input type="hidden" name="CaptchaToken" id="captcha-token" />
+                <div class="cf-turnstile mt-3" data-sitekey="@Model.TurnstileSiteKey" data-callback="onCaptcha"></div>
+                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+                <script>function onCaptcha(t){document.getElementById('captcha-token').value=t;}</script>
+            }
+
+            <button type="submit" class="btn btn-danger mt-4">Weiter zur Zahlung</button>
+        </form>
+    </div>
+</div>

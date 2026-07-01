@@ -1,0 +1,30 @@
+@model ConfirmationModel
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = "Bestätigung";
+}
+
+@if (!Model.Found)
+{
+    <div class="alert alert-warning">Dieses Ticket wurde nicht gefunden.</div>
+}
+else if (Model.Paid)
+{
+    <div class="alert alert-success">
+        <h4 class="alert-heading">@Model.Title bestätigt</h4>
+        <p class="mb-1">@Model.Summary</p>
+        <hr />
+        <p class="mb-0">Vielen Dank für deinen Kauf. Eine Bestätigung wurde an deine E-Mail-Adresse gesendet.</p>
+        <p class="text-muted mt-2 mb-0"><small>Referenz: @Model.TicketRef</small></p>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <h4 class="alert-heading">@Model.Title — Zahlung ausstehend</h4>
+        <p class="mb-0">Deine Zahlung wird noch verarbeitet. Sobald sie bestätigt ist, erhältst du eine E-Mail.</p>
+        <p class="text-muted mt-2 mb-0"><small>Referenz: @Model.TicketRef</small></p>
+    </div>
+}
+
+<a href="/tickets" class="btn btn-outline-secondary">Zurück zur Übersicht</a>
