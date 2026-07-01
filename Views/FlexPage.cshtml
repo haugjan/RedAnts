@@ -1,0 +1,20 @@
+﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@using Umbraco.Cms.Core.Models.Blocks
+@{
+    Layout = "~/Views/Shared/_SiteLayout.cshtml";
+    ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
+
+    var blocks = Model.Value<BlockListModel>("content")?.ToList() ?? new List<BlockListItem>();
+    var firstAlias = blocks.FirstOrDefault()?.Content.ContentType.Alias;
+
+    // A leading Hero lets the nav float over the image (white text); otherwise pad below the fixed bar.
+    var transparentNav = firstAlias == "heroElement";
+    ViewBag.TransparentNav = transparentNav;
+}
+<main class="flexpage-main" style="@(transparentNav ? "" : "padding-top:66px;")">
+@foreach (var block in blocks)
+{
+    var alias = block.Content.ContentType.Alias;
+    @await Html.PartialAsync($"~/Views/Partials/Blocks/{alias}.cshtml", block)
+}
+</main>

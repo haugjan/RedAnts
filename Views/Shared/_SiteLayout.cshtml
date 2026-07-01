@@ -1,0 +1,99 @@
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@using System.Linq
+@using Umbraco.Cms.Core.Models.PublishedContent
+@{
+    // The public homepage is the first flexPage at the content root; nav lists its flexPage children.
+    var home = Umbraco.ContentAtRoot()?.FirstOrDefault(c => c.ContentType.Alias == "flexPage");
+    var navPages = home?.Children()?
+        .Where(c => c.ContentType.Alias == "flexPage" && c.IsPublished())
+        .ToList() ?? new List<IPublishedContent>();
+
+    var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
+
+    // TransparentNav = the page opens with a Hero, so the bar floats over the image with white text.
+    var transparentNav = ViewBag.TransparentNav as bool? ?? false;
+    var pageTitle = ViewBag.PageTitle as string ?? "Red Ants Winterthur";
+    var navBg = transparentNav ? "rgba(255,255,255,0)" : "rgba(255,255,255,0.97)";
+    var navBorder = transparentNav ? "transparent" : "#f0f0f0";
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@pageTitle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/site.css?v=1" />
+  @RenderSection("Head", required: false)
+</head>
+<body>
+<nav class="site-nav" id="siteNav"
+     style="background:@navBg; border-bottom-color:@navBorder; @(transparentNav ? "" : "box-shadow:0 1px 12px rgba(0,0,0,0.06);")">
+  <div class="site-nav-inner">
+    <a href="@(home?.Url() ?? "/")" class="site-nav-logo" aria-label="Startseite">
+      <img src="@logoUrl" alt="Red Ants Winterthur"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+      <span class="site-nav-logo-fallback" style="display:none;">Red Ants</span>
+    </a>
+    <ul class="nav-links">
+      @foreach (var page in navPages)
+      {
+        var isActive = Context.Request.Path.Value?.TrimEnd('/').Equals(page.Url()?.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ?? false;
+        <li><a href="@page.Url()" class="nav-link @(isActive ? "is-active" : "")"
+               style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">@page.Name</a></li>
+      }
+      <li><a href="/tickets" class="nav-btn-red">Tickets</a></li>
+    </ul>
+    <button class="nav-toggle" id="navToggle" aria-label="Navigation">
+      <svg width="22" height="18" fill="none" stroke="@(transparentNav ? "white" : "currentColor")" stroke-width="2" stroke-linecap="square" id="navToggleIcon">
+        <line x1="0" y1="2" x2="22" y2="2"/><line x1="0" y1="9" x2="22" y2="9"/><line x1="0" y1="16" x2="22" y2="16"/>
+      </svg>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <ul>
+      @foreach (var page in navPages)
+      {
+        <li><a href="@page.Url()">@page.Name</a></li>
+      }
+      <li class="sep"></li>
+      <li><a href="/tickets">Tickets →</a></li>
+    </ul>
+  </div>
+</nav>
+
+@RenderBody()
+
+@RenderSection("Scripts", required: false)
+
+<script>
+(function () {
+  var nav = document.getElementById('siteNav');
+  var transparent = @(transparentNav ? "true" : "false");
+  if (transparent) {
+    var onScroll = function () {
+      var past = window.scrollY > 60;
+      nav.style.background = past ? 'rgba(255,255,255,0.97)' : 'rgba(255,255,255,0)';
+      nav.style.borderBottomColor = past ? '#f0f0f0' : 'transparent';
+      nav.style.boxShadow = past ? '0 1px 12px rgba(0,0,0,0.06)' : 'none';
+      nav.querySelectorAll('.nav-link').forEach(function (a) {
+        a.style.color = past ? '' : 'rgba(255,255,255,0.85)';
+      });
+      var icon = document.getElementById('navToggleIcon');
+      if (icon) icon.setAttribute('stroke', past ? 'currentColor' : 'white');
+    };
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+  }
+  var toggle = document.getElementById('navToggle');
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      document.getElementById('mobileMenu').classList.toggle('is-open');
+    });
+  }
+}());
+</script>
+</body>
+</html>

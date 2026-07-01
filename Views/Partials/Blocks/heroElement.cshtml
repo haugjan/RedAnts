@@ -1,0 +1,48 @@
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage<Umbraco.Cms.Core.Models.Blocks.BlockListItem>
+@using Umbraco.Cms.Core.Models
+@{
+    var heroImage = Model.Content.Value<IEnumerable<MediaWithCrops>>("heroImage")?.FirstOrDefault()?.Url() ?? "";
+    var titel     = Model.Content.Value<string>("titel") ?? "";
+    var untertitel = Model.Content.Value<string>("untertitel") ?? "";
+    var tags = (Model.Content.Value<string>("schlagwoerter") ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var ctaText = Model.Content.Value<string>("ctaText") ?? "";
+    var ctaLink = Model.Content.Value<IEnumerable<Link>>("ctaLink")?.FirstOrDefault();
+}
+<section class="hero">
+  @if (!string.IsNullOrEmpty(heroImage))
+  {
+    <div class="hero-bg" style="background-image:url('@heroImage');"></div>
+  }
+  else
+  {
+    <div class="hero-bg hero-bg--empty"></div>
+  }
+  <div class="hero-inner">
+    @if (!string.IsNullOrEmpty(titel))
+    {
+      <h1 class="hero-title">@Html.Raw(titel.Replace("\n", "<br />"))</h1>
+    }
+    @if (!string.IsNullOrEmpty(untertitel))
+    {
+      <p class="hero-sub">@untertitel</p>
+    }
+    @if (!string.IsNullOrEmpty(ctaText) && ctaLink != null && !string.IsNullOrEmpty(ctaLink.Url))
+    {
+      <a href="@ctaLink.Url" class="hero-cta" target="@(ctaLink.Target ?? "_self")">
+        @ctaText
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7h9M7 3l4 4-4 4"/></svg>
+      </a>
+    }
+  </div>
+  <div class="hero-bar">
+    @foreach (var tag in tags)
+    {
+      <span class="hero-tag">@tag</span>
+    }
+    <div class="hero-bar-scroll">
+      <span>Scroll</span>
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1.5v10M2.5 8l4 4 4-4"/></svg>
+    </div>
+  </div>
+</section>

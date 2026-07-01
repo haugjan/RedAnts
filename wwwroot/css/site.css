@@ -1,0 +1,195 @@
+/*
+  site.css — Public website (FlexPage) design.
+  Navigation adopted from the Sporthalle Sulzerallee reference; RedAnts branding.
+  Display font: Teko (Google Fonts). Body font: Verdana (system).
+*/
+
+/* ── RESET ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  background: #fff;
+  color: rgb(16, 16, 16);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── BRAND TOKENS ─────────────────────────────────────────── */
+:root {
+  --red:      #C8102E;
+  --red-dark: #A50D26;
+  --ink:      rgb(16, 16, 16);
+  --ink-light: rgb(50, 50, 50);
+  --display:  'Teko', 'Oswald', Impact, sans-serif;
+}
+
+/* ── NAV ────────────────────────────────────────────────────── */
+.site-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #f0f0f0;
+  height: 66px;
+  display: flex; align-items: center;
+  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+.site-nav-inner {
+  max-width: 1280px; margin: 0 auto;
+  padding: 0 2.5rem;
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: 2rem;
+}
+.site-nav-logo {
+  flex-shrink: 0;
+  display: flex; align-items: center;
+  text-decoration: none;
+  opacity: 1; transition: opacity 0.2s;
+}
+.site-nav-logo:hover { opacity: 0.75; }
+.site-nav-logo img { height: 42px; width: auto; display: block; }
+.site-nav-logo-fallback {
+  font-family: var(--display);
+  color: var(--red);
+  font-size: 1.6rem; font-weight: 600;
+  letter-spacing: 0.04em; line-height: 0.9;
+  text-transform: uppercase;
+}
+.nav-links {
+  display: flex; align-items: center; gap: 1.75rem;
+  list-style: none;
+}
+.nav-link {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+  transition: color 0.15s;
+}
+.nav-link:hover, .nav-link.is-active { color: var(--red); }
+.nav-btn-red {
+  display: inline-block;
+  font-family: var(--display);
+  font-size: 1.05rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  text-decoration: none;
+  padding: 0.42rem 1.25rem;
+  background: var(--red); color: #fff;
+  border: 1.5px solid var(--red);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.nav-btn-red:hover { background: var(--red-dark); border-color: var(--red-dark); color: #fff; }
+/* Mobile toggle */
+.nav-toggle {
+  display: none;
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--ink);
+}
+.mobile-menu {
+  display: none;
+  position: absolute; top: 100%; left: 0; right: 0;
+  border-top: 1px solid #f0f0f0;
+  background: rgba(255,255,255,0.98);
+  padding: 1rem 2rem 1.5rem;
+  max-height: calc(100vh - 66px);
+  overflow-y: auto;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.mobile-menu.is-open { display: block; }
+.mobile-menu ul { list-style: none; }
+.mobile-menu li + li { margin-top: 0.9rem; }
+.mobile-menu a {
+  font-family: var(--display);
+  font-size: 1.25rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  text-decoration: none; color: var(--ink); display: block; padding: 0.25rem 0;
+}
+.mobile-menu a:hover, .mobile-menu a.is-active { color: var(--red); }
+.mobile-menu .sep { border-top: 1px solid #eee; margin: 0.75rem 0; }
+@media (max-width: 900px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: block; }
+}
+
+/* ── HERO ELEMENT ───────────────────────────────────────────── */
+.hero {
+  position: relative; height: 100svh; min-height: 560px; overflow: hidden;
+  background: #0d0d0d;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center 40%;
+  filter: grayscale(20%) brightness(0.55);
+  transform: scale(1.03);
+}
+/* Fallback tint when no hero image is set. */
+.hero-bg--empty {
+  background:
+    radial-gradient(120% 120% at 70% 12%, rgba(200,16,46,0.55) 0%, rgba(200,16,46,0) 55%),
+    linear-gradient(180deg, #1c1c1e 0%, #0a0a0b 100%);
+  filter: none;
+}
+.hero-inner {
+  position: relative; z-index: 2;
+  height: 100%;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 5vw;
+  max-width: 1280px; margin: 0 auto;
+}
+.hero-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(4rem, 13vw, 12rem);
+  line-height: 0.82; letter-spacing: 0.01em;
+  color: #fff; text-transform: uppercase;
+}
+.hero-title .accent { color: var(--red); }
+.hero-sub {
+  margin-top: 1.2rem;
+  max-width: 560px;
+  font-size: 1.05rem; line-height: 1.65;
+  color: rgba(255,255,255,0.75);
+}
+.hero-cta {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  margin-top: 1.8rem; align-self: flex-start;
+  font-family: var(--display);
+  font-size: 1.2rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  text-decoration: none;
+  padding: 0.55rem 1.6rem;
+  background: var(--red); color: #fff;
+  transition: background 0.15s;
+}
+.hero-cta:hover { background: var(--red-dark); color: #fff; }
+.hero-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  padding: 1.1rem 5vw;
+  display: flex; align-items: center; gap: 2.5rem;
+  max-width: 1280px; margin: 0 auto;
+}
+.hero-tag {
+  font-family: Verdana, sans-serif;
+  font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+}
+.hero-bar-scroll {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(255,255,255,0.28);
+}
+@media (max-width: 700px) {
+  .hero-title { font-size: 19vw; }
+  .hero-bar { gap: 1.25rem; }
+  .hero-bar-scroll { display: none; }
+}
+
+/* ── FLEXPAGE MAIN ──────────────────────────────────────────── */
+.flexpage-main { min-height: 40vh; }
