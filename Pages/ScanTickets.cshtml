@@ -10,13 +10,61 @@
     <title>Tickets scannen</title>
     <base href="/" />
     <link rel="stylesheet" href="/css/ticket-scanner.css" />
+
+    <!-- PWA: installable web app -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#C8102E" />
+    <link rel="apple-touch-icon" href="/icons/scanner-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RA Scanner" />
 </head>
 <body>
     <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="Server" />
+
+    <button id="pwaInstall" class="pwa-install" hidden>App installieren</button>
 
     <!-- html5-qrcode camera/QR library -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/js/ticket-scanner.js"></script>
     <script src="_framework/blazor.server.js"></script>
+
+    <!-- PWA install prompt + service worker registration -->
+    <script>
+        (function () {
+            var deferredPrompt = null;
+            var btn = document.getElementById('pwaInstall');
+
+            window.addEventListener('beforeinstallprompt', function (e) {
+                // Chrome/Android: keep the event so we can trigger the prompt from the button.
+                e.preventDefault();
+                deferredPrompt = e;
+                if (btn) btn.hidden = false;
+            });
+
+            if (btn) {
+                btn.addEventListener('click', async function () {
+                    btn.hidden = true;
+                    if (!deferredPrompt) return;
+                    deferredPrompt.prompt();
+                    await deferredPrompt.userChoice;
+                    deferredPrompt = null;
+                });
+            }
+
+            // Hide the button once installed.
+            window.addEventListener('appinstalled', function () {
+                if (btn) btn.hidden = true;
+                deferredPrompt = null;
+            });
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('/scanner-sw.js', { scope: '/scanntickets' })
+                        .catch(function (err) { console.warn('SW registration failed:', err); });
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

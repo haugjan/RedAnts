@@ -77,13 +77,17 @@
     // Called by ticket-scanner.js when a QR code is decoded. The scanner is paused by the JS side
     // before this fires; ScanNext() resumes it.
     [JSInvokable]
-    public void OnCodeScanned(string code)
+    public async Task OnCodeScanned(string code)
     {
         _lastCode = code;
         var accepted = Random.Shared.Next(2) == 0;
         _state = accepted ? ScanState.Success : ScanState.Failure;
         _failureMessage = accepted ? null : ExampleError;
         StateHasChanged();
+
+        // Distinct feedback beep for accepted vs rejected.
+        try { await JS.InvokeVoidAsync("ticketScanner.beep", accepted); }
+        catch (JSException) { /* audio not available */ }
     }
 
     private async Task ScanNext()

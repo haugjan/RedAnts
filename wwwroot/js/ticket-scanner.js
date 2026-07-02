@@ -3,6 +3,47 @@
 window.ticketScanner = (function () {
     let instance = null;
     let dotNetRef = null;
+    let audioCtx = null;
+
+    // ---- Feedback beeps (Web Audio, no audio files needed) ----
+    function ensureAudio() {
+        if (!audioCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return null;
+            audioCtx = new AC();
+        }
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
+        return audioCtx;
+    }
+
+    function tone(ctx, freq, startOffset, duration, type) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const t = ctx.currentTime + startOffset;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+        osc.start(t);
+        osc.stop(t + duration + 0.02);
+    }
+
+    // success: two short ascending sine beeps; failure: one low square buzz.
+    function beep(success) {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        if (success) {
+            tone(ctx, 880, 0, 0.12, "sine");
+            tone(ctx, 1320, 0.13, 0.18, "sine");
+        } else {
+            tone(ctx, 200, 0, 0.4, "square");
+        }
+    }
 
     async function start(elementId, ref) {
         dotNetRef = ref;
@@ -51,5 +92,5 @@ window.ticketScanner = (function () {
         instance = null;
     }
 
-    return { start, resume, stop };
+    return { start, resume, stop, beep };
 })();

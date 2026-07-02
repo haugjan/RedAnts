@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.StaticFiles;
 
 // Swiss German as the default culture for all threads.
 // This makes Blazor @bind, implicit ToString() calls, and number/date parsing
@@ -68,7 +69,10 @@ WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
 
-app.UseStaticFiles();
+// Ensure the PWA manifest is served with the correct MIME type (.webmanifest).
+var staticFileContentTypes = new FileExtensionContentTypeProvider();
+staticFileContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = staticFileContentTypes });
 
 app.MapBlazorHub();
 app.MapRazorPages();

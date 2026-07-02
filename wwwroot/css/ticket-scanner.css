@@ -198,3 +198,23 @@ html, body {
     font-weight: 700;
     cursor: pointer;
 }
+
+/* ---- PWA install button ---- */
+.pwa-install {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 900;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 2rem;
+    padding: .7rem 1.6rem;
+    font-family: inherit;
+    font-size: .95rem;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    cursor: pointer;
+}
+.pwa-install[hidden] { display: none; }
