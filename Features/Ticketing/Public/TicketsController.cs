@@ -22,26 +22,6 @@ public sealed class TicketsController(
     private string? RemoteIp => HttpContext.Connection.RemoteIpAddress?.ToString();
     private string? TurnstileSiteKey => string.IsNullOrWhiteSpace(config["Turnstile:SiteKey"]) ? null : config["Turnstile:SiteKey"];
 
-    // GET /tickets — overview of open events and open seasons (Intern items are excluded).
-    [HttpGet("/tickets")]
-    public async Task<IActionResult> Overview()
-    {
-        var openEvents = await events.GetPublicOpenAsync();
-        var openSeasons = await seasons.GetPublicOpenAsync();
-        var allVenues = await venues.GetAllAsync();
-        var allSeasons = await seasons.GetAllAsync();
-
-        var eventItems = openEvents.Select(e => new OverviewEventItem(
-            e, sqids.Encode(e.Id),
-            allSeasons.FirstOrDefault(s => s.Id == e.SeasonId)?.Name ?? "",
-            allVenues.FirstOrDefault(v => v.Id == e.VenueId)?.Name ?? "",
-            e.Prices.Count == 0 ? null : e.Prices.Min(p => p.Amount))).ToList();
-
-        var seasonItems = openSeasons.Select(s => new OverviewSeasonItem(s, sqids.Encode(s.Id))).ToList();
-
-        return View(new OverviewModel { Events = eventItems, Seasons = seasonItems });
-    }
-
     // GET /tickets/event/{sqid} — single ticket purchase page. Intern requires the matching ?secret.
     [HttpGet("/tickets/event/{sqid}")]
     public async Task<IActionResult> Event(string sqid, [FromQuery] string? secret)

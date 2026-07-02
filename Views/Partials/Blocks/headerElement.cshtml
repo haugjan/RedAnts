@@ -1,0 +1,30 @@
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage<Umbraco.Cms.Core.Models.Blocks.BlockListItem>
+@using Umbraco.Cms.Core.Models
+@using Umbraco.Cms.Core.Models.PublishedContent
+@{
+    var titel = Model.Content.Value<string>("titel") ?? "";
+    // MediaPicker3 returns a single MediaWithCrops (single-pick) or an IEnumerable (multi-pick); handle both.
+    IPublishedContent? bildNode = Model.Content.Value<IPublishedContent>("bild")
+        ?? Model.Content.Value<IEnumerable<MediaWithCrops>>("bild")?.FirstOrDefault();
+    var bild = bildNode?.Url() ?? "";
+    var hasImage = !string.IsNullOrEmpty(bild);
+}
+<section class="page-header @(hasImage ? "" : "page-header--plain")"
+         style="@(hasImage ? $"background-image:url('{bild}');" : "")">
+  @if (hasImage)
+  {
+    <div class="page-header-overlay"></div>
+  }
+  <div class="page-header-inner">
+    <h1 class="page-header-title">@titel</h1>
+  </div>
+</section>
+
+<style>
+  .page-header { position: relative; background-size: cover; background-position: center; min-height: 300px; display: flex; align-items: flex-end; }
+  .page-header--plain { background: #101010; }
+  .page-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.75) 100%); }
+  .page-header-inner { position: relative; z-index: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px 40px; }
+  .page-header-title { font-family: 'Teko', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-size: clamp(2.4rem, 6vw, 4.5rem); line-height: 1; margin: 0; }
+  .page-header-title::after { content: ""; display: block; width: 64px; height: 5px; background: #C8102E; margin-top: 16px; }
+</style>

@@ -30,11 +30,9 @@
 }
 else
 {
-    <a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
-
     @if (!string.IsNullOrEmpty(image))
     {
-        <img src="@image" class="img-fluid rounded mt-2 mb-3" style="max-height:320px;width:100%;object-fit:cover;" alt="@Model.Name" />
+        <img src="@image" class="tk-banner" alt="@Model.Name" />
     }
 
     <h1 class="mt-2 mb-1">@Model.Name</h1>

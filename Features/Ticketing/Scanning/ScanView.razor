@@ -1,0 +1,107 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* Camera QR scan view for a single event. html5-qrcode runs the camera in the browser and
+   reports decoded codes back via JS interop. Ticket validation/redemption is out of scope:
+   each decoded code randomly produces a green (accepted) or red (rejected) full-screen result. *@
+
+<div class="scan-view">
+    <header class="scan-view__header">
+        <button type="button" class="scan-view__back" @onclick="OnBack">&larr; Zurück</button>
+        <span class="scan-view__title">@EventName</span>
+    </header>
+
+    <div id="qr-reader" class="qr-reader"></div>
+
+    @if (_error is not null)
+    {
+        <p class="scan-view__hint scan-view__hint--error">@_error</p>
+    }
+    else if (_state == ScanState.Scanning)
+    {
+        <p class="scan-view__hint">Richte die Kamera auf einen QR-Code.</p>
+    }
+
+    @if (_state == ScanState.Success)
+    {
+        <div class="result result--ok" @onclick="ScanNext">
+            <div class="result__icon">✓</div>
+            <div class="result__title">Gültig</div>
+            <div class="result__code">@_lastCode</div>
+            <button type="button" class="result__next">Nächsten scannen</button>
+        </div>
+    }
+    else if (_state == ScanState.Failure)
+    {
+        <div class="result result--fail" @onclick="ScanNext">
+            <div class="result__icon">✕</div>
+            <div class="result__title">Ungültig</div>
+            <div class="result__code">@_lastCode</div>
+            <div class="result__message">@_failureMessage</div>
+            <button type="button" class="result__next">Nächsten scannen</button>
+        </div>
+    }
+</div>
+
+@code {
+    private enum ScanState { Scanning, Success, Failure }
+
+    // Example rejection message shown on a (randomly chosen) negative result.
+    private const string ExampleError = "Ticket ungültig oder bereits eingelöst.";
+
+    [Parameter, EditorRequired] public int EventId { get; set; }
+    [Parameter, EditorRequired] public string EventName { get; set; } = "";
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private DotNetObjectReference<ScanView>? _ref;
+    private ScanState _state = ScanState.Scanning;
+    private string? _lastCode;
+    private string? _failureMessage;
+    private string? _error;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _ref = DotNetObjectReference.Create(this);
+        try
+        {
+            await JS.InvokeVoidAsync("ticketScanner.start", "qr-reader", _ref);
+        }
+        catch (JSException ex)
+        {
+            _error = "Kamera konnte nicht gestartet werden: " + ex.Message;
+            StateHasChanged();
+        }
+    }
+
+    // Called by ticket-scanner.js when a QR code is decoded. The scanner is paused by the JS side
+    // before this fires; ScanNext() resumes it.
+    [JSInvokable]
+    public void OnCodeScanned(string code)
+    {
+        _lastCode = code;
+        var accepted = Random.Shared.Next(2) == 0;
+        _state = accepted ? ScanState.Success : ScanState.Failure;
+        _failureMessage = accepted ? null : ExampleError;
+        StateHasChanged();
+    }
+
+    private async Task ScanNext()
+    {
+        _state = ScanState.Scanning;
+        _lastCode = null;
+        _failureMessage = null;
+        await JS.InvokeVoidAsync("ticketScanner.resume");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("ticketScanner.stop");
+        }
+        catch (JSException) { /* circuit already gone */ }
+        catch (JSDisconnectedException) { /* circuit already gone */ }
+        _ref?.Dispose();
+    }
+}

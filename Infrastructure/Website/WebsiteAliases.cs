@@ -7,9 +7,18 @@ internal static class WebsiteAliases
     // Document / element types
     public const string FlexPageType = "flexPage";
     public const string HeroElementType = "heroElement";
+    public const string HeaderElementType = "headerElement";
+    public const string EventListElementType = "eventListElement";
 
     // FlexPage properties
     public const string FlexContent = "content";
+
+    // Header element properties (sub-page title band, à la Sporthalle "bhe")
+    public const string HeaderTitle = "titel";
+    public const string HeaderImage = "bild";
+
+    // Event list element properties
+    public const string EventListSeason = "season";
 
     // Hero element properties
     public const string HeroImage = "heroImage";

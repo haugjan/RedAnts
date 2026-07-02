@@ -38,13 +38,12 @@
       <span class="site-nav-logo-fallback" style="display:none;">Red Ants</span>
     </a>
     <ul class="nav-links">
-      @foreach (var page in navPages)
+      @foreach (var item in navPages)
       {
-        var isActive = Context.Request.Path.Value?.TrimEnd('/').Equals(page.Url()?.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ?? false;
-        <li><a href="@page.Url()" class="nav-link @(isActive ? "is-active" : "")"
-               style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">@page.Name</a></li>
+        var isActive = Context.Request.Path.Value?.TrimEnd('/').Equals(item.Url()?.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ?? false;
+        <li><a href="@item.Url()" class="nav-link @(isActive ? "is-active" : "")"
+               style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">@item.Name</a></li>
       }
-      <li><a href="/tickets" class="nav-btn-red">Tickets</a></li>
     </ul>
     <button class="nav-toggle" id="navToggle" aria-label="Navigation">
       <svg width="22" height="18" fill="none" stroke="@(transparentNav ? "white" : "currentColor")" stroke-width="2" stroke-linecap="square" id="navToggleIcon">
@@ -54,12 +53,10 @@
   </div>
   <div class="mobile-menu" id="mobileMenu">
     <ul>
-      @foreach (var page in navPages)
+      @foreach (var item in navPages)
       {
-        <li><a href="@page.Url()">@page.Name</a></li>
+        <li><a href="@item.Url()">@item.Name</a></li>
       }
-      <li class="sep"></li>
-      <li><a href="/tickets">Tickets →</a></li>
     </ul>
   </div>
 </nav>

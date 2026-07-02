@@ -5,8 +5,6 @@
     var availablePrices = Model.Event.Prices.ToList();
 }
 
-<a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
-
 @if (!string.IsNullOrEmpty(Model.Event.ImageUrl))
 {
     <img src="@Model.Event.ImageUrl" class="img-fluid rounded mt-2 mb-3" alt="@Model.Event.Name" style="max-height:320px;width:100%;object-fit:cover;" />

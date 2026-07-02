@@ -23,6 +23,9 @@ public interface IEvents
     Task<IReadOnlyList<Event>> GetAllAsync();
     /// <summary>Events with status Open whose date is today or in the future (public overview).</summary>
     Task<IReadOnlyList<Event>> GetPublicOpenAsync();
+    /// <summary>Events whose date is today or in the future, regardless of status (ticket-scanning list).
+    /// Today's events are included even if their start time has already passed. Ordered by date/time.</summary>
+    Task<IReadOnlyList<Event>> GetUpcomingForScanningAsync();
     Task<IReadOnlyList<Event>> GetBySeasonAsync(int seasonId);
     Task<Event?> FindByIdAsync(int id);
 }

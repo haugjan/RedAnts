@@ -1,0 +1,82 @@
+@inject IEvents Events
+@inject IVenues Venues
+
+@* Root component for /scanntickets. Shows the list of upcoming/today's events (all statuses,
+   sorted by date); selecting one switches to the camera scan view. Navigation is state-based
+   (no Blazor router) so it does not collide with Umbraco's content routing. *@
+
+<div class="scan-app">
+    @if (_selected is null)
+    {
+        <header class="scan-app__header">
+            <h1>Tickets scannen</h1>
+            <p>Event auswählen</p>
+        </header>
+
+        @if (_events is null)
+        {
+            <p class="scan-app__hint">Lädt Events…</p>
+        }
+        else if (_events.Count == 0)
+        {
+            <p class="scan-app__hint">Keine anstehenden Events.</p>
+        }
+        else
+        {
+            <ul class="event-list">
+                @for (var i = 0; i < _events.Count; i++)
+                {
+                    var evt = _events[i];
+                    var isNext = i == 0;
+                    <li>
+                        <button type="button"
+                                class="event-card @(isNext ? "event-card--next" : "")"
+                                @onclick="() => Select(evt)">
+                            @if (isNext)
+                            {
+                                <span class="event-card__badge">Nächstes Event</span>
+                            }
+                            <span class="event-card__date">@evt.Date.ToString("dd.MM.yyyy") · @evt.StartTime.ToString("HH:mm")</span>
+                            <span class="event-card__name">@evt.Name</span>
+                            <span class="event-card__meta">
+                                <span class="event-card__venue">@VenueName(evt.VenueId)</span>
+                                <span class="status status--@evt.Status.ToString().ToLowerInvariant()">@StatusLabel(evt.Status)</span>
+                            </span>
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+    }
+    else
+    {
+        <ScanView EventId="_selected.Id" EventName="_selected.Name" OnBack="BackToList" />
+    }
+</div>
+
+@code {
+    private IReadOnlyList<Event>? _events;
+    private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
+    private Event? _selected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _venues = (await Venues.GetAllAsync()).ToDictionary(v => v.Id, v => v.Name);
+        _events = await Events.GetUpcomingForScanningAsync();
+    }
+
+    private void Select(Event evt) => _selected = evt;
+
+    private void BackToList() => _selected = null;
+
+    private string VenueName(int venueId) => _venues.TryGetValue(venueId, out var name) ? name : "";
+
+    private static string StatusLabel(EventStatus status) => status switch
+    {
+        EventStatus.Draft => "Entwurf",
+        EventStatus.Open => "Offen",
+        EventStatus.Intern => "Intern",
+        EventStatus.Closed => "Geschlossen",
+        _ => status.ToString()
+    };
+}

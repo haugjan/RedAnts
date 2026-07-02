@@ -139,6 +139,16 @@ public sealed class UmbracoEvents(IPublishedContentQuery query) : IEvents
         return Task.FromResult<IReadOnlyList<Event>>(list);
     }
 
+    public Task<IReadOnlyList<Event>> GetUpcomingForScanningAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var list = _src.Events().Select(CatalogContentMapper.ToEvent)
+            .Where(e => e.Date >= today)
+            .OrderBy(e => e.Date).ThenBy(e => e.StartTime)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<Event>>(list);
+    }
+
     public Task<IReadOnlyList<Event>> GetBySeasonAsync(int seasonId)
     {
         var season = _src.ById(seasonId);

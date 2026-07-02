@@ -1,0 +1,22 @@
+@page "/scanntickets"
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <title>Tickets scannen</title>
+    <base href="/" />
+    <link rel="stylesheet" href="/css/ticket-scanner.css" />
+</head>
+<body>
+    <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="Server" />
+
+    <!-- html5-qrcode camera/QR library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="/js/ticket-scanner.js"></script>
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>

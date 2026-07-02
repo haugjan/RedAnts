@@ -1,0 +1,68 @@
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage<Umbraco.Cms.Core.Models.Blocks.BlockListItem>
+@using Umbraco.Cms.Core.Models.PublishedContent
+@using Umbraco.Extensions
+@{
+    var season = Model.Content.Value<IPublishedContent>("season");
+    var events = (season?.Children() ?? Enumerable.Empty<IPublishedContent>())
+        .Where(c => c.ContentType.Alias == "event"
+            && c.Value<string>("status") == "Open"
+            && c.Value<DateTime>("start") >= DateTime.Today)
+        .OrderBy(c => c.Value<DateTime>("start"))
+        .ToList();
+}
+<section class="event-list">
+  <div class="event-list-inner">
+    <h2 class="event-list-title">Anstehende Anlässe@(season != null ? $" – {season.Name}" : "")</h2>
+
+    @if (season == null)
+    {
+      <p class="event-list-empty">Keine Saison ausgewählt.</p>
+    }
+    else if (events.Count == 0)
+    {
+      <p class="event-list-empty">Zurzeit sind keine Anlässe im Verkauf.</p>
+    }
+    else
+    {
+      <ul class="event-list-items">
+        @foreach (var evt in events)
+        {
+          var start = evt.Value<DateTime>("start");
+          var venue = evt.Value<IPublishedContent>("venue");
+          var image = evt.Value<IPublishedContent>("eventImage");
+          <li class="event-item">
+            <a class="event-item-link" href="@evt.Url()">
+              @if (image != null)
+              {
+                <span class="event-item-thumb" style="background-image:url('@image.Url()');"></span>
+              }
+              <span class="event-item-body">
+                <span class="event-item-date">@start.ToString("dd.MM.yyyy") · @start.ToString("HH:mm") Uhr</span>
+                <span class="event-item-name">@evt.Name</span>
+                @if (venue != null) { <span class="event-item-venue">@venue.Name</span> }
+              </span>
+              <span class="event-item-cta">Tickets →</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</section>
+
+<style>
+  .event-list { padding: 56px 20px; background: #f6f7f9; }
+  .event-list-inner { max-width: 900px; margin: 0 auto; }
+  .event-list-title { font-family: 'Teko', sans-serif; font-size: 2.4rem; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 24px; color: #101010; }
+  .event-list-empty { color: #666; }
+  .event-list-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .event-item-link { display: flex; align-items: center; gap: 16px; background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; text-decoration: none; color: inherit; transition: box-shadow .15s, transform .15s; }
+  .event-item-link:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .event-item-thumb { flex: 0 0 auto; width: 72px; height: 72px; border-radius: 8px; background-size: cover; background-position: center; }
+  .event-item-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+  .event-item-date { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #C8102E; }
+  .event-item-name { font-family: 'Teko', sans-serif; font-size: 1.5rem; line-height: 1.1; color: #101010; }
+  .event-item-venue { font-size: .9rem; color: #666; }
+  .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
+  @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
+</style>

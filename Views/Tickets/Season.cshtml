@@ -4,11 +4,9 @@
     ViewData["Title"] = Model.Season.Name;
 }
 
-<a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
-
 @if (!string.IsNullOrEmpty(Model.Season.ImageUrl))
 {
-    <img src="@Model.Season.ImageUrl" class="img-fluid rounded mt-2 mb-3" alt="@Model.Season.Name" style="max-height:320px;width:100%;object-fit:cover;" />
+    <img src="@Model.Season.ImageUrl" class="tk-banner" alt="@Model.Season.Name" />
 }
 
 <h1 class="mt-2 mb-1">Saisonkarte: @Model.Season.Name</h1>

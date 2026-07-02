@@ -2,15 +2,6 @@ using RedAnts.Domain.Ticketing;
 
 namespace RedAnts.Features.Ticketing.Public;
 
-public sealed record OverviewEventItem(Event Event, string Sqid, string SeasonName, string VenueName, decimal? FromPrice);
-public sealed record OverviewSeasonItem(Season Season, string Sqid);
-
-public sealed class OverviewModel
-{
-    public IReadOnlyList<OverviewEventItem> Events { get; init; } = [];
-    public IReadOnlyList<OverviewSeasonItem> Seasons { get; init; } = [];
-}
-
 public sealed class EventPurchaseModel
 {
     public required Event Event { get; init; }

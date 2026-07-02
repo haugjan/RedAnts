@@ -1,7 +1,11 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage<Umbraco.Cms.Core.Models.Blocks.BlockListItem>
 @using Umbraco.Cms.Core.Models
+@using Umbraco.Cms.Core.Models.PublishedContent
 @{
-    var heroImage = Model.Content.Value<IEnumerable<MediaWithCrops>>("heroImage")?.FirstOrDefault()?.Url() ?? "";
+    // MediaPicker3 returns a single MediaWithCrops (single-pick) or an IEnumerable (multi-pick); handle both.
+    var heroImageNode = Model.Content.Value<IPublishedContent>("heroImage")
+        ?? Model.Content.Value<IEnumerable<MediaWithCrops>>("heroImage")?.FirstOrDefault();
+    var heroImage = heroImageNode?.Url() ?? "";
     var titel     = Model.Content.Value<string>("titel") ?? "";
     var untertitel = Model.Content.Value<string>("untertitel") ?? "";
     var tags = (Model.Content.Value<string>("schlagwoerter") ?? "")

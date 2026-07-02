@@ -8,8 +8,6 @@
     var geo = Model.Value<string>("googleGeoId");
 }
 
-<a href="/tickets" class="text-decoration-none">&larr; Übersicht</a>
-
 @if (!string.IsNullOrEmpty(image))
 {
     <img src="@image" class="img-fluid rounded mt-2 mb-3" style="max-height:320px;width:100%;object-fit:cover;" alt="@Model.Name" />
