@@ -1,4 +1,4 @@
-﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @inject RedAnts.Features.Ticketing.Ports.IEventPricing Pricing
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Domain.Ticketing
@@ -13,6 +13,8 @@
     var blocked = !AccessGate.EventOk(statusEnum, accessSecret, providedSecret);
     if (blocked) { Context.Response.StatusCode = 404; }
     ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
+    // Leading hero header: the event image with the title over it, nav floating like the homepage.
+    ViewBag.TransparentNav = !blocked;
 
     var start = Model.Value<DateTime>("start");
     var venue = Model.Value<IPublishedContent>("venue");
@@ -26,6 +28,9 @@
 
 @section Head {
     <style>
+        /* Hero header (same visual language as the homepage), slightly shorter so the tickets
+           section below stays reachable. Uses the .hero* rules from site.css. */
+        .evt-hero { height: 62vh; min-height: 440px; }
         .evt-wrap { max-width: 860px; margin: 0 auto; padding: 2.5rem 2.5rem 5rem; }
         .evt-back {
             font-family: var(--display); font-size: 1rem; font-weight: 600;
@@ -33,37 +38,14 @@
             text-decoration: none; color: var(--red);
         }
         .evt-back:hover { color: var(--red-dark); }
-        .evt-image {
-            width: 100%; max-height: 380px; object-fit: cover;
-            border-radius: 4px; margin: 1.25rem 0 1.75rem;
-        }
         .evt-logos { display: flex; align-items: center; gap: 1.5rem; margin: 1.5rem 0; }
         .evt-logos img { height: 72px; width: auto; }
         .evt-logos .vs {
             font-family: var(--display); font-size: 1.6rem; font-weight: 700;
             text-transform: uppercase; color: var(--ink-light);
         }
-        .evt-title {
-            font-family: var(--display); font-weight: 700;
-            font-size: clamp(2.6rem, 7vw, 4.5rem); line-height: 0.9;
-            letter-spacing: 0.01em; text-transform: uppercase; color: var(--ink);
-            margin-top: 0.5rem;
-        }
-        .evt-meta {
-            font-size: 0.95rem; letter-spacing: 0.04em;
-            color: var(--ink-light); margin-top: 0.6rem;
-        }
         .evt-text { margin-top: 1.75rem; line-height: 1.7; font-size: 1.02rem; }
         .evt-text p { margin-bottom: 1rem; }
-        .evt-actions { margin-top: 2.5rem; }
-        .evt-btn {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            font-family: var(--display); font-size: 1.25rem; font-weight: 600;
-            letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
-            padding: 0.6rem 1.8rem; background: var(--red); color: #fff;
-            border: 1.5px solid var(--red); transition: background 0.15s, border-color 0.15s;
-        }
-        .evt-btn:hover { background: var(--red-dark); border-color: var(--red-dark); color: #fff; }
         .evt-alert {
             margin: 2rem 0; padding: 1rem 1.25rem;
             background: #fdeaec; border-left: 4px solid var(--red); color: var(--ink);
@@ -106,20 +88,40 @@
     </style>
 }
 
-<main class="flexpage-main" style="padding-top:66px;">
-    <div class="evt-wrap">
-        @if (blocked)
+@if (blocked)
+{
+    <main class="flexpage-main" style="padding-top:66px;">
+        <div class="evt-wrap"><div class="evt-alert">Dieser Anlass ist nicht verfügbar.</div></div>
+    </main>
+}
+else
+{
+    <section class="hero evt-hero">
+        @if (!string.IsNullOrEmpty(image))
         {
-            <div class="evt-alert">Dieser Anlass ist nicht verfügbar.</div>
+            <div class="hero-bg" style="background-image:url('@image');"></div>
         }
         else
         {
-            <a href="@backHref" class="evt-back">&larr; Übersicht</a>
+            <div class="hero-bg hero-bg--empty"></div>
+        }
+        <div class="hero-inner">
+            <h1 class="hero-title">@Model.Name</h1>
+            <p class="hero-sub">
+                @start.ToString("dd.MM.yyyy, HH:mm") Uhr@if (venue is not null) { <text> · @venue.Name</text> }
+            </p>
+        </div>
+        <div class="hero-bar">
+            <div class="hero-bar-scroll">
+                <span>Scroll</span>
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1.5v10M2.5 8l4 4 4-4"/></svg>
+            </div>
+        </div>
+    </section>
 
-            @if (!string.IsNullOrEmpty(image))
-            {
-                <img src="@image" class="evt-image" alt="@Model.Name" />
-            }
+    <main class="flexpage-main">
+        <div class="evt-wrap">
+            <a href="@backHref" class="evt-back">&larr; Übersicht</a>
 
             @if (!string.IsNullOrEmpty(homeLogo) || !string.IsNullOrEmpty(awayLogo))
             {
@@ -129,12 +131,6 @@
                     @if (!string.IsNullOrEmpty(awayLogo)) { <img src="@awayLogo" alt="Auswärtsteam" /> }
                 </div>
             }
-
-            <h1 class="evt-title">@Model.Name</h1>
-            <p class="evt-meta">
-                @start.ToString("dd.MM.yyyy, HH:mm") Uhr
-                @if (venue is not null) { <text> · @venue.Name</text> }
-            </p>
 
             @if (!string.IsNullOrEmpty(text))
             {
@@ -180,9 +176,9 @@
                     }
                 }
             </div>
-        }
-    </div>
-</main>
+        </div>
+    </main>
+}
 
 @section Scripts {
 <script>
