@@ -36,9 +36,9 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
 
         return passes.Select(p => new SeasonPassListItem(
             Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
-            ((TicketCategory)p.Category).DisplayName(),
+            (TicketCategory)p.Category,
             p.Price,
-            ((TicketStatus)p.Status).ToString(),
+            (TicketStatus)p.Status,
             p.CreatedAt,
             visits.GetValueOrDefault(p.Uuid),
             BuyerName(p.BillingFirstName, p.BillingLastName),

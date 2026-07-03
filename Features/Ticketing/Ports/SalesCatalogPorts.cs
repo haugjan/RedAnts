@@ -42,3 +42,11 @@ public interface IEventTickets
     Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId);
     Task<EventTicket> SaveAsync(EventTicket ticket);
 }
+
+/// <summary>Issued season passes (Saisonkarten) — used by the admin to load a single pass and persist
+/// edits to its editable fields (category, price, status).</summary>
+public interface ISeasonPasses
+{
+    Task<SeasonPass?> GetByUuidAsync(Guid uuid);
+    Task<SeasonPass> SaveAsync(SeasonPass pass);
+}

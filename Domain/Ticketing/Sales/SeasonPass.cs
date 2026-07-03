@@ -37,4 +37,14 @@ public sealed class SeasonPass
     public static SeasonPass FromPersistence(int id, Guid uuid, int seasonId, TicketCategory category,
         decimal price, int? orderId, TicketStatus status, DateTime createdAt) =>
         new(id, uuid, seasonId, category, price, orderId, status, createdAt);
+
+    /// <summary>Admin correction of the editable fields on an already issued pass
+    /// (category, price and validity). The season, order link and issue date stay fixed.</summary>
+    public void Edit(TicketCategory category, decimal price, TicketStatus status)
+    {
+        if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
+        Category = category;
+        Price = decimal.Round(price, 2);
+        Status = status;
+    }
 }

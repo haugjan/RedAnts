@@ -22,5 +22,6 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<ISeasonPrices, SeasonPriceRepository>();
         builder.Services.AddScoped<IEventPricing, EventPricingReader>();
         builder.Services.AddScoped<IEventTickets, EventTicketRepository>();
+        builder.Services.AddScoped<ISeasonPasses, SeasonPassRepository>();
     }
 }
