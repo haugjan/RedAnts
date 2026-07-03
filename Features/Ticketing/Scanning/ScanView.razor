@@ -1,9 +1,13 @@
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Tickets
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject ITicketTokens Tickets
 
-@* Camera QR scan view for a single event. html5-qrcode runs the camera in the browser and
-   reports decoded codes back via JS interop. Ticket validation/redemption is out of scope:
-   each decoded code randomly produces a green (accepted) or red (rejected) full-screen result. *@
+@* Camera QR scan view for a single event. html5-qrcode runs the camera in the browser and reports
+   decoded codes back via JS interop. A decoded code is verified for real via ITicketTokens (S3):
+   a genuine, server-signed token shows green, anything malformed or forged shows red. Recording the
+   admission (TicketEventVisits) and the season scope for passes/cards are the next step. *@
 
 <div class="scan-view">
     <header class="scan-view__header">
@@ -46,9 +50,6 @@
 @code {
     private enum ScanState { Scanning, Success, Failure }
 
-    // Example rejection message shown on a (randomly chosen) negative result.
-    private const string ExampleError = "Ticket ungültig oder bereits eingelöst.";
-
     [Parameter, EditorRequired] public int EventId { get; set; }
     [Parameter, EditorRequired] public string EventName { get; set; } = "";
     [Parameter] public EventCallback OnBack { get; set; }
@@ -75,20 +76,69 @@
     }
 
     // Called by ticket-scanner.js when a QR code is decoded. The scanner is paused by the JS side
-    // before this fires; ScanNext() resumes it.
+    // before this fires; ScanNext() resumes it. The decoded code is the absolute /ticket/{token} URL
+    // (a raw token is accepted too); its signature is verified via ITicketTokens.
     [JSInvokable]
     public async Task OnCodeScanned(string code)
     {
-        _lastCode = code;
-        var accepted = Random.Shared.Next(2) == 0;
+        bool accepted;
+        if (Tickets.TryVerify(ExtractToken(code), out var data))
+        {
+            // A genuine, server-signed token. Enforce the event scope for single-event tickets;
+            // season-scoped passes/cards (ScopeId = SeasonId) and the actual admission recording
+            // (TicketEventVisits) are the next step and are accepted on a valid signature for now.
+            if (data.Type == TicketType.EventTicket && data.ScopeId != EventId)
+            {
+                accepted = false;
+                _failureMessage = "Ticket gilt für einen anderen Anlass.";
+                _lastCode = data.Uuid.ToString()[..8];
+            }
+            else
+            {
+                accepted = true;
+                _failureMessage = null;
+                _lastCode = $"{TypeLabel(data.Type)} · {data.Uuid.ToString()[..8]}";
+            }
+        }
+        else
+        {
+            accepted = false;
+            _failureMessage = "Ungültiger oder gefälschter Code.";
+            _lastCode = Shorten(code);
+        }
+
         _state = accepted ? ScanState.Success : ScanState.Failure;
-        _failureMessage = accepted ? null : ExampleError;
         StateHasChanged();
 
         // Distinct feedback beep for accepted vs rejected.
         try { await JS.InvokeVoidAsync("ticketScanner.beep", accepted); }
         catch (JSException) { /* audio not available */ }
     }
+
+    // The QR encodes the absolute /ticket/{token} URL; take the last path segment as the token and
+    // accept a bare token too. Strips any query/fragment.
+    private static string ExtractToken(string code)
+    {
+        var s = (code ?? "").Trim();
+        const string marker = "/ticket/";
+        var idx = s.LastIndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0) s = s[(idx + marker.Length)..];
+        var cut = s.IndexOfAny(['?', '#']);
+        return cut >= 0 ? s[..cut] : s;
+    }
+
+    private static string TypeLabel(TicketType type) => type switch
+    {
+        TicketType.EventTicket => "Spielticket",
+        TicketType.SeasonSingle => "Flexticket",
+        TicketType.SeasonPass => "Saisonkarte",
+        TicketType.MemberCard => "Mitgliederkarte",
+        TicketType.FreeEntry => "Berechtigt",
+        _ => type.ToString()
+    };
+
+    private static string Shorten(string? s) =>
+        string.IsNullOrEmpty(s) ? "" : (s.Length <= 40 ? s : s[..40] + "…");
 
     private async Task ScanNext()
     {
