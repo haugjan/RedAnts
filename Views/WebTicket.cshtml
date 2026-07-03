@@ -10,6 +10,9 @@
     .wt-head { background: var(--ra-red); color: #fff; padding: 1.1rem 1.4rem; }
     .wt-head .wt-type { font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.35rem; }
     .wt-head .wt-scope { opacity: .92; font-size: .95rem; margin-top: .15rem; }
+    .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1.1rem; padding: 1.2rem 1.4rem 0; }
+    .wt-logos img { height: 56px; width: auto; object-fit: contain; }
+    .wt-vs { font-family: var(--ra-display); font-weight: 700; text-transform: uppercase; color: #999; font-size: .9rem; }
     .wt-qr { padding: 1.6rem 1.4rem 1rem; text-align: center; }
     .wt-qr svg { width: 260px; max-width: 78%; height: auto; }
     .wt-meta { padding: 0 1.4rem 1.4rem; }
@@ -40,6 +43,15 @@
                 <div class="wt-type">@Model.TypeLabel</div>
                 <div class="wt-scope">@Model.ScopeName</div>
             </div>
+
+            @if (!string.IsNullOrEmpty(Model.HomeLogo) || !string.IsNullOrEmpty(Model.AwayLogo))
+            {
+                <div class="wt-logos">
+                    @if (!string.IsNullOrEmpty(Model.HomeLogo)) { <img src="@Model.HomeLogo" alt="Heimteam" /> }
+                    <span class="wt-vs">vs</span>
+                    @if (!string.IsNullOrEmpty(Model.AwayLogo)) { <img src="@Model.AwayLogo" alt="Auswärtsteam" /> }
+                </div>
+            }
 
             <div class="wt-qr">
                 @Html.Raw(Model.QrSvg)

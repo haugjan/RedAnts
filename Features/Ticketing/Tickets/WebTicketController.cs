@@ -26,12 +26,18 @@ public sealed class WebTicketController(
 
         string scopeName;
         string? dateText = null;
+        string? homeLogo = null;
+        string? awayLogo = null;
         if (data.Type == TicketType.EventTicket)
         {
             var ev = await events.FindByIdAsync(data.ScopeId);
             scopeName = ev?.Name ?? "Anlass";
             if (ev is not null)
+            {
                 dateText = $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr";
+                homeLogo = ev.HomeTeamLogoUrl;
+                awayLogo = ev.AwayTeamLogoUrl;
+            }
         }
         else
         {
@@ -53,7 +59,9 @@ public sealed class WebTicketController(
             CategoryLabel: issued?.Category.DisplayName(),
             HolderName: issued?.HolderName,
             TicketRef: data.Uuid.ToString("N")[..8].ToUpperInvariant(),
-            QrSvg: svg);
+            QrSvg: svg,
+            HomeLogo: homeLogo,
+            AwayLogo: awayLogo);
 
         return View("~/Views/WebTicket.cshtml", model);
     }
@@ -90,7 +98,9 @@ public sealed record WebTicketViewModel(
     string? CategoryLabel,
     string? HolderName,
     string TicketRef,
-    string QrSvg)
+    string QrSvg,
+    string? HomeLogo = null,
+    string? AwayLogo = null)
 {
     public static WebTicketViewModel Invalid() =>
         new(false, false, "Ticket", "", null, null, null, "", "");
