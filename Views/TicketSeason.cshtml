@@ -1,9 +1,12 @@
-﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Features.Ticketing.Public
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    // Same look as the public website homepage: the site nav (_SiteLayout) plus the website's
+    // own hero + event-list building blocks (styled by site.css / the eventListElement styles).
+    Layout = "~/Views/Shared/_SiteLayout.cshtml";
+
     var status = Model.Value<string>("status");
     var providedSecret = Context.Request.Query["secret"].ToString();
     var accessSecret = Model.Key.ToString().Split('-')[0];
@@ -11,41 +14,106 @@
     // Open = öffentlich; Intern = nur mit passendem ?secret; Draft/Closed = 404.
     var blocked = !AccessGate.SeasonOk(statusEnum, accessSecret, providedSecret);
     if (blocked) { Context.Response.StatusCode = 404; }
-    ViewData["Title"] = Model.Name;
+
+    ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
+    // A leading hero lets the nav float transparently over the image (like the homepage).
+    ViewBag.TransparentNav = !blocked;
 
     var start = Model.Value<DateTime>("startDate");
     var end = Model.Value<DateTime>("endDate");
     var image = Model.Value<IPublishedContent>("image")?.Url();
-    var events = Model.Children()?.Where(c => c.ContentType.Alias == "event"
-        && c.Value<string>("status") == "Open" && c.Value<DateTime>("start") >= DateTime.Today).ToList()
-        ?? new List<IPublishedContent>();
+    var events = (Model.Children() ?? Enumerable.Empty<IPublishedContent>())
+        .Where(c => c.ContentType.Alias == "event"
+            && c.Value<string>("status") == "Open"
+            && c.Value<DateTime>("start") >= DateTime.Today)
+        .OrderBy(c => c.Value<DateTime>("start"))
+        .ToList();
 }
 
 @if (blocked)
 {
-    <div class="alert alert-warning">Diese Saison ist nicht verfügbar.</div>
+    <main class="flexpage-main" style="padding-top:66px;">
+        <div style="max-width:900px;margin:3rem auto;padding:0 20px;color:#666;">
+            Diese Saison ist nicht verfügbar.
+        </div>
+    </main>
 }
 else
 {
-    @if (!string.IsNullOrEmpty(image))
-    {
-        <img src="@image" class="tk-banner" alt="@Model.Name" />
-    }
+    <section class="hero">
+        @if (!string.IsNullOrEmpty(image))
+        {
+            <div class="hero-bg" style="background-image:url('@image');"></div>
+        }
+        else
+        {
+            <div class="hero-bg hero-bg--empty"></div>
+        }
+        <div class="hero-inner">
+            <h1 class="hero-title">@Model.Name</h1>
+            <p class="hero-sub">@start.ToString("dd.MM.yyyy") – @end.ToString("dd.MM.yyyy")</p>
+        </div>
+        <div class="hero-bar">
+            <div class="hero-bar-scroll">
+                <span>Scroll</span>
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1.5v10M2.5 8l4 4 4-4"/></svg>
+            </div>
+        </div>
+    </section>
 
-    <h1 class="mt-2 mb-1">@Model.Name</h1>
-    <p class="text-muted">@start.ToString("dd.MM.yyyy") – @end.ToString("dd.MM.yyyy")</p>
+    <main class="flexpage-main">
+        <section class="event-list">
+            <div class="event-list-inner">
+                <h2 class="event-list-title">Anstehende Anlässe</h2>
 
-    @if (events.Count > 0)
-    {
-        <h4 class="mt-4">Anstehende Anlässe</h4>
-        <ul class="list-group">
-            @foreach (var e in events)
-            {
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>@e.Name <span class="text-muted">· @(e.Value<DateTime>("start").ToString("dd.MM.yyyy, HH:mm"))</span></span>
-                    <a class="btn btn-sm btn-outline-danger" href="@e.Url()">Details</a>
-                </li>
-            }
-        </ul>
-    }
+                @if (events.Count == 0)
+                {
+                    <p class="event-list-empty">Zurzeit sind keine Anlässe im Verkauf.</p>
+                }
+                else
+                {
+                    <ul class="event-list-items">
+                        @foreach (var evt in events)
+                        {
+                            var evStart = evt.Value<DateTime>("start");
+                            var venue = evt.Value<IPublishedContent>("venue");
+                            var evImage = evt.Value<IPublishedContent>("eventImage");
+                            <li class="event-item">
+                                <a class="event-item-link" href="@evt.Url()">
+                                    @if (evImage != null)
+                                    {
+                                        <span class="event-item-thumb" style="background-image:url('@evImage.Url()');"></span>
+                                    }
+                                    <span class="event-item-body">
+                                        <span class="event-item-date">@evStart.ToString("dd.MM.yyyy") · @evStart.ToString("HH:mm") Uhr</span>
+                                        <span class="event-item-name">@evt.Name</span>
+                                        @if (venue != null) { <span class="event-item-venue">@venue.Name</span> }
+                                    </span>
+                                    <span class="event-item-cta">Tickets →</span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </section>
+    </main>
+
+    <style>
+        /* Same event-list styling as the homepage's eventListElement block. */
+        .event-list { padding: 56px 20px; background: #f6f7f9; }
+        .event-list-inner { max-width: 900px; margin: 0 auto; }
+        .event-list-title { font-family: 'Oswald', sans-serif; font-size: 2.4rem; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 24px; color: #101010; }
+        .event-list-empty { color: #666; }
+        .event-list-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+        .event-item-link { display: flex; align-items: center; gap: 16px; background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; text-decoration: none; color: inherit; transition: box-shadow .15s, transform .15s; }
+        .event-item-link:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+        .event-item-thumb { flex: 0 0 auto; width: 72px; height: 72px; border-radius: 8px; background-size: cover; background-position: center; }
+        .event-item-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+        .event-item-date { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #C8102E; }
+        .event-item-name { font-family: 'Oswald', sans-serif; font-size: 1.5rem; line-height: 1.1; color: #101010; }
+        .event-item-venue { font-size: .9rem; color: #666; }
+        .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
+        @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
+    </style>
 }
