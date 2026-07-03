@@ -48,12 +48,20 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider) : I
             "WHERE TicketType = @0 GROUP BY EventId",
             (int)TicketType.MemberCard);
 
+        // Free-entry entitlements (Berechtigte) admitted to this event. FreeEntry visits carry no ticket
+        // uuid (detail lives in TicketEventFreeEntries), so each admission is its own visit row — count rows.
+        var freeEntries = await Counts(
+            "SELECT EventId, COUNT(*) AS Cnt FROM TicketEventVisits " +
+            "WHERE TicketType = @0 GROUP BY EventId",
+            (int)TicketType.FreeEntry);
+
         var ids = new HashSet<int>();
         ids.UnionWith(sold.Keys);
         ids.UnionWith(redeemedEvent.Keys);
         ids.UnionWith(redeemedSingle.Keys);
         ids.UnionWith(passVisits.Keys);
         ids.UnionWith(memberVisits.Keys);
+        ids.UnionWith(freeEntries.Keys);
 
         var result = new Dictionary<int, EventAdmissionCounts>();
         foreach (var id in ids)
@@ -63,7 +71,8 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider) : I
                 redeemedEvent.GetValueOrDefault(id),
                 redeemedSingle.GetValueOrDefault(id),
                 passVisits.GetValueOrDefault(id),
-                memberVisits.GetValueOrDefault(id));
+                memberVisits.GetValueOrDefault(id),
+                freeEntries.GetValueOrDefault(id));
         }
         return result;
     }

@@ -1,12 +1,13 @@
 @using RedAnts.Domain.Ticketing.Sales
 @* Anlässe (events) administration: pick a season, list its events.
-   The catalog itself is edited in the Umbraco content tree; the only field editable here is the
-   event status (inline, via a confirmation overlay), through the narrow IEventStatusEditor write port.
-   Column labels for the ticket types come from TicketType.DisplayName() (S2's canonical naming). *@
+   Editable here (via the confirmation overlay): the online status and the admission quota
+   (Einlasskontingent). Everything else about an event is edited in the Umbraco content tree.
+   Status is written through IEventStatusEditor (republishes the node); the quota through
+   IEventAdmissionQuota (the EventPrices set). Ticket-type labels come from TicketType.DisplayName(). *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
-    <p class="ta-page-lead">Anlässe (Spiele, Events) einer Saison.</p>
+    <p class="ta-page-lead">Anlässe (Spiele, Events) einer Saison. Status und Einlasskontingent sind hier bearbeitbar, alles Weitere im Inhaltsbaum.</p>
 
     @if (_loading)
     {
@@ -42,6 +43,7 @@
                         <th rowspan="2">Datum</th>
                         <th rowspan="2">Zeit</th>
                         <th rowspan="2">Anlass</th>
+                        <th rowspan="2">Links</th>
                         <th rowspan="2">Status</th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
@@ -60,25 +62,45 @@
                     @foreach (var e in _events)
                     {
                         var c = Counts(e.Id);
+                        var links = Links(e.Id);
                         <tr>
                             <td>@e.Date.ToString("dd.MM.yyyy")</td>
                             <td>@e.StartTime.ToString("HH:mm")</td>
                             <td class="ta-cell-name">@e.Name</td>
+                            <td class="ta-links">
+                                <button type="button" class="ta-link-btn"
+                                        disabled="@(string.IsNullOrEmpty(links.Public))"
+                                        title="@(string.IsNullOrEmpty(links.Public) ? "Noch nicht veröffentlicht" : "Öffentlichen Link kopieren")"
+                                        @onclick="() => Copy(e.Id, false, links.Public)">
+                                    @(IsCopied(e.Id, false) ? "✓" : "🔗")
+                                </button>
+                                <button type="button" class="ta-link-btn ta-link-intern"
+                                        disabled="@(string.IsNullOrEmpty(links.Intern))"
+                                        title="@(string.IsNullOrEmpty(links.Intern) ? "Noch nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
+                                        @onclick="() => Copy(e.Id, true, links.Intern)">
+                                    @(IsCopied(e.Id, true) ? "✓" : "🔒")
+                                </button>
+                            </td>
                             <td>
                                 <button type="button"
                                         class="ta-status-btn ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()"
-                                        title="Status ändern" @onclick="() => OpenStatusEdit(e)">
+                                        title="Status und Kontingent bearbeiten" @onclick="() => OpenEdit(e)">
                                     @StatusLabel(e.Status)
                                 </button>
                             </td>
-                            <td class="ta-num ta-muted" title="Spalte folgt">–</td>
+                            <td class="ta-num">
+                                <button type="button" class="ta-quota-btn" title="Einlasskontingent bearbeiten"
+                                        @onclick="() => OpenEdit(e)">
+                                    @QuotaLabel(Quota(e.Id))
+                                </button>
+                            </td>
                             <td class="ta-num">@c.TotalRedeemed</td>
                             <td class="ta-num">@c.SoldSingleTickets</td>
                             <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
                             <td class="ta-num">@c.RedeemedSeasonSingleTickets</td>
                             <td class="ta-num">@c.RedeemedSeasonPasses</td>
                             <td class="ta-num">@c.RedeemedMemberCards</td>
-                            <td class="ta-num ta-muted" title="Spalte folgt">–</td>
+                            <td class="ta-num">@c.RedeemedFreeEntries</td>
                         </tr>
                     }
                 </tbody>
@@ -90,9 +112,9 @@
 
 @if (_editing is not null)
 {
-    <div class="ta-overlay" @onclick="CancelStatusEdit">
+    <div class="ta-overlay" @onclick="CancelEdit">
         <div class="ta-modal" @onclick:stopPropagation="true">
-            <h2 class="ta-modal-title">Status ändern</h2>
+            <h2 class="ta-modal-title">Anlass bearbeiten</h2>
             <p class="ta-modal-sub">
                 @_editing.Name · @_editing.Date.ToString("dd.MM.yyyy")
             </p>
@@ -107,10 +129,12 @@
                 </select>
             </div>
 
-            <p class="ta-modal-hint">
-                Von <strong>@StatusLabel(_editing.Status)</strong> auf <strong>@StatusLabel(_editStatus)</strong> ändern?
-                Der Anlass wird sofort neu veröffentlicht.
-            </p>
+            <div class="ta-field">
+                <label class="ta-label" for="editQuota">Einlasskontingent</label>
+                <input id="editQuota" type="number" min="0" step="1" class="ta-select"
+                       placeholder="Unbegrenzt" @bind="_editQuota" />
+                <p class="ta-field-hint">Leer lassen für unbegrenzt.</p>
+            </div>
 
             @if (_editError is not null)
             {
@@ -118,9 +142,9 @@
             }
 
             <div class="ta-modal-actions">
-                <button type="button" class="ta-btn-secondary" @onclick="CancelStatusEdit" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn-primary" @onclick="SaveStatus" disabled="@_saving">
-                    @(_saving ? "Speichert …" : "Status ändern")
+                <button type="button" class="ta-btn-secondary" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                    @(_saving ? "Speichert …" : "Speichern")
                 </button>
             </div>
         </div>
@@ -133,6 +157,7 @@
         display: block; margin-bottom: 0.35rem;
         font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
     }
+    .ta-field-hint { margin: 0.3rem 0 0; font-size: 0.78rem; color: var(--ta-muted); }
     .ta-select {
         width: 100%; padding: 0.5rem 0.6rem;
         font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
@@ -147,7 +172,6 @@
         border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
     }
     .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .ta-table td.ta-muted { color: #c2c2c2; }
     .ta-table th {
         text-align: left; font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
         letter-spacing: 0.02em; color: var(--ta-muted); line-height: 1.2;
@@ -160,7 +184,6 @@
         border-left: 1px solid var(--ta-accent); border-bottom-color: var(--ta-accent);
         font-size: 0.7rem; letter-spacing: 0.04em;
     }
-    /* Left edge of the grouped block, carried down to the first sub-column and its cells. */
     .ta-table th.ta-group-col, .ta-table td.ta-group-col { border-left: 1px solid #d7e8f6; }
     .ta-table td {
         padding: 6px 8px; font-size: 0.8rem; border-bottom: 1px solid #f2f2f2;
@@ -184,8 +207,24 @@
         font-family: var(--ta-font); line-height: 1.4;
     }
     .ta-status-btn:hover { filter: brightness(0.96); border-color: rgba(0,0,0,0.15); }
+    /* Admission-quota cell doubles as the edit trigger. */
+    .ta-quota-btn {
+        appearance: none; background: none; border: none; cursor: pointer;
+        font-family: var(--ta-font); font-size: 0.8rem; font-variant-numeric: tabular-nums;
+        color: var(--ta-ink); padding: 0.1rem 0.3rem; border-radius: 3px;
+    }
+    .ta-quota-btn:hover { background: #eef6fc; color: var(--ta-accent); }
 
-    /* Confirmation overlay (mirrors the Saisonkarten edit modal). */
+    /* Copy-link icon buttons. */
+    .ta-links { white-space: nowrap; }
+    .ta-link-btn {
+        appearance: none; background: none; border: 1px solid transparent; cursor: pointer;
+        font-size: 0.9rem; line-height: 1; padding: 0.15rem 0.25rem; border-radius: 3px;
+    }
+    .ta-link-btn:hover:not(:disabled) { background: #eef6fc; border-color: var(--ta-border); }
+    .ta-link-btn:disabled { opacity: 0.3; cursor: default; }
+
+    /* Edit overlay (mirrors the Saisonkarten modal). */
     .ta-overlay {
         position: fixed; inset: 0; z-index: 1000;
         background: rgba(27, 38, 79, 0.45);
@@ -202,8 +241,7 @@
         color: var(--ta-ink); margin: 0 0 0.2rem;
     }
     .ta-modal-sub { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 1.1rem; }
-    .ta-modal .ta-field { max-width: none; }
-    .ta-modal-hint { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 0.4rem; }
+    .ta-modal .ta-field { max-width: none; margin-bottom: 1.1rem; }
     .ta-modal-error {
         color: #a3283a; background: #f6e2e4; border-radius: 3px;
         padding: 0.5rem 0.7rem; font-size: 0.82rem; margin: 0.6rem 0 0;
@@ -230,13 +268,19 @@
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
     [Inject] private IEventStatusEditor StatusEditor { get; set; } = default!;
+    [Inject] private IEventAdmissionQuota QuotaEditor { get; set; } = default!;
+    [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<Event> _events = [];
     private IReadOnlyDictionary<int, EventAdmissionCounts> _counts =
         new Dictionary<int, EventAdmissionCounts>();
+    private IReadOnlyDictionary<int, int?> _quotas = new Dictionary<int, int?>();
+    private IReadOnlyDictionary<int, EventLinks> _links = new Dictionary<int, EventLinks>();
 
     public int SelectedSeasonId { get; set; }
 
@@ -260,13 +304,29 @@
     private EventAdmissionCounts Counts(int eventId) =>
         _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
 
+    private int? Quota(int eventId) => _quotas.TryGetValue(eventId, out var q) ? q : null;
+
+    private EventLinks Links(int eventId) =>
+        _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
+
+    private static string QuotaLabel(int? quota) => quota?.ToString("N0") ?? "∞";
+
     private async Task ReloadEventsAsync()
     {
         // Remember the choice so the other tabs open on the same season.
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
-        _events = SelectedSeasonId > 0
-            ? await Events.GetBySeasonAsync(SelectedSeasonId)
-            : [];
+        if (SelectedSeasonId > 0)
+        {
+            _events = await Events.GetBySeasonAsync(SelectedSeasonId);
+            _quotas = await QuotaEditor.GetAllAsync();
+            _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);
+        }
+        else
+        {
+            _events = [];
+            _quotas = new Dictionary<int, int?>();
+            _links = new Dictionary<int, EventLinks>();
+        }
     }
 
     /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
@@ -285,33 +345,66 @@
         _ => "Entwurf"
     };
 
-    // --- Status edit / confirmation overlay ---
+    // --- Copy link to clipboard ---
+    private (int EventId, bool Intern)? _copied;
+
+    private bool IsCopied(int eventId, bool intern) =>
+        _copied is { } c && c.EventId == eventId && c.Intern == intern;
+
+    private async Task Copy(int eventId, bool intern, string? relative)
+    {
+        if (string.IsNullOrEmpty(relative)) return;
+        var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+        var absolute = relative.StartsWith("http") ? relative : origin + relative;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", absolute);
+            _copied = (eventId, intern);
+            StateHasChanged();
+            await Task.Delay(1500);
+            if (IsCopied(eventId, intern)) { _copied = null; StateHasChanged(); }
+        }
+        catch
+        {
+            // Clipboard unavailable (e.g. non-secure context) — silently ignore.
+        }
+    }
+
+    // --- Edit overlay (status + admission quota) ---
     private Event? _editing;
     private EventStatus _editStatus;
+    private int? _editQuota;
     private bool _saving;
     private string? _editError;
 
-    private void OpenStatusEdit(Event e)
+    private void OpenEdit(Event e)
     {
         _editing = e;
         _editStatus = e.Status;
+        _editQuota = Quota(e.Id);
         _editError = null;
     }
 
-    private void CancelStatusEdit()
+    private void CancelEdit()
     {
         _editing = null;
         _editError = null;
     }
 
-    private async Task SaveStatus()
+    private async Task SaveEdit()
     {
         if (_editing is null) return;
+        if (_editQuota is < 0)
+        {
+            _editError = "Einlasskontingent darf nicht negativ sein.";
+            return;
+        }
         _saving = true;
         _editError = null;
         try
         {
             await StatusEditor.SetStatusAsync(_editing.Id, _editStatus);
+            await QuotaEditor.SetAsync(_editing.Id, _editQuota);
             _editing = null;
             await ReloadEventsAsync();
         }

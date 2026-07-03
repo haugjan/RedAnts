@@ -8,14 +8,16 @@ public sealed record EventAdmissionCounts(
     int RedeemedEventTickets,
     int RedeemedSeasonSingleTickets,
     int RedeemedSeasonPasses,
-    int RedeemedMemberCards)
+    int RedeemedMemberCards,
+    int RedeemedFreeEntries)
 {
-    public static readonly EventAdmissionCounts Empty = new(0, 0, 0, 0, 0);
+    public static readonly EventAdmissionCounts Empty = new(0, 0, 0, 0, 0, 0);
 
-    /// <summary>Total admissions so far at this event: the sum across all redeemed ticket types.
-    /// The new entitlement (FreeEntry) type is not part of this read model yet, so it is not counted.</summary>
+    /// <summary>Total admissions so far at this event: the sum across all redeemed ticket types,
+    /// including the free-entry entitlements (Berechtigte).</summary>
     public int TotalRedeemed =>
-        RedeemedEventTickets + RedeemedSeasonSingleTickets + RedeemedSeasonPasses + RedeemedMemberCards;
+        RedeemedEventTickets + RedeemedSeasonSingleTickets + RedeemedSeasonPasses
+        + RedeemedMemberCards + RedeemedFreeEntries;
 }
 
 /// <summary>Read side for the Anlässe admin table. Self-contained: aggregates counts straight from the
