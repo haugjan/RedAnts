@@ -1,12 +1,147 @@
-@* Placeholder — Anlässe (events) administration. To be implemented. *@
+@* Anlässe (events) administration: pick a season, list its events.
+   Read-only for now (catalog CRUD still happens in the Umbraco content tree). *@
+
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
-    <p class="ta-page-lead">Verwaltung der Anlässe (Spiele, Events).</p>
-    <div class="ta-placeholder">
-        Platzhalter-Inhalt für „Anlässe". Hier entstehen später Liste, Erfassung und Bearbeitung der Anlässe.
-    </div>
+    <p class="ta-page-lead">Anlässe (Spiele, Events) einer Saison.</p>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-field">
+            <label class="ta-label" for="seasonSelect">Saison</label>
+            <select id="seasonSelect" class="ta-select"
+                    @bind="SelectedSeasonId" @bind:after="ReloadEventsAsync">
+                @foreach (var s in _seasons)
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            </select>
+        </div>
+
+        @if (_events.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Anlässe erfasst.</div>
+        }
+        else
+        {
+            <table class="ta-table">
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Zeit</th>
+                        <th>Anlass</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in _events)
+                    {
+                        <tr>
+                            <td>@e.Date.ToString("dd.MM.yyyy")</td>
+                            <td>@e.StartTime.ToString("HH:mm")</td>
+                            <td class="ta-cell-name">@e.Name</td>
+                            <td><span class="ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()">@StatusLabel(e.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
 </section>
+
+<style>
+    .ta-field { margin: 0 0 1.5rem; max-width: 360px; }
+    .ta-label {
+        display: block; margin-bottom: 0.35rem;
+        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
+    }
+    .ta-select {
+        width: 100%; padding: 0.5rem 0.6rem;
+        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
+        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
+    }
+    .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
+    .ta-muted-text { color: var(--ta-muted); }
+
+    .ta-table {
+        width: 100%; border-collapse: collapse; background: #fff;
+        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
+    }
+    .ta-table th {
+        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.03em; color: var(--ta-muted);
+        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
+    }
+    .ta-table td {
+        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2;
+        white-space: nowrap;
+    }
+    .ta-table tr:last-child td { border-bottom: none; }
+    .ta-table tbody tr:hover { background: #fafbfc; }
+    .ta-cell-name { white-space: normal; font-weight: 500; }
+
+    .ta-badge {
+        display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+        font-size: 0.75rem; font-weight: 700;
+    }
+    .ta-badge-open { background: #e4f4ea; color: #1c7c43; }
+    .ta-badge-draft { background: #efefef; color: #666; }
+    .ta-badge-intern { background: #fdf1dc; color: #9a6a12; }
+    .ta-badge-closed { background: #f6e2e4; color: #a3283a; }
+</style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<Event> _events = [];
+
+    public int SelectedSeasonId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Newest season first — that is also what an admin most often works with.
+        _seasons = (await Seasons.GetAllAsync())
+            .OrderByDescending(s => s.StartDate)
+            .ToList();
+
+        SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await ReloadEventsAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadEventsAsync()
+    {
+        _events = SelectedSeasonId > 0
+            ? await Events.GetBySeasonAsync(SelectedSeasonId)
+            : [];
+    }
+
+    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static string StatusLabel(EventStatus status) => status switch
+    {
+        EventStatus.Open => "Öffentlich",
+        EventStatus.Intern => "Intern",
+        EventStatus.Closed => "Geschlossen",
+        _ => "Entwurf"
+    };
 }

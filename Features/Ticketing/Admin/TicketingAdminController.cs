@@ -13,10 +13,15 @@ namespace RedAnts.Features.Ticketing.Admin;
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 public sealed class TicketingAdminController : Controller
 {
+    /// <summary>Tabs the Blazor app can render; the iframe passes one via <c>?tab=</c>.</summary>
+    private static readonly HashSet<string> KnownTabs =
+        new(StringComparer.OrdinalIgnoreCase) { "events", "tickets", "seasoncards", "membercards" };
+
     [HttpGet("")]
-    public IActionResult Index()
+    public IActionResult Index(string? tab = null)
     {
         var adminUser = User.Identity?.Name ?? "admin";
+        ViewData["Tab"] = tab is not null && KnownTabs.Contains(tab) ? tab.ToLowerInvariant() : "events";
         return View("~/Features/Ticketing/Admin/Views/Admin.cshtml", adminUser);
     }
 }

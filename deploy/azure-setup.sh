@@ -3,10 +3,11 @@
 # One-time Azure provisioning for RedAnts, mirroring the Sporthalle Sulzerallee setup:
 # an App Service (Linux, .NET 10) plus an Azure SQL database, in resource group RG_RedAnts.
 #
-# NOTE: Resources run in West Europe. Switzerland North cannot create cheap Linux plans for this
-# subscription (only pricey Premium v3), and France Central had no B1 Linux capacity at setup
-# time. West Europe is the fallback with cheap Linux B1. The resource group itself stays in
-# Switzerland North (location is only metadata; resources may live in a different region).
+# NOTE: Resources run in UK West (UK data residency, geographically Europe). This subscription's
+# compute quota is heavily restricted: Switzerland North refuses Basic/Standard Linux (only pricey
+# Premium v3), France Central had no capacity, West Europe is not accepting new customers, and
+# North Europe / UK South have 0 VM quota. UK West was the one region that allowed cheap Linux B1.
+# The resource group itself stays in Switzerland North (location is only metadata).
 #
 # Run this yourself after logging in to the Red Ants tenant:
 #     az login --tenant redants.ch
@@ -21,11 +22,11 @@ set -euo pipefail
 # ── Configuration (adjust as needed) ─────────────────────────────────────────
 SUBSCRIPTION="fdf0cdfa-61ef-409f-aa8b-bb0c6a306e3b"
 RESOURCE_GROUP="RG_RedAnts"
-LOCATION="westeurope"
+LOCATION="ukwest"
 
 APP_PLAN="asp-redants"
 APP_NAME="app-redants"          # globally unique -> https://<APP_NAME>.azurewebsites.net
-PLAN_SKU="B1"                   # B1 = Basic (Linux); cheap. Available in West Europe.
+PLAN_SKU="B1"                   # B1 = Basic (Linux); cheap. Available in UK West.
 
 SQL_SERVER="sql-redants"        # globally unique -> <SQL_SERVER>.database.windows.net
 SQL_DB="sqldb-redants"

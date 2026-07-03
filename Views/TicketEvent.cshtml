@@ -1,5 +1,4 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
-@inject RedAnts.Features.Ticketing.Ports.ISqidEncoder Sqids
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Features.Ticketing.Public
@@ -20,9 +19,7 @@
     var homeLogo = Model.Value<IPublishedContent>("homeTeamLogo")?.Url();
     var awayLogo = Model.Value<IPublishedContent>("awayTeamLogo")?.Url();
     var text = Model.Value<string>("text");
-    var sqid = Sqids.Encode(Model.Id);
-    var buyHref = "/tickets/event/" + sqid + (statusEnum == EventStatus.Intern ? "?secret=" + Uri.EscapeDataString(providedSecret) : "");
-    // Back to the parent node (the season lists its events); /tickets no longer exists as an endpoint.
+    // Back to the parent node (the season lists its events).
     var backHref = Model.Parent?.Url() ?? "/";
 }
 
@@ -107,10 +104,6 @@
             {
                 <div class="evt-text">@Html.Raw(text)</div>
             }
-
-            <div class="evt-actions">
-                <a class="evt-btn" href="@buyHref">Tickets kaufen</a>
-            </div>
         }
     </div>
 </main>

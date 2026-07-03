@@ -16,7 +16,8 @@ public class TicketingMigrationPlan : MigrationPlan
         From(string.Empty)
             .To<CreateTicketingTablesV1>("v1.0.0")
             .To<DropCatalogTablesV2>("v1.1.0")
-            .To<CreateSalesTablesV3>("v1.2.0");
+            .To<CreateSalesTablesV3>("v1.2.0")
+            .To<DropLegacyTicketTablesV4>("v1.3.0");
     }
 }
 
@@ -59,6 +60,20 @@ public class CreateSalesTablesV3(IMigrationContext context) : AsyncMigrationBase
         if (!TableExists("SeasonPasses")) Create.Table<SeasonPassRecord>().Do();
         if (!TableExists("MembershipCards")) Create.Table<Sales.MemberCardRecord>().Do();
         if (!TableExists("TicketEventVisits")) Create.Table<EventVisitRecord>().Do();
+        return Task.CompletedTask;
+    }
+}
+
+// v1.3.0 — the old single/season ticket + member card + scan-log model was removed in favour of the
+// new Sales model (Orders + per-type ticket tables). Drop the now-unused legacy tables.
+public class DropLegacyTicketTablesV4(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (TableExists("TicketScanLog")) Delete.Table("TicketScanLog").Do();
+        if (TableExists("SingleTickets")) Delete.Table("SingleTickets").Do();
+        if (TableExists("SeasonTickets")) Delete.Table("SeasonTickets").Do();
+        if (TableExists("MemberCards")) Delete.Table("MemberCards").Do();
         return Task.CompletedTask;
     }
 }

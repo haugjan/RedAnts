@@ -42,8 +42,6 @@ public sealed class TicketingContentTypeSeeder(
     private const int SuperUser = Constants.Security.SuperUserId;
     private const string Group = "content";
     private const string GroupName = "Inhalt";
-    private const string CategoryPickerName = "Ticketing Kategorie-Auswahl";
-    private const string VenuePickerName = "Ticketing Ort-Auswahl";
 
     public Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken cancellationToken)
     {
@@ -52,7 +50,6 @@ public sealed class TicketingContentTypeSeeder(
             EnsureContentTypes();
             EnsureSampleContent();
             RemoveObsoleteEventProperties();
-            MigrateSalesPrices();
             RefreshAccessLinks();
         }
         catch (Exception ex)
@@ -87,151 +84,31 @@ public sealed class TicketingContentTypeSeeder(
     // event type on databases created before it was removed. Runs every boot; only saves when present.
     private void RemoveObsoleteEventProperties()
     {
-        var eventType = contentTypeService.Get(A.EventType);
-        if (eventType is null || !eventType.PropertyTypeExists("internalLink")) return;
-
-        eventType.RemovePropertyType("internalLink");
-        contentTypeService.Save(eventType, SuperUser);
-        logger.LogInformation("TicketingContentTypeSeeder: removed obsolete 'internalLink' property from the event type.");
+        // Obsolete event properties on databases created before they were removed:
+        // internalLink (free-text link) and the fixed decimal price fields / the short-lived
+        // "salesPrices" Block List (pricing was moved out of the catalog entirely).
+        RemoveObsoleteProperties(A.EventType,
+            "internalLink", "priceChild", "priceYouth", "priceAdult", "salesPrices");
+        // The short-lived "salesPrices" Block List also existed on the season type.
+        RemoveObsoleteProperties(A.SeasonType, "salesPrices");
     }
 
-    // Idempotent Stage 1 migration for databases created before the "Preise Verkauf" Block List existed.
-    // Creates the ticketCategory content type + folder, the salesPrice element type and its Block List,
-    // the restricted category/venue pickers, adds the salesPrices property to event and season, drops the
-    // obsolete fixed decimal price fields, and seeds the category nodes. Runs every boot; only changes
-    // what is missing, so it is a no-op once applied (and on fresh installs handled by EnsureContentTypes).
-    private void MigrateSalesPrices()
+    // Idempotent: drops the given property aliases from a content type if present. Runs every boot;
+    // only saves when at least one property was actually removed.
+    private void RemoveObsoleteProperties(string contentTypeAlias, params string[] aliases)
     {
-        var eventType = contentTypeService.Get(A.EventType);
-        var seasonType = contentTypeService.Get(A.SeasonType);
-        if (eventType is null || seasonType is null) return; // nothing seeded yet
+        var contentType = contentTypeService.Get(contentTypeAlias);
+        if (contentType is null) return;
 
-        var all = dataTypeService.GetAll().ToList();
-        var textBox = all.First(d => d.EditorAlias == "Umbraco.TextBox");
-        var decimalType = EnsureDecimal(all);
-        var integerType = EnsureInteger(all);
-        var booleanType = EnsureBoolean(all);
-        var categoryPicker = EnsureContentPicker(all, CategoryPickerName);
-        var venuePicker = EnsureContentPicker(all, VenuePickerName);
-
-        var ticketCategoryType = contentTypeService.Get(A.TicketCategoryType);
-        if (ticketCategoryType is null)
+        var removed = false;
+        foreach (var alias in aliases)
         {
-            ticketCategoryType = new ContentType(shortStringHelper, Constants.System.Root)
-            {
-                Alias = A.TicketCategoryType, Name = "Ticketkategorie", Icon = "icon-tag"
-            };
-            ticketCategoryType.AddPropertyType(Prop(textBox, A.CategoryCode, "Code"), Group, GroupName);
-            ticketCategoryType.AddPropertyType(Prop(decimalType, A.CategoryDefaultPrice, "Standardpreis"), Group, GroupName);
-            contentTypeService.Save(ticketCategoryType, SuperUser);
+            if (!contentType.PropertyTypeExists(alias)) continue;
+            contentType.RemovePropertyType(alias);
+            removed = true;
+            logger.LogInformation("TicketingContentTypeSeeder: removed obsolete '{Alias}' property from '{Type}'.", alias, contentTypeAlias);
         }
-
-        var categoriesFolderType = contentTypeService.Get(A.CategoriesFolderType);
-        if (categoriesFolderType is null)
-        {
-            categoriesFolderType = new ContentType(shortStringHelper, Constants.System.Root)
-            {
-                Alias = A.CategoriesFolderType, Name = "Ticketkategorien", Icon = "icon-folder"
-            };
-            categoriesFolderType.AllowedContentTypes = new[] { new ContentTypeSort(ticketCategoryType.Key, 0, ticketCategoryType.Alias) };
-            contentTypeService.Save(categoriesFolderType, SuperUser);
-        }
-
-        var salesPriceElement = contentTypeService.Get(A.SalesPriceElement);
-        if (salesPriceElement is null)
-        {
-            salesPriceElement = new ContentType(shortStringHelper, Constants.System.Root)
-            {
-                Alias = A.SalesPriceElement, Name = "Verkaufspreis", Icon = "icon-tag", IsElement = true
-            };
-            salesPriceElement.AddPropertyType(Prop(categoryPicker, A.SalesPriceCategory, "Kategorie"), Group, GroupName);
-            salesPriceElement.AddPropertyType(PropWithHint(booleanType, A.SalesPriceUseDefault, "Standardpreis",
-                "Wenn gesetzt, gilt der Standardpreis der Kategorie; sonst der Preis unten."), Group, GroupName);
-            salesPriceElement.AddPropertyType(Prop(decimalType, A.SalesPricePrice, "Preis"), Group, GroupName);
-            salesPriceElement.AddPropertyType(Prop(integerType, A.SalesPriceContingent, "Verkaufskontingent"), Group, GroupName);
-            contentTypeService.Save(salesPriceElement, SuperUser);
-        }
-
-        var blockList = EnsureBlockList(all, "Ticketing Preise Verkauf (Block List)", salesPriceElement.Key);
-
-        // Event: add salesPrices, re-point venue to the restricted picker, drop the old decimal price fields.
-        var eventChanged = false;
-        if (!eventType.PropertyTypeExists(A.SalesPrices))
-        {
-            eventType.AddPropertyType(Prop(blockList, A.SalesPrices, "Preise Verkauf"), "prices", "Preise");
-            eventChanged = true;
-        }
-        var venueProp = eventType.PropertyTypes.FirstOrDefault(p => p.Alias == A.EventVenue);
-        if (venueProp is not null && venueProp.DataTypeKey != venuePicker.Key)
-        {
-            venueProp.DataTypeId = venuePicker.Id;
-            venueProp.DataTypeKey = venuePicker.Key;
-            eventChanged = true;
-        }
-        foreach (var oldAlias in new[] { "priceChild", "priceYouth", "priceAdult" })
-        {
-            if (!eventType.PropertyTypeExists(oldAlias)) continue;
-            eventType.RemovePropertyType(oldAlias);
-            eventChanged = true;
-        }
-        if (eventChanged) contentTypeService.Save(eventType, SuperUser);
-
-        // Season: add salesPrices.
-        if (!seasonType.PropertyTypeExists(A.SalesPrices))
-        {
-            seasonType.AddPropertyType(Prop(blockList, A.SalesPrices, "Preise Verkauf"), "prices", "Preise");
-            contentTypeService.Save(seasonType, SuperUser);
-        }
-
-        // Allow the categories folder under the ticketing root.
-        var rootType = contentTypeService.Get(A.RootType);
-        if (rootType is not null && rootType.AllowedContentTypes?.All(s => s.Alias != A.CategoriesFolderType) == true)
-        {
-            var allowed = rootType.AllowedContentTypes.ToList();
-            allowed.Add(new ContentTypeSort(categoriesFolderType.Key, allowed.Count, A.CategoriesFolderType));
-            rootType.AllowedContentTypes = allowed;
-            contentTypeService.Save(rootType, SuperUser);
-        }
-
-        EnsureCategoryContent();
-    }
-
-    // Idempotent: ensures the categories folder node and the six ticket categories exist, and points
-    // the category/venue pickers at their folders. Adds only missing categories (matched by code).
-    private void EnsureCategoryContent()
-    {
-        var root = contentService.GetRootContent().FirstOrDefault(c => c.ContentType.Alias == A.RootType);
-        if (root is null) return;
-
-        var children = contentService.GetPagedChildren(root.Id, 0, 100, out _).ToList();
-        var folder = children.FirstOrDefault(c => c.ContentType.Alias == A.CategoriesFolderType);
-        if (folder is null)
-        {
-            folder = contentService.Create("Ticketkategorien", root.Id, A.CategoriesFolderType);
-            Publish(folder);
-        }
-
-        var existingCodes = contentService.GetPagedChildren(folder.Id, 0, 100, out _)
-            .Where(c => c.ContentType.Alias == A.TicketCategoryType)
-            .Select(c => c.GetValue<string>(A.CategoryCode))
-            .Where(code => !string.IsNullOrEmpty(code))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        void Category(string name, string code, decimal defaultPrice)
-        {
-            if (existingCodes.Contains(code)) return;
-            SeedCategory(folder.Id, name, code, defaultPrice);
-        }
-        Category("Kind", "child", 10m);
-        Category("Jugend", "youth", 15m);
-        Category("Erwachsen", "adult", 25m);
-        Category("Kind reduziert", "child-reduced", 8m);
-        Category("Jugend reduziert", "youth-reduced", 12m);
-        Category("Erwachsen reduziert", "adult-reduced", 20m);
-
-        SetPickerStartNode(CategoryPickerName, folder);
-        var venuesFolder = children.FirstOrDefault(c => c.ContentType.Alias == A.VenuesFolderType);
-        if (venuesFolder is not null) SetPickerStartNode(VenuePickerName, venuesFolder);
+        if (removed) contentTypeService.Save(contentType, SuperUser);
     }
 
     private void EnsureContentTypes()
@@ -244,47 +121,12 @@ public sealed class TicketingContentTypeSeeder(
         var textBox = ByEditor("Umbraco.TextBox");
         var richText = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.RichText") ?? textBox;
         var mediaPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.MediaPicker3") ?? textBox;
-        var decimalType = EnsureDecimal(all);
-        var integerType = EnsureInteger(all);
-        var booleanType = EnsureBoolean(all);
+        var contentPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.ContentPicker") ?? textBox;
         var labelType = EnsureLabel(all);
         var statusDropdown = EnsureStatusDropdown(all);
-        // Content pickers scoped to their folders (start node set once the folders exist in EnsureSampleContent).
-        var categoryPicker = EnsureContentPicker(all, CategoryPickerName);
-        var venuePicker = EnsureContentPicker(all, VenuePickerName);
         // Swiss-format date pickers (dd.MM.yyyy and dd.MM.yyyy HH:mm) for the backoffice editor.
         var dateCh = EnsureDatePicker(all, "Ticketing Datum (CH)", "DD.MM.YYYY");
         var dateTimeCh = EnsureDatePicker(all, "Ticketing Datum + Zeit (CH)", "DD.MM.YYYY HH:mm");
-
-        // Ticket category (central content list) + the salesPrice element type and its Block List.
-        var ticketCategoryType = new ContentType(shortStringHelper, Constants.System.Root)
-        {
-            Alias = A.TicketCategoryType, Name = "Ticketkategorie", Icon = "icon-tag"
-        };
-        ticketCategoryType.AddPropertyType(Prop(textBox, A.CategoryCode, "Code"), Group, GroupName);
-        ticketCategoryType.AddPropertyType(Prop(decimalType, A.CategoryDefaultPrice, "Standardpreis"), Group, GroupName);
-        contentTypeService.Save(ticketCategoryType, SuperUser);
-
-        var categoriesFolder = new ContentType(shortStringHelper, Constants.System.Root)
-        {
-            Alias = A.CategoriesFolderType, Name = "Ticketkategorien", Icon = "icon-folder"
-        };
-        categoriesFolder.AllowedContentTypes = new[] { new ContentTypeSort(ticketCategoryType.Key, 0, ticketCategoryType.Alias) };
-        contentTypeService.Save(categoriesFolder, SuperUser);
-
-        // salesPrice element type: one price row (category + optional default-price flag + price + contingent).
-        var salesPriceElement = new ContentType(shortStringHelper, Constants.System.Root)
-        {
-            Alias = A.SalesPriceElement, Name = "Verkaufspreis", Icon = "icon-tag", IsElement = true
-        };
-        salesPriceElement.AddPropertyType(Prop(categoryPicker, A.SalesPriceCategory, "Kategorie"), Group, GroupName);
-        salesPriceElement.AddPropertyType(PropWithHint(booleanType, A.SalesPriceUseDefault, "Standardpreis",
-            "Wenn gesetzt, gilt der Standardpreis der Kategorie; sonst der Preis unten."), Group, GroupName);
-        salesPriceElement.AddPropertyType(Prop(decimalType, A.SalesPricePrice, "Preis"), Group, GroupName);
-        salesPriceElement.AddPropertyType(Prop(integerType, A.SalesPriceContingent, "Verkaufskontingent"), Group, GroupName);
-        contentTypeService.Save(salesPriceElement, SuperUser);
-
-        var salesPricesBlockList = EnsureBlockList(all, "Ticketing Preise Verkauf (Block List)", salesPriceElement.Key);
 
         // Templates (each entity node renders as a page). Prefixed so they do not collide with the
         // MVC purchase views (Views/Tickets/Event.cshtml etc.) via Umbraco's root view-location expander.
@@ -310,12 +152,11 @@ public sealed class TicketingContentTypeSeeder(
         };
         evt.AddPropertyType(Prop(richText, A.EventText, "Text"), Group, GroupName);
         evt.AddPropertyType(Prop(dateTimeCh, A.EventStart, "Beginn"), Group, GroupName);
-        evt.AddPropertyType(Prop(venuePicker, A.EventVenue, "Ort"), Group, GroupName);
+        evt.AddPropertyType(Prop(contentPicker, A.EventVenue, "Ort"), Group, GroupName);
         evt.AddPropertyType(Prop(statusDropdown, A.EventStatus, "Status"), Group, GroupName);
         evt.AddPropertyType(Prop(mediaPicker, A.EventImage, "Eventbild"), "media", "Bilder");
         evt.AddPropertyType(Prop(mediaPicker, A.EventHomeTeamLogo, "Logo Heimteam"), "media", "Bilder");
         evt.AddPropertyType(Prop(mediaPicker, A.EventAwayTeamLogo, "Logo Auswärtsteam"), "media", "Bilder");
-        evt.AddPropertyType(Prop(salesPricesBlockList, A.SalesPrices, "Preise Verkauf"), "prices", "Preise");
         evt.AddPropertyType(PropWithHint(labelType, A.PublicLink, "Öffentlicher Link", "Automatisch generiert (ohne Geheimnis)."), "access", "Zugriff");
         evt.AddPropertyType(PropWithHint(labelType, A.InternLink, "Interner Link (mit Geheimnis)", "Automatisch generiert; nur mit diesem Link aufrufbar."), "access", "Zugriff");
         AssignTemplate(evt, eventTpl);
@@ -330,7 +171,6 @@ public sealed class TicketingContentTypeSeeder(
         season.AddPropertyType(Prop(dateCh, A.SeasonEndDate, "Ende"), Group, GroupName);
         season.AddPropertyType(Prop(statusDropdown, A.SeasonStatus, "Status"), Group, GroupName);
         season.AddPropertyType(Prop(mediaPicker, A.SeasonImage, "Bild"), Group, GroupName);
-        season.AddPropertyType(Prop(salesPricesBlockList, A.SalesPrices, "Preise Verkauf"), "prices", "Preise");
         season.AddPropertyType(PropWithHint(labelType, A.PublicLink, "Öffentlicher Link", "Automatisch generiert (ohne Geheimnis)."), "access", "Zugriff");
         season.AddPropertyType(PropWithHint(labelType, A.InternLink, "Interner Link (mit Geheimnis)", "Automatisch generiert; nur mit diesem Link aufrufbar."), "access", "Zugriff");
         season.AllowedContentTypes = new[] { new ContentTypeSort(evt.Key, 0, evt.Alias) };
@@ -360,8 +200,7 @@ public sealed class TicketingContentTypeSeeder(
         root.AllowedContentTypes = new[]
         {
             new ContentTypeSort(seasonsFolder.Key, 0, seasonsFolder.Alias),
-            new ContentTypeSort(venuesFolder.Key, 1, venuesFolder.Alias),
-            new ContentTypeSort(categoriesFolder.Key, 2, categoriesFolder.Alias)
+            new ContentTypeSort(venuesFolder.Key, 1, venuesFolder.Alias)
         };
         contentTypeService.Save(root, SuperUser);
 
@@ -385,21 +224,6 @@ public sealed class TicketingContentTypeSeeder(
         venue.SetValue(A.VenueGoogleGeoId, "ChIJSeedGeoId");
         venue.SetValue(A.VenueDescription, "<p>Heimhalle der Red Ants.</p>");
         Publish(venue);
-
-        // Ticket categories (central list picked in the "Preise Verkauf" editor).
-        // Display names are public-facing (German); the code is the stable English identifier.
-        var categoriesFolder = contentService.Create("Ticketkategorien", root.Id, A.CategoriesFolderType);
-        Publish(categoriesFolder);
-        SeedCategory(categoriesFolder.Id, "Kind", "child", 10m);
-        SeedCategory(categoriesFolder.Id, "Jugend", "youth", 15m);
-        SeedCategory(categoriesFolder.Id, "Erwachsen", "adult", 25m);
-        SeedCategory(categoriesFolder.Id, "Kind reduziert", "child-reduced", 8m);
-        SeedCategory(categoriesFolder.Id, "Jugend reduziert", "youth-reduced", 12m);
-        SeedCategory(categoriesFolder.Id, "Erwachsen reduziert", "adult-reduced", 20m);
-
-        // Restrict the content pickers to their folders now that the folder nodes exist.
-        SetPickerStartNode(CategoryPickerName, categoriesFolder);
-        SetPickerStartNode(VenuePickerName, venuesFolder);
 
         var season = contentService.Create("Saison 2026/27", seasonsFolder.Id, A.SeasonType);
         season.SetValue(A.SeasonStartDate, DateTime.Today);
@@ -453,14 +277,6 @@ public sealed class TicketingContentTypeSeeder(
     {
         contentService.Save(content, SuperUser);
         contentService.Publish(content, new[] { "*" }, SuperUser);
-    }
-
-    private void SeedCategory(int parentId, string name, string code, decimal defaultPrice)
-    {
-        var node = contentService.Create(name, parentId, A.TicketCategoryType);
-        node.SetValue(A.CategoryCode, code);
-        node.SetValue(A.CategoryDefaultPrice, defaultPrice);
-        Publish(node);
     }
 
     // Registers a template from its Views/{alias}.cshtml file (pattern: reference ContentSeeder.EnsureTemplate).
@@ -533,25 +349,6 @@ public sealed class TicketingContentTypeSeeder(
         return dt;
     }
 
-    private IDataType EnsureDecimal(List<IDataType> all)
-    {
-        var existing = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.Decimal");
-        if (existing is not null) return existing;
-
-        if (!propertyEditors.TryGet("Umbraco.Decimal", out var editor))
-            throw new InvalidOperationException("Umbraco.Decimal property editor not found.");
-
-        var dt = new DataType(editor, serializer)
-        {
-            Name = "Ticketing Preis (Decimal)",
-            EditorUiAlias = "Umb.PropertyEditorUi.Decimal",
-            DatabaseType = ValueStorageType.Decimal
-        };
-        dataTypeService.Save(dt);
-        all.Add(dt);
-        return dt;
-    }
-
     private IDataType EnsureStatusDropdown(List<IDataType> all)
     {
         const string name = "Ticketing Status";
@@ -579,110 +376,4 @@ public sealed class TicketingContentTypeSeeder(
         return dt;
     }
 
-    private IDataType EnsureInteger(List<IDataType> all)
-    {
-        var existing = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.Integer");
-        if (existing is not null) return existing;
-
-        if (!propertyEditors.TryGet("Umbraco.Integer", out var editor))
-            throw new InvalidOperationException("Umbraco.Integer property editor not found.");
-
-        var dt = new DataType(editor, serializer)
-        {
-            Name = "Ticketing Kontingent (Integer)",
-            EditorUiAlias = "Umb.PropertyEditorUi.Integer",
-            DatabaseType = ValueStorageType.Integer
-        };
-        dataTypeService.Save(dt);
-        all.Add(dt);
-        return dt;
-    }
-
-    private IDataType EnsureBoolean(List<IDataType> all)
-    {
-        var existing = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TrueFalse");
-        if (existing is not null) return existing;
-
-        if (!propertyEditors.TryGet("Umbraco.TrueFalse", out var editor))
-            throw new InvalidOperationException("Umbraco.TrueFalse property editor not found.");
-
-        var dt = new DataType(editor, serializer)
-        {
-            Name = "Ticketing Ja/Nein (Toggle)",
-            EditorUiAlias = "Umb.PropertyEditorUi.Toggle",
-            DatabaseType = ValueStorageType.Integer
-        };
-        dataTypeService.Save(dt);
-        all.Add(dt);
-        return dt;
-    }
-
-    // A dedicated Content Picker scoped to a start node (subtree) so the editor only offers the
-    // intended nodes. The start node is configured later (SetPickerStartNode), once the target
-    // folder content node exists. This is how we limit the venue/category pickers to their folders.
-    private IDataType EnsureContentPicker(List<IDataType> all, string name)
-    {
-        var existing = all.FirstOrDefault(d => d.Name == name);
-        if (existing is not null) return existing;
-
-        if (!propertyEditors.TryGet("Umbraco.ContentPicker", out var editor))
-            throw new InvalidOperationException("Umbraco.ContentPicker property editor not found.");
-
-        var dt = new DataType(editor, serializer)
-        {
-            Name = name,
-            EditorUiAlias = "Umb.PropertyEditorUi.ContentPicker",
-            DatabaseType = ValueStorageType.Nvarchar,
-            ConfigurationData = new Dictionary<string, object> { ["ignoreUserStartNodes"] = false }
-        };
-        dataTypeService.Save(dt);
-        all.Add(dt);
-        return dt;
-    }
-
-    // Block List holding the salesPrice element type (category + price + contingent) rows.
-    private IDataType EnsureBlockList(List<IDataType> all, string name, Guid elementTypeKey)
-    {
-        var existing = all.FirstOrDefault(d => d.Name == name);
-        if (existing is not null) return existing;
-
-        if (!propertyEditors.TryGet("Umbraco.BlockList", out var editor))
-            throw new InvalidOperationException("Umbraco.BlockList property editor not found.");
-
-        var config = new Dictionary<string, object>
-        {
-            ["useInlineEditingAsDefault"] = true,
-            ["blocks"] = new[]
-            {
-                new Dictionary<string, object> { ["contentElementTypeKey"] = elementTypeKey.ToString() }
-            }
-        };
-
-        var dt = new DataType(editor, serializer)
-        {
-            Name = name,
-            EditorUiAlias = "Umb.PropertyEditorUi.BlockList",
-            DatabaseType = ValueStorageType.Ntext,
-            ConfigurationData = config
-        };
-        dataTypeService.Save(dt);
-        all.Add(dt);
-        return dt;
-    }
-
-    // Points a Content Picker data type at a start node (subtree root) so only that node's
-    // descendants are selectable. Called after the folder content node has been created.
-    private void SetPickerStartNode(string dataTypeName, IContent startNode)
-    {
-        var dt = dataTypeService.GetAll().FirstOrDefault(d => d.Name == dataTypeName);
-        if (dt is null) return;
-
-        var config = dt.ConfigurationData is null
-            ? new Dictionary<string, object>()
-            : new Dictionary<string, object>(dt.ConfigurationData);
-        // v13-style UDI start node; the new backoffice still honours this key for the content picker.
-        config["startNodeId"] = Udi.Create(Constants.UdiEntityType.Document, startNode.Key).ToString();
-        dt.ConfigurationData = config;
-        dataTypeService.Save(dt);
-    }
 }
