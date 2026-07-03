@@ -62,11 +62,14 @@ else
         </table>
     </div>
 
-    <div class="d-flex justify-content-between mt-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mt-3">
         <a href="/" class="btn btn-outline-secondary">Weiter einkaufen</a>
-        <form method="post" action="/warenkorb/clear">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-danger">Warenkorb leeren</button>
-        </form>
+        <div class="d-flex gap-2">
+            <form method="post" action="/warenkorb/clear">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger">Warenkorb leeren</button>
+            </form>
+            <a href="/kasse" class="btn btn-danger">Zur Kasse</a>
+        </div>
     </div>
 }

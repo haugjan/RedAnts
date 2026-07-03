@@ -50,3 +50,11 @@ public interface ISeasonPasses
     Task<SeasonPass?> GetByUuidAsync(Guid uuid);
     Task<SeasonPass> SaveAsync(SeasonPass pass);
 }
+
+/// <summary>The immutable financial record of a sale. Written at checkout; issued tickets link to it
+/// by <c>OrderId</c>. <see cref="NextOrderNumberAsync"/> hands out the next sequential order number.</summary>
+public interface IOrders
+{
+    Task<Order> SaveAsync(Order order);
+    Task<string> NextOrderNumberAsync();
+}

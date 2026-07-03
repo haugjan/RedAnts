@@ -1,0 +1,67 @@
+@model RedAnts.Features.Ticketing.Cart.CheckoutAddressView
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = "Kasse – Rechnungsadresse";
+    var f = Model.Form;
+}
+
+<a href="/warenkorb" class="tk-back">&larr; Warenkorb</a>
+<h1 class="mb-1">Kasse</h1>
+<p class="text-muted mb-4">Schritt 1 von 2 · Rechnungsadresse</p>
+
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <form method="post" action="/kasse" class="card p-4">
+            @Html.AntiForgeryToken()
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Vorname *</label>
+                    <input name="FirstName" value="@f.FirstName" class="form-control" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Nachname *</label>
+                    <input name="LastName" value="@f.LastName" class="form-control" required />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Strasse und Nr. *</label>
+                    <input name="Street" value="@f.Street" class="form-control" required />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Adresszusatz</label>
+                    <input name="AddressLine2" value="@f.AddressLine2" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">PLZ *</label>
+                    <input name="PostalCode" value="@f.PostalCode" class="form-control" required />
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Ort *</label>
+                    <input name="City" value="@f.City" class="form-control" required />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Land</label>
+                    <input name="Country" value="@f.Country" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">E-Mail *</label>
+                    <input type="email" name="Email" value="@f.Email" class="form-control" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Telefon</label>
+                    <input name="Phone" value="@f.Phone" class="form-control" />
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="btn btn-danger">Weiter zur Zahlung</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-lg-5">
+        @await Html.PartialAsync("~/Views/Checkout/_Summary.cshtml", Model.Cart)
+    </div>
+</div>

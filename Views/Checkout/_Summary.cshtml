@@ -1,0 +1,17 @@
+@model RedAnts.Features.Ticketing.Cart.Cart
+<div class="card p-4">
+    <h2 class="h5 mb-3">Bestellübersicht</h2>
+    <ul class="list-group list-group-flush mb-3">
+        @foreach (var item in Model.Items)
+        {
+            <li class="list-group-item d-flex justify-content-between px-0">
+                <span>@item.Quantity × @item.EventName <span class="text-muted">(@item.CategoryName)</span></span>
+                <span class="text-nowrap">CHF @item.LineTotal.ToString("N2")</span>
+            </li>
+        }
+    </ul>
+    <div class="d-flex justify-content-between fw-bold">
+        <span>Gesamt</span><span>CHF @Model.TotalAmount.ToString("N2")</span>
+    </div>
+    <p class="text-muted small mb-0 mt-2">Sportveranstaltung, in der Regel von der MwSt befreit.</p>
+</div>
