@@ -103,6 +103,14 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
         System.Text.Encoding.UTF8.GetBytes($"{basicUser}:{basicPass}"));
     app.Use(async (context, next) =>
     {
+        // The Umbraco backoffice has its own login and authenticates its API calls with a Bearer token,
+        // which would never match the expected "Basic …" string → the gate would 401 every backoffice
+        // request and the login loops. Let /umbraco through; it is protected by the Umbraco login.
+        if (context.Request.Path.StartsWithSegments("/umbraco"))
+        {
+            await next();
+            return;
+        }
         if (context.Request.Headers.Authorization.ToString() == expectedAuth)
         {
             await next();
