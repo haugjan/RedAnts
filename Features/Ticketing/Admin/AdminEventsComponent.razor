@@ -1,9 +1,8 @@
 @using RedAnts.Domain.Ticketing.Sales
-@* Anlässe (events) administration: pick a season, list its events.
-   Editable here (via the confirmation overlay): the online status and the admission quota
-   (Einlasskontingent). Everything else about an event is edited in the Umbraco content tree.
-   Status is written through IEventStatusEditor (republishes the node); the quota through
-   IEventAdmissionQuota (the EventPrices set). Ticket-type labels come from TicketType.DisplayName(). *@
+@* Anlässe (events) administration: pick a season, list its events. Status and admission quota are
+   editable via the edit icon in the last column (confirmation overlay); everything else is edited in
+   the Umbraco content tree. Shared look/behaviour with the other admin tabs comes from
+   /css/ticketing-admin.css. *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
@@ -19,15 +18,18 @@
     }
     else
     {
-        <div class="ta-field">
-            <label class="ta-label" for="seasonSelect">Saison</label>
-            <select id="seasonSelect" class="ta-select"
-                    @bind="SelectedSeasonId" @bind:after="ReloadEventsAsync">
-                @foreach (var s in _seasons)
-                {
-                    <option value="@s.Id">@s.Name</option>
-                }
-            </select>
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="seasonSelect">Saison</label>
+                    <select id="seasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadEventsAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
         </div>
 
         @if (_events.Count == 0)
@@ -40,15 +42,16 @@
             <table class="ta-table">
                 <thead>
                     <tr>
-                        <th rowspan="2">Datum</th>
+                        <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("date")'>Datum <span class="ta-sort-ind">@Ind("date")</span></th>
                         <th rowspan="2">Zeit</th>
-                        <th rowspan="2">Anlass</th>
+                        <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("name")'>Anlass <span class="ta-sort-ind">@Ind("name")</span></th>
                         <th rowspan="2">Links</th>
-                        <th rowspan="2">Status</th>
+                        <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
                         <th rowspan="2" class="ta-num">Verkaufte<br />@TicketType.EventTicket.DisplayName()</th>
                         <th colspan="5" class="ta-group">Eingelöste Zutritte</th>
+                        <th rowspan="2" class="ta-col-actions"></th>
                     </tr>
                     <tr>
                         <th class="ta-num ta-group-col">@TicketType.EventTicket.DisplayName()</th>
@@ -59,7 +62,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var e in _events)
+                    @foreach (var e in Sorted())
                     {
                         var c = Counts(e.Id);
                         var links = Links(e.Id);
@@ -74,26 +77,15 @@
                                         @onclick="() => Copy(e.Id, false, links.Public)">
                                     @(IsCopied(e.Id, false) ? "✓" : "🔗")
                                 </button>
-                                <button type="button" class="ta-link-btn ta-link-intern"
+                                <button type="button" class="ta-link-btn"
                                         disabled="@(string.IsNullOrEmpty(links.Intern))"
                                         title="@(string.IsNullOrEmpty(links.Intern) ? "Noch nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
                                         @onclick="() => Copy(e.Id, true, links.Intern)">
                                     @(IsCopied(e.Id, true) ? "✓" : "🔒")
                                 </button>
                             </td>
-                            <td>
-                                <button type="button"
-                                        class="ta-status-btn ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()"
-                                        title="Status und Kontingent bearbeiten" @onclick="() => OpenEdit(e)">
-                                    @StatusLabel(e.Status)
-                                </button>
-                            </td>
-                            <td class="ta-num">
-                                <button type="button" class="ta-quota-btn" title="Einlasskontingent bearbeiten"
-                                        @onclick="() => OpenEdit(e)">
-                                    @QuotaLabel(Quota(e.Id))
-                                </button>
-                            </td>
+                            <td><span class="ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()">@StatusLabel(e.Status)</span></td>
+                            <td class="ta-num">@QuotaLabel(Quota(e.Id))</td>
                             <td class="ta-num">@c.TotalRedeemed</td>
                             <td class="ta-num">@c.SoldSingleTickets</td>
                             <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
@@ -101,24 +93,27 @@
                             <td class="ta-num">@c.RedeemedSeasonPasses</td>
                             <td class="ta-num">@c.RedeemedMemberCards</td>
                             <td class="ta-num">@c.RedeemedFreeEntries</td>
+                            <td class="ta-col-actions">
+                                <button type="button" class="ta-icon-btn" title="Status und Kontingent bearbeiten"
+                                        @onclick="() => OpenEdit(e)">✎</button>
+                            </td>
                         </tr>
                     }
                 </tbody>
             </table>
             </div>
+            <p class="ta-summary">@_events.Count @(_events.Count == 1 ? "Anlass" : "Anlässe")</p>
         }
     }
 </section>
 
 @if (_editing is not null)
 {
-    @* Close on mousedown (not click) so releasing a text selection outside the modal does not close it (S2 fix). *@
+    @* Close on mousedown (not click) so releasing a text selection outside the modal does not close it. *@
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Anlass bearbeiten</h2>
-            <p class="ta-modal-sub">
-                @_editing.Name · @_editing.Date.ToString("dd.MM.yyyy")
-            </p>
+            <p class="ta-modal-sub">@_editing.Name · @_editing.Date.ToString("dd.MM.yyyy")</p>
 
             <div class="ta-field">
                 <label class="ta-label" for="editStatus">Status</label>
@@ -132,8 +127,7 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="editQuota">Einlasskontingent</label>
-                <input id="editQuota" type="number" min="0" step="1" class="ta-select"
-                       placeholder="Unbegrenzt" @bind="_editQuota" />
+                <input id="editQuota" type="number" min="0" step="1" class="ta-input" placeholder="Unbegrenzt" @bind="_editQuota" />
                 <p class="ta-field-hint">Leer lassen für unbegrenzt.</p>
             </div>
 
@@ -143,124 +137,14 @@
             }
 
             <div class="ta-modal-actions">
-                <button type="button" class="ta-btn-secondary" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
                     @(_saving ? "Speichert …" : "Speichern")
                 </button>
             </div>
         </div>
     </div>
 }
-
-<style>
-    .ta-field { margin: 0 0 1.5rem; max-width: 360px; }
-    .ta-label {
-        display: block; margin-bottom: 0.35rem;
-        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
-    }
-    .ta-field-hint { margin: 0.3rem 0 0; font-size: 0.78rem; color: var(--ta-muted); }
-    .ta-select {
-        width: 100%; padding: 0.5rem 0.6rem;
-        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
-        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
-    }
-    .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
-    .ta-muted-text { color: var(--ta-muted); }
-
-    .ta-table-wrap { overflow-x: auto; }
-    .ta-table {
-        width: 100%; border-collapse: collapse; background: #fff;
-        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
-    }
-    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .ta-table th {
-        text-align: left; font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.02em; color: var(--ta-muted); line-height: 1.2;
-        padding: 6px 8px; background: #fafafa; border-bottom: 1px solid var(--ta-border);
-    }
-    /* "Eingelöste Zutritte" group heading: a bit more prominent (accent colour + tint). */
-    .ta-table th.ta-group {
-        text-align: center; text-transform: uppercase;
-        color: var(--ta-accent); background: #eef6fc;
-        border-left: 1px solid var(--ta-accent); border-bottom-color: var(--ta-accent);
-        font-size: 0.7rem; letter-spacing: 0.04em;
-    }
-    .ta-table th.ta-group-col, .ta-table td.ta-group-col { border-left: 1px solid #d7e8f6; }
-    .ta-table td {
-        padding: 6px 8px; font-size: 0.8rem; border-bottom: 1px solid #f2f2f2;
-        white-space: nowrap;
-    }
-    .ta-table tr:last-child td { border-bottom: none; }
-    .ta-table tbody tr:hover { background: #fafbfc; }
-    .ta-cell-name { white-space: normal; font-weight: 500; min-width: 150px; }
-
-    .ta-badge {
-        display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px;
-        font-size: 0.68rem; font-weight: 700; white-space: nowrap;
-    }
-    .ta-badge-open { background: #e4f4ea; color: #1c7c43; }
-    .ta-badge-draft { background: #efefef; color: #666; }
-    .ta-badge-intern { background: #fdf1dc; color: #9a6a12; }
-    .ta-badge-closed { background: #f6e2e4; color: #a3283a; }
-    /* Status badge doubles as the edit trigger. */
-    .ta-status-btn {
-        appearance: none; border: 1px solid transparent; cursor: pointer;
-        font-family: var(--ta-font); line-height: 1.4;
-    }
-    .ta-status-btn:hover { filter: brightness(0.96); border-color: rgba(0,0,0,0.15); }
-    /* Admission-quota cell doubles as the edit trigger. */
-    .ta-quota-btn {
-        appearance: none; background: none; border: none; cursor: pointer;
-        font-family: var(--ta-font); font-size: 0.8rem; font-variant-numeric: tabular-nums;
-        color: var(--ta-ink); padding: 0.1rem 0.3rem; border-radius: 3px;
-    }
-    .ta-quota-btn:hover { background: #eef6fc; color: var(--ta-accent); }
-
-    /* Copy-link icon buttons. */
-    .ta-links { white-space: nowrap; }
-    .ta-link-btn {
-        appearance: none; background: none; border: 1px solid transparent; cursor: pointer;
-        font-size: 0.9rem; line-height: 1; padding: 0.15rem 0.25rem; border-radius: 3px;
-    }
-    .ta-link-btn:hover:not(:disabled) { background: #eef6fc; border-color: var(--ta-border); }
-    .ta-link-btn:disabled { opacity: 0.3; cursor: default; }
-
-    /* Edit overlay (mirrors the Saisonkarten modal). */
-    .ta-overlay {
-        position: fixed; inset: 0; z-index: 1000;
-        background: rgba(27, 38, 79, 0.45);
-        display: flex; align-items: center; justify-content: center;
-        padding: 1.5rem;
-    }
-    .ta-modal {
-        background: #fff; border-radius: 5px; width: 100%; max-width: 420px;
-        padding: 1.5rem 1.6rem 1.6rem;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    }
-    .ta-modal-title {
-        font-family: var(--ta-font); font-size: 1.2rem; font-weight: 700;
-        color: var(--ta-ink); margin: 0 0 0.2rem;
-    }
-    .ta-modal-sub { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 1.1rem; }
-    .ta-modal .ta-field { max-width: none; margin-bottom: 1.1rem; }
-    .ta-modal-error {
-        color: #a3283a; background: #f6e2e4; border-radius: 3px;
-        padding: 0.5rem 0.7rem; font-size: 0.82rem; margin: 0.6rem 0 0;
-    }
-    .ta-modal-actions {
-        display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.4rem;
-    }
-    .ta-btn-primary, .ta-btn-secondary {
-        appearance: none; cursor: pointer; font-family: var(--ta-font);
-        font-size: 0.9rem; font-weight: 700; border-radius: 3px;
-        padding: 0.5rem 1.1rem; transition: background 0.15s, border-color 0.15s, color 0.15s;
-    }
-    .ta-btn-primary { color: #fff; background: var(--ta-accent); border: 1px solid var(--ta-accent); }
-    .ta-btn-primary:hover:not(:disabled) { background: #3d97d4; border-color: #3d97d4; }
-    .ta-btn-secondary { color: var(--ta-ink); background: #fff; border: 1px solid var(--ta-border); }
-    .ta-btn-secondary:hover:not(:disabled) { background: #f4f4f4; }
-    .ta-btn-primary:disabled, .ta-btn-secondary:disabled { opacity: 0.6; cursor: default; }
-</style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
@@ -278,23 +162,19 @@
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<Event> _events = [];
-    private IReadOnlyDictionary<int, EventAdmissionCounts> _counts =
-        new Dictionary<int, EventAdmissionCounts>();
+    private IReadOnlyDictionary<int, EventAdmissionCounts> _counts = new Dictionary<int, EventAdmissionCounts>();
     private IReadOnlyDictionary<int, int?> _quotas = new Dictionary<int, int?>();
     private IReadOnlyDictionary<int, EventLinks> _links = new Dictionary<int, EventLinks>();
 
     public int SelectedSeasonId { get; set; }
 
+    private string _sortCol = "date";
+    private bool _sortAsc = true;
+
     protected override async Task OnInitializedAsync()
     {
-        // Newest season first — that is also what an admin most often works with.
-        _seasons = (await Seasons.GetAllAsync())
-            .OrderByDescending(s => s.StartDate)
-            .ToList();
-
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         _counts = await AdmissionReport.GetCountsByEventAsync();
-
-        // Prefer the season remembered across tabs; fall back to the current season on first use.
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
@@ -302,19 +182,13 @@
         _loading = false;
     }
 
-    private EventAdmissionCounts Counts(int eventId) =>
-        _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
-
+    private EventAdmissionCounts Counts(int eventId) => _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
     private int? Quota(int eventId) => _quotas.TryGetValue(eventId, out var q) ? q : null;
-
-    private EventLinks Links(int eventId) =>
-        _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
-
+    private EventLinks Links(int eventId) => _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
     private static string QuotaLabel(int? quota) => quota?.ToString("N0") ?? "∞";
 
     private async Task ReloadEventsAsync()
     {
-        // Remember the choice so the other tabs open on the same season.
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         if (SelectedSeasonId > 0)
         {
@@ -330,7 +204,20 @@
         }
     }
 
-    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    // --- Sorting ---
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<Event> Sorted()
+    {
+        IEnumerable<Event> q = _sortCol switch
+        {
+            "name" => _events.OrderBy(e => e.Name),
+            "status" => _events.OrderBy(e => e.Status),
+            _ => _events.OrderBy(e => e.Date).ThenBy(e => e.StartTime),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -346,11 +233,9 @@
         _ => "Entwurf"
     };
 
-    // --- Copy link to clipboard ---
+    // --- Copy link ---
     private (int EventId, bool Intern)? _copied;
-
-    private bool IsCopied(int eventId, bool intern) =>
-        _copied is { } c && c.EventId == eventId && c.Intern == intern;
+    private bool IsCopied(int eventId, bool intern) => _copied is { } c && c.EventId == eventId && c.Intern == intern;
 
     private async Task Copy(int eventId, bool intern, string? relative)
     {
@@ -365,10 +250,7 @@
             await Task.Delay(1500);
             if (IsCopied(eventId, intern)) { _copied = null; StateHasChanged(); }
         }
-        catch
-        {
-            // Clipboard unavailable (e.g. non-secure context) — silently ignore.
-        }
+        catch { /* clipboard unavailable */ }
     }
 
     // --- Edit overlay (status + admission quota) ---
@@ -386,20 +268,12 @@
         _editError = null;
     }
 
-    private void CancelEdit()
-    {
-        _editing = null;
-        _editError = null;
-    }
+    private void CancelEdit() { _editing = null; _editError = null; }
 
     private async Task SaveEdit()
     {
         if (_editing is null) return;
-        if (_editQuota is < 0)
-        {
-            _editError = "Einlasskontingent darf nicht negativ sein.";
-            return;
-        }
+        if (_editQuota is < 0) { _editError = "Einlasskontingent darf nicht negativ sein."; return; }
         _saving = true;
         _editError = null;
         try
@@ -409,13 +283,7 @@
             _editing = null;
             await ReloadEventsAsync();
         }
-        catch (Exception ex)
-        {
-            _editError = ex.Message;
-        }
-        finally
-        {
-            _saving = false;
-        }
+        catch (Exception ex) { _editError = ex.Message; }
+        finally { _saving = false; }
     }
 }

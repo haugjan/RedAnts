@@ -2,8 +2,8 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
 
-@* Tickets administration: pick a season, then an event, and list its issued event tickets
-   with their redemption status. Defaults to the current season and the next/today's event. *@
+@* Spieltickets administration: pick a season (synced across tabs) and an event, list its issued event
+   tickets, create tickets, and edit one via the last-column icon. Shared look from /css/ticketing-admin.css. *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.EventTicket.DisplayName()</h1>
@@ -19,43 +19,41 @@
     }
     else
     {
-        <div class="ta-filters">
-            <div class="ta-field">
-                <label class="ta-label" for="seasonSelect">Saison</label>
-                <select id="seasonSelect" class="ta-select"
-                        @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
-                    @foreach (var s in _seasons)
-                    {
-                        <option value="@s.Id">@s.Name</option>
-                    }
-                </select>
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="eventSelect">Anlass</label>
-                <select id="eventSelect" class="ta-select" disabled="@(_events.Count == 0)"
-                        @bind="SelectedEventId" @bind:after="ReloadTicketsAsync">
-                    @if (_events.Count == 0)
-                    {
-                        <option value="0">— keine Anlässe —</option>
-                    }
-                    else
-                    {
-                        @foreach (var e in _events)
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="seasonSelect">Saison</label>
+                    <select id="seasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
+                        @foreach (var s in _seasons)
                         {
-                            <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                            <option value="@s.Id">@s.Name</option>
                         }
-                    }
-                </select>
+                    </select>
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="eventSelect">Anlass</label>
+                    <select id="eventSelect" class="ta-select" disabled="@(_events.Count == 0)"
+                            @bind="SelectedEventId" @bind:after="ReloadTicketsAsync">
+                        @if (_events.Count == 0)
+                        {
+                            <option value="0">— keine Anlässe —</option>
+                        }
+                        else
+                        {
+                            @foreach (var e in _events)
+                            {
+                                <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="ta-toolbar-actions">
+                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreate">
+                    Ticket erstellen
+                </button>
             </div>
         </div>
-
-        @if (SelectedEventId > 0)
-        {
-            <div class="ta-toolbar">
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate">+ Ticket erstellen</button>
-            </div>
-        }
 
         @if (SelectedEventId <= 0)
         {
@@ -67,25 +65,22 @@
         }
         else
         {
-            <div class="ta-summary">
-                @_tickets.Count Tickets · @_tickets.Count(t => t.Redeemed) eingelöst · @_tickets.Count(t => !t.Redeemed) offen
-            </div>
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
                         <tr>
                             <th>Nr.</th>
-                            <th>Kategorie</th>
-                            <th class="ta-num">Preis</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
                             <th>Ticket-ID</th>
-                            <th>Status</th>
-                            <th>Eingelöst</th>
-                            <th class="ta-actions-head">Aktionen</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
+                            <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @{ var i = 1; }
-                        @foreach (var t in _tickets)
+                        @foreach (var t in Sorted())
                         {
                             <tr>
                                 <td>@i</td>
@@ -95,11 +90,11 @@
                                 <td>
                                     @if (t.Status == TicketStatus.Cancelled)
                                     {
-                                        <span class="ta-badge ta-badge-closed">Storniert</span>
+                                        <span class="ta-badge ta-badge-cancelled">Storniert</span>
                                     }
                                     else
                                     {
-                                        <span class="ta-badge ta-badge-open">Gültig</span>
+                                        <span class="ta-badge ta-badge-valid">Gültig</span>
                                     }
                                 </td>
                                 <td>
@@ -112,29 +107,8 @@
                                         <span class="ta-badge ta-badge-draft">Offen</span>
                                     }
                                 </td>
-                                <td class="ta-actions">
-                                    <a href="/ticket/for/@t.Uuid" target="_blank" rel="noopener"
-                                       class="ta-btn ta-btn-ghost ta-btn-link">Online-Ticket</a>
-                                    @if (t.Status == TicketStatus.Valid)
-                                    {
-                                        @if (t.Redeemed)
-                                        {
-                                            <button type="button" class="ta-btn ta-btn-ghost"
-                                                    @onclick="() => SetRedeemedAsync(t, false)">Einlösung zurücksetzen</button>
-                                        }
-                                        else
-                                        {
-                                            <button type="button" class="ta-btn ta-btn-primary"
-                                                    @onclick="() => SetRedeemedAsync(t, true)">Einlösen</button>
-                                        }
-                                        <button type="button" class="ta-btn ta-btn-danger"
-                                                @onclick="() => SetStatusAsync(t, TicketStatus.Cancelled)">Stornieren</button>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="ta-btn ta-btn-ghost"
-                                                @onclick="() => SetStatusAsync(t, TicketStatus.Valid)">Reaktivieren</button>
-                                    }
+                                <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(t)">✎</button>
                                 </td>
                             </tr>
                             i++;
@@ -142,116 +116,94 @@
                     </tbody>
                 </table>
             </div>
+            <p class="ta-summary">
+                @_tickets.Count Tickets · @_tickets.Count(t => t.Redeemed) eingelöst · @_tickets.Count(t => !t.Redeemed) offen
+            </p>
         }
-    }
-
-    @if (_showCreate)
-    {
-        <div class="ta-modal-backdrop" @onmousedown="CloseCreate">
-            <div class="ta-modal" @onmousedown:stopPropagation="true">
-                <h2 class="ta-modal-title">Ticket erstellen</h2>
-                <div class="ta-field">
-                    <label class="ta-label" for="newCategory">Kategorie</label>
-                    <select id="newCategory" class="ta-select" @bind="_newCategory">
-                        @foreach (var cat in Enum.GetValues<TicketCategory>())
-                        {
-                            <option value="@cat">@cat.DisplayName()</option>
-                        }
-                    </select>
-                </div>
-                <div class="ta-field">
-                    <label class="ta-label" for="newPrice">Abgabepreis (CHF)</label>
-                    <input id="newPrice" type="number" step="0.05" min="0" class="ta-select" @bind="_newPrice" />
-                </div>
-                @if (_createError is not null)
-                {
-                    <p class="ta-modal-error">@_createError</p>
-                }
-                <div class="ta-modal-actions">
-                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate">Abbrechen</button>
-                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateTicketAsync">Erstellen</button>
-                </div>
-            </div>
-        </div>
     }
 </section>
 
-<style>
-    .ta-filters { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0 0 1.5rem; }
-    .ta-field { margin: 0; min-width: 240px; }
-    .ta-label {
-        display: block; margin-bottom: 0.35rem;
-        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
-    }
-    .ta-select {
-        width: 100%; padding: 0.5rem 0.6rem;
-        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
-        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
-    }
-    .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
-    .ta-select:disabled { background: #f5f5f5; color: var(--ta-muted); }
-    .ta-muted-text { color: var(--ta-muted); }
-    .ta-summary { margin: 0 0 0.9rem; font-size: 0.9rem; color: var(--ta-muted); }
+@if (_showCreate)
+{
+    <div class="ta-overlay" @onmousedown="CloseCreate">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Ticket erstellen</h2>
+            <div class="ta-field">
+                <label class="ta-label" for="newCategory">Kategorie</label>
+                <select id="newCategory" class="ta-select" @bind="_newCategory">
+                    @foreach (var cat in Enum.GetValues<TicketCategory>())
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newPrice">Abgabepreis (CHF)</label>
+                <input id="newPrice" type="number" step="0.05" min="0" class="ta-input" @bind="_newPrice" />
+            </div>
+            @if (_createError is not null)
+            {
+                <p class="ta-modal-error">@_createError</p>
+            }
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateTicketAsync">Erstellen</button>
+            </div>
+        </div>
+    </div>
+}
 
-    .ta-table-wrap { overflow-x: auto; }
-    .ta-table {
-        width: 100%; border-collapse: collapse; background: #fff;
-        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
-    }
-    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .ta-table td.ta-mono { font-family: ui-monospace, "Consolas", monospace; color: var(--ta-muted); }
-    .ta-table th {
-        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.03em; color: var(--ta-muted);
-        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
-    }
-    .ta-table td {
-        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2; white-space: nowrap;
-    }
-    .ta-table tr:last-child td { border-bottom: none; }
-    .ta-table tbody tr:hover { background: #fafbfc; }
+@if (_editing is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Ticket bearbeiten</h2>
+            <p class="ta-modal-sub">Ticket-ID @ShortId(_editing.Uuid)</p>
 
-    .ta-badge {
-        display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700;
-    }
-    .ta-badge-open { background: #e4f4ea; color: #1c7c43; }
-    .ta-badge-redeemed { background: #e2eefb; color: #1c5aa3; }
-    .ta-badge-draft { background: #efefef; color: #666; }
-    .ta-badge-closed { background: #f6e2e4; color: #a3283a; }
+            <div class="ta-field">
+                <label class="ta-label" for="editCategory">Kategorie</label>
+                <select id="editCategory" class="ta-select" @bind="_editCategory">
+                    @foreach (var cat in Enum.GetValues<TicketCategory>())
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editPrice">Preis (CHF)</label>
+                <input id="editPrice" type="number" step="0.05" min="0" class="ta-input" @bind="_editPrice" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editStatus">Status</label>
+                <select id="editStatus" class="ta-select" @bind="_editStatus">
+                    <option value="@TicketStatus.Valid">Gültig</option>
+                    <option value="@TicketStatus.Cancelled">Storniert</option>
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editRedeemed">Eingelöst</label>
+                <select id="editRedeemed" class="ta-select" @bind="_editRedeemed" disabled="@(_editStatus == TicketStatus.Cancelled)">
+                    <option value="false">Offen</option>
+                    <option value="true">Eingelöst</option>
+                </select>
+                <p class="ta-field-hint">Ein storniertes Ticket kann nicht eingelöst sein.</p>
+            </div>
 
-    .ta-table th.ta-actions-head, .ta-table td.ta-actions { text-align: right; }
-    .ta-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap; }
-    .ta-btn {
-        font-family: var(--ta-font); font-size: 0.78rem; font-weight: 700; line-height: 1;
-        padding: 0.4rem 0.7rem; border-radius: 3px; border: 1px solid transparent;
-        cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
-    }
-    .ta-btn-primary { background: var(--ta-accent, #1c5aa3); color: #fff; }
-    .ta-btn-primary:hover { filter: brightness(0.94); }
-    .ta-btn-ghost { background: #fff; color: var(--ta-ink); border-color: var(--ta-border); }
-    .ta-btn-ghost:hover { background: #f5f5f5; }
-    .ta-btn-link { text-decoration: none; display: inline-flex; align-items: center; }
-    .ta-btn-danger { background: #fff; color: #a3283a; border-color: #e2b9bf; }
-    .ta-btn-danger:hover { background: #f6e2e4; }
+            @if (_editError is not null)
+            {
+                <p class="ta-modal-error">@_editError</p>
+            }
 
-    .ta-toolbar { display: flex; justify-content: flex-end; margin: 0 0 1rem; }
-
-    .ta-modal-backdrop {
-        position: fixed; inset: 0; z-index: 1000;
-        background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
-        padding: 1rem;
-    }
-    .ta-modal {
-        width: 100%; max-width: 380px; background: #fff;
-        border: 1px solid var(--ta-border); border-radius: 5px;
-        padding: 1.25rem 1.4rem 1.4rem; box-shadow: 0 8px 30px rgba(0,0,0,0.18);
-    }
-    .ta-modal-title { margin: 0 0 1rem; font-size: 1.1rem; font-weight: 800; color: var(--ta-ink); }
-    .ta-modal .ta-field { margin: 0 0 1rem; }
-    .ta-modal-error { margin: 0 0 0.8rem; color: #a3283a; font-size: 0.85rem; }
-    .ta-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
-</style>
+            <div class="ta-modal-actions">
+                <a href="/ticket/for/@_editing.Uuid" target="_blank" rel="noopener" class="ta-btn ta-btn-ghost ta-btn-link">Online-Ticket</a>
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                    @(_saving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
@@ -259,6 +211,7 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IEventTickets Tickets { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
@@ -268,7 +221,10 @@
     public int SelectedSeasonId { get; set; }
     public int SelectedEventId { get; set; }
 
-    // Ticket-Erstellung (Overlay): erfragt Kategorie + Abgabepreis für den gewählten Anlass.
+    private string _sortCol = "category";
+    private bool _sortAsc = true;
+
+    // Create overlay
     private bool _showCreate;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private decimal _newPrice;
@@ -276,17 +232,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync())
-            .OrderByDescending(s => s.StartDate)
-            .ToList();
-
-        SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await OnSeasonChangedAsync();
         _loading = false;
     }
 
     private async Task OnSeasonChangedAsync()
     {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _events = SelectedSeasonId > 0
             ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
             : [];
@@ -301,60 +257,78 @@
             : [];
     }
 
-    private void OpenCreate()
+    // --- Sorting ---
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<EventTicket> Sorted()
     {
-        _newCategory = TicketCategory.Adult;
-        _newPrice = 0m;
-        _createError = null;
-        _showCreate = true;
+        IEnumerable<EventTicket> q = _sortCol switch
+        {
+            "price" => _tickets.OrderBy(t => t.Price),
+            "status" => _tickets.OrderBy(t => t.Status),
+            "redeemed" => _tickets.OrderBy(t => t.Redeemed),
+            _ => _tickets.OrderBy(t => t.Category),
+        };
+        return _sortAsc ? q : q.Reverse();
     }
 
+    // --- Create ---
+    private void OpenCreate() { _newCategory = TicketCategory.Adult; _newPrice = 0m; _createError = null; _showCreate = true; }
     private void CloseCreate() => _showCreate = false;
 
-    /// <summary>Create a new event ticket for the selected event with the chosen category and sale price.
-    /// The domain enforces the invariants (event assigned, price not negative).</summary>
     private async Task CreateTicketAsync()
     {
         if (SelectedEventId <= 0) { _createError = "Es ist kein Anlass gewählt."; return; }
         if (_newPrice < 0) { _createError = "Der Abgabepreis darf nicht negativ sein."; return; }
-
         try
         {
             await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, null));
         }
-        catch (DomainException ex)
-        {
-            _createError = ex.Message;
-            return;
-        }
-
+        catch (DomainException ex) { _createError = ex.Message; return; }
         _showCreate = false;
         await ReloadTicketsAsync();
     }
 
-    /// <summary>Admin override: mark a ticket as (un)redeemed without an actual scan. Only valid tickets
-    /// can be redeemed, mirroring the domain rule; a cancelled ticket is never redeemed.</summary>
-    private async Task SetRedeemedAsync(EventTicket t, bool redeemed)
+    // --- Edit overlay ---
+    private EventTicket? _editing;
+    private TicketCategory _editCategory;
+    private decimal _editPrice;
+    private TicketStatus _editStatus;
+    private bool _editRedeemed;
+    private bool _saving;
+    private string? _editError;
+
+    private void OpenEdit(EventTicket t)
     {
-        if (redeemed && t.Status != TicketStatus.Valid) return;
-        await Tickets.SaveAsync(Rebuild(t, t.Status, redeemed));
-        await ReloadTicketsAsync();
+        _editing = t;
+        _editCategory = t.Category;
+        _editPrice = t.Price;
+        _editStatus = t.Status;
+        _editRedeemed = t.Redeemed;
+        _editError = null;
     }
 
-    /// <summary>Admin override: change a ticket's status. Cancelling also clears its redemption so the
-    /// two flags stay consistent (a cancelled ticket cannot be redeemed).</summary>
-    private async Task SetStatusAsync(EventTicket t, TicketStatus status)
+    private void CancelEdit() { _editing = null; _editError = null; }
+
+    private async Task SaveEdit()
     {
-        var redeemed = status == TicketStatus.Valid && t.Redeemed;
-        await Tickets.SaveAsync(Rebuild(t, status, redeemed));
-        await ReloadTicketsAsync();
+        if (_editing is null) return;
+        if (_editPrice < 0) { _editError = "Der Preis darf nicht negativ sein."; return; }
+        _saving = true;
+        _editError = null;
+        try
+        {
+            // A cancelled ticket can never be redeemed — keep the two flags consistent.
+            var redeemed = _editStatus == TicketStatus.Valid && _editRedeemed;
+            await Tickets.SaveAsync(EventTicket.FromPersistence(_editing.Id, _editing.Uuid, _editing.EventId,
+                _editCategory, _editPrice, _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed));
+            _editing = null;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _editError = ex.Message; }
+        finally { _saving = false; }
     }
 
-    private static EventTicket Rebuild(EventTicket t, TicketStatus status, bool redeemed) =>
-        EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, t.Price,
-            t.OrderId, status, t.CreatedAt, redeemed);
-
-    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -362,12 +336,10 @@
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
 
-    /// <summary>The next event (today's included, regardless of time); falls back to the most recent past one.</summary>
     private static Event? DefaultEvent(IReadOnlyList<Event> events)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        return events.FirstOrDefault(e => e.Date >= today)
-            ?? events.MaxBy(e => e.Date);
+        return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
     }
 
     private static string ShortId(Guid uuid) => uuid.ToString()[..8];

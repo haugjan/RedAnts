@@ -2,9 +2,9 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
 
-@* Flextickets administration: Flextickets are always issued as bundles. Pick a season, list its
-   bundles (reference, category, size, redeemed) and create whole bundles via an overlay that asks for
-   category, reference and quantity (the season comes from the combobox). *@
+@* Flextickets administration: Flextickets are always issued as bundles. Pick a season (synced across
+   tabs), list its bundles, create bundles, and rename a bundle via the last-column icon. Shared look
+   from /css/ticketing-admin.css. *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.SeasonSingle.DisplayName()</h1>
@@ -20,21 +20,23 @@
     }
     else
     {
-        <div class="ta-filters">
-            <div class="ta-field">
-                <label class="ta-label" for="seasonSelect">Saison</label>
-                <select id="seasonSelect" class="ta-select"
-                        @bind="SelectedSeasonId" @bind:after="ReloadBundlesAsync">
-                    @foreach (var s in _seasons)
-                    {
-                        <option value="@s.Id">@s.Name</option>
-                    }
-                </select>
-            </div>
-        </div>
-
         <div class="ta-toolbar">
-            <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate">+ Bundle erstellen</button>
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="seasonSelect">Saison</label>
+                    <select id="seasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadBundlesAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="ta-toolbar-actions">
+                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
+                    Bundle erstellen
+                </button>
+            </div>
         </div>
 
         @if (_bundles.Count == 0)
@@ -43,23 +45,21 @@
         }
         else
         {
-            <div class="ta-summary">
-                @_bundles.Count Bundles · @_bundles.Sum(b => b.TicketCount) Flextickets · @_bundles.Sum(b => b.RedeemedCount) eingelöst
-            </div>
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
                         <tr>
-                            <th>Referenz</th>
-                            <th>Kategorie</th>
-                            <th>Erstellt</th>
-                            <th class="ta-num">Anzahl</th>
-                            <th class="ta-num">Eingelöst</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("count")'>Anzahl <span class="ta-sort-ind">@Ind("count")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
                             <th class="ta-num">Offen</th>
+                            <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var b in _bundles)
+                        @foreach (var b in Sorted())
                         {
                             <tr>
                                 <td class="ta-cell-ref">@b.Reference</td>
@@ -68,19 +68,23 @@
                                 <td class="ta-num">@b.TicketCount</td>
                                 <td class="ta-num">@b.RedeemedCount</td>
                                 <td class="ta-num">@(b.TicketCount - b.RedeemedCount)</td>
+                                <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="Referenz bearbeiten" @onclick="() => OpenEdit(b)">✎</button>
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+            <p class="ta-summary">
+                @_bundles.Count Bundles · @_bundles.Sum(b => b.TicketCount) Flextickets · @_bundles.Sum(b => b.RedeemedCount) eingelöst
+            </p>
         }
     }
 </section>
 
 @if (_showCreate)
 {
-    @* Close on backdrop mousedown (not click): a text selection that starts in the modal and is
-       released on the backdrop must NOT close the dialog. *@
     <div class="ta-overlay" @onmousedown="CloseCreate">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Flexticket-Bundle erstellen</h2>
@@ -89,7 +93,6 @@
                 <label class="ta-label">Saison</label>
                 <div class="ta-readonly">@_selectedSeasonName</div>
             </div>
-
             <div class="ta-field">
                 <label class="ta-label" for="newCategory">Ticketkategorie</label>
                 <select id="newCategory" class="ta-select" @bind="_newCategory">
@@ -99,13 +102,10 @@
                     }
                 </select>
             </div>
-
             <div class="ta-field">
                 <label class="ta-label" for="newReference">Referenz</label>
-                <input id="newReference" class="ta-input" type="text" maxlength="50"
-                       placeholder="z. B. Charge 2026-A" @bind="_newReference" />
+                <input id="newReference" class="ta-input" type="text" maxlength="50" placeholder="z. B. Charge 2026-A" @bind="_newReference" />
             </div>
-
             <div class="ta-field">
                 <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
                 <input id="newQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_newQuantity" />
@@ -126,75 +126,40 @@
     </div>
 }
 
-<style>
-    .ta-filters { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0 0 1rem; }
-    .ta-field { margin: 0 0 0.9rem; min-width: 240px; }
-    .ta-label {
-        display: block; margin-bottom: 0.35rem;
-        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
-    }
-    .ta-select, .ta-input {
-        width: 100%; padding: 0.5rem 0.6rem;
-        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
-        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
-    }
-    .ta-select:focus, .ta-input:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
-    .ta-readonly { padding: 0.5rem 0.6rem; background: #f5f5f5; border: 1px solid var(--ta-border); border-radius: 3px; color: var(--ta-ink); }
-    .ta-muted-text { color: var(--ta-muted); }
-    .ta-summary { margin: 0 0 0.9rem; font-size: 0.9rem; color: var(--ta-muted); }
-    .ta-toolbar { margin: 0 0 1.1rem; }
+@if (_editing is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Bundle bearbeiten</h2>
+            <p class="ta-modal-sub">@_editing.Category.DisplayName() · @_editing.TicketCount Flextickets</p>
 
-    .ta-table-wrap { overflow-x: auto; }
-    .ta-table {
-        width: 100%; border-collapse: collapse; background: #fff;
-        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
-    }
-    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .ta-cell-ref { font-weight: 600; }
-    .ta-table th {
-        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.03em; color: var(--ta-muted);
-        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
-    }
-    .ta-table td {
-        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2; white-space: nowrap;
-    }
-    .ta-table tr:last-child td { border-bottom: none; }
-    .ta-table tbody tr:hover { background: #fafbfc; }
+            <div class="ta-field">
+                <label class="ta-label" for="editReference">Referenz</label>
+                <input id="editReference" class="ta-input" type="text" maxlength="50" @bind="_editReference" />
+                <p class="ta-field-hint">Kategorie und Anzahl eines ausgestellten Bundles sind nicht änderbar.</p>
+            </div>
 
-    .ta-btn {
-        font-family: var(--ta-font); font-size: 0.85rem; font-weight: 700; line-height: 1;
-        padding: 0.5rem 0.9rem; border-radius: 3px; border: 1px solid transparent;
-        cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
-    }
-    .ta-btn:disabled { opacity: 0.6; cursor: default; }
-    .ta-btn-primary { background: var(--ta-accent, #1c5aa3); color: #fff; }
-    .ta-btn-primary:hover { filter: brightness(0.94); }
-    .ta-btn-ghost { background: #fff; color: var(--ta-ink); border-color: var(--ta-border); }
-    .ta-btn-ghost:hover { background: #f5f5f5; }
+            @if (!string.IsNullOrEmpty(_editError))
+            {
+                <div class="ta-modal-error">@_editError</div>
+            }
 
-    .ta-overlay {
-        position: fixed; inset: 0; background: rgba(27, 38, 79, 0.45);
-        display: flex; align-items: flex-start; justify-content: center;
-        padding: 4rem 1rem; z-index: 1000;
-    }
-    .ta-modal {
-        background: #fff; border-radius: 4px; width: 100%; max-width: 440px;
-        padding: 1.5rem 1.5rem 1.25rem; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-    }
-    .ta-modal-title { font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 1.1rem; }
-    .ta-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.25rem; }
-    .ta-error {
-        margin: 0.25rem 0 0; padding: 0.55rem 0.7rem; border-radius: 3px;
-        background: #f6e2e4; color: #a3283a; font-size: 0.85rem;
-    }
-</style>
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEditAsync" disabled="@_saving">
+                    @(_saving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
+    [Inject] private IFlexBundleEditor BundleEditor { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
@@ -206,7 +171,10 @@
     public int SelectedSeasonId { get; set; }
     private string _selectedSeasonName = "";
 
-    // Create-overlay state
+    private string _sortCol = "created";
+    private bool _sortAsc = false;
+
+    // Create overlay
     private bool _showCreate;
     private bool _saving;
     private string? _createError;
@@ -216,15 +184,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync())
-            .OrderByDescending(s => s.StartDate)
-            .ToList();
-
-        // Remember the season across tabs (shared per-circuit state); fall back to the current season.
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
-
         await ReloadBundlesAsync();
         _loading = false;
     }
@@ -233,11 +196,26 @@
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
-        _bundles = SelectedSeasonId > 0
-            ? await Bundles.GetBySeasonAsync(SelectedSeasonId)
-            : [];
+        _bundles = SelectedSeasonId > 0 ? await Bundles.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
+    // --- Sorting ---
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<FlexTicketBundleView> Sorted()
+    {
+        IEnumerable<FlexTicketBundleView> q = _sortCol switch
+        {
+            "reference" => _bundles.OrderBy(b => b.Reference),
+            "category" => _bundles.OrderBy(b => b.Category),
+            "count" => _bundles.OrderBy(b => b.TicketCount),
+            "redeemed" => _bundles.OrderBy(b => b.RedeemedCount),
+            _ => _bundles.OrderBy(b => b.CreatedAt),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
+    // --- Create ---
     private void OpenCreate()
     {
         _createError = null;
@@ -247,11 +225,7 @@
         _showCreate = true;
     }
 
-    private void CloseCreate()
-    {
-        if (_saving) return;
-        _showCreate = false;
-    }
+    private void CloseCreate() { if (!_saving) _showCreate = false; }
 
     private async Task CreateBundleAsync()
     {
@@ -272,22 +246,45 @@
                 _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
                 return;
             }
-
             await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity);
             _showCreate = false;
             await ReloadBundlesAsync();
         }
-        catch (DomainException ex)
-        {
-            _createError = ex.Message;
-        }
-        finally
-        {
-            _saving = false;
-        }
+        catch (DomainException ex) { _createError = ex.Message; }
+        finally { _saving = false; }
     }
 
-    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    // --- Edit (rename) overlay ---
+    private FlexTicketBundleView? _editing;
+    private string _editReference = "";
+    private string? _editError;
+
+    private void OpenEdit(FlexTicketBundleView b)
+    {
+        _editing = b;
+        _editReference = b.Reference;
+        _editError = null;
+    }
+
+    private void CancelEdit() { if (!_saving) { _editing = null; _editError = null; } }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editing is null) return;
+        var reference = (_editReference ?? "").Trim();
+        if (reference == _editing.Reference) { _editing = null; return; } // no change
+        _saving = true;
+        _editError = null;
+        try
+        {
+            await BundleEditor.RenameAsync(_editing.Id, _editing.SeasonId, reference);
+            _editing = null;
+            await ReloadBundlesAsync();
+        }
+        catch (DomainException ex) { _editError = ex.Message; }
+        finally { _saving = false; }
+    }
+
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);

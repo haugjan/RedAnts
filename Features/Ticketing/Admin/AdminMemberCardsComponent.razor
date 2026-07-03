@@ -4,9 +4,8 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
 
-@* Mitgliederkarten (member cards) admin: pick a season, list its member cards, and import a batch of
-   members from a CSV (Name; Vorname; Geburtsdatum) under an optional reference. Member cards have no
-   price. *@
+@* Mitglieder (member cards) admin: pick a season (synced across tabs), list its member cards, edit one
+   via the last-column icon, and import a batch from CSV. Shared look from /css/ticketing-admin.css. *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Mitglieder</h1>
@@ -22,21 +21,23 @@
     }
     else
     {
-        <div class="ta-field">
-            <label class="ta-label" for="mcSeasonSelect">Saison</label>
-            <select id="mcSeasonSelect" class="ta-select"
-                    @bind="SelectedSeasonId" @bind:after="ReloadCardsAsync">
-                @foreach (var s in _seasons)
-                {
-                    <option value="@s.Id">@s.Name</option>
-                }
-            </select>
-        </div>
-
         <div class="ta-toolbar">
-            <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
-                Mitglieder importieren (CSV)
-            </button>
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="mcSeasonSelect">Saison</label>
+                    <select id="mcSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadCardsAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="ta-toolbar-actions">
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
+                    Mitglieder importieren (CSV)
+                </button>
+            </div>
         </div>
 
         @if (_cards.Count == 0)
@@ -45,34 +46,28 @@
         }
         else
         {
-            <p class="ta-count">@_cards.Count Mitgliederkarte@(_cards.Count == 1 ? "" : "n")</p>
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
                         <tr>
-                            <th>Inhaber:in</th>
-                            <th>Geburtsdatum</th>
-                            <th>Kategorie</th>
-                            <th>Referenz</th>
-                            <th>Status</th>
-                            <th class="ta-num">Event&shy;besuche</th>
-                            <th>Erstellt</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("name")'>Inhaber:in <span class="ta-sort-ind">@Ind("name")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("birthday")'>Geburtsdatum <span class="ta-sort-ind">@Ind("birthday")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th>Karten-Nr.</th>
+                            <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var c in _cards)
+                        @foreach (var c in Sorted())
                         {
                             <tr>
                                 <td class="ta-cell-name">
-                                    @if (c.HasName)
-                                    {
-                                        @c.HolderName
-                                    }
-                                    else
-                                    {
-                                        <span class="ta-muted">(ohne Name)</span>
-                                    }
+                                    @if (c.HasName) { @c.HolderName }
+                                    else { <span class="ta-muted">(ohne Name)</span> }
                                 </td>
                                 <td>@(c.Birthday?.ToString("dd.MM.yyyy") ?? "–")</td>
                                 <td>@c.CategoryLabel</td>
@@ -85,11 +80,15 @@
                                 <td class="ta-num">@c.EventVisits</td>
                                 <td>@c.CreatedAt.ToString("dd.MM.yyyy")</td>
                                 <td><code class="ta-uuid">@ShortId(c.Uuid)</code></td>
+                                <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(c)">✎</button>
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+            <p class="ta-summary">@_cards.Count Mitgliederkarte@(_cards.Count == 1 ? "" : "n")</p>
         }
     }
 </section>
@@ -118,8 +117,7 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="impReference">Referenz (optional)</label>
-                <input id="impReference" class="ta-input" type="text" maxlength="100"
-                       placeholder="z. B. Mitglieder 2026" @bind="_importReference" />
+                <input id="impReference" class="ta-input" type="text" maxlength="100" placeholder="z. B. Mitglieder 2026" @bind="_importReference" />
             </div>
 
             <div class="ta-field">
@@ -154,8 +152,7 @@
 
             <div class="ta-modal-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="ImportAsync"
-                        disabled="@(_saving || _parsedRows.Count == 0)">
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="ImportAsync" disabled="@(_saving || _parsedRows.Count == 0)">
                     @(_saving ? "Wird importiert …" : $"{_parsedRows.Count} Mitglieder importieren")
                 </button>
             </div>
@@ -163,82 +160,60 @@
     </div>
 }
 
-<style>
-    .ta-field { margin: 0 0 1.1rem; max-width: 360px; }
-    .ta-label {
-        display: block; margin-bottom: 0.35rem;
-        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
-    }
-    .ta-select, .ta-input {
-        width: 100%; padding: 0.5rem 0.6rem;
-        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
-        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
-    }
-    .ta-select:focus, .ta-input:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
-    .ta-readonly { padding: 0.5rem 0.6rem; background: #f5f5f5; border: 1px solid var(--ta-border); border-radius: 3px; color: var(--ta-ink); }
-    .ta-muted-text { color: var(--ta-muted); }
-    .ta-count { color: var(--ta-muted); font-size: 0.85rem; margin: 0 0 0.6rem; }
-    .ta-toolbar { margin: 0 0 1.1rem; }
-    .ta-hint { font-size: 0.8rem; color: var(--ta-muted); margin: 0.4rem 0 0; }
-    .ta-parse { font-size: 0.85rem; color: var(--ta-ink); margin: 0 0 0.6rem; }
-    .ta-warnings { margin: 0.35rem 0 0; padding-left: 1.1rem; color: #9a6a12; }
-    .ta-warnings li { font-size: 0.8rem; }
+@if (_editing is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Mitglied bearbeiten</h2>
+            <p class="ta-modal-sub">Karten-Nr. @ShortId(_editing.Uuid)</p>
 
-    .ta-table-wrap { overflow-x: auto; }
-    .ta-table {
-        width: 100%; border-collapse: collapse; background: #fff;
-        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
-    }
-    .ta-table th {
-        text-align: left; font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.02em; color: var(--ta-muted); line-height: 1.2;
-        padding: 6px 8px; background: #fafafa; border-bottom: 1px solid var(--ta-border);
-    }
-    .ta-table td {
-        padding: 6px 8px; font-size: 0.8rem; border-bottom: 1px solid #f2f2f2;
-        white-space: nowrap; vertical-align: middle;
-    }
-    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; }
-    .ta-table tr:last-child td { border-bottom: none; }
-    .ta-table tbody tr:hover { background: #fafbfc; }
-    .ta-cell-name { white-space: normal; font-weight: 500; }
-    .ta-muted { color: #b5b5b5; }
-    .ta-uuid { font-size: 0.8rem; color: var(--ta-muted); }
+            <div class="ta-field">
+                <label class="ta-label" for="editLastName">Name</label>
+                <input id="editLastName" class="ta-input" type="text" maxlength="100" @bind="_editLastName" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editFirstName">Vorname</label>
+                <input id="editFirstName" class="ta-input" type="text" maxlength="100" @bind="_editFirstName" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editBirthday">Geburtsdatum</label>
+                <input id="editBirthday" class="ta-input" type="date" @bind="_editBirthday" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editCategory">Kategorie</label>
+                <select id="editCategory" class="ta-select" @bind="_editCategory">
+                    @foreach (var cat in Categories)
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editReference">Referenz</label>
+                <input id="editReference" class="ta-input" type="text" maxlength="100" @bind="_editReference" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editStatus">Status</label>
+                <select id="editStatus" class="ta-select" @bind="_editStatus">
+                    <option value="@TicketStatus.Valid">Gültig</option>
+                    <option value="@TicketStatus.Cancelled">Storniert</option>
+                </select>
+            </div>
 
-    .ta-badge {
-        display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px;
-        font-size: 0.68rem; font-weight: 700; white-space: nowrap;
-    }
-    .ta-badge-valid { background: #e4f4ea; color: #1c7c43; }
-    .ta-badge-cancelled { background: #f6e2e4; color: #a3283a; }
+            @if (!string.IsNullOrEmpty(_editError))
+            {
+                <div class="ta-modal-error">@_editError</div>
+            }
 
-    .ta-btn {
-        font-family: var(--ta-font); font-size: 0.85rem; font-weight: 700; line-height: 1;
-        padding: 0.5rem 0.9rem; border-radius: 3px; border: 1px solid transparent;
-        cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
-    }
-    .ta-btn:disabled { opacity: 0.6; cursor: default; }
-    .ta-btn-primary { background: var(--ta-accent, #1c5aa3); color: #fff; }
-    .ta-btn-primary:hover { filter: brightness(0.94); }
-    .ta-btn-ghost { background: #fff; color: var(--ta-ink); border-color: var(--ta-border); }
-    .ta-btn-ghost:hover { background: #f5f5f5; }
-
-    .ta-overlay {
-        position: fixed; inset: 0; background: rgba(27, 38, 79, 0.45);
-        display: flex; align-items: flex-start; justify-content: center;
-        padding: 4rem 1rem; z-index: 1000;
-    }
-    .ta-modal {
-        background: #fff; border-radius: 4px; width: 100%; max-width: 460px;
-        padding: 1.5rem 1.5rem 1.25rem; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-    }
-    .ta-modal-title { font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 1.1rem; }
-    .ta-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.25rem; }
-    .ta-error {
-        margin: 0.25rem 0 0; padding: 0.55rem 0.7rem; border-radius: 3px;
-        background: #f6e2e4; color: #a3283a; font-size: 0.85rem;
-    }
-</style>
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_savingEdit">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEditAsync" disabled="@_savingEdit">
+                    @(_savingEdit ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
@@ -246,6 +221,7 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IMemberCardAdminReport Report { get; set; } = default!;
     [Inject] private IMemberCards Members { get; set; } = default!;
+    [Inject] private IMemberCardEditor MemberEditor { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
@@ -256,6 +232,9 @@
 
     public int SelectedSeasonId { get; set; }
     private string _selectedSeasonName = "";
+
+    private string _sortCol = "name";
+    private bool _sortAsc = true;
 
     // Import-overlay state
     private bool _showImport;
@@ -269,11 +248,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync())
-            .OrderByDescending(s => s.StartDate)
-            .ToList();
-
-        // Prefer the season remembered across tabs; fall back to the current season on first use.
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
@@ -283,14 +258,30 @@
 
     private async Task ReloadCardsAsync()
     {
-        // Remember the choice so the other tabs open on the same season.
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
-        _cards = SelectedSeasonId > 0
-            ? await Report.GetBySeasonAsync(SelectedSeasonId)
-            : [];
+        _cards = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
+    // --- Sorting ---
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<MemberCardListItem> Sorted()
+    {
+        IEnumerable<MemberCardListItem> q = _sortCol switch
+        {
+            "birthday" => _cards.OrderBy(c => c.Birthday ?? DateOnly.MaxValue),
+            "category" => _cards.OrderBy(c => c.Category),
+            "reference" => _cards.OrderBy(c => c.Reference ?? "￿"),
+            "status" => _cards.OrderBy(c => c.Status),
+            "visits" => _cards.OrderBy(c => c.EventVisits),
+            "created" => _cards.OrderBy(c => c.CreatedAt),
+            _ => _cards.OrderBy(c => c.LastName ?? "￿").ThenBy(c => c.FirstName ?? "￿"),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
+    // --- Import ---
     private void OpenImport()
     {
         _importError = null;
@@ -302,11 +293,7 @@
         _showImport = true;
     }
 
-    private void CloseImport()
-    {
-        if (_saving) return;
-        _showImport = false;
-    }
+    private void CloseImport() { if (!_saving) _showImport = false; }
 
     private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
     {
@@ -314,7 +301,6 @@
         try
         {
             var file = e.File;
-            // 5 MB is ample for a member list; StreamReader detects a UTF-8 BOM (Excel export).
             using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
             using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
             var text = await reader.ReadToEndAsync();
@@ -347,17 +333,51 @@
             _showImport = false;
             await ReloadCardsAsync();
         }
-        catch (DomainException ex)
-        {
-            _importError = ex.Message;
-        }
-        finally
-        {
-            _saving = false;
-        }
+        catch (DomainException ex) { _importError = ex.Message; }
+        finally { _saving = false; }
     }
 
-    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    // --- Edit overlay ---
+    private MemberCardListItem? _editing;
+    private string _editFirstName = "";
+    private string _editLastName = "";
+    private DateOnly? _editBirthday;
+    private TicketCategory _editCategory;
+    private string _editReference = "";
+    private TicketStatus _editStatus;
+    private bool _savingEdit;
+    private string? _editError;
+
+    private void OpenEdit(MemberCardListItem c)
+    {
+        _editing = c;
+        _editFirstName = c.FirstName ?? "";
+        _editLastName = c.LastName ?? "";
+        _editBirthday = c.Birthday;
+        _editCategory = c.Category;
+        _editReference = c.Reference ?? "";
+        _editStatus = c.Status;
+        _editError = null;
+    }
+
+    private void CancelEdit() { if (!_savingEdit) { _editing = null; _editError = null; } }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editing is null) return;
+        _savingEdit = true;
+        _editError = null;
+        try
+        {
+            await MemberEditor.SetDetailsAsync(_editing.Uuid, _editFirstName, _editLastName, _editBirthday,
+                _editCategory, _editStatus, _editReference);
+            _editing = null;
+            await ReloadCardsAsync();
+        }
+        catch (Exception ex) { _editError = ex.Message; }
+        finally { _savingEdit = false; }
+    }
+
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);

@@ -1,4 +1,5 @@
-@* Saisonkarten (season passes) admin: pick a season, list its passes, edit one in an overlay. *@
+@* Saisonkarten (season passes) admin: pick a season, list its passes, edit one via the last-column
+   icon. Shared look/behaviour with the other admin tabs comes from /css/ticketing-admin.css. *@
 @using RedAnts.Domain.Ticketing.Sales
 @inject ISeasonPassAdminReport Report
 @inject ISeasonPasses Passes
@@ -17,15 +18,18 @@
     }
     else
     {
-        <div class="ta-field">
-            <label class="ta-label" for="spSeasonSelect">Saison</label>
-            <select id="spSeasonSelect" class="ta-select"
-                    @bind="SelectedSeasonId" @bind:after="ReloadPassesAsync">
-                @foreach (var s in _seasons)
-                {
-                    <option value="@s.Id">@s.Name</option>
-                }
-            </select>
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="spSeasonSelect">Saison</label>
+                    <select id="spSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadPassesAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
         </div>
 
         @if (_passes.Count == 0)
@@ -34,55 +38,47 @@
         }
         else
         {
-            <p class="ta-count">@_passes.Count Saisonkarte@(_passes.Count == 1 ? "" : "n") · Total CHF @_passes.Sum(p => p.Price).ToString("N2")</p>
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
                         <tr>
-                            <th>Käufer:in</th>
-                            <th>Kategorie</th>
-                            <th class="ta-num">Preis</th>
-                            <th>Status</th>
-                            <th class="ta-num">Event&shy;besuche</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th>Zahlung</th>
                             <th>Bestell-Nr.</th>
-                            <th>Gekauft</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Gekauft <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th>Karten-Nr.</th>
-                            <th class="ta-num">Aktion</th>
+                            <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var p in _passes)
+                        @foreach (var p in Sorted())
                         {
                             <tr>
                                 <td class="ta-cell-name">
-                                    @if (p.BuyerName is not null)
-                                    {
-                                        @p.BuyerName
-                                    }
-                                    else
-                                    {
-                                        <span class="ta-muted">(keine Bestellung)</span>
-                                    }
+                                    @if (p.BuyerName is not null) { @p.BuyerName }
+                                    else { <span class="ta-muted">(keine Bestellung)</span> }
                                 </td>
                                 <td>@p.Category.DisplayName()</td>
                                 <td class="ta-num">CHF @p.Price.ToString("N2")</td>
-                                <td>
-                                    <span class="ta-badge ta-badge-@p.Status.ToString().ToLowerInvariant()">@StatusLabel(p.Status)</span>
-                                </td>
+                                <td><span class="ta-badge ta-badge-@p.Status.ToString().ToLowerInvariant()">@StatusLabel(p.Status)</span></td>
                                 <td class="ta-num">@p.EventVisits</td>
                                 <td>@(p.PaymentState ?? "–")</td>
                                 <td>@(p.OrderNumber ?? "–")</td>
                                 <td>@p.CreatedAt.ToString("dd.MM.yyyy")</td>
                                 <td><code class="ta-uuid">@ShortId(p.Uuid)</code></td>
-                                <td class="ta-num">
-                                    <button type="button" class="ta-edit-btn" @onclick="() => OpenEdit(p)">Bearbeiten</button>
+                                <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(p)">✎</button>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+            <p class="ta-summary">@_passes.Count Saisonkarte@(_passes.Count == 1 ? "" : "n") · Total CHF @_passes.Sum(p => p.Price).ToString("N2")</p>
         }
     }
 </section>
@@ -92,9 +88,7 @@
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
-            <p class="ta-modal-sub">
-                @(_editing.BuyerName ?? "(keine Bestellung)") · Karten-Nr. @ShortId(_editing.Uuid)
-            </p>
+            <p class="ta-modal-sub">@(_editing.BuyerName ?? "(keine Bestellung)") · Karten-Nr. @ShortId(_editing.Uuid)</p>
 
             <div class="ta-field">
                 <label class="ta-label" for="editCategory">Kategorie</label>
@@ -108,7 +102,7 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="editPrice">Preis (CHF)</label>
-                <input id="editPrice" type="number" step="0.05" min="0" class="ta-select" @bind="_editPrice" />
+                <input id="editPrice" type="number" step="0.05" min="0" class="ta-input" @bind="_editPrice" />
             </div>
 
             <div class="ta-field">
@@ -127,104 +121,14 @@
             }
 
             <div class="ta-modal-actions">
-                <button type="button" class="ta-btn-secondary" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
                     @(_saving ? "Speichert …" : "Speichern")
                 </button>
             </div>
         </div>
     </div>
 }
-
-<style>
-    .ta-field { margin: 0 0 1.5rem; max-width: 360px; }
-    .ta-label {
-        display: block; margin-bottom: 0.35rem;
-        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
-    }
-    .ta-select {
-        width: 100%; padding: 0.5rem 0.6rem;
-        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
-        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
-    }
-    .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
-    .ta-muted-text { color: var(--ta-muted); }
-    .ta-count { color: var(--ta-muted); font-size: 0.85rem; margin: 0 0 0.6rem; }
-
-    .ta-table-wrap { overflow-x: auto; }
-    .ta-table {
-        width: 100%; border-collapse: collapse; background: #fff;
-        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
-    }
-    .ta-table th {
-        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.03em; color: var(--ta-muted); line-height: 1.2;
-        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
-    }
-    .ta-table td {
-        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2;
-        white-space: nowrap; vertical-align: middle;
-    }
-    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; }
-    .ta-table tr:last-child td { border-bottom: none; }
-    .ta-table tbody tr:hover { background: #fafbfc; }
-    .ta-cell-name { white-space: normal; font-weight: 500; }
-    .ta-muted { color: #b5b5b5; }
-    .ta-uuid { font-size: 0.8rem; color: var(--ta-muted); }
-
-    .ta-badge {
-        display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700;
-    }
-    .ta-badge-valid { background: #e4f4ea; color: #1c7c43; }
-    .ta-badge-cancelled { background: #f6e2e4; color: #a3283a; }
-
-    /* Row action: edit button */
-    .ta-edit-btn {
-        appearance: none; cursor: pointer;
-        font-family: var(--ta-font); font-size: 0.78rem; font-weight: 700;
-        color: var(--ta-ink); background: #fff;
-        border: 1px solid var(--ta-border); border-radius: 3px;
-        padding: 0.3rem 0.7rem; transition: background 0.15s, border-color 0.15s;
-    }
-    .ta-edit-btn:hover { background: #f4f8fc; border-color: var(--ta-accent); }
-
-    /* Edit overlay (modal) */
-    .ta-overlay {
-        position: fixed; inset: 0; z-index: 1000;
-        background: rgba(27, 38, 79, 0.45);
-        display: flex; align-items: center; justify-content: center;
-        padding: 1.5rem;
-    }
-    .ta-modal {
-        background: #fff; border-radius: 5px; width: 100%; max-width: 420px;
-        padding: 1.5rem 1.6rem 1.6rem;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    }
-    .ta-modal-title {
-        font-family: var(--ta-font); font-size: 1.2rem; font-weight: 700;
-        color: var(--ta-ink); margin: 0 0 0.2rem;
-    }
-    .ta-modal-sub { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 1.1rem; }
-    .ta-modal .ta-field { max-width: none; }
-    .ta-modal-error {
-        color: #a3283a; background: #f6e2e4; border-radius: 3px;
-        padding: 0.5rem 0.7rem; font-size: 0.82rem; margin: 0 0 1rem;
-    }
-    .ta-modal-actions {
-        display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.4rem;
-    }
-    .ta-btn-primary, .ta-btn-secondary {
-        appearance: none; cursor: pointer; font-family: var(--ta-font);
-        font-size: 0.9rem; font-weight: 700; border-radius: 3px;
-        padding: 0.5rem 1.1rem; transition: background 0.15s, border-color 0.15s, color 0.15s;
-    }
-    .ta-btn-primary { color: #fff; background: var(--ta-accent); border: 1px solid var(--ta-accent); }
-    .ta-btn-primary:hover:not(:disabled) { background: #3d97d4; border-color: #3d97d4; }
-    .ta-btn-secondary { color: var(--ta-ink); background: #fff; border: 1px solid var(--ta-border); }
-    .ta-btn-secondary:hover:not(:disabled) { background: #f4f4f4; }
-    .ta-btn-primary:disabled, .ta-btn-secondary:disabled { opacity: 0.6; cursor: default; }
-</style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
@@ -238,13 +142,12 @@
 
     public int SelectedSeasonId { get; set; }
 
+    private string _sortCol = "buyer";
+    private bool _sortAsc = true;
+
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync())
-            .OrderByDescending(s => s.StartDate)
-            .ToList();
-
-        // Prefer the season remembered across tabs; fall back to the current season on first use.
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
@@ -254,14 +157,27 @@
 
     private async Task ReloadPassesAsync()
     {
-        // Remember the choice so the other tabs open on the same season.
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
-        _passes = SelectedSeasonId > 0
-            ? await Report.GetBySeasonAsync(SelectedSeasonId)
-            : [];
+        _passes = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
-    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    // --- Sorting ---
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<SeasonPassListItem> Sorted()
+    {
+        IEnumerable<SeasonPassListItem> q = _sortCol switch
+        {
+            "category" => _passes.OrderBy(p => p.Category),
+            "price" => _passes.OrderBy(p => p.Price),
+            "status" => _passes.OrderBy(p => p.Status),
+            "visits" => _passes.OrderBy(p => p.EventVisits),
+            "created" => _passes.OrderBy(p => p.CreatedAt),
+            _ => _passes.OrderBy(p => p.BuyerName ?? "￿"),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -295,11 +211,7 @@
         _editError = null;
     }
 
-    private void CancelEdit()
-    {
-        _editing = null;
-        _editError = null;
-    }
+    private void CancelEdit() { _editing = null; _editError = null; }
 
     private async Task SaveEdit()
     {
@@ -309,25 +221,15 @@
         try
         {
             var pass = await Passes.GetByUuidAsync(_editing.Uuid);
-            if (pass is null)
-            {
-                _editError = "Diese Saisonkarte wurde nicht gefunden.";
-                return;
-            }
+            if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
 
             pass.Edit(_editCategory, _editPrice, _editStatus);
             await Passes.SaveAsync(pass);
 
             _editing = null;
-            await ReloadPassesAsync(); // reflect the change with a fresh read from the DB
+            await ReloadPassesAsync();
         }
-        catch (DomainException ex)
-        {
-            _editError = ex.Message;
-        }
-        finally
-        {
-            _saving = false;
-        }
+        catch (DomainException ex) { _editError = ex.Message; }
+        finally { _saving = false; }
     }
 }
