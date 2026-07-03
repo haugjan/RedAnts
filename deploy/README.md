@@ -1,8 +1,9 @@
 # Deployment (Azure)
 
 RedAnts deploys to an Azure App Service in resource group **RG_RedAnts** via GitHub Actions
-(`.github/workflows/deploy.yml`, Kudu ZipDeploy), backed by **Azure SQL** in production. This
-mirrors the Sporthalle Sulzerallee setup.
+(`.github/workflows/deploy.yml`), backed by **Azure SQL** in production. Deployment authenticates
+with **Microsoft Entra / OIDC** (workload identity federation): no basic auth, no long-lived
+publish password. SCM basic-auth publishing stays disabled on the app.
 
 ## Database
 
@@ -28,8 +29,11 @@ bash deploy/azure-setup.sh
 `azure-setup.sh` creates the App Service plan (Linux, .NET 10), the Web App, the Azure SQL
 server + database, a firewall rule allowing Azure services, a Storage account + `media` blob
 container for Umbraco media, and the app settings (SQL connection string, provider name, blob
-media connection string + container, unattended install). It prompts for the SQL admin password
-and the Umbraco backoffice password (never written to disk) and prints the publish credentials.
+media connection string + container). It also sets up the deployment identity: it disables SCM
+basic auth, creates the `redants-github-deploy` Entra app registration with a federated
+credential for `repo:haugjan/RedAnts:ref:refs/heads/main`, grants it the **Website Contributor**
+role on the app, and prints the three OIDC ids for the GitHub secrets below. It prompts only for
+the SQL admin password (never written to disk).
 
 ## Media on Azure Blob Storage
 
@@ -44,16 +48,23 @@ name are injected as app settings `Umbraco__Storage__AzureBlob__Media__Connectio
 
 Repo → Settings → Secrets and variables → Actions:
 
-| Kind     | Name                | Value                                             |
-|----------|---------------------|---------------------------------------------------|
-| Variable | `AZURE_WEBAPP_NAME` | the App Service name (e.g. `app-redants`)         |
-| Secret   | `KUDU_USER`         | `publishingUserName` printed by the setup script  |
-| Secret   | `KUDU_PASS`         | `publishingPassword` printed by the setup script  |
+| Kind     | Name                    | Value                                                    |
+|----------|-------------------------|----------------------------------------------------------|
+| Variable | `AZURE_WEBAPP_NAME`     | the App Service name (e.g. `app-redants`)                |
+| Secret   | `AZURE_CLIENT_ID`       | appId of the `redants-github-deploy` app registration    |
+| Secret   | `AZURE_TENANT_ID`       | Entra tenant id                                          |
+| Secret   | `AZURE_SUBSCRIPTION_ID` | Azure subscription id                                    |
+
+No secret holds a password: the runner requests a short-lived OIDC token that `azure/login`
+exchanges via the federated credential. To rotate trust, edit the app registration's federated
+credential (issuer `token.actions.githubusercontent.com`, subject
+`repo:haugjan/RedAnts:ref:refs/heads/main`).
 
 ## Deploy
 
 Push to `main` (or run the **Deploy to Azure** workflow manually). The workflow builds,
-publishes, zips, ZipDeploys to Kudu, waits for completion, and warms up `/`.
+publishes, zips, logs in to Azure via OIDC, deploys the zip with `az webapp deploy` over ARM,
+and warms up `/`.
 
 On first deploy the Azure SQL database is empty, so Umbraco serves its one-time installer. Open
 `https://<app>.azurewebsites.net/umbraco`, complete the install (this creates your backoffice
