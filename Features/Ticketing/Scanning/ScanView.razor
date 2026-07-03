@@ -3,11 +3,13 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject ITicketTokens Tickets
+@inject IAdmissionService Admission
 
 @* Camera QR scan view for a single event. html5-qrcode runs the camera in the browser and reports
-   decoded codes back via JS interop. A decoded code is verified for real via ITicketTokens (S3):
-   a genuine, server-signed token shows green, anything malformed or forged shows red. Recording the
-   admission (TicketEventVisits) and the season scope for passes/cards are the next step. *@
+   decoded codes back via JS interop. A decoded code is verified via ITicketTokens (S3), then the
+   admission is toggled through IAdmissionService: a first scan checks the person in, a re-scan checks
+   them out again. Free walk-up admissions can be granted/withdrawn and count against the hall quota;
+   the remaining capacity is shown live. *@
 
 <div class="scan-view">
     <header class="scan-view__header">
@@ -15,50 +17,103 @@
         <span class="scan-view__title">@EventName</span>
     </header>
 
+    @if (_occupancy is { } occ)
+    {
+        <div class="scan-cap @(occ.Full ? "scan-cap--full" : "")">
+            @if (occ.Quota is null)
+            {
+                <span class="scan-cap__free">@occ.Inside drinnen</span>
+                <span class="scan-cap__sub">Kein Einlasslimit</span>
+            }
+            else
+            {
+                <span class="scan-cap__free">@occ.Remaining frei</span>
+                <span class="scan-cap__sub">@occ.Inside / @occ.Quota im Einlass</span>
+            }
+        </div>
+    }
+
     <div id="qr-reader" class="qr-reader"></div>
+
+    <div class="scan-free">
+        <button type="button" class="scan-free__btn scan-free__btn--in"
+                @onclick="GrantFreeAsync" disabled="@(_busy || _occupancy?.Full == true)">
+            + Freier Einlass
+        </button>
+        <button type="button" class="scan-free__btn scan-free__btn--out"
+                @onclick="RevokeFreeAsync" disabled="@_busy">
+            − Frei zurücknehmen
+        </button>
+    </div>
 
     @if (_error is not null)
     {
         <p class="scan-view__hint scan-view__hint--error">@_error</p>
     }
-    else if (_state == ScanState.Scanning)
+    else if (_last is null)
     {
         <p class="scan-view__hint">Richte die Kamera auf einen QR-Code.</p>
     }
 
-    @if (_state == ScanState.Success)
+    @if (_last is { } o)
     {
-        <div class="result result--ok" @onclick="ScanNext">
-            <div class="result__icon">✓</div>
-            <div class="result__title">Gültig</div>
-            <div class="result__code">@_lastCode</div>
-            <button type="button" class="result__next">Nächsten scannen</button>
-        </div>
-    }
-    else if (_state == ScanState.Failure)
-    {
-        <div class="result result--fail" @onclick="ScanNext">
-            <div class="result__icon">✕</div>
-            <div class="result__title">Ungültig</div>
-            <div class="result__code">@_lastCode</div>
-            <div class="result__message">@_failureMessage</div>
-            <button type="button" class="result__next">Nächsten scannen</button>
+        <div class="result result--@ResultClass(o)" @onclick="DismissAsync">
+            <div class="result__icon">@ResultIcon(o)</div>
+            <div class="result__title">@ResultTitle(o)</div>
+            <div class="result__code">
+                @if (o.Type is { } t) { @TypeLabel(t) }
+                @if (!string.IsNullOrEmpty(o.Reference)) { <span> · @o.Reference</span> }
+            </div>
+            @if (!string.IsNullOrEmpty(o.Reason))
+            {
+                <div class="result__message">@o.Reason</div>
+            }
+            <button type="button" class="result__next">Weiter</button>
         </div>
     }
 </div>
 
-@code {
-    private enum ScanState { Scanning, Success, Failure }
+<style>
+    .scan-cap {
+        display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+        margin: 0.4rem 0 0.8rem; padding: 0.6rem 1rem; border-radius: 10px;
+        background: #e7f6ec; color: #1a7f37;
+    }
+    .scan-cap--full { background: #fdeaea; color: #b42318; }
+    .scan-cap__free { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .scan-cap__sub { font-size: 0.8rem; opacity: 0.85; }
 
+    .scan-free { display: flex; gap: 0.6rem; margin: 0.8rem 0; }
+    .scan-free__btn {
+        flex: 1 1 0; padding: 0.7rem 0.5rem; border-radius: 8px; border: 1px solid transparent;
+        font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    }
+    .scan-free__btn:disabled { opacity: 0.5; cursor: default; }
+    .scan-free__btn--in { background: #1a7f37; color: #fff; }
+    .scan-free__btn--out { background: #fff; color: #555; border-color: #ccc; }
+
+    .result--in .result__icon, .result--in .result__title { color: #1a7f37; }
+    .result--out .result__icon, .result--out .result__title { color: #1f5fbf; }
+    .result--in { border-color: #1a7f37; }
+    .result--out { border-color: #1f5fbf; }
+</style>
+
+@code {
     [Parameter, EditorRequired] public int EventId { get; set; }
     [Parameter, EditorRequired] public string EventName { get; set; } = "";
     [Parameter] public EventCallback OnBack { get; set; }
 
     private DotNetObjectReference<ScanView>? _ref;
-    private ScanState _state = ScanState.Scanning;
-    private string? _lastCode;
-    private string? _failureMessage;
+    private Occupancy? _occupancy;
+    private ScanOutcome? _last;
+    private bool _cameraPaused;
+    private bool _busy;
     private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _occupancy = await Admission.GetOccupancyAsync(EventId);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -75,44 +130,67 @@
         }
     }
 
-    // Called by ticket-scanner.js when a QR code is decoded. The scanner is paused by the JS side
-    // before this fires; ScanNext() resumes it. The decoded code is the absolute /ticket/{token} URL
-    // (a raw token is accepted too); its signature is verified via ITicketTokens.
+    // Called by ticket-scanner.js when a QR code is decoded. The JS side pauses the camera before this
+    // fires; DismissAsync() resumes it. The code is the absolute /ticket/{token} URL (a raw token works too).
     [JSInvokable]
     public async Task OnCodeScanned(string code)
     {
-        bool accepted;
+        _cameraPaused = true;
         if (Tickets.TryVerify(ExtractToken(code), out var data))
         {
-            // A genuine, server-signed token. Enforce the event scope for single-event tickets;
-            // season-scoped passes/cards (ScopeId = SeasonId) and the actual admission recording
-            // (TicketEventVisits) are the next step and are accepted on a valid signature for now.
-            if (data.Type == TicketType.EventTicket && data.ScopeId != EventId)
-            {
-                accepted = false;
-                _failureMessage = "Ticket gilt für einen anderen Anlass.";
-                _lastCode = data.Uuid.ToString()[..8];
-            }
-            else
-            {
-                accepted = true;
-                _failureMessage = null;
-                _lastCode = $"{TypeLabel(data.Type)} · {data.Uuid.ToString()[..8]}";
-            }
+            _last = await Admission.ScanTicketAsync(EventId, data.Type, data.Uuid, data.ScopeId, null);
+            _occupancy = _last.Occupancy;
         }
         else
         {
-            accepted = false;
-            _failureMessage = "Ungültiger oder gefälschter Code.";
-            _lastCode = Shorten(code);
+            _last = new ScanOutcome(AdmissionOutcome.Rejected, null, Shorten(code),
+                "Ungültiger oder gefälschter Code.", _occupancy ?? new Occupancy(0, null));
         }
-
-        _state = accepted ? ScanState.Success : ScanState.Failure;
         StateHasChanged();
+        await Beep(_last.Ok);
+    }
 
-        // Distinct feedback beep for accepted vs rejected.
-        try { await JS.InvokeVoidAsync("ticketScanner.beep", accepted); }
+    private async Task GrantFreeAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            _last = await Admission.GrantFreeEntryAsync(EventId, null);
+            _occupancy = _last.Occupancy;
+            await Beep(_last.Ok);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task RevokeFreeAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            _last = await Admission.RevokeFreeEntryAsync(EventId, null);
+            _occupancy = _last.Occupancy;
+            await Beep(_last.Ok);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task Beep(bool ok)
+    {
+        try { await JS.InvokeVoidAsync("ticketScanner.beep", ok); }
         catch (JSException) { /* audio not available */ }
+    }
+
+    private async Task DismissAsync()
+    {
+        _last = null;
+        if (_cameraPaused)
+        {
+            _cameraPaused = false;
+            try { await JS.InvokeVoidAsync("ticketScanner.resume"); }
+            catch (JSException) { /* camera not running */ }
+        }
     }
 
     // The QR encodes the absolute /ticket/{token} URL; take the last path segment as the token and
@@ -127,33 +205,43 @@
         return cut >= 0 ? s[..cut] : s;
     }
 
+    private static string ResultClass(ScanOutcome o) => o.Outcome switch
+    {
+        AdmissionOutcome.CheckedIn => "in",
+        AdmissionOutcome.CheckedOut => "out",
+        _ => "fail"
+    };
+
+    private static string ResultIcon(ScanOutcome o) => o.Outcome switch
+    {
+        AdmissionOutcome.CheckedIn => "✓",
+        AdmissionOutcome.CheckedOut => "↩",
+        _ => "✕"
+    };
+
+    private static string ResultTitle(ScanOutcome o) => o.Outcome switch
+    {
+        AdmissionOutcome.CheckedIn => "Eingelassen",
+        AdmissionOutcome.CheckedOut => "Ausgelassen",
+        _ => "Abgelehnt"
+    };
+
     private static string TypeLabel(TicketType type) => type switch
     {
         TicketType.EventTicket => "Spielticket",
         TicketType.SeasonSingle => "Flexticket",
         TicketType.SeasonPass => "Saisonkarte",
         TicketType.MemberCard => "Mitgliederkarte",
-        TicketType.FreeEntry => "Berechtigt",
+        TicketType.FreeEntry => "Freier Einlass",
         _ => type.ToString()
     };
 
     private static string Shorten(string? s) =>
         string.IsNullOrEmpty(s) ? "" : (s.Length <= 40 ? s : s[..40] + "…");
 
-    private async Task ScanNext()
-    {
-        _state = ScanState.Scanning;
-        _lastCode = null;
-        _failureMessage = null;
-        await JS.InvokeVoidAsync("ticketScanner.resume");
-    }
-
     public async ValueTask DisposeAsync()
     {
-        try
-        {
-            await JS.InvokeVoidAsync("ticketScanner.stop");
-        }
+        try { await JS.InvokeVoidAsync("ticketScanner.stop"); }
         catch (JSException) { /* circuit already gone */ }
         catch (JSDisconnectedException) { /* circuit already gone */ }
         _ref?.Dispose();
