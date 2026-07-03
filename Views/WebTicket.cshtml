@@ -3,6 +3,17 @@
     // Standalone page: only the ticket, no site nav/footer/chrome (ideal for phone/wallet display).
     Layout = null;
     var title = Model.Found ? $"{Model.TypeLabel} – {Model.ScopeName}" : "Ticket";
+    // Give each ticket type its own header accent colour so a stack of tickets is told apart at a glance.
+    // Derived from the (stable) type label produced by WebTicketController.TypeLabel().
+    var typeKey = Model.TypeLabel switch
+    {
+        "Spielticket" => "spiel",
+        "Flexticket" => "flex",
+        "Saisonkarte" => "saison",
+        "Mitgliederkarte" => "member",
+        "Freier Eintritt" => "free",
+        _ => "spiel"
+    };
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -29,6 +40,12 @@
         .wt-head { background: var(--ra-red); color: #fff; padding: 1.1rem 1.4rem; }
         .wt-head .wt-type { font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.35rem; }
         .wt-head .wt-scope { opacity: .92; font-size: .95rem; margin-top: .15rem; }
+        /* Per-type header accent (color-tells the ticket type apart; the type name stays in text too). */
+        .wt-head--spiel  { background: #C8102E; }
+        .wt-head--flex   { background: #E4720F; }
+        .wt-head--saison { background: #1F5FBF; }
+        .wt-head--member { background: #1A7F37; }
+        .wt-head--free   { background: #6B4EA0; }
         .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1.1rem; padding: 1.2rem 1.4rem 0; }
         .wt-logos img { height: 56px; width: auto; object-fit: contain; }
         .wt-vs { font-family: var(--ra-display); font-weight: 700; text-transform: uppercase; color: #999; font-size: .9rem; }
@@ -61,7 +78,7 @@
         else
         {
             <div class="wt-card">
-                <div class="wt-head">
+                <div class="wt-head wt-head--@typeKey">
                     <div class="wt-type">@Model.TypeLabel</div>
                     <div class="wt-scope">@Model.ScopeName</div>
                 </div>
