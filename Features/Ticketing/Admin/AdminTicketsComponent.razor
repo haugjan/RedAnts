@@ -113,6 +113,8 @@
                                     }
                                 </td>
                                 <td class="ta-actions">
+                                    <a href="/ticket/for/@t.Uuid" target="_blank" rel="noopener"
+                                       class="ta-btn ta-btn-ghost ta-btn-link">Online-Ticket</a>
                                     @if (t.Status == TicketStatus.Valid)
                                     {
                                         @if (t.Redeemed)
@@ -229,6 +231,7 @@
     .ta-btn-primary:hover { filter: brightness(0.94); }
     .ta-btn-ghost { background: #fff; color: var(--ta-ink); border-color: var(--ta-border); }
     .ta-btn-ghost:hover { background: #f5f5f5; }
+    .ta-btn-link { text-decoration: none; display: inline-flex; align-items: center; }
     .ta-btn-danger { background: #fff; color: #a3283a; border-color: #e2b9bf; }
     .ta-btn-danger:hover { background: #f6e2e4; }
 
