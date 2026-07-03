@@ -10,10 +10,10 @@ public sealed record MemberCardListItem(
     string? LastName,
     DateOnly? Birthday,
     TicketCategory Category,
-    decimal Price,
     TicketStatus Status,
     DateTime CreatedAt,
-    int EventVisits)
+    int EventVisits,
+    string? Reference)
 {
     public string HolderName => $"{FirstName} {LastName}".Trim();
     public bool HasName => !string.IsNullOrWhiteSpace(FirstName) || !string.IsNullOrWhiteSpace(LastName);

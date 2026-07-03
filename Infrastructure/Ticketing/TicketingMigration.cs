@@ -21,6 +21,8 @@ public class TicketingMigrationPlan : MigrationPlan
         From(string.Empty).To<CreateTicketingSchema>("ticketing-schema");
         // Adds the Flexticket bundle table + SeasonSingleTickets.BundleId to existing databases.
         To<AddFlexTicketBundles>("ticketing-flextickets");
+        // Adds MembershipCards.Reference and drops the legacy MembershipCards.Price column.
+        To<AdjustMemberCardColumns>("membercards-reference-noprice");
     }
 }
 
@@ -86,6 +88,37 @@ public class AddFlexTicketBundles(IMigrationContext context) : AsyncMigrationBas
                 Execute.Sql("ALTER TABLE SeasonSingleTickets ADD COLUMN BundleId INTEGER NULL").Do();
             else
                 Alter.Table("SeasonSingleTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Existing databases: adds the optional MembershipCards.Reference column and drops the legacy
+/// MembershipCards.Price column (member cards have no price; only season passes do). Idempotent — guarded
+/// by ColumnExists, so a no-op on a fresh database created by CreateTicketingSchema. Uses raw ALTER on
+/// SQLite because Umbraco's Alter builder rejects every ALTER there (see AddFlexTicketBundles).</summary>
+public class AdjustMemberCardColumns(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+
+        if (!ColumnExists("MembershipCards", "Reference"))
+        {
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE MembershipCards ADD COLUMN Reference NVARCHAR(100) NULL").Do();
+            else
+                Alter.Table("MembershipCards").AddColumn("Reference").AsString(100).Nullable().Do();
+        }
+
+        if (ColumnExists("MembershipCards", "Price"))
+        {
+            // SQLite (3.35+) supports DROP COLUMN; Umbraco's Alter builder does not, so run it raw.
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE MembershipCards DROP COLUMN Price").Do();
+            else
+                Delete.Column("Price").FromTable("MembershipCards").Do();
         }
 
         return Task.CompletedTask;

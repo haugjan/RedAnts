@@ -40,11 +40,11 @@ public sealed class SampleCardsSeeder(
 
     // Sample member-card holders. Name/birthday are optional (revDSG minimization); one is left blank
     // on purpose to exercise the anonymous case.
-    private static readonly (TicketCategory Category, decimal Price, string? First, string? Last, DateOnly? Birthday)[] SampleMembers =
+    private static readonly (TicketCategory Category, string? First, string? Last, DateOnly? Birthday)[] SampleMembers =
     [
-        (TicketCategory.Adult, 120m, "Anna", "Muster", new DateOnly(1990, 5, 14)),
-        (TicketCategory.Youth, 60m, "Ben", "Beispiel", new DateOnly(2009, 11, 2)),
-        (TicketCategory.Child, 40m, null, null, null),
+        (TicketCategory.Adult, "Anna", "Muster", new DateOnly(1990, 5, 14)),
+        (TicketCategory.Youth, "Ben", "Beispiel", new DateOnly(2009, 11, 2)),
+        (TicketCategory.Child, null, null, null),
     ];
 
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken cancellationToken)
@@ -91,7 +91,7 @@ public sealed class SampleCardsSeeder(
 
         foreach (var m in SampleMembers)
         {
-            var card = MemberCard.Create(seasonId, m.Category, m.Price, null, m.First, m.Last, m.Birthday);
+            var card = MemberCard.Create(seasonId, m.Category, m.First, m.Last, m.Birthday);
             await scope.Database.InsertAsync(ToRecord(card));
         }
         logger.LogInformation("SampleCardsSeeder: seeded {Count} member cards for season '{Name}'.",
@@ -114,12 +114,12 @@ public sealed class SampleCardsSeeder(
         Uuid = c.Uuid.ToString(),
         SeasonId = c.SeasonId,
         Category = (int)c.Category,
-        Price = c.Price,
         OrderId = c.OrderId,
         Status = (int)c.Status,
         CreatedAt = c.CreatedAt,
         FirstName = c.FirstName,
         LastName = c.LastName,
-        Birthday = c.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : null
+        Birthday = c.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : null,
+        Reference = c.Reference
     };
 }

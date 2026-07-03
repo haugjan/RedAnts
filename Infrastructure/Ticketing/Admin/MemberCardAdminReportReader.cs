@@ -32,10 +32,10 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             c.LastName,
             c.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
             (TicketCategory)c.Category,
-            c.Price,
             (TicketStatus)c.Status,
             c.CreatedAt,
-            visits.GetValueOrDefault(c.Uuid ?? ""))).ToList();
+            visits.GetValueOrDefault(c.Uuid ?? ""),
+            c.Reference)).ToList();
     }
 
     /// <summary>Projection for the visit-count query (mapped by column name/alias).</summary>

@@ -1,5 +1,12 @@
-@* Mitgliederkarten (member cards) admin: pick a season, list its member cards with the key info. *@
-@inject IMemberCardAdminReport Report
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms
+@using RedAnts.Domain.Ticketing
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+
+@* Mitgliederkarten (member cards) admin: pick a season, list its member cards, and import a batch of
+   members from a CSV (Name; Vorname; Geburtsdatum) under an optional reference. Member cards have no
+   price. *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Mitglieder</h1>
@@ -26,6 +33,12 @@
             </select>
         </div>
 
+        <div class="ta-toolbar">
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
+                Mitglieder importieren (CSV)
+            </button>
+        </div>
+
         @if (_cards.Count == 0)
         {
             <div class="ta-placeholder">Für diese Saison sind keine Mitgliederkarten erfasst.</div>
@@ -40,7 +53,7 @@
                             <th>Inhaber:in</th>
                             <th>Geburtsdatum</th>
                             <th>Kategorie</th>
-                            <th class="ta-num">Preis</th>
+                            <th>Referenz</th>
                             <th>Status</th>
                             <th class="ta-num">Event&shy;besuche</th>
                             <th>Erstellt</th>
@@ -63,7 +76,7 @@
                                 </td>
                                 <td>@(c.Birthday?.ToString("dd.MM.yyyy") ?? "–")</td>
                                 <td>@c.CategoryLabel</td>
-                                <td class="ta-num">CHF @c.Price.ToString("N2")</td>
+                                <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
                                 <td>
                                     <span class="ta-badge @(c.IsCancelled ? "ta-badge-cancelled" : "ta-badge-valid")">
                                         @(c.IsCancelled ? "Storniert" : "Gültig")
@@ -81,20 +94,95 @@
     }
 </section>
 
+@if (_showImport)
+{
+    @* Close on backdrop mousedown (not click) so a text selection released outside keeps the dialog open. *@
+    <div class="ta-overlay" @onmousedown="CloseImport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Mitglieder importieren</h2>
+
+            <div class="ta-field">
+                <label class="ta-label">Saison</label>
+                <div class="ta-readonly">@_selectedSeasonName</div>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impCategory">Ticketkategorie</label>
+                <select id="impCategory" class="ta-select" @bind="_importCategory">
+                    @foreach (var cat in Categories)
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impReference">Referenz (optional)</label>
+                <input id="impReference" class="ta-input" type="text" maxlength="100"
+                       placeholder="z. B. Mitglieder 2026" @bind="_importReference" />
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label">CSV-Datei</label>
+                <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
+                <p class="ta-hint">
+                    Spalten: Name, Vorname, Geburtsdatum (dd.MM.yyyy). Fehlende Angaben sind erlaubt.
+                    <a href="/admin/mitglieder/beispiel.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
+                </p>
+            </div>
+
+            @if (_fileName is not null)
+            {
+                <div class="ta-parse">
+                    <strong>@_fileName</strong>: @_parsedRows.Count Zeile@(_parsedRows.Count == 1 ? "" : "n") erkannt.
+                    @if (_parseWarnings.Count > 0)
+                    {
+                        <ul class="ta-warnings">
+                            @foreach (var w in _parseWarnings)
+                            {
+                                <li>@w</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_importError))
+            {
+                <div class="ta-error">@_importError</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="ImportAsync"
+                        disabled="@(_saving || _parsedRows.Count == 0)">
+                    @(_saving ? "Wird importiert …" : $"{_parsedRows.Count} Mitglieder importieren")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
-    .ta-field { margin: 0 0 1.5rem; max-width: 360px; }
+    .ta-field { margin: 0 0 1.1rem; max-width: 360px; }
     .ta-label {
         display: block; margin-bottom: 0.35rem;
         font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
     }
-    .ta-select {
+    .ta-select, .ta-input {
         width: 100%; padding: 0.5rem 0.6rem;
         font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
         background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
     }
-    .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
+    .ta-select:focus, .ta-input:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
+    .ta-readonly { padding: 0.5rem 0.6rem; background: #f5f5f5; border: 1px solid var(--ta-border); border-radius: 3px; color: var(--ta-ink); }
     .ta-muted-text { color: var(--ta-muted); }
     .ta-count { color: var(--ta-muted); font-size: 0.85rem; margin: 0 0 0.6rem; }
+    .ta-toolbar { margin: 0 0 1.1rem; }
+    .ta-hint { font-size: 0.8rem; color: var(--ta-muted); margin: 0.4rem 0 0; }
+    .ta-parse { font-size: 0.85rem; color: var(--ta-ink); margin: 0 0 0.6rem; }
+    .ta-warnings { margin: 0.35rem 0 0; padding-left: 1.1rem; color: #9a6a12; }
+    .ta-warnings li { font-size: 0.8rem; }
 
     .ta-table-wrap { overflow-x: auto; }
     .ta-table {
@@ -123,19 +211,61 @@
     }
     .ta-badge-valid { background: #e4f4ea; color: #1c7c43; }
     .ta-badge-cancelled { background: #f6e2e4; color: #a3283a; }
+
+    .ta-btn {
+        font-family: var(--ta-font); font-size: 0.85rem; font-weight: 700; line-height: 1;
+        padding: 0.5rem 0.9rem; border-radius: 3px; border: 1px solid transparent;
+        cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
+    }
+    .ta-btn:disabled { opacity: 0.6; cursor: default; }
+    .ta-btn-primary { background: var(--ta-accent, #1c5aa3); color: #fff; }
+    .ta-btn-primary:hover { filter: brightness(0.94); }
+    .ta-btn-ghost { background: #fff; color: var(--ta-ink); border-color: var(--ta-border); }
+    .ta-btn-ghost:hover { background: #f5f5f5; }
+
+    .ta-overlay {
+        position: fixed; inset: 0; background: rgba(27, 38, 79, 0.45);
+        display: flex; align-items: flex-start; justify-content: center;
+        padding: 4rem 1rem; z-index: 1000;
+    }
+    .ta-modal {
+        background: #fff; border-radius: 4px; width: 100%; max-width: 460px;
+        padding: 1.5rem 1.5rem 1.25rem; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    }
+    .ta-modal-title { font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 1.1rem; }
+    .ta-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.25rem; }
+    .ta-error {
+        margin: 0.25rem 0 0; padding: 0.55rem 0.7rem; border-radius: 3px;
+        background: #f6e2e4; color: #a3283a; font-size: 0.85rem;
+    }
 </style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IMemberCardAdminReport Report { get; set; } = default!;
+    [Inject] private IMemberCards Members { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<MemberCardListItem> _cards = [];
 
     public int SelectedSeasonId { get; set; }
+    private string _selectedSeasonName = "";
+
+    // Import-overlay state
+    private bool _showImport;
+    private bool _saving;
+    private string? _importError;
+    private TicketCategory _importCategory = TicketCategory.Adult;
+    private string _importReference = "";
+    private string? _fileName;
+    private IReadOnlyList<MemberImportRow> _parsedRows = [];
+    private IReadOnlyList<string> _parseWarnings = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -155,9 +285,76 @@
     {
         // Remember the choice so the other tabs open on the same season.
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
         _cards = SelectedSeasonId > 0
             ? await Report.GetBySeasonAsync(SelectedSeasonId)
             : [];
+    }
+
+    private void OpenImport()
+    {
+        _importError = null;
+        _importCategory = TicketCategory.Adult;
+        _importReference = "";
+        _fileName = null;
+        _parsedRows = [];
+        _parseWarnings = [];
+        _showImport = true;
+    }
+
+    private void CloseImport()
+    {
+        if (_saving) return;
+        _showImport = false;
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _importError = null;
+        try
+        {
+            var file = e.File;
+            // 5 MB is ample for a member list; StreamReader detects a UTF-8 BOM (Excel export).
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            var text = await reader.ReadToEndAsync();
+
+            var result = MemberCsv.Parse(text);
+            _fileName = file.Name;
+            _parsedRows = result.Rows;
+            _parseWarnings = result.Warnings;
+        }
+        catch (Exception ex)
+        {
+            _fileName = null;
+            _parsedRows = [];
+            _parseWarnings = [];
+            _importError = $"Datei konnte nicht gelesen werden: {ex.Message}";
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        _importError = null;
+        if (SelectedSeasonId <= 0) { _importError = "Bitte zuerst eine Saison wählen."; return; }
+        if (_parsedRows.Count == 0) { _importError = "Bitte eine CSV-Datei mit mindestens einer Zeile wählen."; return; }
+
+        _saving = true;
+        try
+        {
+            var reference = string.IsNullOrWhiteSpace(_importReference) ? null : _importReference.Trim();
+            await Members.ImportAsync(SelectedSeasonId, _importCategory, reference, _parsedRows);
+            _showImport = false;
+            await ReloadCardsAsync();
+        }
+        catch (DomainException ex)
+        {
+            _importError = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
 
     /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>

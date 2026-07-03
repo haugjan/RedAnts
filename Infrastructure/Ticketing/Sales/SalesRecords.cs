@@ -99,13 +99,16 @@ public class MemberCardRecord
     [Column("Uuid")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(36)] [Index(IndexTypes.UniqueNonClustered)] public string Uuid { get; set; } = "";
     [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SeasonId { get; set; }
     [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
-    [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
+    // Member cards have no price (only season passes do). The legacy Price column is dropped by the
+    // AdjustMemberCardColumns migration on existing databases.
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
     [Column("FirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? FirstName { get; set; }
     [Column("LastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? LastName { get; set; }
     [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    // Optional import batch label (the reference entered when a CSV of members was imported).
+    [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
 }
 
 // One admission entitlement per (event, ticket). CheckedOutAt is gone; individual scans live in
