@@ -1,91 +1,115 @@
 @model RedAnts.Features.Ticketing.Tickets.WebTicketViewModel
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
-    ViewData["Title"] = Model.Found ? $"{Model.TypeLabel} – {Model.ScopeName}" : "Ticket";
+    // Standalone page: only the ticket, no site nav/footer/chrome (ideal for phone/wallet display).
+    Layout = null;
+    var title = Model.Found ? $"{Model.TypeLabel} – {Model.ScopeName}" : "Ticket";
 }
-
-<style>
-    .wt-wrap { max-width: 430px; margin: 1.5rem auto; }
-    .wt-card { background: #fff; border-radius: 16px; box-shadow: 0 6px 30px rgba(0,0,0,.10); overflow: hidden; }
-    .wt-head { background: var(--ra-red); color: #fff; padding: 1.1rem 1.4rem; }
-    .wt-head .wt-type { font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.35rem; }
-    .wt-head .wt-scope { opacity: .92; font-size: .95rem; margin-top: .15rem; }
-    .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1.1rem; padding: 1.2rem 1.4rem 0; }
-    .wt-logos img { height: 56px; width: auto; object-fit: contain; }
-    .wt-vs { font-family: var(--ra-display); font-weight: 700; text-transform: uppercase; color: #999; font-size: .9rem; }
-    .wt-qr { padding: 1.6rem 1.4rem 1rem; text-align: center; }
-    .wt-qr svg { width: 260px; max-width: 78%; height: auto; }
-    .wt-meta { padding: 0 1.4rem 1.4rem; }
-    .wt-row { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem 0; border-top: 1px solid #f0f0f0; font-size: .95rem; }
-    .wt-row .wt-k { color: #666; }
-    .wt-row .wt-v { font-weight: 600; text-align: right; }
-    .wt-badge { display: inline-block; padding: .18rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
-    .wt-badge.ok { background: #e7f6ec; color: #1a7f37; }
-    .wt-badge.no { background: #fdeaea; color: #b42318; }
-    .wt-note { text-align: center; color: #888; font-size: .82rem; margin: .6rem 0 1.2rem; }
-    .wt-empty { text-align: center; padding: 2.5rem 1.4rem; }
-</style>
-
-<div class="wt-wrap">
-    @if (!Model.Found)
-    {
-        <div class="wt-card">
-            <div class="wt-empty">
-                <h4 class="mb-2">Ticket ungültig</h4>
-                <p class="text-muted mb-0">Dieser Ticket-Link ist ungültig oder abgelaufen. Bitte den Link aus deiner Bestellbestätigung verwenden.</p>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="wt-card">
-            <div class="wt-head">
-                <div class="wt-type">@Model.TypeLabel</div>
-                <div class="wt-scope">@Model.ScopeName</div>
-            </div>
-
-            @if (!string.IsNullOrEmpty(Model.HomeLogo) || !string.IsNullOrEmpty(Model.AwayLogo))
-            {
-                <div class="wt-logos">
-                    @if (!string.IsNullOrEmpty(Model.HomeLogo)) { <img src="@Model.HomeLogo" alt="Heimteam" /> }
-                    <span class="wt-vs">vs</span>
-                    @if (!string.IsNullOrEmpty(Model.AwayLogo)) { <img src="@Model.AwayLogo" alt="Auswärtsteam" /> }
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root { --ra-red: #C8102E; --ra-display: 'Oswald', Impact, sans-serif; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; background: #f4f4f5; color: #101010;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            display: flex; align-items: center; justify-content: center; padding: 1.25rem;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wt-wrap { width: 100%; max-width: 430px; }
+        .wt-card { background: #fff; border-radius: 16px; box-shadow: 0 6px 30px rgba(0,0,0,.10); overflow: hidden; }
+        .wt-head { background: var(--ra-red); color: #fff; padding: 1.1rem 1.4rem; }
+        .wt-head .wt-type { font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.35rem; }
+        .wt-head .wt-scope { opacity: .92; font-size: .95rem; margin-top: .15rem; }
+        .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1.1rem; padding: 1.2rem 1.4rem 0; }
+        .wt-logos img { height: 56px; width: auto; object-fit: contain; }
+        .wt-vs { font-family: var(--ra-display); font-weight: 700; text-transform: uppercase; color: #999; font-size: .9rem; }
+        .wt-qr { padding: 1.6rem 1.4rem 1rem; text-align: center; }
+        .wt-qr svg { width: 260px; max-width: 78%; height: auto; }
+        .wt-meta { padding: 0 1.4rem 1.4rem; }
+        .wt-row { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem 0; border-top: 1px solid #f0f0f0; font-size: .95rem; }
+        .wt-row .wt-k { color: #666; }
+        .wt-row .wt-v { font-weight: 600; text-align: right; }
+        .wt-badge { display: inline-block; padding: .18rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+        .wt-badge.ok { background: #e7f6ec; color: #1a7f37; }
+        .wt-badge.no { background: #fdeaea; color: #b42318; }
+        .wt-note { text-align: center; color: #888; font-size: .82rem; margin: .6rem 0 1.2rem; }
+        .wt-empty { text-align: center; padding: 2.5rem 1.4rem; }
+        .wt-empty h1 { font-family: var(--ra-display); text-transform: uppercase; font-size: 1.4rem; margin: 0 0 .5rem; }
+        .wt-empty p { color: #888; margin: 0; font-size: .95rem; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="wt-wrap">
+        @if (!Model.Found)
+        {
+            <div class="wt-card">
+                <div class="wt-empty">
+                    <h1>Ticket ungültig</h1>
+                    <p>Dieser Ticket-Link ist ungültig oder abgelaufen. Bitte den Link aus deiner Bestellbestätigung verwenden.</p>
                 </div>
-            }
-
-            <div class="wt-qr">
-                @Html.Raw(Model.QrSvg)
             </div>
-            <div class="wt-note">Am Eingang scannen lassen</div>
-
-            <div class="wt-meta">
-                @if (!string.IsNullOrEmpty(Model.DateText))
-                {
-                    <div class="wt-row"><span class="wt-k">Datum</span><span class="wt-v">@Model.DateText</span></div>
-                }
-                @if (!string.IsNullOrEmpty(Model.CategoryLabel))
-                {
-                    <div class="wt-row"><span class="wt-k">Kategorie</span><span class="wt-v">@Model.CategoryLabel</span></div>
-                }
-                @if (!string.IsNullOrEmpty(Model.HolderName))
-                {
-                    <div class="wt-row"><span class="wt-k">Inhaber:in</span><span class="wt-v">@Model.HolderName</span></div>
-                }
-                <div class="wt-row">
-                    <span class="wt-k">Status</span>
-                    <span class="wt-v">
-                        @if (Model.Valid)
-                        {
-                            <span class="wt-badge ok">Gültig</span>
-                        }
-                        else
-                        {
-                            <span class="wt-badge no">Ungültig</span>
-                        }
-                    </span>
+        }
+        else
+        {
+            <div class="wt-card">
+                <div class="wt-head">
+                    <div class="wt-type">@Model.TypeLabel</div>
+                    <div class="wt-scope">@Model.ScopeName</div>
                 </div>
-                <div class="wt-row"><span class="wt-k">Ticket-Nr.</span><span class="wt-v">@Model.TicketRef</span></div>
+
+                @if (!string.IsNullOrEmpty(Model.HomeLogo) || !string.IsNullOrEmpty(Model.AwayLogo))
+                {
+                    <div class="wt-logos">
+                        @if (!string.IsNullOrEmpty(Model.HomeLogo)) { <img src="@Model.HomeLogo" alt="Heimteam" /> }
+                        <span class="wt-vs">vs</span>
+                        @if (!string.IsNullOrEmpty(Model.AwayLogo)) { <img src="@Model.AwayLogo" alt="Auswärtsteam" /> }
+                    </div>
+                }
+
+                <div class="wt-qr">
+                    @Html.Raw(Model.QrSvg)
+                </div>
+                <div class="wt-note">Am Eingang scannen lassen</div>
+
+                <div class="wt-meta">
+                    @if (!string.IsNullOrEmpty(Model.DateText))
+                    {
+                        <div class="wt-row"><span class="wt-k">Datum</span><span class="wt-v">@Model.DateText</span></div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.CategoryLabel))
+                    {
+                        <div class="wt-row"><span class="wt-k">Kategorie</span><span class="wt-v">@Model.CategoryLabel</span></div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.HolderName))
+                    {
+                        <div class="wt-row"><span class="wt-k">Inhaber:in</span><span class="wt-v">@Model.HolderName</span></div>
+                    }
+                    <div class="wt-row">
+                        <span class="wt-k">Status</span>
+                        <span class="wt-v">
+                            @if (Model.Valid)
+                            {
+                                <span class="wt-badge ok">Gültig</span>
+                            }
+                            else
+                            {
+                                <span class="wt-badge no">Ungültig</span>
+                            }
+                        </span>
+                    </div>
+                    <div class="wt-row"><span class="wt-k">Ticket-Nr.</span><span class="wt-v">@Model.TicketRef</span></div>
+                </div>
             </div>
-        </div>
-    }
-</div>
+        }
+    </div>
+</body>
+</html>
