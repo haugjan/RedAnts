@@ -1,5 +1,8 @@
+@using RedAnts.Domain.Ticketing.Sales
 @* Anlässe (events) administration: pick a season, list its events.
-   Read-only for now (catalog CRUD still happens in the Umbraco content tree). *@
+   Read-only for now (catalog CRUD still happens in the Umbraco content tree).
+   Column labels for the ticket types come from TicketType.DisplayName() (S2's canonical
+   naming) so the admin terminology stays consistent. *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
@@ -41,15 +44,15 @@
                         <th rowspan="2">Anlass</th>
                         <th rowspan="2">Status</th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
-                        <th rowspan="2" class="ta-num">Verkaufte<br />Einzeltickets</th>
+                        <th rowspan="2" class="ta-num">Verkaufte<br />@TicketType.EventTicket.DisplayName()</th>
                         <th colspan="5" class="ta-group">Eingelöste Zutritte</th>
                     </tr>
                     <tr>
-                        <th class="ta-num">Event&shy;tickets</th>
-                        <th class="ta-num">Saison-<br />Einzel</th>
-                        <th class="ta-num">Saison&shy;karten</th>
-                        <th class="ta-num">Mitglieder&shy;karten</th>
-                        <th class="ta-num">Neue<br />Berechtigte</th>
+                        <th class="ta-num">@TicketType.EventTicket.DisplayName()</th>
+                        <th class="ta-num">@TicketType.SeasonSingle.DisplayName()</th>
+                        <th class="ta-num">@TicketType.SeasonPass.DisplayName()</th>
+                        <th class="ta-num">@TicketType.MemberCard.DisplayName()</th>
+                        <th class="ta-num">@TicketType.FreeEntry.DisplayName()</th>
                     </tr>
                 </thead>
                 <tbody>
