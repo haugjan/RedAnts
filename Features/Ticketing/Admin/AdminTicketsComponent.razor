@@ -7,7 +7,7 @@
 
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.EventTicket.DisplayName()</h1>
-    <p class="ta-page-lead">Verkaufte Einzeleintritte eines Anlasses und ob sie eingelöst sind.</p>
+    <p class="ta-page-lead">Verkaufte Spieltickets eines Anlasses und ob sie eingelöst sind.</p>
 
     @if (_loading)
     {
@@ -49,6 +49,13 @@
                 </select>
             </div>
         </div>
+
+        @if (SelectedEventId > 0)
+        {
+            <div class="ta-toolbar">
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate">+ Ticket erstellen</button>
+            </div>
+        }
 
         @if (SelectedEventId <= 0)
         {
@@ -135,6 +142,36 @@
             </div>
         }
     }
+
+    @if (_showCreate)
+    {
+        <div class="ta-modal-backdrop" @onclick="CloseCreate">
+            <div class="ta-modal" @onclick:stopPropagation="true">
+                <h2 class="ta-modal-title">Ticket erstellen</h2>
+                <div class="ta-field">
+                    <label class="ta-label" for="newCategory">Kategorie</label>
+                    <select id="newCategory" class="ta-select" @bind="_newCategory">
+                        @foreach (var cat in Enum.GetValues<TicketCategory>())
+                        {
+                            <option value="@cat">@cat.DisplayName()</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="newPrice">Abgabepreis (CHF)</label>
+                    <input id="newPrice" type="number" step="0.05" min="0" class="ta-select" @bind="_newPrice" />
+                </div>
+                @if (_createError is not null)
+                {
+                    <p class="ta-modal-error">@_createError</p>
+                }
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate">Abbrechen</button>
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateTicketAsync">Erstellen</button>
+                </div>
+            </div>
+        </div>
+    }
 </section>
 
 <style>
@@ -194,6 +231,23 @@
     .ta-btn-ghost:hover { background: #f5f5f5; }
     .ta-btn-danger { background: #fff; color: #a3283a; border-color: #e2b9bf; }
     .ta-btn-danger:hover { background: #f6e2e4; }
+
+    .ta-toolbar { display: flex; justify-content: flex-end; margin: 0 0 1rem; }
+
+    .ta-modal-backdrop {
+        position: fixed; inset: 0; z-index: 1000;
+        background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+        padding: 1rem;
+    }
+    .ta-modal {
+        width: 100%; max-width: 380px; background: #fff;
+        border: 1px solid var(--ta-border); border-radius: 5px;
+        padding: 1.25rem 1.4rem 1.4rem; box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+    }
+    .ta-modal-title { margin: 0 0 1rem; font-size: 1.1rem; font-weight: 800; color: var(--ta-ink); }
+    .ta-modal .ta-field { margin: 0 0 1rem; }
+    .ta-modal-error { margin: 0 0 0.8rem; color: #a3283a; font-size: 0.85rem; }
+    .ta-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
 </style>
 
 @code {
@@ -210,6 +264,12 @@
 
     public int SelectedSeasonId { get; set; }
     public int SelectedEventId { get; set; }
+
+    // Ticket-Erstellung (Overlay): erfragt Kategorie + Abgabepreis für den gewählten Anlass.
+    private bool _showCreate;
+    private TicketCategory _newCategory = TicketCategory.Adult;
+    private decimal _newPrice;
+    private string? _createError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -236,6 +296,37 @@
         _tickets = SelectedEventId > 0
             ? (await Tickets.GetByEventAsync(SelectedEventId)).OrderBy(t => t.CreatedAt).ToList()
             : [];
+    }
+
+    private void OpenCreate()
+    {
+        _newCategory = TicketCategory.Adult;
+        _newPrice = 0m;
+        _createError = null;
+        _showCreate = true;
+    }
+
+    private void CloseCreate() => _showCreate = false;
+
+    /// <summary>Create a new event ticket for the selected event with the chosen category and sale price.
+    /// The domain enforces the invariants (event assigned, price not negative).</summary>
+    private async Task CreateTicketAsync()
+    {
+        if (SelectedEventId <= 0) { _createError = "Es ist kein Anlass gewählt."; return; }
+        if (_newPrice < 0) { _createError = "Der Abgabepreis darf nicht negativ sein."; return; }
+
+        try
+        {
+            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, null));
+        }
+        catch (DomainException ex)
+        {
+            _createError = ex.Message;
+            return;
+        }
+
+        _showCreate = false;
+        await ReloadTicketsAsync();
     }
 
     /// <summary>Admin override: mark a ticket as (un)redeemed without an actual scan. Only valid tickets
