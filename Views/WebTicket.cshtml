@@ -14,6 +14,7 @@
         "Freier Eintritt" => "free",
         _ => "spiel"
     };
+    var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -36,6 +37,8 @@
             -webkit-font-smoothing: antialiased;
         }
         .wt-wrap { width: 100%; max-width: 430px; }
+        .wt-brand { text-align: center; margin-bottom: 1rem; }
+        .wt-brand img { height: 54px; width: auto; }
         .wt-card { background: #fff; border-radius: 16px; box-shadow: 0 6px 30px rgba(0,0,0,.10); overflow: hidden; }
         .wt-head { background: var(--ra-red); color: #fff; padding: 1.1rem 1.4rem; }
         .wt-head .wt-type { font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.35rem; }
@@ -66,6 +69,7 @@
 </head>
 <body>
     <div class="wt-wrap">
+        <div class="wt-brand"><img src="@logoUrl" alt="Red Ants Winterthur" /></div>
         @if (!Model.Found)
         {
             <div class="wt-card">
