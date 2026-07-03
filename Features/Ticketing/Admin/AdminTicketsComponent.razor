@@ -86,7 +86,6 @@
                                 <td>@i</td>
                                 <td>@t.Category.DisplayName()</td>
                                 <td class="ta-num">CHF @t.Price.ToString("N2")</td>
-                                <td class="ta-mono">@ShortId(t.Uuid)</td>
                                 <td>
                                     @if (t.Status == TicketStatus.Cancelled)
                                     {
@@ -107,6 +106,7 @@
                                         <span class="ta-badge ta-badge-draft">Offen</span>
                                     }
                                 </td>
+                                <td class="ta-mono">@ShortId(t.Uuid)</td>
                                 <td class="ta-col-actions">
                                     <a class="ta-qr-link" href="/ticket/for/@t.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>

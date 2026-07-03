@@ -42,9 +42,9 @@
             <table class="ta-table">
                 <thead>
                     <tr>
+                        <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("name")'>Anlass <span class="ta-sort-ind">@Ind("name")</span></th>
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("date")'>Datum <span class="ta-sort-ind">@Ind("date")</span></th>
                         <th rowspan="2">Zeit</th>
-                        <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("name")'>Anlass <span class="ta-sort-ind">@Ind("name")</span></th>
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
@@ -67,9 +67,9 @@
                         var c = Counts(e.Id);
                         var links = Links(e.Id);
                         <tr>
+                            <td class="ta-cell-name">@e.Name</td>
                             <td>@e.Date.ToString("dd.MM.yyyy")</td>
                             <td>@e.StartTime.ToString("HH:mm")</td>
-                            <td class="ta-cell-name">@e.Name</td>
                             <td><span class="ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()">@StatusLabel(e.Status)</span></td>
                             <td class="ta-num">@QuotaLabel(Quota(e.Id))</td>
                             <td class="ta-num">@c.TotalRedeemed</td>

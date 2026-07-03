@@ -50,8 +50,8 @@
                     <thead>
                         <tr>
                             <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("count")'>Anzahl <span class="ta-sort-ind">@Ind("count")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
                             <th class="ta-num">Offen</th>
@@ -63,8 +63,8 @@
                         {
                             <tr>
                                 <td class="ta-cell-ref">@b.Reference</td>
-                                <td>@b.Category.DisplayName()</td>
                                 <td>@b.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@b.Category.DisplayName()</td>
                                 <td class="ta-num">@b.TicketCount</td>
                                 <td class="ta-num">@b.RedeemedCount</td>
                                 <td class="ta-num">@(b.TicketCount - b.RedeemedCount)</td>

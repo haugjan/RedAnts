@@ -51,12 +51,12 @@
                     <thead>
                         <tr>
                             <th class="ta-th-sort" @onclick='() => Sort("name")'>Inhaber:in <span class="ta-sort-ind">@Ind("name")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("birthday")'>Geburtsdatum <span class="ta-sort-ind">@Ind("birthday")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
-                            <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("birthday")'>Geburtsdatum <span class="ta-sort-ind">@Ind("birthday")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
                             <th>Karten-Nr.</th>
                             <th class="ta-col-actions"></th>
                         </tr>
@@ -69,16 +69,16 @@
                                     @if (c.HasName) { @c.HolderName }
                                     else { <span class="ta-muted">(ohne Name)</span> }
                                 </td>
-                                <td>@(c.Birthday?.ToString("dd.MM.yyyy") ?? "–")</td>
+                                <td>@c.CreatedAt.ToString("dd.MM.yyyy")</td>
                                 <td>@c.CategoryLabel</td>
-                                <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
                                 <td>
                                     <span class="ta-badge @(c.IsCancelled ? "ta-badge-cancelled" : "ta-badge-valid")">
                                         @(c.IsCancelled ? "Storniert" : "Gültig")
                                     </span>
                                 </td>
+                                <td>@(c.Birthday?.ToString("dd.MM.yyyy") ?? "–")</td>
                                 <td class="ta-num">@c.EventVisits</td>
-                                <td>@c.CreatedAt.ToString("dd.MM.yyyy")</td>
+                                <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
                                 <td><code class="ta-uuid">@ShortId(c.Uuid)</code></td>
                                 <td class="ta-col-actions">
                                     <a class="ta-qr-link" href="/ticket/for/@c.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">

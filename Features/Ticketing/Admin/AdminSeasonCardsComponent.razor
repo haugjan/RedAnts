@@ -43,13 +43,13 @@
                     <thead>
                         <tr>
                             <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Gekauft <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th>Zahlung</th>
                             <th>Bestell-Nr.</th>
-                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Gekauft <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th>Karten-Nr.</th>
                             <th class="ta-col-actions"></th>
                         </tr>
@@ -62,13 +62,13 @@
                                     @if (p.BuyerName is not null) { @p.BuyerName }
                                     else { <span class="ta-muted">(keine Bestellung)</span> }
                                 </td>
+                                <td>@p.CreatedAt.ToString("dd.MM.yyyy")</td>
                                 <td>@p.Category.DisplayName()</td>
                                 <td class="ta-num">CHF @p.Price.ToString("N2")</td>
                                 <td><span class="ta-badge ta-badge-@p.Status.ToString().ToLowerInvariant()">@StatusLabel(p.Status)</span></td>
                                 <td class="ta-num">@p.EventVisits</td>
                                 <td>@(p.PaymentState ?? "–")</td>
                                 <td>@(p.OrderNumber ?? "–")</td>
-                                <td>@p.CreatedAt.ToString("dd.MM.yyyy")</td>
                                 <td><code class="ta-uuid">@ShortId(p.Uuid)</code></td>
                                 <td class="ta-col-actions">
                                     <a class="ta-qr-link" href="/ticket/for/@p.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
