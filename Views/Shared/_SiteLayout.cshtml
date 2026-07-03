@@ -62,7 +62,7 @@
       <li>
         <a href="/warenkorb" class="nav-link nav-cart" aria-label="Warenkorb"
            style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">
-          Warenkorb@if (cartCount > 0) { <span class="nav-cart-badge">@cartCount</span> }
+          <span>Warenkorb</span>@if (cartCount > 0) { <span class="nav-cart-badge">@cartCount</span> }
         </a>
       </li>
     </ul>
@@ -78,7 +78,7 @@
       {
         <li><a href="@item.Url()">@item.Name</a></li>
       }
-      <li><a href="/warenkorb">Warenkorb@if (cartCount > 0) { <text> (@cartCount)</text> }</a></li>
+      <li><a href="/warenkorb"><span>Warenkorb</span>@if (cartCount > 0) { <text> (@cartCount)</text> }</a></li>
     </ul>
   </div>
 </nav>

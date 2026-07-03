@@ -6,8 +6,8 @@
    with their redemption status. Defaults to the current season and the next/today's event. *@
 
 <section class="ta-page">
-    <h1 class="ta-page-title">Tickets</h1>
-    <p class="ta-page-lead">Verkaufte Einzeltickets eines Anlasses und ob sie eingelöst sind.</p>
+    <h1 class="ta-page-title">@TicketType.EventTicket.DisplayName()</h1>
+    <p class="ta-page-lead">Verkaufte Einzeleintritte eines Anlasses und ob sie eingelöst sind.</p>
 
     @if (_loading)
     {
@@ -73,6 +73,7 @@
                             <th>Ticket-ID</th>
                             <th>Status</th>
                             <th>Eingelöst</th>
+                            <th class="ta-actions-head">Aktionen</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -102,6 +103,28 @@
                                     else
                                     {
                                         <span class="ta-badge ta-badge-draft">Offen</span>
+                                    }
+                                </td>
+                                <td class="ta-actions">
+                                    @if (t.Status == TicketStatus.Valid)
+                                    {
+                                        @if (t.Redeemed)
+                                        {
+                                            <button type="button" class="ta-btn ta-btn-ghost"
+                                                    @onclick="() => SetRedeemedAsync(t, false)">Einlösung zurücksetzen</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="ta-btn ta-btn-primary"
+                                                    @onclick="() => SetRedeemedAsync(t, true)">Einlösen</button>
+                                        }
+                                        <button type="button" class="ta-btn ta-btn-danger"
+                                                @onclick="() => SetStatusAsync(t, TicketStatus.Cancelled)">Stornieren</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="ta-btn ta-btn-ghost"
+                                                @onclick="() => SetStatusAsync(t, TicketStatus.Valid)">Reaktivieren</button>
                                     }
                                 </td>
                             </tr>
@@ -157,6 +180,20 @@
     .ta-badge-redeemed { background: #e2eefb; color: #1c5aa3; }
     .ta-badge-draft { background: #efefef; color: #666; }
     .ta-badge-closed { background: #f6e2e4; color: #a3283a; }
+
+    .ta-table th.ta-actions-head, .ta-table td.ta-actions { text-align: right; }
+    .ta-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap; }
+    .ta-btn {
+        font-family: var(--ta-font); font-size: 0.78rem; font-weight: 700; line-height: 1;
+        padding: 0.4rem 0.7rem; border-radius: 3px; border: 1px solid transparent;
+        cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
+    }
+    .ta-btn-primary { background: var(--ta-accent, #1c5aa3); color: #fff; }
+    .ta-btn-primary:hover { filter: brightness(0.94); }
+    .ta-btn-ghost { background: #fff; color: var(--ta-ink); border-color: var(--ta-border); }
+    .ta-btn-ghost:hover { background: #f5f5f5; }
+    .ta-btn-danger { background: #fff; color: #a3283a; border-color: #e2b9bf; }
+    .ta-btn-danger:hover { background: #f6e2e4; }
 </style>
 
 @code {
@@ -200,6 +237,28 @@
             ? (await Tickets.GetByEventAsync(SelectedEventId)).OrderBy(t => t.CreatedAt).ToList()
             : [];
     }
+
+    /// <summary>Admin override: mark a ticket as (un)redeemed without an actual scan. Only valid tickets
+    /// can be redeemed, mirroring the domain rule; a cancelled ticket is never redeemed.</summary>
+    private async Task SetRedeemedAsync(EventTicket t, bool redeemed)
+    {
+        if (redeemed && t.Status != TicketStatus.Valid) return;
+        await Tickets.SaveAsync(Rebuild(t, t.Status, redeemed));
+        await ReloadTicketsAsync();
+    }
+
+    /// <summary>Admin override: change a ticket's status. Cancelling also clears its redemption so the
+    /// two flags stay consistent (a cancelled ticket cannot be redeemed).</summary>
+    private async Task SetStatusAsync(EventTicket t, TicketStatus status)
+    {
+        var redeemed = status == TicketStatus.Valid && t.Redeemed;
+        await Tickets.SaveAsync(Rebuild(t, status, redeemed));
+        await ReloadTicketsAsync();
+    }
+
+    private static EventTicket Rebuild(EventTicket t, TicketStatus status, bool redeemed) =>
+        EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, t.Price,
+            t.OrderId, status, t.CreatedAt, redeemed);
 
     /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)

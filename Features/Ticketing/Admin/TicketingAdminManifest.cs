@@ -59,5 +59,9 @@ public sealed class TicketingAdminManifestReader : IPackageManifestReader
 public sealed class TicketingAdminComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddSingleton<IPackageManifestReader, TicketingAdminManifestReader>();
+    {
+        builder.Services.AddSingleton<IPackageManifestReader, TicketingAdminManifestReader>();
+        // Per-circuit shared UI state for the Blazor admin app (remembers the selected season across tabs).
+        builder.Services.AddScoped<TicketingAdminState>();
+    }
 }

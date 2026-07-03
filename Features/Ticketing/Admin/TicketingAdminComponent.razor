@@ -1,6 +1,9 @@
+@using RedAnts.Domain.Ticketing.Sales
+
 @* Root of the backoffice "Ticketing" admin app, shown inside the single section-dashboard iframe.
    Tabs are in-app state (no Blazor Router / native dashboards) — this fills the section content
-   reliably. Styled to match the Umbraco backoffice (Lato, navy bar, blue active indicator). *@
+   reliably. Styled to match the Umbraco backoffice (Lato, navy bar, blue active indicator).
+   Ticket-type tab labels come from TicketType.DisplayName() so the naming stays unified. *@
 
 <div class="ta-app">
     <nav class="ta-subnav">
@@ -93,11 +96,13 @@
 
     private string _tab = "events";
 
+    // "events" is the event catalog, not a ticket type, so it keeps its own label. The ticket-type
+    // tabs pull their label from TicketType.DisplayName() to keep the admin naming in one place.
     private static readonly (string Key, string Label)[] Tabs =
     [
         ("events", "Anlässe"),
-        ("tickets", "Tickets"),
-        ("seasoncards", "Saisonkarten"),
-        ("membercards", "Mitgliederkarten")
+        ("tickets", TicketType.EventTicket.DisplayName()),
+        ("seasoncards", TicketType.SeasonPass.DisplayName()),
+        ("membercards", TicketType.MemberCard.DisplayName())
     ];
 }
