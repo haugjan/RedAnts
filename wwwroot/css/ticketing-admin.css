@@ -101,6 +101,9 @@
 .ta-link-btn:hover:not(:disabled) { background: #eef6fc; border-color: var(--ta-border); }
 .ta-link-btn:disabled { opacity: 0.3; cursor: default; }
 .ta-links { white-space: nowrap; }
+/* QR / online-ticket link in the admin ticket lists (S3 route /ticket/for/{uuid}). */
+.ta-qr-link { color: var(--red, #C8102E); display: inline-flex; align-items: center; }
+.ta-qr-link:hover { opacity: 0.75; }
 
 /* --- Badges --- */
 .ta-badge { display: inline-block; padding: 0.12rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }

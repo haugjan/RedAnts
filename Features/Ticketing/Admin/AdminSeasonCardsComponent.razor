@@ -71,6 +71,9 @@
                                 <td>@p.CreatedAt.ToString("dd.MM.yyyy")</td>
                                 <td><code class="ta-uuid">@ShortId(p.Uuid)</code></td>
                                 <td class="ta-col-actions">
+                                    <a class="ta-qr-link" href="/ticket/for/@p.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                    </a>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(p)">✎</button>
                                 </td>
                             </tr>
