@@ -121,24 +121,16 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
     });
 }
 
-// --- Host-based landing for the two test subdomains ----------------------------------------------
-// scan.redants.ch → scanner (/scanntickets), tickets.redants.ch → public sales (/tickets). Both hosts
-// otherwise serve the whole app; only the bare root is redirected so each subdomain lands right.
+// --- Host-based landing for the scan subdomain ---------------------------------------------------
+// scan.redants.ch → scanner (/scanntickets). tickets.redants.ch serves the normal site: its root is the
+// homepage with the event list, which is the public sales entry, so it is left untouched.
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path == "/")
+    if (context.Request.Path == "/"
+        && context.Request.Host.Host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase))
     {
-        var host = context.Request.Host.Host;
-        if (host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase))
-        {
-            context.Response.Redirect("/scanntickets");
-            return;
-        }
-        if (host.StartsWith("tickets.", StringComparison.OrdinalIgnoreCase))
-        {
-            context.Response.Redirect("/tickets");
-            return;
-        }
+        context.Response.Redirect("/scanntickets");
+        return;
     }
     await next();
 });
