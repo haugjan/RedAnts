@@ -131,6 +131,7 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
@@ -149,7 +150,10 @@
 
         _counts = await AdmissionReport.GetCountsByEventAsync();
 
-        SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        // Prefer the season remembered across tabs; fall back to the current season on first use.
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await ReloadEventsAsync();
         _loading = false;
     }
@@ -159,6 +163,8 @@
 
     private async Task ReloadEventsAsync()
     {
+        // Remember the choice so the other tabs open on the same season.
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _events = SelectedSeasonId > 0
             ? await Events.GetBySeasonAsync(SelectedSeasonId)
             : [];
