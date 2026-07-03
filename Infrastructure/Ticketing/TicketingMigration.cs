@@ -75,7 +75,18 @@ public class AddFlexTicketBundles(IMigrationContext context) : AsyncMigrationBas
             Create.Table<FlexTicketBundleRecord>().Do();
 
         if (!ColumnExists("SeasonSingleTickets", "BundleId"))
-            Alter.Table("SeasonSingleTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
+        {
+            // SQLite supports ADD COLUMN, but Umbraco's Alter.Table builder rejects every ALTER on
+            // SQLite (NotSupportedException), which aborted this whole migration and left the dev schema
+            // without BundleId. Run the raw statement on SQLite; use the builder on other providers.
+            // (SQL Server prod is created fresh with the column already present, so its branch is only a
+            // theoretical fallback — this step is a no-op there because ColumnExists is true.)
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonSingleTickets ADD COLUMN BundleId INTEGER NULL").Do();
+            else
+                Alter.Table("SeasonSingleTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
+        }
 
         return Task.CompletedTask;
     }
