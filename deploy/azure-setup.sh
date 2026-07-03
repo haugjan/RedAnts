@@ -71,6 +71,10 @@ az webapp create \
   --resource-group "$RESOURCE_GROUP" --plan "$APP_PLAN" --name "$APP_NAME" \
   --runtime "DOTNETCORE:10.0"
 
+echo "==> Keep the app warm (Always On) so it does not cold-unload and serve the platform page"
+az webapp config set \
+  --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --always-on true --output none
+
 echo "==> Azure SQL server ($SQL_SERVER in $SQL_LOCATION)"
 az sql server create \
   --resource-group "$RESOURCE_GROUP" --name "$SQL_SERVER" \
