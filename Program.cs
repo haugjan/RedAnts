@@ -1,5 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.StaticFiles;
+using RedAnts.Features.Ticketing.Cart;
+using RedAnts.Infrastructure.Ticketing;
 
 // Swiss German as the default culture for all threads.
 // This makes Blazor @bind, implicit ToString() calls, and number/date parsing
@@ -51,6 +53,15 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
 
+// Guest shopping cart stored in the session.
+builder.Services.AddSession(options =>
+{
+    options.Cookie.Name = "RedAnts.Cart";
+    options.Cookie.IsEssential = true;
+    options.IdleTimeout = TimeSpan.FromDays(7);
+});
+builder.Services.AddScoped<ICartService, SessionCartService>();
+
 var umbracoBuilder = builder.CreateUmbracoBuilder()
     .AddBackOffice()
     .AddWebsite()
@@ -73,6 +84,9 @@ await app.BootUmbracoAsync();
 var staticFileContentTypes = new FileExtensionContentTypeProvider();
 staticFileContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
 app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = staticFileContentTypes });
+
+// Session must be available to the cart before the Umbraco/MVC endpoints run.
+app.UseSession();
 
 app.MapBlazorHub();
 app.MapRazorPages();

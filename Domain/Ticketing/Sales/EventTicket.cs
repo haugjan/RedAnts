@@ -1,69 +1,51 @@
 namespace RedAnts.Domain.Ticketing.Sales;
 
-/// <summary>A ticket for one specific event. Scannable, single admission with in/out at that event.</summary>
+/// <summary>A ticket for one specific event. Single admission; the actual in/out is tracked in
+/// TicketEventVisits (one visit row per event+ticket) with a log per scan. This entity only carries
+/// whether it has been redeemed at all.</summary>
 public sealed class EventTicket
 {
     public int Id { get; private set; }
     public Guid Uuid { get; private set; }
     public int EventId { get; private set; }
-    public string CategoryCode { get; private set; }
-    public string CategoryName { get; private set; }
+    public TicketCategory Category { get; private set; }
     public decimal Price { get; private set; }
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    public DateTime? CheckedInAt { get; private set; }
-    public DateTime? RedeemedAt { get; private set; }
-    public string? RedeemedBy { get; private set; }
+    /// <summary>True once the ticket has been admitted at its event (tracked in TicketEventVisits).</summary>
+    public bool Redeemed { get; private set; }
 
-    public bool IsInside => CheckedInAt is not null;
-
-    private EventTicket(int id, Guid uuid, int eventId, string categoryCode, string categoryName, decimal price,
-        int? orderId, TicketStatus status, DateTime createdAt, DateTime? checkedInAt, DateTime? redeemedAt, string? redeemedBy)
+    private EventTicket(int id, Guid uuid, int eventId, TicketCategory category, decimal price,
+        int? orderId, TicketStatus status, DateTime createdAt, bool redeemed)
     {
         Id = id;
         Uuid = uuid;
         EventId = eventId;
-        CategoryCode = categoryCode;
-        CategoryName = categoryName;
+        Category = category;
         Price = price;
         OrderId = orderId;
         Status = status;
         CreatedAt = createdAt;
-        CheckedInAt = checkedInAt;
-        RedeemedAt = redeemedAt;
-        RedeemedBy = redeemedBy;
+        Redeemed = redeemed;
     }
 
-    public static EventTicket Create(int eventId, string categoryCode, string categoryName, decimal price, int? orderId)
+    public static EventTicket Create(int eventId, TicketCategory category, decimal price, int? orderId)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
-        return new EventTicket(0, Guid.NewGuid(), eventId, categoryCode ?? "", categoryName ?? "",
-            decimal.Round(price, 2), orderId, TicketStatus.Valid, DateTime.UtcNow, null, null, null);
+        return new EventTicket(0, Guid.NewGuid(), eventId, category, decimal.Round(price, 2),
+            orderId, TicketStatus.Valid, DateTime.UtcNow, false);
     }
 
-    public static EventTicket FromPersistence(int id, Guid uuid, int eventId, string categoryCode, string categoryName,
-        decimal price, int? orderId, TicketStatus status, DateTime createdAt, DateTime? checkedInAt,
-        DateTime? redeemedAt, string? redeemedBy) =>
-        new(id, uuid, eventId, categoryCode ?? "", categoryName ?? "", price, orderId, status, createdAt,
-            checkedInAt, redeemedAt, redeemedBy);
+    public static EventTicket FromPersistence(int id, Guid uuid, int eventId, TicketCategory category,
+        decimal price, int? orderId, TicketStatus status, DateTime createdAt, bool redeemed) =>
+        new(id, uuid, eventId, category, price, orderId, status, createdAt, redeemed);
 
-    /// <summary>Scan-in at the ticket's event.</summary>
-    public void CheckIn(int eventId, string? scannedBy)
+    /// <summary>Mark the ticket as admitted at its event (on the first check-in).</summary>
+    public void Redeem()
     {
         if (Status != TicketStatus.Valid) throw new DomainException("Ticket ist ungültig.");
-        if (eventId != EventId) throw new DomainException("Ticket gilt nicht für diesen Anlass.");
-        if (IsInside) throw new DomainException("Ticket ist bereits eingecheckt.");
-        CheckedInAt = DateTime.UtcNow;
-        RedeemedAt ??= CheckedInAt;
-        RedeemedBy = scannedBy;
-    }
-
-    /// <summary>Scan-out (Auscannen). The ticket is available again for re-entry at the same event.</summary>
-    public void CheckOut()
-    {
-        if (!IsInside) throw new DomainException("Ticket ist nicht eingecheckt.");
-        CheckedInAt = null;
+        Redeemed = true;
     }
 }

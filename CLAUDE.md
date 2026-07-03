@@ -14,14 +14,24 @@ Public website plus a self-service ticketing application for Red Ants Winterthur
 
 Layered / ports-and-adapters, split into three top-level folders:
 
-- **`Domain/`** — pure domain models, enums, value objects, and `DomainException`. No framework or Umbraco dependencies. Currently `Domain/Ticketing/`.
-- **`Features/`** — application layer, organized by use case. `Features/Ticketing/Ports/` holds the interfaces (`CatalogPorts`, `TicketPorts`, `CrossCuttingPorts`); use-case folders (`Public/`, `Purchase/`) hold controllers and request/response models.
-- **`Infrastructure/`** — adapters that implement the ports and integrate with Umbraco and external services. Split by slice: `Shared/`, `Ticketing/`, `Website/`.
+- **`Domain/`** — pure domain models, enums, value objects, and `DomainException`. No framework or Umbraco dependencies. `Domain/Ticketing/` (catalog: `Event`, `Season`, `Venue`) and `Domain/Ticketing/Sales/` (`Order`, the ticket types, visits, pricing aggregates, enums).
+- **`Features/`** — application layer, organized by use case. `Features/Ticketing/Ports/` holds the interfaces (`CatalogPorts`, `SalesCatalogPorts`); use-case folders (`Public/`, `Cart/`, `Admin/`, `Scanning/`) hold controllers and Blazor components.
+- **`Infrastructure/`** — adapters that implement the ports and integrate with Umbraco and external services. Split by slice: `Shared/`, `Ticketing/` (with a `Sales/` sub-slice for the NPoco records/repositories), `Website/`.
 
 Two independent content slices coexist and must stay decoupled:
 
-1. **Ticketing** (`Infrastructure/Ticketing/`, `Features/Ticketing/`): events, seasons, single and season tickets, Payrexx payment, Brevo email, Turnstile captcha.
+1. **Ticketing** (`Infrastructure/Ticketing/`, `Features/Ticketing/`): events, seasons, event/season tickets, season passes, member cards, a guest cart, per-event/season pricing with quotas, admission scanning, Payrexx payment, Brevo email, Turnstile captcha.
 2. **Website** (`Infrastructure/Website/`, `Views/`): the public marketing site (FlexPage + block elements, adaptive navigation).
+
+## Ticketing data model
+
+Catalog entities (Season/Venue/Event) are Umbraco Document Types; sales, admissions, and pricing are NPoco tables created in one step by `CreateTicketingSchema` (`Infrastructure/Ticketing/TicketingMigration.cs`) — a fresh-install schema with no incremental steps, so recreating it means deleting the dev SQLite file. Full ER diagram + enum value tables live in `README.md`. Rules to follow when touching it:
+
+- **Persist enums as their integer value** (`Category`, `Status`, `PaymentMethod`, `TicketType`, `FreeEntryType`, visit-log `Type` are `int` columns). No `CategoryCode`/`CategoryName` in the DB; labels come from `TicketCategory.DisplayName()`.
+- **No FK constraints**; reference by id. `EventId`/`SeasonId` hold the Umbraco content node id.
+- Pricing: `EventPrices`/`SeasonPrices` are 0..1 per node with n category rows (`Category`, `SalePrice`, `Quota?`); `EventPrices` also holds `TotalSalesQuota` + `AdmissionQuota`.
+- Admissions: one `TicketEventVisits` row per `(event, ticket)` (no `CheckedOutAt`); in/out scans go to `TicketEventVisitsLogs`; free-entry persons use `TicketType = FreeEntry` + `TicketEventFreeEntries`.
+- NPoco async calls (`FetchAsync`/`ExecuteAsync`) need `using NPoco;`.
 
 ## Content types are code-first
 

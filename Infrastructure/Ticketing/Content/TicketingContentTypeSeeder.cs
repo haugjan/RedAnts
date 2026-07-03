@@ -49,7 +49,6 @@ public sealed class TicketingContentTypeSeeder(
         {
             EnsureContentTypes();
             EnsureSampleContent();
-            RemoveObsoleteEventProperties();
             RefreshAccessLinks();
         }
         catch (Exception ex)
@@ -78,37 +77,6 @@ public sealed class TicketingContentTypeSeeder(
                     item.Name, item.GetValue<string>(A.PublicLink));
             }
         }
-    }
-
-    // Idempotent cleanup: drop the obsolete free-text "Interner Link" (internalLink) property from the
-    // event type on databases created before it was removed. Runs every boot; only saves when present.
-    private void RemoveObsoleteEventProperties()
-    {
-        // Obsolete event properties on databases created before they were removed:
-        // internalLink (free-text link) and the fixed decimal price fields / the short-lived
-        // "salesPrices" Block List (pricing was moved out of the catalog entirely).
-        RemoveObsoleteProperties(A.EventType,
-            "internalLink", "priceChild", "priceYouth", "priceAdult", "salesPrices");
-        // The short-lived "salesPrices" Block List also existed on the season type.
-        RemoveObsoleteProperties(A.SeasonType, "salesPrices");
-    }
-
-    // Idempotent: drops the given property aliases from a content type if present. Runs every boot;
-    // only saves when at least one property was actually removed.
-    private void RemoveObsoleteProperties(string contentTypeAlias, params string[] aliases)
-    {
-        var contentType = contentTypeService.Get(contentTypeAlias);
-        if (contentType is null) return;
-
-        var removed = false;
-        foreach (var alias in aliases)
-        {
-            if (!contentType.PropertyTypeExists(alias)) continue;
-            contentType.RemovePropertyType(alias);
-            removed = true;
-            logger.LogInformation("TicketingContentTypeSeeder: removed obsolete '{Alias}' property from '{Type}'.", alias, contentTypeAlias);
-        }
-        if (removed) contentTypeService.Save(contentType, SuperUser);
     }
 
     private void EnsureContentTypes()
@@ -236,7 +204,6 @@ public sealed class TicketingContentTypeSeeder(
         openEvent.SetValue(A.EventStart, DateTime.Today.AddDays(21).AddHours(19).AddMinutes(30));
         openEvent.SetValue(A.EventVenue, venue.GetUdi().ToString());
         openEvent.SetValue(A.EventStatus, Status("Open"));
-        // Sales prices are added via the new "Preise Verkauf" Block List editor in the backoffice.
         Publish(openEvent);
 
         var internEvent = contentService.Create("Intern-Anlass (versteckt)", season.Id, A.EventType);

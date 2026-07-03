@@ -1,4 +1,5 @@
-@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inject RedAnts.Features.Ticketing.Ports.IEventPricing Pricing
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Features.Ticketing.Public
@@ -67,6 +68,32 @@
             margin: 2rem 0; padding: 1rem 1.25rem;
             background: #fdeaec; border-left: 4px solid var(--red); color: var(--ink);
         }
+        .evt-tickets { margin-top: 2.75rem; }
+        .evt-tickets h2 {
+            font-family: var(--display); text-transform: uppercase;
+            font-size: 1.9rem; letter-spacing: 0.03em; margin-bottom: 0.75rem;
+        }
+        .evt-cat {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid #eee; flex-wrap: wrap;
+        }
+        .evt-cat__name { font-weight: 700; }
+        .evt-cat__price { color: var(--ink-light); margin-left: 0.5rem; font-weight: 400; }
+        .evt-cat form { display: flex; align-items: center; gap: 0.5rem; }
+        .evt-cat input[type=number] {
+            width: 4.5rem; padding: 0.45rem; border: 1px solid #ccc; border-radius: 4px; font: inherit;
+        }
+        .evt-addbtn {
+            font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
+            font-weight: 600; font-size: 1rem; background: var(--red); color: #fff; border: none;
+            padding: 0.5rem 1.15rem; cursor: pointer; transition: background 0.15s;
+        }
+        .evt-addbtn:hover { background: var(--red-dark); }
+        .evt-empty { color: var(--ink-light); }
+        .evt-soldout {
+            font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
+            font-weight: 600; font-size: 0.95rem; color: var(--ink-light);
+        }
     </style>
 }
 
@@ -104,6 +131,45 @@
             {
                 <div class="evt-text">@Html.Raw(text)</div>
             }
+
+            <div class="evt-tickets">
+                <h2>Tickets</h2>
+                @{
+                    var cats = await Pricing.GetAvailableAsync(Model.Id);
+                    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+                }
+                @if (cats.Count == 0)
+                {
+                    <p class="evt-empty">Für diesen Anlass sind aktuell keine Tickets verfügbar.</p>
+                }
+                else
+                {
+                    foreach (var cat in cats)
+                    {
+                        <div class="evt-cat">
+                            <div>
+                                <span class="evt-cat__name">@cat.Name</span>
+                                <span class="evt-cat__price">CHF @cat.Price.ToString("N2")</span>
+                            </div>
+                            @if (cat.Available)
+                            {
+                                <form method="post" action="/warenkorb/add">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="eventId" value="@Model.Id" />
+                                    <input type="hidden" name="category" value="@((int)cat.Category)" />
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                    <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
+                                    <button type="submit" class="evt-addbtn">In den Warenkorb</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="evt-soldout">Ausverkauft</span>
+                            }
+                        </div>
+                    }
+                }
+            </div>
         }
     </div>
 </main>

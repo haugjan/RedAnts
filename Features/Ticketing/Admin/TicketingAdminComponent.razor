@@ -1,9 +1,19 @@
-@* Root of the backoffice "Ticketing" admin app, shown inside a section-dashboard iframe.
-   The sub-navigation is NOT rendered here: each tab is its own native Umbraco dashboard, so the
-   backoffice tab bar drives navigation and the browser URL. This component only renders the single
-   tab it was opened with (passed as ?tab= → Tab), keeping every tab deep-linkable. *@
+@* Root of the backoffice "Ticketing" admin app, shown inside the single section-dashboard iframe.
+   Tabs are in-app state (no Blazor Router / native dashboards) — this fills the section content
+   reliably. Styled to match the Umbraco backoffice (Lato, navy bar, blue active indicator). *@
 
 <div class="ta-app">
+    <nav class="ta-subnav">
+        @foreach (var t in Tabs)
+        {
+            <button type="button"
+                    class="ta-subnav-btn @(_tab == t.Key ? "active" : "")"
+                    @onclick="() => _tab = t.Key">
+                @t.Label
+            </button>
+        }
+    </nav>
+
     <main class="ta-content">
         @switch (_tab)
         {
@@ -42,6 +52,25 @@
         background: #f4f4f4;
     }
 
+    /* Sub-navigation bar, flush under the Umbraco section nav and in the same navy. */
+    .ta-subnav {
+        display: flex; align-items: stretch; flex-wrap: wrap;
+        padding: 0 0.5rem;
+        background: var(--ta-nav);
+        flex-shrink: 0;
+    }
+    .ta-subnav-btn {
+        appearance: none; background: none; border: none; cursor: pointer;
+        font-family: var(--ta-font);
+        font-size: 0.9rem; font-weight: 500;
+        color: rgba(255, 255, 255, 0.7);
+        padding: 0.8rem 1.1rem;
+        border-bottom: 3px solid transparent;
+        transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .ta-subnav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+    .ta-subnav-btn.active { color: #fff; border-bottom-color: var(--ta-accent); }
+
     .ta-content { padding: 1.75rem 1.5rem 3rem; max-width: 1100px; flex: 1; }
 
     .ta-page-title {
@@ -60,10 +89,13 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "admin";
 
-    /// <summary>Which tab to render; set from the iframe's <c>?tab=</c> (native dashboard pathname).</summary>
-    [Parameter] public string Tab { get; set; } = "events";
-
     private string _tab = "events";
 
-    protected override void OnParametersSet() => _tab = Tab;
+    private static readonly (string Key, string Label)[] Tabs =
+    [
+        ("events", "Anlässe"),
+        ("tickets", "Tickets"),
+        ("seasoncards", "Saisonkarten"),
+        ("membercards", "Mitgliederkarten")
+    ];
 }

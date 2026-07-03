@@ -32,27 +32,47 @@
         }
         else
         {
+            <div class="ta-table-wrap">
             <table class="ta-table">
                 <thead>
                     <tr>
-                        <th>Datum</th>
-                        <th>Zeit</th>
-                        <th>Anlass</th>
-                        <th>Status</th>
+                        <th rowspan="2">Datum</th>
+                        <th rowspan="2">Zeit</th>
+                        <th rowspan="2">Anlass</th>
+                        <th rowspan="2">Status</th>
+                        <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
+                        <th rowspan="2" class="ta-num">Verkaufte<br />Einzeltickets</th>
+                        <th colspan="5" class="ta-group">Eingelöste Zutritte</th>
+                    </tr>
+                    <tr>
+                        <th class="ta-num">Event&shy;tickets</th>
+                        <th class="ta-num">Saison-<br />Einzel</th>
+                        <th class="ta-num">Saison&shy;karten</th>
+                        <th class="ta-num">Mitglieder&shy;karten</th>
+                        <th class="ta-num">Neue<br />Berechtigte</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var e in _events)
                     {
+                        var c = Counts(e.Id);
                         <tr>
                             <td>@e.Date.ToString("dd.MM.yyyy")</td>
                             <td>@e.StartTime.ToString("HH:mm")</td>
                             <td class="ta-cell-name">@e.Name</td>
                             <td><span class="ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()">@StatusLabel(e.Status)</span></td>
+                            <td class="ta-num ta-muted" title="Spalte folgt">–</td>
+                            <td class="ta-num">@c.SoldSingleTickets</td>
+                            <td class="ta-num">@c.RedeemedEventTickets</td>
+                            <td class="ta-num">@c.RedeemedSeasonSingleTickets</td>
+                            <td class="ta-num">@c.RedeemedSeasonPasses</td>
+                            <td class="ta-num">@c.RedeemedMemberCards</td>
+                            <td class="ta-num ta-muted" title="Spalte folgt">–</td>
                         </tr>
                     }
                 </tbody>
             </table>
+            </div>
         }
     }
 </section>
@@ -71,26 +91,30 @@
     .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
     .ta-muted-text { color: var(--ta-muted); }
 
+    .ta-table-wrap { overflow-x: auto; }
     .ta-table {
         width: 100%; border-collapse: collapse; background: #fff;
         border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
     }
+    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ta-table th.ta-group { text-align: center; text-transform: uppercase; border-left: 1px solid var(--ta-border); }
+    .ta-table td.ta-muted { color: #c2c2c2; }
     .ta-table th {
-        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.03em; color: var(--ta-muted);
-        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
+        text-align: left; font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.02em; color: var(--ta-muted); line-height: 1.2;
+        padding: 6px 8px; background: #fafafa; border-bottom: 1px solid var(--ta-border);
     }
     .ta-table td {
-        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2;
+        padding: 6px 8px; font-size: 0.8rem; border-bottom: 1px solid #f2f2f2;
         white-space: nowrap;
     }
     .ta-table tr:last-child td { border-bottom: none; }
     .ta-table tbody tr:hover { background: #fafbfc; }
-    .ta-cell-name { white-space: normal; font-weight: 500; }
+    .ta-cell-name { white-space: normal; font-weight: 500; min-width: 150px; }
 
     .ta-badge {
-        display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700;
+        display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px;
+        font-size: 0.68rem; font-weight: 700; white-space: nowrap;
     }
     .ta-badge-open { background: #e4f4ea; color: #1c7c43; }
     .ta-badge-draft { background: #efefef; color: #666; }
@@ -103,10 +127,13 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<Event> _events = [];
+    private IReadOnlyDictionary<int, EventAdmissionCounts> _counts =
+        new Dictionary<int, EventAdmissionCounts>();
 
     public int SelectedSeasonId { get; set; }
 
@@ -117,10 +144,15 @@
             .OrderByDescending(s => s.StartDate)
             .ToList();
 
+        _counts = await AdmissionReport.GetCountsByEventAsync();
+
         SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await ReloadEventsAsync();
         _loading = false;
     }
+
+    private EventAdmissionCounts Counts(int eventId) =>
+        _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
 
     private async Task ReloadEventsAsync()
     {

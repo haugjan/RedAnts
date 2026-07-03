@@ -22,13 +22,18 @@ set -euo pipefail
 # ── Configuration (adjust as needed) ─────────────────────────────────────────
 SUBSCRIPTION="fdf0cdfa-61ef-409f-aa8b-bb0c6a306e3b"
 RESOURCE_GROUP="RG_RedAnts"
-LOCATION="ukwest"
+LOCATION="ukwest"            # App Service region (cheap Linux B1 works here)
+SQL_LOCATION="francecentral" # Azure SQL region — UK West/North Europe/West Europe refuse new SQL
+                             # servers for this subscription; France Central accepts them.
+                             # Cross-region app->DB within Europe is fine.
 
 APP_PLAN="asp-redants"
 APP_NAME="app-redants"          # globally unique -> https://<APP_NAME>.azurewebsites.net
 PLAN_SKU="B1"                   # B1 = Basic (Linux); cheap. Available in UK West.
 
-SQL_SERVER="sql-redants"        # globally unique -> <SQL_SERVER>.database.windows.net
+SQL_SERVER="sql-redants-fc"     # globally unique -> <SQL_SERVER>.database.windows.net
+                                # (-fc: the plain 'sql-redants' name got locked to UK West by a
+                                #  failed create; a fresh name avoids the region-lock conflict)
 SQL_DB="sqldb-redants"
 SQL_ADMIN="redantsadmin"
 SQL_SKU="S0"                    # S0 = 10 DTU; adjust to taste (Basic/S1/GP_S_Gen5_1 ...)
@@ -63,10 +68,10 @@ az webapp create \
   --resource-group "$RESOURCE_GROUP" --plan "$APP_PLAN" --name "$APP_NAME" \
   --runtime "DOTNETCORE:10.0"
 
-echo "==> Azure SQL server ($SQL_SERVER)"
+echo "==> Azure SQL server ($SQL_SERVER in $SQL_LOCATION)"
 az sql server create \
   --resource-group "$RESOURCE_GROUP" --name "$SQL_SERVER" \
-  --location "$LOCATION" --admin-user "$SQL_ADMIN" --admin-password "$SQL_PASS"
+  --location "$SQL_LOCATION" --admin-user "$SQL_ADMIN" --admin-password "$SQL_PASS"
 
 echo "==> Allow Azure services to reach the SQL server"
 az sql server firewall-rule create \

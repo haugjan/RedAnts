@@ -1,9 +1,11 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inject RedAnts.Features.Ticketing.Cart.ICartService Cart
 @using System.Linq
 @using Umbraco.Cms.Core.Models.PublishedContent
 @{
     // The public homepage is the first flexPage at the content root; nav lists its flexPage children.
     var home = Umbraco.ContentAtRoot()?.FirstOrDefault(c => c.ContentType.Alias == "flexPage");
+    var cartCount = Cart.Get().TotalQuantity;
     var navPages = home?.Children()?
         .Where(c => c.ContentType.Alias == "flexPage" && c.IsPublished())
         .ToList() ?? new List<IPublishedContent>();
@@ -30,6 +32,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/site.css?v=2" />
+  <style>
+    .nav-cart { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .nav-cart-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem;
+      border-radius: 999px; background: var(--red); color: #fff;
+      font-family: Verdana, sans-serif; font-size: 0.72rem; font-weight: 700; line-height: 1;
+    }
+  </style>
   @RenderSection("Head", required: false)
 </head>
 <body>
@@ -48,6 +59,12 @@
         <li><a href="@item.Url()" class="nav-link @(isActive ? "is-active" : "")"
                style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">@item.Name</a></li>
       }
+      <li>
+        <a href="/warenkorb" class="nav-link nav-cart" aria-label="Warenkorb"
+           style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">
+          Warenkorb@if (cartCount > 0) { <span class="nav-cart-badge">@cartCount</span> }
+        </a>
+      </li>
     </ul>
     <button class="nav-toggle" id="navToggle" aria-label="Navigation">
       <svg width="22" height="18" fill="none" stroke="@(transparentNav ? "white" : "currentColor")" stroke-width="2" stroke-linecap="square" id="navToggleIcon">
@@ -61,6 +78,7 @@
       {
         <li><a href="@item.Url()">@item.Name</a></li>
       }
+      <li><a href="/warenkorb">Warenkorb@if (cartCount > 0) { <text> (@cartCount)</text> }</a></li>
     </ul>
   </div>
 </nav>

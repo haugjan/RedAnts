@@ -1,12 +1,173 @@
-@* Placeholder — Saisonkarten (season tickets) administration. To be implemented. *@
+@* Saisonkarten (season passes) admin: pick a season, list its passes with the key info. *@
+@inject ISeasonPassAdminReport Report
+
 <section class="ta-page">
     <h1 class="ta-page-title">Saisonkarten</h1>
-    <p class="ta-page-lead">Verwaltung der Saisonkarten.</p>
-    <div class="ta-placeholder">
-        Platzhalter-Inhalt für „Saisonkarten". Hier entstehen später Übersicht und Bearbeitung der Saisonkarten.
-    </div>
+    <p class="ta-page-lead">Ausgestellte Saisonkarten einer Saison mit Käufer, Kategorie und Eventbesuchen.</p>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-field">
+            <label class="ta-label" for="spSeasonSelect">Saison</label>
+            <select id="spSeasonSelect" class="ta-select"
+                    @bind="SelectedSeasonId" @bind:after="ReloadPassesAsync">
+                @foreach (var s in _seasons)
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            </select>
+        </div>
+
+        @if (_passes.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Saisonkarten ausgestellt.</div>
+        }
+        else
+        {
+            <p class="ta-count">@_passes.Count Saisonkarte@(_passes.Count == 1 ? "" : "n") · Total CHF @_passes.Sum(p => p.Price).ToString("N2")</p>
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Käufer:in</th>
+                            <th>Kategorie</th>
+                            <th class="ta-num">Preis</th>
+                            <th>Status</th>
+                            <th class="ta-num">Event&shy;besuche</th>
+                            <th>Zahlung</th>
+                            <th>Bestell-Nr.</th>
+                            <th>Gekauft</th>
+                            <th>Karten-Nr.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _passes)
+                        {
+                            <tr>
+                                <td class="ta-cell-name">
+                                    @if (p.BuyerName is not null)
+                                    {
+                                        @p.BuyerName
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">(keine Bestellung)</span>
+                                    }
+                                </td>
+                                <td>@p.CategoryName</td>
+                                <td class="ta-num">CHF @p.Price.ToString("N2")</td>
+                                <td>
+                                    <span class="ta-badge ta-badge-@p.Status.ToLowerInvariant()">@StatusLabel(p.Status)</span>
+                                </td>
+                                <td class="ta-num">@p.EventVisits</td>
+                                <td>@(p.PaymentState ?? "–")</td>
+                                <td>@(p.OrderNumber ?? "–")</td>
+                                <td>@p.CreatedAt.ToString("dd.MM.yyyy")</td>
+                                <td><code class="ta-uuid">@ShortId(p.Uuid)</code></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
 </section>
+
+<style>
+    .ta-field { margin: 0 0 1.5rem; max-width: 360px; }
+    .ta-label {
+        display: block; margin-bottom: 0.35rem;
+        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
+    }
+    .ta-select {
+        width: 100%; padding: 0.5rem 0.6rem;
+        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
+        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
+    }
+    .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
+    .ta-muted-text { color: var(--ta-muted); }
+    .ta-count { color: var(--ta-muted); font-size: 0.85rem; margin: 0 0 0.6rem; }
+
+    .ta-table-wrap { overflow-x: auto; }
+    .ta-table {
+        width: 100%; border-collapse: collapse; background: #fff;
+        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
+    }
+    .ta-table th {
+        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.03em; color: var(--ta-muted); line-height: 1.2;
+        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
+    }
+    .ta-table td {
+        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2;
+        white-space: nowrap; vertical-align: middle;
+    }
+    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; }
+    .ta-table tr:last-child td { border-bottom: none; }
+    .ta-table tbody tr:hover { background: #fafbfc; }
+    .ta-cell-name { white-space: normal; font-weight: 500; }
+    .ta-muted { color: #b5b5b5; }
+    .ta-uuid { font-size: 0.8rem; color: var(--ta-muted); }
+
+    .ta-badge {
+        display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+        font-size: 0.75rem; font-weight: 700;
+    }
+    .ta-badge-valid { background: #e4f4ea; color: #1c7c43; }
+    .ta-badge-cancelled { background: #f6e2e4; color: #a3283a; }
+</style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<SeasonPassListItem> _passes = [];
+
+    public int SelectedSeasonId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync())
+            .OrderByDescending(s => s.StartDate)
+            .ToList();
+
+        SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await ReloadPassesAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadPassesAsync()
+    {
+        _passes = SelectedSeasonId > 0
+            ? await Report.GetBySeasonAsync(SelectedSeasonId)
+            : [];
+    }
+
+    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static string ShortId(Guid id) => id == Guid.Empty ? "–" : id.ToString()[..8];
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "Valid" => "Gültig",
+        "Cancelled" => "Storniert",
+        _ => status
+    };
 }

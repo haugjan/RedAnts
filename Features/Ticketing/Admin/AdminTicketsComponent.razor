@@ -1,12 +1,221 @@
-@* Placeholder — Tickets (single tickets) administration. To be implemented. *@
+@using RedAnts.Domain.Ticketing
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+
+@* Tickets administration: pick a season, then an event, and list its issued event tickets
+   with their redemption status. Defaults to the current season and the next/today's event. *@
+
 <section class="ta-page">
     <h1 class="ta-page-title">Tickets</h1>
-    <p class="ta-page-lead">Verwaltung der Einzeltickets.</p>
-    <div class="ta-placeholder">
-        Platzhalter-Inhalt für „Tickets". Hier entstehen später Übersicht und Bearbeitung der verkauften Einzeltickets.
-    </div>
+    <p class="ta-page-lead">Verkaufte Einzeltickets eines Anlasses und ob sie eingelöst sind.</p>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-filters">
+            <div class="ta-field">
+                <label class="ta-label" for="seasonSelect">Saison</label>
+                <select id="seasonSelect" class="ta-select"
+                        @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
+                    @foreach (var s in _seasons)
+                    {
+                        <option value="@s.Id">@s.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="eventSelect">Anlass</label>
+                <select id="eventSelect" class="ta-select" disabled="@(_events.Count == 0)"
+                        @bind="SelectedEventId" @bind:after="ReloadTicketsAsync">
+                    @if (_events.Count == 0)
+                    {
+                        <option value="0">— keine Anlässe —</option>
+                    }
+                    else
+                    {
+                        @foreach (var e in _events)
+                        {
+                            <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+
+        @if (SelectedEventId <= 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Anlässe erfasst.</div>
+        }
+        else if (_tickets.Count == 0)
+        {
+            <div class="ta-placeholder">Für diesen Anlass sind keine Tickets erfasst.</div>
+        }
+        else
+        {
+            <div class="ta-summary">
+                @_tickets.Count Tickets · @_tickets.Count(t => t.Redeemed) eingelöst · @_tickets.Count(t => !t.Redeemed) offen
+            </div>
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Nr.</th>
+                            <th>Kategorie</th>
+                            <th class="ta-num">Preis</th>
+                            <th>Ticket-ID</th>
+                            <th>Status</th>
+                            <th>Eingelöst</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var i = 1; }
+                        @foreach (var t in _tickets)
+                        {
+                            <tr>
+                                <td>@i</td>
+                                <td>@t.Category.DisplayName()</td>
+                                <td class="ta-num">CHF @t.Price.ToString("N2")</td>
+                                <td class="ta-mono">@ShortId(t.Uuid)</td>
+                                <td>
+                                    @if (t.Status == TicketStatus.Cancelled)
+                                    {
+                                        <span class="ta-badge ta-badge-closed">Storniert</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-badge ta-badge-open">Gültig</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (t.Redeemed)
+                                    {
+                                        <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-badge ta-badge-draft">Offen</span>
+                                    }
+                                </td>
+                            </tr>
+                            i++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
 </section>
+
+<style>
+    .ta-filters { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0 0 1.5rem; }
+    .ta-field { margin: 0; min-width: 240px; }
+    .ta-label {
+        display: block; margin-bottom: 0.35rem;
+        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
+    }
+    .ta-select {
+        width: 100%; padding: 0.5rem 0.6rem;
+        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
+        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
+    }
+    .ta-select:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
+    .ta-select:disabled { background: #f5f5f5; color: var(--ta-muted); }
+    .ta-muted-text { color: var(--ta-muted); }
+    .ta-summary { margin: 0 0 0.9rem; font-size: 0.9rem; color: var(--ta-muted); }
+
+    .ta-table-wrap { overflow-x: auto; }
+    .ta-table {
+        width: 100%; border-collapse: collapse; background: #fff;
+        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
+    }
+    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ta-table td.ta-mono { font-family: ui-monospace, "Consolas", monospace; color: var(--ta-muted); }
+    .ta-table th {
+        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.03em; color: var(--ta-muted);
+        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
+    }
+    .ta-table td {
+        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2; white-space: nowrap;
+    }
+    .ta-table tr:last-child td { border-bottom: none; }
+    .ta-table tbody tr:hover { background: #fafbfc; }
+
+    .ta-badge {
+        display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+        font-size: 0.75rem; font-weight: 700;
+    }
+    .ta-badge-open { background: #e4f4ea; color: #1c7c43; }
+    .ta-badge-redeemed { background: #e2eefb; color: #1c5aa3; }
+    .ta-badge-draft { background: #efefef; color: #666; }
+    .ta-badge-closed { background: #f6e2e4; color: #a3283a; }
+</style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private IEventTickets Tickets { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<Event> _events = [];
+    private IReadOnlyList<EventTicket> _tickets = [];
+
+    public int SelectedSeasonId { get; set; }
+    public int SelectedEventId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync())
+            .OrderByDescending(s => s.StartDate)
+            .ToList();
+
+        SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await OnSeasonChangedAsync();
+        _loading = false;
+    }
+
+    private async Task OnSeasonChangedAsync()
+    {
+        _events = SelectedSeasonId > 0
+            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
+            : [];
+        SelectedEventId = DefaultEvent(_events)?.Id ?? 0;
+        await ReloadTicketsAsync();
+    }
+
+    private async Task ReloadTicketsAsync()
+    {
+        _tickets = SelectedEventId > 0
+            ? (await Tickets.GetByEventAsync(SelectedEventId)).OrderBy(t => t.CreatedAt).ToList()
+            : [];
+    }
+
+    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    /// <summary>The next event (today's included, regardless of time); falls back to the most recent past one.</summary>
+    private static Event? DefaultEvent(IReadOnlyList<Event> events)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return events.FirstOrDefault(e => e.Date >= today)
+            ?? events.MaxBy(e => e.Date);
+    }
+
+    private static string ShortId(Guid uuid) => uuid.ToString()[..8];
 }
