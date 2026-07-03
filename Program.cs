@@ -90,6 +90,51 @@ WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
 
+// --- Live-test lockdown: HTTP Basic gate over everything ------------------------------------------
+// When BasicAuth:Username/Password are configured (live App Service settings), every request must
+// carry matching HTTP Basic credentials — backoffice, ticket links and webhooks included ("alles
+// dicht" for a closed test). Left unset locally, so development is unaffected. Soft gate, not real
+// security. Runs before static files so nothing is served unauthenticated.
+var basicUser = app.Configuration["BasicAuth:Username"];
+var basicPass = app.Configuration["BasicAuth:Password"];
+if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
+{
+    var expectedAuth = "Basic " + Convert.ToBase64String(
+        System.Text.Encoding.UTF8.GetBytes($"{basicUser}:{basicPass}"));
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Headers.Authorization.ToString() == expectedAuth)
+        {
+            await next();
+            return;
+        }
+        context.Response.Headers.WWWAuthenticate = "Basic realm=\"RedAnts\", charset=\"UTF-8\"";
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+    });
+}
+
+// --- Host-based landing for the two test subdomains ----------------------------------------------
+// scan.redants.ch → scanner (/scanntickets), tickets.redants.ch → public sales (/tickets). Both hosts
+// otherwise serve the whole app; only the bare root is redirected so each subdomain lands right.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/")
+    {
+        var host = context.Request.Host.Host;
+        if (host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Redirect("/scanntickets");
+            return;
+        }
+        if (host.StartsWith("tickets.", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Redirect("/tickets");
+            return;
+        }
+    }
+    await next();
+});
+
 // Ensure the PWA manifest is served with the correct MIME type (.webmanifest).
 var staticFileContentTypes = new FileExtensionContentTypeProvider();
 staticFileContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
