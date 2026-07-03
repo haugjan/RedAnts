@@ -79,8 +79,10 @@
 
 @if (_showCreate)
 {
-    <div class="ta-overlay" @onclick="CloseCreate">
-        <div class="ta-modal" @onclick:stopPropagation="true">
+    @* Close on backdrop mousedown (not click): a text selection that starts in the modal and is
+       released on the backdrop must NOT close the dialog. *@
+    <div class="ta-overlay" @onmousedown="CloseCreate">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Flexticket-Bundle erstellen</h2>
 
             <div class="ta-field">
