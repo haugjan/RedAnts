@@ -111,9 +111,7 @@ else
             }
             <div class="page-header-inner">
                 <h1 class="page-header-title">@Model.Name</h1>
-                <p class="page-header-date">
-                    @start.ToString("dd.MM.yyyy, HH:mm") Uhr@if (venue is not null) { <text> · @venue.Name</text> }
-                </p>
+                <p class="page-header-date">@(start.ToString("dd.MM.yyyy, HH:mm") + " Uhr" + (venue is not null ? " · " + venue.Name : ""))</p>
             </div>
         </section>
 
