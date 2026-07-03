@@ -1,0 +1,39 @@
+namespace RedAnts.Domain.Ticketing.Sales;
+
+/// <summary>A batch of Flextickets (season single-admission tickets) issued together and identified by a
+/// human reference (e.g. a printed booklet code). All Flextickets are always created as part of a bundle.
+/// The bundle carries the shared season, category and reference; the individual tickets live in
+/// SeasonSingleTickets and point back via <c>BundleId</c>. The reference is unique within a season.</summary>
+public sealed class FlexTicketBundle
+{
+    public const int ReferenceMaxLength = 50;
+
+    public int Id { get; private set; }
+    public int SeasonId { get; private set; }
+    public TicketCategory Category { get; private set; }
+    public string Reference { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+
+    private FlexTicketBundle(int id, int seasonId, TicketCategory category, string reference, DateTime createdAt)
+    {
+        Id = id;
+        SeasonId = seasonId;
+        Category = category;
+        Reference = reference;
+        CreatedAt = createdAt;
+    }
+
+    public static FlexTicketBundle Create(int seasonId, TicketCategory category, string reference)
+    {
+        if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
+        reference = (reference ?? "").Trim();
+        if (reference.Length == 0) throw new DomainException("Eine Referenz muss angegeben werden.");
+        if (reference.Length > ReferenceMaxLength)
+            throw new DomainException($"Die Referenz darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
+        return new FlexTicketBundle(0, seasonId, category, reference, DateTime.UtcNow);
+    }
+
+    public static FlexTicketBundle FromPersistence(int id, int seasonId, TicketCategory category,
+        string reference, DateTime createdAt) =>
+        new(id, seasonId, category, reference, createdAt);
+}

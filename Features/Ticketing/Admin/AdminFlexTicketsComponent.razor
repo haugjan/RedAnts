@@ -1,0 +1,295 @@
+@using RedAnts.Domain.Ticketing
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+
+@* Flextickets administration: Flextickets are always issued as bundles. Pick a season, list its
+   bundles (reference, category, size, redeemed) and create whole bundles via an overlay that asks for
+   category, reference and quantity (the season comes from the combobox). *@
+
+<section class="ta-page">
+    <h1 class="ta-page-title">@TicketType.SeasonSingle.DisplayName()</h1>
+    <p class="ta-page-lead">Flextickets werden immer als Bundle erstellt und bundle-weise angezeigt.</p>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-filters">
+            <div class="ta-field">
+                <label class="ta-label" for="seasonSelect">Saison</label>
+                <select id="seasonSelect" class="ta-select"
+                        @bind="SelectedSeasonId" @bind:after="ReloadBundlesAsync">
+                    @foreach (var s in _seasons)
+                    {
+                        <option value="@s.Id">@s.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="ta-toolbar">
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate">+ Bundle erstellen</button>
+        </div>
+
+        @if (_bundles.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Flexticket-Bundles erfasst.</div>
+        }
+        else
+        {
+            <div class="ta-summary">
+                @_bundles.Count Bundles · @_bundles.Sum(b => b.TicketCount) Flextickets · @_bundles.Sum(b => b.RedeemedCount) eingelöst
+            </div>
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Referenz</th>
+                            <th>Kategorie</th>
+                            <th>Erstellt</th>
+                            <th class="ta-num">Anzahl</th>
+                            <th class="ta-num">Eingelöst</th>
+                            <th class="ta-num">Offen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in _bundles)
+                        {
+                            <tr>
+                                <td class="ta-cell-ref">@b.Reference</td>
+                                <td>@b.Category.DisplayName()</td>
+                                <td>@b.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td class="ta-num">@b.TicketCount</td>
+                                <td class="ta-num">@b.RedeemedCount</td>
+                                <td class="ta-num">@(b.TicketCount - b.RedeemedCount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</section>
+
+@if (_showCreate)
+{
+    <div class="ta-overlay" @onclick="CloseCreate">
+        <div class="ta-modal" @onclick:stopPropagation="true">
+            <h2 class="ta-modal-title">Flexticket-Bundle erstellen</h2>
+
+            <div class="ta-field">
+                <label class="ta-label">Saison</label>
+                <div class="ta-readonly">@_selectedSeasonName</div>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="newCategory">Ticketkategorie</label>
+                <select id="newCategory" class="ta-select" @bind="_newCategory">
+                    @foreach (var c in Categories)
+                    {
+                        <option value="@c">@c.DisplayName()</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="newReference">Referenz</label>
+                <input id="newReference" class="ta-input" type="text" maxlength="50"
+                       placeholder="z. B. Charge 2026-A" @bind="_newReference" />
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
+                <input id="newQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_newQuantity" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_createError))
+            {
+                <div class="ta-error">@_createError</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_saving">
+                    @(_saving ? "Wird erstellt …" : "Bundle erstellen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .ta-filters { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0 0 1rem; }
+    .ta-field { margin: 0 0 0.9rem; min-width: 240px; }
+    .ta-label {
+        display: block; margin-bottom: 0.35rem;
+        font-size: 0.85rem; font-weight: 700; color: var(--ta-ink);
+    }
+    .ta-select, .ta-input {
+        width: 100%; padding: 0.5rem 0.6rem;
+        font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink);
+        background: #fff; border: 1px solid var(--ta-border); border-radius: 3px;
+    }
+    .ta-select:focus, .ta-input:focus { outline: none; border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
+    .ta-readonly { padding: 0.5rem 0.6rem; background: #f5f5f5; border: 1px solid var(--ta-border); border-radius: 3px; color: var(--ta-ink); }
+    .ta-muted-text { color: var(--ta-muted); }
+    .ta-summary { margin: 0 0 0.9rem; font-size: 0.9rem; color: var(--ta-muted); }
+    .ta-toolbar { margin: 0 0 1.1rem; }
+
+    .ta-table-wrap { overflow-x: auto; }
+    .ta-table {
+        width: 100%; border-collapse: collapse; background: #fff;
+        border: 1px solid var(--ta-border); border-radius: 3px; overflow: hidden;
+    }
+    .ta-table th.ta-num, .ta-table td.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ta-cell-ref { font-weight: 600; }
+    .ta-table th {
+        text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.03em; color: var(--ta-muted);
+        padding: 0.65rem 0.9rem; background: #fafafa; border-bottom: 1px solid var(--ta-border);
+    }
+    .ta-table td {
+        padding: 0.65rem 0.9rem; font-size: 0.9rem; border-bottom: 1px solid #f2f2f2; white-space: nowrap;
+    }
+    .ta-table tr:last-child td { border-bottom: none; }
+    .ta-table tbody tr:hover { background: #fafbfc; }
+
+    .ta-btn {
+        font-family: var(--ta-font); font-size: 0.85rem; font-weight: 700; line-height: 1;
+        padding: 0.5rem 0.9rem; border-radius: 3px; border: 1px solid transparent;
+        cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
+    }
+    .ta-btn:disabled { opacity: 0.6; cursor: default; }
+    .ta-btn-primary { background: var(--ta-accent, #1c5aa3); color: #fff; }
+    .ta-btn-primary:hover { filter: brightness(0.94); }
+    .ta-btn-ghost { background: #fff; color: var(--ta-ink); border-color: var(--ta-border); }
+    .ta-btn-ghost:hover { background: #f5f5f5; }
+
+    .ta-overlay {
+        position: fixed; inset: 0; background: rgba(27, 38, 79, 0.45);
+        display: flex; align-items: flex-start; justify-content: center;
+        padding: 4rem 1rem; z-index: 1000;
+    }
+    .ta-modal {
+        background: #fff; border-radius: 4px; width: 100%; max-width: 440px;
+        padding: 1.5rem 1.5rem 1.25rem; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    }
+    .ta-modal-title { font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 1.1rem; }
+    .ta-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.25rem; }
+    .ta-error {
+        margin: 0.25rem 0 0; padding: 0.55rem 0.7rem; border-radius: 3px;
+        background: #f6e2e4; color: #a3283a; font-size: 0.85rem;
+    }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<FlexTicketBundleView> _bundles = [];
+
+    public int SelectedSeasonId { get; set; }
+    private string _selectedSeasonName = "";
+
+    // Create-overlay state
+    private bool _showCreate;
+    private bool _saving;
+    private string? _createError;
+    private TicketCategory _newCategory = TicketCategory.Adult;
+    private string _newReference = "";
+    private int _newQuantity = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync())
+            .OrderByDescending(s => s.StartDate)
+            .ToList();
+
+        // Remember the season across tabs (shared per-circuit state); fall back to the current season.
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+
+        await ReloadBundlesAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadBundlesAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
+        _bundles = SelectedSeasonId > 0
+            ? await Bundles.GetBySeasonAsync(SelectedSeasonId)
+            : [];
+    }
+
+    private void OpenCreate()
+    {
+        _createError = null;
+        _newCategory = TicketCategory.Adult;
+        _newReference = "";
+        _newQuantity = 1;
+        _showCreate = true;
+    }
+
+    private void CloseCreate()
+    {
+        if (_saving) return;
+        _showCreate = false;
+    }
+
+    private async Task CreateBundleAsync()
+    {
+        _createError = null;
+        var reference = (_newReference ?? "").Trim();
+
+        if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
+        if (reference.Length == 0) { _createError = "Bitte eine Referenz angeben."; return; }
+        if (reference.Length > FlexTicketBundle.ReferenceMaxLength)
+        { _createError = $"Die Referenz darf höchstens {FlexTicketBundle.ReferenceMaxLength} Zeichen lang sein."; return; }
+        if (_newQuantity < 1) { _createError = "Die Anzahl muss mindestens 1 sein."; return; }
+
+        _saving = true;
+        try
+        {
+            if (await Bundles.ReferenceExistsAsync(SelectedSeasonId, reference))
+            {
+                _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
+                return;
+            }
+
+            await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity);
+            _showCreate = false;
+            await ReloadBundlesAsync();
+        }
+        catch (DomainException ex)
+        {
+            _createError = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    /// <summary>The season whose date range contains today; falls back to the most recent already-started one.</summary>
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+}

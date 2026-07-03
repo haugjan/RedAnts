@@ -23,6 +23,9 @@
             case "tickets":
                 <AdminTicketsComponent AdminUser="@AdminUser" />
                 break;
+            case "flextickets":
+                <AdminFlexTicketsComponent AdminUser="@AdminUser" />
+                break;
             case "seasoncards":
                 <AdminSeasonCardsComponent AdminUser="@AdminUser" />
                 break;
@@ -102,6 +105,7 @@
     [
         ("events", "Anlässe"),
         ("tickets", TicketType.EventTicket.DisplayName()),
+        ("flextickets", TicketType.SeasonSingle.DisplayName()),
         ("seasoncards", TicketType.SeasonPass.DisplayName()),
         ("membercards", TicketType.MemberCard.DisplayName())
     ];

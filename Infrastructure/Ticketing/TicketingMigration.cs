@@ -36,6 +36,9 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         Create.Table<EventVisitLogRecord>().Do();
         Create.Table<EventFreeEntryRecord>().Do();
 
+        // Flexticket bundles: batches of season single tickets, identified by a per-season reference
+        Create.Table<FlexTicketBundleRecord>().Do();
+
         // Pricing catalog: per-event and per-season price sets (parent + n category sub-rows)
         Create.Table<EventPriceRecord>().Do();
         Create.Table<EventPriceCategoryRecord>().Do();
