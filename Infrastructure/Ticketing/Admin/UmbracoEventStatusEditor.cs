@@ -17,7 +17,12 @@ public sealed class UmbracoEventStatusEditor(IContentService contentService) : I
 {
     private const int SuperUser = Constants.Security.SuperUserId;
 
-    public Task SetStatusAsync(int eventId, EventStatus status)
+    // IContentService.Save/Publish are synchronous and internally block on async work. Called directly
+    // from a Blazor Server event handler they run on the circuit's SynchronizationContext, which
+    // sync-over-async deadlocks — the save just hangs on "Speichert …" with no exception. Running the
+    // whole operation via Task.Run moves it onto a threadpool thread without that context, so it
+    // completes normally; exceptions still surface through the returned task to the caller's try/catch.
+    public Task SetStatusAsync(int eventId, EventStatus status) => Task.Run(() =>
     {
         var node = contentService.GetById(eventId)
             ?? throw new InvalidOperationException($"Anlass {eventId} wurde nicht gefunden.");
@@ -27,8 +32,7 @@ public sealed class UmbracoEventStatusEditor(IContentService contentService) : I
         node.SetValue(A.EventStatus, System.Text.Json.JsonSerializer.Serialize(new[] { status.ToString() }));
         contentService.Save(node, SuperUser);
         contentService.Publish(node, new[] { "*" }, SuperUser);
-        return Task.CompletedTask;
-    }
+    });
 }
 
 /// <summary>Registers the event-status write port (auto-discovered via <c>.AddComposers()</c>).</summary>

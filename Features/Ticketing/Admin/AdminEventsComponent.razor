@@ -45,12 +45,12 @@
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("date")'>Datum <span class="ta-sort-ind">@Ind("date")</span></th>
                         <th rowspan="2">Zeit</th>
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("name")'>Anlass <span class="ta-sort-ind">@Ind("name")</span></th>
-                        <th rowspan="2">Links</th>
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
                         <th rowspan="2" class="ta-num">Verkaufte<br />@TicketType.EventTicket.DisplayName()</th>
                         <th colspan="5" class="ta-group">Eingelöste Zutritte</th>
+                        <th rowspan="2">Links</th>
                         <th rowspan="2" class="ta-col-actions"></th>
                     </tr>
                     <tr>
@@ -70,6 +70,15 @@
                             <td>@e.Date.ToString("dd.MM.yyyy")</td>
                             <td>@e.StartTime.ToString("HH:mm")</td>
                             <td class="ta-cell-name">@e.Name</td>
+                            <td><span class="ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()">@StatusLabel(e.Status)</span></td>
+                            <td class="ta-num">@QuotaLabel(Quota(e.Id))</td>
+                            <td class="ta-num">@c.TotalRedeemed</td>
+                            <td class="ta-num">@c.SoldSingleTickets</td>
+                            <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
+                            <td class="ta-num">@c.RedeemedSeasonSingleTickets</td>
+                            <td class="ta-num">@c.RedeemedSeasonPasses</td>
+                            <td class="ta-num">@c.RedeemedMemberCards</td>
+                            <td class="ta-num">@c.RedeemedFreeEntries</td>
                             <td class="ta-links">
                                 <button type="button" class="ta-link-btn"
                                         disabled="@(string.IsNullOrEmpty(links.Public))"
@@ -84,15 +93,6 @@
                                     @(IsCopied(e.Id, true) ? "✓" : "🔒")
                                 </button>
                             </td>
-                            <td><span class="ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()">@StatusLabel(e.Status)</span></td>
-                            <td class="ta-num">@QuotaLabel(Quota(e.Id))</td>
-                            <td class="ta-num">@c.TotalRedeemed</td>
-                            <td class="ta-num">@c.SoldSingleTickets</td>
-                            <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
-                            <td class="ta-num">@c.RedeemedSeasonSingleTickets</td>
-                            <td class="ta-num">@c.RedeemedSeasonPasses</td>
-                            <td class="ta-num">@c.RedeemedMemberCards</td>
-                            <td class="ta-num">@c.RedeemedFreeEntries</td>
                             <td class="ta-col-actions">
                                 <button type="button" class="ta-icon-btn" title="Status und Kontingent bearbeiten"
                                         @onclick="() => OpenEdit(e)">✎</button>
