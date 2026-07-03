@@ -1,0 +1,62 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Features.Ticketing.Tickets;
+using RedAnts.Infrastructure.Shared;
+
+namespace RedAnts.Features.Ticketing.Email;
+
+/// <summary>Development-only endpoint to verify the Brevo setup end to end. Returns 404 outside
+/// Development so it is never reachable in production. With <c>?uuid=</c> it sends a real ticket
+/// e-mail (QR image + web-ticket link) so the whole generation + mail pipeline can be checked.</summary>
+public sealed class EmailTestController(
+    IEmailSender email,
+    IWebHostEnvironment environment,
+    IIssuedTicketReader tickets,
+    ITicketTokens tokens,
+    IQrCodeRenderer qr,
+    IEvents events,
+    ISeasons seasons) : Controller
+{
+    [HttpGet("/dev/test-mail")]
+    public async Task<IActionResult> Send(string? to, Guid? uuid)
+    {
+        if (!environment.IsDevelopment()) return NotFound();
+        if (string.IsNullOrWhiteSpace(to)) return BadRequest("Query parameter ?to=<email> is required.");
+
+        string subject;
+        string html;
+
+        if (uuid is Guid ticketId && await tickets.FindAsync(ticketId) is { } issued)
+        {
+            var token = tokens.Create(issued.Type, issued.Uuid, issued.ScopeId);
+            var url = $"{Request.Scheme}://{Request.Host}/ticket/{token}";
+            var qrPng = qr.RenderPngDataUri(url);
+            var scopeName = issued.Type == TicketType.EventTicket
+                ? (await events.FindByIdAsync(issued.ScopeId))?.Name ?? "Anlass"
+                : (await seasons.FindByIdAsync(issued.ScopeId))?.Name ?? "Saison";
+
+            subject = $"Dein Ticket – {scopeName}";
+            var body =
+                $"Hier ist dein Ticket für <strong>{scopeName}</strong>.\nZeige den QR-Code am Eingang.\n\n" +
+                $"<div style=\"text-align:center;margin:16px 0;\"><img src=\"{qrPng}\" alt=\"Ticket QR\" width=\"220\" height=\"220\" style=\"border:1px solid #eee;border-radius:8px;\"></div>\n" +
+                $"Web-Ticket: <a href=\"{url}\">{url}</a>";
+            html = EmailLayout.Render(subject, body, greeting: "Hallo,",
+                note: "Testmail aus der RedAnts-Entwicklungsumgebung.");
+        }
+        else
+        {
+            subject = "Brevo-Testmail – Red Ants";
+            html = EmailLayout.Render(subject,
+                "Diese Testmail bestätigt, dass der Brevo-Versand aus RedAnts funktioniert.",
+                greeting: "Hallo,", note: "Testmail aus der RedAnts-Entwicklungsumgebung.");
+        }
+
+        var result = await email.SendAsync(to, null, subject, html);
+        return result.Success
+            ? Content($"OK – Mail an {to} gesendet.")
+            : StatusCode(502, $"Versand fehlgeschlagen: {result.Error}");
+    }
+}
