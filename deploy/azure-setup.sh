@@ -13,9 +13,11 @@
 #     az login --tenant redants.ch
 #     bash deploy/azure-setup.sh
 #
-# It prompts for the SQL admin password and the Umbraco unattended-install password;
-# those are never written to any file. Names marked "globally unique" may need adjusting
-# if already taken.
+# It prompts only for the SQL admin password (never written to any file). Deployment auth uses
+# Entra OIDC (no basic auth / no publish password): the script disables SCM basic auth and creates
+# an app registration with a federated credential for the GitHub repo. Umbraco itself is installed
+# by completing the browser installer at /umbraco on first visit. Names marked "globally unique"
+# may need adjusting if already taken.
 #
 set -euo pipefail
 
@@ -41,20 +43,18 @@ SQL_SKU="S0"                    # S0 = 10 DTU; adjust to taste (Basic/S1/GP_S_Ge
 STORAGE_ACCOUNT="stredants"     # globally unique, 3-24 lowercase alphanumerics. Holds Umbraco media.
 MEDIA_CONTAINER="media"         # blob container Umbraco writes media into
 
-ADMIN_EMAIL="admin@redants.ch"  # Umbraco backoffice super-user created on first boot
-ADMIN_NAME="RedAnts Admin"
+GH_REPO="haugjan/RedAnts"       # GitHub repo the deploy workflow runs in
+APP_REG_NAME="redants-github-deploy"  # Entra app registration used for OIDC deploy auth
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Passwords come from env vars if set, otherwise an interactive prompt (needs a real terminal).
+# The SQL admin password comes from the env var if set, otherwise an interactive prompt.
 # Interactive form:   bash deploy/azure-setup.sh
-# Non-interactive:    SQL_PASS='...' UMB_PASS='...' bash deploy/azure-setup.sh
+# Non-interactive:    SQL_PASS='...' bash deploy/azure-setup.sh
 : "${SQL_PASS:=}"
-: "${UMB_PASS:=}"
 if [ -z "$SQL_PASS" ]; then read -rs -p "SQL admin password for '$SQL_ADMIN': " SQL_PASS || true; echo; fi
-if [ -z "$UMB_PASS" ]; then read -rs -p "Umbraco backoffice password for '$ADMIN_EMAIL': " UMB_PASS || true; echo; fi
-if [ -z "$SQL_PASS" ] || [ -z "$UMB_PASS" ]; then
-  echo "ERROR: passwords not provided. Run this in an interactive terminal, or pass them as" >&2
-  echo "       environment variables: SQL_PASS='...' UMB_PASS='...' bash deploy/azure-setup.sh" >&2
+if [ -z "$SQL_PASS" ]; then
+  echo "ERROR: SQL admin password not provided. Run this in an interactive terminal, or pass it" >&2
+  echo "       as an environment variable: SQL_PASS='...' bash deploy/azure-setup.sh" >&2
   exit 1
 fi
 
@@ -102,7 +102,7 @@ az storage container create \
   --name "$MEDIA_CONTAINER" --public-access blob \
   --connection-string "$STORAGE_CONN" --output none
 
-echo "==> App settings: connection string + provider + unattended install + blob media"
+echo "==> App settings: connection string + provider + blob media"
 # Set the DSN as a plain app setting (ConnectionStrings__...) so ASP.NET Core does NOT
 # auto-inject the legacy System.Data.SqlClient provider that the SQLAzure type would add.
 az webapp config appsettings set \
@@ -112,29 +112,60 @@ az webapp config appsettings set \
     "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient" \
     "Umbraco__Storage__AzureBlob__Media__ConnectionString=${STORAGE_CONN}" \
     "Umbraco__Storage__AzureBlob__Media__ContainerName=${MEDIA_CONTAINER}" \
-    "Umbraco__CMS__Unattended__InstallUnattended=true" \
-    "Umbraco__CMS__Unattended__UpgradeUnattended=true" \
-    "Umbraco__CMS__Unattended__UnattendedUserName=${ADMIN_NAME}" \
-    "Umbraco__CMS__Unattended__UnattendedUserEmail=${ADMIN_EMAIL}" \
-    "Umbraco__CMS__Unattended__UnattendedUserPassword=${UMB_PASS}" \
   --output none
 
-echo "==> Publish credentials (put these into GitHub secrets KUDU_USER / KUDU_PASS)"
-az webapp deployment list-publishing-credentials \
-  --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
-  --query "{KUDU_USER:publishingUserName, KUDU_PASS:publishingPassword}" -o json
+echo "==> Deployment identity (Entra OIDC): disable SCM basic auth"
+# Modern Azure default already disables this; keep it explicit so no basic-auth publish path exists.
+az resource update \
+  --resource-group "$RESOURCE_GROUP" --namespace Microsoft.Web \
+  --parent "sites/${APP_NAME}" --resource-type basicPublishingCredentialsPolicies \
+  --name scm --set properties.allow=false --output none
+
+echo "==> App registration + service principal ($APP_REG_NAME)"
+APP_ID=$(az ad app create --display-name "$APP_REG_NAME" --query appId -o tsv)
+az ad sp create --id "$APP_ID" --query id -o tsv >/dev/null || true
+SP_OBJECT_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv)
+
+echo "==> Federated credential (trust GitHub Actions on refs/heads/main)"
+az ad app federated-credential create --id "$APP_ID" --parameters "{
+  \"name\":\"github-redants-main\",
+  \"issuer\":\"https://token.actions.githubusercontent.com\",
+  \"subject\":\"repo:${GH_REPO}:ref:refs/heads/main\",
+  \"audiences\":[\"api://AzureADTokenExchange\"]
+}" --output none
+
+echo "==> Role assignment: Website Contributor on the app"
+APP_SCOPE=$(az webapp show -g "$RESOURCE_GROUP" -n "$APP_NAME" --query id -o tsv)
+# de139f84-... = Website Contributor. (az role assignment can fail with a spurious
+# MissingSubscription in some CLI/tenant combos; the ARM PUT via az rest is the reliable path.)
+RA_GUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || python -c "import uuid;print(uuid.uuid4())")
+az rest --method put \
+  --url "https://management.azure.com${APP_SCOPE}/providers/Microsoft.Authorization/roleAssignments/${RA_GUID}?api-version=2022-04-01" \
+  --headers "Content-Type=application/json" \
+  --body "{\"properties\":{\"roleDefinitionId\":\"/subscriptions/${SUBSCRIPTION}/providers/Microsoft.Authorization/roleDefinitions/de139f84-1756-47ae-9be6-808fbbe84772\",\"principalId\":\"${SP_OBJECT_ID}\",\"principalType\":\"ServicePrincipal\"}}" \
+  --output none || echo "  (role assignment may already exist; continuing)"
+
+TENANT_ID=$(az account show --query tenantId -o tsv)
 
 cat <<EOF
 
-Done. Next steps:
-  1. In GitHub (repo Settings -> Secrets and variables -> Actions):
-       - Variable AZURE_WEBAPP_NAME = ${APP_NAME}
-       - Secret   KUDU_USER         = <publishingUserName printed above>
-       - Secret   KUDU_PASS         = <publishingPassword printed above>
-  2. Push to main (or run the "Deploy to Azure" workflow manually).
-  3. First boot installs the Umbraco schema into the empty Azure SQL DB and creates the
-     backoffice user ${ADMIN_EMAIL}. The code-first seeders then create the content types
-     and sample content. Log in at https://${APP_NAME}.azurewebsites.net/umbraco
-  4. (Optional, recommended) once installed, remove the Umbraco__CMS__Unattended__Unattended*
-     install app settings again.
+Done. GitHub configuration (repo Settings -> Secrets and variables -> Actions):
+  Variable AZURE_WEBAPP_NAME     = ${APP_NAME}
+  Secret   AZURE_CLIENT_ID       = ${APP_ID}
+  Secret   AZURE_TENANT_ID       = ${TENANT_ID}
+  Secret   AZURE_SUBSCRIPTION_ID = ${SUBSCRIPTION}
+
+  (set them non-interactively with:
+     gh variable set AZURE_WEBAPP_NAME --repo ${GH_REPO} --body ${APP_NAME}
+     printf '%s' ${APP_ID} | gh secret set AZURE_CLIENT_ID --repo ${GH_REPO}
+     printf '%s' ${TENANT_ID} | gh secret set AZURE_TENANT_ID --repo ${GH_REPO}
+     printf '%s' ${SUBSCRIPTION} | gh secret set AZURE_SUBSCRIPTION_ID --repo ${GH_REPO} )
+
+Next:
+  1. Push to main (or run the "Deploy to Azure" workflow manually).
+  2. The Azure SQL DB starts empty, so Umbraco serves its installer. Open
+     https://${APP_NAME}.azurewebsites.net/umbraco and complete the install to create your
+     backoffice admin account and the Umbraco schema. On the next boot the code-first seeders
+     create the content types and sample content. Media is stored in the '${MEDIA_CONTAINER}'
+     blob container.
 EOF

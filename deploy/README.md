@@ -74,7 +74,7 @@ content. Because the site is not installed until you finish that step, the workf
 best-effort and does not fail the deploy while `/` still returns the installer.
 
 If you prefer a fully unattended install instead, set the `Umbraco__CMS__Unattended__Unattended*`
-app settings (as `azure-setup.sh` does when run) so the admin user is created automatically on
+app settings yourself (user name, email, password) so the admin user is created automatically on
 first boot; remove them again afterwards.
 
 ## Scale-out
