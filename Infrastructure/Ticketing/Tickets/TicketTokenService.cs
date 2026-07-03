@@ -48,7 +48,8 @@ public sealed class TicketTokenService : ITicketTokens
         var iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var payload = $"{(int)type}|{uuid:N}|{scopeId}|{iat}";
         var payloadB64 = Base64Url(Encoding.UTF8.GetBytes(payload));
-        var sig = Base64Url(Sign(Scheme + "." + payloadB64));
+        // Truncate the HMAC to SignatureBytes so it matches what TryVerify checks.
+        var sig = Base64Url(Sign(Scheme + "." + payloadB64).AsSpan(0, SignatureBytes).ToArray());
         return $"{Scheme}.{payloadB64}.{sig}";
     }
 
