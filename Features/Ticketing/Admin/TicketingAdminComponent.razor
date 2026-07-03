@@ -1,0 +1,104 @@
+@* Root of the backoffice "Ticketing" admin app, shown inside the section-dashboard iframe.
+   The sub-navigation is component state (no Blazor Router / @@page) — mirrors the Sporthalle pattern. *@
+
+<div class="ta-app">
+    <nav class="ta-subnav">
+        @foreach (var t in Tabs)
+        {
+            <button type="button"
+                    class="ta-subnav-btn @(_tab == t.Key ? "active" : "")"
+                    @onclick="() => _tab = t.Key">
+                @t.Label
+            </button>
+        }
+    </nav>
+
+    <main class="ta-content">
+        @if (_tab == "events")
+        {
+            <AdminEventsComponent AdminUser="@AdminUser" />
+        }
+        else if (_tab == "tickets")
+        {
+            <AdminTicketsComponent AdminUser="@AdminUser" />
+        }
+        else if (_tab == "seasoncards")
+        {
+            <AdminSeasonCardsComponent AdminUser="@AdminUser" />
+        }
+        else if (_tab == "membercards")
+        {
+            <AdminMemberCardsComponent AdminUser="@AdminUser" />
+        }
+    </main>
+</div>
+
+<style>
+    :root {
+        --ta-red: #C8102E;
+        --ta-red-dark: #A50D26;
+        --ta-ink: #101010;
+        --ta-nav: #1b264f;
+        --ta-display: 'Oswald', Impact, sans-serif;
+    }
+
+    .ta-app {
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
+        color: var(--ta-ink);
+        min-height: 100vh;
+        display: flex; flex-direction: column;
+        background: #f7f7f8;
+    }
+
+    /* Dark sub-navigation bar, flush under the Umbraco section nav (Sporthalle pattern). */
+    .ta-subnav {
+        display: flex; align-items: stretch; flex-wrap: wrap;
+        padding: 0 0.5rem;
+        background: var(--ta-nav);
+        flex-shrink: 0;
+    }
+    .ta-subnav-btn {
+        appearance: none; background: none; border: none; cursor: pointer;
+        font-family: var(--ta-display);
+        font-size: 1.05rem; font-weight: 500;
+        letter-spacing: 0.06em; text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.75);
+        padding: 0.8rem 1.25rem;
+        border-bottom: 3px solid transparent;
+        transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .ta-subnav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+    .ta-subnav-btn.active { color: #fff; border-bottom-color: var(--ta-red); }
+
+    .ta-content { padding: 1.75rem 1.5rem 3rem; max-width: 1100px; flex: 1; }
+
+    .ta-page-title {
+        font-family: var(--ta-display);
+        font-size: 2rem; font-weight: 600;
+        letter-spacing: 0.02em; text-transform: uppercase;
+        margin: 0 0 0.35rem;
+    }
+    .ta-page-title::after {
+        content: ""; display: block; width: 56px; height: 4px;
+        background: var(--ta-red); margin-top: 0.6rem;
+    }
+    .ta-page-lead { color: #555; margin: 0 0 1.25rem; }
+    .ta-placeholder {
+        background: #fff; border: 1px dashed #d5d5d5; border-radius: 12px;
+        padding: 1.5rem; color: #777;
+    }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "admin";
+
+    private string _tab = "events";
+
+    private static readonly (string Key, string Label)[] Tabs =
+    [
+        ("events", "Anlässe"),
+        ("tickets", "Tickets"),
+        ("seasoncards", "Saisonkarten"),
+        ("membercards", "Mitgliederkarten")
+    ];
+}

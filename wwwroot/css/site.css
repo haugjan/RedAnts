@@ -1,7 +1,7 @@
 /*
   site.css — Public website (FlexPage) design.
   Navigation adopted from the Sporthalle Sulzerallee reference; RedAnts branding.
-  Display font: Teko (Google Fonts). Body font: Verdana (system).
+  Display font: Oswald (Google Fonts). Body font: Verdana (system).
 */
 
 /* ── RESET ─────────────────────────────────────────────────── */
@@ -20,7 +20,7 @@ body {
   --red-dark: #A50D26;
   --ink:      rgb(16, 16, 16);
   --ink-light: rgb(50, 50, 50);
-  --display:  'Teko', 'Oswald', Impact, sans-serif;
+  --display:  'Oswald', Impact, sans-serif;
 }
 
 /* ── NAV ────────────────────────────────────────────────────── */

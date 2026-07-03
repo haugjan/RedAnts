@@ -38,8 +38,10 @@ window.ticketScanner = (function () {
         const ctx = ensureAudio();
         if (!ctx) return;
         if (success) {
-            tone(ctx, 880, 0, 0.12, "sine");
-            tone(ctx, 1320, 0.13, 0.18, "sine");
+            // Bright ascending triad + a higher sustained final note (attention-grabbing).
+            tone(ctx, 988, 0, 0.10, "triangle");   // B5
+            tone(ctx, 1319, 0.11, 0.10, "triangle"); // E6
+            tone(ctx, 1760, 0.22, 0.30, "triangle"); // A6, longer sustain
         } else {
             tone(ctx, 200, 0, 0.4, "square");
         }

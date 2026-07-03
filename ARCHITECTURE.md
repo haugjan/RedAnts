@@ -78,7 +78,8 @@ Do not introduce or assume ModelsBuilder-generated classes.
 
 ## Infrastructure and boot
 
-- **SQLite + WAL**: `Program.cs` resolves the SQLite path to absolute and enables WAL mode before Umbraco boots, preventing `SQLITE_BUSY` when the migrator, OpenIddict/EF Core, and NPoco open the file concurrently.
+- **Database**: Development uses **SQLite** (`appsettings.Development.json`); `Program.cs` resolves the SQLite path to absolute and enables WAL mode before Umbraco boots, preventing `SQLITE_BUSY` when the migrator, OpenIddict/EF Core, and NPoco open the file concurrently. That bootstrap is guarded by the provider name, so it is skipped in production. Production uses **Azure SQL** (`appsettings.json` sets provider `Microsoft.Data.SqlClient`, empty DSN; the real connection string is injected as the App Service app setting `ConnectionStrings__umbracoDbDSN`). The SQL Server provider ships transitively with `Umbraco.Cms`.
+- **Deployment**: GitHub Actions (`.github/workflows/deploy.yml`) build/publish/ZipDeploy to an Azure App Service in resource group `RG_RedAnts` on push to `main`. One-time provisioning script and details in `deploy/README.md` and `deploy/azure-setup.sh`.
 - **Culture**: default thread culture is `de-CH` (Swiss German date/number formatting), set at the top of `Program.cs`.
 - **Development**: OpenIddict transport security is disabled in Development so the backoffice works over HTTP; unattended install/upgrade is enabled.
 - **External services**: Payrexx, Brevo, and Turnstile are configured via `appsettings` / user secrets. Secrets are never hardcoded; Development uses Cloudflare test Turnstile keys and empty Payrexx credentials.

@@ -13,17 +13,19 @@ public sealed class Event
     public TimeOnly StartTime { get; private set; }
     public int VenueId { get; private set; }
     public EventStatus Status { get; private set; }
-    public string? InternalLink { get; private set; }
     public string? ImageUrl { get; private set; }
     public string? HomeTeamLogoUrl { get; private set; }
     public string? AwayTeamLogoUrl { get; private set; }
     /// <summary>Secret required to open/buy this event when its status is Intern.</summary>
     public string? AccessSecret { get; private set; }
     public IReadOnlyList<EventPrice> Prices => _prices;
+    /// <summary>Resolved sales prices from the content Block List (category + effective price + contingent).</summary>
+    public IReadOnlyList<TicketPrice> SalesPrices { get; private set; }
 
     private Event(int id, string name, string? text, int seasonId, DateOnly date, TimeOnly startTime,
-        int venueId, EventStatus status, string? internalLink, string? imageUrl, string? homeTeamLogoUrl,
-        string? awayTeamLogoUrl, string? accessSecret, IEnumerable<EventPrice> prices)
+        int venueId, EventStatus status, string? imageUrl, string? homeTeamLogoUrl,
+        string? awayTeamLogoUrl, string? accessSecret, IEnumerable<EventPrice> prices,
+        IReadOnlyList<TicketPrice>? salesPrices)
     {
         Id = id;
         Name = name;
@@ -33,19 +35,20 @@ public sealed class Event
         StartTime = startTime;
         VenueId = venueId;
         Status = status;
-        InternalLink = internalLink;
         ImageUrl = imageUrl;
         HomeTeamLogoUrl = homeTeamLogoUrl;
         AwayTeamLogoUrl = awayTeamLogoUrl;
         AccessSecret = accessSecret;
         _prices = NormalizePrices(prices);
+        SalesPrices = salesPrices ?? [];
     }
 
     public static Event FromPersistence(int id, string name, string? text, int seasonId, DateOnly date,
-        TimeOnly startTime, int venueId, EventStatus status, string? internalLink, string? imageUrl,
-        string? homeTeamLogoUrl, string? awayTeamLogoUrl, string? accessSecret, IEnumerable<EventPrice> prices) =>
-        new(id, name ?? "", text, seasonId, date, startTime, venueId, status, internalLink,
-            imageUrl, homeTeamLogoUrl, awayTeamLogoUrl, accessSecret, prices);
+        TimeOnly startTime, int venueId, EventStatus status, string? imageUrl,
+        string? homeTeamLogoUrl, string? awayTeamLogoUrl, string? accessSecret, IEnumerable<EventPrice> prices,
+        IReadOnlyList<TicketPrice>? salesPrices = null) =>
+        new(id, name ?? "", text, seasonId, date, startTime, venueId, status,
+            imageUrl, homeTeamLogoUrl, awayTeamLogoUrl, accessSecret, prices, salesPrices);
 
     /// <summary>Price for a category, or null if no price is defined for it.</summary>
     public decimal? PriceFor(PriceCategory category) =>

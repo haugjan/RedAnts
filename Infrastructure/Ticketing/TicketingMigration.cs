@@ -5,6 +5,7 @@ using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Infrastructure.Migrations;
 using Umbraco.Cms.Infrastructure.Migrations.Upgrade;
 using Umbraco.Cms.Core.Composing;
+using RedAnts.Infrastructure.Ticketing.Sales;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
@@ -14,7 +15,8 @@ public class TicketingMigrationPlan : MigrationPlan
     {
         From(string.Empty)
             .To<CreateTicketingTablesV1>("v1.0.0")
-            .To<DropCatalogTablesV2>("v1.1.0");
+            .To<DropCatalogTablesV2>("v1.1.0")
+            .To<CreateSalesTablesV3>("v1.2.0");
     }
 }
 
@@ -41,6 +43,22 @@ public class DropCatalogTablesV2(IMigrationContext context) : AsyncMigrationBase
         if (TableExists("Events")) Delete.Table("Events").Do();
         if (TableExists("Seasons")) Delete.Table("Seasons").Do();
         if (TableExists("Venues")) Delete.Table("Venues").Do();
+        return Task.CompletedTask;
+    }
+}
+
+// v1.2.0 — the real ticket-scanning data model: an immutable Order (Bestellung) plus one table per
+// ticket type, and a shared event-visit sub-table for the multi-event types (SeasonPass / MemberCard).
+public class CreateSalesTablesV3(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("Orders")) Create.Table<OrderRecord>().Do();
+        if (!TableExists("EventTickets")) Create.Table<EventTicketRecord>().Do();
+        if (!TableExists("SeasonSingleTickets")) Create.Table<SeasonSingleTicketRecord>().Do();
+        if (!TableExists("SeasonPasses")) Create.Table<SeasonPassRecord>().Do();
+        if (!TableExists("MembershipCards")) Create.Table<Sales.MemberCardRecord>().Do();
+        if (!TableExists("TicketEventVisits")) Create.Table<EventVisitRecord>().Do();
         return Task.CompletedTask;
     }
 }

@@ -11,9 +11,11 @@ public sealed class Season
     public string? ImageUrl { get; private set; }
     /// <summary>Secret required to open/buy this season when its status is Intern.</summary>
     public string? AccessSecret { get; private set; }
+    /// <summary>Resolved sales prices from the content Block List (category + effective price + contingent).</summary>
+    public IReadOnlyList<TicketPrice> SalesPrices { get; private set; }
 
     private Season(int id, string name, DateOnly startDate, DateOnly endDate, SeasonStatus status,
-        string? imageUrl, string? accessSecret)
+        string? imageUrl, string? accessSecret, IReadOnlyList<TicketPrice>? salesPrices)
     {
         Id = id;
         Name = name;
@@ -22,9 +24,11 @@ public sealed class Season
         Status = status;
         ImageUrl = imageUrl;
         AccessSecret = accessSecret;
+        SalesPrices = salesPrices ?? [];
     }
 
     public static Season FromPersistence(int id, string name, DateOnly startDate, DateOnly endDate,
-        SeasonStatus status, string? imageUrl = null, string? accessSecret = null) =>
-        new(id, name ?? "", startDate, endDate, status, imageUrl, accessSecret);
+        SeasonStatus status, string? imageUrl = null, string? accessSecret = null,
+        IReadOnlyList<TicketPrice>? salesPrices = null) =>
+        new(id, name ?? "", startDate, endDate, status, imageUrl, accessSecret, salesPrices);
 }

@@ -1,6 +1,7 @@
 using RedAnts.Domain.Ticketing;
 using RedAnts.Features.Ticketing.Ports;
 using Umbraco.Cms.Core;
+using Umbraco.Cms.Core.Models.Blocks;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Extensions;
 using A = RedAnts.Infrastructure.Ticketing.Content.TicketingAliases;
@@ -13,6 +14,15 @@ internal static class CatalogContentMapper
     /// <summary>The Intern access secret is the first block of the node's GUID key (stored implicitly, no edit field).</summary>
     public static string SecretFromKey(Guid key) => key.ToString().Split('-')[0];
 
+    // Base categories that the legacy (Stage 1) purchase flow still understands.
+    private static readonly Dictionary<string, PriceCategory> LegacyCategoryByCode =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["child"] = PriceCategory.Child,
+            ["youth"] = PriceCategory.Youth,
+            ["adult"] = PriceCategory.Adult,
+        };
+
     public static Season ToSeason(IPublishedContent node) =>
         Season.FromPersistence(
             node.Id,
@@ -21,7 +31,8 @@ internal static class CatalogContentMapper
             DateOnly.FromDateTime(node.Value<DateTime>(A.SeasonEndDate)),
             TicketingMappers.ParseEnum(node.Value<string>(A.SeasonStatus) ?? "", SeasonStatus.Draft),
             MediaUrl(node, A.SeasonImage),
-            SecretFromKey(node.Key));
+            SecretFromKey(node.Key),
+            ReadSalesPrices(node));
 
     public static Venue ToVenue(IPublishedContent node) =>
         Venue.FromPersistence(
@@ -40,10 +51,14 @@ internal static class CatalogContentMapper
         var start = node.Value<DateTime>(A.EventStart);
         var venue = node.Value<IPublishedContent>(A.EventVenue);
 
-        var prices = new List<EventPrice>();
-        AddPrice(prices, PriceCategory.Child, node.Value<decimal>(A.EventPriceChild));
-        AddPrice(prices, PriceCategory.Youth, node.Value<decimal>(A.EventPriceYouth));
-        AddPrice(prices, PriceCategory.Adult, node.Value<decimal>(A.EventPriceAdult));
+        var salesPrices = ReadSalesPrices(node);
+        // Stage 1 compatibility: expose the base categories (child/youth/adult) as the legacy
+        // EventPrice list so the existing single-ticket purchase flow keeps working. Reduced
+        // variants are display-only until the purchase flow is migrated (Stage 2).
+        var prices = salesPrices
+            .Where(p => p.Price > 0 && LegacyCategoryByCode.ContainsKey(p.CategoryCode))
+            .Select(p => new EventPrice(LegacyCategoryByCode[p.CategoryCode], p.Price))
+            .ToList();
 
         return Event.FromPersistence(
             node.Id,
@@ -54,17 +69,39 @@ internal static class CatalogContentMapper
             TimeOnly.FromDateTime(start),
             venue?.Id ?? 0,
             TicketingMappers.ParseEnum(node.Value<string>(A.EventStatus) ?? "", EventStatus.Draft),
-            node.Value<string>(A.EventInternalLink),
             MediaUrl(node, A.EventImage),
             MediaUrl(node, A.EventHomeTeamLogo),
             MediaUrl(node, A.EventAwayTeamLogo),
             SecretFromKey(node.Key),
-            prices);
+            prices,
+            salesPrices);
     }
 
-    private static void AddPrice(List<EventPrice> prices, PriceCategory cat, decimal amount)
+    /// <summary>Reads the "salesPrices" Block List into resolved <see cref="TicketPrice"/> rows.
+    /// Effective price = category default price when the row uses it, otherwise the row's own price.</summary>
+    private static IReadOnlyList<TicketPrice> ReadSalesPrices(IPublishedContent node)
     {
-        if (amount > 0) prices.Add(new EventPrice(cat, amount));
+        var blocks = node.Value<BlockListModel>(A.SalesPrices);
+        if (blocks is null || blocks.Count == 0) return [];
+
+        var list = new List<TicketPrice>();
+        foreach (var block in blocks)
+        {
+            var content = block.Content;
+            var category = content.Value<IPublishedContent>(A.SalesPriceCategory);
+            if (category is null) continue;
+
+            var code = category.Value<string>(A.CategoryCode) ?? "";
+            var useDefault = content.Value<bool>(A.SalesPriceUseDefault);
+            var price = useDefault
+                ? category.Value<decimal>(A.CategoryDefaultPrice)
+                : content.Value<decimal>(A.SalesPricePrice);
+            var contingentRaw = content.Value<int>(A.SalesPriceContingent);
+            int? contingent = contingentRaw > 0 ? contingentRaw : null;
+
+            list.Add(new TicketPrice(code, category.Name, price, contingent));
+        }
+        return list;
     }
 }
 
