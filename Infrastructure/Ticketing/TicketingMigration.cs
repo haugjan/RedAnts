@@ -9,13 +9,17 @@ using RedAnts.Infrastructure.Ticketing.Sales;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
-// Single-step schema: the migration creates the current ticketing tables directly. There are no
-// historical/intermediate steps — the app installs a fresh database, so there is nothing to upgrade
-// from (a pre-existing dev DB must be deleted to re-create it cleanly).
+// Schema plan: CreateTicketingSchema builds the full current schema for a fresh database. Additive
+// changes are appended as further, idempotent steps so an existing (dev) database upgrades in place
+// and does NOT need to be dropped.
 public class TicketingMigrationPlan : MigrationPlan
 {
     public TicketingMigrationPlan() : base("Ticketing")
-        => From(string.Empty).To<CreateTicketingSchema>("ticketing-schema");
+    {
+        From(string.Empty).To<CreateTicketingSchema>("ticketing-schema");
+        // Adds the Flexticket bundle table + SeasonSingleTickets.BundleId to existing databases.
+        To<AddFlexTicketBundles>("ticketing-flextickets");
+    }
 }
 
 /// <summary>Creates the full ticketing schema at once: the immutable Order plus one table per ticket
@@ -44,6 +48,23 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         Create.Table<EventPriceCategoryRecord>().Do();
         Create.Table<SeasonPriceRecord>().Do();
         Create.Table<SeasonPriceCategoryRecord>().Do();
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Additive upgrade for existing databases: creates the Flexticket bundle table and adds the
+/// SeasonSingleTickets.BundleId link when they are missing. Idempotent, so it is a no-op on a fresh
+/// database where CreateTicketingSchema already created both.</summary>
+public class AddFlexTicketBundles(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("FlexTicketBundles"))
+            Create.Table<FlexTicketBundleRecord>().Do();
+
+        if (!ColumnExists("SeasonSingleTickets", "BundleId"))
+            Alter.Table("SeasonSingleTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
 
         return Task.CompletedTask;
     }
