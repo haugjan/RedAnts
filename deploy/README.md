@@ -26,9 +26,19 @@ bash deploy/azure-setup.sh
 ```
 
 `azure-setup.sh` creates the App Service plan (Linux, .NET 10), the Web App, the Azure SQL
-server + database, a firewall rule allowing Azure services, and the app settings (connection
-string, provider name, unattended install). It prompts for the SQL admin password and the
-Umbraco backoffice password (never written to disk) and prints the publish credentials.
+server + database, a firewall rule allowing Azure services, a Storage account + `media` blob
+container for Umbraco media, and the app settings (SQL connection string, provider name, blob
+media connection string + container, unattended install). It prompts for the SQL admin password
+and the Umbraco backoffice password (never written to disk) and prints the publish credentials.
+
+## Media on Azure Blob Storage
+
+Uploaded media is stored in Azure Blob Storage (durable across redeploys and scale-out) via
+`Umbraco.StorageProviders.AzureBlob`. `Program.cs` calls `AddAzureBlobMediaFileSystem()` only
+when `Umbraco:Storage:AzureBlob:Media:ConnectionString` is configured, so local development
+(no blob config) keeps media on disk untouched. In Azure the connection string and container
+name are injected as app settings `Umbraco__Storage__AzureBlob__Media__ConnectionString` and
+`__ContainerName` (container `media`, public blob read access so media URLs resolve directly).
 
 ## GitHub configuration
 
@@ -45,16 +55,18 @@ Repo → Settings → Secrets and variables → Actions:
 Push to `main` (or run the **Deploy to Azure** workflow manually). The workflow builds,
 publishes, zips, ZipDeploys to Kudu, waits for completion, and warms up `/`.
 
-On first deploy, Umbraco installs its schema into the empty Azure SQL database and creates the
-backoffice user; the code-first seeders (`Infrastructure/**/…ContentTypeSeeder`) then create the
-content types and sample content. After install you may remove the
-`Umbraco__CMS__Unattended__Unattended*` app settings.
+On first deploy the Azure SQL database is empty, so Umbraco serves its one-time installer. Open
+`https://<app>.azurewebsites.net/umbraco`, complete the install (this creates your backoffice
+admin account and writes the Umbraco schema), then reload the site. On the next boot the
+code-first seeders (`Infrastructure/**/…ContentTypeSeeder`) create the content types and sample
+content. Because the site is not installed until you finish that step, the workflow's warm-up is
+best-effort and does not fail the deploy while `/` still returns the installer.
 
-## Not included (optional follow-ups)
+If you prefer a fully unattended install instead, set the `Umbraco__CMS__Unattended__Unattended*`
+app settings (as `azure-setup.sh` does when run) so the admin user is created automatically on
+first boot; remove them again afterwards.
 
-- **Media storage:** uploaded media currently lands on the App Service local disk, which is not
-  durable across redeploys/scale-out. Sporthalle uses `Umbraco.StorageProviders.AzureBlob`
-  (`AddAzureBlobMediaFileSystem()` guarded to non-Development in `Program.cs`) with a storage
-  account. Say the word and I'll wire the same up for RedAnts.
-- **Scale-out:** Azure SQL supports multiple App Service instances; keep a single plan instance
-  only if you also keep media on local disk.
+## Scale-out
+
+Azure SQL and blob media both support multiple App Service instances, so the plan can be scaled
+out without losing media or session-independent state.

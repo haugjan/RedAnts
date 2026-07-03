@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Features.Ticketing.Cart;
 using RedAnts.Infrastructure.Ticketing;
+using Umbraco.StorageProviders.AzureBlob.IO;
 
 // Swiss German as the default culture for all threads.
 // This makes Blazor @bind, implicit ToString() calls, and number/date parsing
@@ -66,6 +67,15 @@ var umbracoBuilder = builder.CreateUmbracoBuilder()
     .AddBackOffice()
     .AddWebsite()
     .AddComposers();
+
+// Store Umbraco media in Azure Blob Storage when configured (production). The connection string
+// and container come from configuration (Umbraco:Storage:AzureBlob:Media:*), injected as App
+// Service app settings. Registered only when a connection string is present so local dev (no blob
+// config, media on disk) is unaffected and the provider's options validation does not fail on boot.
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Umbraco:Storage:AzureBlob:Media:ConnectionString"]))
+{
+    umbracoBuilder.AddAzureBlobMediaFileSystem();
+}
 
 // Allow HTTP in local development (OpenIddict requires HTTPS by default).
 if (builder.Environment.IsDevelopment())

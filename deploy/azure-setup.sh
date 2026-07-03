@@ -38,6 +38,9 @@ SQL_DB="sqldb-redants"
 SQL_ADMIN="redantsadmin"
 SQL_SKU="S0"                    # S0 = 10 DTU; adjust to taste (Basic/S1/GP_S_Gen5_1 ...)
 
+STORAGE_ACCOUNT="stredants"     # globally unique, 3-24 lowercase alphanumerics. Holds Umbraco media.
+MEDIA_CONTAINER="media"         # blob container Umbraco writes media into
+
 ADMIN_EMAIL="admin@redants.ch"  # Umbraco backoffice super-user created on first boot
 ADMIN_NAME="RedAnts Admin"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +88,21 @@ az sql db create \
 
 CONN="Server=tcp:${SQL_SERVER}.database.windows.net,1433;Initial Catalog=${SQL_DB};User ID=${SQL_ADMIN};Password=${SQL_PASS};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
 
-echo "==> App settings: connection string + provider + unattended install"
+echo "==> Storage account ($STORAGE_ACCOUNT in $LOCATION, for Umbraco media)"
+az storage account create \
+  --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT" \
+  --location "$LOCATION" --sku Standard_LRS --kind StorageV2 \
+  --allow-blob-public-access true --min-tls-version TLS1_2
+
+echo "==> Media blob container ($MEDIA_CONTAINER, public blob read for media URLs)"
+STORAGE_CONN="$(az storage account show-connection-string \
+  --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT" \
+  --query connectionString -o tsv)"
+az storage container create \
+  --name "$MEDIA_CONTAINER" --public-access blob \
+  --connection-string "$STORAGE_CONN" --output none
+
+echo "==> App settings: connection string + provider + unattended install + blob media"
 # Set the DSN as a plain app setting (ConnectionStrings__...) so ASP.NET Core does NOT
 # auto-inject the legacy System.Data.SqlClient provider that the SQLAzure type would add.
 az webapp config appsettings set \
@@ -93,6 +110,8 @@ az webapp config appsettings set \
   --settings \
     "ConnectionStrings__umbracoDbDSN=${CONN}" \
     "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient" \
+    "Umbraco__Storage__AzureBlob__Media__ConnectionString=${STORAGE_CONN}" \
+    "Umbraco__Storage__AzureBlob__Media__ContainerName=${MEDIA_CONTAINER}" \
     "Umbraco__CMS__Unattended__InstallUnattended=true" \
     "Umbraco__CMS__Unattended__UpgradeUnattended=true" \
     "Umbraco__CMS__Unattended__UnattendedUserName=${ADMIN_NAME}" \

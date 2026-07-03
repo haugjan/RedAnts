@@ -71,7 +71,9 @@
     .ta-subnav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
     .ta-subnav-btn.active { color: #fff; border-bottom-color: var(--ta-accent); }
 
-    .ta-content { padding: 1.75rem 1.5rem 3rem; max-width: 1100px; flex: 1; }
+    /* Full backoffice width (Sporthalle admin pattern): no max-width cap, wide tables get
+       a horizontal scroll via their own .ta-table-wrap (overflow-x). */
+    .ta-content { padding: 1.75rem 1.5rem 3rem; flex: 1; min-width: 0; }
 
     .ta-page-title {
         font-family: var(--ta-font);
