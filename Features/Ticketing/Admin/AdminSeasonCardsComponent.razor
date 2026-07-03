@@ -89,8 +89,8 @@
 
 @if (_editing is not null)
 {
-    <div class="ta-overlay" @onclick="CancelEdit">
-        <div class="ta-modal" @onclick:stopPropagation="true">
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
             <p class="ta-modal-sub">
                 @(_editing.BuyerName ?? "(keine Bestellung)") · Karten-Nr. @ShortId(_editing.Uuid)
