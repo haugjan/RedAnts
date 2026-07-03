@@ -16,8 +16,8 @@
     if (blocked) { Context.Response.StatusCode = 404; }
 
     ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
-    // A leading hero lets the nav float transparently over the image (like the homepage).
-    ViewBag.TransparentNav = !blocked;
+    // Solid nav: the page opens with a compact header image band, not a full-screen hero.
+    ViewBag.TransparentNav = false;
 
     var start = Model.Value<DateTime>("startDate");
     var end = Model.Value<DateTime>("endDate");
@@ -40,28 +40,15 @@
 }
 else
 {
-    <section class="hero">
-        @if (!string.IsNullOrEmpty(image))
-        {
-            <div class="hero-bg" style="background-image:url('@image');"></div>
-        }
-        else
-        {
-            <div class="hero-bg hero-bg--empty"></div>
-        }
-        <div class="hero-inner">
-            <h1 class="hero-title">@Model.Name</h1>
-            <p class="hero-sub">@start.ToString("dd.MM.yyyy") – @end.ToString("dd.MM.yyyy")</p>
-        </div>
-        <div class="hero-bar">
-            <div class="hero-bar-scroll">
-                <span>Scroll</span>
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1.5v10M2.5 8l4 4 4-4"/></svg>
+    <main class="flexpage-main" style="padding-top:66px;">
+        <header class="season-header @(string.IsNullOrEmpty(image) ? "season-header--empty" : "")"
+                style="@(string.IsNullOrEmpty(image) ? "" : $"background-image:url('{image}');")">
+            <div class="season-header-inner">
+                <h1 class="season-header-title">@Model.Name</h1>
+                <p class="season-header-date">@start.ToString("dd.MM.yyyy") – @end.ToString("dd.MM.yyyy")</p>
             </div>
-        </div>
-    </section>
+        </header>
 
-    <main class="flexpage-main">
         <section class="event-list">
             <div class="event-list-inner">
                 <h2 class="event-list-title">Anstehende Anlässe</h2>
@@ -100,6 +87,23 @@ else
     </main>
 
     <style>
+        /* Compact header image band (not a full-screen hero): fixed height, title + date over it. */
+        .season-header {
+            position: relative; height: clamp(220px, 34vw, 320px);
+            display: flex; align-items: flex-end;
+            background-size: cover; background-position: center 40%; background-color: #0d0d0d;
+        }
+        .season-header--empty {
+            background-image: radial-gradient(120% 120% at 75% 10%, rgba(200,16,46,0.6) 0%, rgba(200,16,46,0) 55%), linear-gradient(180deg, #1c1c1e 0%, #0a0a0b 100%);
+        }
+        .season-header::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.6) 100%);
+        }
+        .season-header-inner { position: relative; z-index: 1; max-width: 900px; width: 100%; margin: 0 auto; padding: 0 20px 22px; }
+        .season-header-title { font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .01em; line-height: .95; color: #fff; font-size: clamp(2rem, 6vw, 3.4rem); margin: 0; }
+        .season-header-date { margin: 6px 0 0; color: rgba(255,255,255,.85); font-size: .95rem; }
+
         /* Same event-list styling as the homepage's eventListElement block. */
         .event-list { padding: 56px 20px; background: #f6f7f9; }
         .event-list-inner { max-width: 900px; margin: 0 auto; }
