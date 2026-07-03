@@ -28,9 +28,15 @@
 
 @section Head {
     <style>
-        /* Hero header (same visual language as the homepage), slightly shorter so the tickets
-           section below stays reachable. Uses the .hero* rules from site.css. */
-        .evt-hero { height: 52vh; min-height: 380px; }
+        /* Header image band identical to the homepage's headerElement (.page-header, min-height 300px)
+           so the header is exactly the same height as the homepage. */
+        .page-header { position: relative; background-size: cover; background-position: center; min-height: 300px; display: flex; align-items: flex-end; }
+        .page-header--plain { background: #101010; }
+        .page-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.75) 100%); }
+        .page-header-inner { position: relative; z-index: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px 40px; }
+        .page-header-title { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-size: clamp(2.4rem, 6vw, 4.5rem); line-height: 1; margin: 0; }
+        .page-header-title::after { content: ""; display: block; width: 64px; height: 5px; background: #C8102E; margin-top: 16px; }
+        .page-header-date { color: rgba(255,255,255,.85); margin: 14px 0 0; font-size: .98rem; }
         .evt-wrap { max-width: 860px; margin: 0 auto; padding: 2.5rem 2.5rem 5rem; }
         .evt-back {
             font-family: var(--display); font-size: 1rem; font-weight: 600;
@@ -96,30 +102,21 @@
 }
 else
 {
-    <section class="hero evt-hero">
-        @if (!string.IsNullOrEmpty(image))
-        {
-            <div class="hero-bg" style="background-image:url('@image');"></div>
-        }
-        else
-        {
-            <div class="hero-bg hero-bg--empty"></div>
-        }
-        <div class="hero-inner">
-            <h1 class="hero-title">@Model.Name</h1>
-            <p class="hero-sub">
-                @start.ToString("dd.MM.yyyy, HH:mm") Uhr@if (venue is not null) { <text> · @venue.Name</text> }
-            </p>
-        </div>
-        <div class="hero-bar">
-            <div class="hero-bar-scroll">
-                <span>Scroll</span>
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1.5v10M2.5 8l4 4 4-4"/></svg>
-            </div>
-        </div>
-    </section>
-
     <main class="flexpage-main">
+        <section class="page-header @(string.IsNullOrEmpty(image) ? "page-header--plain" : "")"
+                 style="@(string.IsNullOrEmpty(image) ? "" : $"background-image:url('{image}');")">
+            @if (!string.IsNullOrEmpty(image))
+            {
+                <div class="page-header-overlay"></div>
+            }
+            <div class="page-header-inner">
+                <h1 class="page-header-title">@Model.Name</h1>
+                <p class="page-header-date">
+                    @start.ToString("dd.MM.yyyy, HH:mm") Uhr@if (venue is not null) { <text> · @venue.Name</text> }
+                </p>
+            </div>
+        </section>
+
         <div class="evt-wrap">
             <a href="@backHref" class="evt-back">&larr; Übersicht</a>
 
