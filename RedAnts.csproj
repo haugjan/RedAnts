@@ -12,6 +12,7 @@
     <PackageReference Include="Umbraco.Cms.DevelopmentMode.Backoffice" />
     <PackageReference Include="Umbraco.Cms.Persistence.Sqlite" />
     <PackageReference Include="Umbraco.StorageProviders.AzureBlob" />
+    <PackageReference Include="QRCoder" />
     <PackageReference Include="Sqids" />
     <PackageReference Include="uSync" />
   </ItemGroup>
