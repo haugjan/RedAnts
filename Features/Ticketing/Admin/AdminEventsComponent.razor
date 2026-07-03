@@ -112,8 +112,9 @@
 
 @if (_editing is not null)
 {
-    <div class="ta-overlay" @onclick="CancelEdit">
-        <div class="ta-modal" @onclick:stopPropagation="true">
+    @* Close on mousedown (not click) so releasing a text selection outside the modal does not close it (S2 fix). *@
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Anlass bearbeiten</h2>
             <p class="ta-modal-sub">
                 @_editing.Name · @_editing.Date.ToString("dd.MM.yyyy")
