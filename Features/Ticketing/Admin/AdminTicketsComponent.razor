@@ -147,8 +147,8 @@
 
     @if (_showCreate)
     {
-        <div class="ta-modal-backdrop" @onclick="CloseCreate">
-            <div class="ta-modal" @onclick:stopPropagation="true">
+        <div class="ta-modal-backdrop" @onmousedown="CloseCreate">
+            <div class="ta-modal" @onmousedown:stopPropagation="true">
                 <h2 class="ta-modal-title">Ticket erstellen</h2>
                 <div class="ta-field">
                     <label class="ta-label" for="newCategory">Kategorie</label>
