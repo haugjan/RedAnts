@@ -78,31 +78,31 @@ jobs:
           # Pages to pre-load so the first real visitor doesn't pay the cold-start cost.
           PAGES="/"
 
-          # Wait for the home page to return 200 (Umbraco fully started after restart).
-          # NOTE: on the very first deploy the Azure SQL database is still empty and Umbraco
-          # serves its one-time installer instead of the site, so "/" will not return 200 until
-          # an admin completes the install at /umbraco. Warm-up is therefore best-effort: it never
-          # fails the deploy, it only pre-warms the site once it is actually installed.
+          # Wait until the app responds after restart. "Up" = HTTP 200 OR 401: when the live
+          # Basic-auth gate is enabled every request returns 401 until credentials are supplied,
+          # so a 401 still means Umbraco has booted. curl is made non-fatal (|| echo 000) so a
+          # transient connection error during the restart never aborts this best-effort step
+          # (the step runs under `set -e`), and 000 simply counts as "not ready yet".
           echo "Waiting for the app to respond after restart..."
           READY=0
           for i in $(seq 1 40); do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/")
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $HTTP_STATUS"
-            if [ "$HTTP_STATUS" = "200" ]; then
+            if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "401" ]; then
               READY=1
               break
             fi
             sleep 15
           done
           if [ "$READY" != "1" ]; then
-            echo "Site did not return 200 within the warm-up window (expected before the first-run"
-            echo "Umbraco install is completed at /umbraco). Treating warm-up as best-effort."
+            echo "App did not respond within the warm-up window (e.g. before the first-run Umbraco"
+            echo "install is completed at /umbraco). Treating warm-up as best-effort."
             exit 0
           fi
 
           # Prime the remaining pages so their views are JIT-compiled and caches filled.
           for PAGE in $PAGES; do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE$PAGE")
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE$PAGE" || echo "000")
             echo "Warmed $PAGE -> $HTTP_STATUS"
           done
           echo "Warm-up complete."
