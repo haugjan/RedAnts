@@ -13,36 +13,8 @@ CultureInfo.DefaultThreadCurrentUICulture = swissCulture;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Resolve SQLite Data Source to an absolute path using the content root, and pre-enable
-// WAL mode before Umbraco boots. WAL prevents SQLITE_BUSY when Umbraco's migrator,
-// OpenIddict/EF Core and NPoco repositories open the same file concurrently at startup.
-var sqliteProviderKey = "ConnectionStrings:umbracoDbDSN_ProviderName";
-if (builder.Configuration[sqliteProviderKey] == "Microsoft.Data.Sqlite")
-{
-    const string connKey = "ConnectionStrings:umbracoDbDSN";
-    var connStr = builder.Configuration[connKey] ?? string.Empty;
-    const string prefix = "Data Source=";
-    var start = connStr.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
-    if (start >= 0)
-    {
-        var valueStart = start + prefix.Length;
-        var end = connStr.IndexOf(';', valueStart);
-        var dataSource = end >= 0 ? connStr[valueStart..end] : connStr[valueStart..];
-        var absDataSource = Path.IsPathRooted(dataSource)
-            ? dataSource
-            : Path.GetFullPath(dataSource.Replace('/', Path.DirectorySeparatorChar),
-                               builder.Environment.ContentRootPath);
-        var resolved = $"Data Source={absDataSource};Foreign Keys=True;Pooling=True";
-        builder.Configuration[connKey] = resolved;
-
-        Directory.CreateDirectory(Path.GetDirectoryName(absDataSource)!);
-        using var init = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={absDataSource}");
-        init.Open();
-        using var wal = init.CreateCommand();
-        wal.CommandText = "PRAGMA journal_mode=WAL;";
-        wal.ExecuteNonQuery();
-    }
-}
+// Persistence is Azure SQL in every environment (dev + prod), so there is no SQLite bootstrap.
+// Local development connects to the shared DEV Azure SQL via user secrets (see appsettings.Development.json).
 
 // Prevent app crash when a background service hits a transient SQL timeout.
 builder.Services.Configure<HostOptions>(options =>
