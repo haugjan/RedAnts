@@ -69,6 +69,8 @@
                                 <td class="ta-num">@b.RedeemedCount</td>
                                 <td class="ta-num">@(b.TicketCount - b.RedeemedCount)</td>
                                 <td class="ta-col-actions">
+                                    <a class="ta-icon-btn" href="/admin/flextickets/bundle/@b.Id/serienbrief.rtf"
+                                       title="Word-Serienbrief mit QR-Codes herunterladen" target="_blank" rel="noopener">📄</a>
                                     <a class="ta-icon-btn" href="/admin/flextickets/bundle/@b.Id/tickets.csv"
                                        title="Bundle als CSV herunterladen (Kurzkennung + Ticketlink)" target="_blank" rel="noopener">⬇</a>
                                     <button type="button" class="ta-icon-btn" title="Referenz bearbeiten" @onclick="() => OpenEdit(b)">✎</button>
