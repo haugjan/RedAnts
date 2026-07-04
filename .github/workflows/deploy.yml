@@ -1,25 +1,21 @@
 name: Deploy to Azure
 
-# Deploys the RedAnts Umbraco app to the Azure App Service in resource group RG_RedAnts.
-# Authentication uses Microsoft Entra / OIDC (workload identity federation) — no basic auth
-# and no long-lived publish password. The GitHub runner requests a short-lived OIDC token,
-# azure/login exchanges it for an Azure access token via a federated credential on the
-# "redants-github-deploy" app registration, and `az webapp deploy` uploads over ARM.
+# Two-stage deploy (both App Services in Switzerland North), Microsoft Entra / OIDC — no basic
+# auth and no long-lived publish password.
 #
-# Required GitHub configuration (Settings -> Secrets and variables -> Actions):
-#   Variables:
-#     AZURE_WEBAPP_NAME      - name of the App Service in RG_RedAnts (e.g. app-redants)
-#   Secrets:
-#     AZURE_CLIENT_ID        - appId of the redants-github-deploy app registration
-#     AZURE_TENANT_ID        - Entra tenant id
-#     AZURE_SUBSCRIPTION_ID  - Azure subscription id
-#   The app registration has a federated credential trusting
-#   repo:haugjan/RedAnts:ref:refs/heads/main and the "Website Contributor" role on the app.
+#   push to feature/**  -> deploy DEV
+#   push to main        -> deploy DEV, then PROD
+#
+# GitHub Environments 'dev' and 'prod' each carry the federated-credential subject
+# (repo:haugjan/RedAnts:environment:<env>) and the per-stage variable AZURE_WEBAPP_NAME
+# (app-redants-dev / app-redants-prod). Repo secrets (same app registration for both):
+#   AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID.
 
 on:
   push:
     branches:
       - main
+      - 'feature/**'
   workflow_dispatch:
 
 permissions:
@@ -27,82 +23,93 @@ permissions:
   contents: read
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
-
-      - name: Restore
-        run: dotnet restore RedAnts.csproj
-
-      - name: Build
-        run: dotnet build RedAnts.csproj --configuration Release --no-restore
-
-      - name: Publish
-        run: dotnet publish RedAnts.csproj --configuration Release --output ./publish --no-build
-
+      - run: dotnet restore RedAnts.csproj
+      - run: dotnet build RedAnts.csproj --configuration Release --no-restore
+      - run: dotnet publish RedAnts.csproj --configuration Release --output ./publish --no-build
       - name: Package
         run: cd ./publish && zip -r ../app.zip . && cd ..
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: app.zip
+          retention-days: 3
 
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
       - name: Deploy (az webapp deploy over ARM)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
-          az webapp deploy \
-            --resource-group RG_RedAnts \
-            --name "$WEBAPP" \
-            --src-path app.zip \
-            --type zip \
-            --track-status false \
-            --timeout 600000
-
+          az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
+            --src-path app.zip --type zip --track-status false --timeout 600000
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
-          # Pages to pre-load so the first real visitor doesn't pay the cold-start cost.
-          PAGES="/"
-
-          # Wait until the app responds after restart. "Up" = HTTP 200 OR 401: when the live
-          # Basic-auth gate is enabled every request returns 401 until credentials are supplied,
-          # so a 401 still means Umbraco has booted. curl is made non-fatal (|| echo 000) so a
-          # transient connection error during the restart never aborts this best-effort step
-          # (the step runs under `set -e`), and 000 simply counts as "not ready yet".
-          echo "Waiting for the app to respond after restart..."
-          READY=0
+          # "Up" = 200 OR 401 (the Basic-auth gate returns 401 until credentials are supplied,
+          # which still means Umbraco booted). Best-effort: never fail the deploy here.
           for i in $(seq 1 40); do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
-            echo "Attempt $i: GET / -> $HTTP_STATUS"
-            if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "401" ]; then
-              READY=1
-              break
-            fi
+            S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
+            echo "Attempt $i: GET / -> $S"
+            if [ "$S" = "200" ] || [ "$S" = "401" ]; then echo "Up."; exit 0; fi
             sleep 15
           done
-          if [ "$READY" != "1" ]; then
-            echo "App did not respond within the warm-up window (e.g. before the first-run Umbraco"
-            echo "install is completed at /umbraco). Treating warm-up as best-effort."
-            exit 0
-          fi
+          echo "App did not respond within the warm-up window (best-effort)."; exit 0
 
-          # Prime the remaining pages so their views are JIT-compiled and caches filled.
-          for PAGE in $PAGES; do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE$PAGE" || echo "000")
-            echo "Warmed $PAGE -> $HTTP_STATUS"
+  deploy-prod:
+    needs: [build, deploy-dev]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy (az webapp deploy over ARM)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
+            --src-path app.zip --type zip --track-status false --timeout 600000
+      - name: Warm up the site
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          BASE="https://$WEBAPP.azurewebsites.net"
+          for i in $(seq 1 40); do
+            S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
+            echo "Attempt $i: GET / -> $S"
+            if [ "$S" = "200" ] || [ "$S" = "401" ]; then echo "Up."; exit 0; fi
+            sleep 15
           done
-          echo "Warm-up complete."
+          echo "App did not respond within the warm-up window (best-effort)."; exit 0
