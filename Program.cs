@@ -73,6 +73,18 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
 {
     var expectedAuth = "Basic " + Convert.ToBase64String(
         System.Text.Encoding.UTF8.GetBytes($"{basicUser}:{basicPass}"));
+
+    // After a browser passes the Basic challenge once we drop an unlock cookie and accept it on
+    // subsequent requests. Reason: the browser does NOT attach cached HTTP Basic credentials to the
+    // Blazor Server SignalR WebSocket handshake (/_blazor) or to some background fetches, so those
+    // requests would keep hitting the 401 + "WWW-Authenticate: Basic" challenge and the browser would
+    // re-prompt for the password on every page. Cookies, unlike Basic credentials, ride along on the
+    // WebSocket handshake and every fetch, so the gate is only ever shown once. Soft gate, not real
+    // security — the cookie is just a non-reversible marker that the credentials were entered.
+    const string gateCookie = "RedAnts.Gate";
+    var gateToken = Convert.ToHexString(
+        System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(expectedAuth)));
+
     app.Use(async (context, next) =>
     {
         // The Umbraco backoffice has its own login and authenticates its API calls with a Bearer token,
@@ -83,8 +95,21 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
             await next();
             return;
         }
+        // Already unlocked in this browser (cookie set after the first successful Basic challenge).
+        if (context.Request.Cookies[gateCookie] == gateToken)
+        {
+            await next();
+            return;
+        }
         if (context.Request.Headers.Authorization.ToString() == expectedAuth)
         {
+            context.Response.Cookies.Append(gateCookie, gateToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                MaxAge = TimeSpan.FromDays(7),
+            });
             await next();
             return;
         }
