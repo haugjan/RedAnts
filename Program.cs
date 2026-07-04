@@ -71,19 +71,36 @@ var basicUser = app.Configuration["BasicAuth:Username"];
 var basicPass = app.Configuration["BasicAuth:Password"];
 if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
 {
-    var expectedAuth = "Basic " + Convert.ToBase64String(
-        System.Text.Encoding.UTF8.GetBytes($"{basicUser}:{basicPass}"));
-
     // After a browser passes the Basic challenge once we drop an unlock cookie and accept it on
-    // subsequent requests. Reason: the browser does NOT attach cached HTTP Basic credentials to the
-    // Blazor Server SignalR WebSocket handshake (/_blazor) or to some background fetches, so those
-    // requests would keep hitting the 401 + "WWW-Authenticate: Basic" challenge and the browser would
-    // re-prompt for the password on every page. Cookies, unlike Basic credentials, ride along on the
-    // WebSocket handshake and every fetch, so the gate is only ever shown once. Soft gate, not real
-    // security — the cookie is just a non-reversible marker that the credentials were entered.
+    // subsequent requests. Cookies — unlike cached HTTP Basic credentials — ride along on the Blazor
+    // Server SignalR WebSocket handshake (/_blazor) and on every background fetch, so those requests
+    // no longer hit the challenge. Soft gate, not real security: the cookie is just a non-reversible
+    // marker (SHA-256 of the credentials) proving the password was entered.
     const string gateCookie = "RedAnts.Gate";
-    var gateToken = Convert.ToHexString(
-        System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(expectedAuth)));
+    var gateToken = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+        System.Text.Encoding.UTF8.GetBytes($"{basicUser}:{basicPass}")));
+
+    // Decode the incoming "Authorization: Basic …" header and compare the credentials. Browsers
+    // encode "user:pass" as UTF-8 (when the charset hint is honoured) or as Latin-1 — accept both,
+    // otherwise a password with umlauts is never accepted and the dialog reappears forever.
+    bool CredentialsMatch(string header)
+    {
+        const string scheme = "Basic ";
+        if (!header.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
+            return false;
+        byte[] raw;
+        try { raw = Convert.FromBase64String(header[scheme.Length..].Trim()); }
+        catch (FormatException) { return false; }
+        foreach (var encoding in new[] { System.Text.Encoding.UTF8, System.Text.Encoding.Latin1 })
+        {
+            var pair = encoding.GetString(raw);
+            var separator = pair.IndexOf(':');
+            if (separator < 0) continue;
+            if (pair[..separator] == basicUser && pair[(separator + 1)..] == basicPass)
+                return true;
+        }
+        return false;
+    }
 
     app.Use(async (context, next) =>
     {
@@ -101,7 +118,7 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
             await next();
             return;
         }
-        if (context.Request.Headers.Authorization.ToString() == expectedAuth)
+        if (CredentialsMatch(context.Request.Headers.Authorization.ToString()))
         {
             context.Response.Cookies.Append(gateCookie, gateToken, new CookieOptions
             {
@@ -113,8 +130,18 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
             await next();
             return;
         }
-        context.Response.Headers.WWWAuthenticate = "Basic realm=\"RedAnts\", charset=\"UTF-8\"";
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        // Only a 401 that carries "WWW-Authenticate" pops the browser's native password dialog. Send it
+        // exclusively on top-level page navigations, so background requests without the cookie (a Blazor
+        // reconnect, a prefetch, a favicon) fail silently instead of re-prompting for the password on
+        // every page. The next navigation still challenges and, once entered, sets the cookie for all.
+        var fetchMode = context.Request.Headers["Sec-Fetch-Mode"].ToString();
+        var isNavigation = fetchMode.Length > 0
+            ? string.Equals(fetchMode, "navigate", StringComparison.OrdinalIgnoreCase)
+            : HttpMethods.IsGet(context.Request.Method)
+              && context.Request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase);
+        if (isNavigation)
+            context.Response.Headers.WWWAuthenticate = "Basic realm=\"RedAnts\", charset=\"UTF-8\"";
     });
 }
 
