@@ -33,29 +33,33 @@
         body {
             margin: 0; min-height: 100vh; background: #f4f4f5; color: #101010;
             font-family: Verdana, Geneva, Tahoma, sans-serif;
-            display: flex; align-items: center; justify-content: center; padding: 1.25rem;
+            display: flex; align-items: center; justify-content: center; padding: .8rem;
             -webkit-font-smoothing: antialiased;
         }
-        .wt-wrap { width: 100%; max-width: 430px; }
-        .wt-brand { text-align: center; margin-bottom: 1rem; }
-        .wt-brand img { height: 54px; width: auto; }
+        .wt-wrap { width: 100%; max-width: 400px; }
         .wt-card { background: #fff; border-radius: 16px; box-shadow: 0 6px 30px rgba(0,0,0,.10); overflow: hidden; }
-        .wt-head { background: var(--ra-red); color: #fff; padding: 1.1rem 1.4rem; }
-        .wt-head .wt-type { font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.35rem; }
-        .wt-head .wt-scope { opacity: .92; font-size: .95rem; margin-top: .15rem; }
+        .wt-head {
+            background: var(--ra-red); color: #fff; padding: .8rem 1rem;
+            display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+        }
+        .wt-head-text { min-width: 0; }
+        .wt-head .wt-type { font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.2rem; line-height: 1.05; }
+        .wt-head .wt-scope { opacity: .92; font-size: .88rem; margin-top: .1rem; }
+        .wt-head-logo { flex: 0 0 auto; background: #fff; border-radius: 8px; padding: 4px 6px; line-height: 0; }
+        .wt-head-logo img { height: 34px; width: auto; display: block; }
         /* Per-type header accent (color-tells the ticket type apart; the type name stays in text too). */
         .wt-head--spiel  { background: #C8102E; }
         .wt-head--flex   { background: #E4720F; }
         .wt-head--saison { background: #1F5FBF; }
         .wt-head--member { background: #1A7F37; }
         .wt-head--free   { background: #6B4EA0; }
-        .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1.1rem; padding: 1.2rem 1.4rem 0; }
-        .wt-logos img { height: 56px; width: auto; object-fit: contain; }
+        .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .9rem 1.4rem 0; }
+        .wt-logos img { height: 46px; width: auto; object-fit: contain; }
         .wt-vs { font-family: var(--ra-display); font-weight: 700; text-transform: uppercase; color: #999; font-size: .9rem; }
-        .wt-qr { padding: 1.6rem 1.4rem 1rem; text-align: center; }
-        .wt-qr svg { width: 260px; max-width: 78%; height: auto; }
-        .wt-meta { padding: 0 1.4rem 1.4rem; }
-        .wt-row { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem 0; border-top: 1px solid #f0f0f0; font-size: .95rem; }
+        .wt-qr { padding: 1rem 1.4rem .5rem; text-align: center; }
+        .wt-qr svg { width: 210px; max-width: 60%; height: auto; }
+        .wt-meta { padding: 0 1.2rem 1.1rem; }
+        .wt-row { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; border-top: 1px solid #f0f0f0; font-size: .9rem; }
         .wt-row .wt-k { color: #666; }
         .wt-row .wt-v { font-weight: 600; text-align: right; }
         .wt-badge { display: inline-block; padding: .18rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
@@ -69,7 +73,6 @@
 </head>
 <body>
     <div class="wt-wrap">
-        <div class="wt-brand"><img src="@logoUrl" alt="Red Ants Winterthur" /></div>
         @if (!Model.Found)
         {
             <div class="wt-card">
@@ -83,8 +86,11 @@
         {
             <div class="wt-card">
                 <div class="wt-head wt-head--@typeKey">
-                    <div class="wt-type">@Model.TypeLabel</div>
-                    <div class="wt-scope">@Model.ScopeName</div>
+                    <div class="wt-head-text">
+                        <div class="wt-type">@Model.TypeLabel</div>
+                        <div class="wt-scope">@Model.ScopeName</div>
+                    </div>
+                    <div class="wt-head-logo"><img src="@logoUrl" alt="Red Ants Winterthur" /></div>
                 </div>
 
                 @if (!string.IsNullOrEmpty(Model.HomeLogo) || !string.IsNullOrEmpty(Model.AwayLogo))
