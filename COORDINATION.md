@@ -151,6 +151,33 @@ Mitgliederkarten:
 
 ---
 
+## Nachtrag Runde 2: Abendkasse-Express (vom Nutzer freigegeben)
+
+Ziel: An der Abendkasse scannt jemand ein fixes QR-Plakat und kommt in wenigen Schritten zum
+Ticket, ohne dass Bestell-Informationen verloren gehen.
+
+**S4 — Express-Checkout** (`feature/s4-r2-abendkasse`):
+1. **Fixe Route `/heute`**: löst den heutigen Anlass auf und leitet auf dessen Eventseite
+   weiter (kein Event heute → nächste Events; mehrere → Auswahl). Ein nie neu zu druckendes
+   QR-Plakat zeigt auf `https://tickets.redants.ch/heute`.
+2. **„Direkt kaufen"** auf der Eventseite: Anzahl wählen → direkt in die Kasse (Warenkorb
+   bleibt internes Modell, die Zwischenseite entfällt).
+3. **Express-Kasse in einem Schritt**: nur E-Mail (Pflicht) + Zahlungsart + Turnstile;
+   Rechnungsadresse optional. Bestellung/Beleg entstehen unverändert (Nummer, Betrag,
+   Zahlungsart, E-Mail).
+4. **Bestätigungsseite zeigt die gekauften Tickets mit QR direkt an** (Karten wie das
+   Online-Ticket) — kein Warten aufs Mail an der Tür.
+
+**S3 — Mail-Ticket-Layout** (`feature/s3-r2-mail-abstand`):
+- Bei mehreren Tickets pro Mail: jede Karte deutlich abgesetzt (grosser Abstand/Trenner),
+  Laufnummer „Ticket X von Y", Print-Umbrüche (`page-break-inside: avoid`), damit beim
+  Ausdrucken nichts zusammenklebt.
+
+**S1 — Gratis-Kind im Scanner** (`feature/s1-r2-kind-gratis`):
+- Neuer `FreeEntryType.Child` („Kind (gratis)") als dritte Option im Freieinlass-Dialog
+  (gewähren + zurücknehmen). Zählt zum Hallenkontingent, eigene Kategorie in Tabelle und
+  Zahlen, verbraucht KEIN SU-Kontingent. Additiv (neuer int-Wert).
+
 ## Änderungs-Log (Schema/Contracts, die andere betreffen)
 
 Neueste zuerst. Nur Änderungen eintragen, die andere Sessions betreffen.
