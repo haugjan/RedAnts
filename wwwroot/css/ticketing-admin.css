@@ -124,7 +124,7 @@
     padding: 1.5rem 1.6rem 1.6rem; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
     max-height: calc(100vh - 6rem); overflow-y: auto;
 }
-.ta-modal--wide { max-width: 720px; }
+.ta-modal--wide { max-width: 900px; }
 .ta-modal-title { font-family: var(--ta-font); font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 0.2rem; }
 .ta-modal-sub { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 1.1rem; }
 .ta-modal .ta-field { width: 100%; margin: 0 0 1.1rem; }

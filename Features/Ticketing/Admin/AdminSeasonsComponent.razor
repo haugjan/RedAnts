@@ -126,6 +126,7 @@
 
             <div class="ta-field">
                 <label class="ta-label">Preise und Kontingent je Kategorie</label>
+                <div class="ta-subtable-wrap">
                 <table class="ta-subtable">
                     <thead>
                         <tr>
@@ -159,6 +160,7 @@
                         }
                     </tbody>
                 </table>
+                </div>
                 <p class="ta-field-hint">Links: Saisonkarten-Verkauf dieser Saison. Rechts: Standardwerte, die jeder NEUE Anlass beim Erstellen übernimmt (bestehende Anlässe bleiben unverändert). Solange eine angebotene Sonderaktion Restkontingent hat, ist die zugehörige normale Kategorie nicht verkäuflich.</p>
             </div>
 
@@ -178,11 +180,12 @@
 }
 
 <style>
+    .ta-subtable-wrap { overflow-x: auto; }
     .ta-subtable { width: 100%; border-collapse: collapse; margin-top: .4rem; }
-    .ta-subtable th { text-align: left; font-size: .7rem; text-transform: uppercase; color: var(--ta-muted); padding: 2px 6px; }
-    .ta-subtable td { padding: 3px 6px; font-size: .85rem; }
+    .ta-subtable th { text-align: left; font-size: .68rem; text-transform: uppercase; color: var(--ta-muted); padding: 2px 5px; }
+    .ta-subtable td { padding: 3px 5px; font-size: .85rem; }
     .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
-    .ta-input-sm { width: 6.5rem; padding: .3rem .4rem; text-align: right; }
+    .ta-input-sm { width: 4.6rem; padding: .3rem .35rem; text-align: right; }
     .ta-row-off td { opacity: .45; }
     .ta-row-off td:nth-child(-n+2) { opacity: 1; }
     .ta-period { white-space: nowrap; }
