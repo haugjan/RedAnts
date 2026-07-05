@@ -154,8 +154,11 @@ app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/")
     {
-        var isScanHost = context.Request.Host.Host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase);
-        context.Response.Redirect(isScanHost ? "/scanntickets" : "/ticketing/");
+        var host = context.Request.Host.Host;
+        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase);
+        var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
+        context.Response.Redirect(isScanHost ? "/scanntickets" : isAdminHost ? "/umbraco" : "/ticketing/");
         return;
     }
     await next();
