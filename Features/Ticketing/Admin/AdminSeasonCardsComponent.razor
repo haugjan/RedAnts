@@ -29,6 +29,11 @@
                 </div>
             </div>
             <div class="ta-toolbar-actions">
+                @if (_passes.Count > 0)
+                {
+                    <a class="ta-btn ta-btn-ghost" href="/admin/saisonkarten/season/@SelectedSeasonId/passes.csv"
+                       target="_blank" rel="noopener" title="Saisonkarten dieser Saison als CSV herunterladen">⬇ CSV</a>
+                }
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
                     Saisonkarte erstellen
                 </button>
@@ -76,9 +81,21 @@
                                     else { <span class="ta-muted">—</span> }
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
-                                <td>@p.Category.DisplayName()</td>
+                                <td>
+                                    <InlineSelectEdit TValue="TicketCategory" Value="p.Category" FieldLabel="Kategorie"
+                                                      Options="CategoryOptions" Label="@(c => c.DisplayName())"
+                                                      Save="@(v => SaveCategoryAsync(p, v))" />
+                                </td>
                                 <td class="ta-num">CHF @p.Price.ToString("N2")</td>
-                                <td><span class="ta-badge ta-badge-@p.Status.ToString().ToLowerInvariant()">@StatusLabel(p.Status)</span></td>
+                                <td>
+                                    <InlineSelectEdit TValue="TicketStatus" Value="p.Status" FieldLabel="Status"
+                                                      Options="StatusOptions" Label="@StatusLabel"
+                                                      Save="@(v => SaveStatusAsync(p, v))">
+                                        <Display Context="st">
+                                            <span class="ta-badge ta-badge-@st.ToString().ToLowerInvariant()">@StatusLabel(st)</span>
+                                        </Display>
+                                    </InlineSelectEdit>
+                                </td>
                                 <td class="ta-num">
                                     @if (p.EventVisits > 0)
                                     {
@@ -300,6 +317,27 @@
     }
 
     private static int? OnlineMarker(SeasonPassListItem p) => p.OrderNumber is null ? null : 0;
+
+    private static readonly TicketCategory[] CategoryOptions = Enum.GetValues<TicketCategory>();
+    private static readonly TicketStatus[] StatusOptions = [TicketStatus.Valid, TicketStatus.Cancelled];
+
+    private async Task SaveCategoryAsync(SeasonPassListItem p, TicketCategory category)
+    {
+        var pass = await Passes.GetByUuidAsync(p.Uuid);
+        if (pass is null) return;
+        pass.Edit(category, pass.Price, pass.Status);
+        await Passes.SaveAsync(pass);
+        await ReloadPassesAsync();
+    }
+
+    private async Task SaveStatusAsync(SeasonPassListItem p, TicketStatus status)
+    {
+        var pass = await Passes.GetByUuidAsync(p.Uuid);
+        if (pass is null) return;
+        pass.Edit(pass.Category, pass.Price, status);
+        await Passes.SaveAsync(pass);
+        await ReloadPassesAsync();
+    }
 
     private SeasonPassListItem? _visitsPass;
     private void OpenVisits(SeasonPassListItem p) => _visitsPass = p;
