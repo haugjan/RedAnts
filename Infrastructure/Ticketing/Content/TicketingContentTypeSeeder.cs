@@ -44,7 +44,7 @@ public sealed class TicketingContentTypeSeeder(
         try
         {
             EnsureContentTypes();
-            EnsureSampleContent();
+            EnsureContentStructure();
             RefreshAccessLinks();
         }
         catch (Exception ex)
@@ -160,7 +160,7 @@ public sealed class TicketingContentTypeSeeder(
         logger.LogInformation("TicketingContentTypeSeeder: created document types.");
     }
 
-    private void EnsureSampleContent()
+    private void EnsureContentStructure()
     {
         if (contentService.GetRootContent().Any(c => c.ContentType.Alias == A.RootType)) return;
 
@@ -173,45 +173,7 @@ public sealed class TicketingContentTypeSeeder(
         var venuesFolder = contentService.Create("Orte", root.Id, A.VenuesFolderType);
         Publish(venuesFolder);
 
-        var venue = contentService.Create("Deutweg Halle", venuesFolder.Id, A.VenueType);
-        venue.SetValue(A.VenueGoogleGeoId, "ChIJSeedGeoId");
-        venue.SetValue(A.VenueDescription, "<p>Heimhalle der Red Ants.</p>");
-        Publish(venue);
-
-        var season = contentService.Create("Saison 2026/27", seasonsFolder.Id, A.SeasonType);
-        season.SetValue(A.SeasonStartDate, DateTime.Today);
-        season.SetValue(A.SeasonEndDate, DateTime.Today.AddMonths(8));
-        season.SetValue(A.SeasonStatus, Status("Open"));
-        Publish(season);
-
-        var openEvent = contentService.Create("Red Ants vs. Rivals", season.Id, A.EventType);
-        openEvent.SetValue(A.EventText, "<p>Grosses Heimspiel.</p>");
-        openEvent.SetValue(A.EventStart, DateTime.Today.AddDays(21).AddHours(19).AddMinutes(30));
-        openEvent.SetValue(A.EventVenue, venue.GetUdi().ToString());
-        openEvent.SetValue(A.EventStatus, Status("Open"));
-        Publish(openEvent);
-
-        var internEvent = contentService.Create("Intern-Anlass (versteckt)", season.Id, A.EventType);
-        internEvent.SetValue(A.EventStart, DateTime.Today.AddDays(21).AddHours(20));
-        internEvent.SetValue(A.EventVenue, venue.GetUdi().ToString());
-        internEvent.SetValue(A.EventStatus, Status("Intern"));
-        Publish(internEvent);
-        logger.LogInformation("Seed intern event secret = {Secret}", internEvent.Key.ToString().Split('-')[0]);
-
-        var closedEvent = contentService.Create("Vergangenes Spiel (Closed)", season.Id, A.EventType);
-        closedEvent.SetValue(A.EventStart, DateTime.Today.AddDays(-7).AddHours(19));
-        closedEvent.SetValue(A.EventVenue, venue.GetUdi().ToString());
-        closedEvent.SetValue(A.EventStatus, Status("Closed"));
-        Publish(closedEvent);
-
-        var internSeason = contentService.Create("Intern-Saison 2027/28", seasonsFolder.Id, A.SeasonType);
-        internSeason.SetValue(A.SeasonStartDate, DateTime.Today.AddMonths(9));
-        internSeason.SetValue(A.SeasonEndDate, DateTime.Today.AddMonths(17));
-        internSeason.SetValue(A.SeasonStatus, Status("Intern"));
-        Publish(internSeason);
-        logger.LogInformation("Seed intern season secret = {Secret}", internSeason.Key.ToString().Split('-')[0]);
-
-        logger.LogInformation("TicketingContentTypeSeeder: seeded sample content tree.");
+        logger.LogInformation("TicketingContentTypeSeeder: created content structure (root + folders).");
     }
 
     private PropertyType Prop(IDataType dataType, string alias, string name) =>
@@ -219,9 +181,6 @@ public sealed class TicketingContentTypeSeeder(
 
     private PropertyType PropWithHint(IDataType dataType, string alias, string name, string description) =>
         new(shortStringHelper, dataType, alias) { Name = name, Description = description };
-
-    private static string Status(string value) =>
-        System.Text.Json.JsonSerializer.Serialize(new[] { value });
 
     private void Publish(IContent content)
     {
