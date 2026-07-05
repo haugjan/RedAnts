@@ -1,10 +1,10 @@
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
+@using RedAnts.Features.Ticketing.Scanning
 
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.EventTicket.DisplayName()</h1>
-    <p class="ta-page-lead">Verkaufte Spieltickets eines Anlasses und ob sie eingelöst sind.</p>
 
     @if (_loading)
     {
@@ -103,33 +103,47 @@
                                 <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.CreatedByName, t.CreatedByEmail, t.OrderId)">
                                     @AdminFormat.CreatedShort(t.CreatedAt, t.CreatedByName, t.OrderId)
                                 </td>
-                                <td>@t.Category.DisplayName()</td>
-                                <td class="ta-num">CHF @t.Price.ToString("N2")</td>
                                 <td>
-                                    <button type="button" class="ta-badge-btn" title="Status ändern" @onclick="() => AskToggleStatus(t)">
-                                        @if (t.Status == TicketStatus.Cancelled)
-                                        {
-                                            <span class="ta-badge ta-badge-cancelled">Storniert</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="ta-badge ta-badge-valid">Gültig</span>
-                                        }
-                                    </button>
+                                    <InlineSelectEdit TValue="TicketCategory"
+                                                      Value="@t.Category"
+                                                      Options="@AllCategories"
+                                                      Label="@(c => c.DisplayName())"
+                                                      FieldLabel="Kategorie"
+                                                      Save="@(c => SaveCategoryAsync(t, c))" />
+                                </td>
+                                <td class="ta-num">
+                                    <InlineNumberEdit Value="@t.Price"
+                                                      Decimals="2"
+                                                      Min="0"
+                                                      Prefix="CHF"
+                                                      FieldLabel="Abgabepreis"
+                                                      Save="@(p => SavePriceAsync(t, p))" />
+                                </td>
+                                <td>
+                                    <InlineSelectEdit TValue="TicketStatus"
+                                                      Value="@t.Status"
+                                                      Options="@AllStatuses"
+                                                      Label="@(s => s.DisplayName())"
+                                                      FieldLabel="Status"
+                                                      Save="@(s => SaveStatusAsync(t, s))">
+                                        <Display Context="status">
+                                            <span class="ta-badge ta-badge-@status.ToString().ToLowerInvariant()">@status.DisplayName()</span>
+                                        </Display>
+                                    </InlineSelectEdit>
                                 </td>
                                 <td>
                                     @if (t.Status == TicketStatus.Valid)
                                     {
-                                        <button type="button" class="ta-badge-btn" title="Einlösung ändern" @onclick="() => AskToggleRedeemed(t)">
-                                            @if (t.Redeemed)
-                                            {
-                                                <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="ta-badge ta-badge-draft">Offen</span>
-                                            }
-                                        </button>
+                                        <InlineSelectEdit TValue="RedemptionState"
+                                                          Value="@StateOf(t)"
+                                                          Options="@AllRedemptionStates"
+                                                          Label="@RedemptionLabel"
+                                                          FieldLabel="Eingelöst"
+                                                          Save="@(s => SaveRedemptionAsync(t, s))">
+                                            <Display Context="state">
+                                                <span class="ta-badge @RedemptionBadge(state)">@RedemptionLabel(state)</span>
+                                            </Display>
+                                        </InlineSelectEdit>
                                     }
                                     else
                                     {
@@ -148,7 +162,9 @@
                 </table>
             </div>
             <p class="ta-summary">
-                @_tickets.Count Tickets · @_tickets.Count(t => t.Redeemed) eingelöst · @_tickets.Count(t => !t.Redeemed) offen
+                @_tickets.Count Tickets · @_tickets.Count(t => StateOf(t) == RedemptionState.Redeemed) eingelöst
+                · @_tickets.Count(t => StateOf(t) == RedemptionState.Outside) draussen
+                · @_tickets.Count(t => StateOf(t) == RedemptionState.Open) offen
             </p>
         }
     }
@@ -260,18 +276,6 @@
     </div>
 }
 
-@if (_confirmFor is not null)
-{
-    <ConfirmDialog Title="@_confirmTitle"
-                   Message="@_confirmMessage"
-                   ConfirmLabel="@_confirmLabel"
-                   Danger="@_confirmDanger"
-                   Busy="@_confirmBusy"
-                   Error="@_confirmError"
-                   OnConfirm="ExecuteConfirmAsync"
-                   OnCancel="() => _confirmFor = null" />
-}
-
 @if (_visitsFor is not null)
 {
     <VisitsOverlay Uuid="@_visitsFor.Uuid"
@@ -286,7 +290,16 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IEventTickets Tickets { get; set; } = default!;
+    [Inject] private IVisitLogReader Visits { get; set; } = default!;
+    [Inject] private IAdmissionService Admission { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private static readonly TicketCategory[] AllCategories = Enum.GetValues<TicketCategory>();
+    private static readonly TicketStatus[] AllStatuses = [TicketStatus.Valid, TicketStatus.Cancelled];
+    private static readonly RedemptionState[] AllRedemptionStates = Enum.GetValues<RedemptionState>();
+    private static readonly Func<RedemptionState, string> RedemptionLabel = s => s.DisplayName();
+
+    private IReadOnlyDictionary<Guid, bool> _inside = new Dictionary<Guid, bool>();
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
@@ -333,6 +346,70 @@
         _tickets = SelectedEventId > 0
             ? (await Tickets.GetByEventAsync(SelectedEventId)).OrderBy(t => t.CreatedAt).ToList()
             : [];
+        _inside = SelectedEventId > 0
+            ? await Visits.GetInsideByEventAsync(SelectedEventId)
+            : new Dictionary<Guid, bool>();
+    }
+
+    private RedemptionState StateOf(EventTicket t) =>
+        RedemptionStateExtensions.Derive(t.Redeemed, _inside.TryGetValue(t.Uuid, out var inside) ? inside : null);
+
+    private static string RedemptionBadge(RedemptionState state) => state switch
+    {
+        RedemptionState.Redeemed => "ta-badge-redeemed",
+        RedemptionState.Outside => "ta-badge-blocked",
+        _ => "ta-badge-draft"
+    };
+
+    private async Task SaveCategoryAsync(EventTicket t, TicketCategory category)
+    {
+        await Tickets.SaveAsync(EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, category, t.Price,
+            t.OrderId, t.Status, t.CreatedAt, t.Redeemed, t.Buyer, t.CreatedByName, t.CreatedByEmail));
+        await ReloadTicketsAsync();
+    }
+
+    private async Task SavePriceAsync(EventTicket t, decimal? price)
+    {
+        if (price is not { } p || p < 0) throw new DomainException("Der Abgabepreis darf nicht leer oder negativ sein.");
+        await Tickets.SaveAsync(EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, decimal.Round(p, 2),
+            t.OrderId, t.Status, t.CreatedAt, t.Redeemed, t.Buyer, t.CreatedByName, t.CreatedByEmail));
+        await ReloadTicketsAsync();
+    }
+
+    private async Task SaveStatusAsync(EventTicket t, TicketStatus status)
+    {
+        await Tickets.SaveAsync(WithStatus(t, status));
+        await ReloadTicketsAsync();
+    }
+
+    private async Task SaveRedemptionAsync(EventTicket t, RedemptionState target)
+    {
+        var scannedBy = Identity?.Name ?? AdminUser;
+        var current = StateOf(t);
+
+        switch (target)
+        {
+            case RedemptionState.Redeemed:
+                await ScanOrThrowAsync(t, ScanMode.CheckIn, scannedBy);
+                break;
+            case RedemptionState.Outside:
+                if (current == RedemptionState.Open)
+                    throw new DomainException("Ein offenes Ticket war nie drin und kann nicht auf „Draussen“ gesetzt werden.");
+                await ScanOrThrowAsync(t, ScanMode.CheckOut, scannedBy);
+                break;
+            case RedemptionState.Open:
+                if (current == RedemptionState.Redeemed && _inside.GetValueOrDefault(t.Uuid))
+                    await ScanOrThrowAsync(t, ScanMode.CheckOut, scannedBy);
+                await Tickets.SaveAsync(WithRedeemed(t, false));
+                break;
+        }
+        await ReloadTicketsAsync();
+    }
+
+    private async Task ScanOrThrowAsync(EventTicket t, ScanMode mode, string scannedBy)
+    {
+        var outcome = await Admission.ScanTicketAsync(t.EventId, TicketType.EventTicket, t.Uuid, t.EventId, mode, scannedBy);
+        if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
@@ -352,58 +429,6 @@
     }
 
     private EventTicket? _visitsFor;
-
-    private EventTicket? _confirmFor;
-    private string _confirmTitle = "";
-    private string _confirmMessage = "";
-    private string _confirmLabel = "Bestätigen";
-    private bool _confirmDanger;
-    private bool _confirmBusy;
-    private string? _confirmError;
-    private Func<EventTicket, EventTicket>? _confirmChange;
-
-    private void AskToggleStatus(EventTicket t)
-    {
-        var cancelling = t.Status == TicketStatus.Valid;
-        _confirmFor = t;
-        _confirmTitle = cancelling ? "Ticket stornieren" : "Ticket reaktivieren";
-        _confirmMessage = cancelling
-            ? $"Ticket {AdminFormat.TicketNo(t.Uuid)} wirklich stornieren? Ein storniertes Ticket ist am Eingang ungültig."
-            : $"Ticket {AdminFormat.TicketNo(t.Uuid)} wieder auf „Gültig“ setzen?";
-        _confirmLabel = cancelling ? "Stornieren" : "Reaktivieren";
-        _confirmDanger = cancelling;
-        _confirmError = null;
-        _confirmChange = ticket => WithStatus(ticket, cancelling ? TicketStatus.Cancelled : TicketStatus.Valid);
-    }
-
-    private void AskToggleRedeemed(EventTicket t)
-    {
-        var redeeming = !t.Redeemed;
-        _confirmFor = t;
-        _confirmTitle = redeeming ? "Als eingelöst markieren" : "Einlösung zurücksetzen";
-        _confirmMessage = redeeming
-            ? $"Ticket {AdminFormat.TicketNo(t.Uuid)} als eingelöst markieren?"
-            : $"Die Einlösung von Ticket {AdminFormat.TicketNo(t.Uuid)} zurücksetzen?";
-        _confirmLabel = redeeming ? "Einlösen" : "Zurücksetzen";
-        _confirmDanger = false;
-        _confirmError = null;
-        _confirmChange = ticket => WithRedeemed(ticket, redeeming);
-    }
-
-    private async Task ExecuteConfirmAsync()
-    {
-        if (_confirmFor is null || _confirmChange is null) return;
-        _confirmBusy = true;
-        _confirmError = null;
-        try
-        {
-            await Tickets.SaveAsync(_confirmChange(_confirmFor));
-            _confirmFor = null;
-            await ReloadTicketsAsync();
-        }
-        catch (DomainException ex) { _confirmError = ex.Message; }
-        finally { _confirmBusy = false; }
-    }
 
     private static EventTicket WithStatus(EventTicket t, TicketStatus status) =>
         EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, t.Price, t.OrderId,

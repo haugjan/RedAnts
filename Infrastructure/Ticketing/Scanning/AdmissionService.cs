@@ -98,6 +98,9 @@ public sealed class AdmissionService(
                     "UPDATE SeasonSingleTickets SET RedeemedEventId = @0, Redeemed = 1 WHERE Uuid = @1 AND RedeemedEventId IS NULL",
                     eventId, key);
 
+            if (type == TicketType.EventTicket)
+                await db.ExecuteAsync("UPDATE EventTickets SET Redeemed = 1 WHERE Uuid = @0", key);
+
             return new ScanOutcome(AdmissionOutcome.CheckedIn, type, Ref(uuid), null,
                 await OccAsync(db, eventId), categoryLabel, holder);
         }

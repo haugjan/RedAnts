@@ -12,6 +12,18 @@ namespace RedAnts.Infrastructure.Ticketing.Admin;
 
 public sealed class VisitLogReader(IScopeProvider scopeProvider, IEvents events) : IVisitLogReader
 {
+    public async Task<IReadOnlyDictionary<Guid, bool>> GetInsideByEventAsync(int eventId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var visits = await scope.Database.FetchAsync<EventVisitRecord>(
+            "WHERE EventId = @0 AND TicketUuid IS NOT NULL", eventId);
+        var map = new Dictionary<Guid, bool>();
+        foreach (var v in visits)
+            if (Guid.TryParse(v.TicketUuid, out var uuid))
+                map[uuid] = v.IsInside;
+        return map;
+    }
+
     public async Task<IReadOnlyList<TicketVisitEntry>> GetByTicketUuidAsync(Guid uuid)
     {
         List<EventVisitRecord> visits;
