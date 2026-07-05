@@ -157,6 +157,12 @@
 .ta-subtable td { padding: 3px 6px; font-size: 0.82rem; border-top: 1px solid #f2f2f2; }
 .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
 
+.ta-cell-address { white-space: normal; min-width: 190px; line-height: 1.4; }
+.ta-cell-address .ta-addr-name { font-weight: 600; }
+.ta-cell-address .ta-addr-sub { color: var(--ta-muted); font-size: 0.78rem; }
+.ta-cell-summary { white-space: normal; min-width: 120px; }
+.ta-badge-buyer { background: #eef1f6; color: #3f4a63; }
+
 .ta-modal-visits { max-width: 560px; }
 .ta-visit { border: 1px solid var(--ta-border); border-radius: 4px; padding: 0.7rem 0.9rem; margin: 0 0 0.7rem; }
 .ta-visit-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }

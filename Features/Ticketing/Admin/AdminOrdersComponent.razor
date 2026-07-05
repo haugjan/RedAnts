@@ -1,0 +1,165 @@
+@using RedAnts.Domain.Ticketing.Sales
+@inject IOrderAdminReport Report
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Bestellungen</h1>
+    <p class="ta-page-lead">Alle Onlineeinkäufe einer Saison mit Kaufdatum, Adresse, Spieltickets, Saisonkarten und Bezahlstatus.</p>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="ordSeasonSelect">Saison</label>
+                    <select id="ordSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadOrdersAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        @if (_orders.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Onlineeinkäufe vorhanden.</div>
+        }
+        else
+        {
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Kaufdatum <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th>Bestell-Nr.</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Adresse <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th>Spieltickets</th>
+                            <th>Saisonkarten</th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("amount")'>Betrag <span class="ta-sort-ind">@Ind("amount")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Bezahlt <span class="ta-sort-ind">@Ind("status")</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in Sorted())
+                        {
+                            <tr>
+                                <td>@o.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td><code class="ta-uuid">@o.OrderNumber</code></td>
+                                <td class="ta-cell-address">
+                                    <div class="ta-addr-name">
+                                        @o.BuyerName
+                                        @if (o.BuyerType == BuyerType.Company)
+                                        {
+                                            <span class="ta-badge ta-badge-buyer">@o.BuyerType.DisplayName()</span>
+                                        }
+                                    </div>
+                                    <div>@o.Street@(string.IsNullOrWhiteSpace(o.AddressLine2) ? "" : $", {o.AddressLine2}")</div>
+                                    <div>@o.PostalCode @o.City@(IsSwitzerland(o.Country) ? "" : $", {o.Country}")</div>
+                                    <div class="ta-addr-sub">@o.Email</div>
+                                </td>
+                                <td class="ta-cell-summary">@Cell(o.EventTicketCount, o.EventTicketSummary)</td>
+                                <td class="ta-cell-summary">@Cell(o.SeasonPassCount, o.SeasonPassSummary)</td>
+                                <td class="ta-num">CHF @o.TotalGross.ToString("N2")</td>
+                                <td><span class="ta-badge @StatusClass(o.Status)">@StatusLabel(o.Status)</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="ta-summary">
+                @_orders.Count Bestellung@(_orders.Count == 1 ? "" : "en") ·
+                @_orders.Count(o => o.Status == OrderStatus.Paid) bezahlt ·
+                @_orders.Count(o => o.Status != OrderStatus.Paid) offen ·
+                Total bezahlt CHF @_orders.Where(o => o.Status == OrderStatus.Paid).Sum(o => o.TotalGross).ToString("N2")
+            </p>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<OrderListItem> _orders = [];
+
+    public int SelectedSeasonId { get; set; }
+
+    private string _sortCol = "created";
+    private bool _sortAsc = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await ReloadOrdersAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadOrdersAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        if (SelectedSeasonId <= 0) { _orders = []; return; }
+        var eventIds = (await Events.GetBySeasonAsync(SelectedSeasonId)).Select(e => e.Id).ToList();
+        _orders = await Report.GetBySeasonAsync(SelectedSeasonId, eventIds);
+    }
+
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<OrderListItem> Sorted()
+    {
+        IEnumerable<OrderListItem> q = _sortCol switch
+        {
+            "buyer" => _orders.OrderBy(o => o.BuyerName),
+            "amount" => _orders.OrderBy(o => o.TotalGross),
+            "status" => _orders.OrderBy(o => o.Status),
+            _ => _orders.OrderBy(o => o.CreatedAt),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static bool IsSwitzerland(string country) =>
+        string.IsNullOrWhiteSpace(country) || country.Equals("Schweiz", StringComparison.OrdinalIgnoreCase);
+
+    private static string Cell(int count, string summary) => count == 0 ? "—" : summary;
+
+    private static string StatusLabel(OrderStatus status) => status switch
+    {
+        OrderStatus.Paid => "Bezahlt",
+        OrderStatus.Draft => "Unbezahlt",
+        OrderStatus.Cancelled => "Storniert",
+        OrderStatus.Refunded => "Erstattet",
+        _ => status.ToString()
+    };
+
+    private static string StatusClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Paid => "ta-badge-valid",
+        OrderStatus.Draft => "ta-badge-draft",
+        OrderStatus.Cancelled => "ta-badge-cancelled",
+        OrderStatus.Refunded => "ta-badge-intern",
+        _ => "ta-badge-draft"
+    };
+}
