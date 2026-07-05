@@ -76,18 +76,24 @@
                             <td class="ta-num">@c.RedeemedMemberCards</td>
                             <td class="ta-num">@c.RedeemedFreeEntries</td>
                             <td class="ta-links">
-                                <button type="button" class="ta-link-btn"
-                                        disabled="@(string.IsNullOrEmpty(links.Public))"
-                                        title="@(string.IsNullOrEmpty(links.Public) ? "Noch nicht veröffentlicht" : "Öffentlichen Link kopieren")"
-                                        @onclick="() => Copy(e.Id, false, links.Public)">
-                                    @(IsCopied(e.Id, false) ? "✓" : "🔗")
-                                </button>
-                                <button type="button" class="ta-link-btn"
-                                        disabled="@(string.IsNullOrEmpty(links.Intern))"
-                                        title="@(string.IsNullOrEmpty(links.Intern) ? "Noch nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
-                                        @onclick="() => Copy(e.Id, true, links.Intern)">
-                                    @(IsCopied(e.Id, true) ? "✓" : "🔒")
-                                </button>
+                                @if (e.Status == EventStatus.Open)
+                                {
+                                    <button type="button" class="ta-link-btn"
+                                            disabled="@(string.IsNullOrEmpty(links.Public))"
+                                            title="@(string.IsNullOrEmpty(links.Public) ? "Noch nicht veröffentlicht" : "Öffentlichen Link kopieren")"
+                                            @onclick="() => Copy(e.Id, false, links.Public)">
+                                        @(IsCopied(e.Id, false) ? "✓" : "🔗")
+                                    </button>
+                                }
+                                else if (e.Status == EventStatus.Intern)
+                                {
+                                    <button type="button" class="ta-link-btn"
+                                            disabled="@(string.IsNullOrEmpty(links.Intern))"
+                                            title="@(string.IsNullOrEmpty(links.Intern) ? "Noch nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
+                                            @onclick="() => Copy(e.Id, true, links.Intern)">
+                                        @(IsCopied(e.Id, true) ? "✓" : "🔒")
+                                    </button>
+                                }
                             </td>
                             <td class="ta-col-actions">
                                 <button type="button" class="ta-icon-btn" title="Status und Kontingent bearbeiten"
