@@ -2,7 +2,10 @@
 @{
     Layout = null;
     var title = Model.Found ? $"{Model.TypeLabel} – {Model.ScopeName}" : "Ticket";
-    var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
+    var logoUrl = Model.TypeKey == "block4"
+        ? "/img/members/block4.webp"
+        : "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
+    var logoAlt = Model.TypeKey == "block4" ? "Block 4" : "Red Ants Winterthur";
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -44,7 +47,6 @@
         .wt-head--free   { background: #6B4EA0; }
         .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .9rem 1.4rem 0; }
         .wt-logos img { height: 46px; width: auto; object-fit: contain; }
-        .wt-logos--member img { height: 68px; }
         .wt-vs { font-family: var(--ra-display); font-weight: 700; text-transform: uppercase; color: #999; font-size: .9rem; }
         .wt-qr { padding: 1rem 1.4rem .5rem; text-align: center; }
         .wt-qr svg { width: 210px; max-width: 60%; height: auto; }
@@ -86,7 +88,7 @@
                         <div class="wt-type">@Model.TypeLabel</div>
                         <div class="wt-scope">@Model.ScopeName</div>
                     </div>
-                    <div class="wt-head-logo"><img src="@logoUrl" alt="Red Ants Winterthur" /></div>
+                    <div class="wt-head-logo"><img src="@logoUrl" alt="@logoAlt" /></div>
                 </div>
 
                 @if (!string.IsNullOrEmpty(Model.HomeLogo) || !string.IsNullOrEmpty(Model.AwayLogo))
@@ -95,13 +97,6 @@
                         @if (!string.IsNullOrEmpty(Model.HomeLogo)) { <img src="@Model.HomeLogo" alt="Heimteam" /> }
                         <span class="wt-vs">vs</span>
                         @if (!string.IsNullOrEmpty(Model.AwayLogo)) { <img src="@Model.AwayLogo" alt="Auswärtsteam" /> }
-                    </div>
-                }
-
-                @if (!string.IsNullOrEmpty(Model.MemberLogoUrl))
-                {
-                    <div class="wt-logos wt-logos--member">
-                        <img src="@Model.MemberLogoUrl" alt="@Model.CategoryLabel" />
                     </div>
                 }
 

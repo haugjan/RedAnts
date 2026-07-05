@@ -57,10 +57,17 @@ public sealed class WebTicketController(
             QrSvg: svg,
             HomeLogo: homeLogo,
             AwayLogo: awayLogo,
-            MemberLogoUrl: issued?.MemberCategory is { } mc ? MemberLogo(mc) : null,
             TypeKey: TypeKey(data.Type, issued?.MemberCategory));
 
         return View("~/Views/WebTicket.cshtml", model);
+    }
+
+    [HttpGet("/ticket/{token}/qr.png")]
+    public IActionResult QrPng(string token)
+    {
+        if (!tokens.TryVerify(token, out _)) return NotFound();
+        var url = $"{Request.Scheme}://{Request.Host}/ticket/{token}";
+        return File(qr.RenderPng(url, 8), "image/png");
     }
 
     [HttpGet("/ticket/for/{uuid:guid}")]
@@ -97,12 +104,6 @@ public sealed class WebTicketController(
         _ => "spiel"
     };
 
-    private static string MemberLogo(MemberCategory category) => category switch
-    {
-        MemberCategory.RedAnts => "/img/members/red-ants.webp",
-        MemberCategory.Block4 => "/img/members/block4.webp",
-        _ => "/img/members/red-ants.webp"
-    };
 }
 
 public sealed record WebTicketViewModel(
@@ -117,7 +118,6 @@ public sealed record WebTicketViewModel(
     string QrSvg,
     string? HomeLogo = null,
     string? AwayLogo = null,
-    string? MemberLogoUrl = null,
     string TypeKey = "spiel")
 {
     public static WebTicketViewModel Invalid() =>

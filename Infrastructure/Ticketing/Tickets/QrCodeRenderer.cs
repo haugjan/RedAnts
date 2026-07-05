@@ -12,11 +12,13 @@ public sealed class QrCodeRenderer : IQrCodeRenderer
         return new SvgQRCode(data).GetGraphic(pixelsPerModule);
     }
 
-    public string RenderPngDataUri(string content, int pixelsPerModule = 6)
+    public string RenderPngDataUri(string content, int pixelsPerModule = 6) =>
+        "data:image/png;base64," + Convert.ToBase64String(RenderPng(content, pixelsPerModule));
+
+    public byte[] RenderPng(string content, int pixelsPerModule = 6)
     {
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
-        var png = new PngByteQRCode(data).GetGraphic(pixelsPerModule);
-        return "data:image/png;base64," + Convert.ToBase64String(png);
+        return new PngByteQRCode(data).GetGraphic(pixelsPerModule);
     }
 }
