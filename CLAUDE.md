@@ -1,11 +1,11 @@
 # RedAnts
 
-Public website plus a self-service ticketing application for Red Ants Winterthur, built on **Umbraco CMS 17 / .NET 10** with SQLite storage.
+Public website plus a self-service ticketing application for Red Ants Winterthur, built on **Umbraco CMS 17 / .NET 10** with Azure SQL storage.
 
 ## Tech stack
 
 - Umbraco.Cms 17 on `net10.0`, `ImplicitUsings` and `Nullable` enabled.
-- Persistence: SQLite (`Umbraco.Cms.Persistence.Sqlite`). WAL mode is pre-enabled in `Program.cs` before Umbraco boots to avoid `SQLITE_BUSY` during migration.
+- Persistence: **Azure SQL in every environment** (provider `Microsoft.Data.SqlClient`, ships transitively with Umbraco). `appsettings.json` carries an empty DSN; the real connection string comes from the App Service app setting `ConnectionStrings__umbracoDbDSN` (prod) or user secrets pointing at the shared dev database (local). No SQLite bootstrap: the earlier SQLite + WAL setup was removed when dev and prod were unified on Azure SQL.
 - uSync for content-type/config sync (`uSync/v17`).
 - Sqids for opaque public URL identifiers.
 - Default culture is Swiss German (`de-CH`), set globally in `Program.cs` (dd.MM.yyyy dates, apostrophe thousands separator).
@@ -25,7 +25,7 @@ Two independent content slices coexist and must stay decoupled:
 
 ## Ticketing data model
 
-Catalog entities (Season/Venue/Event) are Umbraco Document Types; sales, admissions, and pricing are NPoco tables created in one step by `CreateTicketingSchema` (`Infrastructure/Ticketing/TicketingMigration.cs`) — a fresh-install schema with no incremental steps, so recreating it means deleting the dev SQLite file. Full ER diagram + enum value tables live in `README.md`. Rules to follow when touching it:
+Catalog entities (Season/Venue/Event) are Umbraco Document Types; sales, admissions, and pricing are NPoco tables built by `CreateTicketingSchema` (`Infrastructure/Ticketing/TicketingMigration.cs`). The build is idempotent and re-runs on every boot (the recorded migration state is reset first; each table is created only when missing and additive columns are gated by `ColumnExists`), so a new table or column appears on the next start with no database drop. Full ER diagram + enum value tables live in `README.md`. Rules to follow when touching it:
 
 - **Persist enums as their integer value** (`Category`, `Status`, `PaymentMethod`, `TicketType`, `FreeEntryType`, visit-log `Type` are `int` columns). No `CategoryCode`/`CategoryName` in the DB; labels come from `TicketCategory.DisplayName()`.
 - **No FK constraints**; reference by id. `EventId`/`SeasonId` hold the Umbraco content node id.
