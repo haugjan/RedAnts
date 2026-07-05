@@ -5,7 +5,6 @@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Saisons</h1>
-    <p class="ta-page-lead">Saisons verwalten: Status (öffentlich/intern), Verkaufskontingent und Preise je Kategorie, sowie die öffentlichen bzw. internen Links.</p>
 
     @if (_loading)
     {
@@ -18,7 +17,7 @@
             <div class="ta-toolbar-actions">
                 @if (_createSeasonUrl is not null)
                 {
-                    <a class="ta-btn ta-btn-ghost" href="@_createSeasonUrl" target="_blank" rel="noopener"
+                    <a class="ta-btn ta-btn-ghost" href="@_createSeasonUrl"
                        title="Öffnet das Backoffice-Content mit einer neuen Saison">Saison im Content erstellen</a>
                 }
             </div>
@@ -36,8 +35,12 @@
                     <tr>
                         <th>Zeitraum</th>
                         <th>Saison</th>
-                        <th>Status</th>
-                        <th class="ta-num">Gesamt&shy;kontingent</th>
+                        <th>Verkaufs&shy;status</th>
+                        <th class="ta-num">Anlässe</th>
+                        <th class="ta-num">Einlass&shy;kontingent</th>
+                        <th class="ta-num">Verk. Saison&shy;karten</th>
+                        <th class="ta-num">Verk. Tickets</th>
+                        <th class="ta-num">Einlässe</th>
                         <th>Links</th>
                         <th class="ta-col-actions"></th>
                     </tr>
@@ -46,33 +49,60 @@
                     @foreach (var s in _seasons)
                     {
                         var links = Links(s.Id);
+                        var stats = Stats(s.Id);
                         <tr>
-                            <td>@s.StartDate.ToString("dd.MM.yyyy") – @s.EndDate.ToString("dd.MM.yyyy")</td>
-                            <td class="ta-cell-name">@s.Name</td>
-                            <td><span class="ta-badge ta-badge-@s.Status.ToString().ToLowerInvariant()">@StatusLabel(s.Status)</span></td>
-                            <td class="ta-num">@QuotaLabel(Quota(s.Id))</td>
+                            <td class="ta-period">
+                                <InlineDateEdit Value="@((DateOnly?)s.StartDate)" FieldLabel="Startdatum"
+                                                Save="@(d => SavePeriodAsync(s, d, s.EndDate))" />
+                                <span class="ta-period-sep">–</span>
+                                <InlineDateEdit Value="@((DateOnly?)s.EndDate)" FieldLabel="Enddatum"
+                                                Save="@(d => SavePeriodAsync(s, s.StartDate, d))" />
+                            </td>
+                            <td class="ta-cell-name">
+                                <InlineTextEdit Value="@s.Name" FieldLabel="Saisonbezeichnung" MaxLength="100"
+                                                Save="@(name => SaveNameAsync(s, name))" />
+                            </td>
+                            <td>
+                                <InlineSelectEdit TValue="SeasonStatus" Value="@s.Status" FieldLabel="Verkaufsstatus"
+                                                  Options="@_statusOptions" Label="@(st => StatusLabel(st))"
+                                                  Save="@(st => SaveStatusAsync(s, st))">
+                                    <Display Context="st">
+                                        <span class="ta-badge ta-badge-@st.ToString().ToLowerInvariant()">@StatusLabel(st)</span>
+                                    </Display>
+                                </InlineSelectEdit>
+                            </td>
+                            <td class="ta-num">@EventCount(s.Id)</td>
+                            <td class="ta-num">
+                                <InlineNumberEdit Value="@((decimal?)Quota(s.Id))" FieldLabel="Einlasskontingent"
+                                                  Min="0" AllowEmpty="true" EmptyLabel="∞"
+                                                  Save="@(v => SaveQuotaAsync(s, v))" />
+                                <span class="ta-quota-used">@stats.Admissions verbraucht</span>
+                            </td>
+                            <td class="ta-num">@stats.PassesSold</td>
+                            <td class="ta-num">@stats.TicketsSold</td>
+                            <td class="ta-num">@stats.Admissions</td>
                             <td class="ta-links">
                                 @if (s.Status == SeasonStatus.Open)
                                 {
                                     <button type="button" class="ta-link-btn"
                                             disabled="@(string.IsNullOrEmpty(links.Public))"
                                             title="@(string.IsNullOrEmpty(links.Public) ? "Nicht veröffentlicht" : "Öffentlichen Link kopieren")"
-                                            @onclick="() => Copy(s.Id, false, links.Public)">
-                                        @(IsCopied(s.Id, false) ? "✓" : "🔗")
-                                    </button>
+                                            @onclick="() => Copy(s.Id, false, links.Public)">🔗</button>
                                 }
                                 else if (s.Status == SeasonStatus.Intern)
                                 {
                                     <button type="button" class="ta-link-btn"
                                             disabled="@(string.IsNullOrEmpty(links.Intern))"
                                             title="@(string.IsNullOrEmpty(links.Intern) ? "Nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
-                                            @onclick="() => Copy(s.Id, true, links.Intern)">
-                                        @(IsCopied(s.Id, true) ? "✓" : "🔒")
-                                    </button>
+                                            @onclick="() => Copy(s.Id, true, links.Intern)">🔒</button>
                                 }
                                 else
                                 {
                                     <span class="ta-muted">–</span>
+                                }
+                                @if (_copied is { } c && c.SeasonId == s.Id)
+                                {
+                                    <span class="ta-copied">in Zwischenablage kopiert</span>
                                 }
                             </td>
                             <td class="ta-col-actions">
@@ -92,25 +122,8 @@
 {
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Saison bearbeiten</h2>
+            <h2 class="ta-modal-title">Preise und Kontingente</h2>
             <p class="ta-modal-sub">@_editing.Name · @_editing.StartDate.ToString("dd.MM.yyyy") – @_editing.EndDate.ToString("dd.MM.yyyy")</p>
-
-            <div class="ta-field">
-                <label class="ta-label" for="editStatus">Status</label>
-                <select id="editStatus" class="ta-select" @bind="_editStatus">
-                    @foreach (var st in Enum.GetValues<SeasonStatus>())
-                    {
-                        <option value="@st">@StatusLabel(st)</option>
-                    }
-                </select>
-                <p class="ta-field-hint">„Öffentlich" macht die Saisonkarten öffentlich sichtbar; „Intern" nur über den internen Link.</p>
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="editTotal">Gesamt-Verkaufskontingent</label>
-                <input id="editTotal" type="number" min="0" step="1" class="ta-input" placeholder="Unbegrenzt" @bind="_editTotalQuota" />
-                <p class="ta-field-hint">Leer lassen für unbegrenzt.</p>
-            </div>
 
             <div class="ta-field">
                 <label class="ta-label">Preise und Kontingent je Kategorie</label>
@@ -165,23 +178,33 @@
     .ta-input-sm { width: 6.5rem; padding: .3rem .4rem; text-align: right; }
     .ta-row-off td { opacity: .45; }
     .ta-row-off td:nth-child(-n+2) { opacity: 1; }
+    .ta-period { white-space: nowrap; }
+    .ta-period-sep { color: var(--ta-muted); margin: 0 .15rem; }
+    .ta-quota-used { display: block; font-size: .72rem; color: var(--ta-muted); }
+    .ta-copied { margin-left: .45rem; font-size: .75rem; color: #1c7c43; font-weight: 700; white-space: nowrap; }
 </style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private ISeasonPrices SeasonPrices { get; set; } = default!;
     [Inject] private ISeasonPassPricing PassPricing { get; set; } = default!;
     [Inject] private ISeasonStatusEditor StatusEditor { get; set; } = default!;
+    [Inject] private ISeasonStatsReader StatsReader { get; set; } = default!;
     [Inject] private ISeasonLinkReader LinkReader { get; set; } = default!;
     [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
+    private static readonly IReadOnlyList<SeasonStatus> _statusOptions = Enum.GetValues<SeasonStatus>();
+
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private Dictionary<int, SeasonPrice?> _prices = new();
+    private Dictionary<int, int> _eventCounts = new();
+    private Dictionary<int, SeasonStats> _stats = new();
     private IReadOnlyDictionary<int, SeasonLinks> _links = new Dictionary<int, SeasonLinks>();
     private string? _createSeasonUrl;
 
@@ -193,15 +216,23 @@
         _links = await LinkReader.GetAllAsync();
         _createSeasonUrl = await CreateLinks.CreateSeasonUrlAsync();
         _prices = new Dictionary<int, SeasonPrice?>();
+        _eventCounts = new Dictionary<int, int>();
+        _stats = new Dictionary<int, SeasonStats>();
         foreach (var s in _seasons)
+        {
             _prices[s.Id] = await SeasonPrices.GetBySeasonAsync(s.Id);
+            var eventIds = (await Events.GetBySeasonAsync(s.Id)).Select(e => e.Id).ToList();
+            _eventCounts[s.Id] = eventIds.Count;
+            _stats[s.Id] = await StatsReader.GetAsync(s.Id, eventIds);
+        }
         _loading = false;
     }
 
     private SeasonPrice? Price(int seasonId) => _prices.GetValueOrDefault(seasonId);
     private int? Quota(int seasonId) => Price(seasonId)?.TotalSalesQuota;
+    private int EventCount(int seasonId) => _eventCounts.GetValueOrDefault(seasonId);
+    private SeasonStats Stats(int seasonId) => _stats.GetValueOrDefault(seasonId) ?? new SeasonStats(0, 0, 0);
     private SeasonLinks Links(int seasonId) => _links.GetValueOrDefault(seasonId) ?? new SeasonLinks(null, null);
-    private static string QuotaLabel(int? quota) => quota?.ToString("N0") ?? "∞";
 
     private static string StatusLabel(SeasonStatus status) => status switch
     {
@@ -211,8 +242,38 @@
         _ => "Entwurf"
     };
 
+    private async Task SaveNameAsync(Season s, string name)
+    {
+        await StatusEditor.SetNameAsync(s.Id, name);
+        await ReloadAsync();
+    }
+
+    private async Task SavePeriodAsync(Season s, DateOnly? start, DateOnly? end)
+    {
+        if (start is null || end is null) throw new DomainException("Start- und Enddatum sind erforderlich.");
+        await StatusEditor.SetPeriodAsync(s.Id, start.Value, end.Value);
+        await ReloadAsync();
+    }
+
+    private async Task SaveStatusAsync(Season s, SeasonStatus status)
+    {
+        await StatusEditor.SetStatusAsync(s.Id, status);
+        await ReloadAsync();
+    }
+
+    private async Task SaveQuotaAsync(Season s, decimal? value)
+    {
+        if (value is < 0) throw new DomainException("Das Einlasskontingent darf nicht negativ sein.");
+        var quota = value is { } v ? (int?)Math.Round(v) : null;
+        var existing = Price(s.Id);
+        var price = existing is null
+            ? SeasonPrice.Create(s.Id, quota, [])
+            : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, quota, existing.Categories);
+        await SeasonPrices.SaveAsync(price);
+        await ReloadAsync();
+    }
+
     private (int SeasonId, bool Intern)? _copied;
-    private bool IsCopied(int seasonId, bool intern) => _copied is { } c && c.SeasonId == seasonId && c.Intern == intern;
 
     private async Task Copy(int seasonId, bool intern, string? relative)
     {
@@ -224,15 +285,17 @@
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", absolute);
             _copied = (seasonId, intern);
             StateHasChanged();
-            await Task.Delay(1500);
-            if (IsCopied(seasonId, intern)) { _copied = null; StateHasChanged(); }
+            await Task.Delay(2000);
+            if (_copied is { } c && c.SeasonId == seasonId && c.Intern == intern)
+            {
+                _copied = null;
+                StateHasChanged();
+            }
         }
         catch { }
     }
 
     private Season? _editing;
-    private SeasonStatus _editStatus;
-    private int? _editTotalQuota;
     private List<CatRow> _editCats = new();
     private bool _saving;
     private string? _editError;
@@ -240,9 +303,7 @@
     private async Task OpenEditAsync(Season s)
     {
         _editing = s;
-        _editStatus = s.Status;
         var price = Price(s.Id);
-        _editTotalQuota = price?.TotalSalesQuota;
         var sold = await PassPricing.GetSoldCountsAsync(s.Id);
         var existing = (price?.Categories ?? []).ToDictionary(c => c.Category);
         _editCats = Enum.GetValues<TicketCategory>()
@@ -273,10 +334,9 @@
                 .ToList();
             var existing = Price(_editing.Id);
             var price = existing is null
-                ? SeasonPrice.Create(_editing.Id, _editTotalQuota, cats)
-                : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, _editTotalQuota, cats);
+                ? SeasonPrice.Create(_editing.Id, null, cats)
+                : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, existing.TotalSalesQuota, cats);
             await SeasonPrices.SaveAsync(price);
-            await StatusEditor.SetStatusAsync(_editing.Id, _editStatus);
             _editing = null;
             await ReloadAsync();
         }
