@@ -94,6 +94,7 @@
 .ta-badge-draft { background: #efefef; color: #666; }
 .ta-badge-intern { background: #fdf1dc; color: #9a6a12; }
 .ta-badge-cancelled, .ta-badge-closed { background: #f6e2e4; color: #a3283a; }
+.ta-badge-blocked { background: #e6e8ef; color: #3f4a63; }
 .ta-badge-redants { background: #fdeaed; color: #b3122b; }
 .ta-badge-block4 { background: #111111; color: #ffd23f; }
 

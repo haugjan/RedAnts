@@ -11,9 +11,20 @@ public sealed record FlexTicketBundleView(
     int TicketCount,
     int RedeemedCount);
 
+public sealed record FlexTicketView(
+    Guid Uuid,
+    TicketStatus Status,
+    bool Redeemed,
+    int? RedeemedEventId,
+    DateTime CreatedAt);
+
 public interface IFlexTicketBundles
 {
     Task<IReadOnlyList<FlexTicketBundleView>> GetBySeasonAsync(int seasonId);
+
+    Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId);
+
+    Task SetTicketStatusAsync(Guid uuid, TicketStatus status);
 
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
 

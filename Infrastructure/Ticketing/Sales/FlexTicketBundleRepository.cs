@@ -32,6 +32,23 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<SeasonSingleTicketRecord>(
+            "WHERE BundleId = @0 ORDER BY CreatedAt", bundleId);
+        return rows.Select(r => new FlexTicketView(
+            Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
+            (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt)).ToList();
+    }
+
+    public async Task SetTicketStatusAsync(Guid uuid, TicketStatus status)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE SeasonSingleTickets SET Status = @0 WHERE Uuid = @1", (int)status, uuid.ToString());
+    }
+
     public async Task<bool> ReferenceExistsAsync(int seasonId, string reference)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

@@ -37,7 +37,8 @@ public enum OrderStatus
 public enum TicketStatus
 {
     Valid,
-    Cancelled
+    Cancelled,
+    Blocked
 }
 
 public enum VisitLogType
@@ -52,6 +53,17 @@ public enum PaymentMethod
     Cash,
     Twint,
     Invoice
+}
+
+public static class TicketStatusExtensions
+{
+    public static string DisplayName(this TicketStatus status) => status switch
+    {
+        TicketStatus.Valid => "Gültig",
+        TicketStatus.Cancelled => "Storniert",
+        TicketStatus.Blocked => "Gesperrt",
+        _ => status.ToString()
+    };
 }
 
 public static class TicketCategoryExtensions

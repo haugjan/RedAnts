@@ -34,7 +34,8 @@ public sealed class AdmissionService(
 
         var issued = await tickets.FindAsync(uuid);
         if (issued is null) return await Reject("Unbekanntes Ticket.");
-        if (issued.Status != TicketStatus.Valid) return await Reject("Ticket ist storniert.");
+        if (issued.Status != TicketStatus.Valid)
+            return await Reject(issued.Status == TicketStatus.Blocked ? "Ticket ist gesperrt." : "Ticket ist storniert.");
 
         if (type == TicketType.EventTicket)
         {

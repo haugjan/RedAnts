@@ -4,7 +4,7 @@
 
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.SeasonSingle.DisplayName()</h1>
-    <p class="ta-page-lead">Flextickets werden immer als Bundle erstellt und bundle-weise angezeigt.</p>
+    <p class="ta-page-lead">Flextickets werden als Bundle erstellt. Saison und Bundle wählen, um die einzelnen Flextickets zu sehen und einzeln zu sperren.</p>
 
     @if (_loading)
     {
@@ -20,15 +20,38 @@
             <div class="ta-toolbar-filters">
                 <div class="ta-field">
                     <label class="ta-label" for="seasonSelect">Saison</label>
-                    <select id="seasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadBundlesAsync">
+                    <select id="seasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
                         @foreach (var s in _seasons)
                         {
                             <option value="@s.Id">@s.Name</option>
                         }
                     </select>
                 </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="bundleSelect">Bundle</label>
+                    <select id="bundleSelect" class="ta-select" disabled="@(_bundles.Count == 0)"
+                            @bind="SelectedBundleId" @bind:after="ReloadTicketsAsync">
+                        @if (_bundles.Count == 0)
+                        {
+                            <option value="0">— keine Bundles —</option>
+                        }
+                        else
+                        {
+                            @foreach (var b in _bundles)
+                            {
+                                <option value="@b.Id">@b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.</option>
+                            }
+                        }
+                    </select>
+                </div>
             </div>
             <div class="ta-toolbar-actions">
+                @if (SelectedBundle is not null)
+                {
+                    <a class="ta-btn ta-btn-ghost" href="/admin/flextickets/bundle/@SelectedBundle.Id/tickets.csv"
+                       target="_blank" rel="noopener" title="Bundle als Excel/CSV herunterladen (Referenz + Kurzkennung + Ticketlink)">⬇ CSV</a>
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => OpenEdit(SelectedBundle)">Referenz bearbeiten</button>
+                }
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
                     Bundle erstellen
                 </button>
@@ -39,43 +62,71 @@
         {
             <div class="ta-placeholder">Für diese Saison sind keine Flexticket-Bundles erfasst.</div>
         }
+        else if (_tickets.Count == 0)
+        {
+            <div class="ta-placeholder">Dieses Bundle enthält keine Flextickets.</div>
+        }
         else
         {
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
                         <tr>
-                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
+                            <th>Nr.</th>
+                            <th>Kurzkennung</th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
-                            <th class="ta-num ta-th-sort" @onclick='() => Sort("count")'>Anzahl <span class="ta-sort-ind">@Ind("count")</span></th>
-                            <th class="ta-num ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
-                            <th class="ta-num">Offen</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
+                            <th>Online-Ticket</th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var b in Sorted())
+                        @{ var i = 1; }
+                        @foreach (var t in Sorted())
                         {
                             <tr>
-                                <td class="ta-cell-ref">@b.Reference</td>
-                                <td>@b.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                                <td>@b.Category.DisplayName()</td>
-                                <td class="ta-num">@b.TicketCount</td>
-                                <td class="ta-num">@b.RedeemedCount</td>
-                                <td class="ta-num">@(b.TicketCount - b.RedeemedCount)</td>
+                                <td>@i</td>
+                                <td class="ta-mono">@ShortId(t.Uuid)</td>
+                                <td>@t.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td><span class="ta-badge ta-badge-@t.Status.ToString().ToLowerInvariant()">@t.Status.DisplayName()</span></td>
+                                <td>
+                                    @if (t.Redeemed)
+                                    {
+                                        <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-badge ta-badge-draft">Offen</span>
+                                    }
+                                </td>
                                 <td class="ta-col-actions">
-                                    <a class="ta-icon-btn" href="/admin/flextickets/bundle/@b.Id/tickets.csv"
-                                       title="Bundle als Excel/CSV herunterladen (Referenz + Kurzkennung + Ticketlink)" target="_blank" rel="noopener">⬇</a>
-                                    <button type="button" class="ta-icon-btn" title="Referenz bearbeiten" @onclick="() => OpenEdit(b)">✎</button>
+                                    <a class="ta-qr-link" href="/ticket/for/@t.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                    </a>
+                                </td>
+                                <td class="ta-col-actions">
+                                    @if (t.Status == TicketStatus.Cancelled)
+                                    {
+                                        <span class="ta-muted-text">–</span>
+                                    }
+                                    else if (t.Status == TicketStatus.Blocked)
+                                    {
+                                        <button type="button" class="ta-icon-btn" title="Flexticket entsperren" @onclick="() => SetStatusAsync(t, TicketStatus.Valid)">🔓</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="ta-icon-btn" title="Flexticket sperren" @onclick="() => SetStatusAsync(t, TicketStatus.Blocked)">🔒</button>
+                                    }
                                 </td>
                             </tr>
+                            i++;
                         }
                     </tbody>
                 </table>
             </div>
             <p class="ta-summary">
-                @_bundles.Count Bundles · @_bundles.Sum(b => b.TicketCount) Flextickets · @_bundles.Sum(b => b.RedeemedCount) eingelöst
+                @_tickets.Count Flextickets · @_tickets.Count(t => t.Redeemed) eingelöst · @_tickets.Count(t => t.Status == TicketStatus.Blocked) gesperrt
             </p>
         }
     }
@@ -165,9 +216,13 @@
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<FlexTicketBundleView> _bundles = [];
+    private IReadOnlyList<FlexTicketView> _tickets = [];
 
     public int SelectedSeasonId { get; set; }
+    public int SelectedBundleId { get; set; }
     private string _selectedSeasonName = "";
+
+    private FlexTicketBundleView? SelectedBundle => _bundles.FirstOrDefault(b => b.Id == SelectedBundleId);
 
     private string _sortCol = "created";
     private bool _sortAsc = false;
@@ -185,30 +240,41 @@
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
-        await ReloadBundlesAsync();
+        await OnSeasonChangedAsync();
         _loading = false;
     }
 
-    private async Task ReloadBundlesAsync()
+    private async Task OnSeasonChangedAsync()
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
         _bundles = SelectedSeasonId > 0 ? await Bundles.GetBySeasonAsync(SelectedSeasonId) : [];
+        SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
+        await ReloadTicketsAsync();
+    }
+
+    private async Task ReloadTicketsAsync()
+    {
+        _tickets = SelectedBundleId > 0 ? await Bundles.GetTicketsAsync(SelectedBundleId) : [];
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private IEnumerable<FlexTicketBundleView> Sorted()
+    private IEnumerable<FlexTicketView> Sorted()
     {
-        IEnumerable<FlexTicketBundleView> q = _sortCol switch
+        IEnumerable<FlexTicketView> q = _sortCol switch
         {
-            "reference" => _bundles.OrderBy(b => b.Reference),
-            "category" => _bundles.OrderBy(b => b.Category),
-            "count" => _bundles.OrderBy(b => b.TicketCount),
-            "redeemed" => _bundles.OrderBy(b => b.RedeemedCount),
-            _ => _bundles.OrderBy(b => b.CreatedAt),
+            "status" => _tickets.OrderBy(t => t.Status),
+            "redeemed" => _tickets.OrderBy(t => t.Redeemed),
+            _ => _tickets.OrderBy(t => t.CreatedAt),
         };
         return _sortAsc ? q : q.Reverse();
+    }
+
+    private async Task SetStatusAsync(FlexTicketView ticket, TicketStatus status)
+    {
+        await Bundles.SetTicketStatusAsync(ticket.Uuid, status);
+        await ReloadTicketsAsync();
     }
 
     private void OpenCreate()
@@ -241,9 +307,11 @@
                 _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
                 return;
             }
-            await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity);
+            var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity);
             _showCreate = false;
-            await ReloadBundlesAsync();
+            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+            SelectedBundleId = created.Id;
+            await ReloadTicketsAsync();
         }
         catch (DomainException ex) { _createError = ex.Message; }
         finally { _saving = false; }
@@ -273,7 +341,7 @@
         {
             await BundleEditor.RenameAsync(_editing.Id, _editing.SeasonId, reference);
             _editing = null;
-            await ReloadBundlesAsync();
+            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
         }
         catch (DomainException ex) { _editError = ex.Message; }
         finally { _saving = false; }
@@ -285,4 +353,6 @@
         return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
+
+    private static string ShortId(Guid uuid) => uuid == Guid.Empty ? "–" : uuid.ToString()[..8];
 }
