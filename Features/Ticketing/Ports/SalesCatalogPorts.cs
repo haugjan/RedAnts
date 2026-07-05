@@ -23,10 +23,13 @@ public interface ISeasonPrices
     Task DeleteAsync(int seasonPriceId);
 }
 
+public sealed record TicketDemand(int EventId, TicketCategory Category, int Quantity);
+
 public interface IEventPricing
 {
     Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int eventId);
     Task<AvailableTicketCategory?> FindAvailableAsync(int eventId, TicketCategory category);
+    Task<string?> CheckCapacityAsync(IReadOnlyList<TicketDemand> demand);
 }
 
 public interface IEventTickets

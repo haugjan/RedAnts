@@ -144,6 +144,42 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
         return all.FirstOrDefault(c => c.Category == category);
     }
 
+    public async Task<string?> CheckCapacityAsync(IReadOnlyList<TicketDemand> demand)
+    {
+        foreach (var evGroup in demand.Where(d => d.Quantity > 0).GroupBy(d => d.EventId))
+        {
+            using var scope = scopeProvider.CreateScope(autoComplete: true);
+
+            var parent = await scope.Database.FirstOrDefaultAsync<EventPriceRecord>("WHERE EventId = @0", evGroup.Key);
+            if (parent is null)
+                return "Für einen Anlass im Warenkorb sind keine Tickets mehr verfügbar.";
+
+            var cats = await scope.Database.FetchAsync<EventPriceCategoryRecord>(
+                "WHERE EventPriceId = @0", parent.Id);
+            var catByCategory = cats.ToDictionary(c => c.Category);
+
+            var soldRows = await scope.Database.FetchAsync<CategoryCountRow>(
+                "SELECT Category, COUNT(*) AS Cnt FROM EventTickets WHERE EventId = @0 AND Status = @1 GROUP BY Category",
+                evGroup.Key, (int)TicketStatus.Valid);
+            var soldByCategory = soldRows.ToDictionary(r => r.Category, r => r.Cnt);
+
+            var requestedTotal = evGroup.Sum(d => d.Quantity);
+            if (parent.TotalSalesQuota is { } tq && soldRows.Sum(r => r.Cnt) + requestedTotal > tq)
+                return "Für einen Anlass im Warenkorb sind nicht mehr genügend Tickets verfügbar.";
+
+            foreach (var catGroup in evGroup.GroupBy(d => d.Category))
+            {
+                if (!catByCategory.TryGetValue((int)catGroup.Key, out var c))
+                    return $"{catGroup.Key.DisplayName()} ist nicht mehr verfügbar.";
+                var requested = catGroup.Sum(d => d.Quantity);
+                var sold = soldByCategory.GetValueOrDefault((int)catGroup.Key);
+                if (c.Quota is { } q && sold + requested > q)
+                    return $"{catGroup.Key.DisplayName()} ist nicht mehr in dieser Anzahl verfügbar.";
+            }
+        }
+        return null;
+    }
+
     private static int? MinRemaining(int? a, int? b) =>
         (a, b) switch
         {

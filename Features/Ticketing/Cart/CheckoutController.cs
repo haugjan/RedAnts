@@ -9,7 +9,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -74,6 +74,16 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         BillingAddress billing;
         try { billing = ToBillingAddress(form); }
         catch (DomainException) { return Redirect("/kasse"); }
+
+        var demand = current.Items
+            .Select(i => new TicketDemand(i.EventId, i.Category, i.Quantity))
+            .ToList();
+        var capacityError = await pricing.CheckCapacityAsync(demand);
+        if (capacityError is not null)
+        {
+            TempData["CartError"] = capacityError;
+            return Redirect("/warenkorb");
+        }
 
         var number = await orders.NextOrderNumberAsync();
         var order = Order.Create(number, billing, current.TotalAmount, VatRate, paymentMethod, sellerUid: null);

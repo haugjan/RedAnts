@@ -6,6 +6,11 @@
 
 <h1 class="mb-4">Warenkorb</h1>
 
+@if (TempData["CartError"] is string cartError)
+{
+    <div class="alert alert-danger">@cartError</div>
+}
+
 @if (Model.IsEmpty)
 {
     <div class="alert alert-secondary">Dein Warenkorb ist leer.</div>
