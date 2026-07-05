@@ -2,7 +2,6 @@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
-    <p class="ta-page-lead">Anlässe (Spiele, Events) einer Saison. Status und Einlasskontingent sind hier bearbeitbar, alles Weitere im Inhaltsbaum.</p>
 
     @if (_loading)
     {
@@ -29,7 +28,7 @@
             <div class="ta-toolbar-actions">
                 @if (_createEventUrl is not null)
                 {
-                    <a class="ta-btn ta-btn-ghost" href="@_createEventUrl" target="_blank" rel="noopener"
+                    <a class="ta-btn ta-btn-ghost" href="@_createEventUrl"
                        title="Öffnet das Backoffice-Content mit einem neuen Anlass in der gewählten Saison">Anlass im Content erstellen</a>
                 }
             </div>
@@ -48,7 +47,7 @@
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("name")'>Anlass <span class="ta-sort-ind">@Ind("name")</span></th>
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("date")'>Datum <span class="ta-sort-ind">@Ind("date")</span></th>
                         <th rowspan="2">Zeit</th>
-                        <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                        <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("status")'>Verkaufsstatus <span class="ta-sort-ind">@Ind("status")</span></th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
                         <th rowspan="2" class="ta-num">Verkaufte<br />@TicketType.EventTicket.DisplayName()</th>
@@ -70,11 +69,36 @@
                         var c = Counts(e.Id);
                         var links = Links(e.Id);
                         <tr>
-                            <td class="ta-cell-name">@e.Name</td>
-                            <td>@e.Date.ToString("dd.MM.yyyy")</td>
-                            <td>@e.StartTime.ToString("HH:mm")</td>
-                            <td><span class="ta-badge ta-badge-@e.Status.ToString().ToLowerInvariant()">@StatusLabel(e.Status)</span></td>
-                            <td class="ta-num">@QuotaLabel(Quota(e.Id))</td>
+                            <td class="ta-cell-name">
+                                <InlineTextEdit Value="@e.Name" FieldLabel="Bezeichnung" MaxLength="200"
+                                                Save="@(v => SaveNameAsync(e, v))" />
+                            </td>
+                            <td>
+                                <InlineDateEdit Value="@e.Date" FieldLabel="Datum"
+                                                Save="@(d => SaveDateAsync(e, d))" />
+                            </td>
+                            <td>
+                                @if (e.TimeUnknown)
+                                {
+                                    <span class="ta-muted-text">—</span>
+                                }
+                                else
+                                {
+                                    <InlineTimeEdit Value="@e.StartTime" FieldLabel="Zeit"
+                                                    Save="@(t => SaveTimeAsync(e, t))" />
+                                }
+                            </td>
+                            <td>
+                                <InlineSelectEdit TValue="EventStatus" Value="@e.Status" Options="_statuses" FieldLabel="Verkaufsstatus"
+                                                  Label="@(s => StatusLabel(s))"
+                                                  Display="StatusBadge"
+                                                  Save="@(s => SaveStatusAsync(e, s))" />
+                            </td>
+                            <td class="ta-num">
+                                <InlineNumberEdit Value="@ToDecimal(Quota(e.Id))" FieldLabel="Einlasskontingent"
+                                                  Min="0" AllowEmpty="true" EmptyLabel="∞"
+                                                  Save="@(v => SaveQuotaAsync(e, v))" />
+                            </td>
                             <td class="ta-num">@c.TotalRedeemed</td>
                             <td class="ta-num">@c.SoldSingleTickets</td>
                             <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
@@ -105,8 +129,8 @@
                             <td class="ta-col-actions">
                                 <button type="button" class="ta-icon-btn" title="Preise &amp; Kontingente pro Kategorie"
                                         @onclick="() => OpenPricing(e)">💰</button>
-                                <button type="button" class="ta-icon-btn" title="Status und Kontingent bearbeiten"
-                                        @onclick="() => OpenEdit(e)">✎</button>
+                                <button type="button" class="ta-icon-btn" title="SU-Freieintritt-Kontingent bearbeiten"
+                                        @onclick="() => OpenEdit(e)">🎟️</button>
                             </td>
                         </tr>
                     }
@@ -122,24 +146,8 @@
 {
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Anlass bearbeiten</h2>
+            <h2 class="ta-modal-title">SU-Freieintritt-Kontingent</h2>
             <p class="ta-modal-sub">@_editing.Name · @_editing.Date.ToString("dd.MM.yyyy")</p>
-
-            <div class="ta-field">
-                <label class="ta-label" for="editStatus">Status</label>
-                <select id="editStatus" class="ta-select" @bind="_editStatus">
-                    @foreach (var st in Enum.GetValues<EventStatus>())
-                    {
-                        <option value="@st">@StatusLabel(st)</option>
-                    }
-                </select>
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="editQuota">Einlasskontingent</label>
-                <input id="editQuota" type="number" min="0" step="1" class="ta-input" placeholder="Unbegrenzt" @bind="_editQuota" />
-                <p class="ta-field-hint">Leer lassen für unbegrenzt.</p>
-            </div>
 
             <div class="ta-field">
                 <label class="ta-label" for="editSuQuota">SU-Freieintritt-Kontingent</label>
@@ -210,6 +218,7 @@
     [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
     [Inject] private IEventStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private IEventAdmissionQuota QuotaEditor { get; set; } = default!;
+    [Inject] private IEventContentEditor ContentEditor { get; set; } = default!;
     [Inject] private ISuFreeEntryQuota SuQuota { get; set; } = default!;
     [Inject] private IEventPrices Prices { get; set; } = default!;
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
@@ -244,7 +253,6 @@
     private EventAdmissionCounts Counts(int eventId) => _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
     private int? Quota(int eventId) => _quotas.TryGetValue(eventId, out var q) ? q : null;
     private EventLinks Links(int eventId) => _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
-    private static string QuotaLabel(int? quota) => quota?.ToString("N0") ?? "∞";
 
     private string? _createEventUrl;
 
@@ -314,9 +322,46 @@
         catch { }
     }
 
+    private readonly EventStatus[] _statuses = Enum.GetValues<EventStatus>();
+
+    private RenderFragment<EventStatus> StatusBadge => status =>
+        @<span class="ta-badge ta-badge-@status.ToString().ToLowerInvariant()">@StatusLabel(status)</span>;
+
+    private static decimal? ToDecimal(int? value) => value;
+
+    private async Task SaveNameAsync(Event e, string name)
+    {
+        await ContentEditor.SetNameAsync(e.Id, name);
+        await ReloadEventsAsync();
+    }
+
+    private async Task SaveDateAsync(Event e, DateOnly? date)
+    {
+        if (date is null) throw new DomainException("Datum ist erforderlich.");
+        await ContentEditor.SetStartAsync(e.Id, date.Value, e.StartTime);
+        await ReloadEventsAsync();
+    }
+
+    private async Task SaveTimeAsync(Event e, TimeOnly? time)
+    {
+        if (time is null) throw new DomainException("Zeit ist erforderlich.");
+        await ContentEditor.SetStartAsync(e.Id, e.Date, time.Value);
+        await ReloadEventsAsync();
+    }
+
+    private async Task SaveStatusAsync(Event e, EventStatus status)
+    {
+        await StatusEditor.SetStatusAsync(e.Id, status);
+        await ReloadEventsAsync();
+    }
+
+    private async Task SaveQuotaAsync(Event e, decimal? quota)
+    {
+        await QuotaEditor.SetAsync(e.Id, quota is null ? null : (int)quota.Value);
+        await ReloadEventsAsync();
+    }
+
     private Event? _editing;
-    private EventStatus _editStatus;
-    private int? _editQuota;
     private int? _editSuQuota;
     private bool _saving;
     private string? _editError;
@@ -324,8 +369,6 @@
     private async Task OpenEdit(Event e)
     {
         _editing = e;
-        _editStatus = e.Status;
-        _editQuota = Quota(e.Id);
         _editSuQuota = await SuQuota.GetAsync(e.Id);
         _editError = null;
     }
@@ -335,14 +378,11 @@
     private async Task SaveEdit()
     {
         if (_editing is null) return;
-        if (_editQuota is < 0) { _editError = "Einlasskontingent darf nicht negativ sein."; return; }
         if (_editSuQuota is < 0) { _editError = "SU-Freieintritt-Kontingent darf nicht negativ sein."; return; }
         _saving = true;
         _editError = null;
         try
         {
-            await StatusEditor.SetStatusAsync(_editing.Id, _editStatus);
-            await QuotaEditor.SetAsync(_editing.Id, _editQuota);
             await SuQuota.SetAsync(_editing.Id, _editSuQuota);
             _editing = null;
             await ReloadEventsAsync();

@@ -58,7 +58,7 @@ public sealed class OrderMailer(
             if (dates.ContainsKey(key)) continue;
             dates[key] = ticket.Type == TicketType.EventTicket
                 ? await events.FindByIdAsync(ticket.ScopeId) is { } ev
-                    ? $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr"
+                    ? ev.TimeUnknown ? $"{ev.Date:dd.MM.yyyy}" : $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr"
                     : null
                 : await seasons.FindByIdAsync(ticket.ScopeId) is { } season
                     ? $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}"
