@@ -12,11 +12,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Scanning;
 
-/// <summary>Door admission over the visits tables. Presence is the <c>IsInside</c> flag on the single
-/// <c>TicketEventVisits</c> row per (event, ticket); every in/out is also appended to
-/// <c>TicketEventVisitsLogs</c>. Free admissions are FreeEntry visit rows without a ticket uuid. The
-/// hall quota is <c>EventPrices.AdmissionQuota</c>. Reads the ticket's validity via S3's
-/// <see cref="IIssuedTicketReader"/> and the event's season via <see cref="IEvents"/>.</summary>
 public sealed class AdmissionService(
     IScopeProvider scopeProvider,
     IIssuedTicketReader tickets,
@@ -37,12 +32,10 @@ public sealed class AdmissionService(
         async Task<ScanOutcome> Reject(string reason) =>
             new(AdmissionOutcome.Rejected, type, Ref(uuid), reason, await OccAsync(db, eventId));
 
-        // Validity: the ticket must exist and not be cancelled.
         var issued = await tickets.FindAsync(uuid);
         if (issued is null) return await Reject("Unbekanntes Ticket.");
         if (issued.Status != TicketStatus.Valid) return await Reject("Ticket ist storniert.");
 
-        // Scope: an event ticket admits to its event; season passes/cards/flextickets to their season.
         if (type == TicketType.EventTicket)
         {
             if (scopeId != eventId) return await Reject("Ticket gilt für einen anderen Anlass.");
@@ -54,7 +47,6 @@ public sealed class AdmissionService(
             if (scopeId != ev.SeasonId) return await Reject("Ticket gilt für eine andere Saison.");
         }
 
-        // A flexticket binds to the first event it is used at; afterwards only that event admits it.
         if (type == TicketType.SeasonSingle)
         {
             var bound = await db.ExecuteScalarAsync<int?>(
@@ -63,7 +55,6 @@ public sealed class AdmissionService(
                 return await Reject("Flexticket wurde bereits an einem anderen Anlass eingelöst.");
         }
 
-        // Toggle presence: admit if outside, check out if already inside.
         var visit = await db.FirstOrDefaultAsync<EventVisitRecord>(
             "WHERE EventId = @0 AND TicketUuid = @1", eventId, key);
         AdmissionOutcome action;
@@ -88,7 +79,6 @@ public sealed class AdmissionService(
         }
         await LogAsync(db, visitId, action, scannedBy);
 
-        // Bind the flexticket to this event on its first admission.
         if (type == TicketType.SeasonSingle && action == AdmissionOutcome.CheckedIn)
             await db.ExecuteAsync(
                 "UPDATE SeasonSingleTickets SET RedeemedEventId = @0, Redeemed = 1 WHERE Uuid = @1 AND RedeemedEventId IS NULL",
@@ -157,7 +147,6 @@ public sealed class AdmissionService(
     private static string Ref(Guid uuid) => uuid.ToString("N")[..8].ToUpperInvariant();
 }
 
-/// <summary>Registers the door admission service (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class AdmissionServiceComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)

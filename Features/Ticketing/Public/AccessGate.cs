@@ -2,10 +2,6 @@ using RedAnts.Domain.Ticketing;
 
 namespace RedAnts.Features.Ticketing.Public;
 
-/// <summary>
-/// Central visibility rule for the public/purchase surface:
-/// Open = public; Intern = only with the matching secret; Draft/Closed = never.
-/// </summary>
 public static class AccessGate
 {
     public static bool EventOk(EventStatus status, string? accessSecret, string? providedSecret) =>
@@ -20,6 +16,6 @@ public static class AccessGate
         if (isIntern)
             return !string.IsNullOrWhiteSpace(providedSecret)
                 && string.Equals(providedSecret.Trim(), (accessSecret ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
-        return false; // Draft / Closed
+        return false;
     }
 }

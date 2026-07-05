@@ -1,9 +1,5 @@
 namespace RedAnts.Domain.Ticketing.Sales;
 
-/// <summary>A batch of Flextickets (season single-admission tickets) issued together and identified by a
-/// human reference (e.g. a printed booklet code). All Flextickets are always created as part of a bundle.
-/// The bundle carries the shared season, category and reference; the individual tickets live in
-/// SeasonSingleTickets and point back via <c>BundleId</c>. The reference is unique within a season.</summary>
 public sealed class FlexTicketBundle
 {
     public const int ReferenceMaxLength = 50;

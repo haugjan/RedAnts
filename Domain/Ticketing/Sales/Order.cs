@@ -1,16 +1,8 @@
 namespace RedAnts.Domain.Ticketing.Sales;
 
-/// <summary>
-/// A Bestellung (order) = the immutable financial record for a sale (Beleg/Rechnung).
-/// Holds the billing address and payment/VAT data; tickets reference it optionally.
-/// Swiss compliance: kept ≥10 years (OR 957–958f), never hard-deleted; a cancellation or refund
-/// is a <see cref="OrderStatus"/> change. VAT-ready (sports entry fees are usually exempt,
-/// Art. 21 Abs. 2 Ziff. 15 MWSTG); default treatment is 0 % / exempt via configuration.
-/// </summary>
 public sealed class Order
 {
     public int Id { get; private set; }
-    /// <summary>Sequential, unique, immutable invoice/order number (e.g. 2026-000123).</summary>
     public string OrderNumber { get; private set; }
     public BillingAddress BillingAddress { get; private set; }
     public string Currency { get; private set; }
@@ -18,7 +10,6 @@ public sealed class Order
     public decimal VatRate { get; private set; }
     public decimal VatAmount { get; private set; }
     public decimal TotalGross { get; private set; }
-    /// <summary>Seller UID/MWST number printed on the receipt (from config; null when not VAT-liable).</summary>
     public string? SellerUid { get; private set; }
     public PaymentMethod PaymentMethod { get; private set; }
     public OrderStatus Status { get; private set; }
@@ -51,7 +42,6 @@ public sealed class Order
         if (totalGross < 0) throw new DomainException("Betrag darf nicht negativ sein.");
 
         var gross = decimal.Round(totalGross, 2);
-        // VAT-inclusive gross: net = gross / (1 + rate); exempt (rate 0) -> vat 0, net = gross.
         var vatAmount = vatRate <= 0 ? 0m : decimal.Round(gross - gross / (1 + vatRate), 2);
         var net = decimal.Round(gross - vatAmount, 2);
 

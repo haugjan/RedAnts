@@ -6,12 +6,6 @@ using Umbraco.Cms.Infrastructure.Manifest;
 
 namespace RedAnts.Features.Ticketing.Admin;
 
-/// <summary>
-/// Registers a backoffice <b>section</b> "Ticketing" with a single <b>dashboard</b> whose element is a
-/// web component (<c>ticketing-admin-view</c>) that embeds the Blazor admin app in an iframe. The admin
-/// tabs are in-app state inside that Blazor app (see <c>TicketingAdminComponent</c>), which fills the
-/// section content reliably. Pattern mirrored from the Sporthalle Sulzerallee project.
-/// </summary>
 public sealed class TicketingAdminManifestReader : IPackageManifestReader
 {
     public const string SectionAlias = "redAnts.ticketing";
@@ -24,7 +18,6 @@ public sealed class TicketingAdminManifestReader : IPackageManifestReader
             AllowPublicAccess = false,
             Extensions =
             [
-                // Left-hand backoffice section (the "menu point").
                 new
                 {
                     type = "section",
@@ -33,7 +26,6 @@ public sealed class TicketingAdminManifestReader : IPackageManifestReader
                     weight = 800,
                     meta = new { label = "Ticketing", pathname = "ticketing" }
                 },
-                // Single dashboard inside that section: renders the iframe web component.
                 new
                 {
                     type = "dashboard",
@@ -55,13 +47,11 @@ public sealed class TicketingAdminManifestReader : IPackageManifestReader
     }
 }
 
-/// <summary>Wires the manifest reader into Umbraco (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class TicketingAdminComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
         builder.Services.AddSingleton<IPackageManifestReader, TicketingAdminManifestReader>();
-        // Per-circuit shared UI state for the Blazor admin app (remembers the selected season across tabs).
         builder.Services.AddScoped<TicketingAdminState>();
     }
 }

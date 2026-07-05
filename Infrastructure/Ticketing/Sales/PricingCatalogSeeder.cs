@@ -15,11 +15,6 @@ public sealed class PricingCatalogSeederComposer : IComposer
         => builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, PricingCatalogSeeder>();
 }
 
-/// <summary>
-/// Idempotent boot seed for the pricing catalog: gives every event and season a price set (0..1) with
-/// the base categories if it has none, and seeds a few demo event tickets so the admin list has data
-/// before checkout exists. Runs every boot; only fills what is missing.
-/// </summary>
 public sealed class PricingCatalogSeeder(
     IEventPrices eventPrices,
     ISeasonPrices seasonPrices,
@@ -29,8 +24,6 @@ public sealed class PricingCatalogSeeder(
     IContentTypeService contentTypeService,
     ILogger<PricingCatalogSeeder> logger) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
-    // Base categories assigned to a fresh event/season price set (category, sale price). Quotas start
-    // unlimited (null); the admin sets the Kontingente. The reduced variants are added per event/season.
     private static readonly (TicketCategory Category, decimal Price)[] BaseCategories =
     [
         (TicketCategory.Adult, 25m),
@@ -83,8 +76,6 @@ public sealed class PricingCatalogSeeder(
         }
     }
 
-    // Demo data so the admin ticket list has something to show before checkout exists. Idempotent:
-    // seeds a few event tickets (some redeemed) per event without any.
     private async Task EnsureDemoTicketsAsync()
     {
         var eventType = contentTypeService.Get(A.EventType);
@@ -100,11 +91,9 @@ public sealed class PricingCatalogSeeder(
             var a = cats[0];
             var b = cats.Count > 1 ? cats[1] : cats[0];
 
-            // Two open (not yet redeemed).
             await eventTickets.SaveAsync(EventTicket.Create(evt.Id, a.Category, a.Price, null));
             await eventTickets.SaveAsync(EventTicket.Create(evt.Id, b.Category, b.Price, null));
 
-            // One redeemed (admitted at the event).
             var redeemed = EventTicket.Create(evt.Id, a.Category, a.Price, null);
             redeemed.Redeem();
             await eventTickets.SaveAsync(redeemed);

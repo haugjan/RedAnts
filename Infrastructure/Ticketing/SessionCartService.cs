@@ -5,7 +5,6 @@ using RedAnts.Features.Ticketing.Cart;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
-/// <summary>Stores the shopping cart as JSON in the ASP.NET session (guest cart, no login).</summary>
 public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor) : ICartService
 {
     private const string SessionKey = "RedAnts.Cart";
@@ -29,7 +28,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         if (existing is not null)
         {
             existing.Quantity += quantity;
-            existing.UnitPrice = unitPrice; // keep in sync with the current catalog price
+            existing.UnitPrice = unitPrice;
             existing.EventName = eventName;
             existing.CategoryName = categoryName;
         }

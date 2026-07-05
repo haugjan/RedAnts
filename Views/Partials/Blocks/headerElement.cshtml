@@ -3,7 +3,6 @@
 @using Umbraco.Cms.Core.Models.PublishedContent
 @{
     var titel = Model.Content.Value<string>("titel") ?? "";
-    // MediaPicker3 returns a single MediaWithCrops (single-pick) or an IEnumerable (multi-pick); handle both.
     IPublishedContent? bildNode = Model.Content.Value<IPublishedContent>("bild")
         ?? Model.Content.Value<IEnumerable<MediaWithCrops>>("bild")?.FirstOrDefault();
     var bild = bildNode?.Url() ?? "";

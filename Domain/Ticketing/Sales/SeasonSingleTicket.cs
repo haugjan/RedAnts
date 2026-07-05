@@ -1,8 +1,5 @@
 namespace RedAnts.Domain.Ticketing.Sales;
 
-/// <summary>A single-admission ticket bound to a season but not to a specific event: usable once at any
-/// one event of the season. The first check-in binds it to that event (<see cref="RedeemedEventId"/>)
-/// and marks it redeemed. Admission in/out is tracked in TicketEventVisits.</summary>
 public sealed class SeasonSingleTicket
 {
     public int Id { get; private set; }
@@ -13,11 +10,8 @@ public sealed class SeasonSingleTicket
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    /// <summary>The event this ticket was redeemed at (set on first check-in); null while unredeemed.</summary>
     public int? RedeemedEventId { get; private set; }
-    /// <summary>True once the ticket has been consumed at its event.</summary>
     public bool Redeemed { get; private set; }
-    /// <summary>The Flexticket bundle this ticket was issued in, if any (Flextickets are issued as bundles).</summary>
     public int? BundleId { get; private set; }
 
     private SeasonSingleTicket(int id, Guid uuid, int seasonId, TicketCategory category, decimal price,
@@ -45,7 +39,6 @@ public sealed class SeasonSingleTicket
             orderId, TicketStatus.Valid, DateTime.UtcNow, null, false);
     }
 
-    /// <summary>Issue a Flexticket as part of a bundle. Admin-issued, so no order is attached.</summary>
     public static SeasonSingleTicket CreateForBundle(int seasonId, TicketCategory category, decimal price, int bundleId)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
@@ -60,7 +53,6 @@ public sealed class SeasonSingleTicket
         int? bundleId = null) =>
         new(id, uuid, seasonId, category, price, orderId, status, createdAt, redeemedEventId, redeemed, bundleId);
 
-    /// <summary>Consume the ticket at an event of the season (first check-in). Binds it to that event.</summary>
     public void Redeem(int eventId)
     {
         if (Status != TicketStatus.Valid) throw new DomainException("Ticket ist ungültig.");

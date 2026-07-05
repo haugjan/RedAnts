@@ -1,5 +1,3 @@
-@* Saisonkarten (season passes) admin: pick a season, list its passes, edit one via the last-column
-   icon. Shared look/behaviour with the other admin tabs comes from /css/ticketing-admin.css. *@
 @using RedAnts.Domain.Ticketing.Sales
 @inject ISeasonPassAdminReport Report
 @inject ISeasonPasses Passes
@@ -164,7 +162,6 @@
         _passes = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
-    // --- Sorting ---
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<SeasonPassListItem> Sorted()
@@ -197,7 +194,6 @@
         _ => status.ToString()
     };
 
-    // --- Edit overlay state ---
     private SeasonPassListItem? _editing;
     private TicketCategory _editCategory;
     private decimal _editPrice;

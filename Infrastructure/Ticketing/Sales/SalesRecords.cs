@@ -3,9 +3,6 @@ using Umbraco.Cms.Infrastructure.Persistence.DatabaseAnnotations;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-// Enum-typed columns (Category, Status, PaymentMethod, TicketType, FreeEntryType, VisitLogType) are
-// stored as their integer value — the int column holds (int)enum; repositories cast back.
-
 [TableName("Orders")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]
@@ -16,7 +13,6 @@ public class OrderRecord
     [Column("OrderNumber")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(40)]
     [Index(IndexTypes.UniqueNonClustered)] public string OrderNumber { get; set; } = "";
 
-    // Billing address (Rechnungsadresse) — kept on the financial record.
     [Column("BillingFirstName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string BillingFirstName { get; set; } = "";
     [Column("BillingLastName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string BillingLastName { get; set; } = "";
     [Column("BillingStreet")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string BillingStreet { get; set; } = "";
@@ -71,7 +67,6 @@ public class SeasonSingleTicketRecord
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
     [Column("RedeemedEventId")] [NullSetting(NullSetting = NullSettings.Null)] public int? RedeemedEventId { get; set; }
     [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
-    // Flextickets are issued in bundles; BundleId points to FlexTicketBundles (null for other origins).
     [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
 }
 
@@ -99,20 +94,15 @@ public class MemberCardRecord
     [Column("Uuid")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(36)] [Index(IndexTypes.UniqueNonClustered)] public string Uuid { get; set; } = "";
     [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SeasonId { get; set; }
     [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
-    // Member cards have no price (only season passes do). The legacy Price column is dropped by the
-    // AdjustMemberCardColumns migration on existing databases.
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
     [Column("FirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? FirstName { get; set; }
     [Column("LastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? LastName { get; set; }
     [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
-    // Optional import batch label (the reference entered when a CSV of members was imported).
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
 }
 
-// One admission entitlement per (event, ticket). CheckedOutAt is gone; individual scans live in
-// TicketEventVisitsLogs. TicketUuid is null for a FreeEntry visit (detail in TicketEventFreeEntries).
 [TableName("TicketEventVisits")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]
@@ -126,7 +116,6 @@ public class EventVisitRecord
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
 }
 
-// Append-only in/out scans behind a visit's current presence.
 [TableName("TicketEventVisitsLogs")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]
@@ -139,7 +128,6 @@ public class EventVisitLogRecord
     [Column("ScannedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? ScannedBy { get; set; }
 }
 
-// Free-entry detail (which entitlement) for a FreeEntry visit — one row per free-entry visit.
 [TableName("TicketEventFreeEntries")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]

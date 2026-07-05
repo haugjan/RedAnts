@@ -5,10 +5,6 @@ using RedAnts.Features.Ticketing.Email;
 
 namespace RedAnts.Infrastructure.Ticketing.Email;
 
-/// <summary>Sends transactional e-mail through Brevo's REST API (<c>POST /v3/smtp/email</c>).
-/// Configuration (never hardcoded): <c>Brevo:ApiKey</c> (secret — user secret in dev, App Service
-/// app setting in prod), <c>Brevo:SenderName</c>, <c>Brevo:SenderEmail</c> (must be a verified Brevo
-/// sender), optional <c>Brevo:AdminBcc</c>.</summary>
 public sealed class BrevoEmailSender(
     IHttpClientFactory httpClientFactory,
     IConfiguration config,

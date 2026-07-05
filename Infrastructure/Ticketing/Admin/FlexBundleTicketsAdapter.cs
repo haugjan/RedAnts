@@ -6,8 +6,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Reads a bundle's issued Flextickets straight from <c>SeasonSingleTickets</c> (matched by
-/// <c>BundleId</c>). Only the Uuid and SeasonId are needed to build the short code and the ticket token.</summary>
 public sealed class FlexBundleTicketsAdapter(IScopeProvider scopeProvider) : IFlexBundleTickets
 {
     public async Task<IReadOnlyList<FlexBundleTicket>> GetByBundleAsync(int bundleId)
@@ -22,7 +20,6 @@ public sealed class FlexBundleTicketsAdapter(IScopeProvider scopeProvider) : IFl
             .ToList();
     }
 
-    /// <summary>Projection for the ticket query (mapped by column name).</summary>
     public sealed class Row
     {
         public string Uuid { get; set; } = "";
@@ -30,7 +27,6 @@ public sealed class FlexBundleTicketsAdapter(IScopeProvider scopeProvider) : IFl
     }
 }
 
-/// <summary>Registers the Flexticket bundle export reader (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class FlexBundleTicketsComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)

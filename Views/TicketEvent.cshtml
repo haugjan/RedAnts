@@ -9,11 +9,9 @@
     var providedSecret = Context.Request.Query["secret"].ToString();
     var accessSecret = Model.Key.ToString().Split('-')[0];
     var statusEnum = Enum.TryParse<EventStatus>(status, out var s) ? s : EventStatus.Draft;
-    // Open = öffentlich; Intern = nur mit passendem ?secret; Draft/Closed = 404.
     var blocked = !AccessGate.EventOk(statusEnum, accessSecret, providedSecret);
     if (blocked) { Context.Response.StatusCode = 404; }
     ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
-    // Leading hero header: the event image with the title over it, nav floating like the homepage.
     ViewBag.TransparentNav = !blocked;
 
     var start = Model.Value<DateTime>("start");
@@ -22,14 +20,11 @@
     var homeLogo = Model.Value<IPublishedContent>("homeTeamLogo")?.Url();
     var awayLogo = Model.Value<IPublishedContent>("awayTeamLogo")?.Url();
     var text = Model.Value<string>("text");
-    // Back to the parent node (the season lists its events).
     var backHref = Model.Parent?.Url() ?? "/";
 }
 
 @section Head {
     <style>
-        /* Header image band identical to the homepage's headerElement (.page-header, min-height 300px)
-           so the header is exactly the same height as the homepage. */
         .page-header { position: relative; background-size: cover; background-position: center; min-height: 300px; display: flex; align-items: flex-end; }
         .page-header--plain { background: #101010; }
         .page-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.75) 100%); }
@@ -88,7 +83,6 @@
             font-size: 0.85rem; font-weight: 600; color: #1c7c43; white-space: nowrap;
         }
         .evt-add-status.is-error { color: var(--red); }
-        /* Small pop on the nav cart badge when an item is added (badge lives in the shared layout). */
         @@keyframes evtBadgeBump { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
         .nav-cart-badge.badge-bump { animation: evtBadgeBump 0.35s ease; }
     </style>
@@ -178,8 +172,6 @@ else
 @section Scripts {
 <script>
 (function () {
-    // Progressive enhancement: add to the cart via fetch so the page does not reload or jump to the
-    // top, and give inline feedback. Without JS the form still posts normally (server redirect).
     function bumpBadge(total) {
         var link = document.querySelector('.nav-cart');
         if (!link) return;
@@ -192,7 +184,7 @@ else
             }
             badge.textContent = total;
             badge.classList.remove('badge-bump');
-            void badge.offsetWidth; // restart the animation
+            void badge.offsetWidth;
             badge.classList.add('badge-bump');
         } else if (badge) {
             badge.remove();

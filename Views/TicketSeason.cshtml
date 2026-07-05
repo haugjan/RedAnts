@@ -3,20 +3,16 @@
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Features.Ticketing.Public
 @{
-    // Same look as the public website homepage: the site nav (_SiteLayout) plus the website's
-    // own hero + event-list building blocks (styled by site.css).
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
     var status = Model.Value<string>("status");
     var providedSecret = Context.Request.Query["secret"].ToString();
     var accessSecret = Model.Key.ToString().Split('-')[0];
     var statusEnum = Enum.TryParse<SeasonStatus>(status, out var st) ? st : SeasonStatus.Draft;
-    // Open = öffentlich; Intern = nur mit passendem ?secret; Draft/Closed = 404.
     var blocked = !AccessGate.SeasonOk(statusEnum, accessSecret, providedSecret);
     if (blocked) { Context.Response.StatusCode = 404; }
 
     ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
-    // Transparent nav floating over the hero (turns solid on scroll), same as the homepage.
     ViewBag.TransparentNav = !blocked;
 
     var start = Model.Value<DateTime>("startDate");
@@ -101,8 +97,6 @@ else
     </main>
 
     <style>
-        /* Header image band identical to the homepage's headerElement (.page-header, min-height 300px)
-           so the header is exactly the same height as the homepage. */
         .page-header { position: relative; background-size: cover; background-position: center; min-height: 300px; display: flex; align-items: flex-end; }
         .page-header--plain { background: #101010; }
         .page-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.75) 100%); }
@@ -111,7 +105,6 @@ else
         .page-header-title::after { content: ""; display: block; width: 64px; height: 5px; background: #C8102E; margin-top: 16px; }
         .page-header-date { color: rgba(255,255,255,.85); margin: 14px 0 0; font-size: .98rem; }
 
-        /* Same event-list styling as the homepage's eventListElement block. */
         .event-list { padding: 56px 20px; background: #f6f7f9; }
         .event-list-inner { max-width: 900px; margin: 0 auto; }
         .event-list-title { font-family: 'Oswald', sans-serif; font-size: 2.4rem; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 24px; color: #101010; }

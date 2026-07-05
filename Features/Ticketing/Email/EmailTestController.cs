@@ -8,9 +8,6 @@ using RedAnts.Infrastructure.Shared;
 
 namespace RedAnts.Features.Ticketing.Email;
 
-/// <summary>Development-only endpoint to verify the Brevo setup end to end. Returns 404 outside
-/// Development so it is never reachable in production. With <c>?uuid=</c> it sends a real ticket
-/// e-mail (QR image + web-ticket link) so the whole generation + mail pipeline can be checked.</summary>
 public sealed class EmailTestController(
     IEmailSender email,
     IWebHostEnvironment environment,

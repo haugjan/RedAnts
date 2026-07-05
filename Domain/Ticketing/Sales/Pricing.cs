@@ -1,13 +1,9 @@
 namespace RedAnts.Domain.Ticketing.Sales;
 
-/// <summary>The price and sales quota of a single ticket category within an event or season price set.
-/// A sub-row of <see cref="EventPrice"/> / <see cref="SeasonPrice"/>.</summary>
 public sealed class CategoryPrice
 {
     public TicketCategory Category { get; private set; }
-    /// <summary>Verkaufspreis (sale price) in CHF.</summary>
     public decimal SalePrice { get; private set; }
-    /// <summary>Kontingent: how many tickets of this category may be sold; null = unlimited.</summary>
     public int? Quota { get; private set; }
 
     private CategoryPrice(TicketCategory category, decimal salePrice, int? quota)
@@ -28,17 +24,11 @@ public sealed class CategoryPrice
         new(category, salePrice, quota);
 }
 
-/// <summary>The ticket prices for one event (linked 1-to-0..1 to an Umbraco event node). Holds the
-/// per-category prices plus two event-level caps: <see cref="TotalSalesQuota"/> across all categories
-/// and <see cref="AdmissionQuota"/> (max persons admitted). When either the category quota or the total
-/// sales quota is reached, that category (resp. all categories) is no longer purchasable.</summary>
 public sealed class EventPrice
 {
     public int Id { get; private set; }
     public int EventId { get; private set; }
-    /// <summary>Verkaufskontingent insgesamt across all categories; null = unlimited.</summary>
     public int? TotalSalesQuota { get; private set; }
-    /// <summary>Einlasskontingent: maximum number of persons admitted to the event; null = unlimited.</summary>
     public int? AdmissionQuota { get; private set; }
     public IReadOnlyList<CategoryPrice> Categories { get; private set; }
 
@@ -64,8 +54,6 @@ public sealed class EventPrice
         new(id, eventId, totalSalesQuota, admissionQuota, categories ?? []);
 }
 
-/// <summary>The ticket prices for one season (linked 1-to-0..1 to an Umbraco season node). Holds the
-/// per-category prices; season products draw from these.</summary>
 public sealed class SeasonPrice
 {
     public int Id { get; private set; }

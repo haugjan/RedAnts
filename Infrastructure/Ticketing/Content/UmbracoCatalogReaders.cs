@@ -8,10 +8,8 @@ using A = RedAnts.Infrastructure.Ticketing.Content.TicketingAliases;
 
 namespace RedAnts.Infrastructure.Ticketing.Content;
 
-/// <summary>Shared mapping from published content nodes to ticketing read models.</summary>
 internal static class CatalogContentMapper
 {
-    /// <summary>The Intern access secret is the first block of the node's GUID key (stored implicitly, no edit field).</summary>
     public static string SecretFromKey(Guid key) => key.ToString().Split('-')[0];
 
     public static Season ToSeason(IPublishedContent node) =>
@@ -32,7 +30,6 @@ internal static class CatalogContentMapper
             MediaUrl(node, A.VenueImage),
             node.Value<string>(A.VenueDescription));
 
-    /// <summary>Resolves a single MediaPicker3 value to its URL, or null.</summary>
     private static string? MediaUrl(IPublishedContent node, string alias) =>
         node.Value<IPublishedContent>(alias)?.Url();
 
@@ -57,15 +54,8 @@ internal static class CatalogContentMapper
     }
 }
 
-/// <summary>Resolves ticketing nodes from the published content cache.</summary>
 internal sealed class CatalogContentSource(IPublishedContentQuery query, IUmbracoContextFactory contextFactory)
 {
-    /// <summary>
-    /// Ensures an ambient <c>UmbracoContext</c> exists for the duration of <paramref name="read"/>.
-    /// Needed because these readers are also called from the Blazor admin circuit (over SignalR), which
-    /// has no request-scoped Umbraco context. <c>EnsureUmbracoContext</c> is nest-safe, so the normal
-    /// MVC request path (which already has a context) is unaffected.
-    /// </summary>
     public T Read<T>(Func<T> read)
     {
         using var _ = contextFactory.EnsureUmbracoContext();

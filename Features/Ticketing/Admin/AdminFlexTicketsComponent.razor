@@ -2,10 +2,6 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
 
-@* Flextickets administration: Flextickets are always issued as bundles. Pick a season (synced across
-   tabs), list its bundles, create bundles, and rename a bundle via the last-column icon. Shared look
-   from /css/ticketing-admin.css. *@
-
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.SeasonSingle.DisplayName()</h1>
     <p class="ta-page-lead">Flextickets werden immer als Bundle erstellt und bundle-weise angezeigt.</p>
@@ -178,7 +174,6 @@
     private string _sortCol = "created";
     private bool _sortAsc = false;
 
-    // Create overlay
     private bool _showCreate;
     private bool _saving;
     private string? _createError;
@@ -203,7 +198,6 @@
         _bundles = SelectedSeasonId > 0 ? await Bundles.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
-    // --- Sorting ---
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<FlexTicketBundleView> Sorted()
@@ -219,7 +213,6 @@
         return _sortAsc ? q : q.Reverse();
     }
 
-    // --- Create ---
     private void OpenCreate()
     {
         _createError = null;
@@ -258,7 +251,6 @@
         finally { _saving = false; }
     }
 
-    // --- Edit (rename) overlay ---
     private FlexTicketBundleView? _editing;
     private string _editReference = "";
     private string? _editError;
@@ -276,7 +268,7 @@
     {
         if (_editing is null) return;
         var reference = (_editReference ?? "").Trim();
-        if (reference == _editing.Reference) { _editing = null; return; } // no change
+        if (reference == _editing.Reference) { _editing = null; return; }
         _saving = true;
         _editError = null;
         try

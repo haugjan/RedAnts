@@ -4,9 +4,6 @@ using RedAnts.Features.Ticketing.Ports;
 
 namespace RedAnts.Features.Ticketing.Admin;
 
-/// <summary>Parses the member-import CSV (columns: Name; Vorname; Geburtsdatum) and produces the sample
-/// template. Tolerant by design: any field, or a whole row, may be empty and is still imported. Accepts
-/// ';' or ',' as the delimiter and dd.MM.yyyy or yyyy-MM-dd dates; a header row is skipped.</summary>
 public static class MemberCsv
 {
     private static readonly string[] DateFormats = ["dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd"];
@@ -18,14 +15,13 @@ public static class MemberCsv
         if (string.IsNullOrWhiteSpace(content)) return new MemberCsvResult(rows, warnings);
 
         var lines = content.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
-        // Swiss Excel defaults to ';'; fall back to ',' when no semicolon is present.
         var delimiter = content.Contains(';') ? ';' : ',';
 
         var lineNo = 0;
         foreach (var raw in lines)
         {
             lineNo++;
-            if (raw.Trim().Length == 0) continue; // skip truly empty lines (a ";;" line is kept as a blank row)
+            if (raw.Trim().Length == 0) continue;
 
             var cells = raw.Split(delimiter);
             var last = Cell(cells, 0);
@@ -48,7 +44,6 @@ public static class MemberCsv
         return new MemberCsvResult(rows, warnings);
     }
 
-    /// <summary>Sample template bytes, UTF-8 with BOM so Excel renders umlauts correctly.</summary>
     public static byte[] SampleBytes()
     {
         var csv = "Name;Vorname;Geburtsdatum\n" +
@@ -69,6 +64,4 @@ public static class MemberCsv
     }
 }
 
-/// <summary>Result of parsing a member CSV: the importable rows plus non-fatal warnings (e.g. an
-/// unrecognised date that was kept empty).</summary>
 public sealed record MemberCsvResult(IReadOnlyList<MemberImportRow> Rows, IReadOnlyList<string> Warnings);

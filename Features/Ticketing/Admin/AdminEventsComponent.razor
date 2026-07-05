@@ -1,8 +1,4 @@
 @using RedAnts.Domain.Ticketing.Sales
-@* Anlässe (events) administration: pick a season, list its events. Status and admission quota are
-   editable via the edit icon in the last column (confirmation overlay); everything else is edited in
-   the Umbraco content tree. Shared look/behaviour with the other admin tabs comes from
-   /css/ticketing-admin.css. *@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
@@ -109,7 +105,6 @@
 
 @if (_editing is not null)
 {
-    @* Close on mousedown (not click) so releasing a text selection outside the modal does not close it. *@
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Anlass bearbeiten</h2>
@@ -204,7 +199,6 @@
         }
     }
 
-    // --- Sorting ---
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<Event> Sorted()
@@ -233,7 +227,6 @@
         _ => "Entwurf"
     };
 
-    // --- Copy link ---
     private (int EventId, bool Intern)? _copied;
     private bool IsCopied(int eventId, bool intern) => _copied is { } c && c.EventId == eventId && c.Intern == intern;
 
@@ -250,10 +243,9 @@
             await Task.Delay(1500);
             if (IsCopied(eventId, intern)) { _copied = null; StateHasChanged(); }
         }
-        catch { /* clipboard unavailable */ }
+        catch { }
     }
 
-    // --- Edit overlay (status + admission quota) ---
     private Event? _editing;
     private EventStatus _editStatus;
     private int? _editQuota;

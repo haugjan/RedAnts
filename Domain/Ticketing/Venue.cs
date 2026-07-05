@@ -1,6 +1,5 @@
 namespace RedAnts.Domain.Ticketing;
 
-/// <summary>A venue (Ort) where events take place.</summary>
 public sealed class Venue
 {
     public int Id { get; private set; }

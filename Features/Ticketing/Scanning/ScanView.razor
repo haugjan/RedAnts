@@ -5,12 +5,6 @@
 @inject ITicketTokens Tickets
 @inject IAdmissionService Admission
 
-@* Camera QR scan view for a single event. html5-qrcode runs the camera in the browser and reports
-   decoded codes back via JS interop. A decoded code is verified via ITicketTokens (S3), then the
-   admission is toggled through IAdmissionService: a first scan checks the person in, a re-scan checks
-   them out again. Free walk-up admissions can be granted/withdrawn and count against the hall quota;
-   the remaining capacity is shown live. *@
-
 <div class="scan-view">
     <header class="scan-view__header">
         <button type="button" class="scan-view__back" @onclick="OnBack">&larr; Zurück</button>
@@ -130,8 +124,6 @@
         }
     }
 
-    // Called by ticket-scanner.js when a QR code is decoded. The JS side pauses the camera before this
-    // fires; DismissAsync() resumes it. The code is the absolute /ticket/{token} URL (a raw token works too).
     [JSInvokable]
     public async Task OnCodeScanned(string code)
     {
@@ -179,7 +171,7 @@
     private async Task Beep(bool ok)
     {
         try { await JS.InvokeVoidAsync("ticketScanner.beep", ok); }
-        catch (JSException) { /* audio not available */ }
+        catch (JSException) { }
     }
 
     private async Task DismissAsync()
@@ -189,12 +181,10 @@
         {
             _cameraPaused = false;
             try { await JS.InvokeVoidAsync("ticketScanner.resume"); }
-            catch (JSException) { /* camera not running */ }
+            catch (JSException) { }
         }
     }
 
-    // The QR encodes the absolute /ticket/{token} URL; take the last path segment as the token and
-    // accept a bare token too. Strips any query/fragment.
     private static string ExtractToken(string code)
     {
         var s = (code ?? "").Trim();
@@ -242,8 +232,8 @@
     public async ValueTask DisposeAsync()
     {
         try { await JS.InvokeVoidAsync("ticketScanner.stop"); }
-        catch (JSException) { /* circuit already gone */ }
-        catch (JSDisconnectedException) { /* circuit already gone */ }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
         _ref?.Dispose();
     }
 }

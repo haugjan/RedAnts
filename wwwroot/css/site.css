@@ -1,10 +1,3 @@
-/*
-  site.css — Public website (FlexPage) design.
-  Navigation adopted from the Sporthalle Sulzerallee reference; RedAnts branding.
-  Display font: Oswald (Google Fonts). Body font: Verdana (system).
-*/
-
-/* ── RESET ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
@@ -14,7 +7,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── BRAND TOKENS ─────────────────────────────────────────── */
 :root {
   --red:      #C8102E;
   --red-dark: #A50D26;
@@ -23,7 +15,6 @@ body {
   --display:  'Oswald', Impact, sans-serif;
 }
 
-/* ── NAV ────────────────────────────────────────────────────── */
 .site-nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 50;
   background: rgba(255,255,255,0.96);
@@ -82,7 +73,6 @@ body {
   white-space: nowrap;
 }
 .nav-btn-red:hover { background: var(--red-dark); border-color: var(--red-dark); color: #fff; }
-/* Mobile toggle */
 .nav-toggle {
   display: none;
   background: none; border: none; cursor: pointer; padding: 4px;
@@ -114,7 +104,6 @@ body {
   .nav-toggle { display: block; }
 }
 
-/* ── HERO ELEMENT ───────────────────────────────────────────── */
 .hero {
   position: relative; height: 100svh; min-height: 560px; overflow: hidden;
   background: #0d0d0d;
@@ -125,7 +114,6 @@ body {
   filter: grayscale(20%) brightness(0.55);
   transform: scale(1.03);
 }
-/* Fallback tint when no hero image is set. */
 .hero-bg--empty {
   background:
     radial-gradient(120% 120% at 70% 12%, rgba(200,16,46,0.55) 0%, rgba(200,16,46,0) 55%),
@@ -191,5 +179,4 @@ body {
   .hero-bar-scroll { display: none; }
 }
 
-/* ── FLEXPAGE MAIN ──────────────────────────────────────────── */
 .flexpage-main { min-height: 40vh; }

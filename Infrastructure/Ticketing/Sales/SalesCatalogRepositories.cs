@@ -5,8 +5,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-/// <summary>Event price set (0..1 per event): a parent row (EventId + event-level quotas) with n
-/// category sub-rows. Save replaces the child rows to keep the set in sync.</summary>
 public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventPrices
 {
     public async Task<EventPrice?> GetByEventAsync(int eventId)
@@ -59,7 +57,6 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
             cats.Select(c => CategoryPrice.FromPersistence((TicketCategory)c.Category, c.SalePrice, c.Quota)).ToList());
 }
 
-/// <summary>Season price set (0..1 per season): a parent row with n category sub-rows.</summary>
 public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeasonPrices
 {
     public async Task<SeasonPrice?> GetBySeasonAsync(int seasonId)
@@ -106,9 +103,6 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
             cats.Select(c => CategoryPrice.FromPersistence((TicketCategory)c.Category, c.SalePrice, c.Quota)).ToList());
 }
 
-/// <summary>Resolves purchasable categories for an event from its price set, applying availability:
-/// a category is unavailable once its own quota, or the event's total sales quota, is exhausted by the
-/// valid EventTickets already issued.</summary>
 public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPricing
 {
     public async Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int eventId)
@@ -122,7 +116,6 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
             "WHERE EventPriceId = @0 ORDER BY Category", parent.Id);
         if (cats.Count == 0) return [];
 
-        // Valid tickets already sold, per category and in total, to apply the quotas.
         var soldRows = await scope.Database.FetchAsync<CategoryCountRow>(
             "SELECT Category, COUNT(*) AS Cnt FROM EventTickets WHERE EventId = @0 AND Status = @1 GROUP BY Category",
             eventId, (int)TicketStatus.Valid);
@@ -151,7 +144,6 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
         return all.FirstOrDefault(c => c.Category == category);
     }
 
-    /// <summary>Smallest of the two remaining caps; null means "no cap" for that side.</summary>
     private static int? MinRemaining(int? a, int? b) =>
         (a, b) switch
         {

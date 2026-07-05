@@ -1,11 +1,8 @@
-// JS interop bridge between the Blazor ScanView component and the html5-qrcode library.
-// Starts the rear camera, reports each decoded code to .NET, and pauses until resume() is called.
 window.ticketScanner = (function () {
     let instance = null;
     let dotNetRef = null;
     let audioCtx = null;
 
-    // ---- Feedback beeps (Web Audio, no audio files needed) ----
     function ensureAudio() {
         if (!audioCtx) {
             const AC = window.AudioContext || window.webkitAudioContext;
@@ -33,15 +30,13 @@ window.ticketScanner = (function () {
         osc.stop(t + duration + 0.02);
     }
 
-    // success: two short ascending sine beeps; failure: one low square buzz.
     function beep(success) {
         const ctx = ensureAudio();
         if (!ctx) return;
         if (success) {
-            // Bright ascending triad + a higher sustained final note (attention-grabbing).
-            tone(ctx, 988, 0, 0.10, "triangle");   // B5
-            tone(ctx, 1319, 0.11, 0.10, "triangle"); // E6
-            tone(ctx, 1760, 0.22, 0.30, "triangle"); // A6, longer sustain
+            tone(ctx, 988, 0, 0.10, "triangle");
+            tone(ctx, 1319, 0.11, 0.10, "triangle");
+            tone(ctx, 1760, 0.22, 0.30, "triangle");
         } else {
             tone(ctx, 200, 0, 0.4, "square");
         }
@@ -54,10 +49,9 @@ window.ticketScanner = (function () {
             throw new Error("html5-qrcode wurde nicht geladen.");
         }
 
-        // Tear down a previous instance (e.g. after navigating back and forth).
         await stop();
 
-        instance = new Html5Qrcode(elementId, /* verbose */ false);
+        instance = new Html5Qrcode(elementId, false);
 
         const config = {
             fps: 10,
@@ -66,20 +60,18 @@ window.ticketScanner = (function () {
         };
 
         const onScanSuccess = (decodedText) => {
-            // Pause immediately so the same code is not reported repeatedly, then hand off to .NET.
-            try { instance.pause(/* shouldPauseVideo */ true); } catch (e) { /* ignore */ }
+            try { instance.pause(true); } catch (e) { }
             if (dotNetRef) {
                 dotNetRef.invokeMethodAsync("OnCodeScanned", decodedText);
             }
         };
 
-        // facingMode: "environment" selects the rear camera on phones.
         await instance.start({ facingMode: "environment" }, config, onScanSuccess, undefined);
     }
 
     function resume() {
         if (instance) {
-            try { instance.resume(); } catch (e) { /* not paused */ }
+            try { instance.resume(); } catch (e) { }
         }
     }
 
@@ -89,7 +81,6 @@ window.ticketScanner = (function () {
             await instance.stop();
             instance.clear();
         } catch (e) {
-            /* already stopped */
         }
         instance = null;
     }

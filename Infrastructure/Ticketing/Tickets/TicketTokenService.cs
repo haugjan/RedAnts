@@ -7,17 +7,6 @@ using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-/// <summary>
-/// Compact, HMAC-signed ticket tokens. Format: <c>RA1.&lt;payload&gt;.&lt;sig&gt;</c> where
-/// <list type="bullet">
-/// <item><c>payload</c> = base64url of UTF-8 <c>"{typeInt}|{uuidN}|{scopeId}|{iat}"</c>
-/// (uuid in 32-hex "N" form, iat = unix seconds),</item>
-/// <item><c>sig</c> = base64url of the first 16 bytes of <c>HMAC-SHA256(secret, "RA1."+payload)</c>.</item>
-/// </list>
-/// Signing (not encryption) gives integrity/authenticity: the scanner reads the fields but nobody
-/// can mint a valid token without the secret. 128-bit truncated HMAC is ample against forgery.
-/// The secret comes from configuration key <c>Tickets:QrSecret</c> (App Service app setting in prod).
-/// </summary>
 public sealed class TicketTokenService : ITicketTokens
 {
     private const string Scheme = "RA1";
@@ -33,9 +22,6 @@ public sealed class TicketTokenService : ITicketTokens
         }
         else
         {
-            // Development fallback: derive a stable key from the install's Umbraco global id so tokens
-            // are consistent across restarts without hardcoding a real secret. Production MUST set
-            // Tickets:QrSecret (e.g. App Service app setting Tickets__QrSecret).
             var seed = config["Umbraco:CMS:Global:Id"] ?? "redants-dev-qr-fallback";
             _key = SHA256.HashData(Encoding.UTF8.GetBytes("RedAnts.Tickets.Qr:" + seed));
             logger.LogWarning("Tickets:QrSecret is not configured; using a derived development key. " +
@@ -48,7 +34,6 @@ public sealed class TicketTokenService : ITicketTokens
         var iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var payload = $"{(int)type}|{uuid:N}|{scopeId}|{iat}";
         var payloadB64 = Base64Url(Encoding.UTF8.GetBytes(payload));
-        // Truncate the HMAC to SignatureBytes so it matches what TryVerify checks.
         var sig = Base64Url(Sign(Scheme + "." + payloadB64).AsSpan(0, SignatureBytes).ToArray());
         return $"{Scheme}.{payloadB64}.{sig}";
     }
@@ -75,7 +60,6 @@ public sealed class TicketTokenService : ITicketTokens
         }
 
         if (provided.Length != SignatureBytes) return false;
-        // Constant-time compare of the truncated HMAC.
         if (!CryptographicOperations.FixedTimeEquals(provided, expected.AsSpan(0, SignatureBytes).ToArray()))
             return false;
 

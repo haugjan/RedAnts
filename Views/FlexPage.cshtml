@@ -7,8 +7,6 @@
     var blocks = Model.Value<BlockListModel>("content")?.ToList() ?? new List<BlockListItem>();
     var firstAlias = blocks.FirstOrDefault()?.Content.ContentType.Alias;
 
-    // A leading Hero or Header lets the nav float over the image (white text) until the user scrolls;
-    // otherwise pad below the fixed bar.
     var transparentNav = firstAlias is "heroElement" or "headerElement";
     ViewBag.TransparentNav = transparentNav;
 }

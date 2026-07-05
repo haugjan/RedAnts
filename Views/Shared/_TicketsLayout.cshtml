@@ -17,7 +17,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-        /* Brand tokens shared with the public website (site.css). */
         :root {
             --ra-red: #C8102E;
             --ra-red-dark: #A50D26;
@@ -29,7 +28,7 @@
             font-family: Verdana, Geneva, Tahoma, sans-serif;
             background: #f7f7f8;
             color: var(--ra-ink);
-            padding-top: 66px; /* offset the fixed nav */
+            padding-top: 66px;
             -webkit-font-smoothing: antialiased;
         }
 
@@ -42,7 +41,6 @@
         }
         h1 { letter-spacing: 0.02em; font-weight: 700; }
 
-        /* ── Brand nav (visual language of the website nav) ─────────── */
         .tk-nav {
             position: fixed; top: 0; left: 0; right: 0; z-index: 50;
             height: 66px;
@@ -82,7 +80,6 @@
         .tk-nav-btn:hover { background: var(--ra-red-dark); border-color: var(--ra-red-dark); color: #fff; }
         @@media (max-width: 560px) { .tk-nav-link { display: none; } }
 
-        /* ── Back link ──────────────────────────────────────────────── */
         .tk-back {
             display: inline-block; margin-bottom: 0.75rem;
             font-family: var(--ra-display); font-size: 1.05rem; font-weight: 500;
@@ -92,7 +89,6 @@
         }
         .tk-back:hover { color: var(--ra-red); opacity: 1; }
 
-        /* ── Bootstrap component reskin ─────────────────────────────── */
         .btn { font-family: var(--ra-display); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
         .btn-danger {
             --bs-btn-bg: var(--ra-red); --bs-btn-border-color: var(--ra-red);
@@ -114,13 +110,11 @@
             border-color: var(--ra-red);
             box-shadow: 0 0 0 0.2rem rgba(200,16,46,0.18);
         }
-        /* Season / event banner image */
         .tk-banner {
             width: 100%; max-height: 340px; object-fit: cover;
             border-radius: 16px; margin: 0.25rem 0 1.25rem;
         }
 
-        /* ── Footer ─────────────────────────────────────────────────── */
         .tk-footer {
             margin-top: 3rem; padding: 1.75rem 0;
             border-top: 1px solid #ececec;

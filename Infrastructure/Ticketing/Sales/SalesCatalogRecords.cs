@@ -3,9 +3,6 @@ using Umbraco.Cms.Infrastructure.Persistence.DatabaseAnnotations;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-// Pricing catalog: an event/season has 0..1 price row (unique on the node id), each with n category
-// sub-rows (Category enum stored as int, SalePrice, Quota). Category has no code/name column anymore.
-
 [TableName("EventPrices")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]

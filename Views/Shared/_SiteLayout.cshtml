@@ -3,7 +3,6 @@
 @using System.Linq
 @using Umbraco.Cms.Core.Models.PublishedContent
 @{
-    // The public homepage is the first flexPage at the content root; nav lists its flexPage children.
     var home = Umbraco.ContentAtRoot()?.FirstOrDefault(c => c.ContentType.Alias == "flexPage");
     var cartCount = Cart.Get().TotalQuantity;
     var navPages = home?.Children()?
@@ -12,7 +11,6 @@
 
     var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
 
-    // TransparentNav = the page opens with a Hero, so the bar floats over the image with white text.
     var transparentNav = ViewBag.TransparentNav as bool? ?? false;
     var pageTitle = ViewBag.PageTitle as string ?? "Red Ants Winterthur";
     var navBg = transparentNav ? "rgba(255,255,255,0)" : "rgba(255,255,255,0.97)";

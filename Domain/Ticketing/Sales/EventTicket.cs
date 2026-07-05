@@ -1,8 +1,5 @@
 namespace RedAnts.Domain.Ticketing.Sales;
 
-/// <summary>A ticket for one specific event. Single admission; the actual in/out is tracked in
-/// TicketEventVisits (one visit row per event+ticket) with a log per scan. This entity only carries
-/// whether it has been redeemed at all.</summary>
 public sealed class EventTicket
 {
     public int Id { get; private set; }
@@ -13,7 +10,6 @@ public sealed class EventTicket
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    /// <summary>True once the ticket has been admitted at its event (tracked in TicketEventVisits).</summary>
     public bool Redeemed { get; private set; }
 
     private EventTicket(int id, Guid uuid, int eventId, TicketCategory category, decimal price,
@@ -42,7 +38,6 @@ public sealed class EventTicket
         decimal price, int? orderId, TicketStatus status, DateTime createdAt, bool redeemed) =>
         new(id, uuid, eventId, category, price, orderId, status, createdAt, redeemed);
 
-    /// <summary>Mark the ticket as admitted at its event (on the first check-in).</summary>
     public void Redeem()
     {
         if (Status != TicketStatus.Valid) throw new DomainException("Ticket ist ungültig.");

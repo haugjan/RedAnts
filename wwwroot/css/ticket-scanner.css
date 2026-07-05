@@ -36,7 +36,6 @@ html, body {
     margin: 0 0 1rem;
 }
 
-/* ---- Event list ---- */
 .event-list {
     list-style: none;
     margin: 0;
@@ -112,7 +111,6 @@ html, body {
 .status--closed { background: #f3f4f6; color: #6b7280; }
 .status--draft  { background: #e0e7ff; color: #3730a3; }
 
-/* ---- Scan view ---- */
 .scan-view__header {
     display: flex;
     align-items: center;
@@ -142,7 +140,6 @@ html, body {
 .scan-view__hint { color: var(--muted); text-align: center; margin-top: 1rem; }
 .scan-view__hint--error { color: var(--fail); font-weight: 600; }
 
-/* ---- Full-screen result overlay ---- */
 .result {
     position: fixed;
     inset: 0;
@@ -199,7 +196,6 @@ html, body {
     cursor: pointer;
 }
 
-/* ---- PWA install button ---- */
 .pwa-install {
     position: fixed;
     left: 50%;

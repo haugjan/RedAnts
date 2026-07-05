@@ -2,7 +2,6 @@ using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Features.Ticketing.Ports;
 
-/// <summary>A purchasable category for an event with its sale price and remaining availability.</summary>
 public sealed record AvailableTicketCategory(
     TicketCategory Category,
     string Name,
@@ -10,8 +9,6 @@ public sealed record AvailableTicketCategory(
     bool Available,
     int? Remaining);
 
-/// <summary>Read/write of an event's price set (0..1 per event) with its per-category prices/quotas
-/// and the event-level sales/admission quotas. Managed in the ticketing admin.</summary>
 public interface IEventPrices
 {
     Task<EventPrice?> GetByEventAsync(int eventId);
@@ -19,7 +16,6 @@ public interface IEventPrices
     Task DeleteAsync(int eventPriceId);
 }
 
-/// <summary>Read/write of a season's price set (0..1 per season) with its per-category prices/quotas.</summary>
 public interface ISeasonPrices
 {
     Task<SeasonPrice?> GetBySeasonAsync(int seasonId);
@@ -27,32 +23,24 @@ public interface ISeasonPrices
     Task DeleteAsync(int seasonPriceId);
 }
 
-/// <summary>Read side: resolves the purchasable categories for an event, applying the sale price and
-/// the availability rules (a category is sold out when its own quota or the event's total sales quota
-/// is reached).</summary>
 public interface IEventPricing
 {
     Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int eventId);
     Task<AvailableTicketCategory?> FindAvailableAsync(int eventId, TicketCategory category);
 }
 
-/// <summary>Issued event tickets (single-event admission).</summary>
 public interface IEventTickets
 {
     Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId);
     Task<EventTicket> SaveAsync(EventTicket ticket);
 }
 
-/// <summary>Issued season passes (Saisonkarten) — used by the admin to load a single pass and persist
-/// edits to its editable fields (category, price, status).</summary>
 public interface ISeasonPasses
 {
     Task<SeasonPass?> GetByUuidAsync(Guid uuid);
     Task<SeasonPass> SaveAsync(SeasonPass pass);
 }
 
-/// <summary>The immutable financial record of a sale. Written at checkout; issued tickets link to it
-/// by <c>OrderId</c>. <see cref="NextOrderNumberAsync"/> hands out the next sequential order number.</summary>
 public interface IOrders
 {
     Task<Order> SaveAsync(Order order);

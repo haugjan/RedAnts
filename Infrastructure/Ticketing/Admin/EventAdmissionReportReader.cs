@@ -7,9 +7,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Aggregates per-event admission counts directly from the Sales tables (one grouped query per
-/// ticket type), keyed by event id. Kept independent of the ticket repositories so it does not depend
-/// on work in progress in other slices.</summary>
 public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider) : IEventAdmissionReport
 {
     public async Task<IReadOnlyDictionary<int, EventAdmissionCounts>> GetCountsByEventAsync()
@@ -24,21 +21,17 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider) : I
             return map;
         }
 
-        // Sold single (event) tickets: every valid EventTicket issued for the event.
         var sold = await Counts(
             "SELECT EventId, COUNT(*) AS Cnt FROM EventTickets WHERE Status = @0 GROUP BY EventId",
             (int)TicketStatus.Valid);
 
-        // Redeemed EventTickets: admitted at least once (Redeemed flag set on first check-in).
         var redeemedEvent = await Counts(
             "SELECT EventId, COUNT(*) AS Cnt FROM EventTickets WHERE Redeemed = 1 GROUP BY EventId");
 
-        // Season single tickets consumed at this event (bound to it on first check-in).
         var redeemedSingle = await Counts(
             "SELECT RedeemedEventId AS EventId, COUNT(*) AS Cnt FROM SeasonSingleTickets " +
             "WHERE RedeemedEventId IS NOT NULL GROUP BY RedeemedEventId");
 
-        // Multi-event passes/cards that visited this event (distinct cards, from the visits table).
         var passVisits = await Counts(
             "SELECT EventId, COUNT(DISTINCT TicketUuid) AS Cnt FROM TicketEventVisits " +
             "WHERE TicketType = @0 GROUP BY EventId",
@@ -48,8 +41,6 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider) : I
             "WHERE TicketType = @0 GROUP BY EventId",
             (int)TicketType.MemberCard);
 
-        // Free-entry entitlements (Berechtigte) admitted to this event. FreeEntry visits carry no ticket
-        // uuid (detail lives in TicketEventFreeEntries), so each admission is its own visit row — count rows.
         var freeEntries = await Counts(
             "SELECT EventId, COUNT(*) AS Cnt FROM TicketEventVisits " +
             "WHERE TicketType = @0 GROUP BY EventId",
@@ -77,7 +68,6 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider) : I
         return result;
     }
 
-    /// <summary>Projection for the grouped count queries (mapped by column name/alias).</summary>
     public sealed class EventCountRow
     {
         public int EventId { get; set; }
@@ -85,7 +75,6 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider) : I
     }
 }
 
-/// <summary>Registers the Anlässe admission report (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class EventAdmissionReportComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)

@@ -4,20 +4,15 @@ using Microsoft.AspNetCore.Mvc;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
-// PaymentMethod exists in both RedAnts.Domain.Ticketing and ...Sales; the sales one is authoritative here.
 using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-/// <summary>Guest checkout: capture the billing address (step 1), pick a payment method (step 2), then
-/// finalise. Payment is a <b>pseudo</b> step: no gateway is called and every sale succeeds. The order
-/// and its issued event tickets are persisted, the cart is cleared, and a confirmation is shown.</summary>
 public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
 
-    // Sports entry fees are VAT-exempt (Art. 21 Abs. 2 Ziff. 15 MWSTG); the club is not VAT-liable here.
     private const decimal VatRate = 0m;
 
     private static readonly PaymentOption[] Methods =
@@ -28,7 +23,6 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         new(PaymentMethod.Cash, "Barzahlung", "Vor Ort an der Kasse")
     ];
 
-    // ── Step 1: billing address ───────────────────────────────────────────
     [HttpGet("/kasse")]
     public IActionResult Address()
     {
@@ -46,7 +40,6 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         try
         {
-            // Validate by building the domain value object; discard the result, we only need the check.
             _ = ToBillingAddress(form);
         }
         catch (DomainException ex)
@@ -59,7 +52,6 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return Redirect("/kasse/zahlung");
     }
 
-    // ── Step 2: payment method ────────────────────────────────────────────
     [HttpGet("/kasse/zahlung")]
     public IActionResult Payment()
     {
@@ -83,13 +75,11 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         try { billing = ToBillingAddress(form); }
         catch (DomainException) { return Redirect("/kasse"); }
 
-        // Pseudo payment: no gateway, always successful. Persist the order as paid.
         var number = await orders.NextOrderNumberAsync();
         var order = Order.Create(number, billing, current.TotalAmount, VatRate, paymentMethod, sellerUid: null);
         order.MarkPaid();
         var saved = await orders.SaveAsync(order);
 
-        // Issue one event ticket per unit; each gets its own Uuid → its own online ticket.
         var issued = new List<ConfirmationTicket>();
         foreach (var item in current.Items)
         {
@@ -114,7 +104,6 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return Redirect("/kasse/bestaetigung");
     }
 
-    // ── Confirmation ──────────────────────────────────────────────────────
     [HttpGet("/kasse/bestaetigung")]
     public IActionResult Confirmation()
     {

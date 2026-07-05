@@ -1,7 +1,5 @@
 namespace RedAnts.Domain.Ticketing;
 
-/// <summary>Postal code value object. Swiss codes must be 4 digits (1000–9999);
-/// foreign codes are accepted leniently. Mirrors the reference project's PostalCode.</summary>
 public sealed record PostalCode
 {
     public string Value { get; }
@@ -28,7 +26,6 @@ public sealed record PostalCode
         return new PostalCode(trimmed);
     }
 
-    /// <summary>Rehydrates from storage without validation so legacy/imported values never block loading.</summary>
     public static PostalCode FromPersistence(string? value) => new((value ?? "").Trim());
 
     private static bool IsSwiss(string? country)

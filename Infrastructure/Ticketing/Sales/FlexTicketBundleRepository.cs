@@ -6,11 +6,8 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-/// <summary>Flexticket bundles: reads them season-wise with their ticket counts, and creates a bundle
-/// together with its N season single tickets (Flextickets) in one scope.</summary>
 public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : IFlexTicketBundles
 {
-    /// <summary>Upper guard so an admin typo cannot issue an unbounded batch.</summary>
     public const int MaxBundleSize = 1000;
 
     public async Task<IReadOnlyList<FlexTicketBundleView>> GetBySeasonAsync(int seasonId)
@@ -46,7 +43,6 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
         if (quantity > MaxBundleSize) throw new DomainException($"Die Anzahl darf höchstens {MaxBundleSize} sein.");
 
-        // Validates season/reference (length, non-empty) and normalises the reference.
         var bundle = FlexTicketBundle.Create(seasonId, category, reference);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -66,7 +62,6 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
 
         for (var i = 0; i < quantity; i++)
         {
-            // Admin-issued Flextickets: no order, no price (a batch identified by its reference).
             var ticket = SeasonSingleTicket.CreateForBundle(seasonId, category, 0m, record.Id);
             await db.InsertAsync(new SeasonSingleTicketRecord
             {

@@ -10,9 +10,6 @@ using A = RedAnts.Infrastructure.Ticketing.Content.TicketingAliases;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Reads the public/internal share links off the published event nodes of a season. The links
-/// are label properties on the node (computed on publish), so this just projects them; it does not build
-/// URLs itself. Ensures an ambient Umbraco context because it runs on the Blazor admin circuit.</summary>
 public sealed class EventLinkReader(IPublishedContentQuery query, IUmbracoContextFactory contextFactory)
     : IEventLinkReader
 {
@@ -30,7 +27,6 @@ public sealed class EventLinkReader(IPublishedContentQuery query, IUmbracoContex
     }
 }
 
-/// <summary>Registers the Anlässe link reader (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class EventLinkReaderComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)

@@ -1,7 +1,5 @@
 namespace RedAnts.Domain.Ticketing;
 
-/// <summary>An event (Anlass). Backed by an Umbraco Document Type. Pricing/sales are handled by the
-/// separate <see cref="Sales"/> model, not on the catalog entity.</summary>
 public sealed class Event
 {
     public int Id { get; private set; }
@@ -15,7 +13,6 @@ public sealed class Event
     public string? ImageUrl { get; private set; }
     public string? HomeTeamLogoUrl { get; private set; }
     public string? AwayTeamLogoUrl { get; private set; }
-    /// <summary>Secret required to open this event when its status is Intern.</summary>
     public string? AccessSecret { get; private set; }
 
     private Event(int id, string name, string? text, int seasonId, DateOnly date, TimeOnly startTime,

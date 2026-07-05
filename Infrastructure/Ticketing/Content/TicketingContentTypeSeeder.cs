@@ -22,10 +22,6 @@ public sealed class TicketingContentTypeSeederComposer : IComposer
         => builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, TicketingContentTypeSeeder>();
 }
 
-/// <summary>
-/// Code-first creation of the ticketing Document Types (ticketingRoot/venue/season/event) and a
-/// sample published content tree, mirroring the reference project's ContentSeeder/MemberTypeSeeder.
-/// </summary>
 public sealed class TicketingContentTypeSeeder(
     IContentTypeService contentTypeService,
     IContentService contentService,
@@ -58,9 +54,6 @@ public sealed class TicketingContentTypeSeeder(
         return Task.CompletedTask;
     }
 
-    // Recompute the public/internal link display fields for existing event + season nodes from their
-    // official Umbraco content URL. Runs every boot (best-effort: skips nodes whose URL is not yet
-    // available), so links created with the old sqid scheme are updated without a manual re-save.
     private void RefreshAccessLinks()
     {
         using var ctxRef = umbracoContextFactory.EnsureUmbracoContext();
@@ -81,7 +74,7 @@ public sealed class TicketingContentTypeSeeder(
 
     private void EnsureContentTypes()
     {
-        if (contentTypeService.Get(A.RootType) is not null) return; // already created
+        if (contentTypeService.Get(A.RootType) is not null) return;
 
         var all = dataTypeService.GetAll().ToList();
         IDataType ByEditor(string alias) => all.First(d => d.EditorAlias == alias);
@@ -92,17 +85,13 @@ public sealed class TicketingContentTypeSeeder(
         var contentPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.ContentPicker") ?? textBox;
         var labelType = EnsureLabel(all);
         var statusDropdown = EnsureStatusDropdown(all);
-        // Swiss-format date pickers (dd.MM.yyyy and dd.MM.yyyy HH:mm) for the backoffice editor.
         var dateCh = EnsureDatePicker(all, "Ticketing Datum (CH)", "DD.MM.YYYY");
         var dateTimeCh = EnsureDatePicker(all, "Ticketing Datum + Zeit (CH)", "DD.MM.YYYY HH:mm");
 
-        // Templates (each entity node renders as a page). Prefixed so they do not collide with the
-        // MVC purchase views (Views/Tickets/Event.cshtml etc.) via Umbraco's root view-location expander.
         var venueTpl = EnsureTemplate("TicketVenue");
         var eventTpl = EnsureTemplate("TicketEvent");
         var seasonTpl = EnsureTemplate("TicketSeason");
 
-        // venue
         var venue = new ContentType(shortStringHelper, Constants.System.Root)
         {
             Alias = A.VenueType, Name = "Ort", Icon = "icon-map-location"
@@ -113,7 +102,6 @@ public sealed class TicketingContentTypeSeeder(
         AssignTemplate(venue, venueTpl);
         contentTypeService.Save(venue, SuperUser);
 
-        // event
         var evt = new ContentType(shortStringHelper, Constants.System.Root)
         {
             Alias = A.EventType, Name = "Anlass", Icon = "icon-calendar"
@@ -130,7 +118,6 @@ public sealed class TicketingContentTypeSeeder(
         AssignTemplate(evt, eventTpl);
         contentTypeService.Save(evt, SuperUser);
 
-        // season (allows event children)
         var season = new ContentType(shortStringHelper, Constants.System.Root)
         {
             Alias = A.SeasonType, Name = "Saison", Icon = "icon-time"
@@ -145,7 +132,6 @@ public sealed class TicketingContentTypeSeeder(
         AssignTemplate(season, seasonTpl);
         contentTypeService.Save(season, SuperUser);
 
-        // folders (containers with list view) grouping seasons and venues
         var seasonsFolder = new ContentType(shortStringHelper, Constants.System.Root)
         {
             Alias = A.SeasonsFolderType, Name = "Saisons", Icon = "icon-folder"
@@ -160,7 +146,6 @@ public sealed class TicketingContentTypeSeeder(
         venuesFolder.AllowedContentTypes = new[] { new ContentTypeSort(venue.Key, 0, venue.Alias) };
         contentTypeService.Save(venuesFolder, SuperUser);
 
-        // ticketingRoot (allowed at root, allows the two folders)
         var root = new ContentType(shortStringHelper, Constants.System.Root)
         {
             Alias = A.RootType, Name = "Ticketing", Icon = "icon-tickets", AllowedAsRoot = true
@@ -219,7 +204,6 @@ public sealed class TicketingContentTypeSeeder(
         closedEvent.SetValue(A.EventStatus, Status("Closed"));
         Publish(closedEvent);
 
-        // An Intern season: not listed publicly, only buyable with its secret.
         var internSeason = contentService.Create("Intern-Saison 2027/28", seasonsFolder.Id, A.SeasonType);
         internSeason.SetValue(A.SeasonStartDate, DateTime.Today.AddMonths(9));
         internSeason.SetValue(A.SeasonEndDate, DateTime.Today.AddMonths(17));
@@ -236,7 +220,6 @@ public sealed class TicketingContentTypeSeeder(
     private PropertyType PropWithHint(IDataType dataType, string alias, string name, string description) =>
         new(shortStringHelper, dataType, alias) { Name = name, Description = description };
 
-    // Umbraco.DropDown.Flexible persists its value as a JSON array of selected items.
     private static string Status(string value) =>
         System.Text.Json.JsonSerializer.Serialize(new[] { value });
 
@@ -246,7 +229,6 @@ public sealed class TicketingContentTypeSeeder(
         contentService.Publish(content, new[] { "*" }, SuperUser);
     }
 
-    // Registers a template from its Views/{alias}.cshtml file (pattern: reference ContentSeeder.EnsureTemplate).
     private ITemplate? EnsureTemplate(string alias)
     {
         var existing = fileService.GetTemplate(alias);
@@ -269,7 +251,6 @@ public sealed class TicketingContentTypeSeeder(
         type.SetDefaultTemplate(tpl);
     }
 
-    // A DateTime data type with a Swiss display/edit format (moment-style tokens, e.g. DD.MM.YYYY).
     private IDataType EnsureDatePicker(List<IDataType> all, string name, string format)
     {
         var existing = all.FirstOrDefault(d => d.Name == name);
@@ -290,11 +271,6 @@ public sealed class TicketingContentTypeSeeder(
         return dt;
     }
 
-    // Read-only display editor (Umbraco.Label) for the generated links.
-    // Match by Name, not by EditorAlias: Umbraco ships several built-in Umbraco.Label
-    // data types (Label (pixels), Label (integer), ...). A plain EditorAlias match would
-    // grab whichever comes first (e.g. "Label (pixels)", which renders "{=value}px" as INT),
-    // so a string link value shows up as just "px".
     private IDataType EnsureLabel(List<IDataType> all)
     {
         const string name = "Ticketing Link (Label)";

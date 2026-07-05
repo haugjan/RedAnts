@@ -1,10 +1,6 @@
 @inject IEvents Events
 @inject IVenues Venues
 
-@* Root component for /scanntickets. Shows the list of upcoming/today's events (all statuses,
-   sorted by date); selecting one switches to the camera scan view. Navigation is state-based
-   (no Blazor router) so it does not collide with Umbraco's content routing. *@
-
 <div class="scan-app">
     @if (_selected is null)
     {

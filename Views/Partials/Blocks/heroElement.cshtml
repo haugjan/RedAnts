@@ -2,7 +2,6 @@
 @using Umbraco.Cms.Core.Models
 @using Umbraco.Cms.Core.Models.PublishedContent
 @{
-    // MediaPicker3 returns a single MediaWithCrops (single-pick) or an IEnumerable (multi-pick); handle both.
     var heroImageNode = Model.Content.Value<IPublishedContent>("heroImage")
         ?? Model.Content.Value<IEnumerable<MediaWithCrops>>("heroImage")?.FirstOrDefault();
     var heroImage = heroImageNode?.Url() ?? "";

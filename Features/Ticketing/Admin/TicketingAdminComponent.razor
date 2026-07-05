@@ -1,10 +1,5 @@
 @using RedAnts.Domain.Ticketing.Sales
 
-@* Root of the backoffice "Ticketing" admin app, shown inside the single section-dashboard iframe.
-   Tabs are in-app state (no Blazor Router / native dashboards) — this fills the section content
-   reliably. Styled to match the Umbraco backoffice (Lato, navy bar, blue active indicator).
-   Ticket-type tab labels come from TicketType.DisplayName() so the naming stays unified. *@
-
 <div class="ta-app">
     <nav class="ta-subnav">
         @foreach (var t in Tabs)
@@ -40,13 +35,12 @@
 </div>
 
 <style>
-    /* Match the Umbraco backoffice look: Lato, neutral greys, blue accent (no Red Ants branding). */
     :root {
-        --ta-nav: #1b264f;      /* Umbraco header navy */
-        --ta-accent: #5dade2;   /* active-tab indicator */
-        --ta-ink: #1b264f;      /* headings / primary text */
-        --ta-muted: #68676b;    /* secondary text */
-        --ta-border: #e9e9eb;   /* Umbraco surface border */
+        --ta-nav: #1b264f;
+        --ta-accent: #5dade2;
+        --ta-ink: #1b264f;
+        --ta-muted: #68676b;
+        --ta-border: #e9e9eb;
         --ta-font: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     }
 
@@ -58,7 +52,6 @@
         background: #f4f4f4;
     }
 
-    /* Sub-navigation bar, flush under the Umbraco section nav and in the same navy. */
     .ta-subnav {
         display: flex; align-items: stretch; flex-wrap: wrap;
         padding: 0 0.5rem;
@@ -77,8 +70,6 @@
     .ta-subnav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
     .ta-subnav-btn.active { color: #fff; border-bottom-color: var(--ta-accent); }
 
-    /* Full backoffice width (Sporthalle admin pattern): no max-width cap, wide tables get
-       a horizontal scroll via their own .ta-table-wrap (overflow-x). */
     .ta-content { padding: 1.75rem 1.5rem 3rem; flex: 1; min-width: 0; }
 
     .ta-page-title {
@@ -99,8 +90,6 @@
 
     private string _tab = "events";
 
-    // "events" is the event catalog, not a ticket type, so it keeps its own label. The ticket-type
-    // tabs pull their label from TicketType.DisplayName() to keep the admin naming in one place.
     private static readonly (string Key, string Label)[] Tabs =
     [
         ("events", "Anlässe"),

@@ -8,10 +8,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Reads the admission quota straight from the <c>EventPrices</c> table (one query for the whole
-/// table) and writes it back through the pricing port so the rest of the price set (category rows, total
-/// sales quota) is preserved. Reading directly keeps the table load to a single query; writing goes
-/// through <see cref="IEventPrices"/> to stay within the domain's save logic.</summary>
 public sealed class EventAdmissionQuotaEditor(IScopeProvider scopeProvider, IEventPrices eventPrices)
     : IEventAdmissionQuota
 {
@@ -35,7 +31,6 @@ public sealed class EventAdmissionQuotaEditor(IScopeProvider scopeProvider, IEve
         await eventPrices.SaveAsync(updated);
     }
 
-    /// <summary>Projection for the quota query (mapped by column name).</summary>
     public sealed class EventQuotaRow
     {
         public int EventId { get; set; }
@@ -43,7 +38,6 @@ public sealed class EventAdmissionQuotaEditor(IScopeProvider scopeProvider, IEve
     }
 }
 
-/// <summary>Registers the Anlässe admission-quota editor (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class EventAdmissionQuotaEditorComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)

@@ -17,17 +17,6 @@ public sealed class TicketingContentDefaultsComposer : IComposer
         => builder.AddNotificationHandler<ContentSavedNotification, TicketingContentDefaults>();
 }
 
-/// <summary>
-/// After save of an event/season node: (re)computes the read-only public and internal link display
-/// fields. The public link is the node's official Umbraco content URL (e.g.
-/// <c>/saisons/saison-202627/red-ants-vs-laupen/</c>); the internal link is that same URL plus the
-/// <c>?secret=</c> query parameter (secret = first block of the node's GUID key).
-/// <para>
-/// Runs on <see cref="ContentSavedNotification"/>; the URL is only available once the node is
-/// persisted/published, so it stays empty for a brand-new unpublished node and fills on the next save.
-/// Writes (and re-saves) only when a value actually changed, so there is no save loop.
-/// </para>
-/// </summary>
 public sealed class TicketingContentDefaults(
     IContentService contentService,
     IPublishedUrlProvider urlProvider,
@@ -40,7 +29,6 @@ public sealed class TicketingContentDefaults(
             .Where(e => e.ContentType.Alias is A.EventType or A.SeasonType).ToList();
         if (nodes.Count == 0) return;
 
-        // URL generation needs an ambient UmbracoContext (absent during some save operations).
         using var _ = umbracoContextFactory.EnsureUmbracoContext();
         foreach (var entity in nodes)
         {
@@ -50,16 +38,14 @@ public sealed class TicketingContentDefaults(
     }
 }
 
-/// <summary>Shared computation of the public/internal link display fields from the Umbraco content URL.</summary>
 internal static class TicketingLinks
 {
-    /// <summary>Sets PublicLink/InternLink on the node if they changed. Returns true when a value changed.</summary>
     public static bool TryApply(IContent node, IPublishedUrlProvider urlProvider)
     {
         var url = urlProvider.GetUrl(node.Id, UrlMode.Relative);
-        if (string.IsNullOrEmpty(url) || url == "#") return false; // not published yet -> no public URL
+        if (string.IsNullOrEmpty(url) || url == "#") return false;
 
-        var secret = node.Key.ToString().Split('-')[0]; // first GUID block = 8 hex chars
+        var secret = node.Key.ToString().Split('-')[0];
         var publicLink = url;
         var internLink = url.TrimEnd('/') + "?secret=" + secret;
 

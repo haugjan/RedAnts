@@ -7,21 +7,9 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Features.Ticketing.Admin;
 
-/// <summary>
-/// Exports the member cards of one import reference as a CSV for a mail merge (Serienbrief): the same
-/// columns as the member import (Name; Vorname; Geburtsdatum) plus a <c>QrUrl</c> column holding the
-/// absolute ticket URL that the member's QR encodes (a mail-merge tool renders the QR from that URL
-/// text). Self-contained: reads the <c>MembershipCards</c> table directly and mints the token via S3's
-/// <see cref="ITicketTokens"/>.
-///
-/// SECURITY: this returns valid admission tokens plus member PII. During the live test it is covered by
-/// the global HTTP Basic gate (Program.cs); add proper backoffice authorization before the site is
-/// opened to the public.
-/// </summary>
 [ApiExplorerSettings(IgnoreApi = true)]
 public sealed class MemberExportController(IScopeProvider scopeProvider, ITicketTokens tokens) : Controller
 {
-    // GET /admin/mitglieder/referenzen — distinct references, to fill the export dialog's dropdown.
     [HttpGet("/admin/mitglieder/referenzen")]
     public async Task<IActionResult> References()
     {
@@ -32,7 +20,6 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
         return Json(rows.Select(r => r.Reference).ToList());
     }
 
-    // GET /admin/mitglieder/export.csv?referenz=... — member cards of that reference + a QR-url column.
     [HttpGet("/admin/mitglieder/export.csv")]
     public async Task<IActionResult> ExportCsv([FromQuery] string? referenz)
     {
@@ -60,13 +47,11 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
               .Append(Csv(url)).Append('\n');
         }
 
-        // UTF-8 with BOM so Excel renders umlauts correctly (matches the import template).
         var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(sb.ToString());
         var safeRef = new string(referenz.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
         return File(bytes, "text/csv; charset=utf-8", $"mitglieder-{safeRef}.csv");
     }
 
-    /// <summary>Quote a CSV field only when it contains the delimiter, a quote or a line break.</summary>
     private static string Csv(string? value)
     {
         var s = value ?? "";

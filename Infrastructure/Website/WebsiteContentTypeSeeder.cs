@@ -16,7 +16,6 @@ using A = RedAnts.Infrastructure.Website.WebsiteAliases;
 
 namespace RedAnts.Infrastructure.Website;
 
-// Run after the ticketing seeder so the sample homepage's Event-Liste block can reference an existing season.
 [ComposeAfter(typeof(TicketingContentTypeSeederComposer))]
 public sealed class WebsiteContentTypeSeederComposer : IComposer
 {
@@ -24,11 +23,6 @@ public sealed class WebsiteContentTypeSeederComposer : IComposer
         => builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, WebsiteContentTypeSeeder>();
 }
 
-/// <summary>
-/// Code-first creation of the public website Document Types (flexPage + heroElement block, wired
-/// through a Block List data type) and a sample "Startseite" flexPage carrying one Hero block.
-/// Mirrors the pattern of <see cref="Ticketing.Content.TicketingContentTypeSeeder"/>.
-/// </summary>
 public sealed class WebsiteContentTypeSeeder(
     IContentTypeService contentTypeService,
     IContentService contentService,
@@ -59,8 +53,6 @@ public sealed class WebsiteContentTypeSeeder(
         return Task.CompletedTask;
     }
 
-    // Idempotent per type, so new element types (headerElement, eventListElement) are also created
-    // on an already-seeded DB rather than being skipped by a single top-level guard.
     private void EnsureContentTypes()
     {
         var all = dataTypeService.GetAll().ToList();
@@ -75,7 +67,6 @@ public sealed class WebsiteContentTypeSeeder(
 
         var flexTpl = EnsureTemplate("FlexPage");
 
-        // heroElement: the big homepage banner.
         var hero = EnsureElementType(A.HeroElementType, "Hero Element", "icon-medal color-red", h =>
         {
             h.AddPropertyType(Prop(mediaPicker, A.HeroImage, "Hero Bild", "Grossflächiges Hintergrundbild"), Group, GroupName);
@@ -86,25 +77,20 @@ public sealed class WebsiteContentTypeSeeder(
             h.AddPropertyType(Prop(urlPicker, A.HeroCtaLink, "Button-Link"), Group, GroupName);
         });
 
-        // headerElement: sub-page title band that overlaps the fixed nav (white text), à la the
-        // Sporthalle "bhe" header. A title over an optional background image.
         var header = EnsureElementType(A.HeaderElementType, "Header Element", "icon-navigation-top color-red", h =>
         {
             h.AddPropertyType(Prop(textBox, A.HeaderTitle, "Titel"), Group, GroupName);
             h.AddPropertyType(Prop(mediaPicker, A.HeaderImage, "Bild", "Optionales Hintergrundbild"), Group, GroupName);
         });
 
-        // eventListElement: one property, the season whose upcoming events get listed automatically.
         var eventList = EnsureElementType(A.EventListElementType, "Event-Liste", "icon-list color-red", h =>
         {
             h.AddPropertyType(Prop(contentPicker, A.EventListSeason, "Saison",
                 "Alle offenen, zukünftigen Anlässe dieser Saison werden automatisch aufgelistet."), Group, GroupName);
         });
 
-        // Block List data type offering the Hero, Header and Event-Liste blocks.
         var blockList = EnsureBlockList(hero.Key, header.Key, eventList.Key);
 
-        // flexPage (allowed at root, holds a Block List; allows flexPage sub-pages)
         if (contentTypeService.Get(A.FlexPageType) is null)
         {
             var flex = new ContentType(shortStringHelper, Constants.System.Root)
@@ -115,7 +101,6 @@ public sealed class WebsiteContentTypeSeeder(
             AssignTemplate(flex, flexTpl);
             contentTypeService.Save(flex, SuperUser);
 
-            // Allow flexPage under flexPage (sub-pages) now that its Key exists.
             flex.AllowedContentTypes = new[] { new ContentTypeSort(flex.Key, 0, flex.Alias) };
             contentTypeService.Save(flex, SuperUser);
 
@@ -123,7 +108,6 @@ public sealed class WebsiteContentTypeSeeder(
         }
     }
 
-    // Returns the existing element type by alias, or creates it (IsElement = true) via the property builder.
     private IContentType EnsureElementType(string alias, string name, string icon, Action<ContentType> addProps)
     {
         if (contentTypeService.Get(alias) is { } existing) return existing;
@@ -146,7 +130,6 @@ public sealed class WebsiteContentTypeSeeder(
         var eventListKey = contentTypeService.Get(A.EventListElementType)?.Key;
         if (heroKey is null || eventListKey is null) return;
 
-        // Best-effort: reference the first ticketing season so the event list shows real events.
         var seasonUdi = FindFirstSeason()?.GetUdi().ToString();
 
         var home = contentService.Create("Startseite", Constants.System.Root, A.FlexPageType);
@@ -157,7 +140,6 @@ public sealed class WebsiteContentTypeSeeder(
         logger.LogInformation("WebsiteContentTypeSeeder: seeded 'Startseite' flexPage with Hero + Event-Liste blocks.");
     }
 
-    // Finds the first ticketing season node (Ticketing -> Saisons -> Saison), if the ticketing seeder ran first.
     private IContent? FindFirstSeason()
     {
         var root = contentService.GetRootContent().FirstOrDefault(c => c.ContentType.Alias == "ticketingRoot");
@@ -169,24 +151,19 @@ public sealed class WebsiteContentTypeSeeder(
             .FirstOrDefault(c => c.ContentType.Alias == "season");
     }
 
-    // Serve the flexPage homepage at "/" by making it the first root node. Idempotent: only re-sorts
-    // when it is not already first. The ticketing public links use fixed MVC paths (not content URLs),
-    // so demoting the Ticketing node below the homepage does not affect ticket purchase.
     private void EnsureHomeIsFirstRoot()
     {
         var roots = contentService.GetRootContent().OrderBy(c => c.SortOrder).ToList();
         if (roots.Count < 2) return;
 
         var home = roots.FirstOrDefault(c => c.ContentType.Alias == A.FlexPageType);
-        if (home is null || roots[0].Id == home.Id) return; // no homepage, or already first
+        if (home is null || roots[0].Id == home.Id) return;
 
         var ordered = new[] { home }.Concat(roots.Where(c => c.Id != home.Id));
         contentService.Sort(ordered, SuperUser);
         logger.LogInformation("WebsiteContentTypeSeeder: moved '{Name}' to first root position (served at /).", home.Name);
     }
 
-    // Builds the Umbraco 17 Block List property value (contentData / layout / expose) for the homepage:
-    // a Hero block, plus an Event-Liste block (referencing a season) when one is available.
     private static string BuildHomepageJson(Guid heroTypeKey, Guid eventListTypeKey, string? seasonUdi)
     {
         object Val(string alias, object? value) =>

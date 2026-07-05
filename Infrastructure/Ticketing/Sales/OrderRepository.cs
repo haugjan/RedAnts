@@ -3,7 +3,6 @@ using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
 using Umbraco.Cms.Infrastructure.Scoping;
-// PaymentMethod exists in both RedAnts.Domain.Ticketing and ...Sales; the sales one is authoritative here.
 using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
@@ -43,8 +42,6 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
         return Map(row);
     }
 
-    /// <summary>Sequential per-year number like <c>2026-000123</c>. Good enough for the guest checkout;
-    /// a real system would use a gapless sequence with locking.</summary>
     public async Task<string> NextOrderNumberAsync()
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

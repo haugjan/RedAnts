@@ -1,10 +1,5 @@
 namespace RedAnts.Infrastructure.Shared;
 
-/// <summary>
-/// Single source of truth for the visual layout of all system e-mails.
-/// Produces self-contained HTML (sent via Brevo's <c>htmlContent</c>, no Brevo template).
-/// Adapted from the reference project's EmailLayout.
-/// </summary>
 public static class EmailLayout
 {
     private const string Brand = "Red Ants Ticketing";

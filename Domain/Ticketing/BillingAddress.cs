@@ -1,9 +1,5 @@
 namespace RedAnts.Domain.Ticketing;
 
-/// <summary>
-/// Reusable billing/invoice address (Rechnungsadresse) captured on a ticket purchase.
-/// Owned value object: validated on <see cref="Create"/>, rehydrated leniently via <see cref="FromPersistence"/>.
-/// </summary>
 public sealed record BillingAddress
 {
     public string FirstName { get; }

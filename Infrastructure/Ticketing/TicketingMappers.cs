@@ -2,7 +2,6 @@ using RedAnts.Domain.Ticketing;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
-/// <summary>Shared conversions between persistence records and domain types.</summary>
 internal static class TicketingMappers
 {
     public static DateTime ToDateTime(this DateOnly date) => date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);

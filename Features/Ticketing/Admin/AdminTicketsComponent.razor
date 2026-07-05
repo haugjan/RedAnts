@@ -2,9 +2,6 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
 
-@* Spieltickets administration: pick a season (synced across tabs) and an event, list its issued event
-   tickets, create tickets, and edit one via the last-column icon. Shared look from /css/ticketing-admin.css. *@
-
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.EventTicket.DisplayName()</h1>
     <p class="ta-page-lead">Verkaufte Spieltickets eines Anlasses und ob sie eingelöst sind.</p>
@@ -226,7 +223,6 @@
     private string _sortCol = "category";
     private bool _sortAsc = true;
 
-    // Create overlay
     private bool _showCreate;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private decimal _newPrice;
@@ -259,7 +255,6 @@
             : [];
     }
 
-    // --- Sorting ---
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<EventTicket> Sorted()
@@ -274,7 +269,6 @@
         return _sortAsc ? q : q.Reverse();
     }
 
-    // --- Create ---
     private void OpenCreate() { _newCategory = TicketCategory.Adult; _newPrice = 0m; _createError = null; _showCreate = true; }
     private void CloseCreate() => _showCreate = false;
 
@@ -291,7 +285,6 @@
         await ReloadTicketsAsync();
     }
 
-    // --- Edit overlay ---
     private EventTicket? _editing;
     private TicketCategory _editCategory;
     private decimal _editPrice;
@@ -320,8 +313,7 @@
         _editError = null;
         try
         {
-            // A cancelled ticket can never be redeemed — keep the two flags consistent.
-            var redeemed = _editStatus == TicketStatus.Valid && _editRedeemed;
+            var redeemed = RedeemedOnlyIfValid(_editStatus, _editRedeemed);
             await Tickets.SaveAsync(EventTicket.FromPersistence(_editing.Id, _editing.Uuid, _editing.EventId,
                 _editCategory, _editPrice, _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed));
             _editing = null;
@@ -330,6 +322,9 @@
         catch (DomainException ex) { _editError = ex.Message; }
         finally { _saving = false; }
     }
+
+    private static bool RedeemedOnlyIfValid(TicketStatus status, bool redeemed) =>
+        status == TicketStatus.Valid && redeemed;
 
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {

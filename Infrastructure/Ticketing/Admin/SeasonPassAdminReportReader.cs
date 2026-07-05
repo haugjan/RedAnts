@@ -7,9 +7,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Lists a season's passes from the <c>SeasonPasses</c> table, left-joins the buyer/payment
-/// from the (immutable) <c>Orders</c> record, and joins each pass's distinct-event visit count from
-/// <c>TicketEventVisits</c>. Independent of the ticket repositories.</summary>
 public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : ISeasonPassAdminReport
 {
     public async Task<IReadOnlyList<SeasonPassListItem>> GetBySeasonAsync(int seasonId)
@@ -25,7 +22,6 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
             WHERE sp.SeasonId = @0
             ORDER BY sp.CreatedAt DESC", new object[] { seasonId });
 
-        // Distinct events visited per season pass (from the shared visits sub-table).
         var visitRows = await scope.Database.FetchAsync<UuidCountRow>(
             "SELECT TicketUuid AS Uuid, COUNT(DISTINCT EventId) AS Cnt FROM TicketEventVisits " +
             "WHERE TicketType = @0 AND TicketUuid IS NOT NULL GROUP BY TicketUuid",
@@ -61,7 +57,6 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         _ => status.ToString()
     };
 
-    /// <summary>Projection for the pass+order join (mapped by column name/alias).</summary>
     public sealed class Row
     {
         public string Uuid { get; set; } = "";
@@ -75,7 +70,6 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         public string? BillingLastName { get; set; }
     }
 
-    /// <summary>Projection for the visit-count query (mapped by column name/alias).</summary>
     public sealed class UuidCountRow
     {
         public string? Uuid { get; set; }
@@ -83,7 +77,6 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
     }
 }
 
-/// <summary>Registers the Saisonkarten admin report (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class SeasonPassAdminReportComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)

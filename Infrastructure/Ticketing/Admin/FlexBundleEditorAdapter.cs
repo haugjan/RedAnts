@@ -9,9 +9,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Renames a Flexticket bundle's reference in <c>FlexTicketBundles</c>. Reuses the bundle
-/// port's per-season uniqueness check, then updates the single column directly. Independent of the
-/// bundle repository so it does not widen S2's creation port.</summary>
 public sealed class FlexBundleEditorAdapter(IScopeProvider scopeProvider, IFlexTicketBundles bundles)
     : IFlexBundleEditor
 {
@@ -32,7 +29,6 @@ public sealed class FlexBundleEditorAdapter(IScopeProvider scopeProvider, IFlexT
     }
 }
 
-/// <summary>Registers the Flextickets bundle rename adapter (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class FlexBundleEditorComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
