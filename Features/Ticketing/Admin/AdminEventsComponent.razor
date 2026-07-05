@@ -172,7 +172,7 @@
                     <input type="number" min="0" step="1" class="ta-input" placeholder="∞" @bind="row.Quota" disabled="@(!row.Enabled)" />
                 }
             </div>
-            <p class="ta-field-hint">„Anbieten" abwählen entfernt die Kategorie aus dem Verkauf. Kontingent leer = unbegrenzt.</p>
+            <p class="ta-field-hint">„Anbieten" abwählen entfernt die Kategorie aus dem Verkauf. Kontingent leer = für diese Kategorie unbegrenzt; das Totalkontingent des Anlasses zählt trotzdem.</p>
 
             @if (_pricingError is not null)
             {
