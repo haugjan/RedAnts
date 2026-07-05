@@ -45,6 +45,7 @@ public sealed class TicketingContentTypeSeeder(
         {
             EnsureContentTypes();
             EnsurePublicPageTypes();
+            EnsureEventExtraProperties();
             EnsureContentStructure();
             EnsureSaisonsPromoNode();
             RefreshAccessLinks();
@@ -87,6 +88,7 @@ public sealed class TicketingContentTypeSeeder(
         var contentPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.ContentPicker") ?? textBox;
         var labelType = EnsureLabel(all);
         var statusDropdown = EnsureStatusDropdown(all);
+        var boolean = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TrueFalse") ?? EnsureToggle(all);
         var dateCh = EnsureDatePicker(all, "Ticketing Datum (CH)", "DD.MM.YYYY");
         var dateTimeCh = EnsureDatePicker(all, "Ticketing Datum + Zeit (CH)", "DD.MM.YYYY HH:mm");
 
@@ -110,6 +112,7 @@ public sealed class TicketingContentTypeSeeder(
         };
         evt.AddPropertyType(Prop(richText, A.EventText, "Text"), Group, GroupName);
         evt.AddPropertyType(Prop(dateTimeCh, A.EventStart, "Beginn"), Group, GroupName);
+        evt.AddPropertyType(PropWithHint(boolean, A.EventTimeUnknown, "Zeit noch unbekannt", "Wenn aktiviert, wird überall nur das Datum angezeigt."), Group, GroupName);
         evt.AddPropertyType(Prop(contentPicker, A.EventVenue, "Ort"), Group, GroupName);
         evt.AddPropertyType(Prop(statusDropdown, A.EventStatus, "Status"), Group, GroupName);
         evt.AddPropertyType(Prop(mediaPicker, A.EventImage, "Eventbild"), "media", "Bilder");
@@ -221,6 +224,18 @@ public sealed class TicketingContentTypeSeeder(
         }
     }
 
+    private void EnsureEventExtraProperties()
+    {
+        var evt = contentTypeService.Get(A.EventType);
+        if (evt is null || evt.PropertyTypeExists(A.EventTimeUnknown)) return;
+
+        var all = dataTypeService.GetAll().ToList();
+        var boolean = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TrueFalse") ?? EnsureToggle(all);
+        evt.AddPropertyType(PropWithHint(boolean, A.EventTimeUnknown, "Zeit noch unbekannt", "Wenn aktiviert, wird überall nur das Datum angezeigt."), Group, GroupName);
+        contentTypeService.Save(evt, SuperUser);
+        logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the event type.", A.EventTimeUnknown);
+    }
+
     private void EnsureSaisonsPromoNode()
     {
         EnsureNodeTemplate(A.RootType, "TicketingHome");
@@ -295,6 +310,26 @@ public sealed class TicketingContentTypeSeeder(
             EditorUiAlias = "Umb.PropertyEditorUi.DatePicker",
             DatabaseType = ValueStorageType.Date,
             ConfigurationData = new Dictionary<string, object> { ["format"] = format }
+        };
+        dataTypeService.Save(dt);
+        all.Add(dt);
+        return dt;
+    }
+
+    private IDataType EnsureToggle(List<IDataType> all)
+    {
+        const string name = "Ticketing Ja/Nein";
+        var existing = all.FirstOrDefault(d => d.Name == name);
+        if (existing is not null) return existing;
+
+        if (!propertyEditors.TryGet("Umbraco.TrueFalse", out var editor))
+            throw new InvalidOperationException("Umbraco.TrueFalse property editor not found.");
+
+        var dt = new DataType(editor, serializer)
+        {
+            Name = name,
+            EditorUiAlias = "Umb.PropertyEditorUi.Toggle",
+            DatabaseType = ValueStorageType.Integer
         };
         dataTypeService.Save(dt);
         all.Add(dt);

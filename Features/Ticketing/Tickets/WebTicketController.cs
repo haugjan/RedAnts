@@ -31,7 +31,7 @@ public sealed class WebTicketController(
             scopeName = ev?.Name ?? "Anlass";
             if (ev is not null)
             {
-                dateText = $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr";
+                dateText = ev.TimeUnknown ? $"{ev.Date:dd.MM.yyyy}" : $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr";
                 homeLogo = ev.HomeTeamLogoUrl;
                 awayLogo = ev.AwayTeamLogoUrl;
             }

@@ -15,6 +15,7 @@
     ViewBag.TransparentNav = !blocked;
 
     var start = Model.Value<DateTime>("start");
+    var timeUnknown = Model.Value<bool>("timeUnknown");
     var venue = Model.Value<IPublishedContent>("venue");
     var image = Model.Value<IPublishedContent>("eventImage")?.Url();
     var homeLogo = Model.Value<IPublishedContent>("homeTeamLogo")?.Url();
@@ -125,10 +126,13 @@ else
                     <span class="evt-fact__label">Datum</span>
                     <span class="evt-fact__value">@start.ToString("dddd, dd.MM.yyyy")</span>
                 </div>
-                <div class="evt-fact">
-                    <span class="evt-fact__label">Zeit</span>
-                    <span class="evt-fact__value">@start.ToString("HH:mm") Uhr</span>
-                </div>
+                @if (!timeUnknown)
+                {
+                    <div class="evt-fact">
+                        <span class="evt-fact__label">Zeit</span>
+                        <span class="evt-fact__value">@start.ToString("HH:mm") Uhr</span>
+                    </div>
+                }
                 @if (venue is not null)
                 {
                     <div class="evt-fact">

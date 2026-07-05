@@ -53,7 +53,7 @@
                             {
                                 <span class="event-card__badge">Nächstes Event</span>
                             }
-                            <span class="event-card__date">@evt.Date.ToString("dd.MM.yyyy") · @evt.StartTime.ToString("HH:mm")</span>
+                            <span class="event-card__date">@evt.Date.ToString("dd.MM.yyyy")@(evt.TimeUnknown ? "" : $" · {evt.StartTime:HH:mm}")</span>
                             <span class="event-card__name">@evt.Name</span>
                             <span class="event-card__meta">
                                 <span class="event-card__venue">@VenueName(evt.VenueId)</span>

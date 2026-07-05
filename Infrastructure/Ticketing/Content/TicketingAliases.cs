@@ -29,6 +29,7 @@ internal static class TicketingAliases
 
     public const string EventText = "text";
     public const string EventStart = "start";
+    public const string EventTimeUnknown = "timeUnknown";
     public const string EventVenue = "venue";
     public const string EventStatus = "status";
     public const string EventImage = "eventImage";

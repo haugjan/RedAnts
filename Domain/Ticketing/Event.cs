@@ -8,6 +8,7 @@ public sealed class Event
     public int SeasonId { get; private set; }
     public DateOnly Date { get; private set; }
     public TimeOnly StartTime { get; private set; }
+    public bool TimeUnknown { get; private set; }
     public int VenueId { get; private set; }
     public EventStatus Status { get; private set; }
     public string? ImageUrl { get; private set; }
@@ -16,7 +17,7 @@ public sealed class Event
     public string? AccessSecret { get; private set; }
 
     private Event(int id, string name, string? text, int seasonId, DateOnly date, TimeOnly startTime,
-        int venueId, EventStatus status, string? imageUrl, string? homeTeamLogoUrl,
+        bool timeUnknown, int venueId, EventStatus status, string? imageUrl, string? homeTeamLogoUrl,
         string? awayTeamLogoUrl, string? accessSecret)
     {
         Id = id;
@@ -25,6 +26,7 @@ public sealed class Event
         SeasonId = seasonId;
         Date = date;
         StartTime = startTime;
+        TimeUnknown = timeUnknown;
         VenueId = venueId;
         Status = status;
         ImageUrl = imageUrl;
@@ -34,8 +36,8 @@ public sealed class Event
     }
 
     public static Event FromPersistence(int id, string name, string? text, int seasonId, DateOnly date,
-        TimeOnly startTime, int venueId, EventStatus status, string? imageUrl,
+        TimeOnly startTime, bool timeUnknown, int venueId, EventStatus status, string? imageUrl,
         string? homeTeamLogoUrl, string? awayTeamLogoUrl, string? accessSecret) =>
-        new(id, name ?? "", text, seasonId, date, startTime, venueId, status,
+        new(id, name ?? "", text, seasonId, date, startTime, timeUnknown, venueId, status,
             imageUrl, homeTeamLogoUrl, awayTeamLogoUrl, accessSecret);
 }

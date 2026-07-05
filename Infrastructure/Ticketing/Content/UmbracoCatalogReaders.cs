@@ -45,6 +45,7 @@ internal static class CatalogContentMapper
             node.Parent?.Id ?? 0,
             DateOnly.FromDateTime(start),
             TimeOnly.FromDateTime(start),
+            node.Value<bool>(A.EventTimeUnknown),
             venue?.Id ?? 0,
             TicketingMappers.ParseEnum(node.Value<string>(A.EventStatus) ?? "", EventStatus.Draft),
             MediaUrl(node, A.EventImage),

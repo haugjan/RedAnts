@@ -121,7 +121,7 @@
                                     <span class="event-item-thumb" style="background-image:url('@evImage');"></span>
                                 }
                                 <span class="event-item-body">
-                                    <span class="event-item-date">@evStart.ToString("dd.MM.yyyy") · @evStart.ToString("HH:mm") Uhr</span>
+                                    <span class="event-item-date">@evStart.ToString("dd.MM.yyyy")@(evt.Value<bool>("timeUnknown") ? "" : $" · {evStart:HH:mm} Uhr")</span>
                                     <span class="event-item-name">@evt.Name</span>
                                     <span class="event-item-venue">
                                         @if (venue != null) { <text>@venue.Name · </text> }ab CHF @minPrice.ToString("0.##")
