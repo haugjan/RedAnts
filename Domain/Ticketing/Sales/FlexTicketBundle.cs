@@ -9,27 +9,33 @@ public sealed class FlexTicketBundle
     public TicketCategory Category { get; private set; }
     public string Reference { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public string? CreatedByName { get; private set; }
 
-    private FlexTicketBundle(int id, int seasonId, TicketCategory category, string reference, DateTime createdAt)
+    private FlexTicketBundle(int id, int seasonId, TicketCategory category, string reference,
+        DateTime createdAt, string? createdByName)
     {
         Id = id;
         SeasonId = seasonId;
         Category = category;
         Reference = reference;
         CreatedAt = createdAt;
+        CreatedByName = createdByName;
     }
 
-    public static FlexTicketBundle Create(int seasonId, TicketCategory category, string reference)
+    public static FlexTicketBundle Create(int seasonId, TicketCategory category, string reference,
+        string? createdByName = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         reference = (reference ?? "").Trim();
         if (reference.Length == 0) throw new DomainException("Eine Referenz muss angegeben werden.");
         if (reference.Length > ReferenceMaxLength)
             throw new DomainException($"Die Referenz darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
-        return new FlexTicketBundle(0, seasonId, category, reference, DateTime.UtcNow);
+        return new FlexTicketBundle(0, seasonId, category, reference, DateTime.UtcNow, Clean(createdByName));
     }
 
     public static FlexTicketBundle FromPersistence(int id, int seasonId, TicketCategory category,
-        string reference, DateTime createdAt) =>
-        new(id, seasonId, category, reference, createdAt);
+        string reference, DateTime createdAt, string? createdByName = null) =>
+        new(id, seasonId, category, reference, createdAt, Clean(createdByName));
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

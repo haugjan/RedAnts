@@ -80,6 +80,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var order = Order.Create(number, billing, current.TotalAmount, VatRate, paymentMethod, sellerUid: null);
         order.MarkPaid();
         var saved = await orders.SaveAsync(order);
+        var buyer = billing.ToBuyer();
 
         var issued = new List<ConfirmationTicket>();
         var mailTickets = new List<OrderMailTicket>();
@@ -88,7 +89,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             for (var i = 0; i < item.Quantity; i++)
             {
                 var ticket = await tickets.SaveAsync(
-                    EventTicket.Create(item.EventId, item.Category, item.UnitPrice, saved.Id));
+                    EventTicket.Create(item.EventId, item.Category, item.UnitPrice, saved.Id, buyer, "Online-Kauf"));
                 issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName));
                 mailTickets.Add(new OrderMailTicket(
                     TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, item.CategoryName));
@@ -122,7 +123,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     }
 
     private static BillingAddress ToBillingAddress(CheckoutForm f) => BillingAddress.Create(
-        f.FirstName, f.LastName, f.Street, f.AddressLine2, f.PostalCode, f.City, f.Country, f.Email, f.Phone);
+        f.Type, f.FirstName, f.LastName, f.Company,
+        f.Street, f.AddressLine2, f.PostalCode, f.City, f.Country, f.Email, f.Phone);
 
     private CheckoutForm? LoadForm()
     {

@@ -55,6 +55,22 @@ public enum PaymentMethod
     Invoice
 }
 
+public enum BuyerType
+{
+    Private,
+    Company
+}
+
+public static class BuyerTypeExtensions
+{
+    public static string DisplayName(this BuyerType type) => type switch
+    {
+        BuyerType.Private => "Privatperson",
+        BuyerType.Company => "Firma",
+        _ => type.ToString()
+    };
+}
+
 public static class TicketStatusExtensions
 {
     public static string DisplayName(this TicketStatus status) => status switch

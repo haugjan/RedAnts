@@ -15,6 +15,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
 
         var passes = await scope.Database.FetchAsync<Row>(@"
             SELECT sp.Uuid, sp.Category, sp.Price, sp.Status, sp.CreatedAt,
+                   sp.BuyerType, sp.BuyerFirstName, sp.BuyerLastName, sp.BuyerCompany, sp.CreatedByName,
                    o.OrderNumber AS OrderNumber, o.Status AS OrderStatus,
                    o.BillingFirstName AS BillingFirstName, o.BillingLastName AS BillingLastName
             FROM SeasonPasses sp
@@ -30,16 +31,22 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         foreach (var v in visitRows)
             if (v.Uuid is not null) visits[v.Uuid] = v.Cnt;
 
-        return passes.Select(p => new SeasonPassListItem(
-            Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
-            (TicketCategory)p.Category,
-            p.Price,
-            (TicketStatus)p.Status,
-            p.CreatedAt,
-            visits.GetValueOrDefault(p.Uuid),
-            BuyerName(p.BillingFirstName, p.BillingLastName),
-            p.OrderNumber,
-            p.OrderStatus is { } os ? PaymentState((OrderStatus)os) : null)).ToList();
+        return passes.Select(p =>
+        {
+            var buyer = Buyer.FromPersistence(p.BuyerType ?? 0, p.BuyerFirstName, p.BuyerLastName, p.BuyerCompany);
+            return new SeasonPassListItem(
+                Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
+                (TicketCategory)p.Category,
+                p.Price,
+                (TicketStatus)p.Status,
+                p.CreatedAt,
+                visits.GetValueOrDefault(p.Uuid),
+                buyer?.DisplayName ?? BuyerName(p.BillingFirstName, p.BillingLastName),
+                p.OrderNumber,
+                p.OrderStatus is { } os ? PaymentState((OrderStatus)os) : null,
+                buyer?.Type,
+                p.CreatedByName);
+        }).ToList();
     }
 
     private static string? BuyerName(string? first, string? last)
@@ -64,6 +71,11 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         public decimal Price { get; set; }
         public int Status { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int? BuyerType { get; set; }
+        public string? BuyerFirstName { get; set; }
+        public string? BuyerLastName { get; set; }
+        public string? BuyerCompany { get; set; }
+        public string? CreatedByName { get; set; }
         public string? OrderNumber { get; set; }
         public int? OrderStatus { get; set; }
         public string? BillingFirstName { get; set; }

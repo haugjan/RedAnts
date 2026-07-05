@@ -15,7 +15,7 @@ internal static class TicketingMappers
     public static TEnum ParseEnum<TEnum>(string value, TEnum fallback) where TEnum : struct, Enum =>
         Enum.TryParse<TEnum>(value, out var parsed) ? parsed : fallback;
 
-    public static BillingAddress ReadBilling(string firstName, string lastName, string street, string? line2,
-        string postalCode, string city, string country, string email, string? phone) =>
-        BillingAddress.FromPersistence(firstName, lastName, street, line2, postalCode, city, country, email, phone);
+    public static BillingAddress ReadBilling(int type, string firstName, string lastName, string? company,
+        string street, string? line2, string postalCode, string city, string country, string email, string? phone) =>
+        BillingAddress.FromPersistence(type, firstName, lastName, company, street, line2, postalCode, city, country, email, phone);
 }

@@ -17,8 +17,10 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
         {
             Id = order.Id,
             OrderNumber = order.OrderNumber,
+            BillingType = (int)billing.Type,
             BillingFirstName = billing.FirstName,
             BillingLastName = billing.LastName,
+            BillingCompany = billing.Company,
             BillingStreet = billing.Street,
             BillingAddressLine2 = billing.AddressLine2,
             BillingPostalCode = billing.PostalCode.Value,
@@ -57,7 +59,8 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
             r.Id,
             r.OrderNumber,
             BillingAddress.FromPersistence(
-                r.BillingFirstName, r.BillingLastName, r.BillingStreet, r.BillingAddressLine2,
+                r.BillingType ?? 0, r.BillingFirstName, r.BillingLastName, r.BillingCompany,
+                r.BillingStreet, r.BillingAddressLine2,
                 r.BillingPostalCode, r.BillingCity, r.BillingCountry, r.BillingEmail, r.BillingPhone),
             r.Currency,
             r.SubtotalNet,

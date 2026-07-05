@@ -4,6 +4,8 @@ namespace RedAnts.Features.Ticketing.Cart;
 
 public sealed class CheckoutForm
 {
+    public BuyerType Type { get; set; } = BuyerType.Private;
+    public string? Company { get; set; }
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
     public string Street { get; set; } = "";

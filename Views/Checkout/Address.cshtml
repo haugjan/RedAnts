@@ -1,8 +1,10 @@
+@using RedAnts.Domain.Ticketing.Sales
 @model RedAnts.Features.Ticketing.Cart.CheckoutAddressView
 @{
     Layout = "~/Views/Shared/_TicketsLayout.cshtml";
     ViewData["Title"] = "Kasse – Rechnungsadresse";
     var f = Model.Form;
+    var isCompany = f.Type == BuyerType.Company;
 }
 
 <a href="/warenkorb" class="tk-back">&larr; Warenkorb</a>
@@ -19,13 +21,28 @@
         <form method="post" action="/kasse" class="card p-4">
             @Html.AntiForgeryToken()
             <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">Vorname *</label>
-                    <input name="FirstName" value="@f.FirstName" class="form-control" required />
+                <div class="col-12">
+                    <label class="form-label d-block">Käufer *</label>
+                    <div class="btn-group" role="group" aria-label="Käufertyp">
+                        <input type="radio" class="btn-check" name="Type" id="typePrivate" value="Private"
+                               autocomplete="off" @(isCompany ? "" : "checked") onchange="raToggleBuyer()" />
+                        <label class="btn btn-outline-danger" for="typePrivate">Privatperson</label>
+                        <input type="radio" class="btn-check" name="Type" id="typeCompany" value="Company"
+                               autocomplete="off" @(isCompany ? "checked" : "") onchange="raToggleBuyer()" />
+                        <label class="btn btn-outline-danger" for="typeCompany">Firma</label>
+                    </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 ra-company-field" style="@(isCompany ? "" : "display:none")">
+                    <label class="form-label">Firmenname *</label>
+                    <input name="Company" value="@f.Company" class="form-control" />
+                </div>
+                <div class="col-md-6 ra-person-field" style="@(isCompany ? "display:none" : "")">
+                    <label class="form-label">Vorname *</label>
+                    <input name="FirstName" value="@f.FirstName" class="form-control" />
+                </div>
+                <div class="col-md-6 ra-person-field" style="@(isCompany ? "display:none" : "")">
                     <label class="form-label">Nachname *</label>
-                    <input name="LastName" value="@f.LastName" class="form-control" required />
+                    <input name="LastName" value="@f.LastName" class="form-control" />
                 </div>
                 <div class="col-12">
                     <label class="form-label">Strasse und Nr. *</label>
@@ -65,3 +82,12 @@
         @await Html.PartialAsync("~/Views/Checkout/_Summary.cshtml", Model.Cart)
     </div>
 </div>
+
+<script>
+    function raToggleBuyer() {
+        var company = document.getElementById('typeCompany').checked;
+        document.querySelectorAll('.ra-company-field').forEach(function (el) { el.style.display = company ? '' : 'none'; });
+        document.querySelectorAll('.ra-person-field').forEach(function (el) { el.style.display = company ? 'none' : ''; });
+    }
+    raToggleBuyer();
+</script>

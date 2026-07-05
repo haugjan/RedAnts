@@ -17,6 +17,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddFlexTicketBundles>("ticketing-flextickets");
         To<AdjustMemberCardColumns>("membercards-reference-noprice");
         To<AddSeasonPriceTotalQuota>("seasonprices-total-quota");
+        To<AddBuyerAndCreatorColumns>("buyer-creator-columns");
     }
 }
 
@@ -109,6 +110,55 @@ public class AddSeasonPriceTotalQuota(IMigrationContext context) : AsyncMigratio
         }
 
         return Task.CompletedTask;
+    }
+}
+
+public class AddBuyerAndCreatorColumns(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        // Buyer (Privatperson/Firma) on the sold items and "created by" on every kind. All nullable,
+        // so existing rows need no default. Idempotent: each column is added only when missing.
+        AddInt("EventTickets", "BuyerType");
+        AddString("EventTickets", "BuyerFirstName", 100);
+        AddString("EventTickets", "BuyerLastName", 100);
+        AddString("EventTickets", "BuyerCompany", 200);
+        AddString("EventTickets", "CreatedByName", 200);
+
+        AddInt("SeasonPasses", "BuyerType");
+        AddString("SeasonPasses", "BuyerFirstName", 100);
+        AddString("SeasonPasses", "BuyerLastName", 100);
+        AddString("SeasonPasses", "BuyerCompany", 200);
+        AddString("SeasonPasses", "CreatedByName", 200);
+
+        AddInt("Orders", "BillingType");
+        AddString("Orders", "BillingCompany", 200);
+
+        AddString("MembershipCards", "CreatedByName", 200);
+        AddString("FlexTicketBundles", "CreatedByName", 200);
+
+        return Task.CompletedTask;
+    }
+
+    private bool IsSqlite =>
+        Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+
+    private void AddInt(string table, string column)
+    {
+        if (ColumnExists(table, column)) return;
+        if (IsSqlite)
+            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} INTEGER NULL").Do();
+        else
+            Alter.Table(table).AddColumn(column).AsInt32().Nullable().Do();
+    }
+
+    private void AddString(string table, string column, int length)
+    {
+        if (ColumnExists(table, column)) return;
+        if (IsSqlite)
+            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} NVARCHAR({length}) NULL").Do();
+        else
+            Alter.Table(table).AddColumn(column).AsString(length).Nullable().Do();
     }
 }
 

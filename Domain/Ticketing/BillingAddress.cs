@@ -1,9 +1,13 @@
+using RedAnts.Domain.Ticketing.Sales;
+
 namespace RedAnts.Domain.Ticketing;
 
 public sealed record BillingAddress
 {
+    public BuyerType Type { get; }
     public string FirstName { get; }
     public string LastName { get; }
+    public string? Company { get; }
     public string Street { get; }
     public string? AddressLine2 { get; }
     public PostalCode PostalCode { get; }
@@ -12,11 +16,13 @@ public sealed record BillingAddress
     public string Email { get; }
     public string? Phone { get; }
 
-    private BillingAddress(string firstName, string lastName, string street, string? addressLine2,
-        PostalCode postalCode, string city, string country, string email, string? phone)
+    private BillingAddress(BuyerType type, string firstName, string lastName, string? company, string street,
+        string? addressLine2, PostalCode postalCode, string city, string country, string email, string? phone)
     {
+        Type = type;
         FirstName = firstName;
         LastName = lastName;
+        Company = company;
         Street = street;
         AddressLine2 = addressLine2;
         PostalCode = postalCode;
@@ -26,11 +32,22 @@ public sealed record BillingAddress
         Phone = phone;
     }
 
-    public static BillingAddress Create(string firstName, string lastName, string street,
-        string? addressLine2, string postalCode, string city, string? country, string email, string? phone)
+    public static BillingAddress Create(BuyerType type, string? firstName, string? lastName, string? company,
+        string street, string? addressLine2, string postalCode, string city, string? country, string email, string? phone)
     {
-        if (string.IsNullOrWhiteSpace(firstName)) throw new DomainException("Vorname ist erforderlich.");
-        if (string.IsNullOrWhiteSpace(lastName)) throw new DomainException("Nachname ist erforderlich.");
+        firstName = (firstName ?? "").Trim();
+        lastName = (lastName ?? "").Trim();
+        company = string.IsNullOrWhiteSpace(company) ? null : company.Trim();
+
+        if (type == BuyerType.Company)
+        {
+            if (company is null) throw new DomainException("Bei einer Firma ist der Firmenname erforderlich.");
+        }
+        else
+        {
+            if (firstName.Length == 0) throw new DomainException("Vorname ist erforderlich.");
+            if (lastName.Length == 0) throw new DomainException("Nachname ist erforderlich.");
+        }
         if (string.IsNullOrWhiteSpace(street)) throw new DomainException("Strasse ist erforderlich.");
         if (string.IsNullOrWhiteSpace(city)) throw new DomainException("Ort ist erforderlich.");
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
@@ -38,18 +55,24 @@ public sealed record BillingAddress
 
         var land = string.IsNullOrWhiteSpace(country) ? "Schweiz" : country.Trim();
 
-        return new BillingAddress(
-            firstName.Trim(), lastName.Trim(), street.Trim(),
+        return new BillingAddress(type,
+            firstName, lastName, company, street.Trim(),
             string.IsNullOrWhiteSpace(addressLine2) ? null : addressLine2.Trim(),
             PostalCode.Create(postalCode, land), city.Trim(), land,
             email.Trim(), string.IsNullOrWhiteSpace(phone) ? null : phone.Trim());
     }
 
-    public static BillingAddress FromPersistence(string firstName, string lastName, string street,
-        string? addressLine2, string postalCode, string city, string country, string email, string? phone) =>
-        new(firstName ?? "", lastName ?? "", street ?? "", addressLine2,
+    public static BillingAddress FromPersistence(int type, string firstName, string lastName, string? company,
+        string street, string? addressLine2, string postalCode, string city, string country, string email, string? phone) =>
+        new((BuyerType)type, firstName ?? "", lastName ?? "",
+            string.IsNullOrWhiteSpace(company) ? null : company, street ?? "", addressLine2,
             PostalCode.FromPersistence(postalCode), city ?? "", string.IsNullOrWhiteSpace(country) ? "Schweiz" : country,
             email ?? "", phone);
 
-    public string FullName => $"{FirstName} {LastName}".Trim();
+    /// <summary>The buyer captured on this address, for copying onto the issued tickets.</summary>
+    public Buyer ToBuyer() => Buyer.Create(Type, FirstName, LastName, Company);
+
+    public string FullName => Type == BuyerType.Company
+        ? Company ?? ""
+        : $"{FirstName} {LastName}".Trim();
 }

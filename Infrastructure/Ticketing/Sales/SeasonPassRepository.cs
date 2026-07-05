@@ -27,7 +27,12 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider) : ISeason
             Price = pass.Price,
             OrderId = pass.OrderId,
             Status = (int)pass.Status,
-            CreatedAt = pass.CreatedAt
+            CreatedAt = pass.CreatedAt,
+            BuyerType = (int?)pass.Buyer?.Type,
+            BuyerFirstName = pass.Buyer?.FirstName,
+            BuyerLastName = pass.Buyer?.LastName,
+            BuyerCompany = pass.Buyer?.Company,
+            CreatedByName = pass.CreatedByName
         };
         if (row.Id == 0) await scope.Database.InsertAsync(row);
         else await scope.Database.UpdateAsync(row);
@@ -43,5 +48,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider) : ISeason
             r.Price,
             r.OrderId,
             (TicketStatus)r.Status,
-            r.CreatedAt);
+            r.CreatedAt,
+            Buyer.FromPersistence(r.BuyerType ?? 0, r.BuyerFirstName, r.BuyerLastName, r.BuyerCompany),
+            r.CreatedByName);
 }

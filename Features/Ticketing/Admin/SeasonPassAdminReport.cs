@@ -11,7 +11,9 @@ public sealed record SeasonPassListItem(
     int EventVisits,
     string? BuyerName,
     string? OrderNumber,
-    string? PaymentState);
+    string? PaymentState,
+    BuyerType? BuyerType = null,
+    string? CreatedByName = null);
 
 public interface ISeasonPassAdminReport
 {

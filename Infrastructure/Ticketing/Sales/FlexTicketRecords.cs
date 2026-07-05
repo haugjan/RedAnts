@@ -17,4 +17,5 @@ public class FlexTicketBundleRecord
     public string Reference { get; set; } = "";
 
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CreatedByName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByName { get; set; }
 }

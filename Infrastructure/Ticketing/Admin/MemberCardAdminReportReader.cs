@@ -32,7 +32,8 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             (TicketStatus)c.Status,
             c.CreatedAt,
             visits.GetValueOrDefault(c.Uuid ?? ""),
-            c.Reference)).ToList();
+            c.Reference,
+            c.CreatedByName)).ToList();
     }
 
     public sealed class UuidCountRow
