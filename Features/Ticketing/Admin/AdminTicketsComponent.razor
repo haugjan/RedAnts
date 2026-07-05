@@ -66,23 +66,29 @@
                 <table class="ta-table">
                     <thead>
                         <tr>
-                            <th>Nr.</th>
+                            <th>Ticket-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
-                            <th>Erstellt von</th>
-                            <th>Ticket-ID</th>
+                            <th>Event&shy;besuche</th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @{ var i = 1; }
                         @foreach (var t in Sorted())
                         {
                             <tr>
-                                <td>@i</td>
+                                <td>
+                                    <span class="ta-ticketno">
+                                        <span class="ta-no">@AdminFormat.TicketNo(t.Uuid)</span>
+                                        <a class="ta-qr-link" href="/ticket/for/@t.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                        </a>
+                                    </span>
+                                </td>
                                 <td class="ta-cell-name">
                                     @if (t.Buyer is not null)
                                     {
@@ -94,38 +100,49 @@
                                         <span class="ta-muted">—</span>
                                     }
                                 </td>
+                                <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.CreatedByName, t.CreatedByEmail, t.OrderId)">
+                                    @AdminFormat.CreatedShort(t.CreatedAt, t.CreatedByName, t.OrderId)
+                                </td>
                                 <td>@t.Category.DisplayName()</td>
                                 <td class="ta-num">CHF @t.Price.ToString("N2")</td>
                                 <td>
-                                    @if (t.Status == TicketStatus.Cancelled)
-                                    {
-                                        <span class="ta-badge ta-badge-cancelled">Storniert</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="ta-badge ta-badge-valid">Gültig</span>
-                                    }
+                                    <button type="button" class="ta-badge-btn" title="Status ändern" @onclick="() => AskToggleStatus(t)">
+                                        @if (t.Status == TicketStatus.Cancelled)
+                                        {
+                                            <span class="ta-badge ta-badge-cancelled">Storniert</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="ta-badge ta-badge-valid">Gültig</span>
+                                        }
+                                    </button>
                                 </td>
                                 <td>
-                                    @if (t.Redeemed)
+                                    @if (t.Status == TicketStatus.Valid)
                                     {
-                                        <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
+                                        <button type="button" class="ta-badge-btn" title="Einlösung ändern" @onclick="() => AskToggleRedeemed(t)">
+                                            @if (t.Redeemed)
+                                            {
+                                                <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="ta-badge ta-badge-draft">Offen</span>
+                                            }
+                                        </button>
                                     }
                                     else
                                     {
                                         <span class="ta-badge ta-badge-draft">Offen</span>
                                     }
                                 </td>
-                                <td>@(string.IsNullOrEmpty(t.CreatedByName) ? "—" : t.CreatedByName)</td>
-                                <td class="ta-mono">@ShortId(t.Uuid)</td>
+                                <td>
+                                    <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuche</button>
+                                </td>
                                 <td class="ta-col-actions">
-                                    <a class="ta-qr-link" href="/ticket/for/@t.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
-                                    </a>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(t)">✎</button>
                                 </td>
                             </tr>
-                            i++;
                         }
                     </tbody>
                 </table>
@@ -197,7 +214,7 @@
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Ticket bearbeiten</h2>
-            <p class="ta-modal-sub">Ticket-ID @ShortId(_editing.Uuid)</p>
+            <p class="ta-modal-sub">Ticket-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
 
             <div class="ta-field">
                 <label class="ta-label" for="editCategory">Kategorie</label>
@@ -243,8 +260,28 @@
     </div>
 }
 
+@if (_confirmFor is not null)
+{
+    <ConfirmDialog Title="@_confirmTitle"
+                   Message="@_confirmMessage"
+                   ConfirmLabel="@_confirmLabel"
+                   Danger="@_confirmDanger"
+                   Busy="@_confirmBusy"
+                   Error="@_confirmError"
+                   OnConfirm="ExecuteConfirmAsync"
+                   OnCancel="() => _confirmFor = null" />
+}
+
+@if (_visitsFor is not null)
+{
+    <VisitsOverlay Uuid="@_visitsFor.Uuid"
+                   Title="@($"Spielticket {AdminFormat.TicketNo(_visitsFor.Uuid)}")"
+                   OnClose="() => _visitsFor = null" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
@@ -305,6 +342,7 @@
         IEnumerable<EventTicket> q = _sortCol switch
         {
             "buyer" => _tickets.OrderBy(t => t.Buyer?.DisplayName ?? "", StringComparer.OrdinalIgnoreCase),
+            "created" => _tickets.OrderBy(t => t.CreatedAt),
             "price" => _tickets.OrderBy(t => t.Price),
             "status" => _tickets.OrderBy(t => t.Status),
             "redeemed" => _tickets.OrderBy(t => t.Redeemed),
@@ -312,6 +350,68 @@
         };
         return _sortAsc ? q : q.Reverse();
     }
+
+    private EventTicket? _visitsFor;
+
+    private EventTicket? _confirmFor;
+    private string _confirmTitle = "";
+    private string _confirmMessage = "";
+    private string _confirmLabel = "Bestätigen";
+    private bool _confirmDanger;
+    private bool _confirmBusy;
+    private string? _confirmError;
+    private Func<EventTicket, EventTicket>? _confirmChange;
+
+    private void AskToggleStatus(EventTicket t)
+    {
+        var cancelling = t.Status == TicketStatus.Valid;
+        _confirmFor = t;
+        _confirmTitle = cancelling ? "Ticket stornieren" : "Ticket reaktivieren";
+        _confirmMessage = cancelling
+            ? $"Ticket {AdminFormat.TicketNo(t.Uuid)} wirklich stornieren? Ein storniertes Ticket ist am Eingang ungültig."
+            : $"Ticket {AdminFormat.TicketNo(t.Uuid)} wieder auf „Gültig“ setzen?";
+        _confirmLabel = cancelling ? "Stornieren" : "Reaktivieren";
+        _confirmDanger = cancelling;
+        _confirmError = null;
+        _confirmChange = ticket => WithStatus(ticket, cancelling ? TicketStatus.Cancelled : TicketStatus.Valid);
+    }
+
+    private void AskToggleRedeemed(EventTicket t)
+    {
+        var redeeming = !t.Redeemed;
+        _confirmFor = t;
+        _confirmTitle = redeeming ? "Als eingelöst markieren" : "Einlösung zurücksetzen";
+        _confirmMessage = redeeming
+            ? $"Ticket {AdminFormat.TicketNo(t.Uuid)} als eingelöst markieren?"
+            : $"Die Einlösung von Ticket {AdminFormat.TicketNo(t.Uuid)} zurücksetzen?";
+        _confirmLabel = redeeming ? "Einlösen" : "Zurücksetzen";
+        _confirmDanger = false;
+        _confirmError = null;
+        _confirmChange = ticket => WithRedeemed(ticket, redeeming);
+    }
+
+    private async Task ExecuteConfirmAsync()
+    {
+        if (_confirmFor is null || _confirmChange is null) return;
+        _confirmBusy = true;
+        _confirmError = null;
+        try
+        {
+            await Tickets.SaveAsync(_confirmChange(_confirmFor));
+            _confirmFor = null;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _confirmError = ex.Message; }
+        finally { _confirmBusy = false; }
+    }
+
+    private static EventTicket WithStatus(EventTicket t, TicketStatus status) =>
+        EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, t.Price, t.OrderId,
+            status, t.CreatedAt, RedeemedOnlyIfValid(status, t.Redeemed), t.Buyer, t.CreatedByName, t.CreatedByEmail);
+
+    private static EventTicket WithRedeemed(EventTicket t, bool redeemed) =>
+        EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, t.Price, t.OrderId,
+            t.Status, t.CreatedAt, RedeemedOnlyIfValid(t.Status, redeemed), t.Buyer, t.CreatedByName, t.CreatedByEmail);
 
     private void OpenCreate()
     {
@@ -331,7 +431,8 @@
         try
         {
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
-            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, null, buyer, AdminUser));
+            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, null, buyer,
+                Identity?.Name ?? AdminUser, Identity?.Email));
         }
         catch (DomainException ex) { _createError = ex.Message; return; }
         _showCreate = false;
@@ -369,7 +470,7 @@
             var redeemed = RedeemedOnlyIfValid(_editStatus, _editRedeemed);
             await Tickets.SaveAsync(EventTicket.FromPersistence(_editing.Id, _editing.Uuid, _editing.EventId,
                 _editCategory, decimal.Round(_editPrice, 2), _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed,
-                _editing.Buyer, _editing.CreatedByName));
+                _editing.Buyer, _editing.CreatedByName, _editing.CreatedByEmail));
             _editing = null;
             await ReloadTicketsAsync();
         }
@@ -392,6 +493,4 @@
         var today = DateOnly.FromDateTime(DateTime.Today);
         return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
     }
-
-    private static string ShortId(Guid uuid) => uuid.ToString()[..8];
 }
