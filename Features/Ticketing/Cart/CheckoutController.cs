@@ -19,9 +19,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     private static readonly PaymentOption[] Methods =
     [
         new(PaymentMethod.Payrexx, "Kredit-/Debitkarte", "Online-Zahlung (Payrexx)"),
-        new(PaymentMethod.Twint, "TWINT", "Mit der TWINT-App bezahlen"),
-        new(PaymentMethod.Invoice, "Rechnung", "Zahlung auf Rechnung"),
-        new(PaymentMethod.Cash, "Barzahlung", "Vor Ort an der Kasse")
+        new(PaymentMethod.Twint, "TWINT", "Mit der TWINT-App bezahlen")
     ];
 
     [HttpGet("/kasse")]
@@ -69,6 +67,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/warenkorb");
+        if (Methods.All(m => m.Method != paymentMethod)) return Redirect("/kasse/zahlung");
         var form = LoadForm();
         if (form is null) return Redirect("/kasse");
 

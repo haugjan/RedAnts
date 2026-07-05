@@ -37,8 +37,8 @@ else
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="key" value="@item.Key" />
                                 <input type="number" name="quantity" value="@item.Quantity" min="0"
-                                       class="form-control form-control-sm" style="width:5rem;" />
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">OK</button>
+                                       class="form-control form-control-sm" style="width:5rem;"
+                                       onchange="this.form.submit()" />
                             </form>
                         </td>
                         <td class="text-end">CHF @item.LineTotal.ToString("N2")</td>
