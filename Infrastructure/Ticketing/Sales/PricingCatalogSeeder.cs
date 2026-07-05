@@ -71,7 +71,7 @@ public sealed class PricingCatalogSeeder(
         {
             if (await seasonPrices.GetBySeasonAsync(season.Id) is not null) continue;
 
-            await seasonPrices.SaveAsync(SeasonPrice.Create(season.Id, BaseCategoryPrices()));
+            await seasonPrices.SaveAsync(SeasonPrice.Create(season.Id, null, BaseCategoryPrices()));
             logger.LogInformation("PricingCatalogSeeder: seeded price set for season '{Name}'.", season.Name);
         }
     }

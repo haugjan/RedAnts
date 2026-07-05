@@ -72,7 +72,7 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
     public async Task<SeasonPrice> SaveAsync(SeasonPrice price)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var parent = new SeasonPriceRecord { Id = price.Id, SeasonId = price.SeasonId };
+        var parent = new SeasonPriceRecord { Id = price.Id, SeasonId = price.SeasonId, TotalSalesQuota = price.TotalSalesQuota };
         if (parent.Id == 0) await scope.Database.InsertAsync(parent);
         else await scope.Database.UpdateAsync(parent);
 
@@ -99,7 +99,7 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
     }
 
     private static SeasonPrice Map(SeasonPriceRecord p, IEnumerable<SeasonPriceCategoryRecord> cats) =>
-        SeasonPrice.FromPersistence(p.Id, p.SeasonId,
+        SeasonPrice.FromPersistence(p.Id, p.SeasonId, p.TotalSalesQuota,
             cats.Select(c => CategoryPrice.FromPersistence((TicketCategory)c.Category, c.SalePrice, c.Quota)).ToList());
 }
 

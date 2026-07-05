@@ -58,21 +58,24 @@ public sealed class SeasonPrice
 {
     public int Id { get; private set; }
     public int SeasonId { get; private set; }
+    public int? TotalSalesQuota { get; private set; }
     public IReadOnlyList<CategoryPrice> Categories { get; private set; }
 
-    private SeasonPrice(int id, int seasonId, IReadOnlyList<CategoryPrice> categories)
+    private SeasonPrice(int id, int seasonId, int? totalSalesQuota, IReadOnlyList<CategoryPrice> categories)
     {
         Id = id;
         SeasonId = seasonId;
+        TotalSalesQuota = totalSalesQuota;
         Categories = categories;
     }
 
-    public static SeasonPrice Create(int seasonId, IReadOnlyList<CategoryPrice> categories)
+    public static SeasonPrice Create(int seasonId, int? totalSalesQuota, IReadOnlyList<CategoryPrice> categories)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
-        return new SeasonPrice(0, seasonId, categories ?? []);
+        if (totalSalesQuota is < 0) throw new DomainException("Verkaufskontingent darf nicht negativ sein.");
+        return new SeasonPrice(0, seasonId, totalSalesQuota, categories ?? []);
     }
 
-    public static SeasonPrice FromPersistence(int id, int seasonId, IReadOnlyList<CategoryPrice> categories) =>
-        new(id, seasonId, categories ?? []);
+    public static SeasonPrice FromPersistence(int id, int seasonId, int? totalSalesQuota, IReadOnlyList<CategoryPrice> categories) =>
+        new(id, seasonId, totalSalesQuota, categories ?? []);
 }

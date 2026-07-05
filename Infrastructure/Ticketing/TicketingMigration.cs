@@ -16,6 +16,7 @@ public class TicketingMigrationPlan : MigrationPlan
         From(string.Empty).To<CreateTicketingSchema>("ticketing-schema");
         To<AddFlexTicketBundles>("ticketing-flextickets");
         To<AdjustMemberCardColumns>("membercards-reference-noprice");
+        To<AddSeasonPriceTotalQuota>("seasonprices-total-quota");
     }
 }
 
@@ -88,6 +89,23 @@ public class AdjustMemberCardColumns(IMigrationContext context) : AsyncMigration
                 Execute.Sql("ALTER TABLE MembershipCards DROP COLUMN Price").Do();
             else
                 Delete.Column("Price").FromTable("MembershipCards").Do();
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+public class AddSeasonPriceTotalQuota(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonPrices", "TotalSalesQuota"))
+        {
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonPrices ADD COLUMN TotalSalesQuota INTEGER NULL").Do();
+            else
+                Alter.Table("SeasonPrices").AddColumn("TotalSalesQuota").AsInt32().Nullable().Do();
         }
 
         return Task.CompletedTask;

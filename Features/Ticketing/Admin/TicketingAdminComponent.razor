@@ -15,6 +15,9 @@
     <main class="ta-content">
         @switch (_tab)
         {
+            case "seasons":
+                <AdminSeasonsComponent AdminUser="@AdminUser" />
+                break;
             case "tickets":
                 <AdminTicketsComponent AdminUser="@AdminUser" />
                 break;
@@ -88,10 +91,11 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "admin";
 
-    private string _tab = "events";
+    private string _tab = "seasons";
 
     private static readonly (string Key, string Label)[] Tabs =
     [
+        ("seasons", "Saisons"),
         ("events", "Anlässe"),
         ("tickets", TicketType.EventTicket.DisplayName()),
         ("flextickets", TicketType.SeasonSingle.DisplayName()),

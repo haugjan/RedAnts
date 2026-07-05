@@ -1,0 +1,258 @@
+@using Microsoft.JSInterop
+@using RedAnts.Domain.Ticketing
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Saisons</h1>
+    <p class="ta-page-lead">Saisons verwalten: Status (öffentlich/intern), Verkaufskontingent und Preise je Kategorie, sowie die öffentlichen bzw. internen Links.</p>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-table-wrap">
+            <table class="ta-table">
+                <thead>
+                    <tr>
+                        <th>Zeitraum</th>
+                        <th>Saison</th>
+                        <th>Status</th>
+                        <th class="ta-num">Gesamt&shy;kontingent</th>
+                        <th>Links</th>
+                        <th class="ta-col-actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in _seasons)
+                    {
+                        var links = Links(s.Id);
+                        <tr>
+                            <td>@s.StartDate.ToString("dd.MM.yyyy") – @s.EndDate.ToString("dd.MM.yyyy")</td>
+                            <td class="ta-cell-name">@s.Name</td>
+                            <td><span class="ta-badge ta-badge-@s.Status.ToString().ToLowerInvariant()">@StatusLabel(s.Status)</span></td>
+                            <td class="ta-num">@QuotaLabel(Quota(s.Id))</td>
+                            <td class="ta-links">
+                                @if (s.Status == SeasonStatus.Open)
+                                {
+                                    <button type="button" class="ta-link-btn"
+                                            disabled="@(string.IsNullOrEmpty(links.Public))"
+                                            title="@(string.IsNullOrEmpty(links.Public) ? "Nicht veröffentlicht" : "Öffentlichen Link kopieren")"
+                                            @onclick="() => Copy(s.Id, false, links.Public)">
+                                        @(IsCopied(s.Id, false) ? "✓" : "🔗")
+                                    </button>
+                                }
+                                else if (s.Status == SeasonStatus.Intern)
+                                {
+                                    <button type="button" class="ta-link-btn"
+                                            disabled="@(string.IsNullOrEmpty(links.Intern))"
+                                            title="@(string.IsNullOrEmpty(links.Intern) ? "Nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
+                                            @onclick="() => Copy(s.Id, true, links.Intern)">
+                                        @(IsCopied(s.Id, true) ? "✓" : "🔒")
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="ta-muted">–</span>
+                                }
+                            </td>
+                            <td class="ta-col-actions">
+                                <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(s)">✎</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="ta-summary">@_seasons.Count @(_seasons.Count == 1 ? "Saison" : "Saisons")</p>
+    }
+</section>
+
+@if (_editing is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saison bearbeiten</h2>
+            <p class="ta-modal-sub">@_editing.Name · @_editing.StartDate.ToString("dd.MM.yyyy") – @_editing.EndDate.ToString("dd.MM.yyyy")</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="editStatus">Status</label>
+                <select id="editStatus" class="ta-select" @bind="_editStatus">
+                    @foreach (var st in Enum.GetValues<SeasonStatus>())
+                    {
+                        <option value="@st">@StatusLabel(st)</option>
+                    }
+                </select>
+                <p class="ta-field-hint">„Öffentlich" macht die Saisonkarten öffentlich sichtbar; „Intern" nur über den internen Link.</p>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="editTotal">Gesamt-Verkaufskontingent</label>
+                <input id="editTotal" type="number" min="0" step="1" class="ta-input" placeholder="Unbegrenzt" @bind="_editTotalQuota" />
+                <p class="ta-field-hint">Leer lassen für unbegrenzt.</p>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label">Preise und Kontingent je Kategorie</label>
+                <table class="ta-subtable">
+                    <thead>
+                        <tr><th>Kategorie</th><th class="ta-num">Preis (CHF)</th><th class="ta-num">Kontingent</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _editCats)
+                        {
+                            <tr>
+                                <td>@c.Category.DisplayName()</td>
+                                <td class="ta-num"><input type="number" min="0" step="0.05" class="ta-input ta-input-sm" @bind="c.Price" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" @bind="c.Quota" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="ta-field-hint">Kategorien mit Preis 0 und ohne Kontingent werden nicht gespeichert.</p>
+            </div>
+
+            @if (_editError is not null)
+            {
+                <p class="ta-modal-error">@_editError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                    @(_saving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .ta-subtable { width: 100%; border-collapse: collapse; margin-top: .4rem; }
+    .ta-subtable th { text-align: left; font-size: .7rem; text-transform: uppercase; color: var(--ta-muted); padding: 2px 6px; }
+    .ta-subtable td { padding: 3px 6px; font-size: .85rem; }
+    .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
+    .ta-input-sm { width: 6.5rem; padding: .3rem .4rem; text-align: right; }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private ISeasonPrices SeasonPrices { get; set; } = default!;
+    [Inject] private ISeasonStatusEditor StatusEditor { get; set; } = default!;
+    [Inject] private ISeasonLinkReader LinkReader { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private Dictionary<int, SeasonPrice?> _prices = new();
+    private IReadOnlyDictionary<int, SeasonLinks> _links = new Dictionary<int, SeasonLinks>();
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _links = await LinkReader.GetAllAsync();
+        _prices = new Dictionary<int, SeasonPrice?>();
+        foreach (var s in _seasons)
+            _prices[s.Id] = await SeasonPrices.GetBySeasonAsync(s.Id);
+        _loading = false;
+    }
+
+    private SeasonPrice? Price(int seasonId) => _prices.GetValueOrDefault(seasonId);
+    private int? Quota(int seasonId) => Price(seasonId)?.TotalSalesQuota;
+    private SeasonLinks Links(int seasonId) => _links.GetValueOrDefault(seasonId) ?? new SeasonLinks(null, null);
+    private static string QuotaLabel(int? quota) => quota?.ToString("N0") ?? "∞";
+
+    private static string StatusLabel(SeasonStatus status) => status switch
+    {
+        SeasonStatus.Open => "Öffentlich",
+        SeasonStatus.Intern => "Intern",
+        SeasonStatus.Closed => "Geschlossen",
+        _ => "Entwurf"
+    };
+
+    private (int SeasonId, bool Intern)? _copied;
+    private bool IsCopied(int seasonId, bool intern) => _copied is { } c && c.SeasonId == seasonId && c.Intern == intern;
+
+    private async Task Copy(int seasonId, bool intern, string? relative)
+    {
+        if (string.IsNullOrEmpty(relative)) return;
+        var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+        var absolute = relative.StartsWith("http") ? relative : origin + relative;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", absolute);
+            _copied = (seasonId, intern);
+            StateHasChanged();
+            await Task.Delay(1500);
+            if (IsCopied(seasonId, intern)) { _copied = null; StateHasChanged(); }
+        }
+        catch { }
+    }
+
+    private Season? _editing;
+    private SeasonStatus _editStatus;
+    private int? _editTotalQuota;
+    private List<CatRow> _editCats = new();
+    private bool _saving;
+    private string? _editError;
+
+    private void OpenEdit(Season s)
+    {
+        _editing = s;
+        _editStatus = s.Status;
+        var price = Price(s.Id);
+        _editTotalQuota = price?.TotalSalesQuota;
+        var existing = (price?.Categories ?? []).ToDictionary(c => c.Category);
+        _editCats = Enum.GetValues<TicketCategory>()
+            .Select(cat => existing.TryGetValue(cat, out var cp)
+                ? new CatRow { Category = cat, Price = cp.SalePrice, Quota = cp.Quota }
+                : new CatRow { Category = cat, Price = 0m, Quota = null })
+            .ToList();
+        _editError = null;
+    }
+
+    private void CancelEdit() { if (!_saving) { _editing = null; _editError = null; } }
+
+    private async Task SaveEdit()
+    {
+        if (_editing is null) return;
+        _saving = true;
+        _editError = null;
+        try
+        {
+            var cats = _editCats
+                .Where(c => c.Price > 0 || c.Quota.HasValue)
+                .Select(c => CategoryPrice.Create(c.Category, c.Price, c.Quota))
+                .ToList();
+            var existing = Price(_editing.Id);
+            var price = existing is null
+                ? SeasonPrice.Create(_editing.Id, _editTotalQuota, cats)
+                : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, _editTotalQuota, cats);
+            await SeasonPrices.SaveAsync(price);
+            await StatusEditor.SetStatusAsync(_editing.Id, _editStatus);
+            _editing = null;
+            await ReloadAsync();
+        }
+        catch (DomainException ex) { _editError = ex.Message; }
+        catch (Exception ex) { _editError = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private sealed class CatRow
+    {
+        public TicketCategory Category { get; set; }
+        public decimal Price { get; set; }
+        public int? Quota { get; set; }
+    }
+}
