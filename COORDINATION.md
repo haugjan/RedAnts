@@ -32,7 +32,7 @@
 
 | Session | Branch | Worktree | Paket | Status |
 |---|---|---|---|---|
-| S1 | `feature/s1-scanner-freieinlass` | `C:\development\RedAnts-s1` | Scanner-Umbau + neuer Admin-Tab „Freier Einlass" + Umbenennung | offen |
+| S1 | `feature/s1-scanner-freieinlass` | `C:\development\RedAnts-s1` | Scanner-Umbau + neuer Admin-Tab „Freier Einlass" + Umbenennung | Scanner (Punkte 1–9) + Umbenennung (11) **erledigt, in main gemerged** (`4c915c4`); Admin-Tab (10) wartet auf S2-Fundament |
 | S2 | `feature/s2-admin-table-standard` | `C:\development\RedAnts-s2` | Tabellen-Standard (Fundament) + Spieltickets + Flextickets + Content-Links | offen |
 | S3 | `feature/s3-onlinekarten-mail` | `C:\development\RedAnts-s3` | Online-Karten-Design in Mails + Mailversand komplett + Kategorien mit Alter | offen |
 | S4 | `feature/s4-kaufen-saisonkarten` | `C:\development\RedAnts-s4` | Kaufen/Warenkorb/Kasse + Saisonkarten-Admin (Bundles etc.) | offen |
@@ -148,4 +148,5 @@ Neueste zuerst. Nur Änderungen eintragen, die andere Sessions betreffen.
 
 | Datum | Session | Was | Auswirkung |
 |---|---|---|---|
+| 05.07.2026 | S1 | **Scanner-Contract erweitert** (in main): `Occupancy` hat neu `int FreeInside = 0` (Anzahl freie Einlässe drinnen); `IAdmissionService` hat neu `ScanCodeAsync(eventId, shortCode, mode, scannedBy)` (löst die 8-Zeichen-Ticket-Nr. über alle vier Ticket-Tabellen per `Uuid LIKE 'prefix%'` auf). `TicketType.FreeEntry.DisplayName()` heisst neu „Freier Einlass" (vorher „Berechtigte"). Kein Schema geändert. | Wer `Occupancy` konstruiert oder `IAdmissionService` implementiert/mockt, den neuen Member beachten (Default-Parameter → meist quellkompatibel). Anzeigen mit „Berechtigte" übernehmen das neue Label automatisch via `DisplayName()`. |
 | 05.07.2026 | S1 | Arbeitsmodell v2: Worktrees/Branches, Aufgabenpakete verteilt (dieses Dokument). | Alle: eigenen Worktree anlegen, Paket abarbeiten, früh mergen. S2s Fundament kommt zuerst. |
