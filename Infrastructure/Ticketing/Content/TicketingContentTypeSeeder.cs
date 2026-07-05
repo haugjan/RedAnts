@@ -44,7 +44,9 @@ public sealed class TicketingContentTypeSeeder(
         try
         {
             EnsureContentTypes();
+            EnsurePublicPageTypes();
             EnsureContentStructure();
+            EnsureSaisonsPromoNode();
             RefreshAccessLinks();
         }
         catch (Exception ex)
@@ -174,6 +176,59 @@ public sealed class TicketingContentTypeSeeder(
         Publish(venuesFolder);
 
         logger.LogInformation("TicketingContentTypeSeeder: created content structure (root + folders).");
+    }
+
+    private void EnsurePublicPageTypes()
+    {
+        var all = dataTypeService.GetAll().ToList();
+        var textBox = all.First(d => d.EditorAlias == "Umbraco.TextBox");
+        var richText = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.RichText") ?? textBox;
+        var mediaPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.MediaPicker3") ?? textBox;
+
+        var root = contentTypeService.Get(A.RootType);
+        if (root is null) return;
+
+        var rootChanged = false;
+        if (!root.PropertyTypeExists(A.HeaderText))
+        {
+            root.AddPropertyType(Prop(textBox, A.HeaderText, "Headertext"), Group, GroupName);
+            rootChanged = true;
+        }
+        if (!root.PropertyTypeExists(A.HeaderImage))
+        {
+            root.AddPropertyType(Prop(mediaPicker, A.HeaderImage, "Headerbild"), Group, GroupName);
+            rootChanged = true;
+        }
+        if (root.DefaultTemplate is null)
+        {
+            AssignTemplate(root, EnsureTemplate("TicketingHome"));
+            rootChanged = true;
+        }
+        if (rootChanged) contentTypeService.Save(root, SuperUser);
+
+        if (contentTypeService.Get(A.SaisonsPromoType) is null)
+        {
+            var promo = new ContentType(shortStringHelper, Constants.System.Root)
+            {
+                Alias = A.SaisonsPromoType, Name = "Saisonkarten-Seite", Icon = "icon-badge", AllowedAsRoot = true
+            };
+            promo.AddPropertyType(Prop(textBox, A.HeaderText, "Header"), Group, GroupName);
+            promo.AddPropertyType(Prop(mediaPicker, A.HeaderImage, "Headerbild"), Group, GroupName);
+            promo.AddPropertyType(Prop(richText, A.PromoBodyText, "Text"), Group, GroupName);
+            AssignTemplate(promo, EnsureTemplate("SaisonsPromo"));
+            contentTypeService.Save(promo, SuperUser);
+            logger.LogInformation("TicketingContentTypeSeeder: created saisonsPromo document type.");
+        }
+    }
+
+    private void EnsureSaisonsPromoNode()
+    {
+        if (contentService.GetRootContent().Any(c => c.ContentType.Alias == A.SaisonsPromoType)) return;
+
+        var promo = contentService.Create("Saisons", Constants.System.Root, A.SaisonsPromoType);
+        promo.SetValue(A.HeaderText, "Saisonkarten");
+        Publish(promo);
+        logger.LogInformation("TicketingContentTypeSeeder: created Saisons promo root node.");
     }
 
     private PropertyType Prop(IDataType dataType, string alias, string name) =>

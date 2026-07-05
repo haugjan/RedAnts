@@ -195,3 +195,54 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
         public int Cnt { get; set; }
     }
 }
+
+public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISeasonPassPricing
+{
+    public async Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int seasonId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+
+        var parent = await scope.Database.FirstOrDefaultAsync<SeasonPriceRecord>("WHERE SeasonId = @0", seasonId);
+        if (parent is null) return [];
+
+        var cats = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
+            "WHERE SeasonPriceId = @0 ORDER BY Category", parent.Id);
+        if (cats.Count == 0) return [];
+
+        var soldRows = await scope.Database.FetchAsync<SoldRow>(
+            "SELECT Category, COUNT(*) AS Cnt FROM SeasonPasses WHERE SeasonId = @0 AND Status = @1 GROUP BY Category",
+            seasonId, (int)TicketStatus.Valid);
+        var soldByCategory = soldRows.ToDictionary(r => r.Category, r => r.Cnt);
+        var soldTotal = soldRows.Sum(r => r.Cnt);
+
+        int? totalRemaining = parent.TotalSalesQuota is { } tq ? Math.Max(0, tq - soldTotal) : null;
+
+        var list = new List<AvailableTicketCategory>();
+        foreach (var c in cats)
+        {
+            var category = (TicketCategory)c.Category;
+            var sold = soldByCategory.GetValueOrDefault(c.Category);
+            int? categoryRemaining = c.Quota is { } q ? Math.Max(0, q - sold) : null;
+
+            var remaining = Least(categoryRemaining, totalRemaining);
+            var available = remaining is null || remaining > 0;
+            list.Add(new AvailableTicketCategory(category, category.DisplayName(), c.SalePrice, available, remaining));
+        }
+        return list;
+    }
+
+    private static int? Least(int? a, int? b) =>
+        (a, b) switch
+        {
+            (null, null) => null,
+            (null, var y) => y,
+            (var x, null) => x,
+            var (x, y) => Math.Min(x!.Value, y!.Value)
+        };
+
+    private sealed class SoldRow
+    {
+        public int Category { get; set; }
+        public int Cnt { get; set; }
+    }
+}

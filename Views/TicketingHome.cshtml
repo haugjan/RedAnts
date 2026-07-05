@@ -1,0 +1,168 @@
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@using Umbraco.Cms.Core.Models.PublishedContent
+@using RedAnts.Features.Ticketing.Ports
+@inject IEventPricing Pricing
+@inject ISeasonPassPricing PassPricing
+@{
+    Layout = "~/Views/Shared/_SiteLayout.cshtml";
+
+    var headerText = Model.Value<string>("headerText");
+    var headerImage = Model.Value<IPublishedContent>("headerImage")?.Url();
+    var title = string.IsNullOrWhiteSpace(headerText) ? "Tickets" : headerText;
+    ViewBag.PageTitle = title + " – Red Ants Winterthur";
+    ViewBag.TransparentNav = true;
+
+    var seasonsFolder = Model.Children()?.FirstOrDefault(c => c.ContentType.Alias == "seasonsFolder");
+    var openSeasons = (seasonsFolder?.Children() ?? Enumerable.Empty<IPublishedContent>())
+        .Where(c => c.ContentType.Alias == "season" && c.Value<string>("status") == "Open")
+        .ToList();
+
+    var openEvents = openSeasons
+        .SelectMany(s => s.Children() ?? Enumerable.Empty<IPublishedContent>())
+        .Where(c => c.ContentType.Alias == "event"
+            && c.Value<string>("status") == "Open"
+            && c.Value<DateTime>("start") >= DateTime.Today)
+        .OrderBy(c => c.Value<DateTime>("start"))
+        .ToList();
+
+    var buyableEvents = new List<(IPublishedContent Node, decimal MinPrice)>();
+    foreach (var candidate in openEvents)
+    {
+        var cats = (await Pricing.GetAvailableAsync(candidate.Id)).Where(c => c.Available).ToList();
+        if (cats.Count > 0) buyableEvents.Add((candidate, cats.Min(c => c.Price)));
+    }
+
+    var passOffers = new List<(IPublishedContent Season, List<AvailableTicketCategory> Categories)>();
+    foreach (var season in openSeasons)
+    {
+        var cats = (await PassPricing.GetAvailableAsync(season.Id)).Where(c => c.Available).ToList();
+        if (cats.Count > 0) passOffers.Add((season, cats));
+    }
+}
+
+<main class="flexpage-main">
+    <section class="page-header @(string.IsNullOrEmpty(headerImage) ? "page-header--plain" : "")"
+             style="@(string.IsNullOrEmpty(headerImage) ? "" : $"background-image:url('{headerImage}');")">
+        @if (!string.IsNullOrEmpty(headerImage))
+        {
+            <div class="page-header-overlay"></div>
+        }
+        <div class="page-header-inner">
+            <h1 class="page-header-title">@title</h1>
+        </div>
+    </section>
+
+    @if (passOffers.Count > 0)
+    {
+        <section class="event-list" id="saisonkarten">
+            <div class="event-list-inner">
+                <h2 class="event-list-title">Saisonkarten</h2>
+                <ul class="pass-offer-list">
+                    @foreach (var (season, cats) in passOffers)
+                    {
+                        <li class="pass-offer">
+                            <div class="pass-offer-head">
+                                <span class="pass-offer-season">@season.Name</span>
+                                <a class="pass-offer-more" href="/saisons/">Mehr erfahren →</a>
+                            </div>
+                            <ul class="pass-offer-cats">
+                                @foreach (var cat in cats)
+                                {
+                                    <li>
+                                        <span>@cat.Name</span>
+                                        <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
+                                    </li>
+                                }
+                            </ul>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </section>
+    }
+
+    <section class="event-list event-list--tickets">
+        <div class="event-list-inner">
+            <h2 class="event-list-title">Tickets</h2>
+
+            @if (buyableEvents.Count == 0)
+            {
+                <p class="event-list-empty">Zurzeit sind keine Tickets im Verkauf.</p>
+            }
+            else
+            {
+                <ul class="event-list-items">
+                    @foreach (var (evt, minPrice) in buyableEvents)
+                    {
+                        var evStart = evt.Value<DateTime>("start");
+                        var venue = evt.Value<IPublishedContent>("venue");
+                        var evImage = evt.Value<IPublishedContent>("eventImage")?.Url();
+                        var evHome = evt.Value<IPublishedContent>("homeTeamLogo")?.Url();
+                        var evAway = evt.Value<IPublishedContent>("awayTeamLogo")?.Url();
+                        <li class="event-item">
+                            <a class="event-item-link" href="@evt.Url()">
+                                @if (!string.IsNullOrEmpty(evHome) || !string.IsNullOrEmpty(evAway))
+                                {
+                                    <span class="event-item-logos">
+                                        @if (!string.IsNullOrEmpty(evHome)) { <img src="@evHome" alt="Heimteam" /> }
+                                        <span class="event-item-vs">vs</span>
+                                        @if (!string.IsNullOrEmpty(evAway)) { <img src="@evAway" alt="Auswärtsteam" /> }
+                                    </span>
+                                }
+                                else if (!string.IsNullOrEmpty(evImage))
+                                {
+                                    <span class="event-item-thumb" style="background-image:url('@evImage');"></span>
+                                }
+                                <span class="event-item-body">
+                                    <span class="event-item-date">@evStart.ToString("dd.MM.yyyy") · @evStart.ToString("HH:mm") Uhr</span>
+                                    <span class="event-item-name">@evt.Name</span>
+                                    <span class="event-item-venue">
+                                        @if (venue != null) { <text>@venue.Name · </text> }ab CHF @minPrice.ToString("0.##")
+                                    </span>
+                                </span>
+                                <span class="event-item-cta">Tickets →</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+</main>
+
+<style>
+    .page-header { position: relative; background-size: cover; background-position: center; min-height: 300px; display: flex; align-items: flex-end; }
+    .page-header--plain { background: #101010; }
+    .page-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.75) 100%); }
+    .page-header-inner { position: relative; z-index: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px 40px; }
+    .page-header-title { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-size: clamp(2.4rem, 6vw, 4.5rem); line-height: 1; margin: 0; }
+    .page-header-title::after { content: ""; display: block; width: 64px; height: 5px; background: #C8102E; margin-top: 16px; }
+
+    .event-list { padding: 56px 20px; background: #f6f7f9; }
+    .event-list--tickets { padding-top: 0; }
+    .event-list-inner { max-width: 900px; margin: 0 auto; }
+    .event-list-title { font-family: 'Oswald', sans-serif; font-size: 2.4rem; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 24px; color: #101010; }
+    .event-list-empty { color: #666; }
+    .event-list-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .event-item-link { display: flex; align-items: center; gap: 16px; background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; text-decoration: none; color: inherit; transition: box-shadow .15s, transform .15s; }
+    .event-item-link:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+    .event-item-thumb { flex: 0 0 auto; width: 72px; height: 72px; border-radius: 8px; background-size: cover; background-position: center; }
+    .event-item-logos { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-width: 72px; }
+    .event-item-logos img { height: 48px; width: auto; object-fit: contain; }
+    .event-item-vs { font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase; font-size: .85rem; color: #999; }
+    .event-item-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+    .event-item-date { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #C8102E; }
+    .event-item-name { font-family: 'Oswald', sans-serif; font-size: 1.5rem; line-height: 1.1; color: #101010; }
+    .event-item-venue { font-size: .9rem; color: #666; }
+    .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
+    @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } .event-item-logos img { height: 38px; } }
+
+    .pass-offer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .pass-offer { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; }
+    .pass-offer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 6px; }
+    .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.3rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; }
+    .pass-offer-more { color: #C8102E; font-weight: 700; text-decoration: none; font-size: .9rem; white-space: nowrap; }
+    .pass-offer-cats { list-style: none; margin: 0; padding: 0; }
+    .pass-offer-cats li { display: flex; justify-content: space-between; gap: 1rem; padding: 5px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
+    .pass-offer-price { font-weight: 700; }
+</style>

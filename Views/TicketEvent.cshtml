@@ -20,7 +20,7 @@
     var homeLogo = Model.Value<IPublishedContent>("homeTeamLogo")?.Url();
     var awayLogo = Model.Value<IPublishedContent>("awayTeamLogo")?.Url();
     var text = Model.Value<string>("text");
-    var backHref = Model.Parent?.Url() ?? "/";
+    var backHref = "/ticketing/";
 }
 
 @section Head {
@@ -118,7 +118,7 @@ else
         </section>
 
         <div class="evt-wrap">
-            <a href="@backHref" class="evt-back">&larr; Übersicht</a>
+            <a href="@backHref" class="evt-back">&larr; Zurück zur Hauptübersicht</a>
 
             <div class="evt-facts">
                 <div class="evt-fact">

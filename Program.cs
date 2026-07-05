@@ -147,10 +147,10 @@ if (!string.IsNullOrEmpty(gatePassword))
 
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path == "/"
-        && context.Request.Host.Host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase))
+    if (context.Request.Path == "/")
     {
-        context.Response.Redirect("/scanntickets");
+        var isScanHost = context.Request.Host.Host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase);
+        context.Response.Redirect(isScanHost ? "/scanntickets" : "/ticketing/");
         return;
     }
     await next();

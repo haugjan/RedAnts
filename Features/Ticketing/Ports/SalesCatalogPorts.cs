@@ -32,6 +32,11 @@ public interface IEventPricing
     Task<string?> CheckCapacityAsync(IReadOnlyList<TicketDemand> demand);
 }
 
+public interface ISeasonPassPricing
+{
+    Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int seasonId);
+}
+
 public interface IEventTickets
 {
     Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId);

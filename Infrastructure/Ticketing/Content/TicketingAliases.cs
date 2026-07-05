@@ -8,6 +8,11 @@ internal static class TicketingAliases
     public const string SeasonType = "season";
     public const string VenueType = "venue";
     public const string EventType = "event";
+    public const string SaisonsPromoType = "saisonsPromo";
+
+    public const string HeaderText = "headerText";
+    public const string HeaderImage = "headerImage";
+    public const string PromoBodyText = "bodyText";
 
     public const string VenueGoogleGeoId = "googleGeoId";
     public const string VenueImage = "image";

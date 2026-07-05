@@ -51,6 +51,7 @@ else
 
         <section class="event-list">
             <div class="event-list-inner">
+                <a class="page-back" href="/ticketing/">← Zurück zur Hauptübersicht</a>
                 <h2 class="event-list-title">Anstehende Anlässe</h2>
 
                 @if (events.Count == 0)
@@ -107,6 +108,8 @@ else
 
         .event-list { padding: 56px 20px; background: #f6f7f9; }
         .event-list-inner { max-width: 900px; margin: 0 auto; }
+        .page-back { display: inline-block; margin-bottom: 18px; color: #666; text-decoration: none; font-weight: 700; font-size: .9rem; }
+        .page-back:hover { color: #C8102E; }
         .event-list-title { font-family: 'Oswald', sans-serif; font-size: 2.4rem; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 24px; color: #101010; }
         .event-list-empty { color: #666; }
         .event-list-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }

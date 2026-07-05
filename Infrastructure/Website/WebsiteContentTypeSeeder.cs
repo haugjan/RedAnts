@@ -175,7 +175,7 @@ public sealed class WebsiteContentTypeSeeder(
         var ctaLink = new object[]
         {
             new { name = "Tickets", target = (string?)null, unique = (string?)null,
-                  type = "EXTERNAL", udi = (string?)null, url = "/tickets",
+                  type = "EXTERNAL", udi = (string?)null, url = "/ticketing/",
                   queryString = (string?)null, culture = (string?)null }
         };
 

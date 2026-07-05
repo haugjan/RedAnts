@@ -1,0 +1,104 @@
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@using Umbraco.Cms.Core.Models.PublishedContent
+@using RedAnts.Features.Ticketing.Ports
+@inject ISeasonPassPricing PassPricing
+@inject RedAnts.Features.Ticketing.Ports.ISeasons Seasons
+@{
+    Layout = "~/Views/Shared/_SiteLayout.cshtml";
+
+    var headerText = Model.Value<string>("headerText");
+    var headerImage = Model.Value<IPublishedContent>("headerImage")?.Url();
+    var bodyHtml = Model.Value<string>("bodyText");
+    var title = string.IsNullOrWhiteSpace(headerText) ? "Saisonkarten" : headerText;
+    ViewBag.PageTitle = title + " – Red Ants Winterthur";
+    ViewBag.TransparentNav = true;
+
+    var passOffers = new List<(string SeasonName, List<AvailableTicketCategory> Categories)>();
+    foreach (var season in await Seasons.GetPublicOpenAsync())
+    {
+        var cats = (await PassPricing.GetAvailableAsync(season.Id)).Where(c => c.Available).ToList();
+        if (cats.Count > 0) passOffers.Add((season.Name, cats));
+    }
+}
+
+<main class="flexpage-main">
+    <section class="page-header @(string.IsNullOrEmpty(headerImage) ? "page-header--plain" : "")"
+             style="@(string.IsNullOrEmpty(headerImage) ? "" : $"background-image:url('{headerImage}');")">
+        @if (!string.IsNullOrEmpty(headerImage))
+        {
+            <div class="page-header-overlay"></div>
+        }
+        <div class="page-header-inner">
+            <h1 class="page-header-title">@title</h1>
+        </div>
+    </section>
+
+    <section class="promo-body">
+        <div class="promo-inner">
+            <a class="promo-back" href="/ticketing/">← Zurück zur Hauptübersicht</a>
+
+            @if (!string.IsNullOrWhiteSpace(bodyHtml))
+            {
+                <div class="promo-text">@Html.Raw(bodyHtml)</div>
+            }
+
+            @if (passOffers.Count == 0)
+            {
+                <p class="promo-empty">Zurzeit sind keine Saisonkarten im Verkauf.</p>
+            }
+            else
+            {
+                <ul class="pass-offer-list">
+                    @foreach (var (seasonName, cats) in passOffers)
+                    {
+                        <li class="pass-offer">
+                            <div class="pass-offer-head">
+                                <span class="pass-offer-season">@seasonName</span>
+                            </div>
+                            <ul class="pass-offer-cats">
+                                @foreach (var cat in cats)
+                                {
+                                    <li>
+                                        <span>@cat.Name</span>
+                                        <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
+                                    </li>
+                                }
+                            </ul>
+                        </li>
+                    }
+                </ul>
+                <div class="promo-cta">
+                    <a class="promo-buy" href="/ticketing/#saisonkarten">Saisonkarte kaufen</a>
+                </div>
+            }
+        </div>
+    </section>
+</main>
+
+<style>
+    .page-header { position: relative; background-size: cover; background-position: center; min-height: 300px; display: flex; align-items: flex-end; }
+    .page-header--plain { background: #101010; }
+    .page-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.75) 100%); }
+    .page-header-inner { position: relative; z-index: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px 40px; }
+    .page-header-title { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-size: clamp(2.4rem, 6vw, 4.5rem); line-height: 1; margin: 0; }
+    .page-header-title::after { content: ""; display: block; width: 64px; height: 5px; background: #C8102E; margin-top: 16px; }
+
+    .promo-body { padding: 40px 20px 64px; background: #f6f7f9; }
+    .promo-inner { max-width: 900px; margin: 0 auto; }
+    .promo-back { display: inline-block; margin-bottom: 20px; color: #666; text-decoration: none; font-weight: 700; font-size: .9rem; }
+    .promo-back:hover { color: #C8102E; }
+    .promo-text { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 24px 28px; margin-bottom: 24px; line-height: 1.7; }
+    .promo-text h2, .promo-text h3 { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+    .promo-empty { color: #666; }
+    .promo-cta { margin-top: 24px; text-align: center; }
+    .promo-buy { display: inline-block; background: #C8102E; color: #fff; text-decoration: none; font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 1.05rem; padding: 14px 34px; border-radius: 8px; }
+    .promo-buy:hover { background: #A50D26; }
+
+    .pass-offer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .pass-offer { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; }
+    .pass-offer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 6px; }
+    .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.3rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; }
+    .pass-offer-cats { list-style: none; margin: 0; padding: 0; }
+    .pass-offer-cats li { display: flex; justify-content: space-between; gap: 1rem; padding: 5px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
+    .pass-offer-price { font-weight: 700; }
+</style>
