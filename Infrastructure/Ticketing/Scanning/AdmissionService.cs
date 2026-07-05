@@ -131,6 +131,52 @@ public sealed class AdmissionService(
         return age is < 0 or > 120 ? null : age;
     }
 
+    public async Task<ScanOutcome> ScanCodeAsync(int eventId, string shortCode, ScanMode mode, string? scannedBy)
+    {
+        var code = (shortCode ?? "").Trim().Replace(" ", "").ToLowerInvariant();
+        if (code.Length != 8 || !code.All(Uri.IsHexDigit))
+            return await RejectCodeAsync(eventId, shortCode, "Der Code besteht aus den ersten 8 Zeichen der Ticket-Nr.");
+
+        var resolved = await FindTicketByCodeAsync(code);
+        if (resolved is null)
+            return await RejectCodeAsync(eventId, code.ToUpperInvariant(), "Kein Ticket mit diesem Code gefunden.");
+
+        var (type, uuid, scopeId) = resolved.Value;
+        return await ScanTicketAsync(eventId, type, uuid, scopeId, mode, scannedBy);
+    }
+
+    private async Task<ScanOutcome> RejectCodeAsync(int eventId, string? reference, string reason)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        return new ScanOutcome(AdmissionOutcome.Rejected, null, reference?.Trim().ToUpperInvariant(),
+            reason, await OccAsync(scope.Database, eventId));
+    }
+
+    private async Task<(TicketType Type, Guid Uuid, int ScopeId)?> FindTicketByCodeAsync(string code)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        var pattern = code + "%";
+
+        var eventTicket = await db.FirstOrDefaultAsync<EventTicketRecord>("WHERE Uuid LIKE @0", pattern);
+        if (eventTicket is not null && Guid.TryParse(eventTicket.Uuid, out var eventUuid))
+            return (TicketType.EventTicket, eventUuid, eventTicket.EventId);
+
+        var single = await db.FirstOrDefaultAsync<SeasonSingleTicketRecord>("WHERE Uuid LIKE @0", pattern);
+        if (single is not null && Guid.TryParse(single.Uuid, out var singleUuid))
+            return (TicketType.SeasonSingle, singleUuid, single.SeasonId);
+
+        var pass = await db.FirstOrDefaultAsync<SeasonPassRecord>("WHERE Uuid LIKE @0", pattern);
+        if (pass is not null && Guid.TryParse(pass.Uuid, out var passUuid))
+            return (TicketType.SeasonPass, passUuid, pass.SeasonId);
+
+        var card = await db.FirstOrDefaultAsync<MemberCardRecord>("WHERE Uuid LIKE @0", pattern);
+        if (card is not null && Guid.TryParse(card.Uuid, out var cardUuid))
+            return (TicketType.MemberCard, cardUuid, card.SeasonId);
+
+        return null;
+    }
+
     public async Task<ScanOutcome> GrantFreeEntryAsync(int eventId, string? scannedBy)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -176,7 +222,10 @@ public sealed class AdmissionService(
             "SELECT COUNT(*) FROM TicketEventVisits WHERE EventId = @0 AND IsInside = 1", eventId);
         var quota = await db.ExecuteScalarAsync<int?>(
             "SELECT AdmissionQuota FROM EventPrices WHERE EventId = @0", eventId);
-        return new Occupancy(inside, quota);
+        var freeInside = await db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM TicketEventVisits WHERE EventId = @0 AND IsInside = 1 AND TicketType = @1",
+            eventId, (int)TicketType.FreeEntry);
+        return new Occupancy(inside, quota, freeInside);
     }
 
     private static async Task LogAsync(IUmbracoDatabase db, long visitId, AdmissionOutcome action, string? by) =>

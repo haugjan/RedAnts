@@ -1,12 +1,33 @@
+@using Microsoft.AspNetCore.Components.Web
 @inject IEvents Events
 @inject IVenues Venues
 
 <div class="scan-app">
-    @if (_selected is null)
+    @if (string.IsNullOrEmpty(_operator))
     {
         <header class="scan-app__header">
             <h1>Tickets scannen</h1>
-            <p>Event auswählen</p>
+            <p>Wer scannt?</p>
+        </header>
+
+        <div class="scan-login">
+            <input class="scan-login__input" placeholder="Name der scannenden Person"
+                   @bind="_operatorInput" @bind:event="oninput" @onkeydown="OnLoginKey" />
+            @if (_loginError is not null)
+            {
+                <p class="scan-login__error">@_loginError</p>
+            }
+            <button type="button" class="scan-login__btn" @onclick="Login">Weiter</button>
+        </div>
+    }
+    else if (_selected is null)
+    {
+        <header class="scan-app__header scan-app__header--events">
+            <div>
+                <h1>Tickets scannen</h1>
+                <p>Event auswählen · @_operator</p>
+            </div>
+            <button type="button" class="scan-app__logout" @onclick="Logout">Ausloggen</button>
         </header>
 
         @if (_events is null)
@@ -46,19 +67,60 @@
     }
     else
     {
-        <ScanView EventId="_selected.Id" EventName="_selected.Name" OnBack="BackToList" />
+        <ScanView EventId="_selected.Id" EventName="@_selected.Name" Operator="@_operator" OnBack="BackToList" />
     }
 </div>
+
+<style>
+    .scan-app__header--events { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
+    .scan-app__logout {
+        flex: 0 0 auto; padding: 0.5rem 0.9rem; border-radius: 8px; border: 1px solid #ccc;
+        background: #fff; color: #555; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+    }
+    .scan-login { text-align: center; padding: 1.5rem 1rem; }
+    .scan-login__input {
+        width: 100%; max-width: 320px; padding: 0.8rem 0.9rem; font-size: 1.05rem;
+        border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box;
+    }
+    .scan-login__error { color: #b42318; font-size: 0.9rem; margin: 0.6rem 0 0; }
+    .scan-login__btn {
+        margin-top: 1rem; width: 100%; max-width: 320px; padding: 0.9rem;
+        background: #1a7f37; color: #fff; border: none; border-radius: 10px;
+        font-size: 1.05rem; font-weight: 800; cursor: pointer;
+    }
+</style>
 
 @code {
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
     private Event? _selected;
+    private string? _operator;
+    private string _operatorInput = "";
+    private string? _loginError;
 
     protected override async Task OnInitializedAsync()
     {
         _venues = (await Venues.GetAllAsync()).ToDictionary(v => v.Id, v => v.Name);
         _events = await Events.GetUpcomingForScanningAsync();
+    }
+
+    private void OnLoginKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") Login();
+    }
+
+    private void Login()
+    {
+        if (string.IsNullOrWhiteSpace(_operatorInput)) { _loginError = "Bitte einen Namen eingeben."; return; }
+        _operator = _operatorInput.Trim();
+        _loginError = null;
+    }
+
+    private void Logout()
+    {
+        _operator = null;
+        _operatorInput = "";
+        _selected = null;
     }
 
     private void Select(Event evt) => _selected = evt;

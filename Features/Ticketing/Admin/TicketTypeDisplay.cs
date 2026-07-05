@@ -10,7 +10,7 @@ public static class TicketTypeExtensions
         TicketType.SeasonSingle => "Flextickets",
         TicketType.SeasonPass => "Saisonkarten",
         TicketType.MemberCard => "Mitglieder",
-        TicketType.FreeEntry => "Berechtigte",
+        TicketType.FreeEntry => "Freier Einlass",
         _ => type.ToString()
     };
 }

@@ -24,7 +24,7 @@ window.ticketScanner = (function () {
         gain.connect(ctx.destination);
         const t = ctx.currentTime + startOffset;
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.6, t + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
         osc.start(t);
         osc.stop(t + duration + 0.02);
@@ -34,11 +34,10 @@ window.ticketScanner = (function () {
         const ctx = ensureAudio();
         if (!ctx) return;
         if (success) {
-            tone(ctx, 988, 0, 0.10, "triangle");
-            tone(ctx, 1319, 0.11, 0.10, "triangle");
-            tone(ctx, 1760, 0.22, 0.30, "triangle");
+            tone(ctx, 1568, 0, 0.35, "triangle");
         } else {
-            tone(ctx, 200, 0, 0.4, "square");
+            tone(ctx, 220, 0, 0.18, "square");
+            tone(ctx, 220, 0.28, 0.18, "square");
         }
     }
 
