@@ -6,7 +6,7 @@ public abstract class InlineEditBase<TValue> : ComponentBase
 {
     [Parameter] public TValue Value { get; set; } = default!;
     [Parameter] public string FieldLabel { get; set; } = "Wert";
-    [Parameter] public Func<TValue, Task> Save { get; set; } = _ => Task.CompletedTask;
+    [Parameter] public EventCallback<TValue> Save { get; set; }
     [Parameter] public bool Disabled { get; set; }
 
     protected bool Editing;
@@ -56,7 +56,7 @@ public abstract class InlineEditBase<TValue> : ComponentBase
         Error = null;
         try
         {
-            await Save(Pending);
+            await Save.InvokeAsync(Pending);
             ConfirmOpen = false;
             Editing = false;
         }
