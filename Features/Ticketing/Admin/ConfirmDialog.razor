@@ -1,0 +1,33 @@
+<div class="ta-overlay" @onmousedown="Cancel">
+    <div class="ta-modal ta-modal-confirm" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">@Title</h2>
+        <p class="ta-modal-sub">@Message</p>
+
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <p class="ta-modal-error">@Error</p>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Cancel" disabled="@Busy">Abbrechen</button>
+            <button type="button" class="ta-btn @(Danger ? "ta-btn-danger" : "ta-btn-primary")" @onclick="Confirm" disabled="@Busy">
+                @(Busy ? "Wird ausgeführt …" : ConfirmLabel)
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Bestätigen";
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string ConfirmLabel { get; set; } = "Bestätigen";
+    [Parameter] public bool Danger { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private Task Confirm() => OnConfirm.InvokeAsync();
+
+    private Task Cancel() => Busy ? Task.CompletedTask : OnCancel.InvokeAsync();
+}

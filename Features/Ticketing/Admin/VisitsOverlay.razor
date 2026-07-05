@@ -1,0 +1,76 @@
+@using RedAnts.Domain.Ticketing.Sales
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal ta-modal-visits" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Eventbesuche</h2>
+        <p class="ta-modal-sub">@Title</p>
+
+        @if (_loading)
+        {
+            <p class="ta-muted-text">Wird geladen …</p>
+        }
+        else if (_visits.Count == 0)
+        {
+            <div class="ta-placeholder">Noch keine Eventbesuche.</div>
+        }
+        else
+        {
+            @foreach (var v in _visits)
+            {
+                <div class="ta-visit">
+                    <div class="ta-visit-head">
+                        <span class="ta-visit-event">@v.EventName</span>
+                        @if (v.EventDate is { } d)
+                        {
+                            <span class="ta-visit-date">@d.ToString("dd.MM.yyyy")</span>
+                        }
+                        <span class="ta-badge @(v.IsInside ? "ta-badge-valid" : "ta-badge-draft")">
+                            @(v.IsInside ? "Drin" : "Draussen")
+                        </span>
+                    </div>
+                    @if (v.Scans.Count > 0)
+                    {
+                        <table class="ta-subtable">
+                            <thead>
+                                <tr><th>Scan</th><th>Zeit</th><th>Scannperson</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in v.Scans)
+                                {
+                                    <tr>
+                                        <td>@(s.Type == VisitLogType.CheckIn ? "Eingescannt" : "Ausgescannt")</td>
+                                        <td>@s.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                        <td>@(string.IsNullOrEmpty(s.ScannedBy) ? "—" : s.ScannedBy)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            }
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid Uuid { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    [Inject] private IVisitLogReader Visits { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<TicketVisitEntry> _visits = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _visits = await Visits.GetByTicketUuidAsync(Uuid);
+        _loading = false;
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+}
