@@ -53,6 +53,7 @@
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th>Zahlung</th>
                             <th>Bestell-Nr.</th>
+                            <th>Erstellt von</th>
                             <th>Karten-Nr.</th>
                             <th class="ta-col-actions"></th>
                         </tr>
@@ -62,8 +63,12 @@
                         {
                             <tr>
                                 <td class="ta-cell-name">
-                                    @if (p.BuyerName is not null) { @p.BuyerName }
-                                    else { <span class="ta-muted">(keine Bestellung)</span> }
+                                    @if (p.BuyerName is not null)
+                                    {
+                                        @p.BuyerName
+                                        @if (p.BuyerType is { } bt) { <span class="ta-badge ta-badge-buyer">@bt.DisplayName()</span> }
+                                    }
+                                    else { <span class="ta-muted">—</span> }
                                 </td>
                                 <td>@p.CreatedAt.ToString("dd.MM.yyyy")</td>
                                 <td>@p.Category.DisplayName()</td>
@@ -72,6 +77,7 @@
                                 <td class="ta-num">@p.EventVisits</td>
                                 <td>@(p.PaymentState ?? "–")</td>
                                 <td>@(p.OrderNumber ?? "–")</td>
+                                <td>@(string.IsNullOrEmpty(p.CreatedByName) ? "–" : p.CreatedByName)</td>
                                 <td><code class="ta-uuid">@ShortId(p.Uuid)</code></td>
                                 <td class="ta-col-actions">
                                     <a class="ta-qr-link" href="/ticket/for/@p.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
@@ -94,6 +100,32 @@
     <div class="ta-overlay" @onmousedown="CloseCreate">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Saisonkarte erstellen</h2>
+
+            <div class="ta-field">
+                <label class="ta-label" for="newSpBuyerType">Käufer:in</label>
+                <select id="newSpBuyerType" class="ta-select" @bind="_newBuyerType">
+                    <option value="@BuyerType.Private">Privatperson</option>
+                    <option value="@BuyerType.Company">Firma</option>
+                </select>
+            </div>
+            @if (_newBuyerType == BuyerType.Company)
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="newSpCompany">Firmenname</label>
+                    <input id="newSpCompany" class="ta-input" @bind="_newCompany" />
+                </div>
+            }
+            else
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="newSpFirstName">Vorname</label>
+                    <input id="newSpFirstName" class="ta-input" @bind="_newFirstName" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="newSpLastName">Nachname</label>
+                    <input id="newSpLastName" class="ta-input" @bind="_newLastName" />
+                </div>
+            }
 
             <div class="ta-field">
                 <label class="ta-label" for="newSpCategory">Kategorie</label>
@@ -240,9 +272,21 @@
     private bool _creating;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private decimal _newPrice;
+    private BuyerType _newBuyerType = BuyerType.Private;
+    private string _newFirstName = "";
+    private string _newLastName = "";
+    private string _newCompany = "";
     private string? _createError;
 
-    private void OpenCreate() { _newCategory = TicketCategory.Adult; _newPrice = 0m; _createError = null; _showCreate = true; }
+    private void OpenCreate()
+    {
+        _newCategory = TicketCategory.Adult;
+        _newPrice = 0m;
+        _newBuyerType = BuyerType.Private;
+        _newFirstName = _newLastName = _newCompany = "";
+        _createError = null;
+        _showCreate = true;
+    }
     private void CloseCreate() { _showCreate = false; _createError = null; }
 
     private async Task CreatePassAsync()
@@ -254,7 +298,8 @@
         _createError = null;
         try
         {
-            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, null));
+            var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
+            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, null, buyer, AdminUser));
             _showCreate = false;
             await ReloadPassesAsync();
         }

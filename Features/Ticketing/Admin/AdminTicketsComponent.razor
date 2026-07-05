@@ -67,10 +67,12 @@
                     <thead>
                         <tr>
                             <th>Nr.</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
+                            <th>Erstellt von</th>
                             <th>Ticket-ID</th>
                             <th class="ta-col-actions"></th>
                         </tr>
@@ -81,6 +83,17 @@
                         {
                             <tr>
                                 <td>@i</td>
+                                <td class="ta-cell-name">
+                                    @if (t.Buyer is not null)
+                                    {
+                                        @t.Buyer.DisplayName
+                                        <span class="ta-badge ta-badge-buyer">@t.Buyer.Type.DisplayName()</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">—</span>
+                                    }
+                                </td>
                                 <td>@t.Category.DisplayName()</td>
                                 <td class="ta-num">CHF @t.Price.ToString("N2")</td>
                                 <td>
@@ -103,6 +116,7 @@
                                         <span class="ta-badge ta-badge-draft">Offen</span>
                                     }
                                 </td>
+                                <td>@(string.IsNullOrEmpty(t.CreatedByName) ? "—" : t.CreatedByName)</td>
                                 <td class="ta-mono">@ShortId(t.Uuid)</td>
                                 <td class="ta-col-actions">
                                     <a class="ta-qr-link" href="/ticket/for/@t.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
@@ -128,6 +142,31 @@
     <div class="ta-overlay" @onmousedown="CloseCreate">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Ticket erstellen</h2>
+            <div class="ta-field">
+                <label class="ta-label" for="newBuyerType">Käufer:in</label>
+                <select id="newBuyerType" class="ta-select" @bind="_newBuyerType">
+                    <option value="@BuyerType.Private">Privatperson</option>
+                    <option value="@BuyerType.Company">Firma</option>
+                </select>
+            </div>
+            @if (_newBuyerType == BuyerType.Company)
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="newCompany">Firmenname</label>
+                    <input id="newCompany" class="ta-input" @bind="_newCompany" />
+                </div>
+            }
+            else
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="newFirstName">Vorname</label>
+                    <input id="newFirstName" class="ta-input" @bind="_newFirstName" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="newLastName">Nachname</label>
+                    <input id="newLastName" class="ta-input" @bind="_newLastName" />
+                </div>
+            }
             <div class="ta-field">
                 <label class="ta-label" for="newCategory">Kategorie</label>
                 <select id="newCategory" class="ta-select" @bind="_newCategory">
@@ -226,6 +265,10 @@
     private bool _showCreate;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private decimal _newPrice;
+    private BuyerType _newBuyerType = BuyerType.Private;
+    private string _newFirstName = "";
+    private string _newLastName = "";
+    private string _newCompany = "";
     private string? _createError;
 
     protected override async Task OnInitializedAsync()
@@ -261,6 +304,7 @@
     {
         IEnumerable<EventTicket> q = _sortCol switch
         {
+            "buyer" => _tickets.OrderBy(t => t.Buyer?.DisplayName ?? "", StringComparer.OrdinalIgnoreCase),
             "price" => _tickets.OrderBy(t => t.Price),
             "status" => _tickets.OrderBy(t => t.Status),
             "redeemed" => _tickets.OrderBy(t => t.Redeemed),
@@ -269,7 +313,15 @@
         return _sortAsc ? q : q.Reverse();
     }
 
-    private void OpenCreate() { _newCategory = TicketCategory.Adult; _newPrice = 0m; _createError = null; _showCreate = true; }
+    private void OpenCreate()
+    {
+        _newCategory = TicketCategory.Adult;
+        _newPrice = 0m;
+        _newBuyerType = BuyerType.Private;
+        _newFirstName = _newLastName = _newCompany = "";
+        _createError = null;
+        _showCreate = true;
+    }
     private void CloseCreate() => _showCreate = false;
 
     private async Task CreateTicketAsync()
@@ -278,7 +330,8 @@
         if (_newPrice < 0) { _createError = "Der Abgabepreis darf nicht negativ sein."; return; }
         try
         {
-            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, null));
+            var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
+            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, null, buyer, AdminUser));
         }
         catch (DomainException ex) { _createError = ex.Message; return; }
         _showCreate = false;
@@ -315,7 +368,8 @@
         {
             var redeemed = RedeemedOnlyIfValid(_editStatus, _editRedeemed);
             await Tickets.SaveAsync(EventTicket.FromPersistence(_editing.Id, _editing.Uuid, _editing.EventId,
-                _editCategory, decimal.Round(_editPrice, 2), _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed));
+                _editCategory, decimal.Round(_editPrice, 2), _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed,
+                _editing.Buyer, _editing.CreatedByName));
             _editing = null;
             await ReloadTicketsAsync();
         }

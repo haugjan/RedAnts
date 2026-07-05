@@ -127,6 +127,7 @@
             </div>
             <p class="ta-summary">
                 @_tickets.Count Flextickets · @_tickets.Count(t => t.Redeemed) eingelöst · @_tickets.Count(t => t.Status == TicketStatus.Blocked) gesperrt
+                @if (SelectedBundle is { CreatedByName: { Length: > 0 } by }) { <text> · erstellt von @by</text> }
             </p>
         }
     }
@@ -307,7 +308,7 @@
                 _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
                 return;
             }
-            var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity);
+            var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity, AdminUser);
             _showCreate = false;
             _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
             SelectedBundleId = created.Id;
