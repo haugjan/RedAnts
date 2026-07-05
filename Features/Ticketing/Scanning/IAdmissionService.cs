@@ -34,7 +34,7 @@ public interface IAdmissionService
 
     Task<ScanOutcome> ScanCodeAsync(int eventId, string shortCode, ScanMode mode, string? scannedBy);
 
-    Task<ScanOutcome> GrantFreeEntryAsync(int eventId, string? scannedBy);
+    Task<ScanOutcome> GrantFreeEntryAsync(int eventId, FreeEntryType type, string? scannedBy);
 
-    Task<ScanOutcome> RevokeFreeEntryAsync(int eventId, string? scannedBy);
+    Task<ScanOutcome> RevokeFreeEntryAsync(int eventId, FreeEntryType type, string? scannedBy);
 }

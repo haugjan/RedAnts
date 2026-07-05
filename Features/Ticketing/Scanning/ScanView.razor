@@ -77,11 +77,14 @@
         <div class="scan-confirm" @onclick="() => _confirmFreeGrant = null">
             <div class="scan-confirm__box" @onclick:stopPropagation="true">
                 <p class="scan-confirm__question">
-                    @(grant ? "Freien Einlass gewähren?" : "Einen freien Einlass zurücknehmen?")
+                    @(grant ? "Freien Einlass gewähren als:" : "Freien Einlass zurücknehmen von:")
                 </p>
-                <div class="scan-confirm__actions">
+                <div class="scan-confirm__actions scan-confirm__actions--stack">
+                    <button type="button" class="scan-confirm__btn scan-confirm__btn--yes"
+                            @onclick="() => ConfirmFreeAsync(FreeEntryType.Official)">@FreeEntryType.Official.DisplayName()</button>
+                    <button type="button" class="scan-confirm__btn scan-confirm__btn--yes"
+                            @onclick="() => ConfirmFreeAsync(FreeEntryType.SwissUnihockeyFreeCard)">@FreeEntryType.SwissUnihockeyFreeCard.DisplayName()</button>
                     <button type="button" class="scan-confirm__btn" @onclick="() => _confirmFreeGrant = null">Abbrechen</button>
-                    <button type="button" class="scan-confirm__btn scan-confirm__btn--yes" @onclick="ConfirmFreeAsync">Ja</button>
                 </div>
             </div>
         </div>
@@ -129,50 +132,51 @@
     .scan-view--out { --scan-accent: #1f5fbf; }
 
     .scan-mode {
-        display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0 0.6rem;
-        padding: 0.7rem 1rem; border-radius: 12px; color: #fff; background: var(--scan-accent);
+        display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0 0.35rem;
+        padding: 0.4rem 0.8rem; border-radius: 10px; color: #fff; background: var(--scan-accent);
     }
-    .scan-mode__icon { font-size: 1.5rem; line-height: 1; }
-    .scan-mode__label { font-size: 1.25rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
-    .scan-mode__who { margin-left: auto; font-size: 0.85rem; opacity: 0.9; }
+    .scan-mode__icon { font-size: 1.15rem; line-height: 1; }
+    .scan-mode__label { font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+    .scan-mode__who { margin-left: auto; font-size: 0.75rem; opacity: 0.9; }
 
-    .qr-reader { border: 3px solid var(--scan-accent); border-radius: 12px; overflow: hidden; }
+    .qr-reader { border: 3px solid var(--scan-accent); border-radius: 12px; overflow: hidden; max-height: 34vh; }
+    .qr-reader video { max-height: calc(34vh - 6px); object-fit: cover; }
 
     .scan-cap {
-        display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
-        margin: 0.4rem 0 0.8rem; padding: 0.6rem 1rem; border-radius: 10px;
+        display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 0.5rem;
+        margin: 0.3rem 0 0.4rem; padding: 0.3rem 0.8rem; border-radius: 8px;
         background: #e7f6ec; color: #1a7f37;
     }
     .scan-cap--full { background: #fdeaea; color: #b42318; }
-    .scan-cap__free { font-size: 1.5rem; font-weight: 800; line-height: 1; }
-    .scan-cap__sub { font-size: 0.8rem; opacity: 0.85; }
+    .scan-cap__free { font-size: 1.1rem; font-weight: 800; line-height: 1; }
+    .scan-cap__sub { font-size: 0.75rem; opacity: 0.85; }
 
-    .scan-manual { display: flex; gap: 0.5rem; margin: 0.8rem 0 0; }
+    .scan-manual { display: flex; gap: 0.4rem; margin: 0.45rem 0 0; }
     .scan-manual__input {
-        flex: 1 1 auto; padding: 0.7rem 0.8rem; font-size: 1.05rem; letter-spacing: 0.12em;
+        flex: 1 1 auto; padding: 0.45rem 0.7rem; font-size: 1rem; letter-spacing: 0.12em;
         text-transform: uppercase; font-family: ui-monospace, Consolas, monospace;
         border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; min-width: 0;
     }
     .scan-manual__btn {
-        flex: 0 0 auto; padding: 0.7rem 1.1rem; border-radius: 8px; border: none;
-        background: var(--scan-accent); color: #fff; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+        flex: 0 0 auto; padding: 0.45rem 1rem; border-radius: 8px; border: none;
+        background: var(--scan-accent); color: #fff; font-weight: 700; font-size: 0.9rem; cursor: pointer;
     }
     .scan-manual__btn:disabled { opacity: 0.5; cursor: default; }
-    .scan-manual__hint { margin: 0.25rem 0 0; font-size: 0.78rem; color: #888; text-align: center; }
+    .scan-manual__hint { margin: 0.15rem 0 0; font-size: 0.72rem; color: #888; text-align: center; }
 
-    .scan-free { display: flex; gap: 0.6rem; margin: 0.8rem 0 0.2rem; }
+    .scan-free { display: flex; gap: 0.4rem; margin: 0.45rem 0 0.1rem; }
     .scan-free__btn {
-        flex: 1 1 0; padding: 0.7rem 0.5rem; border-radius: 8px; border: 1px solid transparent;
-        font-weight: 700; font-size: 0.95rem; cursor: pointer;
+        flex: 1 1 0; padding: 0.5rem 0.4rem; border-radius: 8px; border: 1px solid transparent;
+        font-weight: 700; font-size: 0.88rem; cursor: pointer;
     }
     .scan-free__btn:disabled { opacity: 0.5; cursor: default; }
     .scan-free__btn--in { background: #1a7f37; color: #fff; }
     .scan-free__btn--out { background: #fff; color: #555; border-color: #ccc; }
-    .scan-free__count { margin: 0 0 0.4rem; font-size: 0.82rem; color: #666; text-align: center; }
+    .scan-free__count { margin: 0 0 0.2rem; font-size: 0.75rem; color: #666; text-align: center; }
 
     .scan-switch {
-        width: 100%; margin: 0.8rem 0 0; padding: 0.85rem; border-radius: 10px; border: 2px solid;
-        font-size: 1rem; font-weight: 800; cursor: pointer; background: #fff;
+        width: 100%; margin: 0.45rem 0 0; padding: 0.55rem; border-radius: 10px; border: 2px solid;
+        font-size: 0.92rem; font-weight: 800; cursor: pointer; background: #fff;
     }
     .scan-switch--toout { color: #1f5fbf; border-color: #1f5fbf; }
     .scan-switch--toin { color: #1a7f37; border-color: #1a7f37; }
@@ -187,6 +191,7 @@
     }
     .scan-confirm__question { margin: 0 0 1.1rem; font-size: 1.1rem; font-weight: 700; color: #222; }
     .scan-confirm__actions { display: flex; gap: 0.6rem; }
+    .scan-confirm__actions--stack { flex-direction: column; }
     .scan-confirm__btn {
         flex: 1 1 0; padding: 0.75rem; border-radius: 8px; border: 1px solid #ccc;
         background: #fff; color: #555; font-weight: 700; font-size: 0.95rem; cursor: pointer;
@@ -297,7 +302,7 @@
         finally { _busy = false; }
     }
 
-    private async Task ConfirmFreeAsync()
+    private async Task ConfirmFreeAsync(FreeEntryType type)
     {
         if (_confirmFreeGrant is not { } grant || _busy) return;
         _confirmFreeGrant = null;
@@ -305,8 +310,8 @@
         try
         {
             _last = grant
-                ? await Admission.GrantFreeEntryAsync(EventId, Operator)
-                : await Admission.RevokeFreeEntryAsync(EventId, Operator);
+                ? await Admission.GrantFreeEntryAsync(EventId, type, Operator)
+                : await Admission.RevokeFreeEntryAsync(EventId, type, Operator);
             _occupancy = _last.Occupancy;
             await Beep(_last.Ok);
         }

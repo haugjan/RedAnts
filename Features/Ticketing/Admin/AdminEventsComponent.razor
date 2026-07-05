@@ -141,6 +141,12 @@
                 <p class="ta-field-hint">Leer lassen für unbegrenzt.</p>
             </div>
 
+            <div class="ta-field">
+                <label class="ta-label" for="editSuQuota">SU-Freieintritt-Kontingent</label>
+                <input id="editSuQuota" type="number" min="0" step="1" class="ta-input" placeholder="Unbegrenzt" @bind="_editSuQuota" />
+                <p class="ta-field-hint">Maximale Anzahl Swiss-Unihockey-Freieintritte für diesen Anlass.</p>
+            </div>
+
             @if (_editError is not null)
             {
                 <p class="ta-modal-error">@_editError</p>
@@ -204,6 +210,7 @@
     [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
     [Inject] private IEventStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private IEventAdmissionQuota QuotaEditor { get; set; } = default!;
+    [Inject] private ISuFreeEntryQuota SuQuota { get; set; } = default!;
     [Inject] private IEventPrices Prices { get; set; } = default!;
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
     [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
@@ -310,14 +317,16 @@
     private Event? _editing;
     private EventStatus _editStatus;
     private int? _editQuota;
+    private int? _editSuQuota;
     private bool _saving;
     private string? _editError;
 
-    private void OpenEdit(Event e)
+    private async Task OpenEdit(Event e)
     {
         _editing = e;
         _editStatus = e.Status;
         _editQuota = Quota(e.Id);
+        _editSuQuota = await SuQuota.GetAsync(e.Id);
         _editError = null;
     }
 
@@ -327,12 +336,14 @@
     {
         if (_editing is null) return;
         if (_editQuota is < 0) { _editError = "Einlasskontingent darf nicht negativ sein."; return; }
+        if (_editSuQuota is < 0) { _editError = "SU-Freieintritt-Kontingent darf nicht negativ sein."; return; }
         _saving = true;
         _editError = null;
         try
         {
             await StatusEditor.SetStatusAsync(_editing.Id, _editStatus);
             await QuotaEditor.SetAsync(_editing.Id, _editQuota);
+            await SuQuota.SetAsync(_editing.Id, _editSuQuota);
             _editing = null;
             await ReloadEventsAsync();
         }

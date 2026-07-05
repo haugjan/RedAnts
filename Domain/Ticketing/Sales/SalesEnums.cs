@@ -71,6 +71,18 @@ public static class BuyerTypeExtensions
     };
 }
 
+public static class FreeEntryTypeExtensions
+{
+    public static string DisplayName(this FreeEntryType type) => type switch
+    {
+        FreeEntryType.Player => "Spieler:in",
+        FreeEntryType.Staff => "Staff",
+        FreeEntryType.Official => "Funktionär",
+        FreeEntryType.SwissUnihockeyFreeCard => "SU-Freieintritt",
+        _ => type.ToString()
+    };
+}
+
 public static class TicketStatusExtensions
 {
     public static string DisplayName(this TicketStatus status) => status switch

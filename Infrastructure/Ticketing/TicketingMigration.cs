@@ -35,6 +35,7 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<EventVisitRecord>("TicketEventVisits");
         EnsureTable<EventVisitLogRecord>("TicketEventVisitsLogs");
         EnsureTable<EventFreeEntryRecord>("TicketEventFreeEntries");
+        EnsureTable<EventFreeEntryQuotaRecord>("TicketEventFreeEntryQuotas");
 
         EnsureTable<FlexTicketBundleRecord>("FlexTicketBundles");
 

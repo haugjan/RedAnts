@@ -155,3 +155,13 @@ public class EventFreeEntryRecord
     [Column("VisitId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public long VisitId { get; set; }
     [Column("FreeEntryType")] [NullSetting(NullSetting = NullSettings.NotNull)] public int FreeEntryType { get; set; }
 }
+
+[TableName("TicketEventFreeEntryQuotas")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class EventFreeEntryQuotaRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public int EventId { get; set; }
+    [Column("SuQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? SuQuota { get; set; }
+}

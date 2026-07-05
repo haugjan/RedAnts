@@ -62,6 +62,7 @@
                     <thead>
                         <tr>
                             <th>Nr.</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("inside")'>Anwesend <span class="ta-sort-ind">@Ind("inside")</span></th>
                         </tr>
@@ -71,6 +72,7 @@
                         {
                             <tr>
                                 <td class="ta-mono">@AdminFormat.TicketNo(entry.Uuid)</td>
+                                <td>@(entry.Category?.DisplayName() ?? "—")</td>
                                 <td title="@AdminFormat.CreatedTooltip(entry.CreatedAt, entry.GrantedBy, null, null)">
                                     @AdminFormat.CreatedShort(entry.CreatedAt, entry.GrantedBy, null)
                                 </td>
@@ -147,6 +149,7 @@
         IEnumerable<FreeEntryListItem> q = _sortCol switch
         {
             "inside" => _entries.OrderBy(e => e.IsInside),
+            "category" => _entries.OrderBy(e => e.Category),
             _ => _entries.OrderBy(e => e.CreatedAt),
         };
         return _sortAsc ? q : q.Reverse();
