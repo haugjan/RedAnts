@@ -223,12 +223,28 @@ public sealed class TicketingContentTypeSeeder(
 
     private void EnsureSaisonsPromoNode()
     {
+        EnsureNodeTemplate(A.RootType, "TicketingHome");
+
         if (contentService.GetRootContent().Any(c => c.ContentType.Alias == A.SaisonsPromoType)) return;
 
         var promo = contentService.Create("Saisons", Constants.System.Root, A.SaisonsPromoType);
         promo.SetValue(A.HeaderText, "Saisonkarten");
         Publish(promo);
         logger.LogInformation("TicketingContentTypeSeeder: created Saisons promo root node.");
+    }
+
+    private void EnsureNodeTemplate(string contentTypeAlias, string templateAlias)
+    {
+        var node = contentService.GetRootContent().FirstOrDefault(c => c.ContentType.Alias == contentTypeAlias);
+        if (node is null || node.TemplateId is not null) return;
+
+        var template = fileService.GetTemplate(templateAlias);
+        if (template is null) return;
+
+        node.TemplateId = template.Id;
+        Publish(node);
+        logger.LogInformation("TicketingContentTypeSeeder: assigned template {Template} to '{Node}'.",
+            templateAlias, node.Name);
     }
 
     private PropertyType Prop(IDataType dataType, string alias, string name) =>
