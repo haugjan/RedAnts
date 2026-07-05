@@ -32,7 +32,7 @@
 |---|---|---|---|---|
 | S1 | `feature/s1-r2-freieinlass-scan` | `C:\development\RedAnts-s1` | Freier Einlass (Kategorien/Kontingente) + Scan-App-Layout | **erledigt, in main gemerged** |
 | S2 | `feature/s2-r2-inline-edit` | `C:\development\RedAnts-s2` | Inline-Edit-Fundament (zuerst!) + Spieltickets + Flextickets | offen |
-| S3 | `feature/s3-r2-verkauf` | `C:\development\RedAnts-s3` | Verkauf-Fixes (Warenkorb mobil, Reihenfolge, Wochentag, Captcha) | offen |
+| S3 | `feature/s3-r2-verkauf` | `C:\development\RedAnts-s3` | Verkauf-Fixes (Warenkorb mobil, Reihenfolge, Wochentag, Captcha) | Branch gepusht: Warenkorb <576px als Karten-Stack, Kategorien vor Maps, `UseRequestLocalization` (Accept-Language: de-CH default, en nur bei englischem Browser), Turnstile-Flow verifiziert + DEV mit Cloudflare-Testkeys. **Prod-Captcha wartet auf echte Keys vom Nutzer.** DEV-Deploy läuft, Merge nach Verifikation |
 | S4 | `feature/s4-r2-saisonkarten` | `C:\development\RedAnts-s4` | Öffentlicher Saisonkarten-Kauf + Saisonkarten-Admin | offen |
 | S5 | `feature/s5-r2-saisons-admin` | `C:\development\RedAnts-s5` | Saisons-Admin komplett (inkl. neues Preismodell + Sonderaktion) | offen |
 | S6 | `feature/s6-r2-anlaesse-mitglieder` | `C:\development\RedAnts-s6` | Anlässe-Admin + Mitgliederkarten | offen |
