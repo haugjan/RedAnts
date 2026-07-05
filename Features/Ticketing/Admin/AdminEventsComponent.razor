@@ -96,6 +96,8 @@
                                 }
                             </td>
                             <td class="ta-col-actions">
+                                <button type="button" class="ta-icon-btn" title="Preise &amp; Kontingente pro Kategorie"
+                                        @onclick="() => OpenPricing(e)">💰</button>
                                 <button type="button" class="ta-icon-btn" title="Status und Kontingent bearbeiten"
                                         @onclick="() => OpenEdit(e)">✎</button>
                             </td>
@@ -147,6 +149,46 @@
     </div>
 }
 
+@if (_pricingEvent is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelPricing">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Preise &amp; Kontingente</h2>
+            <p class="ta-modal-sub">@_pricingEvent.Name · @_pricingEvent.Date.ToString("dd.MM.yyyy")</p>
+
+            <div style="display:grid; grid-template-columns:1.5fr .7fr 1fr 1fr; gap:.4rem .75rem; align-items:center; margin-top:.5rem;">
+                <span class="ta-label">Kategorie</span>
+                <span class="ta-label" style="text-align:center;">Anbieten</span>
+                <span class="ta-label">Preis (CHF)</span>
+                <span class="ta-label">Kontingent</span>
+
+                @foreach (var row in _priceRows)
+                {
+                    <span>@row.Category.DisplayName()</span>
+                    <span style="text-align:center;">
+                        <input type="checkbox" @bind="row.Enabled" />
+                    </span>
+                    <input type="number" min="0" step="0.05" class="ta-input" @bind="row.Price" disabled="@(!row.Enabled)" />
+                    <input type="number" min="0" step="1" class="ta-input" placeholder="∞" @bind="row.Quota" disabled="@(!row.Enabled)" />
+                }
+            </div>
+            <p class="ta-field-hint">„Anbieten" abwählen entfernt die Kategorie aus dem Verkauf. Kontingent leer = unbegrenzt.</p>
+
+            @if (_pricingError is not null)
+            {
+                <p class="ta-modal-error">@_pricingError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelPricing" disabled="@_pricingSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SavePricing" disabled="@_pricingSaving">
+                    @(_pricingSaving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
@@ -155,6 +197,7 @@
     [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
     [Inject] private IEventStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private IEventAdmissionQuota QuotaEditor { get; set; } = default!;
+    [Inject] private IEventPrices Prices { get; set; } = default!;
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
@@ -283,5 +326,58 @@
         }
         catch (Exception ex) { _editError = ex.Message; }
         finally { _saving = false; }
+    }
+
+    private sealed class CategoryRow
+    {
+        public TicketCategory Category { get; init; }
+        public bool Enabled { get; set; }
+        public decimal Price { get; set; }
+        public int? Quota { get; set; }
+    }
+
+    private Event? _pricingEvent;
+    private EventPrice? _pricingExisting;
+    private List<CategoryRow> _priceRows = [];
+    private bool _pricingSaving;
+    private string? _pricingError;
+
+    private async Task OpenPricing(Event e)
+    {
+        _pricingEvent = e;
+        _pricingError = null;
+        _pricingExisting = await Prices.GetByEventAsync(e.Id);
+        var byCategory = (_pricingExisting?.Categories ?? []).ToDictionary(c => c.Category);
+        _priceRows = Enum.GetValues<TicketCategory>()
+            .Select(cat => byCategory.TryGetValue(cat, out var existing)
+                ? new CategoryRow { Category = cat, Enabled = true, Price = existing.SalePrice, Quota = existing.Quota }
+                : new CategoryRow { Category = cat, Enabled = false, Price = 0m, Quota = null })
+            .ToList();
+    }
+
+    private void CancelPricing() { _pricingEvent = null; _pricingError = null; }
+
+    private async Task SavePricing()
+    {
+        if (_pricingEvent is null) return;
+        _pricingSaving = true;
+        _pricingError = null;
+        try
+        {
+            var categories = _priceRows
+                .Where(r => r.Enabled)
+                .Select(r => CategoryPrice.Create(r.Category, r.Price, r.Quota))
+                .ToList();
+            var price = EventPrice.FromPersistence(
+                _pricingExisting?.Id ?? 0,
+                _pricingEvent.Id,
+                _pricingExisting?.TotalSalesQuota,
+                _pricingExisting?.AdmissionQuota,
+                categories);
+            await Prices.SaveAsync(price);
+            _pricingEvent = null;
+        }
+        catch (Exception ex) { _pricingError = ex.Message; }
+        finally { _pricingSaving = false; }
     }
 }
