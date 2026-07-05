@@ -189,7 +189,7 @@ public sealed class AdmissionService(
         var row = new EventVisitRecord
         {
             EventId = eventId, TicketType = (int)TicketType.FreeEntry, TicketUuid = null,
-            IsInside = true, CreatedAt = DateTime.UtcNow
+            IsInside = true, CreatedAt = DateTime.UtcNow, Uuid = Guid.NewGuid().ToString()
         };
         await db.InsertAsync(row);
         await LogAsync(db, row.Id, AdmissionOutcome.CheckedIn, scannedBy);

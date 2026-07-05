@@ -1,0 +1,167 @@
+@using RedAnts.Domain.Ticketing
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+
+<section class="ta-page">
+    <h1 class="ta-page-title">@TicketType.FreeEntry.DisplayName()</h1>
+    <p class="ta-page-lead">Spontan gewährte freie Einlässe eines Anlasses (Spieler:innen, Staff, Funktionäre).</p>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="feSeasonSelect">Saison</label>
+                    <select id="feSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="feEventSelect">Anlass</label>
+                    <select id="feEventSelect" class="ta-select" disabled="@(_events.Count == 0)"
+                            @bind="SelectedEventId" @bind:after="ReloadEntriesAsync">
+                        @if (_events.Count == 0)
+                        {
+                            <option value="0">— keine Anlässe —</option>
+                        }
+                        else
+                        {
+                            @foreach (var e in _events)
+                            {
+                                <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        @if (SelectedEventId <= 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Anlässe erfasst.</div>
+        }
+        else if (_entries.Count == 0)
+        {
+            <div class="ta-placeholder">Für diesen Anlass wurden keine freien Einlässe gewährt.</div>
+        }
+        else
+        {
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Nr.</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("inside")'>Anwesend <span class="ta-sort-ind">@Ind("inside")</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Sorted())
+                        {
+                            <tr>
+                                <td class="ta-mono">@AdminFormat.TicketNo(entry.Uuid)</td>
+                                <td title="@AdminFormat.CreatedTooltip(entry.CreatedAt, entry.GrantedBy, null, null)">
+                                    @AdminFormat.CreatedShort(entry.CreatedAt, entry.GrantedBy, null)
+                                </td>
+                                <td>
+                                    @if (entry.IsInside)
+                                    {
+                                        <span class="ta-badge ta-badge-valid">Drinnen</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-badge ta-badge-draft">Draussen</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="ta-summary">
+                @_entries.Count @(_entries.Count == 1 ? "freier Einlass" : "freie Einlässe") · @_entries.Count(e => e.IsInside) drinnen
+            </p>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private IFreeEntryAdminReport Report { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<Event> _events = [];
+    private IReadOnlyList<FreeEntryListItem> _entries = [];
+
+    public int SelectedSeasonId { get; set; }
+    public int SelectedEventId { get; set; }
+
+    private string _sortCol = "created";
+    private bool _sortAsc = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await OnSeasonChangedAsync();
+        _loading = false;
+    }
+
+    private async Task OnSeasonChangedAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        _events = SelectedSeasonId > 0
+            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
+            : [];
+        SelectedEventId = DefaultEvent(_events)?.Id ?? 0;
+        await ReloadEntriesAsync();
+    }
+
+    private async Task ReloadEntriesAsync()
+    {
+        _entries = SelectedEventId > 0 ? await Report.GetByEventAsync(SelectedEventId) : [];
+    }
+
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<FreeEntryListItem> Sorted()
+    {
+        IEnumerable<FreeEntryListItem> q = _sortCol switch
+        {
+            "inside" => _entries.OrderBy(e => e.IsInside),
+            _ => _entries.OrderBy(e => e.CreatedAt),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static Event? DefaultEvent(IReadOnlyList<Event> events)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
+    }
+}

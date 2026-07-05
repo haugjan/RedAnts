@@ -131,6 +131,7 @@ public class EventVisitRecord
     [Column("TicketUuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] [Index(IndexTypes.NonClustered)] public string? TicketUuid { get; set; }
     [Column("IsInside")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool IsInside { get; set; }
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("Uuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] public string? Uuid { get; set; }
 }
 
 [TableName("TicketEventVisitsLogs")]
