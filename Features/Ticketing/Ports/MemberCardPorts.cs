@@ -11,5 +11,5 @@ public sealed record MemberImportRow(string? LastName, string? FirstName, DateOn
 public interface IMemberCards
 {
     /// <summary>Creates one member card per row; returns the number created.</summary>
-    Task<int> ImportAsync(int seasonId, TicketCategory category, string? reference, IReadOnlyList<MemberImportRow> rows);
+    Task<int> ImportAsync(int seasonId, MemberCategory category, string? reference, IReadOnlyList<MemberImportRow> rows);
 }

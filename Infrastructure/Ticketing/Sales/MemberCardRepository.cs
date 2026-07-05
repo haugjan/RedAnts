@@ -10,7 +10,7 @@ namespace RedAnts.Infrastructure.Ticketing.Sales;
 /// category and optional reference; missing personal fields are stored as null.</summary>
 public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMemberCards
 {
-    public async Task<int> ImportAsync(int seasonId, TicketCategory category, string? reference, IReadOnlyList<MemberImportRow> rows)
+    public async Task<int> ImportAsync(int seasonId, MemberCategory category, string? reference, IReadOnlyList<MemberImportRow> rows)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (rows.Count == 0) return 0;

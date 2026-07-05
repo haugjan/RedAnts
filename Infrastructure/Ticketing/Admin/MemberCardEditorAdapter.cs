@@ -13,7 +13,7 @@ namespace RedAnts.Infrastructure.Ticketing.Admin;
 public sealed class MemberCardEditorAdapter(IScopeProvider scopeProvider) : IMemberCardEditor
 {
     public async Task SetDetailsAsync(Guid uuid, string? firstName, string? lastName, DateOnly? birthday,
-        TicketCategory category, TicketStatus status, string? reference)
+        MemberCategory category, TicketStatus status, string? reference)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await scope.Database.ExecuteAsync(

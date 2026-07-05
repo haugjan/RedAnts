@@ -55,6 +55,7 @@
         .wt-head--free   { background: #6B4EA0; }
         .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .9rem 1.4rem 0; }
         .wt-logos img { height: 46px; width: auto; object-fit: contain; }
+        .wt-logos--member img { height: 68px; }
         .wt-vs { font-family: var(--ra-display); font-weight: 700; text-transform: uppercase; color: #999; font-size: .9rem; }
         .wt-qr { padding: 1rem 1.4rem .5rem; text-align: center; }
         .wt-qr svg { width: 210px; max-width: 60%; height: auto; }
@@ -99,6 +100,13 @@
                         @if (!string.IsNullOrEmpty(Model.HomeLogo)) { <img src="@Model.HomeLogo" alt="Heimteam" /> }
                         <span class="wt-vs">vs</span>
                         @if (!string.IsNullOrEmpty(Model.AwayLogo)) { <img src="@Model.AwayLogo" alt="Auswärtsteam" /> }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.MemberLogoUrl))
+                {
+                    <div class="wt-logos wt-logos--member">
+                        <img src="@Model.MemberLogoUrl" alt="@Model.CategoryLabel" />
                     </div>
                 }
 

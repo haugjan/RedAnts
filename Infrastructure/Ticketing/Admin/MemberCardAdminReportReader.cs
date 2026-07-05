@@ -31,7 +31,7 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             c.FirstName,
             c.LastName,
             c.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
-            (TicketCategory)c.Category,
+            (MemberCategory)c.Category,
             (TicketStatus)c.Status,
             c.CreatedAt,
             visits.GetValueOrDefault(c.Uuid ?? ""),

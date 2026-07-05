@@ -38,8 +38,9 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
             var holder = string.Join(' ', new[] { card.FirstName, card.LastName }
                 .Where(s => !string.IsNullOrWhiteSpace(s)));
             return new IssuedTicket(TicketType.MemberCard, uuid, card.SeasonId,
-                (TicketCategory)card.Category, (TicketStatus)card.Status, card.CreatedAt,
-                string.IsNullOrWhiteSpace(holder) ? null : holder);
+                null, (TicketStatus)card.Status, card.CreatedAt,
+                string.IsNullOrWhiteSpace(holder) ? null : holder,
+                (MemberCategory)card.Category);
         }
 
         return null;

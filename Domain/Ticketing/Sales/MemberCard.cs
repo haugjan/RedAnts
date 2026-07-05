@@ -9,7 +9,7 @@ public sealed class MemberCard
     public int Id { get; private set; }
     public Guid Uuid { get; private set; }
     public int SeasonId { get; private set; }
-    public TicketCategory Category { get; private set; }
+    public MemberCategory Category { get; private set; }
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -20,7 +20,7 @@ public sealed class MemberCard
 
     public string HolderName => $"{FirstName} {LastName}".Trim();
 
-    private MemberCard(int id, Guid uuid, int seasonId, TicketCategory category,
+    private MemberCard(int id, Guid uuid, int seasonId, MemberCategory category,
         int? orderId, TicketStatus status, DateTime createdAt, string? firstName, string? lastName,
         DateOnly? birthday, string? reference)
     {
@@ -37,7 +37,7 @@ public sealed class MemberCard
         Reference = reference;
     }
 
-    public static MemberCard Create(int seasonId, TicketCategory category, string? firstName, string? lastName,
+    public static MemberCard Create(int seasonId, MemberCategory category, string? firstName, string? lastName,
         DateOnly? birthday, string? reference = null, int? orderId = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
@@ -45,7 +45,7 @@ public sealed class MemberCard
             orderId, TicketStatus.Valid, DateTime.UtcNow, Clean(firstName), Clean(lastName), birthday, Clean(reference));
     }
 
-    public static MemberCard FromPersistence(int id, Guid uuid, int seasonId, TicketCategory category,
+    public static MemberCard FromPersistence(int id, Guid uuid, int seasonId, MemberCategory category,
         int? orderId, TicketStatus status, DateTime createdAt, string? firstName, string? lastName,
         DateOnly? birthday, string? reference) =>
         new(id, uuid, seasonId, category, orderId, status, createdAt, firstName, lastName, birthday, Clean(reference));

@@ -41,10 +41,11 @@ public sealed record IssuedTicket(
     TicketType Type,
     Guid Uuid,
     int ScopeId,
-    TicketCategory Category,
+    TicketCategory? Category,
     TicketStatus Status,
     DateTime CreatedAt,
-    string? HolderName);
+    string? HolderName,
+    MemberCategory? MemberCategory = null);
 
 /// <summary>Read-only lookup of an issued ticket by its Uuid. Probes the ticket tables directly
 /// (own S3 slice) so it does not depend on the per-type sales repositories.</summary>

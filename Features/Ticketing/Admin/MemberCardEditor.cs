@@ -8,5 +8,5 @@ namespace RedAnts.Features.Ticketing.Admin;
 public interface IMemberCardEditor
 {
     Task SetDetailsAsync(Guid uuid, string? firstName, string? lastName, DateOnly? birthday,
-        TicketCategory category, TicketStatus status, string? reference);
+        MemberCategory category, TicketStatus status, string? reference);
 }

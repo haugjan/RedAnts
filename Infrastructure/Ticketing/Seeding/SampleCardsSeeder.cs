@@ -40,11 +40,11 @@ public sealed class SampleCardsSeeder(
 
     // Sample member-card holders. Name/birthday are optional (revDSG minimization); one is left blank
     // on purpose to exercise the anonymous case.
-    private static readonly (TicketCategory Category, string? First, string? Last, DateOnly? Birthday)[] SampleMembers =
+    private static readonly (MemberCategory Category, string? First, string? Last, DateOnly? Birthday)[] SampleMembers =
     [
-        (TicketCategory.Adult, "Anna", "Muster", new DateOnly(1990, 5, 14)),
-        (TicketCategory.Youth, "Ben", "Beispiel", new DateOnly(2009, 11, 2)),
-        (TicketCategory.Child, null, null, null),
+        (MemberCategory.RedAnts, "Anna", "Muster", new DateOnly(1990, 5, 14)),
+        (MemberCategory.Block4, "Ben", "Beispiel", new DateOnly(2009, 11, 2)),
+        (MemberCategory.RedAnts, null, null, null),
     ];
 
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken cancellationToken)

@@ -56,12 +56,13 @@ public sealed class WebTicketController(
             TypeLabel: TypeLabel(data.Type),
             ScopeName: scopeName,
             DateText: dateText,
-            CategoryLabel: issued?.Category.DisplayName(),
+            CategoryLabel: issued is null ? null : (issued.Category?.DisplayName() ?? issued.MemberCategory?.DisplayName()),
             HolderName: issued?.HolderName,
             TicketRef: data.Uuid.ToString("N")[..8].ToUpperInvariant(),
             QrSvg: svg,
             HomeLogo: homeLogo,
-            AwayLogo: awayLogo);
+            AwayLogo: awayLogo,
+            MemberLogoUrl: issued?.MemberCategory is { } mc ? MemberLogo(mc) : null);
 
         return View("~/Views/WebTicket.cshtml", model);
     }
@@ -86,6 +87,14 @@ public sealed class WebTicketController(
         TicketType.FreeEntry => "Freier Eintritt",
         _ => "Ticket"
     };
+
+    /// <summary>Logo shown on a member card, chosen by its member category.</summary>
+    private static string MemberLogo(MemberCategory category) => category switch
+    {
+        MemberCategory.RedAnts => "/img/members/red-ants.webp",
+        MemberCategory.Block4 => "/img/members/block4.webp",
+        _ => "/img/members/red-ants.webp"
+    };
 }
 
 /// <summary>View data for <c>Views/WebTicket.cshtml</c>.</summary>
@@ -100,7 +109,8 @@ public sealed record WebTicketViewModel(
     string TicketRef,
     string QrSvg,
     string? HomeLogo = null,
-    string? AwayLogo = null)
+    string? AwayLogo = null,
+    string? MemberLogoUrl = null)
 {
     public static WebTicketViewModel Invalid() =>
         new(false, false, "Ticket", "", null, null, null, "", "");
