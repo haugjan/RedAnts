@@ -78,7 +78,19 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
 
     app.Use(async (context, next) =>
     {
-        if (context.Request.Path.StartsWithSegments("/umbraco"))
+        // The Umbraco backoffice has its own login, and its Blazor-Server admin dashboard pulls in
+        // resources that live OUTSIDE /umbraco. If the Basic gate 401s those, the backoffice login
+        // loops or the dashboard iframe re-prompts for Basic. Let the backoffice-internal paths
+        // through so Umbraco's own auth governs them:
+        //   /umbraco            backoffice SPA + management API (Bearer-authenticated)
+        //   /admin/ticketing    the admin dashboard host page (TicketingAdminController is [Authorize] back office)
+        //   /_blazor,/_framework Blazor Server SignalR hub + framework script the dashboard needs
+        // None of these are used by the public site. /admin/mitglieder/* stays gated on purpose —
+        // its export controller carries no auth of its own, so the Basic gate is its only guard.
+        if (context.Request.Path.StartsWithSegments("/umbraco")
+            || context.Request.Path.StartsWithSegments("/admin/ticketing")
+            || context.Request.Path.StartsWithSegments("/_blazor")
+            || context.Request.Path.StartsWithSegments("/_framework"))
         {
             await next();
             return;
