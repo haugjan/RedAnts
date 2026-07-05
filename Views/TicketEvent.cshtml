@@ -138,16 +138,6 @@ else
                 }
             </div>
 
-            @if (venue is not null)
-            {
-                var mapQuery = Uri.EscapeDataString(venue.Name + ", Winterthur");
-                <div class="evt-map">
-                    <iframe src="https://www.google.com/maps?q=@mapQuery&output=embed"
-                            loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-                            title="Karte @venue.Name"></iframe>
-                </div>
-            }
-
             @if (!string.IsNullOrEmpty(homeLogo) || !string.IsNullOrEmpty(awayLogo))
             {
                 <div class="evt-logos">
@@ -202,6 +192,16 @@ else
                 }
                 <a href="/warenkorb" class="evt-continue" id="evt-continue">Weiter zum Warenkorb &rarr;</a>
             </div>
+
+            @if (venue is not null)
+            {
+                var mapQuery = Uri.EscapeDataString(venue.Name + ", Winterthur");
+                <div class="evt-map">
+                    <iframe src="https://www.google.com/maps?q=@mapQuery&output=embed"
+                            loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                            title="Karte @venue.Name"></iframe>
+                </div>
+            }
         </div>
     </main>
 }

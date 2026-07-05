@@ -4,6 +4,30 @@
     ViewData["Title"] = "Warenkorb";
 }
 
+<style>
+    @@media (max-width: 575px) {
+        .cart-table thead, .cart-table tfoot { display: none; }
+        .cart-table, .cart-table tbody, .cart-table tbody tr, .cart-table tbody td { display: block; width: 100%; }
+        .cart-table tbody tr {
+            position: relative; background: #fff; border: 1px solid #e9e9eb; border-radius: 10px;
+            padding: .65rem .85rem; margin-bottom: .8rem;
+        }
+        .cart-table tbody td { border: 0; padding: .18rem 0; white-space: normal; }
+        .cart-table td.cart-name { font-weight: 700; padding-right: 2.4rem; font-size: 1.02rem; }
+        .cart-table td[data-label] { display: flex; justify-content: space-between; align-items: center; gap: .8rem; }
+        .cart-table td[data-label]::before { content: attr(data-label); color: #6b6b6b; font-size: .85rem; }
+        .cart-table td.cart-remove { position: absolute; top: .45rem; right: .55rem; width: auto; padding: 0; }
+        .cart-mobile-total {
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 700; font-size: 1.05rem; padding: .4rem .2rem .2rem;
+            border-top: 2px solid #e9e9eb;
+        }
+    }
+    @@media (min-width: 576px) {
+        .cart-mobile-total { display: none; }
+    }
+</style>
+
 <h1 class="mb-4">Warenkorb</h1>
 
 @if (TempData["CartError"] is string cartError)
@@ -19,7 +43,7 @@
 else
 {
     <div class="table-responsive">
-        <table class="table align-middle">
+        <table class="table align-middle cart-table">
             <thead>
                 <tr>
                     <th>Anlass</th>
@@ -34,10 +58,10 @@ else
                 @foreach (var item in Model.Items)
                 {
                     <tr>
-                        <td>@item.EventName</td>
-                        <td>@item.CategoryName</td>
-                        <td class="text-end">CHF @item.UnitPrice.ToString("N2")</td>
-                        <td>
+                        <td class="cart-name">@item.EventName</td>
+                        <td data-label="Kategorie">@item.CategoryName</td>
+                        <td data-label="Preis" class="text-end">CHF @item.UnitPrice.ToString("N2")</td>
+                        <td data-label="Menge">
                             <form method="post" action="/warenkorb/update" class="d-flex gap-1">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="key" value="@item.Key" />
@@ -46,8 +70,8 @@ else
                                        onchange="this.form.submit()" />
                             </form>
                         </td>
-                        <td class="text-end">CHF @item.LineTotal.ToString("N2")</td>
-                        <td class="text-end">
+                        <td data-label="Total" class="text-end">CHF @item.LineTotal.ToString("N2")</td>
+                        <td class="cart-remove text-end">
                             <form method="post" action="/warenkorb/remove">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="key" value="@item.Key" />
@@ -66,6 +90,8 @@ else
             </tfoot>
         </table>
     </div>
+
+    <div class="cart-mobile-total"><span>Gesamt</span><span>CHF @Model.TotalAmount.ToString("N2")</span></div>
 
     <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mt-3">
         <a href="/" class="btn btn-outline-secondary">Weiter einkaufen</a>
