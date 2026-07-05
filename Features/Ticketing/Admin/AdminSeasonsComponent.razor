@@ -11,12 +11,25 @@
     {
         <p class="ta-muted-text">Wird geladen …</p>
     }
-    else if (_seasons.Count == 0)
-    {
-        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
-    }
     else
     {
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters"></div>
+            <div class="ta-toolbar-actions">
+                @if (_createSeasonUrl is not null)
+                {
+                    <a class="ta-btn ta-btn-ghost" href="@_createSeasonUrl" target="_blank" rel="noopener"
+                       title="Öffnet das Backoffice-Content mit einer neuen Saison">Saison im Content erstellen</a>
+                }
+            </div>
+        </div>
+
+        @if (_seasons.Count == 0)
+        {
+            <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+        }
+        else
+        {
         <div class="ta-table-wrap">
             <table class="ta-table">
                 <thead>
@@ -71,6 +84,7 @@
             </table>
         </div>
         <p class="ta-summary">@_seasons.Count @(_seasons.Count == 1 ? "Saison" : "Saisons")</p>
+        }
     }
 </section>
 
@@ -148,6 +162,7 @@
     [Inject] private ISeasonPrices SeasonPrices { get; set; } = default!;
     [Inject] private ISeasonStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private ISeasonLinkReader LinkReader { get; set; } = default!;
+    [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -155,6 +170,7 @@
     private IReadOnlyList<Season> _seasons = [];
     private Dictionary<int, SeasonPrice?> _prices = new();
     private IReadOnlyDictionary<int, SeasonLinks> _links = new Dictionary<int, SeasonLinks>();
+    private string? _createSeasonUrl;
 
     protected override async Task OnInitializedAsync() => await ReloadAsync();
 
@@ -162,6 +178,7 @@
     {
         _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         _links = await LinkReader.GetAllAsync();
+        _createSeasonUrl = await CreateLinks.CreateSeasonUrlAsync();
         _prices = new Dictionary<int, SeasonPrice?>();
         foreach (var s in _seasons)
             _prices[s.Id] = await SeasonPrices.GetBySeasonAsync(s.Id);

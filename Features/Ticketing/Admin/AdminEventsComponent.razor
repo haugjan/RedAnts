@@ -26,6 +26,13 @@
                     </select>
                 </div>
             </div>
+            <div class="ta-toolbar-actions">
+                @if (_createEventUrl is not null)
+                {
+                    <a class="ta-btn ta-btn-ghost" href="@_createEventUrl" target="_blank" rel="noopener"
+                       title="Öffnet das Backoffice-Content mit einem neuen Anlass in der gewählten Saison">Anlass im Content erstellen</a>
+                }
+            </div>
         </div>
 
         @if (_events.Count == 0)
@@ -199,6 +206,7 @@
     [Inject] private IEventAdmissionQuota QuotaEditor { get; set; } = default!;
     [Inject] private IEventPrices Prices { get; set; } = default!;
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
+    [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
@@ -231,6 +239,8 @@
     private EventLinks Links(int eventId) => _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
     private static string QuotaLabel(int? quota) => quota?.ToString("N0") ?? "∞";
 
+    private string? _createEventUrl;
+
     private async Task ReloadEventsAsync()
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
@@ -239,12 +249,14 @@
             _events = await Events.GetBySeasonAsync(SelectedSeasonId);
             _quotas = await QuotaEditor.GetAllAsync();
             _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);
+            _createEventUrl = await CreateLinks.CreateEventUrlAsync(SelectedSeasonId);
         }
         else
         {
             _events = [];
             _quotas = new Dictionary<int, int?>();
             _links = new Dictionary<int, EventLinks>();
+            _createEventUrl = null;
         }
     }
 
