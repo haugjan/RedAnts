@@ -151,7 +151,7 @@ Mitgliederkarten:
 
 ---
 
-## Nachtrag Runde 2: Abendkasse-Express (vom Nutzer freigegeben)
+## Nachtrag Runde 2: Abendkasse-Express (vom Nutzer freigegeben) — KOMPLETT ERLEDIGT (alle drei Teile von S1 umgesetzt, in main: `dabe143` + `8ffeaf6`)
 
 Ziel: An der Abendkasse scannt jemand ein fixes QR-Plakat und kommt in wenigen Schritten zum
 Ticket, ohne dass Bestell-Informationen verloren gehen.
