@@ -88,9 +88,9 @@ public static class TicketCategoryExtensions
     {
         TicketCategory.Adult => "Erwachsen",
         TicketCategory.AdultReduced => "Erwachsen reduziert",
-        TicketCategory.Youth => "Jugend",
+        TicketCategory.Youth => "Jugend (bis 16)",
         TicketCategory.YouthReduced => "Jugend reduziert",
-        TicketCategory.Child => "Kind",
+        TicketCategory.Child => "Kind (bis 6)",
         _ => category.ToString()
     };
 }
