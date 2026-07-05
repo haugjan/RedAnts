@@ -123,7 +123,7 @@ else
             <div class="evt-facts">
                 <div class="evt-fact">
                     <span class="evt-fact__label">Datum</span>
-                    <span class="evt-fact__value">@start.ToString("dddd, dd.MM.yyyy")</span>
+                    <span class="evt-fact__value">@start.ToString("dddd, dd.MM.yyyy", DisplayCulture.From(Context.Request))</span>
                 </div>
                 <div class="evt-fact">
                     <span class="evt-fact__label">Zeit</span>

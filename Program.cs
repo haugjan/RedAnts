@@ -1,6 +1,5 @@
 using System.Globalization;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Features.Ticketing.Cart;
 using RedAnts.Infrastructure.Ticketing;
@@ -50,21 +49,6 @@ umbracoBuilder.Build();
 WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
-
-var displayCultures = new[]
-{
-    new CultureInfo("de-CH"),
-    new CultureInfo("en"),
-    new CultureInfo("en-GB"),
-    new CultureInfo("en-US")
-};
-app.UseRequestLocalization(new RequestLocalizationOptions
-{
-    DefaultRequestCulture = new RequestCulture(swissCulture),
-    SupportedCultures = displayCultures,
-    SupportedUICultures = displayCultures,
-    RequestCultureProviders = [new AcceptLanguageHeaderRequestCultureProvider()]
-});
 
 var gatePassword = app.Configuration["BasicAuth:Password"];
 if (!string.IsNullOrEmpty(gatePassword))
