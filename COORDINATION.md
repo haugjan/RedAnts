@@ -34,7 +34,7 @@
 |---|---|---|---|---|
 | S1 | `feature/s1-scanner-freieinlass` | `C:\development\RedAnts-s1` | Scanner-Umbau + neuer Admin-Tab „Freier Einlass" + Umbenennung | Scanner (Punkte 1–9) + Umbenennung (11) **erledigt, in main gemerged** (`4c915c4`); Admin-Tab (10) wartet auf S2-Fundament |
 | S2 | `feature/s2-admin-table-standard` | `C:\development\RedAnts-s2` | Tabellen-Standard (Fundament) + Spieltickets + Flextickets + Content-Links | offen |
-| S3 | `feature/s3-onlinekarten-mail` | `C:\development\RedAnts-s3` | Online-Karten-Design in Mails + Mailversand komplett + Kategorien mit Alter | offen |
+| S3 | `feature/s3-onlinekarten-mail` | `C:\development\RedAnts-s3` | Online-Karten-Design in Mails + Mailversand komplett + Kategorien mit Alter | Branch gepusht (`1e90958`): Mail-Karten in Online-Optik (Typ-Akzente, Logo im Kopf), QR neu via `/ticket/{token}/qr.png` (Gmail blockt data-URIs), Karten-Körper-Logo raus (Block4-Logo im Titelbalken), Kategorien mit Alter. Azure: `Tickets__QrSecret` auf dev+prod gesetzt (alte Ticket-Links invalid). DEV-Deploy läuft; Merge nach Verifikation |
 | S4 | `feature/s4-kaufen-saisonkarten` | `C:\development\RedAnts-s4` | Kaufen/Warenkorb/Kasse + Saisonkarten-Admin (Bundles etc.) | offen |
 | S5 | `feature/s5-ticketing-startseite` | `C:\development\RedAnts-s5` | Neue öffentliche Struktur (/ticketing/, /saisons/) + Seeder-Bereinigung | offen |
 
@@ -148,5 +148,6 @@ Neueste zuerst. Nur Änderungen eintragen, die andere Sessions betreffen.
 
 | Datum | Session | Was | Auswirkung |
 |---|---|---|---|
+| 05.07.2026 | S3 | **Auf Branch `feature/s3-onlinekarten-mail`** (Merge folgt): (1) `IQrCodeRenderer` hat neu `byte[] RenderPng(content, ppm)`; neuer Endpoint `GET /ticket/{token}/qr.png`. (2) `TicketCategory.DisplayName()`: Jugend → „Jugend (bis 16)", Kind → „Kind (bis 6)" (wirkt überall). (3) `WebTicketViewModel` ohne `MemberLogoUrl` (Logo nur noch im Titelbalken). (4) Azure dev+prod: `Tickets__QrSecret` gesetzt → **bisher erzeugte Ticket-Links/QRs sind ungültig** (Fallback-Key abgelöst); neue Links über `/ticket/for/{uuid}` erzeugen. | Wer `IQrCodeRenderer` mockt/implementiert: neue Methode. Kategorie-Labels ändern sich in allen Tabellen/Karten/Mails automatisch. Alte QR-Ausdrucke aus der Testphase neu erzeugen. |
 | 05.07.2026 | S1 | **Scanner-Contract erweitert** (in main): `Occupancy` hat neu `int FreeInside = 0` (Anzahl freie Einlässe drinnen); `IAdmissionService` hat neu `ScanCodeAsync(eventId, shortCode, mode, scannedBy)` (löst die 8-Zeichen-Ticket-Nr. über alle vier Ticket-Tabellen per `Uuid LIKE 'prefix%'` auf). `TicketType.FreeEntry.DisplayName()` heisst neu „Freier Einlass" (vorher „Berechtigte"). Kein Schema geändert. | Wer `Occupancy` konstruiert oder `IAdmissionService` implementiert/mockt, den neuen Member beachten (Default-Parameter → meist quellkompatibel). Anzeigen mit „Berechtigte" übernehmen das neue Label automatisch via `DisplayName()`. |
 | 05.07.2026 | S1 | Arbeitsmodell v2: Worktrees/Branches, Aufgabenpakete verteilt (dieses Dokument). | Alle: eigenen Worktree anlegen, Paket abarbeiten, früh mergen. S2s Fundament kommt zuerst. |
