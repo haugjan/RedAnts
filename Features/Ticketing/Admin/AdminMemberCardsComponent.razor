@@ -105,17 +105,7 @@
             </div>
 
             <div class="ta-field">
-                <label class="ta-label" for="impCategory">Ticketkategorie</label>
-                <select id="impCategory" class="ta-select" @bind="_importCategory">
-                    @foreach (var cat in Categories)
-                    {
-                        <option value="@cat">@cat.DisplayName()</option>
-                    }
-                </select>
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="impReference">Referenz (optional)</label>
+                <label class="ta-label" for="impReference">Referenz</label>
                 <input id="impReference" class="ta-input" type="text" maxlength="100" placeholder="z. B. Mitglieder 2026" @bind="_importReference" />
             </div>
 
@@ -123,7 +113,7 @@
                 <label class="ta-label">CSV-Datei</label>
                 <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
                 <p class="ta-hint">
-                    Spalten: Name, Vorname, Geburtsdatum (dd.MM.yyyy). Fehlende Angaben sind erlaubt.
+                    Spalten: Kategorie (Red Ants / Block 4), Name, Vorname, Geburtsdatum (dd.MM.yyyy). Fehlende Angaben ausser der Referenz sind erlaubt.
                     <a href="/admin/mitglieder/beispiel.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
             </div>
@@ -238,7 +228,6 @@
     private bool _showImport;
     private bool _saving;
     private string? _importError;
-    private MemberCategory _importCategory = MemberCategory.RedAnts;
     private string _importReference = "";
     private string? _fileName;
     private IReadOnlyList<MemberImportRow> _parsedRows = [];
@@ -281,7 +270,6 @@
     private void OpenImport()
     {
         _importError = null;
-        _importCategory = MemberCategory.RedAnts;
         _importReference = "";
         _fileName = null;
         _parsedRows = [];
@@ -319,13 +307,14 @@
     {
         _importError = null;
         if (SelectedSeasonId <= 0) { _importError = "Bitte zuerst eine Saison wählen."; return; }
+        if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte eine Referenz angeben."; return; }
         if (_parsedRows.Count == 0) { _importError = "Bitte eine CSV-Datei mit mindestens einer Zeile wählen."; return; }
 
         _saving = true;
         try
         {
-            var reference = string.IsNullOrWhiteSpace(_importReference) ? null : _importReference.Trim();
-            await Members.ImportAsync(SelectedSeasonId, _importCategory, reference, _parsedRows);
+            var reference = _importReference.Trim();
+            await Members.ImportAsync(SelectedSeasonId, reference, _parsedRows);
             _showImport = false;
             await ReloadCardsAsync();
         }
