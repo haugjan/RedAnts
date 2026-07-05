@@ -50,6 +50,20 @@ WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/")
+    {
+        var host = context.Request.Host.Host;
+        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase);
+        var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
+        context.Response.Redirect(isScanHost ? "/scanntickets" : isAdminHost ? "/umbraco" : "/ticketing/");
+        return;
+    }
+    await next();
+});
+
 var gatePassword = app.Configuration["BasicAuth:Password"];
 if (!string.IsNullOrEmpty(gatePassword))
 {
@@ -150,19 +164,6 @@ if (!string.IsNullOrEmpty(gatePassword))
     });
 }
 
-app.Use(async (context, next) =>
-{
-    if (context.Request.Path == "/")
-    {
-        var host = context.Request.Host.Host;
-        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase);
-        var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
-        context.Response.Redirect(isScanHost ? "/scanntickets" : isAdminHost ? "/umbraco" : "/ticketing/");
-        return;
-    }
-    await next();
-});
 
 var staticFileContentTypes = new FileExtensionContentTypeProvider();
 staticFileContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
