@@ -7,7 +7,10 @@ public static class AdminFormat
 
     public static string Initials(string? name)
     {
-        var parts = (name ?? "").Split(new[] { ' ', '.', '@' }, StringSplitOptions.RemoveEmptyEntries);
+        var cleaned = name ?? "";
+        var at = cleaned.IndexOf('@');
+        if (at >= 0) cleaned = cleaned[..at];
+        var parts = cleaned.Split(new[] { ' ', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
         return parts.Length switch
         {
             0 => "?",
