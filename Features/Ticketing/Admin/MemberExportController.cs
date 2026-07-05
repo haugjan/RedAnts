@@ -1,12 +1,15 @@
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NPoco;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Tickets;
+using Umbraco.Cms.Core;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Features.Ticketing.Admin;
 
+[Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 [ApiExplorerSettings(IgnoreApi = true)]
 public sealed class MemberExportController(IScopeProvider scopeProvider, ITicketTokens tokens) : Controller
 {
@@ -54,11 +57,16 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
 
     private static string Csv(string? value)
     {
-        var s = value ?? "";
+        var s = Neutralize(value ?? "");
         if (s.Contains(';') || s.Contains('"') || s.Contains('\n') || s.Contains('\r'))
             return "\"" + s.Replace("\"", "\"\"") + "\"";
         return s;
     }
+
+    private static string Neutralize(string value) =>
+        value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
+            ? "'" + value
+            : value;
 
     private sealed class RefRow
     {

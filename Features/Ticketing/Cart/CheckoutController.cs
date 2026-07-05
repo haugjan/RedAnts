@@ -5,11 +5,12 @@ using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Email;
 using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Features.Ticketing.Tickets;
 using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -58,7 +59,12 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var form = LoadForm();
         if (form is null) return Redirect("/kasse");
         return View("~/Views/Checkout/Payment.cshtml",
-            new CheckoutPaymentView { Cart = cart.Get(), Form = form, Methods = Methods });
+            new CheckoutPaymentView
+            {
+                Cart = cart.Get(), Form = form, Methods = Methods,
+                TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
+                Error = TempData["CheckoutError"] as string
+            });
     }
 
     [HttpPost("/kasse/zahlung")]
@@ -70,6 +76,13 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (Methods.All(m => m.Method != paymentMethod)) return Redirect("/kasse/zahlung");
         var form = LoadForm();
         if (form is null) return Redirect("/kasse");
+
+        var captchaToken = Request.Form["cf-turnstile-response"].ToString();
+        if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
+        {
+            TempData["CheckoutError"] = "Bitte bestätige, dass du kein Roboter bist.";
+            return Redirect("/kasse/zahlung");
+        }
 
         BillingAddress billing;
         try { billing = ToBillingAddress(form); }
@@ -99,7 +112,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             {
                 var ticket = await tickets.SaveAsync(
                     EventTicket.Create(item.EventId, item.Category, item.UnitPrice, saved.Id, buyer, "Online-Kauf"));
-                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName));
+                var token = tokens.Create(TicketType.EventTicket, ticket.Uuid, item.EventId);
+                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName, token));
                 mailTickets.Add(new OrderMailTicket(
                     TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, item.CategoryName));
             }

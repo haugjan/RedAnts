@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
+using Umbraco.Cms.Core;
 
 namespace RedAnts.Features.Ticketing.Tickets;
 
@@ -70,6 +72,7 @@ public sealed class WebTicketController(
         return File(qr.RenderPng(url, 8), "image/png");
     }
 
+    [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
     [HttpGet("/ticket/for/{uuid:guid}")]
     public async Task<IActionResult> ForUuid(Guid uuid)
     {

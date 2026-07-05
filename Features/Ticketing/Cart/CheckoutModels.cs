@@ -31,9 +31,11 @@ public sealed class CheckoutPaymentView
     public Cart Cart { get; init; } = new();
     public CheckoutForm Form { get; init; } = new();
     public IReadOnlyList<PaymentOption> Methods { get; init; } = [];
+    public string? TurnstileSiteKey { get; init; }
+    public string? Error { get; init; }
 }
 
-public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName);
+public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName, string Token);
 
 public sealed class CheckoutConfirmationView
 {

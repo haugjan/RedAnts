@@ -8,6 +8,7 @@ namespace RedAnts.Infrastructure.Ticketing;
 public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor) : ICartService
 {
     private const string SessionKey = "RedAnts.Cart";
+    private const int MaxQuantityPerItem = 50;
 
     private ISession Session =>
         httpContextAccessor.HttpContext?.Session
@@ -27,7 +28,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         var existing = cart.Items.FirstOrDefault(i => i.EventId == eventId && i.Category == category);
         if (existing is not null)
         {
-            existing.Quantity += quantity;
+            existing.Quantity = Math.Min(existing.Quantity + quantity, MaxQuantityPerItem);
             existing.UnitPrice = unitPrice;
             existing.EventName = eventName;
             existing.CategoryName = categoryName;
@@ -41,7 +42,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 Category = category,
                 CategoryName = categoryName,
                 UnitPrice = unitPrice,
-                Quantity = quantity
+                Quantity = Math.Min(quantity, MaxQuantityPerItem)
             });
         }
         Save(cart);
@@ -53,7 +54,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         var item = cart.Items.FirstOrDefault(i => i.Key == key);
         if (item is null) return;
         if (quantity <= 0) cart.Items.Remove(item);
-        else item.Quantity = quantity;
+        else item.Quantity = Math.Min(quantity, MaxQuantityPerItem);
         Save(cart);
     }
 

@@ -33,9 +33,16 @@ public sealed class FlexBundleExportController(
 
     private static string ShortCode(Guid uuid) => uuid.ToString("N")[..8].ToUpperInvariant();
 
-    // Quote a value for the semicolon-separated CSV when it contains a separator, quote or newline.
-    private static string CsvField(string value) =>
-        value.IndexOfAny([';', '"', '\r', '\n']) >= 0
-            ? $"\"{value.Replace("\"", "\"\"")}\""
+    private static string CsvField(string value)
+    {
+        var s = Neutralize(value);
+        return s.IndexOfAny([';', '"', '\r', '\n']) >= 0
+            ? $"\"{s.Replace("\"", "\"\"")}\""
+            : s;
+    }
+
+    private static string Neutralize(string value) =>
+        value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
+            ? "'" + value
             : value;
 }

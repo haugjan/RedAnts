@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Tickets;
@@ -13,19 +14,24 @@ public sealed class TicketTokenService : ITicketTokens
     private const int SignatureBytes = 16;
     private readonly byte[] _key;
 
-    public TicketTokenService(IConfiguration config, ILogger<TicketTokenService> logger)
+    public TicketTokenService(IConfiguration config, IHostEnvironment environment, ILogger<TicketTokenService> logger)
     {
         var configured = config["Tickets:QrSecret"];
         if (!string.IsNullOrWhiteSpace(configured))
         {
             _key = Encoding.UTF8.GetBytes(configured);
         }
-        else
+        else if (environment.IsDevelopment())
         {
             var seed = config["Umbraco:CMS:Global:Id"] ?? "redants-dev-qr-fallback";
             _key = SHA256.HashData(Encoding.UTF8.GetBytes("RedAnts.Tickets.Qr:" + seed));
             logger.LogWarning("Tickets:QrSecret is not configured; using a derived development key. " +
                               "Set Tickets:QrSecret in production so QR tickets cannot be forged.");
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Tickets:QrSecret is not configured. Set it (app setting Tickets__QrSecret) so QR tickets cannot be forged.");
         }
     }
 
