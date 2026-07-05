@@ -31,8 +31,13 @@
                 </div>
             </div>
             <div class="ta-toolbar-actions">
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_cards.Count == 0)"
+                        title="Mitglieder einer Referenz als CSV herunterladen">⬇ CSV</button>
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
                     Mitglieder importieren (CSV)
+                </button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate" disabled="@(SelectedSeasonId <= 0)">
+                    Mitgliederkarte erstellen
                 </button>
             </div>
         </div>
@@ -47,14 +52,13 @@
                 <table class="ta-table">
                     <thead>
                         <tr>
+                            <th>Karten-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("name")'>Inhaber:in <span class="ta-sort-ind">@Ind("name")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("birthday")'>Geburtsdatum <span class="ta-sort-ind">@Ind("birthday")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
-                            <th>Karten-Nr.</th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
@@ -62,25 +66,36 @@
                         @foreach (var c in Sorted())
                         {
                             <tr>
+                                <td>
+                                    <span class="ta-ticketno">@AdminFormat.TicketNo(c.Uuid)</span>
+                                    <a class="ta-qr-link" href="/ticket/for/@c.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                    </a>
+                                </td>
                                 <td class="ta-cell-name">
                                     @if (c.HasName) { @c.HolderName }
                                     else { <span class="ta-muted">(ohne Name)</span> }
+                                    @if (c.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
                                 </td>
-                                <td>@c.CreatedAt.ToString("dd.MM.yyyy")</td>
+                                <td title="@AdminFormat.CreatedTooltip(c.CreatedAt, c.CreatedByName, null, null)">@AdminFormat.CreatedShort(c.CreatedAt, c.CreatedByName, null)</td>
                                 <td><span class="ta-badge @CategoryBadgeClass(c.Category)">@c.CategoryLabel</span></td>
                                 <td>
                                     <span class="ta-badge @(c.IsCancelled ? "ta-badge-cancelled" : "ta-badge-valid")">
                                         @(c.IsCancelled ? "Storniert" : "Gültig")
                                     </span>
                                 </td>
-                                <td>@(c.Birthday?.ToString("dd.MM.yyyy") ?? "–")</td>
-                                <td class="ta-num">@c.EventVisits</td>
+                                <td class="ta-num">
+                                    @if (c.EventVisits > 0)
+                                    {
+                                        <button type="button" class="ta-visits-link" @onclick="() => OpenVisits(c)">@c.EventVisits</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">0</span>
+                                    }
+                                </td>
                                 <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
-                                <td><code class="ta-uuid">@ShortId(c.Uuid)</code></td>
                                 <td class="ta-col-actions">
-                                    <a class="ta-qr-link" href="/ticket/for/@c.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
-                                    </a>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(c)">✎</button>
                                 </td>
                             </tr>
@@ -92,6 +107,89 @@
         }
     }
 </section>
+
+@if (_showCreate)
+{
+    <div class="ta-overlay" @onmousedown="CloseCreate">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Mitgliederkarte erstellen</h2>
+            <p class="ta-modal-sub">@_selectedSeasonName</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="newMcCategory">Kategorie</label>
+                <select id="newMcCategory" class="ta-select" @bind="_newCategory">
+                    @foreach (var cat in Categories)
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcLastName">Name (optional)</label>
+                <input id="newMcLastName" class="ta-input" type="text" maxlength="100" @bind="_newLastName" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcFirstName">Vorname (optional)</label>
+                <input id="newMcFirstName" class="ta-input" type="text" maxlength="100" @bind="_newFirstName" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcBirthday">Geburtsdatum (optional)</label>
+                <input id="newMcBirthday" class="ta-input" type="date" @bind="_newBirthday" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcReference">Referenz</label>
+                <input id="newMcReference" class="ta-input" type="text" maxlength="100" placeholder="Eindeutig pro Saison" @bind="_newReference" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_createError))
+            {
+                <p class="ta-modal-error">@_createError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate" disabled="@_creating">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateCardAsync" disabled="@_creating">
+                    @(_creating ? "Erstellt …" : "Erstellen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showExport)
+{
+    <div class="ta-overlay" @onmousedown="CloseExport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Mitglieder exportieren (CSV)</h2>
+
+            @if (_references.Count == 0)
+            {
+                <p class="ta-muted-text">Für diese Saison sind keine Referenzen vorhanden.</p>
+            }
+            else
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="expReference">Referenz (Bundle)</label>
+                    <select id="expReference" class="ta-select" @bind="_exportReference">
+                        @foreach (var r in _references)
+                        {
+                            <option value="@r">@r</option>
+                        }
+                    </select>
+                </div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
+                @if (!string.IsNullOrEmpty(_exportReference))
+                {
+                    <a class="ta-btn ta-btn-primary" href="/admin/mitglieder/export.csv?referenz=@Uri.EscapeDataString(_exportReference)"
+                       target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @if (_showImport)
 {
@@ -154,7 +252,7 @@
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Mitglied bearbeiten</h2>
-            <p class="ta-modal-sub">Karten-Nr. @ShortId(_editing.Uuid)</p>
+            <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
 
             <div class="ta-field">
                 <label class="ta-label" for="editLastName">Name</label>
@@ -204,8 +302,14 @@
     </div>
 }
 
+@if (_visitsCard is not null)
+{
+    <VisitsOverlay Uuid="_visitsCard.Uuid" Title="@(_visitsCard.HasName ? _visitsCard.HolderName : AdminFormat.TicketNo(_visitsCard.Uuid))" OnClose="CloseVisits" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IMemberCardAdminReport Report { get; set; } = default!;
@@ -224,14 +328,6 @@
 
     private string _sortCol = "name";
     private bool _sortAsc = true;
-
-    private bool _showImport;
-    private bool _saving;
-    private string? _importError;
-    private string _importReference = "";
-    private string? _fileName;
-    private IReadOnlyList<MemberImportRow> _parsedRows = [];
-    private IReadOnlyList<string> _parseWarnings = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -256,7 +352,6 @@
     {
         IEnumerable<MemberCardListItem> q = _sortCol switch
         {
-            "birthday" => _cards.OrderBy(c => c.Birthday ?? DateOnly.MaxValue),
             "category" => _cards.OrderBy(c => c.Category),
             "reference" => _cards.OrderBy(c => c.Reference ?? "￿"),
             "status" => _cards.OrderBy(c => c.Status),
@@ -266,6 +361,70 @@
         };
         return _sortAsc ? q : q.Reverse();
     }
+
+    private bool _showCreate;
+    private bool _creating;
+    private MemberCategory _newCategory = MemberCategory.RedAnts;
+    private string _newFirstName = "";
+    private string _newLastName = "";
+    private DateOnly? _newBirthday;
+    private string _newReference = "";
+    private string? _createError;
+
+    private void OpenCreate()
+    {
+        _newCategory = MemberCategory.RedAnts;
+        _newFirstName = _newLastName = _newReference = "";
+        _newBirthday = null;
+        _createError = null;
+        _showCreate = true;
+    }
+    private void CloseCreate() { if (!_creating) { _showCreate = false; _createError = null; } }
+
+    private async Task CreateCardAsync()
+    {
+        if (_creating) return;
+        if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
+        if (string.IsNullOrWhiteSpace(_newReference)) { _createError = "Bitte eine Referenz angeben."; return; }
+        _creating = true;
+        _createError = null;
+        try
+        {
+            await Members.CreateAsync(SelectedSeasonId, _newCategory,
+                string.IsNullOrWhiteSpace(_newFirstName) ? null : _newFirstName,
+                string.IsNullOrWhiteSpace(_newLastName) ? null : _newLastName,
+                _newBirthday, _newReference.Trim(), Identity.Name, Identity.Email);
+            _showCreate = false;
+            await ReloadCardsAsync();
+        }
+        catch (DomainException ex) { _createError = ex.Message; }
+        finally { _creating = false; }
+    }
+
+    private bool _showExport;
+    private IReadOnlyList<string> _references = [];
+    private string _exportReference = "";
+
+    private void OpenExport()
+    {
+        _references = _cards
+            .Where(c => !string.IsNullOrWhiteSpace(c.Reference))
+            .Select(c => c.Reference!)
+            .Distinct()
+            .OrderBy(r => r)
+            .ToList();
+        _exportReference = _references.FirstOrDefault() ?? "";
+        _showExport = true;
+    }
+    private void CloseExport() => _showExport = false;
+
+    private bool _showImport;
+    private bool _saving;
+    private string? _importError;
+    private string _importReference = "";
+    private string? _fileName;
+    private IReadOnlyList<MemberImportRow> _parsedRows = [];
+    private IReadOnlyList<string> _parseWarnings = [];
 
     private void OpenImport()
     {
@@ -314,7 +473,7 @@
         try
         {
             var reference = _importReference.Trim();
-            await Members.ImportAsync(SelectedSeasonId, reference, _parsedRows);
+            await Members.ImportAsync(SelectedSeasonId, reference, _parsedRows, Identity.Name, Identity.Email);
             _showImport = false;
             await ReloadCardsAsync();
         }
@@ -362,14 +521,16 @@
         finally { _savingEdit = false; }
     }
 
+    private MemberCardListItem? _visitsCard;
+    private void OpenVisits(MemberCardListItem c) => _visitsCard = c;
+    private void CloseVisits() => _visitsCard = null;
+
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
         return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
-
-    private static string ShortId(Guid id) => id == Guid.Empty ? "–" : id.ToString()[..8];
 
     private static string CategoryBadgeClass(MemberCategory category) => category switch
     {
