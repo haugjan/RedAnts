@@ -17,7 +17,8 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
         var eventTicket = await db.FirstOrDefaultAsync<EventTicketRecord>("WHERE Uuid = @0", key);
         if (eventTicket is not null)
             return new IssuedTicket(TicketType.EventTicket, uuid, eventTicket.EventId,
-                (TicketCategory)eventTicket.Category, (TicketStatus)eventTicket.Status, eventTicket.CreatedAt, null);
+                (TicketCategory)eventTicket.Category, (TicketStatus)eventTicket.Status, eventTicket.CreatedAt, null,
+                BuyerName: BuyerLabel(eventTicket.BuyerType, eventTicket.BuyerFirstName, eventTicket.BuyerLastName, eventTicket.BuyerCompany));
 
         var single = await db.FirstOrDefaultAsync<SeasonSingleTicketRecord>("WHERE Uuid = @0", key);
         if (single is not null)
@@ -27,7 +28,8 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
         var pass = await db.FirstOrDefaultAsync<SeasonPassRecord>("WHERE Uuid = @0", key);
         if (pass is not null)
             return new IssuedTicket(TicketType.SeasonPass, uuid, pass.SeasonId,
-                (TicketCategory)pass.Category, (TicketStatus)pass.Status, pass.CreatedAt, null);
+                (TicketCategory)pass.Category, (TicketStatus)pass.Status, pass.CreatedAt, null,
+                BuyerName: BuyerLabel(pass.BuyerType, pass.BuyerFirstName, pass.BuyerLastName, pass.BuyerCompany));
 
         var card = await db.FirstOrDefaultAsync<MemberCardRecord>("WHERE Uuid = @0", key);
         if (card is not null)
@@ -37,9 +39,16 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
             return new IssuedTicket(TicketType.MemberCard, uuid, card.SeasonId,
                 null, (TicketStatus)card.Status, card.CreatedAt,
                 string.IsNullOrWhiteSpace(holder) ? null : holder,
-                (MemberCategory)card.Category);
+                (MemberCategory)card.Category,
+                Birthday: card.Birthday is { } b ? DateOnly.FromDateTime(b) : null);
         }
 
         return null;
+    }
+
+    private static string? BuyerLabel(int? type, string? first, string? last, string? company)
+    {
+        var buyer = Buyer.FromPersistence(type ?? 0, first, last, company);
+        return string.IsNullOrWhiteSpace(buyer?.DisplayName) ? null : buyer!.DisplayName;
     }
 }

@@ -23,7 +23,7 @@ public sealed class AdmissionService(
         return await OccAsync(scope.Database, eventId);
     }
 
-    public async Task<ScanOutcome> ScanTicketAsync(int eventId, TicketType type, Guid uuid, int scopeId, string? scannedBy)
+    public async Task<ScanOutcome> ScanTicketAsync(int eventId, TicketType type, Guid uuid, int scopeId, ScanMode mode, string? scannedBy)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
@@ -56,36 +56,79 @@ public sealed class AdmissionService(
                 return await Reject("Flexticket wurde bereits an einem anderen Anlass eingelöst.");
         }
 
+        var categoryLabel = issued.Category?.DisplayName();
+        var holder = HolderLabel(issued);
+
         var visit = await db.FirstOrDefaultAsync<EventVisitRecord>(
             "WHERE EventId = @0 AND TicketUuid = @1", eventId, key);
-        AdmissionOutcome action;
-        long visitId;
-        if (visit is null)
+
+        if (mode == ScanMode.CheckIn)
         {
-            var row = new EventVisitRecord
+            if (visit is { IsInside: true })
             {
-                EventId = eventId, TicketType = (int)type, TicketUuid = key,
-                IsInside = true, CreatedAt = DateTime.UtcNow
-            };
-            await db.InsertAsync(row);
-            visitId = row.Id;
-            action = AdmissionOutcome.CheckedIn;
+                var prior = await db.FirstOrDefaultAsync<EventVisitLogRecord>(
+                    "WHERE VisitId = @0 AND Type = @1 ORDER BY Id DESC", visit.Id, (int)VisitLogType.CheckIn);
+                return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), "Bereits eingecheckt.",
+                    await OccAsync(db, eventId), categoryLabel, holder, prior?.OccurredAt, prior?.ScannedBy);
+            }
+
+            long visitId;
+            if (visit is null)
+            {
+                var row = new EventVisitRecord
+                {
+                    EventId = eventId, TicketType = (int)type, TicketUuid = key,
+                    IsInside = true, CreatedAt = DateTime.UtcNow
+                };
+                await db.InsertAsync(row);
+                visitId = row.Id;
+            }
+            else
+            {
+                visit.IsInside = true;
+                await db.UpdateAsync(visit);
+                visitId = visit.Id;
+            }
+            await LogAsync(db, visitId, AdmissionOutcome.CheckedIn, scannedBy);
+
+            if (type == TicketType.SeasonSingle)
+                await db.ExecuteAsync(
+                    "UPDATE SeasonSingleTickets SET RedeemedEventId = @0, Redeemed = 1 WHERE Uuid = @1 AND RedeemedEventId IS NULL",
+                    eventId, key);
+
+            return new ScanOutcome(AdmissionOutcome.CheckedIn, type, Ref(uuid), null,
+                await OccAsync(db, eventId), categoryLabel, holder);
         }
-        else
+
+        if (visit is null || !visit.IsInside)
+            return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), "Noch nicht eingecheckt.",
+                await OccAsync(db, eventId), categoryLabel, holder);
+
+        visit.IsInside = false;
+        await db.UpdateAsync(visit);
+        await LogAsync(db, visit.Id, AdmissionOutcome.CheckedOut, scannedBy);
+
+        return new ScanOutcome(AdmissionOutcome.CheckedOut, type, Ref(uuid), null,
+            await OccAsync(db, eventId), categoryLabel, holder);
+    }
+
+    private static string? HolderLabel(IssuedTicket ticket)
+    {
+        if (ticket.Type == TicketType.MemberCard)
         {
-            visit.IsInside = !visit.IsInside;
-            await db.UpdateAsync(visit);
-            visitId = visit.Id;
-            action = visit.IsInside ? AdmissionOutcome.CheckedIn : AdmissionOutcome.CheckedOut;
+            if (string.IsNullOrWhiteSpace(ticket.HolderName)) return null;
+            return Age(ticket.Birthday) is { } age ? $"{ticket.HolderName} ({age})" : ticket.HolderName;
         }
-        await LogAsync(db, visitId, action, scannedBy);
+        return string.IsNullOrWhiteSpace(ticket.BuyerName) ? null : ticket.BuyerName;
+    }
 
-        if (type == TicketType.SeasonSingle && action == AdmissionOutcome.CheckedIn)
-            await db.ExecuteAsync(
-                "UPDATE SeasonSingleTickets SET RedeemedEventId = @0, Redeemed = 1 WHERE Uuid = @1 AND RedeemedEventId IS NULL",
-                eventId, key);
-
-        return new ScanOutcome(action, type, Ref(uuid), null, await OccAsync(db, eventId));
+    private static int? Age(DateOnly? birthday)
+    {
+        if (birthday is not { } b) return null;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var age = today.Year - b.Year;
+        if (b > today.AddYears(-age)) age--;
+        return age is < 0 or > 120 ? null : age;
     }
 
     public async Task<ScanOutcome> GrantFreeEntryAsync(int eventId, string? scannedBy)

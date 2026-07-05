@@ -4,6 +4,8 @@ namespace RedAnts.Features.Ticketing.Scanning;
 
 public enum AdmissionOutcome { CheckedIn, CheckedOut, Rejected }
 
+public enum ScanMode { CheckIn, CheckOut }
+
 public sealed record Occupancy(int Inside, int? Quota)
 {
     public int? Remaining => Quota is { } q ? Math.Max(0, q - Inside) : null;
@@ -15,7 +17,11 @@ public sealed record ScanOutcome(
     TicketType? Type,
     string? Reference,
     string? Reason,
-    Occupancy Occupancy)
+    Occupancy Occupancy,
+    string? CategoryLabel = null,
+    string? Holder = null,
+    DateTime? PriorAt = null,
+    string? PriorBy = null)
 {
     public bool Ok => Outcome != AdmissionOutcome.Rejected;
 }
@@ -24,7 +30,7 @@ public interface IAdmissionService
 {
     Task<Occupancy> GetOccupancyAsync(int eventId);
 
-    Task<ScanOutcome> ScanTicketAsync(int eventId, TicketType type, Guid uuid, int scopeId, string? scannedBy);
+    Task<ScanOutcome> ScanTicketAsync(int eventId, TicketType type, Guid uuid, int scopeId, ScanMode mode, string? scannedBy);
 
     Task<ScanOutcome> GrantFreeEntryAsync(int eventId, string? scannedBy);
 

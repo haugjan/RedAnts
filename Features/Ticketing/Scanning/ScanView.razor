@@ -1,73 +1,149 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Tickets
+@using Microsoft.AspNetCore.Components.Web
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject ITicketTokens Tickets
 @inject IAdmissionService Admission
 
-<div class="scan-view">
+<div class="scan-view scan-view--@ModeKey">
     <header class="scan-view__header">
         <button type="button" class="scan-view__back" @onclick="OnBack">&larr; Zurück</button>
         <span class="scan-view__title">@EventName</span>
     </header>
 
-    @if (_occupancy is { } occ)
+    @if (!_started)
     {
-        <div class="scan-cap @(occ.Full ? "scan-cap--full" : "")">
-            @if (occ.Quota is null)
+        <div class="scan-start">
+            <p class="scan-start__lead">Wer scannt?</p>
+            <input class="scan-start__input" placeholder="Name der scannenden Person"
+                   @bind="_operator" @bind:event="oninput" @onkeydown="OnStartKey" />
+            @if (_startError is not null)
             {
-                <span class="scan-cap__free">@occ.Inside drinnen</span>
-                <span class="scan-cap__sub">Kein Einlasslimit</span>
+                <p class="scan-start__error">@_startError</p>
             }
-            else
-            {
-                <span class="scan-cap__free">@occ.Remaining frei</span>
-                <span class="scan-cap__sub">@occ.Inside / @occ.Quota im Einlass</span>
-            }
+            <button type="button" class="scan-start__btn" @onclick="Start">Scannen starten</button>
         </div>
     }
-
-    <div id="qr-reader" class="qr-reader"></div>
-
-    <div class="scan-free">
-        <button type="button" class="scan-free__btn scan-free__btn--in"
-                @onclick="GrantFreeAsync" disabled="@(_busy || _occupancy?.Full == true)">
-            + Freier Einlass
-        </button>
-        <button type="button" class="scan-free__btn scan-free__btn--out"
-                @onclick="RevokeFreeAsync" disabled="@_busy">
-            − Frei zurücknehmen
-        </button>
-    </div>
-
-    @if (_error is not null)
+    else
     {
-        <p class="scan-view__hint scan-view__hint--error">@_error</p>
-    }
-    else if (_last is null)
-    {
-        <p class="scan-view__hint">Richte die Kamera auf einen QR-Code.</p>
+        <div class="scan-mode scan-mode--@ModeKey">
+            <span class="scan-mode__icon">@(_mode == ScanMode.CheckIn ? "⤵" : "⤴")</span>
+            <span class="scan-mode__label">@(_mode == ScanMode.CheckIn ? "Einchecken" : "Auschecken")</span>
+            <span class="scan-mode__who">@_operator</span>
+        </div>
+
+        @if (_occupancy is { } occ)
+        {
+            <div class="scan-cap @(occ.Full ? "scan-cap--full" : "")">
+                @if (occ.Quota is null)
+                {
+                    <span class="scan-cap__free">@occ.Inside drinnen</span>
+                    <span class="scan-cap__sub">Kein Einlasslimit</span>
+                }
+                else
+                {
+                    <span class="scan-cap__free">@occ.Remaining frei</span>
+                    <span class="scan-cap__sub">@occ.Inside / @occ.Quota im Einlass</span>
+                }
+            </div>
+        }
+
+        <div id="qr-reader" class="qr-reader"></div>
+
+        @if (_mode == ScanMode.CheckIn)
+        {
+            <div class="scan-free">
+                <button type="button" class="scan-free__btn scan-free__btn--in"
+                        @onclick="GrantFreeAsync" disabled="@(_busy || _occupancy?.Full == true)">
+                    + Freier Einlass
+                </button>
+                <button type="button" class="scan-free__btn scan-free__btn--out"
+                        @onclick="RevokeFreeAsync" disabled="@_busy">
+                    − Frei zurücknehmen
+                </button>
+            </div>
+        }
+
+        <button type="button" class="scan-switch scan-switch--@(_mode == ScanMode.CheckIn ? "toout" : "toin")"
+                @onclick="ToggleMode">
+            @(_mode == ScanMode.CheckIn ? "Zum Auschecken wechseln →" : "← Zurück zum Einchecken")
+        </button>
+
+        @if (_error is not null)
+        {
+            <p class="scan-view__hint scan-view__hint--error">@_error</p>
+        }
+        else if (_last is null)
+        {
+            <p class="scan-view__hint">Richte die Kamera auf einen QR-Code.</p>
+        }
     }
 
     @if (_last is { } o)
     {
-        <div class="result result--@ResultClass(o)" @onclick="DismissAsync">
-            <div class="result__icon">@ResultIcon(o)</div>
-            <div class="result__title">@ResultTitle(o)</div>
-            <div class="result__code">
+        <div class="scan-result scan-result--@ResultClass(o)" @onclick="DismissAsync">
+            <div class="scan-result__icon">@ResultIcon(o)</div>
+            <div class="scan-result__title">@ResultTitle(o)</div>
+
+            @if (!string.IsNullOrEmpty(o.CategoryLabel))
+            {
+                <div class="scan-result__category">@o.CategoryLabel</div>
+            }
+            @if (!string.IsNullOrEmpty(o.Holder))
+            {
+                <div class="scan-result__holder">@o.Holder</div>
+            }
+
+            @if (!o.Ok)
+            {
+                <div class="scan-result__reason">@o.Reason</div>
+                @if (o.PriorAt is { } at)
+                {
+                    <div class="scan-result__prior">
+                        Bereits am @FmtTime(at)@(string.IsNullOrEmpty(o.PriorBy) ? "" : $" durch {o.PriorBy}")
+                    </div>
+                }
+            }
+
+            <div class="scan-result__meta">
                 @if (o.Type is { } t) { @TypeLabel(t) }
                 @if (!string.IsNullOrEmpty(o.Reference)) { <span> · @o.Reference</span> }
             </div>
-            @if (!string.IsNullOrEmpty(o.Reason))
-            {
-                <div class="result__message">@o.Reason</div>
-            }
-            <button type="button" class="result__next">Weiter</button>
+
+            <button type="button" class="scan-result__next">@(o.Ok ? "Weiter" : "Verstanden – schliessen")</button>
         </div>
     }
 </div>
 
 <style>
+    .scan-view { position: relative; }
+    .scan-view--in { --scan-accent: #1a7f37; }
+    .scan-view--out { --scan-accent: #1f5fbf; }
+
+    .scan-start { text-align: center; padding: 2rem 1rem; }
+    .scan-start__lead { font-size: 1.3rem; font-weight: 800; margin: 0 0 1rem; }
+    .scan-start__input {
+        width: 100%; max-width: 320px; padding: 0.8rem 0.9rem; font-size: 1.05rem;
+        border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box;
+    }
+    .scan-start__error { color: #b42318; font-size: 0.9rem; margin: 0.6rem 0 0; }
+    .scan-start__btn {
+        margin-top: 1rem; width: 100%; max-width: 320px; padding: 0.9rem;
+        background: #1a7f37; color: #fff; border: none; border-radius: 10px;
+        font-size: 1.05rem; font-weight: 800; cursor: pointer;
+    }
+
+    .scan-mode {
+        display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0 0.6rem;
+        padding: 0.7rem 1rem; border-radius: 12px; color: #fff; background: var(--scan-accent);
+    }
+    .scan-mode__icon { font-size: 1.5rem; line-height: 1; }
+    .scan-mode__label { font-size: 1.25rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+    .scan-mode__who { margin-left: auto; font-size: 0.85rem; opacity: 0.9; }
+
+    .qr-reader { border: 3px solid var(--scan-accent); border-radius: 12px; overflow: hidden; }
+
     .scan-cap {
         display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
         margin: 0.4rem 0 0.8rem; padding: 0.6rem 1rem; border-radius: 10px;
@@ -86,10 +162,36 @@
     .scan-free__btn--in { background: #1a7f37; color: #fff; }
     .scan-free__btn--out { background: #fff; color: #555; border-color: #ccc; }
 
-    .result--in .result__icon, .result--in .result__title { color: #1a7f37; }
-    .result--out .result__icon, .result--out .result__title { color: #1f5fbf; }
-    .result--in { border-color: #1a7f37; }
-    .result--out { border-color: #1f5fbf; }
+    .scan-switch {
+        width: 100%; margin: 0.8rem 0 0; padding: 0.85rem; border-radius: 10px; border: 2px solid;
+        font-size: 1rem; font-weight: 800; cursor: pointer; background: #fff;
+    }
+    .scan-switch--toout { color: #1f5fbf; border-color: #1f5fbf; }
+    .scan-switch--toin { color: #1a7f37; border-color: #1a7f37; }
+
+    .scan-result {
+        position: fixed; inset: 0; z-index: 1200; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center; padding: 2rem 1.5rem;
+        color: #fff; cursor: pointer;
+    }
+    .scan-result--in { background: #1a7f37; }
+    .scan-result--out { background: #1f5fbf; }
+    .scan-result--fail { background: #b42318; }
+    .scan-result__icon { font-size: 5rem; line-height: 1; }
+    .scan-result__title { font-size: 1.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.4rem; }
+    .scan-result__category {
+        margin-top: 1.2rem; font-size: 3rem; font-weight: 900; text-transform: uppercase;
+        letter-spacing: 0.03em; line-height: 1.05; background: rgba(255,255,255,0.16);
+        padding: 0.5rem 1.2rem; border-radius: 14px;
+    }
+    .scan-result__holder { margin-top: 0.9rem; font-size: 1.6rem; font-weight: 700; }
+    .scan-result__reason { margin-top: 1rem; font-size: 1.25rem; font-weight: 700; }
+    .scan-result__prior { margin-top: 0.5rem; font-size: 1rem; opacity: 0.95; }
+    .scan-result__meta { margin-top: 1rem; font-size: 0.95rem; opacity: 0.9; }
+    .scan-result__next {
+        margin-top: 1.6rem; padding: 0.8rem 1.6rem; border: 2px solid #fff; border-radius: 10px;
+        background: transparent; color: #fff; font-size: 1rem; font-weight: 800; cursor: pointer;
+    }
 </style>
 
 @code {
@@ -100,19 +202,41 @@
     private DotNetObjectReference<ScanView>? _ref;
     private Occupancy? _occupancy;
     private ScanOutcome? _last;
+    private ScanMode _mode = ScanMode.CheckIn;
+    private string _operator = "";
+    private string? _startError;
+    private bool _started;
+    private bool _cameraStarted;
     private bool _cameraPaused;
     private bool _busy;
     private string? _error;
+    private int _resultSeq;
+
+    private string ModeKey => _mode == ScanMode.CheckIn ? "in" : "out";
 
     protected override async Task OnInitializedAsync()
     {
         _occupancy = await Admission.GetOccupancyAsync(EventId);
     }
 
+    private void OnStartKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") Start();
+    }
+
+    private void Start()
+    {
+        if (string.IsNullOrWhiteSpace(_operator)) { _startError = "Bitte einen Namen eingeben."; return; }
+        _operator = _operator.Trim();
+        _startError = null;
+        _started = true;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-        _ref = DotNetObjectReference.Create(this);
+        if (!_started || _cameraStarted) return;
+        _cameraStarted = true;
+        _ref ??= DotNetObjectReference.Create(this);
         try
         {
             await JS.InvokeVoidAsync("ticketScanner.start", "qr-reader", _ref);
@@ -130,7 +254,7 @@
         _cameraPaused = true;
         if (Tickets.TryVerify(ExtractToken(code), out var data))
         {
-            _last = await Admission.ScanTicketAsync(EventId, data.Type, data.Uuid, data.ScopeId, null);
+            _last = await Admission.ScanTicketAsync(EventId, data.Type, data.Uuid, data.ScopeId, _mode, _operator);
             _occupancy = _last.Occupancy;
         }
         else
@@ -138,8 +262,15 @@
             _last = new ScanOutcome(AdmissionOutcome.Rejected, null, Shorten(code),
                 "Ungültiger oder gefälschter Code.", _occupancy ?? new Occupancy(0, null));
         }
+        var seq = ++_resultSeq;
         StateHasChanged();
         await Beep(_last.Ok);
+
+        if (_last.Ok)
+        {
+            await Task.Delay(2000);
+            if (_resultSeq == seq) await DismissAsync();
+        }
     }
 
     private async Task GrantFreeAsync()
@@ -148,9 +279,11 @@
         _busy = true;
         try
         {
-            _last = await Admission.GrantFreeEntryAsync(EventId, null);
+            _last = await Admission.GrantFreeEntryAsync(EventId, _operator);
             _occupancy = _last.Occupancy;
+            var seq = ++_resultSeq;
             await Beep(_last.Ok);
+            if (_last.Ok) { await Task.Delay(2000); if (_resultSeq == seq) await DismissAsync(); }
         }
         finally { _busy = false; }
     }
@@ -161,11 +294,19 @@
         _busy = true;
         try
         {
-            _last = await Admission.RevokeFreeEntryAsync(EventId, null);
+            _last = await Admission.RevokeFreeEntryAsync(EventId, _operator);
             _occupancy = _last.Occupancy;
+            var seq = ++_resultSeq;
             await Beep(_last.Ok);
+            if (_last.Ok) { await Task.Delay(2000); if (_resultSeq == seq) await DismissAsync(); }
         }
         finally { _busy = false; }
+    }
+
+    private void ToggleMode()
+    {
+        _mode = _mode == ScanMode.CheckIn ? ScanMode.CheckOut : ScanMode.CheckIn;
+        _last = null;
     }
 
     private async Task Beep(bool ok)
@@ -177,12 +318,14 @@
     private async Task DismissAsync()
     {
         _last = null;
+        _resultSeq++;
         if (_cameraPaused)
         {
             _cameraPaused = false;
             try { await JS.InvokeVoidAsync("ticketScanner.resume"); }
             catch (JSException) { }
         }
+        StateHasChanged();
     }
 
     private static string ExtractToken(string code)
@@ -211,8 +354,8 @@
 
     private static string ResultTitle(ScanOutcome o) => o.Outcome switch
     {
-        AdmissionOutcome.CheckedIn => "Eingelassen",
-        AdmissionOutcome.CheckedOut => "Ausgelassen",
+        AdmissionOutcome.CheckedIn => "Eingecheckt",
+        AdmissionOutcome.CheckedOut => "Ausgecheckt",
         _ => "Abgelehnt"
     };
 
@@ -225,6 +368,17 @@
         TicketType.FreeEntry => "Freier Einlass",
         _ => type.ToString()
     };
+
+    private static string FmtTime(DateTime utc)
+    {
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Zurich");
+            var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), tz);
+            return local.ToString("dd.MM.yyyy HH:mm");
+        }
+        catch { return utc.ToString("dd.MM.yyyy HH:mm"); }
+    }
 
     private static string Shorten(string? s) =>
         string.IsNullOrEmpty(s) ? "" : (s.Length <= 40 ? s : s[..40] + "…");

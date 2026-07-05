@@ -26,7 +26,9 @@ public sealed record IssuedTicket(
     TicketStatus Status,
     DateTime CreatedAt,
     string? HolderName,
-    MemberCategory? MemberCategory = null);
+    MemberCategory? MemberCategory = null,
+    DateOnly? Birthday = null,
+    string? BuyerName = null);
 
 public interface IIssuedTicketReader
 {
