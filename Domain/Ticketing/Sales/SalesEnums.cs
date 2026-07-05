@@ -14,7 +14,8 @@ public enum FreeEntryType
     Player,
     Staff,
     Official,
-    SwissUnihockeyFreeCard
+    SwissUnihockeyFreeCard,
+    Child
 }
 
 public enum TicketCategory
@@ -79,6 +80,7 @@ public static class FreeEntryTypeExtensions
         FreeEntryType.Staff => "Staff",
         FreeEntryType.Official => "Funktionär",
         FreeEntryType.SwissUnihockeyFreeCard => "SU-Freieintritt",
+        FreeEntryType.Child => "Kind (gratis)",
         _ => type.ToString()
     };
 }

@@ -80,10 +80,12 @@
                     @(grant ? "Freien Einlass gewähren als:" : "Freien Einlass zurücknehmen von:")
                 </p>
                 <div class="scan-confirm__actions scan-confirm__actions--stack">
-                    <button type="button" class="scan-confirm__btn scan-confirm__btn--yes"
-                            @onclick="() => ConfirmFreeAsync(FreeEntryType.Official)">@FreeEntryType.Official.DisplayName()</button>
-                    <button type="button" class="scan-confirm__btn scan-confirm__btn--yes"
-                            @onclick="() => ConfirmFreeAsync(FreeEntryType.SwissUnihockeyFreeCard)">@FreeEntryType.SwissUnihockeyFreeCard.DisplayName()</button>
+                    @foreach (var type in OfferedFreeEntryTypes)
+                    {
+                        var t = type;
+                        <button type="button" class="scan-confirm__btn scan-confirm__btn--yes"
+                                @onclick="() => ConfirmFreeAsync(t)">@t.DisplayName()</button>
+                    }
                     <button type="button" class="scan-confirm__btn" @onclick="() => _confirmFreeGrant = null">Abbrechen</button>
                 </div>
             </div>
@@ -239,6 +241,13 @@
     private bool _cameraPaused;
     private bool _busy;
     private string? _error;
+
+    private static readonly FreeEntryType[] OfferedFreeEntryTypes =
+    [
+        FreeEntryType.Official,
+        FreeEntryType.SwissUnihockeyFreeCard,
+        FreeEntryType.Child
+    ];
 
     private string ModeKey => _mode == ScanMode.CheckIn ? "in" : "out";
     private int FreeInside => _occupancy?.FreeInside ?? 0;
