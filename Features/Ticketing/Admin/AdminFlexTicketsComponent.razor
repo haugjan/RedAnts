@@ -72,26 +72,58 @@
                 <table class="ta-table">
                     <thead>
                         <tr>
-                            <th>Nr.</th>
-                            <th>Kurzkennung</th>
+                            <th>Ticket-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th>Kategorie</th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
-                            <th>Online-Ticket</th>
+                            <th>Event&shy;besuche</th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @{ var i = 1; }
                         @foreach (var t in Sorted())
                         {
                             <tr>
-                                <td>@i</td>
-                                <td class="ta-mono">@ShortId(t.Uuid)</td>
-                                <td>@t.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                                <td><span class="ta-badge ta-badge-@t.Status.ToString().ToLowerInvariant()">@t.Status.DisplayName()</span></td>
                                 <td>
-                                    @if (t.Redeemed)
+                                    <span class="ta-ticketno">
+                                        <span class="ta-no">@AdminFormat.TicketNo(t.Uuid)</span>
+                                        <a class="ta-qr-link" href="/ticket/for/@t.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                        </a>
+                                    </span>
+                                </td>
+                                <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, SelectedBundle?.CreatedByName, SelectedBundle?.CreatedByEmail, null)">
+                                    @AdminFormat.CreatedShort(t.CreatedAt, SelectedBundle?.CreatedByName, null)
+                                </td>
+                                <td>@SelectedBundle?.Category.DisplayName()</td>
+                                <td>
+                                    @if (t.Status == TicketStatus.Blocked)
+                                    {
+                                        <span class="ta-badge ta-badge-blocked">@t.Status.DisplayName()</span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="ta-badge-btn" title="Status ändern" @onclick="() => AskToggleStatus(t)">
+                                            <span class="ta-badge ta-badge-@t.Status.ToString().ToLowerInvariant()">@t.Status.DisplayName()</span>
+                                        </button>
+                                    }
+                                </td>
+                                <td>
+                                    @if (t.Status == TicketStatus.Valid)
+                                    {
+                                        <button type="button" class="ta-badge-btn" title="Einlösung ändern" @onclick="() => AskToggleRedeemed(t)">
+                                            @if (t.Redeemed)
+                                            {
+                                                <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="ta-badge ta-badge-draft">Offen</span>
+                                            }
+                                        </button>
+                                    }
+                                    else if (t.Redeemed)
                                     {
                                         <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
                                     }
@@ -100,10 +132,8 @@
                                         <span class="ta-badge ta-badge-draft">Offen</span>
                                     }
                                 </td>
-                                <td class="ta-col-actions">
-                                    <a class="ta-qr-link" href="/ticket/for/@t.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
-                                    </a>
+                                <td>
+                                    <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuche</button>
                                 </td>
                                 <td class="ta-col-actions">
                                     @if (t.Status == TicketStatus.Cancelled)
@@ -112,15 +142,14 @@
                                     }
                                     else if (t.Status == TicketStatus.Blocked)
                                     {
-                                        <button type="button" class="ta-icon-btn" title="Flexticket entsperren" @onclick="() => SetStatusAsync(t, TicketStatus.Valid)">🔓</button>
+                                        <button type="button" class="ta-icon-btn" title="Flexticket entsperren" @onclick="() => AskToggleBlocked(t)">🔓</button>
                                     }
                                     else
                                     {
-                                        <button type="button" class="ta-icon-btn" title="Flexticket sperren" @onclick="() => SetStatusAsync(t, TicketStatus.Blocked)">🔒</button>
+                                        <button type="button" class="ta-icon-btn" title="Flexticket sperren" @onclick="() => AskToggleBlocked(t)">🔒</button>
                                     }
                                 </td>
                             </tr>
-                            i++;
                         }
                     </tbody>
                 </table>
@@ -204,8 +233,28 @@
     </div>
 }
 
+@if (_confirmFor is not null)
+{
+    <ConfirmDialog Title="@_confirmTitle"
+                   Message="@_confirmMessage"
+                   ConfirmLabel="@_confirmLabel"
+                   Danger="@_confirmDanger"
+                   Busy="@_confirmBusy"
+                   Error="@_confirmError"
+                   OnConfirm="ExecuteConfirmAsync"
+                   OnCancel="() => _confirmFor = null" />
+}
+
+@if (_visitsFor is not null)
+{
+    <VisitsOverlay Uuid="@_visitsFor.Uuid"
+                   Title="@($"Flexticket {AdminFormat.TicketNo(_visitsFor.Uuid)}")"
+                   OnClose="() => _visitsFor = null" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
@@ -272,10 +321,74 @@
         return _sortAsc ? q : q.Reverse();
     }
 
-    private async Task SetStatusAsync(FlexTicketView ticket, TicketStatus status)
+    private FlexTicketView? _visitsFor;
+
+    private FlexTicketView? _confirmFor;
+    private string _confirmTitle = "";
+    private string _confirmMessage = "";
+    private string _confirmLabel = "Bestätigen";
+    private bool _confirmDanger;
+    private bool _confirmBusy;
+    private string? _confirmError;
+    private Func<FlexTicketView, Task>? _confirmAction;
+
+    private void AskToggleStatus(FlexTicketView t)
     {
-        await Bundles.SetTicketStatusAsync(ticket.Uuid, status);
-        await ReloadTicketsAsync();
+        var cancelling = t.Status == TicketStatus.Valid;
+        _confirmFor = t;
+        _confirmTitle = cancelling ? "Flexticket stornieren" : "Flexticket reaktivieren";
+        _confirmMessage = cancelling
+            ? $"Flexticket {AdminFormat.TicketNo(t.Uuid)} wirklich stornieren? Ein storniertes Ticket ist am Eingang ungültig."
+            : $"Flexticket {AdminFormat.TicketNo(t.Uuid)} wieder auf „Gültig“ setzen?";
+        _confirmLabel = cancelling ? "Stornieren" : "Reaktivieren";
+        _confirmDanger = cancelling;
+        _confirmError = null;
+        _confirmAction = ticket => Bundles.SetTicketStatusAsync(ticket.Uuid,
+            cancelling ? TicketStatus.Cancelled : TicketStatus.Valid);
+    }
+
+    private void AskToggleRedeemed(FlexTicketView t)
+    {
+        var redeeming = !t.Redeemed;
+        _confirmFor = t;
+        _confirmTitle = redeeming ? "Als eingelöst markieren" : "Einlösung zurücksetzen";
+        _confirmMessage = redeeming
+            ? $"Flexticket {AdminFormat.TicketNo(t.Uuid)} als eingelöst markieren?"
+            : $"Die Einlösung von Flexticket {AdminFormat.TicketNo(t.Uuid)} zurücksetzen?";
+        _confirmLabel = redeeming ? "Einlösen" : "Zurücksetzen";
+        _confirmDanger = false;
+        _confirmError = null;
+        _confirmAction = ticket => Bundles.SetTicketRedeemedAsync(ticket.Uuid, redeeming);
+    }
+
+    private void AskToggleBlocked(FlexTicketView t)
+    {
+        var blocking = t.Status != TicketStatus.Blocked;
+        _confirmFor = t;
+        _confirmTitle = blocking ? "Flexticket sperren" : "Flexticket entsperren";
+        _confirmMessage = blocking
+            ? $"Flexticket {AdminFormat.TicketNo(t.Uuid)} sperren? Ein gesperrtes Ticket wird am Eingang abgewiesen."
+            : $"Flexticket {AdminFormat.TicketNo(t.Uuid)} entsperren und wieder gültig machen?";
+        _confirmLabel = blocking ? "Sperren" : "Entsperren";
+        _confirmDanger = blocking;
+        _confirmError = null;
+        _confirmAction = ticket => Bundles.SetTicketStatusAsync(ticket.Uuid,
+            blocking ? TicketStatus.Blocked : TicketStatus.Valid);
+    }
+
+    private async Task ExecuteConfirmAsync()
+    {
+        if (_confirmFor is null || _confirmAction is null) return;
+        _confirmBusy = true;
+        _confirmError = null;
+        try
+        {
+            await _confirmAction(_confirmFor);
+            _confirmFor = null;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _confirmError = ex.Message; }
+        finally { _confirmBusy = false; }
     }
 
     private void OpenCreate()
@@ -308,7 +421,8 @@
                 _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
                 return;
             }
-            var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity, AdminUser);
+            var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
+                Identity?.Name ?? AdminUser, Identity?.Email);
             _showCreate = false;
             _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
             SelectedBundleId = created.Id;
@@ -354,6 +468,4 @@
         return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
-
-    private static string ShortId(Guid uuid) => uuid == Guid.Empty ? "–" : uuid.ToString()[..8];
 }

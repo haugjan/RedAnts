@@ -49,6 +49,17 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             "UPDATE SeasonSingleTickets SET Status = @0 WHERE Uuid = @1", (int)status, uuid.ToString());
     }
 
+    public async Task SetTicketRedeemedAsync(Guid uuid, bool redeemed)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        if (redeemed)
+            await scope.Database.ExecuteAsync(
+                "UPDATE SeasonSingleTickets SET Redeemed = 1 WHERE Uuid = @0", uuid.ToString());
+        else
+            await scope.Database.ExecuteAsync(
+                "UPDATE SeasonSingleTickets SET Redeemed = 0, RedeemedEventId = NULL WHERE Uuid = @0", uuid.ToString());
+    }
+
     public async Task<bool> ReferenceExistsAsync(int seasonId, string reference)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

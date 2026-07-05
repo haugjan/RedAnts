@@ -28,6 +28,8 @@ public interface IFlexTicketBundles
 
     Task SetTicketStatusAsync(Guid uuid, TicketStatus status);
 
+    Task SetTicketRedeemedAsync(Guid uuid, bool redeemed);
+
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
 
     Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
