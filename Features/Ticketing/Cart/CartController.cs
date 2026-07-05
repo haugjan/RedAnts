@@ -11,6 +11,20 @@ public sealed class CartController(
     [HttpGet("/warenkorb")]
     public IActionResult Index() => View(cart.Get());
 
+    [HttpPost("/warenkorb/direkt")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddAndCheckout(int eventId, TicketCategory category, int quantity)
+    {
+        if (quantity < 1) quantity = 1;
+
+        var available = await pricing.FindAvailableAsync(eventId, category);
+        var evt = await events.FindByIdAsync(eventId);
+        if (available is { Available: true } && evt is not null)
+            cart.Add(eventId, evt.Name, available.Category, available.Name, available.Price, quantity);
+
+        return Redirect(cart.Get().IsEmpty ? "/warenkorb" : "/kasse/express");
+    }
+
     [HttpPost("/warenkorb/add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Add(int eventId, TicketCategory category, int quantity, string? returnUrl)

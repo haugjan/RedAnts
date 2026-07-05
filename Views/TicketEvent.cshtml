@@ -82,6 +82,8 @@
             padding: 0.5rem 1.15rem; cursor: pointer; transition: background 0.15s;
         }
         .evt-addbtn:hover { background: var(--red-dark); }
+        .evt-addbtn--express { background: #fff; color: var(--red); border: 2px solid var(--red); padding: calc(0.5rem - 2px) 1.15rem; }
+        .evt-addbtn--express:hover { background: var(--red); color: #fff; }
         .evt-empty { color: var(--ink-light); }
         .evt-soldout {
             font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
@@ -184,6 +186,7 @@ else
                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                     <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
                                     <button type="submit" class="evt-addbtn">In den Warenkorb</button>
+                                    <button type="submit" class="evt-addbtn evt-addbtn--express" formaction="/warenkorb/direkt">Direkt kaufen</button>
                                     <span class="evt-add-status" role="status" aria-live="polite"></span>
                                 </form>
                             }
@@ -239,6 +242,7 @@ else
         var revert;
 
         form.addEventListener('submit', function (e) {
+            if (e.submitter && e.submitter.hasAttribute('formaction')) return;
             e.preventDefault();
             clearTimeout(revert);
             btn.disabled = true;

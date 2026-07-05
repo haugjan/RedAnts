@@ -88,6 +88,56 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         try { billing = ToBillingAddress(form); }
         catch (DomainException) { return Redirect("/kasse"); }
 
+        return await FinalizeOrderAsync(current, billing, paymentMethod);
+    }
+
+    [HttpGet("/kasse/express")]
+    public IActionResult Express()
+    {
+        if (cart.Get().IsEmpty) return Redirect("/ticketing/");
+        return View("~/Views/Checkout/Express.cshtml", new CheckoutExpressView
+        {
+            Cart = cart.Get(), Methods = Methods,
+            TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
+            Error = TempData["CheckoutError"] as string
+        });
+    }
+
+    [HttpPost("/kasse/express")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExpressPay(string email, string? name, PaymentMethod paymentMethod)
+    {
+        var current = cart.Get();
+        if (current.IsEmpty) return Redirect("/ticketing/");
+        if (Methods.All(m => m.Method != paymentMethod)) return Redirect("/kasse/express");
+
+        CheckoutExpressView Invalid(string error) => new()
+        {
+            Cart = current, Methods = Methods,
+            TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
+            Error = error, Email = email ?? "", Name = name ?? ""
+        };
+
+        email = (email ?? "").Trim();
+        if (email.Length < 5 || !email.Contains('@') || !email.Contains('.'))
+            return View("~/Views/Checkout/Express.cshtml", Invalid("Bitte eine gültige E-Mail-Adresse angeben."));
+
+        var captchaToken = Request.Form["cf-turnstile-response"].ToString();
+        if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
+            return View("~/Views/Checkout/Express.cshtml", Invalid("Bitte bestätige, dass du kein Roboter bist."));
+
+        var trimmed = (name ?? "").Trim();
+        var space = trimmed.IndexOf(' ');
+        var firstName = space > 0 ? trimmed[..space] : trimmed;
+        var lastName = space > 0 ? trimmed[(space + 1)..] : "";
+        var billing = BillingAddress.FromPersistence((int)BuyerType.Private, firstName, lastName, null,
+            "", null, "", "", "Schweiz", email, null);
+
+        return await FinalizeOrderAsync(current, billing, paymentMethod);
+    }
+
+    private async Task<IActionResult> FinalizeOrderAsync(Cart current, BillingAddress billing, PaymentMethod paymentMethod)
+    {
         var demand = current.Items
             .Where(i => i.Kind == CartItemKind.EventTicket)
             .Select(i => new TicketDemand(i.EventId, i.Category, i.Quantity))

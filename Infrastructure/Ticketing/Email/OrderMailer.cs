@@ -44,8 +44,9 @@ public sealed class OrderMailer(
     {
         var intro = "<p style=\"margin:0 0 20px;\">Vielen Dank für deinen Kauf. Deine Tickets sind unten bereit, jedes mit eigenem QR-Code für den Einlass.</p>";
         var dates = await ResolveDatesAsync(model.Tickets);
-        var blocks = string.Concat(model.Tickets.Select(t =>
-            TicketCard(model.BaseUrl, t, dates.GetValueOrDefault((t.Type, t.ScopeId)))));
+        var total = model.Tickets.Count;
+        var blocks = string.Concat(model.Tickets.Select((t, i) =>
+            TicketCard(model.BaseUrl, t, dates.GetValueOrDefault((t.Type, t.ScopeId)), i + 1, total)));
         return intro + blocks;
     }
 
@@ -67,7 +68,7 @@ public sealed class OrderMailer(
         return dates;
     }
 
-    private string TicketCard(string baseUrl, OrderMailTicket ticket, string? dateText)
+    private string TicketCard(string baseUrl, OrderMailTicket ticket, string? dateText, int index, int total)
     {
         var token = tokens.Create(ticket.Type, ticket.Uuid, ticket.ScopeId);
         var url = $"{baseUrl}/ticket/{token}";
@@ -83,8 +84,12 @@ public sealed class OrderMailer(
             MetaRow("Kategorie", category) +
             MetaRow("Ticket-Nr.", reference);
 
-        return
-            "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:400px;margin:0 auto 20px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;\">" +
+        var counter = total > 1
+            ? $"<div style=\"max-width:400px;margin:0 auto 6px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#888888;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;\">Ticket {index} von {total}</div>"
+            : "";
+
+        return counter +
+            "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:400px;margin:0 auto 44px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;page-break-inside:avoid;\">" +
                 $"<tr><td style=\"background:{accent};padding:12px 16px;\">" +
                     "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr>" +
                         "<td style=\"vertical-align:middle;\">" +

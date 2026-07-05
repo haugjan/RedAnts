@@ -1,0 +1,63 @@
+@model RedAnts.Features.Ticketing.Cart.CheckoutExpressView
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = "Express-Kasse";
+}
+
+<h1 class="mb-1">Express-Kasse</h1>
+<p class="text-muted mb-4">Nur E-Mail angeben, bezahlen, Tickets sofort scannen lassen.</p>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <form method="post" action="/kasse/express" class="card p-4">
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label class="form-label fw-bold" for="expressEmail">E-Mail *</label>
+                <input class="form-control" type="email" id="expressEmail" name="email" required
+                       autocomplete="email" inputmode="email" placeholder="fuer die Ticket-Zustellung" value="@Model.Email" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="expressName">Name <span class="text-muted">(optional)</span></label>
+                <input class="form-control" type="text" id="expressName" name="name" autocomplete="name" value="@Model.Name" />
+            </div>
+
+            @{ var first = true; }
+            @foreach (var m in Model.Methods)
+            {
+                <div class="form-check border rounded p-3 mb-2">
+                    <input class="form-check-input" type="radio" name="paymentMethod"
+                           value="@m.Method" id="xpm-@m.Method" @(first ? "checked" : "") />
+                    <label class="form-check-label ms-1" for="xpm-@m.Method">
+                        <span class="fw-bold">@m.Label</span><br />
+                        <span class="text-muted small">@m.Hint</span>
+                    </label>
+                </div>
+                first = false;
+            }
+
+            @if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
+            {
+                <div class="cf-turnstile mt-3" data-sitekey="@Model.TurnstileSiteKey"></div>
+            }
+
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <a href="/kasse" class="btn btn-link text-muted p-0">Mit Rechnungsadresse bestellen</a>
+                <button type="submit" class="btn btn-danger">Kostenpflichtig kaufen</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-lg-5">
+        @await Html.PartialAsync("~/Views/Checkout/_Summary.cshtml", Model.Cart)
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+}

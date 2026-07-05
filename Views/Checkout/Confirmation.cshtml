@@ -21,18 +21,22 @@
         <span class="text-muted">Total</span><strong>CHF @Model.Total.ToString("N2")</strong>
     </div>
     <hr />
-    <p class="mb-3">Eine Bestätigung geht an <strong>@Model.Email</strong>. <span class="text-muted">(Testmodus: kein echter Versand.)</span></p>
+    <p class="mb-3">Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>. Du kannst die QR-Codes auch direkt hier am Eingang scannen lassen:</p>
 
     <h2 class="h5 mb-2">Deine Tickets</h2>
-    <ul class="list-group list-group-flush">
+    <div class="row g-3">
         @foreach (var t in Model.Tickets)
         {
-            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                <span>@t.EventName <span class="text-muted">(@t.CategoryName)</span></span>
-                <a class="btn btn-sm btn-outline-danger" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
-            </li>
+            <div class="col-12 col-sm-6 col-lg-4">
+                <div class="border rounded p-3 text-center h-100">
+                    <img src="/ticket/@t.Token/qr.png" alt="Ticket-QR" width="160" height="160" class="img-fluid" style="max-width:160px;" />
+                    <div class="fw-bold small mt-2">@t.EventName</div>
+                    <div class="text-muted small">@t.CategoryName</div>
+                    <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
+                </div>
+            </div>
         }
-    </ul>
+    </div>
 </div>
 
 <div class="mt-4">
