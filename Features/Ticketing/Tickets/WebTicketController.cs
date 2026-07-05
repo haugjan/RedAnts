@@ -48,7 +48,7 @@ public sealed class WebTicketController(
         var model = new WebTicketViewModel(
             Found: issued is not null,
             Valid: issued is { Status: TicketStatus.Valid },
-            TypeLabel: TypeLabel(data.Type),
+            TypeLabel: DisplayTitle(data.Type, issued),
             ScopeName: scopeName,
             DateText: dateText,
             CategoryLabel: issued is null ? null : (issued.Category?.DisplayName() ?? issued.MemberCategory?.DisplayName()),
@@ -57,7 +57,8 @@ public sealed class WebTicketController(
             QrSvg: svg,
             HomeLogo: homeLogo,
             AwayLogo: awayLogo,
-            MemberLogoUrl: issued?.MemberCategory is { } mc ? MemberLogo(mc) : null);
+            MemberLogoUrl: issued?.MemberCategory is { } mc ? MemberLogo(mc) : null,
+            TypeKey: TypeKey(data.Type, issued?.MemberCategory));
 
         return View("~/Views/WebTicket.cshtml", model);
     }
@@ -71,6 +72,11 @@ public sealed class WebTicketController(
         return RedirectToAction(nameof(Show), new { token });
     }
 
+    private static string DisplayTitle(TicketType type, IssuedTicket? issued) =>
+        type == TicketType.MemberCard && issued?.MemberCategory is { } category
+            ? category.DisplayName()
+            : TypeLabel(type);
+
     private static string TypeLabel(TicketType type) => type switch
     {
         TicketType.EventTicket => "Spielticket",
@@ -79,6 +85,16 @@ public sealed class WebTicketController(
         TicketType.MemberCard => "Mitgliederkarte",
         TicketType.FreeEntry => "Freier Eintritt",
         _ => "Ticket"
+    };
+
+    private static string TypeKey(TicketType type, MemberCategory? member) => type switch
+    {
+        TicketType.EventTicket => "spiel",
+        TicketType.SeasonSingle => "flex",
+        TicketType.SeasonPass => "saison",
+        TicketType.MemberCard => member == MemberCategory.Block4 ? "block4" : "member",
+        TicketType.FreeEntry => "free",
+        _ => "spiel"
     };
 
     private static string MemberLogo(MemberCategory category) => category switch
@@ -101,7 +117,8 @@ public sealed record WebTicketViewModel(
     string QrSvg,
     string? HomeLogo = null,
     string? AwayLogo = null,
-    string? MemberLogoUrl = null)
+    string? MemberLogoUrl = null,
+    string TypeKey = "spiel")
 {
     public static WebTicketViewModel Invalid() =>
         new(false, false, "Ticket", "", null, null, null, "", "");

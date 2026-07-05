@@ -2,17 +2,7 @@
 @{
     Layout = null;
     var title = Model.Found ? $"{Model.TypeLabel} – {Model.ScopeName}" : "Ticket";
-    var typeKey = Model.TypeLabel switch
-    {
-        "Spielticket" => "spiel",
-        "Flexticket" => "flex",
-        "Saisonkarte" => "saison",
-        "Mitgliederkarte" => "member",
-        "Freier Eintritt" => "free",
-        _ => "spiel"
-    };
     var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
-    var headKey = typeKey == "member" && Model.CategoryLabel == "Block 4" ? "block4" : typeKey;
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -91,7 +81,7 @@
         else
         {
             <div class="wt-card">
-                <div class="wt-head wt-head--@headKey">
+                <div class="wt-head wt-head--@Model.TypeKey">
                     <div class="wt-head-text">
                         <div class="wt-type">@Model.TypeLabel</div>
                         <div class="wt-scope">@Model.ScopeName</div>
@@ -125,7 +115,7 @@
                     {
                         <div class="wt-row"><span class="wt-k">Datum</span><span class="wt-v">@Model.DateText</span></div>
                     }
-                    @if (!string.IsNullOrEmpty(Model.CategoryLabel))
+                    @if (!string.IsNullOrEmpty(Model.CategoryLabel) && Model.CategoryLabel != Model.TypeLabel)
                     {
                         <div class="wt-row"><span class="wt-k">Kategorie</span><span class="wt-v">@Model.CategoryLabel</span></div>
                     }
