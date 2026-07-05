@@ -87,6 +87,7 @@
 .ta-links { white-space: nowrap; }
 .ta-qr-link { color: var(--red, #C8102E); display: inline-flex; align-items: center; }
 .ta-qr-link:hover { opacity: 0.75; }
+.ta-col-actions > * + *, .ta-links > * + * { margin-left: 1rem; }
 
 .ta-badge { display: inline-block; padding: 0.12rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
 .ta-badge-valid, .ta-badge-open { background: #e4f4ea; color: #1c7c43; }
