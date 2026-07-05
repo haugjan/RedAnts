@@ -10,8 +10,7 @@ namespace RedAnts.Features.Ticketing.Admin;
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 public sealed class FlexBundleExportController(
     IFlexBundleTickets bundleTickets,
-    ITicketTokens tokens,
-    IQrCodeRenderer qr) : Controller
+    ITicketTokens tokens) : Controller
 {
     [HttpGet("/admin/flextickets/bundle/{bundleId:int}/tickets.csv")]
     public async Task<IActionResult> Export(int bundleId)
@@ -19,56 +18,24 @@ public sealed class FlexBundleExportController(
         var tickets = await bundleTickets.GetByBundleAsync(bundleId);
 
         var sb = new StringBuilder();
-        sb.Append("Kurzkennung;Link\r\n");
+        sb.Append("Referenz;Kurzkennung;Link\r\n");
         foreach (var t in tickets)
         {
             var link = $"{Request.Scheme}://{Request.Host}/ticket/{tokens.Create(TicketType.SeasonSingle, t.Uuid, t.SeasonId)}";
-            sb.Append(ShortCode(t.Uuid)).Append(';').Append(link).Append("\r\n");
+            sb.Append(CsvField(t.Reference)).Append(';')
+              .Append(ShortCode(t.Uuid)).Append(';')
+              .Append(link).Append("\r\n");
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
         return File(bytes, "text/csv; charset=utf-8", $"flextickets-bundle-{bundleId}.csv");
     }
 
-    [HttpGet("/admin/flextickets/bundle/{bundleId:int}/serienbrief.rtf")]
-    public async Task<IActionResult> Serienbrief(int bundleId)
-    {
-        var tickets = await bundleTickets.GetByBundleAsync(bundleId);
-
-        var sb = new StringBuilder();
-        sb.Append(@"{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fswiss Arial;}}\f0 ");
-        var first = true;
-        foreach (var t in tickets)
-        {
-            if (!first) sb.Append(@"\page ");
-            first = false;
-
-            var link = $"{Request.Scheme}://{Request.Host}/ticket/{tokens.Create(TicketType.SeasonSingle, t.Uuid, t.SeasonId)}";
-
-            sb.Append(@"\qc\sb360\b\fs40 Red Ants Winterthur\b0\par ");
-            sb.Append(@"\fs28 Flexticket\par\par ");
-            sb.Append(QrPicture(link)).Append(@"\par\par ");
-            sb.Append(@"\fs24 Kurzkennung: \b ").Append(ShortCode(t.Uuid)).Append(@"\b0\par ");
-            sb.Append(@"Scanne diesen Code am Eingang.\par ");
-        }
-        sb.Append('}');
-
-        return File(Encoding.ASCII.GetBytes(sb.ToString()), "application/rtf", $"flextickets-serienbrief-{bundleId}.rtf");
-    }
-
     private static string ShortCode(Guid uuid) => uuid.ToString("N")[..8].ToUpperInvariant();
 
-    private string QrPicture(string content)
-    {
-        var dataUri = qr.RenderPngDataUri(content, 10);
-        var png = Convert.FromBase64String(dataUri[(dataUri.IndexOf(',') + 1)..]);
-
-        int pw = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
-        int ph = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
-        int picw = (int)(pw * 2540.0 / 96);
-        int pich = (int)(ph * 2540.0 / 96);
-        const int goal = 2551;
-
-        return $@"{{\pict\pngblip\picw{picw}\pich{pich}\picwgoal{goal}\pichgoal{goal} {Convert.ToHexString(png)}}}";
-    }
+    // Quote a value for the semicolon-separated CSV when it contains a separator, quote or newline.
+    private static string CsvField(string value) =>
+        value.IndexOfAny([';', '"', '\r', '\n']) >= 0
+            ? $"\"{value.Replace("\"", "\"\"")}\""
+            : value;
 }
