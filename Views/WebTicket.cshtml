@@ -12,6 +12,7 @@
         _ => "spiel"
     };
     var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
+    var headKey = typeKey == "member" && Model.CategoryLabel == "Block 4" ? "block4" : typeKey;
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -48,6 +49,8 @@
         .wt-head--flex   { background: #E4720F; }
         .wt-head--saison { background: #1F5FBF; }
         .wt-head--member { background: #1A7F37; }
+        .wt-head--block4 { background: #111111; }
+        .wt-head--block4 .wt-type { color: #FFD23F; }
         .wt-head--free   { background: #6B4EA0; }
         .wt-logos { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .9rem 1.4rem 0; }
         .wt-logos img { height: 46px; width: auto; object-fit: contain; }
@@ -88,7 +91,7 @@
         else
         {
             <div class="wt-card">
-                <div class="wt-head wt-head--@typeKey">
+                <div class="wt-head wt-head--@headKey">
                     <div class="wt-head-text">
                         <div class="wt-type">@Model.TypeLabel</div>
                         <div class="wt-scope">@Model.ScopeName</div>

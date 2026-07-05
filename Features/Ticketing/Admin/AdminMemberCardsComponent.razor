@@ -67,7 +67,7 @@
                                     else { <span class="ta-muted">(ohne Name)</span> }
                                 </td>
                                 <td>@c.CreatedAt.ToString("dd.MM.yyyy")</td>
-                                <td>@c.CategoryLabel</td>
+                                <td><span class="ta-badge @CategoryBadgeClass(c.Category)">@c.CategoryLabel</span></td>
                                 <td>
                                     <span class="ta-badge @(c.IsCancelled ? "ta-badge-cancelled" : "ta-badge-valid")">
                                         @(c.IsCancelled ? "Storniert" : "Gültig")
@@ -381,4 +381,10 @@
     }
 
     private static string ShortId(Guid id) => id == Guid.Empty ? "–" : id.ToString()[..8];
+
+    private static string CategoryBadgeClass(MemberCategory category) => category switch
+    {
+        MemberCategory.Block4 => "ta-badge-block4",
+        _ => "ta-badge-redants"
+    };
 }
