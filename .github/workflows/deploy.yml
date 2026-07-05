@@ -75,12 +75,12 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
-          # "Up" = 200 OR 401 (the Basic-auth gate returns 401 until credentials are supplied,
-          # which still means Umbraco booted). Best-effort: never fail the deploy here.
+          # "Up" = 2xx, 3xx or 401: the root redirects to /ticketing/ (3xx) and the site gate
+          # answers 401 without credentials - both mean Umbraco booted. Best-effort: never fail here.
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
-            if [ "$S" = "200" ] || [ "$S" = "401" ]; then echo "Up."; exit 0; fi
+            case "$S" in 2*|3*|401) echo "Up."; exit 0 ;; esac
             sleep 15
           done
           echo "App did not respond within the warm-up window (best-effort)."; exit 0
@@ -119,7 +119,7 @@ jobs:
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
-            if [ "$S" = "200" ] || [ "$S" = "401" ]; then echo "Up."; exit 0; fi
+            case "$S" in 2*|3*|401) echo "Up."; exit 0 ;; esac
             sleep 15
           done
           echo "App did not respond within the warm-up window (best-effort)."; exit 0
