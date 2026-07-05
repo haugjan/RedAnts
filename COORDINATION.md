@@ -36,7 +36,7 @@
 | S2 | `feature/s2-admin-table-standard` | `C:\development\RedAnts-s2` | Tabellen-Standard (Fundament) + Spieltickets + Flextickets + Content-Links | **Fundament in `main` gemerged (`fe73334`)** — S1/S4 können rebasen; Anwendung auf Spieltickets/Flextickets + Content-Links in Arbeit |
 | S3 | `feature/s3-onlinekarten-mail` | `C:\development\RedAnts-s3` | Online-Karten-Design in Mails + Mailversand komplett + Kategorien mit Alter | Branch gepusht (`1e90958`): Mail-Karten in Online-Optik (Typ-Akzente, Logo im Kopf), QR neu via `/ticket/{token}/qr.png` (Gmail blockt data-URIs), Karten-Körper-Logo raus (Block4-Logo im Titelbalken), Kategorien mit Alter. Azure: `Tickets__QrSecret` auf dev+prod gesetzt (alte Ticket-Links invalid). DEV-Deploy läuft; Merge nach Verifikation |
 | S4 | `feature/s4-kaufen-saisonkarten` | `C:\development\RedAnts-s4` | Kaufen/Warenkorb/Kasse + Saisonkarten-Admin (Bundles etc.) | offen |
-| S5 | `feature/s5-ticketing-startseite` | `C:\development\RedAnts-s5` | Neue öffentliche Struktur (/ticketing/, /saisons/) + Seeder-Bereinigung | fertig, Merge folgt |
+| S5 | `feature/s5-ticketing-startseite` | `C:\development\RedAnts-s5` | Neue öffentliche Struktur (/ticketing/, /saisons/) + Seeder-Bereinigung | **Paket komplett erledigt, in main gemerged** (`d89f075`); lokal verifiziert (/, /ticketing/, /saisons/, Event-/Saisonseite je 200 inkl. Zurück-Button) |
 
 ---
 
