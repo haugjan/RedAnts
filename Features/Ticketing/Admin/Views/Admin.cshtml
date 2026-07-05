@@ -26,5 +26,14 @@
                render-mode="Server"
                param-AdminUser="@Model" />
     <script src="/_framework/blazor.server.js"></script>
+    <script>
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            var overlay = document.querySelector('.ta-overlay');
+            if (!overlay) return;
+            var cancel = overlay.querySelector('.ta-modal-actions .ta-btn-ghost');
+            if (cancel && !cancel.disabled) cancel.click();
+        });
+    </script>
 </body>
 </html>
