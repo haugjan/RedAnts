@@ -45,16 +45,15 @@
                 <table class="ta-table">
                     <thead>
                         <tr>
+                            <th>Karten-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Gekauft <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th>Zahlung</th>
                             <th>Bestell-Nr.</th>
-                            <th>Erstellt von</th>
-                            <th>Karten-Nr.</th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
@@ -62,6 +61,12 @@
                         @foreach (var p in Sorted())
                         {
                             <tr>
+                                <td>
+                                    <span class="ta-ticketno">@AdminFormat.TicketNo(p.Uuid)</span>
+                                    <a class="ta-qr-link" href="/ticket/for/@p.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                    </a>
+                                </td>
                                 <td class="ta-cell-name">
                                     @if (p.BuyerName is not null)
                                     {
@@ -70,19 +75,23 @@
                                     }
                                     else { <span class="ta-muted">—</span> }
                                 </td>
-                                <td>@p.CreatedAt.ToString("dd.MM.yyyy")</td>
+                                <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
                                 <td>@p.Category.DisplayName()</td>
                                 <td class="ta-num">CHF @p.Price.ToString("N2")</td>
                                 <td><span class="ta-badge ta-badge-@p.Status.ToString().ToLowerInvariant()">@StatusLabel(p.Status)</span></td>
-                                <td class="ta-num">@p.EventVisits</td>
+                                <td class="ta-num">
+                                    @if (p.EventVisits > 0)
+                                    {
+                                        <button type="button" class="ta-visits-link" @onclick="() => OpenVisits(p)">@p.EventVisits</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">0</span>
+                                    }
+                                </td>
                                 <td>@(p.PaymentState ?? "–")</td>
                                 <td>@(p.OrderNumber ?? "–")</td>
-                                <td>@(string.IsNullOrEmpty(p.CreatedByName) ? "–" : p.CreatedByName)</td>
-                                <td><code class="ta-uuid">@ShortId(p.Uuid)</code></td>
                                 <td class="ta-col-actions">
-                                    <a class="ta-qr-link" href="/ticket/for/@p.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
-                                    </a>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(p)">✎</button>
                                 </td>
                             </tr>
@@ -162,7 +171,33 @@
     <div class="ta-overlay" @onmousedown="CancelEdit">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
-            <p class="ta-modal-sub">@(_editing.BuyerName ?? "(keine Bestellung)") · Karten-Nr. @ShortId(_editing.Uuid)</p>
+            <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="editBuyerType">Käufer:in</label>
+                <select id="editBuyerType" class="ta-select" @bind="_editBuyerType">
+                    <option value="@BuyerType.Private">Privatperson</option>
+                    <option value="@BuyerType.Company">Firma</option>
+                </select>
+            </div>
+            @if (_editBuyerType == BuyerType.Company)
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="editCompany">Firmenname</label>
+                    <input id="editCompany" class="ta-input" @bind="_editCompany" />
+                </div>
+            }
+            else
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="editFirstName">Vorname</label>
+                    <input id="editFirstName" class="ta-input" @bind="_editFirstName" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="editLastName">Nachname</label>
+                    <input id="editLastName" class="ta-input" @bind="_editLastName" />
+                </div>
+            }
 
             <div class="ta-field">
                 <label class="ta-label" for="editCategory">Kategorie</label>
@@ -204,8 +239,14 @@
     </div>
 }
 
+@if (_visitsPass is not null)
+{
+    <VisitsOverlay Uuid="_visitsPass.Uuid" Title="@(_visitsPass.BuyerName ?? AdminFormat.TicketNo(_visitsPass.Uuid))" OnClose="CloseVisits" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -258,7 +299,11 @@
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
 
-    private static string ShortId(Guid id) => id == Guid.Empty ? "–" : id.ToString()[..8];
+    private static int? OnlineMarker(SeasonPassListItem p) => p.OrderNumber is null ? null : 0;
+
+    private SeasonPassListItem? _visitsPass;
+    private void OpenVisits(SeasonPassListItem p) => _visitsPass = p;
+    private void CloseVisits() => _visitsPass = null;
 
     private static string StatusLabel(TicketStatus status) => status switch
     {
@@ -299,7 +344,8 @@
         try
         {
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
-            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, null, buyer, AdminUser));
+            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, null,
+                buyer, Identity.Name, Identity.Email));
             _showCreate = false;
             await ReloadPassesAsync();
         }
@@ -311,15 +357,30 @@
     private TicketCategory _editCategory;
     private decimal _editPrice;
     private TicketStatus _editStatus;
+    private BuyerType _editBuyerType = BuyerType.Private;
+    private string _editFirstName = "";
+    private string _editLastName = "";
+    private string _editCompany = "";
     private bool _saving;
     private string? _editError;
 
-    private void OpenEdit(SeasonPassListItem pass)
+    private async Task OpenEdit(SeasonPassListItem pass)
     {
         _editing = pass;
         _editCategory = pass.Category;
         _editPrice = decimal.Round(pass.Price, 2);
         _editStatus = pass.Status;
+        _editFirstName = _editLastName = _editCompany = "";
+        _editBuyerType = BuyerType.Private;
+
+        var current = await Passes.GetByUuidAsync(pass.Uuid);
+        if (current?.Buyer is { } b)
+        {
+            _editBuyerType = b.Type;
+            _editFirstName = b.FirstName ?? "";
+            _editLastName = b.LastName ?? "";
+            _editCompany = b.Company ?? "";
+        }
         _editError = null;
     }
 
@@ -336,6 +397,7 @@
             if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
 
             pass.Edit(_editCategory, _editPrice, _editStatus);
+            pass.SetBuyer(Buyer.Create(_editBuyerType, _editFirstName, _editLastName, _editCompany));
             await Passes.SaveAsync(pass);
 
             _editing = null;

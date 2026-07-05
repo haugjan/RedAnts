@@ -55,4 +55,6 @@ public sealed class SeasonPass
         Price = decimal.Round(price, 2);
         Status = status;
     }
+
+    public void SetBuyer(Buyer buyer) => Buyer = buyer;
 }
