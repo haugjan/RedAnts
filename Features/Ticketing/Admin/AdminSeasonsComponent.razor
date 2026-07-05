@@ -109,7 +109,7 @@
                         {
                             <tr>
                                 <td>@c.Category.DisplayName()</td>
-                                <td class="ta-num"><input type="number" min="0" step="0.05" class="ta-input ta-input-sm" @bind="c.Price" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" @bind="c.Price" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" @bind="c.Quota" /></td>
                             </tr>
                         }
@@ -216,7 +216,7 @@
         var existing = (price?.Categories ?? []).ToDictionary(c => c.Category);
         _editCats = Enum.GetValues<TicketCategory>()
             .Select(cat => existing.TryGetValue(cat, out var cp)
-                ? new CatRow { Category = cat, Price = cp.SalePrice, Quota = cp.Quota }
+                ? new CatRow { Category = cat, Price = decimal.Round(cp.SalePrice, 2), Quota = cp.Quota }
                 : new CatRow { Category = cat, Price = 0m, Quota = null })
             .ToList();
         _editError = null;
@@ -233,7 +233,7 @@
         {
             var cats = _editCats
                 .Where(c => c.Price > 0 || c.Quota.HasValue)
-                .Select(c => CategoryPrice.Create(c.Category, c.Price, c.Quota))
+                .Select(c => CategoryPrice.Create(c.Category, decimal.Round(c.Price, 2), c.Quota))
                 .ToList();
             var existing = Price(_editing.Id);
             var price = existing is null
