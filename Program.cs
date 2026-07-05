@@ -99,10 +99,15 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/_blazor")
         || path.StartsWithSegments("/_framework")
         || path.StartsWithSegments("/ticket")
+        || path.StartsWithSegments("/css")
+        || path.StartsWithSegments("/js")
         || path.StartsWithSegments("/img")
         || path.StartsWithSegments("/media")
         || path.StartsWithSegments("/favicons")
-        || path == "/favicon.ico";
+        || path.StartsWithSegments("/lib")
+        || path == "/favicon.ico"
+        || path == "/scanner-sw.js"
+        || path == "/site.webmanifest";
 
     static string SafeReturn(string? value) =>
         !string.IsNullOrEmpty(value) && value.StartsWith('/') && !value.StartsWith("//") ? value : "/";
