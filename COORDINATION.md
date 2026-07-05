@@ -32,8 +32,8 @@
 |---|---|---|---|---|
 | S1 | `feature/s1-r2-freieinlass-scan` | `C:\development\RedAnts-s1` | Freier Einlass (Kategorien/Kontingente) + Scan-App-Layout | offen |
 | S2 | `feature/s2-r2-inline-edit` | `C:\development\RedAnts-s2` | Inline-Edit-Fundament (zuerst!) + Spieltickets + Flextickets | offen |
-| S3 | `feature/s3-r2-google-wallet` | `C:\development\RedAnts-s3` | Google Wallet | offen |
-| S4 | `feature/s4-r2-verkauf-saisonkarten` | `C:\development\RedAnts-s4` | Verkauf-Fixes + öffentlicher Saisonkarten-Kauf + Saisonkarten-Admin | offen |
+| S3 | `feature/s3-r2-verkauf` | `C:\development\RedAnts-s3` | Verkauf-Fixes (Warenkorb mobil, Reihenfolge, Wochentag, Captcha) | offen |
+| S4 | `feature/s4-r2-saisonkarten` | `C:\development\RedAnts-s4` | Öffentlicher Saisonkarten-Kauf + Saisonkarten-Admin | offen |
 | S5 | `feature/s5-r2-saisons-admin` | `C:\development\RedAnts-s5` | Saisons-Admin komplett (inkl. neues Preismodell + Sonderaktion) | offen |
 | S6 | `feature/s6-r2-anlaesse-mitglieder` | `C:\development\RedAnts-s6` | Anlässe-Admin + Mitgliederkarten | offen |
 
@@ -81,28 +81,22 @@ Flextickets:
 - Schlösschen-Icons (🔒/🔓) rechts entfernen; der Status wird direkt am Ticket gesetzt.
 - Admin-Änderungen an „Eingelöst" ebenfalls im Scanlog tracken (wie beim Eingangsscan).
 
-### S3 — Google Wallet (`feature/s3-r2-google-wallet`)
+### S3 — Verkauf-Fixes (`feature/s3-r2-verkauf`)
 
-- „Zu Google Wallet hinzufügen"-Button auf der Web-Ticket-Seite und in der Ticket-Mail.
-- Implementierung: Google Wallet API (EventTicket-/Generic-Pass-Klasse pro Tickettyp),
-  signierte „Save to Wallet"-JWTs über einen Google-Service-Account; Pass-Inhalte analog
-  Online-Karte (Typ, Kategorie, Anlass/Saison, Ticket-Nr., QR mit `/ticket/{token}`-URL).
-- Secrets über Konfiguration (`GoogleWallet:IssuerId`, Service-Account-Key als Secret/
-  App-Setting), niemals im Code.
-- **Vom Nutzer benötigt** (blockierend): siehe Abschnitt „Google Wallet: benötigte Zugänge"
-  im Chat/Änderungs-Log; bis dahin gegen Demo-Issuer implementieren und Button hinter
-  Config-Flag lassen.
-
-### S4 — Verkauf + Saisonkarten-Kauf + Saisonkarten-Admin (`feature/s4-r2-verkauf-saisonkarten`)
-
-Verkauf:
 - **Warenkorb-Seite ist zu breit fürs Handy** → mobil fixen.
 - Anlassseite: zuerst die **Ticketkategorien zum Kaufen**, danach erst die Google-Maps-Karte.
-- **Wochentage lokalisiert**: bei deutschsprachigem Browser deutsch (Request-Localization/
-  Accept-Language statt fixer Server-Culture für die Anzeige).
-- **Captcha live schalten**: Turnstile-Code ist fertig; auf Prod fehlen die Cloudflare-Keys
-  (`Turnstile__SiteKey`/`__SecretKey` als App-Settings). Sobald der Nutzer die Keys liefert,
-  setzen und Ende-zu-Ende testen.
+- **Wochentage lokalisiert**: bei deutschsprachigem Browser deutsch; englisch nur, wenn der
+  Browser wirklich englisch ist (Request-Localization/Accept-Language für die Anzeige statt
+  fixer Server-Culture).
+- **Captcha live schalten**: Turnstile-Code ist fertig (Widget auf der Zahlungsseite +
+  serverseitige Prüfung in `CheckoutController.Pay`); auf Prod fehlen nur die Cloudflare-Keys
+  (`Turnstile__SiteKey`/`__SecretKey` als App-Settings). Ablauf verifizieren; sobald der
+  Nutzer die Keys liefert, setzen und Ende-zu-Ende testen.
+
+> **Google Wallet ist ZURÜCKGESTELLT** (Entscheid Nutzer). Kommt in einer späteren Runde,
+> sobald Issuer-Konto/Service-Account vorliegen. Nicht beginnen.
+
+### S4 — Saisonkarten-Kauf + Saisonkarten-Admin (`feature/s4-r2-saisonkarten`)
 
 **Öffentlicher Saisonkarten-Kauf (NEU, vom Nutzer):** Saisonkarten können aktuell öffentlich
 nicht gekauft werden → Kaufflow bauen: von `/ticketing/` bzw. `/saisons/` in den Warenkorb,
