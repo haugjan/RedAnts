@@ -35,7 +35,7 @@
 | S3 | `feature/s3-r2-verkauf` | `C:\development\RedAnts-s3` | Verkauf-Fixes (Warenkorb mobil, Reihenfolge, Wochentag, Captcha) | **Erledigt, in main gemerged** (`ca832ba`): Warenkorb <576px als Karten-Stack; Kategorien vor Maps; Wochentag via `DisplayCulture.From(Request)` (Accept-Language; Umbraco überschreibt die Request-Culture mit der Content-Sprache, darum KEIN `UseRequestLocalization` — siehe ARCHITECTURE.md); Turnstile verifiziert, DEV mit Testkeys, **Prod-Keys gesetzt: Turnstile auf Prod scharf, E2E verifiziert (Widget rendert mit echtem SiteKey; Kauf ohne Token wird serverseitig abgelehnt, keine Order entsteht)**. Nebenbei: DEV-Start-Timeout auf 600s erhöht (Basic-DB 5 DTU bricht unter Parallel-Last Verbindungen ab — Upgrade auf S0 empfohlen, wartet auf Nutzer-OK) |
 | S4 | `feature/s4-r2-saisonkarten` | `C:\development\RedAnts-s4` | Öffentlicher Saisonkarten-Kauf + Saisonkarten-Admin | **erledigt, in main gemerged (`1e413e1`)**: Kauf über `/ticketing/`, Admin Status/Kategorie inline (S2-Fundament), CSV-Export je Saison |
 | S5 | `feature/s5-r2-saisons-admin` | `C:\development\RedAnts-s5` | Saisons-Admin komplett (inkl. neues Preismodell + Sonderaktion) | **Paket komplett erledigt, in main gemerged** (Preismodell `91776c7`, Tabelle/Inline `3a631f4`; Migration gegen Dev-DB verifiziert) |
-| S6 | `feature/s6-r2-anlaesse-mitglieder` | `C:\development\RedAnts-s6` | Anlässe-Admin + Mitgliederkarten | offen |
+| S6 | `feature/s6-r2-anlaesse-mitglieder` | `C:\development\RedAnts-s6` | Anlässe-Admin + Mitgliederkarten | **erledigt; Branch war komplett, von S1 nach main gemerged** (Inline-Edits Name/Zeitpunkt/Verkaufsstatus/Kontingent, „Zeit unbekannt", Mitgliederkarten inkl. Einzelkarte + CSV) |
 
 ---
 
