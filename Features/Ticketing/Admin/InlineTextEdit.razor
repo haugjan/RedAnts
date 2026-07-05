@@ -1,0 +1,38 @@
+@inherits InlineEditBase<string>
+
+@if (!Editing)
+{
+    <button type="button" class="ta-inline" title="@($"{FieldLabel} ändern")" disabled="@Disabled" @onclick="BeginEdit">
+        @(string.IsNullOrEmpty(Value) ? EmptyLabel : Value)
+    </button>
+}
+else
+{
+    <input class="ta-input ta-inline-editor" type="text" maxlength="@MaxLength" value="@Value"
+           @onchange="OnChanged" @onkeydown="OnKeyDown" />
+}
+
+@if (ConfirmOpen)
+{
+    <ConfirmDialog Title="@ConfirmTitle"
+                   Message="@ConfirmMessage"
+                   ConfirmLabel="Ändern"
+                   Busy="@Busy"
+                   Error="@Error"
+                   OnConfirm="ConfirmSaveAsync"
+                   OnCancel="DismissConfirm" />
+}
+
+@code {
+    [Parameter] public int MaxLength { get; set; } = 200;
+    [Parameter] public string EmptyLabel { get; set; } = "—";
+
+    protected override string FormatValue(string value) => string.IsNullOrWhiteSpace(value) ? EmptyLabel : value.Trim();
+
+    private void OnChanged(ChangeEventArgs e) => RequestSave((e.Value?.ToString() ?? "").Trim());
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CancelEdit();
+    }
+}

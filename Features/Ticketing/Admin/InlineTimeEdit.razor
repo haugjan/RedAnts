@@ -1,0 +1,53 @@
+@inherits InlineEditBase<TimeOnly?>
+
+@if (!Editing)
+{
+    <button type="button" class="ta-inline" title="@($"{FieldLabel} ändern")" disabled="@Disabled" @onclick="BeginEdit">
+        @FormatValue(Value)
+    </button>
+}
+else
+{
+    <input class="ta-input ta-inline-editor" type="time" value="@(Value?.ToString("HH:mm"))"
+           @onchange="OnChanged" @onkeydown="OnKeyDown" />
+}
+
+@if (ConfirmOpen)
+{
+    <ConfirmDialog Title="@ConfirmTitle"
+                   Message="@ConfirmMessage"
+                   ConfirmLabel="Ändern"
+                   Busy="@Busy"
+                   Error="@Error"
+                   OnConfirm="ConfirmSaveAsync"
+                   OnCancel="DismissConfirm" />
+}
+
+@code {
+    [Parameter] public bool AllowEmpty { get; set; }
+    [Parameter] public string EmptyLabel { get; set; } = "—";
+
+    protected override string FormatValue(TimeOnly? value) => value?.ToString("HH:mm") ?? EmptyLabel;
+
+    private void OnChanged(ChangeEventArgs e)
+    {
+        var raw = (e.Value?.ToString() ?? "").Trim();
+        if (raw.Length == 0)
+        {
+            if (AllowEmpty) RequestSave(null);
+            else CancelEdit();
+            return;
+        }
+        if (!TimeOnly.TryParse(raw, out var parsed))
+        {
+            CancelEdit();
+            return;
+        }
+        RequestSave(parsed);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CancelEdit();
+    }
+}

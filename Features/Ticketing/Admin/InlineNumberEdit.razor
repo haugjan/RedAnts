@@ -1,0 +1,63 @@
+@using System.Globalization
+@inherits InlineEditBase<decimal?>
+
+@if (!Editing)
+{
+    <button type="button" class="ta-inline" title="@($"{FieldLabel} ändern")" disabled="@Disabled" @onclick="BeginEdit">
+        @FormatValue(Value)
+    </button>
+}
+else
+{
+    <input class="ta-input ta-inline-editor ta-inline-num" type="number" min="@Min" step="@Step"
+           value="@(Value?.ToString(CultureInfo.InvariantCulture))" placeholder="@EmptyLabel"
+           @onchange="OnChanged" @onkeydown="OnKeyDown" />
+}
+
+@if (ConfirmOpen)
+{
+    <ConfirmDialog Title="@ConfirmTitle"
+                   Message="@ConfirmMessage"
+                   ConfirmLabel="Ändern"
+                   Busy="@Busy"
+                   Error="@Error"
+                   OnConfirm="ConfirmSaveAsync"
+                   OnCancel="DismissConfirm" />
+}
+
+@code {
+    [Parameter] public int Decimals { get; set; }
+    [Parameter] public decimal Min { get; set; }
+    [Parameter] public bool AllowEmpty { get; set; }
+    [Parameter] public string EmptyLabel { get; set; } = "∞";
+    [Parameter] public string? Prefix { get; set; }
+
+    private string Step => Decimals > 0 ? (1m / (decimal)Math.Pow(10, Decimals)).ToString(CultureInfo.InvariantCulture) : "1";
+
+    protected override string FormatValue(decimal? value) =>
+        value is null
+            ? EmptyLabel
+            : $"{(string.IsNullOrEmpty(Prefix) ? "" : Prefix + " ")}{value.Value.ToString($"N{Decimals}")}";
+
+    private void OnChanged(ChangeEventArgs e)
+    {
+        var raw = (e.Value?.ToString() ?? "").Trim();
+        if (raw.Length == 0)
+        {
+            if (AllowEmpty) RequestSave(null);
+            else CancelEdit();
+            return;
+        }
+        if (!decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) || parsed < Min)
+        {
+            CancelEdit();
+            return;
+        }
+        RequestSave(decimal.Round(parsed, Decimals));
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CancelEdit();
+    }
+}

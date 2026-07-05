@@ -1,0 +1,64 @@
+@typeparam TValue
+@inherits InlineEditBase<TValue>
+
+@if (!Editing)
+{
+    <button type="button" class="ta-inline" title="@($"{FieldLabel} ändern")" disabled="@Disabled" @onclick="BeginEdit">
+        @if (Display is not null)
+        {
+            @Display(Value)
+        }
+        else
+        {
+            @FormatValue(Value)
+        }
+    </button>
+}
+else
+{
+    <select class="ta-select ta-inline-editor" @onchange="OnChanged" @onkeydown="OnKeyDown">
+        @for (var i = 0; i < Options.Count; i++)
+        {
+            var index = i;
+            <option value="@index" selected="@IsCurrent(Options[index])">
+                @FormatValue(Options[index])
+            </option>
+        }
+    </select>
+}
+
+@if (ConfirmOpen)
+{
+    <ConfirmDialog Title="@ConfirmTitle"
+                   Message="@ConfirmMessage"
+                   ConfirmLabel="Ändern"
+                   Busy="@Busy"
+                   Error="@Error"
+                   OnConfirm="ConfirmSaveAsync"
+                   OnCancel="DismissConfirm" />
+}
+
+@code {
+    [Parameter] public IReadOnlyList<TValue> Options { get; set; } = [];
+    [Parameter] public Func<TValue, string> Label { get; set; } = v => v?.ToString() ?? "";
+    [Parameter] public RenderFragment<TValue>? Display { get; set; }
+
+    protected override string FormatValue(TValue value) => Label(value);
+
+    private bool IsCurrent(TValue option) => EqualityComparer<TValue>.Default.Equals(option, Value);
+
+    private void OnChanged(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var index) || index < 0 || index >= Options.Count)
+        {
+            CancelEdit();
+            return;
+        }
+        RequestSave(Options[index]);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CancelEdit();
+    }
+}

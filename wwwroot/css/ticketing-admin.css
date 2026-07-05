@@ -168,3 +168,13 @@
 .ta-visit-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
 .ta-visit-event { font-weight: 700; }
 .ta-visit-date { color: var(--ta-muted); font-size: 0.82rem; }
+
+.ta-inline {
+    background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+    font: inherit; color: inherit; text-align: inherit;
+    border-bottom: 1px dashed transparent;
+}
+.ta-inline:hover:not(:disabled) { border-bottom-color: var(--ta-accent); }
+.ta-inline:disabled { cursor: default; }
+.ta-inline-editor { width: auto; min-width: 7rem; max-width: 12rem; padding: 0.25rem 0.4rem; font-size: 0.82rem; }
+.ta-inline-num { text-align: right; min-width: 5.5rem; max-width: 7rem; }
