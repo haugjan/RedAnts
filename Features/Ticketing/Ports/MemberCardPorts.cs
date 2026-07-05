@@ -7,5 +7,5 @@ public sealed record MemberImportRow(MemberCategory Category, string? LastName, 
 public interface IMemberCards
 {
     Task<int> ImportAsync(int seasonId, string reference, IReadOnlyList<MemberImportRow> rows,
-        string? createdByName = null);
+        string? createdByName = null, string? createdByEmail = null);
 }

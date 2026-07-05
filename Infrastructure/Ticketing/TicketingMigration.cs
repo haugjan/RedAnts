@@ -18,6 +18,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AdjustMemberCardColumns>("membercards-reference-noprice");
         To<AddSeasonPriceTotalQuota>("seasonprices-total-quota");
         To<AddBuyerAndCreatorColumns>("buyer-creator-columns");
+        To<AddCreatedByEmailColumns>("createdby-email-columns");
     }
 }
 
@@ -159,6 +160,28 @@ public class AddBuyerAndCreatorColumns(IMigrationContext context) : AsyncMigrati
             Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} NVARCHAR({length}) NULL").Do();
         else
             Alter.Table(table).AddColumn(column).AsString(length).Nullable().Do();
+    }
+}
+
+public class AddCreatedByEmailColumns(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddEmail("EventTickets");
+        AddEmail("SeasonPasses");
+        AddEmail("MembershipCards");
+        AddEmail("FlexTicketBundles");
+        return Task.CompletedTask;
+    }
+
+    private void AddEmail(string table)
+    {
+        if (ColumnExists(table, "CreatedByEmail")) return;
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite)
+            Execute.Sql($"ALTER TABLE {table} ADD COLUMN CreatedByEmail NVARCHAR(200) NULL").Do();
+        else
+            Alter.Table(table).AddColumn("CreatedByEmail").AsString(200).Nullable().Do();
     }
 }
 

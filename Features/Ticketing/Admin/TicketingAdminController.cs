@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Umbraco.Cms.Core;
@@ -11,7 +12,8 @@ public sealed class TicketingAdminController : Controller
     [HttpGet("")]
     public IActionResult Index()
     {
-        var adminUser = User.Identity?.Name ?? "admin";
-        return View("~/Features/Ticketing/Admin/Views/Admin.cshtml", adminUser);
+        var name = User.Identity?.Name ?? "admin";
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+        return View("~/Features/Ticketing/Admin/Views/Admin.cshtml", new AdminIdentity(name, email));
     }
 }

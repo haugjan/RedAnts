@@ -33,7 +33,8 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             BuyerFirstName = ticket.Buyer?.FirstName,
             BuyerLastName = ticket.Buyer?.LastName,
             BuyerCompany = ticket.Buyer?.Company,
-            CreatedByName = ticket.CreatedByName
+            CreatedByName = ticket.CreatedByName,
+            CreatedByEmail = ticket.CreatedByEmail
         };
         if (row.Id == 0) await scope.Database.InsertAsync(row);
         else await scope.Database.UpdateAsync(row);
@@ -52,5 +53,6 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             r.CreatedAt,
             r.Redeemed,
             Buyer.FromPersistence(r.BuyerType ?? 0, r.BuyerFirstName, r.BuyerLastName, r.BuyerCompany),
-            r.CreatedByName);
+            r.CreatedByName,
+            r.CreatedByEmail);
 }

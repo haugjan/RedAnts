@@ -1,4 +1,4 @@
-@model string
+@model RedAnts.Features.Ticketing.Admin.AdminIdentity
 @{
     Layout = null;
 }
@@ -24,7 +24,8 @@
 <body>
     <component type="typeof(RedAnts.Features.Ticketing.Admin.TicketingAdminComponent)"
                render-mode="Server"
-               param-AdminUser="@Model" />
+               param-AdminUser="@Model.Name"
+               param-AdminEmail="@Model.Email" />
     <script src="/_framework/blazor.server.js"></script>
     <script>
         document.addEventListener('keydown', function (e) {

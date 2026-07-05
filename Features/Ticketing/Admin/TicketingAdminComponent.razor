@@ -13,27 +13,29 @@
     </nav>
 
     <main class="ta-content">
-        @switch (_tab)
-        {
-            case "seasons":
-                <AdminSeasonsComponent AdminUser="@AdminUser" />
-                break;
-            case "tickets":
-                <AdminTicketsComponent AdminUser="@AdminUser" />
-                break;
-            case "flextickets":
-                <AdminFlexTicketsComponent AdminUser="@AdminUser" />
-                break;
-            case "seasoncards":
-                <AdminSeasonCardsComponent AdminUser="@AdminUser" />
-                break;
-            case "membercards":
-                <AdminMemberCardsComponent AdminUser="@AdminUser" />
-                break;
-            default:
-                <AdminEventsComponent AdminUser="@AdminUser" />
-                break;
-        }
+        <CascadingValue Value="Identity">
+            @switch (_tab)
+            {
+                case "seasons":
+                    <AdminSeasonsComponent AdminUser="@AdminUser" />
+                    break;
+                case "tickets":
+                    <AdminTicketsComponent AdminUser="@AdminUser" />
+                    break;
+                case "flextickets":
+                    <AdminFlexTicketsComponent AdminUser="@AdminUser" />
+                    break;
+                case "seasoncards":
+                    <AdminSeasonCardsComponent AdminUser="@AdminUser" />
+                    break;
+                case "membercards":
+                    <AdminMemberCardsComponent AdminUser="@AdminUser" />
+                    break;
+                default:
+                    <AdminEventsComponent AdminUser="@AdminUser" />
+                    break;
+            }
+        </CascadingValue>
     </main>
 </div>
 
@@ -90,6 +92,9 @@
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "admin";
+    [Parameter] public string? AdminEmail { get; set; }
+
+    private AdminIdentity Identity => new(AdminUser, AdminEmail);
 
     private string _tab = "seasons";
 

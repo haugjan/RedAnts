@@ -10,9 +10,10 @@ public sealed class FlexTicketBundle
     public string Reference { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public string? CreatedByName { get; private set; }
+    public string? CreatedByEmail { get; private set; }
 
     private FlexTicketBundle(int id, int seasonId, TicketCategory category, string reference,
-        DateTime createdAt, string? createdByName)
+        DateTime createdAt, string? createdByName, string? createdByEmail)
     {
         Id = id;
         SeasonId = seasonId;
@@ -20,22 +21,24 @@ public sealed class FlexTicketBundle
         Reference = reference;
         CreatedAt = createdAt;
         CreatedByName = createdByName;
+        CreatedByEmail = createdByEmail;
     }
 
     public static FlexTicketBundle Create(int seasonId, TicketCategory category, string reference,
-        string? createdByName = null)
+        string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         reference = (reference ?? "").Trim();
         if (reference.Length == 0) throw new DomainException("Eine Referenz muss angegeben werden.");
         if (reference.Length > ReferenceMaxLength)
             throw new DomainException($"Die Referenz darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
-        return new FlexTicketBundle(0, seasonId, category, reference, DateTime.UtcNow, Clean(createdByName));
+        return new FlexTicketBundle(0, seasonId, category, reference, DateTime.UtcNow,
+            Clean(createdByName), Clean(createdByEmail));
     }
 
     public static FlexTicketBundle FromPersistence(int id, int seasonId, TicketCategory category,
-        string reference, DateTime createdAt, string? createdByName = null) =>
-        new(id, seasonId, category, reference, createdAt, Clean(createdByName));
+        string reference, DateTime createdAt, string? createdByName = null, string? createdByEmail = null) =>
+        new(id, seasonId, category, reference, createdAt, Clean(createdByName), Clean(createdByEmail));
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -13,9 +13,11 @@ public sealed class EventTicket
     public bool Redeemed { get; private set; }
     public Buyer? Buyer { get; private set; }
     public string? CreatedByName { get; private set; }
+    public string? CreatedByEmail { get; private set; }
 
     private EventTicket(int id, Guid uuid, int eventId, TicketCategory category, decimal price,
-        int? orderId, TicketStatus status, DateTime createdAt, bool redeemed, Buyer? buyer, string? createdByName)
+        int? orderId, TicketStatus status, DateTime createdAt, bool redeemed, Buyer? buyer,
+        string? createdByName, string? createdByEmail)
     {
         Id = id;
         Uuid = uuid;
@@ -28,21 +30,23 @@ public sealed class EventTicket
         Redeemed = redeemed;
         Buyer = buyer;
         CreatedByName = createdByName;
+        CreatedByEmail = createdByEmail;
     }
 
     public static EventTicket Create(int eventId, TicketCategory category, decimal price, int? orderId,
-        Buyer? buyer = null, string? createdByName = null)
+        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         return new EventTicket(0, Guid.NewGuid(), eventId, category, decimal.Round(price, 2),
-            orderId, TicketStatus.Valid, DateTime.UtcNow, false, buyer, Clean(createdByName));
+            orderId, TicketStatus.Valid, DateTime.UtcNow, false, buyer, Clean(createdByName), Clean(createdByEmail));
     }
 
     public static EventTicket FromPersistence(int id, Guid uuid, int eventId, TicketCategory category,
         decimal price, int? orderId, TicketStatus status, DateTime createdAt, bool redeemed,
-        Buyer? buyer = null, string? createdByName = null) =>
-        new(id, uuid, eventId, category, price, orderId, status, createdAt, redeemed, buyer, Clean(createdByName));
+        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null) =>
+        new(id, uuid, eventId, category, price, orderId, status, createdAt, redeemed, buyer,
+            Clean(createdByName), Clean(createdByEmail));
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

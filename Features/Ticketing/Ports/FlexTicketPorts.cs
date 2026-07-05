@@ -10,7 +10,8 @@ public sealed record FlexTicketBundleView(
     DateTime CreatedAt,
     int TicketCount,
     int RedeemedCount,
-    string? CreatedByName = null);
+    string? CreatedByName = null,
+    string? CreatedByEmail = null);
 
 public sealed record FlexTicketView(
     Guid Uuid,
@@ -30,5 +31,5 @@ public interface IFlexTicketBundles
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
 
     Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
-        string? createdByName = null);
+        string? createdByName = null, string? createdByEmail = null);
 }

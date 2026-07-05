@@ -9,7 +9,7 @@ namespace RedAnts.Infrastructure.Ticketing.Sales;
 public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMemberCards
 {
     public async Task<int> ImportAsync(int seasonId, string reference, IReadOnlyList<MemberImportRow> rows,
-        string? createdByName = null)
+        string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (string.IsNullOrWhiteSpace(reference)) throw new DomainException("Eine Referenz muss angegeben werden.");
@@ -20,7 +20,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         foreach (var row in rows)
         {
             var card = MemberCard.Create(seasonId, row.Category, row.FirstName, row.LastName, row.Birthday,
-                reference, createdByName: createdByName);
+                reference, createdByName: createdByName, createdByEmail: createdByEmail);
             await scope.Database.InsertAsync(new MemberCardRecord
             {
                 Uuid = card.Uuid.ToString(),
@@ -33,7 +33,8 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
                 LastName = card.LastName,
                 Birthday = card.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : null,
                 Reference = card.Reference,
-                CreatedByName = card.CreatedByName
+                CreatedByName = card.CreatedByName,
+                CreatedByEmail = card.CreatedByEmail
             });
             created++;
         }

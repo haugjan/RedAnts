@@ -28,7 +28,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         {
             var c = byBundle.GetValueOrDefault(b.Id);
             return new FlexTicketBundleView(b.Id, b.SeasonId, (TicketCategory)b.Category, b.Reference,
-                b.CreatedAt, c?.Total ?? 0, c?.Redeemed ?? 0, b.CreatedByName);
+                b.CreatedAt, c?.Total ?? 0, c?.Redeemed ?? 0, b.CreatedByName, b.CreatedByEmail);
         }).ToList();
     }
 
@@ -56,12 +56,12 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
     }
 
     public async Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
-        string? createdByName = null)
+        string? createdByName = null, string? createdByEmail = null)
     {
         if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
         if (quantity > MaxBundleSize) throw new DomainException($"Die Anzahl darf höchstens {MaxBundleSize} sein.");
 
-        var bundle = FlexTicketBundle.Create(seasonId, category, reference, createdByName);
+        var bundle = FlexTicketBundle.Create(seasonId, category, reference, createdByName, createdByEmail);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
@@ -75,7 +75,8 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             Category = (int)bundle.Category,
             Reference = bundle.Reference,
             CreatedAt = bundle.CreatedAt,
-            CreatedByName = bundle.CreatedByName
+            CreatedByName = bundle.CreatedByName,
+            CreatedByEmail = bundle.CreatedByEmail
         };
         await db.InsertAsync(record);
 
@@ -98,7 +99,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         }
 
         return new FlexTicketBundleView(record.Id, record.SeasonId, category, record.Reference,
-            record.CreatedAt, quantity, 0, record.CreatedByName);
+            record.CreatedAt, quantity, 0, record.CreatedByName, record.CreatedByEmail);
     }
 
     private static async Task<bool> ReferenceExistsAsync(IDatabase db, int seasonId, string reference)
