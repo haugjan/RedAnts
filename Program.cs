@@ -95,6 +95,7 @@ if (!string.IsNullOrEmpty(gatePassword))
     static bool IsExempt(PathString path) =>
         path.StartsWithSegments("/umbraco")
         || path.StartsWithSegments("/admin/ticketing")
+        || path.StartsWithSegments("/App_Plugins")
         || path.StartsWithSegments("/_blazor")
         || path.StartsWithSegments("/_framework")
         || path.StartsWithSegments("/ticket")
