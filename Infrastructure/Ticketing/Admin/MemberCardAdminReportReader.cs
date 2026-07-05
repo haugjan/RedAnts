@@ -7,8 +7,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Lists a season's member cards from the <c>MembershipCards</c> table and joins each card's
-/// distinct-event visit count from <c>TicketEventVisits</c>. Independent of the ticket repositories.</summary>
 public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : IMemberCardAdminReport
 {
     public async Task<IReadOnlyList<MemberCardListItem>> GetBySeasonAsync(int seasonId)
@@ -18,7 +16,6 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
         var cards = await scope.Database.FetchAsync<Sales.MemberCardRecord>(
             "WHERE SeasonId = @0 ORDER BY LastName, FirstName", new object[] { seasonId });
 
-        // Distinct events visited per member card (from the shared visits table; enum stored as int).
         var visitRows = await scope.Database.FetchAsync<UuidCountRow>(
             "SELECT TicketUuid AS Uuid, COUNT(DISTINCT EventId) AS Cnt FROM TicketEventVisits " +
             "WHERE TicketType = @0 AND TicketUuid IS NOT NULL GROUP BY TicketUuid",
@@ -38,7 +35,6 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             c.Reference)).ToList();
     }
 
-    /// <summary>Projection for the visit-count query (mapped by column name/alias).</summary>
     public sealed class UuidCountRow
     {
         public string Uuid { get; set; } = "";
@@ -46,7 +42,6 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
     }
 }
 
-/// <summary>Registers the Mitgliederkarten admin report (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class MemberCardAdminReportComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)

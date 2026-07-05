@@ -4,9 +4,6 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
 
-@* Mitglieder (member cards) admin: pick a season (synced across tabs), list its member cards, edit one
-   via the last-column icon, and import a batch from CSV. Shared look from /css/ticketing-admin.css. *@
-
 <section class="ta-page">
     <h1 class="ta-page-title">Mitglieder</h1>
     <p class="ta-page-lead">Mitgliederkarten einer Saison mit Kategorie, Inhaber und Eventbesuchen.</p>
@@ -98,7 +95,6 @@
 
 @if (_showImport)
 {
-    @* Close on backdrop mousedown (not click) so a text selection released outside keeps the dialog open. *@
     <div class="ta-overlay" @onmousedown="CloseImport">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Mitglieder importieren</h2>
@@ -239,7 +235,6 @@
     private string _sortCol = "name";
     private bool _sortAsc = true;
 
-    // Import-overlay state
     private bool _showImport;
     private bool _saving;
     private string? _importError;
@@ -266,7 +261,6 @@
         _cards = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
-    // --- Sorting ---
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<MemberCardListItem> Sorted()
@@ -284,7 +278,6 @@
         return _sortAsc ? q : q.Reverse();
     }
 
-    // --- Import ---
     private void OpenImport()
     {
         _importError = null;
@@ -340,7 +333,6 @@
         finally { _saving = false; }
     }
 
-    // --- Edit overlay ---
     private MemberCardListItem? _editing;
     private string _editFirstName = "";
     private string _editLastName = "";

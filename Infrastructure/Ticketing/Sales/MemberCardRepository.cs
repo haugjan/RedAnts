@@ -6,8 +6,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-/// <summary>Creates member cards from an imported CSV batch. All cards of one import share the season,
-/// category and optional reference; missing personal fields are stored as null.</summary>
 public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMemberCards
 {
     public async Task<int> ImportAsync(int seasonId, MemberCategory category, string? reference, IReadOnlyList<MemberImportRow> rows)

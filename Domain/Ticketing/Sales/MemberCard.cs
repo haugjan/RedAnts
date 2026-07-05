@@ -1,9 +1,5 @@
 namespace RedAnts.Domain.Ticketing.Sales;
 
-/// <summary>A personal membership card (Mitgliederkarte), valid at every event of its season. Holder
-/// name and birthday are optional (revDSG data minimization), and a card may carry an optional import
-/// <see cref="Reference"/> (the batch label a card was imported under). Member cards have no price
-/// (only season passes do). Per-event admissions are tracked as TicketEventVisits rows.</summary>
 public sealed class MemberCard
 {
     public int Id { get; private set; }

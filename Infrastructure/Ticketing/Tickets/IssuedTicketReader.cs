@@ -6,9 +6,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-/// <summary>Finds an issued ticket by its Uuid by probing the four ticket tables in turn (each has a
-/// unique index on Uuid). Reuses S4's NPoco record types read-only; it does not go through the
-/// per-type sales repositories, so it stays inside this slice.</summary>
 public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTicketReader
 {
     public async Task<IssuedTicket?> FindAsync(Guid uuid)

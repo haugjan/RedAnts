@@ -1,10 +1,7 @@
 @model RedAnts.Features.Ticketing.Tickets.WebTicketViewModel
 @{
-    // Standalone page: only the ticket, no site nav/footer/chrome (ideal for phone/wallet display).
     Layout = null;
     var title = Model.Found ? $"{Model.TypeLabel} – {Model.ScopeName}" : "Ticket";
-    // Give each ticket type its own header accent colour so a stack of tickets is told apart at a glance.
-    // Derived from the (stable) type label produced by WebTicketController.TypeLabel().
     var typeKey = Model.TypeLabel switch
     {
         "Spielticket" => "spiel",
@@ -47,7 +44,6 @@
         .wt-head .wt-scope { opacity: .92; font-size: .88rem; margin-top: .1rem; }
         .wt-head-logo { flex: 0 0 auto; background: #fff; border-radius: 8px; padding: 4px 6px; line-height: 0; }
         .wt-head-logo img { height: 34px; width: auto; display: block; }
-        /* Per-type header accent (color-tells the ticket type apart; the type name stays in text too). */
         .wt-head--spiel  { background: #C8102E; }
         .wt-head--flex   { background: #E4720F; }
         .wt-head--saison { background: #1F5FBF; }

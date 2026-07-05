@@ -4,10 +4,6 @@ using RedAnts.Features.Ticketing.Ports;
 
 namespace RedAnts.Features.Ticketing.Tickets;
 
-/// <summary>Public web ticket: renders a ticket and its QR code. The QR encodes the absolute URL of
-/// this page (which carries the signed token), so a generic phone camera opens the ticket while the
-/// door scanner (S5) parses the token out of the path and calls <see cref="ITicketTokens.TryVerify"/>.
-/// Fixed MVC routes, auto-discovered via UseWebsiteEndpoints() (same as CartController).</summary>
 public sealed class WebTicketController(
     ITicketTokens tokens,
     IQrCodeRenderer qr,
@@ -15,7 +11,6 @@ public sealed class WebTicketController(
     IEvents events,
     ISeasons seasons) : Controller
 {
-    /// <summary>The ticket page for a signed token.</summary>
     [HttpGet("/ticket/{token}")]
     public async Task<IActionResult> Show(string token)
     {
@@ -67,8 +62,6 @@ public sealed class WebTicketController(
         return View("~/Views/WebTicket.cshtml", model);
     }
 
-    /// <summary>Convenience: mint the token for an issued ticket (by its Uuid) and redirect to its
-    /// ticket page. Lets a ticket URL be produced without other slices being wired up yet.</summary>
     [HttpGet("/ticket/for/{uuid:guid}")]
     public async Task<IActionResult> ForUuid(Guid uuid)
     {
@@ -88,7 +81,6 @@ public sealed class WebTicketController(
         _ => "Ticket"
     };
 
-    /// <summary>Logo shown on a member card, chosen by its member category.</summary>
     private static string MemberLogo(MemberCategory category) => category switch
     {
         MemberCategory.RedAnts => "/img/members/red-ants.webp",
@@ -97,7 +89,6 @@ public sealed class WebTicketController(
     };
 }
 
-/// <summary>View data for <c>Views/WebTicket.cshtml</c>.</summary>
 public sealed record WebTicketViewModel(
     bool Found,
     bool Valid,

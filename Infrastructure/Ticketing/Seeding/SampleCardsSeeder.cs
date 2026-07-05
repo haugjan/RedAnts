@@ -17,20 +17,12 @@ public sealed class SampleCardsSeederComposer : IComposer
         => builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, SampleCardsSeeder>();
 }
 
-/// <summary>
-/// Idempotent boot seed for demo Saisonkarten (<c>SeasonPasses</c>) and Mitgliederkarten
-/// (<c>MembershipCards</c>), so the season admin lists have data before a checkout exists. For each
-/// season that has none yet, seeds a handful across categories. Runs every boot and only fills what is
-/// missing. Writes directly via NPoco because no repository/port exists for these two tables yet;
-/// references the sales domain/record types read-only.
-/// </summary>
 public sealed class SampleCardsSeeder(
     IContentService contentService,
     IContentTypeService contentTypeService,
     IScopeProvider scopeProvider,
     ILogger<SampleCardsSeeder> logger) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
-    // Sample season-pass prices per category (season-long validity → higher than a single ticket).
     private static readonly (TicketCategory Category, decimal Price)[] SamplePasses =
     [
         (TicketCategory.Adult, 250m),
@@ -38,8 +30,6 @@ public sealed class SampleCardsSeeder(
         (TicketCategory.Child, 100m),
     ];
 
-    // Sample member-card holders. Name/birthday are optional (revDSG minimization); one is left blank
-    // on purpose to exercise the anonymous case.
     private static readonly (MemberCategory Category, string? First, string? Last, DateOnly? Birthday)[] SampleMembers =
     [
         (MemberCategory.RedAnts, "Anna", "Muster", new DateOnly(1990, 5, 14)),

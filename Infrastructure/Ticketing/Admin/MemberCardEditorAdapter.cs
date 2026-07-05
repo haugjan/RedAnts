@@ -7,9 +7,6 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-/// <summary>Updates the editable columns of one member card in <c>MembershipCards</c>, matched by Uuid.
-/// Uses an explicit column UPDATE (not the NPoco record) so it is unaffected by the record's in-flight
-/// column changes (e.g. the dropped Price column). Enums are stored as their int value.</summary>
 public sealed class MemberCardEditorAdapter(IScopeProvider scopeProvider) : IMemberCardEditor
 {
     public async Task SetDetailsAsync(Guid uuid, string? firstName, string? lastName, DateOnly? birthday,
@@ -32,7 +29,6 @@ public sealed class MemberCardEditorAdapter(IScopeProvider scopeProvider) : IMem
     }
 }
 
-/// <summary>Registers the Mitglieder edit adapter (auto-discovered via <c>.AddComposers()</c>).</summary>
 public sealed class MemberCardEditorComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
