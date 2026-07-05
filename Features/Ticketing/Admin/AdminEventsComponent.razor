@@ -2,7 +2,6 @@
 
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
-    <p class="ta-page-lead">Anlässe (Spiele, Events) einer Saison. Status und Einlasskontingent sind hier bearbeitbar, alles Weitere im Inhaltsbaum.</p>
 
     @if (_loading)
     {
@@ -29,7 +28,7 @@
             <div class="ta-toolbar-actions">
                 @if (_createEventUrl is not null)
                 {
-                    <a class="ta-btn ta-btn-ghost" href="@_createEventUrl" target="_blank" rel="noopener"
+                    <a class="ta-btn ta-btn-ghost" href="@_createEventUrl"
                        title="Öffnet das Backoffice-Content mit einem neuen Anlass in der gewählten Saison">Anlass im Content erstellen</a>
                 }
             </div>
