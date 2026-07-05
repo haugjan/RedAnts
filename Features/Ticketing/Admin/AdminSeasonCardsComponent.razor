@@ -107,7 +107,7 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="newSpPrice">Preis (CHF)</label>
-                <input id="newSpPrice" type="number" step="0.05" min="0" class="ta-input" @bind="_newPrice" />
+                <input id="newSpPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" />
             </div>
 
             @if (_createError is not null)
@@ -144,7 +144,7 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="editPrice">Preis (CHF)</label>
-                <input id="editPrice" type="number" step="0.05" min="0" class="ta-input" @bind="_editPrice" />
+                <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_editPrice" />
             </div>
 
             <div class="ta-field">
@@ -273,7 +273,7 @@
     {
         _editing = pass;
         _editCategory = pass.Category;
-        _editPrice = pass.Price;
+        _editPrice = decimal.Round(pass.Price, 2);
         _editStatus = pass.Status;
         _editError = null;
     }

@@ -168,7 +168,7 @@
                     <span style="text-align:center;">
                         <input type="checkbox" @bind="row.Enabled" />
                     </span>
-                    <input type="number" min="0" step="0.05" class="ta-input" @bind="row.Price" disabled="@(!row.Enabled)" />
+                    <input type="number" min="0" step="0.01" class="ta-input" @bind="row.Price" disabled="@(!row.Enabled)" />
                     <input type="number" min="0" step="1" class="ta-input" placeholder="∞" @bind="row.Quota" disabled="@(!row.Enabled)" />
                 }
             </div>
@@ -350,7 +350,7 @@
         var byCategory = (_pricingExisting?.Categories ?? []).ToDictionary(c => c.Category);
         _priceRows = Enum.GetValues<TicketCategory>()
             .Select(cat => byCategory.TryGetValue(cat, out var existing)
-                ? new CategoryRow { Category = cat, Enabled = true, Price = existing.SalePrice, Quota = existing.Quota }
+                ? new CategoryRow { Category = cat, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota }
                 : new CategoryRow { Category = cat, Enabled = false, Price = 0m, Quota = null })
             .ToList();
     }
@@ -366,7 +366,7 @@
         {
             var categories = _priceRows
                 .Where(r => r.Enabled)
-                .Select(r => CategoryPrice.Create(r.Category, r.Price, r.Quota))
+                .Select(r => CategoryPrice.Create(r.Category, decimal.Round(r.Price, 2), r.Quota))
                 .ToList();
             var price = EventPrice.FromPersistence(
                 _pricingExisting?.Id ?? 0,

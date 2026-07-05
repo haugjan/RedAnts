@@ -139,7 +139,7 @@
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newPrice">Abgabepreis (CHF)</label>
-                <input id="newPrice" type="number" step="0.05" min="0" class="ta-input" @bind="_newPrice" />
+                <input id="newPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" />
             </div>
             @if (_createError is not null)
             {
@@ -171,7 +171,7 @@
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="editPrice">Preis (CHF)</label>
-                <input id="editPrice" type="number" step="0.05" min="0" class="ta-input" @bind="_editPrice" />
+                <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_editPrice" />
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="editStatus">Status</label>
@@ -297,7 +297,7 @@
     {
         _editing = t;
         _editCategory = t.Category;
-        _editPrice = t.Price;
+        _editPrice = decimal.Round(t.Price, 2);
         _editStatus = t.Status;
         _editRedeemed = t.Redeemed;
         _editError = null;
@@ -315,7 +315,7 @@
         {
             var redeemed = RedeemedOnlyIfValid(_editStatus, _editRedeemed);
             await Tickets.SaveAsync(EventTicket.FromPersistence(_editing.Id, _editing.Uuid, _editing.EventId,
-                _editCategory, _editPrice, _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed));
+                _editCategory, decimal.Round(_editPrice, 2), _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed));
             _editing = null;
             await ReloadTicketsAsync();
         }
