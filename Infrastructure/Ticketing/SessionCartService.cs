@@ -25,7 +25,8 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
     {
         if (quantity <= 0) return;
         var cart = Get();
-        var existing = cart.Items.FirstOrDefault(i => i.EventId == eventId && i.Category == category);
+        var existing = cart.Items.FirstOrDefault(i =>
+            i.Kind == CartItemKind.EventTicket && i.EventId == eventId && i.Category == category);
         if (existing is not null)
         {
             existing.Quantity = Math.Min(existing.Quantity + quantity, MaxQuantityPerItem);
@@ -37,8 +38,38 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         {
             cart.Items.Add(new CartItem
             {
+                Kind = CartItemKind.EventTicket,
                 EventId = eventId,
                 EventName = eventName,
+                Category = category,
+                CategoryName = categoryName,
+                UnitPrice = unitPrice,
+                Quantity = Math.Min(quantity, MaxQuantityPerItem)
+            });
+        }
+        Save(cart);
+    }
+
+    public void AddSeasonPass(int seasonId, string seasonName, TicketCategory category, string categoryName, decimal unitPrice, int quantity)
+    {
+        if (quantity <= 0) return;
+        var cart = Get();
+        var existing = cart.Items.FirstOrDefault(i =>
+            i.Kind == CartItemKind.SeasonPass && i.SeasonId == seasonId && i.Category == category);
+        if (existing is not null)
+        {
+            existing.Quantity = Math.Min(existing.Quantity + quantity, MaxQuantityPerItem);
+            existing.UnitPrice = unitPrice;
+            existing.EventName = seasonName;
+            existing.CategoryName = categoryName;
+        }
+        else
+        {
+            cart.Items.Add(new CartItem
+            {
+                Kind = CartItemKind.SeasonPass,
+                SeasonId = seasonId,
+                EventName = seasonName,
                 Category = category,
                 CategoryName = categoryName,
                 UnitPrice = unitPrice,
