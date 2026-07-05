@@ -13,11 +13,11 @@
     ViewBag.PageTitle = title + " – Red Ants Winterthur";
     ViewBag.TransparentNav = true;
 
-    var passOffers = new List<(string SeasonName, List<AvailableTicketCategory> Categories)>();
+    var passOffers = new List<(int SeasonId, string SeasonName, List<AvailableTicketCategory> Categories)>();
     foreach (var season in await Seasons.GetPublicOpenAsync())
     {
         var cats = (await PassPricing.GetAvailableAsync(season.Id)).Where(c => c.Available).ToList();
-        if (cats.Count > 0) passOffers.Add((season.Name, cats));
+        if (cats.Count > 0) passOffers.Add((season.Id, season.Name, cats));
     }
 }
 
@@ -49,7 +49,7 @@
             else
             {
                 <ul class="pass-offer-list">
-                    @foreach (var (seasonName, cats) in passOffers)
+                    @foreach (var (seasonId, seasonName, cats) in passOffers)
                     {
                         <li class="pass-offer">
                             <div class="pass-offer-head">
@@ -59,17 +59,21 @@
                                 @foreach (var cat in cats)
                                 {
                                     <li>
-                                        <span>@cat.Name</span>
+                                        <span class="pass-offer-cat-name">@cat.Name</span>
                                         <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
+                                        <form method="post" action="/warenkorb/add-saisonkarte" class="pass-add-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="seasonId" value="@seasonId" />
+                                            <input type="hidden" name="category" value="@((int)cat.Category)" />
+                                            <input type="hidden" name="returnUrl" value="/saisons/" />
+                                            <button type="submit" class="pass-add-btn">In den Warenkorb</button>
+                                        </form>
                                     </li>
                                 }
                             </ul>
                         </li>
                     }
                 </ul>
-                <div class="promo-cta">
-                    <a class="promo-buy" href="/ticketing/#saisonkarten">Saisonkarte kaufen</a>
-                </div>
             }
         </div>
     </section>
@@ -90,15 +94,17 @@
     .promo-text { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 24px 28px; margin-bottom: 24px; line-height: 1.7; }
     .promo-text h2, .promo-text h3 { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
     .promo-empty { color: #666; }
-    .promo-cta { margin-top: 24px; text-align: center; }
-    .promo-buy { display: inline-block; background: #C8102E; color: #fff; text-decoration: none; font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 1.05rem; padding: 14px 34px; border-radius: 8px; }
-    .promo-buy:hover { background: #A50D26; }
 
     .pass-offer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
     .pass-offer { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; }
     .pass-offer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 6px; }
     .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.3rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; }
     .pass-offer-cats { list-style: none; margin: 0; padding: 0; }
-    .pass-offer-cats li { display: flex; justify-content: space-between; gap: 1rem; padding: 5px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
-    .pass-offer-price { font-weight: 700; }
+    .pass-offer-cats li { display: flex; align-items: center; gap: 1rem; padding: 8px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
+    .pass-offer-cat-name { flex: 1 1 auto; }
+    .pass-offer-price { font-weight: 700; white-space: nowrap; }
+    .pass-add-form { flex: 0 0 auto; margin: 0; }
+    .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: .82rem; background: #C8102E; color: #fff; border: none; padding: .4rem .9rem; cursor: pointer; border-radius: 4px; }
+    .pass-add-btn:hover { background: #a50d25; }
+    @@media (max-width: 560px) { .pass-offer-cats li { flex-wrap: wrap; } .pass-offer-cat-name { flex: 1 0 60%; } }
 </style>

@@ -71,13 +71,6 @@
                                     <li>
                                         <span class="pass-offer-cat-name">@cat.Name</span>
                                         <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
-                                        <form method="post" action="/warenkorb/add-saisonkarte" class="pass-add-form">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="seasonId" value="@season.Id" />
-                                            <input type="hidden" name="category" value="@((int)cat.Category)" />
-                                            <input type="hidden" name="returnUrl" value="/ticketing/#saisonkarten" />
-                                            <button type="submit" class="pass-add-btn">In den Warenkorb</button>
-                                        </form>
                                     </li>
                                 }
                             </ul>
@@ -173,8 +166,4 @@
     .pass-offer-cats li { display: flex; align-items: center; gap: 1rem; padding: 8px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
     .pass-offer-cat-name { flex: 1 1 auto; }
     .pass-offer-price { font-weight: 700; white-space: nowrap; }
-    .pass-add-form { flex: 0 0 auto; margin: 0; }
-    .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: .82rem; background: #C8102E; color: #fff; border: none; padding: .4rem .9rem; cursor: pointer; border-radius: 4px; }
-    .pass-add-btn:hover { background: #a50d25; }
-    @@media (max-width: 560px) { .pass-offer-cats li { flex-wrap: wrap; } .pass-offer-cat-name { flex: 1 0 60%; } }
 </style>
