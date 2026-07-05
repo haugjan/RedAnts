@@ -18,7 +18,9 @@ public sealed record FlexTicketView(
     TicketStatus Status,
     bool Redeemed,
     int? RedeemedEventId,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    TicketCategory Category = TicketCategory.Adult,
+    bool? IsInside = null);
 
 public interface IFlexTicketBundles
 {
@@ -29,6 +31,8 @@ public interface IFlexTicketBundles
     Task SetTicketStatusAsync(Guid uuid, TicketStatus status);
 
     Task SetTicketRedeemedAsync(Guid uuid, bool redeemed);
+
+    Task SetTicketCategoryAsync(Guid uuid, TicketCategory category);
 
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
 

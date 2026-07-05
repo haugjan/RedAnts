@@ -1,6 +1,7 @@
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
+@using RedAnts.Features.Ticketing.Scanning
 
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.SeasonSingle.DisplayName()</h1>
@@ -78,7 +79,6 @@
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
                             <th>Event&shy;besuche</th>
-                            <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -96,58 +96,40 @@
                                 <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, SelectedBundle?.CreatedByName, SelectedBundle?.CreatedByEmail, null)">
                                     @AdminFormat.CreatedShort(t.CreatedAt, SelectedBundle?.CreatedByName, null)
                                 </td>
-                                <td>@SelectedBundle?.Category.DisplayName()</td>
                                 <td>
-                                    @if (t.Status == TicketStatus.Blocked)
-                                    {
-                                        <span class="ta-badge ta-badge-blocked">@t.Status.DisplayName()</span>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="ta-badge-btn" title="Status ändern" @onclick="() => AskToggleStatus(t)">
-                                            <span class="ta-badge ta-badge-@t.Status.ToString().ToLowerInvariant()">@t.Status.DisplayName()</span>
-                                        </button>
-                                    }
+                                    <InlineSelectEdit TValue="TicketCategory"
+                                                      Value="@t.Category"
+                                                      Options="@Categories"
+                                                      Label="@(c => c.DisplayName())"
+                                                      FieldLabel="Kategorie"
+                                                      Save="@(c => SaveCategoryAsync(t, c))" />
+                                </td>
+                                <td>
+                                    <InlineSelectEdit TValue="TicketStatus"
+                                                      Value="@t.Status"
+                                                      Options="@AllStatuses"
+                                                      Label="@(s => s.DisplayName())"
+                                                      FieldLabel="Status"
+                                                      Save="@(s => SaveStatusAsync(t, s))">
+                                        <Display Context="status">
+                                            <span class="ta-badge ta-badge-@status.ToString().ToLowerInvariant()">@status.DisplayName()</span>
+                                        </Display>
+                                    </InlineSelectEdit>
                                 </td>
                                 <td>
                                     @if (t.Status == TicketStatus.Valid)
                                     {
-                                        <button type="button" class="ta-badge-btn" title="Einlösung ändern" @onclick="() => AskToggleRedeemed(t)">
-                                            @if (t.Redeemed)
-                                            {
-                                                <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="ta-badge ta-badge-draft">Offen</span>
-                                            }
+                                        <button type="button" class="ta-badge-btn" title="Einlösung ändern" @onclick="() => OpenRedeem(t)">
+                                            <span class="ta-badge @RedemptionBadge(StateOf(t))">@StateOf(t).DisplayName()</span>
                                         </button>
-                                    }
-                                    else if (t.Redeemed)
-                                    {
-                                        <span class="ta-badge ta-badge-redeemed">Eingelöst</span>
                                     }
                                     else
                                     {
-                                        <span class="ta-badge ta-badge-draft">Offen</span>
+                                        <span class="ta-badge @RedemptionBadge(StateOf(t))">@StateOf(t).DisplayName()</span>
                                     }
                                 </td>
                                 <td>
                                     <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuche</button>
-                                </td>
-                                <td class="ta-col-actions">
-                                    @if (t.Status == TicketStatus.Cancelled)
-                                    {
-                                        <span class="ta-muted-text">–</span>
-                                    }
-                                    else if (t.Status == TicketStatus.Blocked)
-                                    {
-                                        <button type="button" class="ta-icon-btn" title="Flexticket entsperren" @onclick="() => AskToggleBlocked(t)">🔓</button>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="ta-icon-btn" title="Flexticket sperren" @onclick="() => AskToggleBlocked(t)">🔒</button>
-                                    }
                                 </td>
                             </tr>
                         }
@@ -233,16 +215,50 @@
     </div>
 }
 
-@if (_confirmFor is not null)
+@if (_redeemFor is not null)
 {
-    <ConfirmDialog Title="@_confirmTitle"
-                   Message="@_confirmMessage"
-                   ConfirmLabel="@_confirmLabel"
-                   Danger="@_confirmDanger"
-                   Busy="@_confirmBusy"
-                   Error="@_confirmError"
-                   OnConfirm="ExecuteConfirmAsync"
-                   OnCancel="() => _confirmFor = null" />
+    <div class="ta-overlay" @onmousedown="CloseRedeem">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Einlösung ändern</h2>
+            <p class="ta-modal-sub">Flexticket @AdminFormat.TicketNo(_redeemFor.Uuid) · aktuell @StateOf(_redeemFor).DisplayName()</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="redeemTarget">Neuer Zustand</label>
+                <select id="redeemTarget" class="ta-select" @bind="_redeemTarget">
+                    @foreach (var s in AllRedemptionStates)
+                    {
+                        <option value="@s">@s.DisplayName()</option>
+                    }
+                </select>
+            </div>
+
+            @if (_redeemTarget == RedemptionState.Redeemed && _redeemFor.RedeemedEventId is null)
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="redeemEvent">Anlass</label>
+                    <select id="redeemEvent" class="ta-select" @bind="_redeemEventId">
+                        @foreach (var e in _seasonEvents)
+                        {
+                            <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                        }
+                    </select>
+                    <p class="ta-field-hint">Die Einlösung wird als Eingangsscan an diesem Anlass erfasst.</p>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_redeemError))
+            {
+                <div class="ta-modal-error">@_redeemError</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseRedeem" disabled="@_redeemBusy">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveRedeemAsync" disabled="@_redeemBusy">
+                    @(_redeemBusy ? "Speichert …" : "Ändern")
+                </button>
+            </div>
+        </div>
+    </div>
 }
 
 @if (_visitsFor is not null)
@@ -257,8 +273,10 @@
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
     [Inject] private IFlexBundleEditor BundleEditor { get; set; } = default!;
+    [Inject] private IAdmissionService Admission { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
@@ -323,72 +341,98 @@
 
     private FlexTicketView? _visitsFor;
 
-    private FlexTicketView? _confirmFor;
-    private string _confirmTitle = "";
-    private string _confirmMessage = "";
-    private string _confirmLabel = "Bestätigen";
-    private bool _confirmDanger;
-    private bool _confirmBusy;
-    private string? _confirmError;
-    private Func<FlexTicketView, Task>? _confirmAction;
+    private static readonly TicketStatus[] AllStatuses = Enum.GetValues<TicketStatus>();
+    private static readonly RedemptionState[] AllRedemptionStates = Enum.GetValues<RedemptionState>();
 
-    private void AskToggleStatus(FlexTicketView t)
+    private static RedemptionState StateOf(FlexTicketView t) =>
+        RedemptionStateExtensions.Derive(t.Redeemed, t.IsInside);
+
+    private static string RedemptionBadge(RedemptionState state) => state switch
     {
-        var cancelling = t.Status == TicketStatus.Valid;
-        _confirmFor = t;
-        _confirmTitle = cancelling ? "Flexticket stornieren" : "Flexticket reaktivieren";
-        _confirmMessage = cancelling
-            ? $"Flexticket {AdminFormat.TicketNo(t.Uuid)} wirklich stornieren? Ein storniertes Ticket ist am Eingang ungültig."
-            : $"Flexticket {AdminFormat.TicketNo(t.Uuid)} wieder auf „Gültig“ setzen?";
-        _confirmLabel = cancelling ? "Stornieren" : "Reaktivieren";
-        _confirmDanger = cancelling;
-        _confirmError = null;
-        _confirmAction = ticket => Bundles.SetTicketStatusAsync(ticket.Uuid,
-            cancelling ? TicketStatus.Cancelled : TicketStatus.Valid);
+        RedemptionState.Redeemed => "ta-badge-redeemed",
+        RedemptionState.Outside => "ta-badge-blocked",
+        _ => "ta-badge-draft"
+    };
+
+    private async Task SaveCategoryAsync(FlexTicketView t, TicketCategory category)
+    {
+        await Bundles.SetTicketCategoryAsync(t.Uuid, category);
+        await ReloadTicketsAsync();
     }
 
-    private void AskToggleRedeemed(FlexTicketView t)
+    private async Task SaveStatusAsync(FlexTicketView t, TicketStatus status)
     {
-        var redeeming = !t.Redeemed;
-        _confirmFor = t;
-        _confirmTitle = redeeming ? "Als eingelöst markieren" : "Einlösung zurücksetzen";
-        _confirmMessage = redeeming
-            ? $"Flexticket {AdminFormat.TicketNo(t.Uuid)} als eingelöst markieren?"
-            : $"Die Einlösung von Flexticket {AdminFormat.TicketNo(t.Uuid)} zurücksetzen?";
-        _confirmLabel = redeeming ? "Einlösen" : "Zurücksetzen";
-        _confirmDanger = false;
-        _confirmError = null;
-        _confirmAction = ticket => Bundles.SetTicketRedeemedAsync(ticket.Uuid, redeeming);
+        await Bundles.SetTicketStatusAsync(t.Uuid, status);
+        await ReloadTicketsAsync();
     }
 
-    private void AskToggleBlocked(FlexTicketView t)
+    private FlexTicketView? _redeemFor;
+    private RedemptionState _redeemTarget;
+    private int _redeemEventId;
+    private bool _redeemBusy;
+    private string? _redeemError;
+    private IReadOnlyList<Event> _seasonEvents = [];
+
+    private async Task OpenRedeem(FlexTicketView t)
     {
-        var blocking = t.Status != TicketStatus.Blocked;
-        _confirmFor = t;
-        _confirmTitle = blocking ? "Flexticket sperren" : "Flexticket entsperren";
-        _confirmMessage = blocking
-            ? $"Flexticket {AdminFormat.TicketNo(t.Uuid)} sperren? Ein gesperrtes Ticket wird am Eingang abgewiesen."
-            : $"Flexticket {AdminFormat.TicketNo(t.Uuid)} entsperren und wieder gültig machen?";
-        _confirmLabel = blocking ? "Sperren" : "Entsperren";
-        _confirmDanger = blocking;
-        _confirmError = null;
-        _confirmAction = ticket => Bundles.SetTicketStatusAsync(ticket.Uuid,
-            blocking ? TicketStatus.Blocked : TicketStatus.Valid);
+        _seasonEvents = SelectedSeasonId > 0
+            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
+            : [];
+        _redeemFor = t;
+        _redeemTarget = StateOf(t);
+        _redeemEventId = t.RedeemedEventId ?? NextEvent(_seasonEvents)?.Id ?? 0;
+        _redeemError = null;
     }
 
-    private async Task ExecuteConfirmAsync()
+    private void CloseRedeem() { if (!_redeemBusy) { _redeemFor = null; _redeemError = null; } }
+
+    private async Task SaveRedeemAsync()
     {
-        if (_confirmFor is null || _confirmAction is null) return;
-        _confirmBusy = true;
-        _confirmError = null;
+        if (_redeemFor is null) return;
+        var t = _redeemFor;
+        var current = StateOf(t);
+        if (_redeemTarget == current) { CloseRedeem(); return; }
+
+        _redeemBusy = true;
+        _redeemError = null;
         try
         {
-            await _confirmAction(_confirmFor);
-            _confirmFor = null;
+            var scannedBy = Identity?.Name ?? AdminUser;
+            switch (_redeemTarget)
+            {
+                case RedemptionState.Redeemed:
+                    var eventId = t.RedeemedEventId ?? _redeemEventId;
+                    if (eventId <= 0) throw new DomainException("Bitte einen Anlass wählen.");
+                    await ScanOrThrowAsync(t, eventId, ScanMode.CheckIn, scannedBy);
+                    break;
+                case RedemptionState.Outside:
+                    if (t.RedeemedEventId is not { } outEvent || current != RedemptionState.Redeemed)
+                        throw new DomainException("Nur ein eingelöstes Flexticket kann auf „Draussen“ gesetzt werden.");
+                    await ScanOrThrowAsync(t, outEvent, ScanMode.CheckOut, scannedBy);
+                    break;
+                case RedemptionState.Open:
+                    if (t.RedeemedEventId is { } inEvent && t.IsInside == true)
+                        await ScanOrThrowAsync(t, inEvent, ScanMode.CheckOut, scannedBy);
+                    await Bundles.SetTicketRedeemedAsync(t.Uuid, false);
+                    break;
+            }
+            _redeemFor = null;
             await ReloadTicketsAsync();
         }
-        catch (DomainException ex) { _confirmError = ex.Message; }
-        finally { _confirmBusy = false; }
+        catch (Exception ex) { _redeemError = ex.Message; }
+        finally { _redeemBusy = false; }
+    }
+
+    private async Task ScanOrThrowAsync(FlexTicketView t, int eventId, ScanMode mode, string scannedBy)
+    {
+        var outcome = await Admission.ScanTicketAsync(eventId, TicketType.SeasonSingle, t.Uuid, SelectedSeasonId, mode, scannedBy);
+        if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
+    }
+
+    private static Event? NextEvent(IReadOnlyList<Event> events)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
     }
 
     private void OpenCreate()

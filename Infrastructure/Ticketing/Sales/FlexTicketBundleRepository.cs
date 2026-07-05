@@ -35,11 +35,22 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
     public async Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<SeasonSingleTicketRecord>(
-            "WHERE BundleId = @0 ORDER BY CreatedAt", bundleId);
+        var rows = await scope.Database.FetchAsync<FlexTicketRow>(
+            "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, v.IsInside AS InsideFlag " +
+            "FROM SeasonSingleTickets t " +
+            "LEFT JOIN TicketEventVisits v ON v.TicketUuid = t.Uuid AND v.EventId = t.RedeemedEventId " +
+            "WHERE t.BundleId = @0 ORDER BY t.CreatedAt", bundleId);
         return rows.Select(r => new FlexTicketView(
             Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
-            (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt)).ToList();
+            (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt,
+            (TicketCategory)r.Category, r.InsideFlag)).ToList();
+    }
+
+    public async Task SetTicketCategoryAsync(Guid uuid, TicketCategory category)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE SeasonSingleTickets SET Category = @0 WHERE Uuid = @1", (int)category, uuid.ToString());
     }
 
     public async Task SetTicketStatusAsync(Guid uuid, TicketStatus status)
@@ -125,5 +136,17 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         public int BundleId { get; set; }
         public int Total { get; set; }
         public int Redeemed { get; set; }
+    }
+
+    private sealed class FlexTicketRow
+    {
+        public int Id { get; set; }
+        public string Uuid { get; set; } = "";
+        public int Category { get; set; }
+        public int Status { get; set; }
+        public bool Redeemed { get; set; }
+        public int? RedeemedEventId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public bool? InsideFlag { get; set; }
     }
 }
