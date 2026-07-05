@@ -30,9 +30,23 @@ public sealed class BrevoUmbracoEmailSender(
 
         foreach (var to in recipients)
         {
-            var result = await sender.SendAsync(to, null, message.Subject ?? "", body);
+            var (address, name) = ParseRecipient(to);
+            var result = await sender.SendAsync(address, name, message.Subject ?? "", body);
             if (!result.Success)
-                throw new InvalidOperationException($"E-Mail an {to} konnte nicht gesendet werden: {result.Error}");
+                throw new InvalidOperationException($"E-Mail an {address} konnte nicht gesendet werden: {result.Error}");
+        }
+    }
+
+    private static (string Address, string? Name) ParseRecipient(string recipient)
+    {
+        try
+        {
+            var parsed = new System.Net.Mail.MailAddress(recipient);
+            return (parsed.Address, string.IsNullOrWhiteSpace(parsed.DisplayName) ? null : parsed.DisplayName);
+        }
+        catch (FormatException)
+        {
+            return (recipient.Trim(), null);
         }
     }
 }
