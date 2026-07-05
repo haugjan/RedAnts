@@ -58,29 +58,37 @@ public sealed class SeasonCategoryPrice
 {
     public TicketCategory Category { get; private set; }
     public decimal PassPrice { get; private set; }
+    public bool PassOffered { get; private set; }
+    public int? PassQuota { get; private set; }
     public decimal TicketPrice { get; private set; }
-    public bool Offered { get; private set; }
-    public int? Quota { get; private set; }
+    public bool TicketOffered { get; private set; }
+    public int? TicketQuota { get; private set; }
 
-    private SeasonCategoryPrice(TicketCategory category, decimal passPrice, decimal ticketPrice, bool offered, int? quota)
+    private SeasonCategoryPrice(TicketCategory category, decimal passPrice, bool passOffered, int? passQuota,
+        decimal ticketPrice, bool ticketOffered, int? ticketQuota)
     {
         Category = category;
         PassPrice = passPrice;
+        PassOffered = passOffered;
+        PassQuota = passQuota;
         TicketPrice = ticketPrice;
-        Offered = offered;
-        Quota = quota;
+        TicketOffered = ticketOffered;
+        TicketQuota = ticketQuota;
     }
 
-    public static SeasonCategoryPrice Create(TicketCategory category, decimal passPrice, decimal ticketPrice, bool offered, int? quota)
+    public static SeasonCategoryPrice Create(TicketCategory category, decimal passPrice, bool passOffered, int? passQuota,
+        decimal ticketPrice, bool ticketOffered, int? ticketQuota)
     {
         if (passPrice < 0) throw new DomainException("Saisonkarten-Preis darf nicht negativ sein.");
         if (ticketPrice < 0) throw new DomainException("Ticketpreis darf nicht negativ sein.");
-        if (quota is < 0) throw new DomainException("Kontingent darf nicht negativ sein.");
-        return new SeasonCategoryPrice(category, decimal.Round(passPrice, 2), decimal.Round(ticketPrice, 2), offered, quota);
+        if (passQuota is < 0 || ticketQuota is < 0) throw new DomainException("Kontingent darf nicht negativ sein.");
+        return new SeasonCategoryPrice(category, decimal.Round(passPrice, 2), passOffered, passQuota,
+            decimal.Round(ticketPrice, 2), ticketOffered, ticketQuota);
     }
 
-    public static SeasonCategoryPrice FromPersistence(TicketCategory category, decimal passPrice, decimal ticketPrice, bool offered, int? quota) =>
-        new(category, passPrice, ticketPrice, offered, quota);
+    public static SeasonCategoryPrice FromPersistence(TicketCategory category, decimal passPrice, bool passOffered,
+        int? passQuota, decimal ticketPrice, bool ticketOffered, int? ticketQuota) =>
+        new(category, passPrice, passOffered, passQuota, ticketPrice, ticketOffered, ticketQuota);
 }
 
 public sealed class SeasonPrice

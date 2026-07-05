@@ -180,3 +180,7 @@
 .ta-inline:disabled { cursor: default; }
 .ta-inline-editor { width: auto; min-width: 7rem; max-width: 12rem; padding: 0.25rem 0.4rem; font-size: 0.82rem; }
 .ta-inline-num { text-align: right; min-width: 5.5rem; max-width: 7rem; }
+
+.ta-subtable th.ta-subgroup { text-align: center; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--ta-accent); background: #eef6fc; border-left: 1px solid #d7e8f6; }
+.ta-subtable th.ta-subgroup-alt { color: #1a7f37; background: #e9f6ee; border-left: 1px solid #cde9d8; }
+.ta-subtable th.ta-group-col, .ta-subtable td.ta-group-col { border-left: 1px solid var(--ta-border); }

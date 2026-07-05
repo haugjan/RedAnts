@@ -21,6 +21,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddCreatedByEmailColumns>("createdby-email-columns");
         To<AddFreeEntryUuid>("freeentry-uuid");
         To<AddSeasonPriceDualPricing>("seasonprices-dual-price");
+        To<AddSeasonTicketDefaultColumns>("seasonprices-ticket-defaults");
     }
 }
 
@@ -222,6 +223,33 @@ public class AddSeasonPriceDualPricing(IMigrationContext context) : AsyncMigrati
                 Execute.Sql("ALTER TABLE SeasonPriceCategories ADD COLUMN Offered INTEGER NULL").Do();
             else
                 Alter.Table("SeasonPriceCategories").AddColumn("Offered").AsBoolean().Nullable().Do();
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+public class AddSeasonTicketDefaultColumns(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+
+        if (!ColumnExists("SeasonPriceCategories", "TicketOffered"))
+        {
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonPriceCategories ADD COLUMN TicketOffered INTEGER NULL").Do();
+            else
+                Alter.Table("SeasonPriceCategories").AddColumn("TicketOffered").AsBoolean().Nullable().Do();
+            Execute.Sql("UPDATE SeasonPriceCategories SET TicketOffered = Offered WHERE TicketOffered IS NULL").Do();
+        }
+
+        if (!ColumnExists("SeasonPriceCategories", "TicketQuota"))
+        {
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonPriceCategories ADD COLUMN TicketQuota INTEGER NULL").Do();
+            else
+                Alter.Table("SeasonPriceCategories").AddColumn("TicketQuota").AsInt32().Nullable().Do();
         }
 
         return Task.CompletedTask;

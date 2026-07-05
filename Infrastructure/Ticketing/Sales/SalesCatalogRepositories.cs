@@ -83,9 +83,11 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
                 SeasonPriceId = parent.Id,
                 Category = (int)c.Category,
                 SalePrice = c.PassPrice,
-                Quota = c.Quota,
+                Quota = c.PassQuota,
                 TicketPrice = c.TicketPrice,
-                Offered = c.Offered
+                Offered = c.PassOffered,
+                TicketOffered = c.TicketOffered,
+                TicketQuota = c.TicketQuota
             });
 
         var cats = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
@@ -103,7 +105,8 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
     private static SeasonPrice Map(SeasonPriceRecord p, IEnumerable<SeasonPriceCategoryRecord> cats) =>
         SeasonPrice.FromPersistence(p.Id, p.SeasonId, p.TotalSalesQuota,
             cats.Select(c => SeasonCategoryPrice.FromPersistence(
-                (TicketCategory)c.Category, c.SalePrice, c.TicketPrice ?? 0m, c.Offered ?? true, c.Quota)).ToList());
+                (TicketCategory)c.Category, c.SalePrice, c.Offered ?? true, c.Quota,
+                c.TicketPrice ?? 0m, c.TicketOffered ?? c.Offered ?? true, c.TicketQuota)).ToList());
 }
 
 public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPricing

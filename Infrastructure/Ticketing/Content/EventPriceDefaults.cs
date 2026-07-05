@@ -27,8 +27,8 @@ public sealed class EventPriceDefaults(
             if (seasonDefaults is null) continue;
 
             var categories = seasonDefaults.Categories
-                .Where(c => c.Offered)
-                .Select(c => CategoryPrice.Create(c.Category, c.TicketPrice, c.Quota))
+                .Where(c => c.TicketOffered)
+                .Select(c => CategoryPrice.Create(c.Category, c.TicketPrice, c.TicketQuota))
                 .ToList();
             if (categories.Count == 0 && seasonDefaults.TotalSalesQuota is null) continue;
 
