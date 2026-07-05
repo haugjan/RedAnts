@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.Email;
 using RedAnts.Features.Ticketing.Ports;
 using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -81,6 +82,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var saved = await orders.SaveAsync(order);
 
         var issued = new List<ConfirmationTicket>();
+        var mailTickets = new List<OrderMailTicket>();
         foreach (var item in current.Items)
         {
             for (var i = 0; i < item.Quantity; i++)
@@ -88,8 +90,14 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 var ticket = await tickets.SaveAsync(
                     EventTicket.Create(item.EventId, item.Category, item.UnitPrice, saved.Id));
                 issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName));
+                mailTickets.Add(new OrderMailTicket(
+                    TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, item.CategoryName));
             }
         }
+
+        await mailer.SendTicketsAsync(new OrderMailModel(
+            saved.OrderNumber, billing.Email, billing.FullName, saved.TotalGross,
+            $"{Request.Scheme}://{Request.Host}", mailTickets));
 
         cart.Clear();
         HttpContext.Session.Remove(FormKey);
