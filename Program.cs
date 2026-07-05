@@ -104,12 +104,17 @@ if (!string.IsNullOrEmpty(basicUser) && !string.IsNullOrEmpty(basicPass))
             return;
         }
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        var fetchMode = context.Request.Headers["Sec-Fetch-Mode"].ToString();
-        var isNavigation = fetchMode.Length > 0
-            ? string.Equals(fetchMode, "navigate", StringComparison.OrdinalIgnoreCase)
+        // Only pop the browser's Basic dialog for a real top-level page load of the public site
+        // (Sec-Fetch-Dest: document). Sub-frames (iframe) and sub-resources must get a bare 401 with
+        // NO WWW-Authenticate, otherwise the backoffice — whose SPA loads gated URLs in hidden iframes —
+        // shows the Basic dialog on top of itself and it reappears on every render. The URL bar staying
+        // on /umbraco while the dialog pops is the tell that the gated request is a sub-frame, not the page.
+        var fetchDest = context.Request.Headers["Sec-Fetch-Dest"].ToString();
+        var isTopLevelDocument = fetchDest.Length > 0
+            ? string.Equals(fetchDest, "document", StringComparison.OrdinalIgnoreCase)
             : HttpMethods.IsGet(context.Request.Method)
               && context.Request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase);
-        if (isNavigation)
+        if (isTopLevelDocument)
             context.Response.Headers.WWWAuthenticate = "Basic realm=\"RedAnts\", charset=\"UTF-8\"";
     });
 }
