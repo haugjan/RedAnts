@@ -82,7 +82,12 @@ if (!string.IsNullOrEmpty(gatePassword))
         path.StartsWithSegments("/umbraco")
         || path.StartsWithSegments("/admin/ticketing")
         || path.StartsWithSegments("/_blazor")
-        || path.StartsWithSegments("/_framework");
+        || path.StartsWithSegments("/_framework")
+        || path.StartsWithSegments("/ticket")
+        || path.StartsWithSegments("/img")
+        || path.StartsWithSegments("/media")
+        || path.StartsWithSegments("/favicons")
+        || path == "/favicon.ico";
 
     static string SafeReturn(string? value) =>
         !string.IsNullOrEmpty(value) && value.StartsWith('/') && !value.StartsWith("//") ? value : "/";
