@@ -33,6 +33,12 @@
         .page-header-title::after { content: ""; display: block; width: 64px; height: 5px; background: #C8102E; margin-top: 16px; }
         .page-header-date { color: rgba(255,255,255,.85); margin: 14px 0 0; font-size: .98rem; }
         .evt-wrap { max-width: 860px; margin: 0 auto; padding: 2.5rem 2.5rem 5rem; }
+        .evt-facts { display: flex; flex-wrap: wrap; gap: 1.25rem 2.75rem; margin: 1.5rem 0 0; padding: 1.15rem 1.35rem; background: #f7f7f7; border-left: 4px solid var(--red); }
+        .evt-fact { display: flex; flex-direction: column; gap: 2px; }
+        .evt-fact__label { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: var(--ink-light); }
+        .evt-fact__value { font-weight: 700; font-size: 1.12rem; }
+        .evt-map { margin-top: 1.5rem; }
+        .evt-map iframe { display: block; width: 100%; height: 300px; border: 0; border-radius: 6px; }
         .evt-back {
             font-family: var(--display); font-size: 1rem; font-weight: 600;
             letter-spacing: 0.06em; text-transform: uppercase;
@@ -105,12 +111,39 @@ else
             }
             <div class="page-header-inner">
                 <h1 class="page-header-title">@Model.Name</h1>
-                <p class="page-header-date">@(start.ToString("dd.MM.yyyy, HH:mm") + " Uhr" + (venue is not null ? " · " + venue.Name : ""))</p>
             </div>
         </section>
 
         <div class="evt-wrap">
             <a href="@backHref" class="evt-back">&larr; Übersicht</a>
+
+            <div class="evt-facts">
+                <div class="evt-fact">
+                    <span class="evt-fact__label">Datum</span>
+                    <span class="evt-fact__value">@start.ToString("dddd, dd.MM.yyyy")</span>
+                </div>
+                <div class="evt-fact">
+                    <span class="evt-fact__label">Zeit</span>
+                    <span class="evt-fact__value">@start.ToString("HH:mm") Uhr</span>
+                </div>
+                @if (venue is not null)
+                {
+                    <div class="evt-fact">
+                        <span class="evt-fact__label">Ort</span>
+                        <span class="evt-fact__value">@venue.Name</span>
+                    </div>
+                }
+            </div>
+
+            @if (venue is not null)
+            {
+                var mapQuery = Uri.EscapeDataString(venue.Name + ", Winterthur");
+                <div class="evt-map">
+                    <iframe src="https://www.google.com/maps?q=@mapQuery&output=embed"
+                            loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                            title="Karte @venue.Name"></iframe>
+                </div>
+            }
 
             @if (!string.IsNullOrEmpty(homeLogo) || !string.IsNullOrEmpty(awayLogo))
             {
