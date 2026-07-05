@@ -46,4 +46,6 @@ public class SeasonPriceCategoryRecord
     [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
     [Column("SalePrice")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal SalePrice { get; set; }
     [Column("Quota")] [NullSetting(NullSetting = NullSettings.Null)] public int? Quota { get; set; }
+    [Column("TicketPrice")] [NullSetting(NullSetting = NullSettings.Null)] public decimal? TicketPrice { get; set; }
+    [Column("Offered")] [NullSetting(NullSetting = NullSettings.Null)] public bool? Offered { get; set; }
 }

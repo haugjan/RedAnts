@@ -32,9 +32,13 @@ public interface IEventPricing
     Task<string?> CheckCapacityAsync(IReadOnlyList<TicketDemand> demand);
 }
 
+public sealed record PassDemand(int SeasonId, TicketCategory Category, int Quantity);
+
 public interface ISeasonPassPricing
 {
     Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int seasonId);
+    Task<string?> CheckCapacityAsync(IReadOnlyList<PassDemand> demand);
+    Task<IReadOnlyDictionary<TicketCategory, int>> GetSoldCountsAsync(int seasonId);
 }
 
 public interface IEventTickets

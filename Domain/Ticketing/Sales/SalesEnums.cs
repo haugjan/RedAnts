@@ -20,9 +20,9 @@ public enum FreeEntryType
 public enum TicketCategory
 {
     Adult,
-    AdultReduced,
+    AdultPromo,
     Youth,
-    YouthReduced,
+    YouthPromo,
     Child
 }
 
@@ -99,10 +99,20 @@ public static class TicketCategoryExtensions
     public static string DisplayName(this TicketCategory category) => category switch
     {
         TicketCategory.Adult => "Erwachsen",
-        TicketCategory.AdultReduced => "Erwachsen reduziert",
+        TicketCategory.AdultPromo => "Sonderaktion Erwachsen",
         TicketCategory.Youth => "Jugend (bis 16)",
-        TicketCategory.YouthReduced => "Jugend reduziert",
+        TicketCategory.YouthPromo => "Sonderaktion Jugend",
         TicketCategory.Child => "Kind (bis 6)",
         _ => category.ToString()
+    };
+
+    public static bool IsPromo(this TicketCategory category) =>
+        category is TicketCategory.AdultPromo or TicketCategory.YouthPromo;
+
+    public static TicketCategory? PromoCounterpart(this TicketCategory category) => category switch
+    {
+        TicketCategory.Adult => TicketCategory.AdultPromo,
+        TicketCategory.Youth => TicketCategory.YouthPromo,
+        _ => null
     };
 }

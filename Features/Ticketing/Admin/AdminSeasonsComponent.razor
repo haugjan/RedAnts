@@ -76,7 +76,7 @@
                                 }
                             </td>
                             <td class="ta-col-actions">
-                                <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(s)">✎</button>
+                                <button type="button" class="ta-icon-btn" title="Preise und Kontingente" @onclick="() => OpenEditAsync(s)">$</button>
                             </td>
                         </tr>
                     }
@@ -116,20 +116,30 @@
                 <label class="ta-label">Preise und Kontingent je Kategorie</label>
                 <table class="ta-subtable">
                     <thead>
-                        <tr><th>Kategorie</th><th class="ta-num">Preis (CHF)</th><th class="ta-num">Kontingent</th></tr>
+                        <tr>
+                            <th>Kategorie</th>
+                            <th>Angeboten</th>
+                            <th class="ta-num">Saisonkarte (CHF)</th>
+                            <th class="ta-num">Ticket (CHF)</th>
+                            <th class="ta-num">Kontingent</th>
+                            <th class="ta-num">Verbraucht</th>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach (var c in _editCats)
                         {
-                            <tr>
+                            <tr class="@(c.Offered ? "" : "ta-row-off")">
                                 <td>@c.Category.DisplayName()</td>
-                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" @bind="c.Price" /></td>
-                                <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" @bind="c.Quota" /></td>
+                                <td><input type="checkbox" @bind="c.Offered" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.Offered)" @bind="c.PassPrice" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.Offered)" @bind="c.TicketPrice" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.Offered)" @bind="c.Quota" /></td>
+                                <td class="ta-num">@c.Sold@(c.Quota is { } q ? $" / {q}" : "")</td>
                             </tr>
                         }
                     </tbody>
                 </table>
-                <p class="ta-field-hint">Kategorien mit Preis 0 und ohne Kontingent werden nicht gespeichert.</p>
+                <p class="ta-field-hint">Solange eine angebotene Sonderaktion Restkontingent hat, ist die zugehörige normale Kategorie nicht verkäuflich.</p>
             </div>
 
             @if (_editError is not null)
@@ -153,6 +163,8 @@
     .ta-subtable td { padding: 3px 6px; font-size: .85rem; }
     .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
     .ta-input-sm { width: 6.5rem; padding: .3rem .4rem; text-align: right; }
+    .ta-row-off td { opacity: .45; }
+    .ta-row-off td:nth-child(-n+2) { opacity: 1; }
 </style>
 
 @code {
@@ -160,6 +172,7 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private ISeasonPrices SeasonPrices { get; set; } = default!;
+    [Inject] private ISeasonPassPricing PassPricing { get; set; } = default!;
     [Inject] private ISeasonStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private ISeasonLinkReader LinkReader { get; set; } = default!;
     [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
@@ -224,17 +237,23 @@
     private bool _saving;
     private string? _editError;
 
-    private void OpenEdit(Season s)
+    private async Task OpenEditAsync(Season s)
     {
         _editing = s;
         _editStatus = s.Status;
         var price = Price(s.Id);
         _editTotalQuota = price?.TotalSalesQuota;
+        var sold = await PassPricing.GetSoldCountsAsync(s.Id);
         var existing = (price?.Categories ?? []).ToDictionary(c => c.Category);
         _editCats = Enum.GetValues<TicketCategory>()
             .Select(cat => existing.TryGetValue(cat, out var cp)
-                ? new CatRow { Category = cat, Price = decimal.Round(cp.SalePrice, 2), Quota = cp.Quota }
-                : new CatRow { Category = cat, Price = 0m, Quota = null })
+                ? new CatRow
+                {
+                    Category = cat, Offered = cp.Offered,
+                    PassPrice = decimal.Round(cp.PassPrice, 2), TicketPrice = decimal.Round(cp.TicketPrice, 2),
+                    Quota = cp.Quota, Sold = sold.GetValueOrDefault(cat)
+                }
+                : new CatRow { Category = cat, Offered = false, Sold = sold.GetValueOrDefault(cat) })
             .ToList();
         _editError = null;
     }
@@ -249,8 +268,8 @@
         try
         {
             var cats = _editCats
-                .Where(c => c.Price > 0 || c.Quota.HasValue)
-                .Select(c => CategoryPrice.Create(c.Category, decimal.Round(c.Price, 2), c.Quota))
+                .Select(c => SeasonCategoryPrice.Create(
+                    c.Category, decimal.Round(c.PassPrice, 2), decimal.Round(c.TicketPrice, 2), c.Offered, c.Quota))
                 .ToList();
             var existing = Price(_editing.Id);
             var price = existing is null
@@ -269,7 +288,10 @@
     private sealed class CatRow
     {
         public TicketCategory Category { get; set; }
-        public decimal Price { get; set; }
+        public bool Offered { get; set; }
+        public decimal PassPrice { get; set; }
+        public decimal TicketPrice { get; set; }
         public int? Quota { get; set; }
+        public int Sold { get; set; }
     }
 }

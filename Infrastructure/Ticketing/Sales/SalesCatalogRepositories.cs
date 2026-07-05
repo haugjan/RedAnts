@@ -82,8 +82,10 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
             {
                 SeasonPriceId = parent.Id,
                 Category = (int)c.Category,
-                SalePrice = c.SalePrice,
-                Quota = c.Quota
+                SalePrice = c.PassPrice,
+                Quota = c.Quota,
+                TicketPrice = c.TicketPrice,
+                Offered = c.Offered
             });
 
         var cats = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
@@ -100,7 +102,8 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
 
     private static SeasonPrice Map(SeasonPriceRecord p, IEnumerable<SeasonPriceCategoryRecord> cats) =>
         SeasonPrice.FromPersistence(p.Id, p.SeasonId, p.TotalSalesQuota,
-            cats.Select(c => CategoryPrice.FromPersistence((TicketCategory)c.Category, c.SalePrice, c.Quota)).ToList());
+            cats.Select(c => SeasonCategoryPrice.FromPersistence(
+                (TicketCategory)c.Category, c.SalePrice, c.TicketPrice ?? 0m, c.Offered ?? true, c.Quota)).ToList());
 }
 
 public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPricing
@@ -200,6 +203,50 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
 {
     public async Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int seasonId)
     {
+        var offer = await LoadOfferAsync(seasonId);
+        return offer
+            .Where(o => o.Offered)
+            .Select(o => new AvailableTicketCategory(o.Category, o.Category.DisplayName(), o.PassPrice, o.Available, o.CategoryRemaining))
+            .ToList();
+    }
+
+    public async Task<string?> CheckCapacityAsync(IReadOnlyList<PassDemand> demand)
+    {
+        foreach (var group in demand.Where(d => d.Quantity > 0).GroupBy(d => d.SeasonId))
+        {
+            var offer = (await LoadOfferAsync(group.Key)).ToDictionary(o => o.Category);
+            var totalWanted = group.Sum(d => d.Quantity);
+
+            foreach (var d in group)
+            {
+                if (!offer.TryGetValue(d.Category, out var o) || !o.Offered || !o.Available)
+                    return $"«{d.Category.DisplayName()}» ist für diese Saison nicht mehr verfügbar.";
+                if (o.CategoryRemaining is { } r && d.Quantity > r)
+                    return $"Für «{d.Category.DisplayName()}» sind nur noch {r} Saisonkarten verfügbar.";
+            }
+
+            var totalRemaining = offer.Values.FirstOrDefault()?.TotalRemaining;
+            if (totalRemaining is { } t && totalWanted > t)
+                return $"Für diese Saison sind insgesamt nur noch {t} Saisonkarten verfügbar.";
+        }
+        return null;
+    }
+
+    public async Task<IReadOnlyDictionary<TicketCategory, int>> GetSoldCountsAsync(int seasonId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var soldRows = await scope.Database.FetchAsync<SoldRow>(
+            "SELECT Category, COUNT(*) AS Cnt FROM SeasonPasses WHERE SeasonId = @0 AND Status = @1 GROUP BY Category",
+            seasonId, (int)TicketStatus.Valid);
+        return soldRows.ToDictionary(r => (TicketCategory)r.Category, r => r.Cnt);
+    }
+
+    private sealed record OfferRow(
+        TicketCategory Category, decimal PassPrice, bool Offered,
+        int? CategoryRemaining, int? TotalRemaining, bool Available);
+
+    private async Task<IReadOnlyList<OfferRow>> LoadOfferAsync(int seasonId)
+    {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
         var parent = await scope.Database.FirstOrDefaultAsync<SeasonPriceRecord>("WHERE SeasonId = @0", seasonId);
@@ -217,18 +264,29 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
 
         int? totalRemaining = parent.TotalSalesQuota is { } tq ? Math.Max(0, tq - soldTotal) : null;
 
-        var list = new List<AvailableTicketCategory>();
-        foreach (var c in cats)
+        var rows = cats.Select(c =>
         {
             var category = (TicketCategory)c.Category;
+            var offered = c.Offered ?? true;
             var sold = soldByCategory.GetValueOrDefault(c.Category);
             int? categoryRemaining = c.Quota is { } q ? Math.Max(0, q - sold) : null;
-
             var remaining = Least(categoryRemaining, totalRemaining);
-            var available = remaining is null || remaining > 0;
-            list.Add(new AvailableTicketCategory(category, category.DisplayName(), c.SalePrice, available, remaining));
-        }
-        return list;
+            var selfAvailable = offered && (remaining is null || remaining > 0);
+            return new OfferRow(category, c.SalePrice, offered, remaining, totalRemaining, selfAvailable);
+        }).ToList();
+
+        var byCategory = rows.ToDictionary(r => r.Category);
+        return rows.Select(r =>
+        {
+            if (r.Category.PromoCounterpart() is { } promo
+                && byCategory.TryGetValue(promo, out var promoRow)
+                && promoRow.Offered
+                && (promoRow.CategoryRemaining is null || promoRow.CategoryRemaining > 0))
+            {
+                return r with { Available = false };
+            }
+            return r;
+        }).ToList();
     }
 
     private static int? Least(int? a, int? b) =>
