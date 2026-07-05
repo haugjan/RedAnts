@@ -67,6 +67,7 @@ Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqi
 
 ## Conventions
 
+- **No comments in code.** The code speaks for itself: prefer clear names and small well-named methods over explanatory comments. This covers line, block, XML-doc (`///`), Razor (`@* *@`), and embedded CSS/JS comments. Non-obvious "why" (design decisions, Swiss compliance, gotchas) goes in `ARCHITECTURE.md` under "Design rationale and gotchas", not inline.
 - Keep the two slices decoupled: no direct references from Website code into Ticketing internals (go through ports if a genuine dependency arises).
 - New website block elements: element type + alias in `WebsiteAliases`, register the block in the "Website Content Blocks" Block List, add a partial under `Views/Partials/Blocks/{alias}.cshtml`, add styles to `wwwroot/css/site.css`.
 - Secrets (Payrexx, Brevo, Turnstile) come from configuration / user secrets, never hardcoded.
