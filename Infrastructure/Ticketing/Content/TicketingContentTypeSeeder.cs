@@ -47,7 +47,8 @@ public sealed class TicketingContentTypeSeeder(
             EnsurePublicPageTypes();
             EnsureEventExtraProperties();
             EnsureContentStructure();
-            EnsureSaisonsPromoNode();
+            ConsolidateSaisonsNode();
+            EnsureVenuePicker();
             RefreshAccessLinks();
         }
         catch (Exception ex)
@@ -189,38 +190,53 @@ public sealed class TicketingContentTypeSeeder(
         var mediaPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.MediaPicker3") ?? textBox;
 
         var root = contentTypeService.Get(A.RootType);
-        if (root is null) return;
-
-        var rootChanged = false;
-        if (!root.PropertyTypeExists(A.HeaderText))
+        if (root is not null)
         {
-            root.AddPropertyType(Prop(textBox, A.HeaderText, "Headertext"), Group, GroupName);
-            rootChanged = true;
-        }
-        if (!root.PropertyTypeExists(A.HeaderImage))
-        {
-            root.AddPropertyType(Prop(mediaPicker, A.HeaderImage, "Headerbild"), Group, GroupName);
-            rootChanged = true;
-        }
-        if (root.DefaultTemplate is null)
-        {
-            AssignTemplate(root, EnsureTemplate("TicketingHome"));
-            rootChanged = true;
-        }
-        if (rootChanged) contentTypeService.Save(root, SuperUser);
-
-        if (contentTypeService.Get(A.SaisonsPromoType) is null)
-        {
-            var promo = new ContentType(shortStringHelper, Constants.System.Root)
+            var rootChanged = false;
+            if (!root.PropertyTypeExists(A.HeaderText))
             {
-                Alias = A.SaisonsPromoType, Name = "Saisonkarten-Seite", Icon = "icon-badge", AllowedAsRoot = true
-            };
-            promo.AddPropertyType(Prop(textBox, A.HeaderText, "Header"), Group, GroupName);
-            promo.AddPropertyType(Prop(mediaPicker, A.HeaderImage, "Headerbild"), Group, GroupName);
-            promo.AddPropertyType(Prop(richText, A.PromoBodyText, "Text"), Group, GroupName);
-            AssignTemplate(promo, EnsureTemplate("SaisonsPromo"));
-            contentTypeService.Save(promo, SuperUser);
-            logger.LogInformation("TicketingContentTypeSeeder: created saisonsPromo document type.");
+                root.AddPropertyType(Prop(textBox, A.HeaderText, "Headertext"), Group, GroupName);
+                rootChanged = true;
+            }
+            if (!root.PropertyTypeExists(A.HeaderImage))
+            {
+                root.AddPropertyType(Prop(mediaPicker, A.HeaderImage, "Headerbild"), Group, GroupName);
+                rootChanged = true;
+            }
+            if (root.DefaultTemplate is null)
+            {
+                AssignTemplate(root, EnsureTemplate("TicketingHome"));
+                rootChanged = true;
+            }
+            if (rootChanged) contentTypeService.Save(root, SuperUser);
+        }
+
+        var seasonsFolder = contentTypeService.Get(A.SeasonsFolderType);
+        if (seasonsFolder is not null)
+        {
+            var folderChanged = false;
+            if (!seasonsFolder.PropertyTypeExists(A.HeaderText))
+            {
+                seasonsFolder.AddPropertyType(Prop(textBox, A.HeaderText, "Header"), Group, GroupName);
+                folderChanged = true;
+            }
+            if (!seasonsFolder.PropertyTypeExists(A.HeaderImage))
+            {
+                seasonsFolder.AddPropertyType(Prop(mediaPicker, A.HeaderImage, "Headerbild"), Group, GroupName);
+                folderChanged = true;
+            }
+            if (!seasonsFolder.PropertyTypeExists(A.PromoBodyText))
+            {
+                seasonsFolder.AddPropertyType(Prop(richText, A.PromoBodyText, "Text"), Group, GroupName);
+                folderChanged = true;
+            }
+            var promoTemplate = EnsureTemplate("SaisonsPromo");
+            if (promoTemplate is not null && seasonsFolder.DefaultTemplate is null)
+            {
+                AssignTemplate(seasonsFolder, promoTemplate);
+                folderChanged = true;
+            }
+            if (folderChanged) contentTypeService.Save(seasonsFolder, SuperUser);
         }
     }
 
@@ -236,16 +252,114 @@ public sealed class TicketingContentTypeSeeder(
         logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the event type.", A.EventTimeUnknown);
     }
 
-    private void EnsureSaisonsPromoNode()
+    private const string ObsoleteSaisonsPromoType = "saisonsPromo";
+
+    private void ConsolidateSaisonsNode()
     {
         EnsureNodeTemplate(A.RootType, "TicketingHome");
 
-        if (contentService.GetRootContent().Any(c => c.ContentType.Alias == A.SaisonsPromoType)) return;
+        var seasonsFolder = FindSeasonsFolderNode();
+        if (seasonsFolder is not null)
+        {
+            var promoTemplate = fileService.GetTemplate("SaisonsPromo");
+            var folderChanged = false;
 
-        var promo = contentService.Create("Saisons", Constants.System.Root, A.SaisonsPromoType);
-        promo.SetValue(A.HeaderText, "Saisonkarten");
-        Publish(promo);
-        logger.LogInformation("TicketingContentTypeSeeder: created Saisons promo root node.");
+            var promoNode = contentService.GetRootContent()
+                .FirstOrDefault(c => c.ContentType.Alias == ObsoleteSaisonsPromoType);
+            if (promoNode is not null)
+            {
+                folderChanged |= CopyIfEmpty(promoNode, seasonsFolder, A.HeaderText);
+                folderChanged |= CopyIfEmpty(promoNode, seasonsFolder, A.HeaderImage);
+                folderChanged |= CopyIfEmpty(promoNode, seasonsFolder, A.PromoBodyText);
+            }
+
+            if (string.IsNullOrWhiteSpace(seasonsFolder.GetValue<string>(A.HeaderText)))
+            {
+                seasonsFolder.SetValue(A.HeaderText, "Saisonkarten");
+                folderChanged = true;
+            }
+            if (promoTemplate is not null && seasonsFolder.TemplateId != promoTemplate.Id)
+            {
+                seasonsFolder.TemplateId = promoTemplate.Id;
+                folderChanged = true;
+            }
+            if (folderChanged) Publish(seasonsFolder);
+
+            if (promoNode is not null)
+            {
+                contentService.Delete(promoNode, SuperUser);
+                logger.LogInformation("TicketingContentTypeSeeder: removed redundant Saisons promo root node.");
+            }
+        }
+
+        var obsoleteType = contentTypeService.Get(ObsoleteSaisonsPromoType);
+        if (obsoleteType is not null
+            && !contentService.GetRootContent().Any(c => c.ContentType.Alias == ObsoleteSaisonsPromoType))
+        {
+            contentTypeService.Delete(obsoleteType, SuperUser);
+            logger.LogInformation("TicketingContentTypeSeeder: removed obsolete saisonsPromo document type.");
+        }
+    }
+
+    private IContent? FindSeasonsFolderNode() => FindFolderNode(A.SeasonsFolderType);
+
+    private IContent? FindFolderNode(string folderTypeAlias)
+    {
+        var root = contentService.GetRootContent().FirstOrDefault(c => c.ContentType.Alias == A.RootType);
+        if (root is null) return null;
+        return contentService.GetPagedChildren(root.Id, 0, 100, out _)
+            .FirstOrDefault(c => c.ContentType.Alias == folderTypeAlias);
+    }
+
+    private void EnsureVenuePicker()
+    {
+        var venuesFolder = FindFolderNode(A.VenuesFolderType);
+        if (venuesFolder is null) return;
+
+        var udi = venuesFolder.GetUdi().ToString();
+
+        const string name = "Ticketing Ort (Venues)";
+        var picker = dataTypeService.GetAll().FirstOrDefault(d => d.Name == name);
+        if (picker is null)
+        {
+            if (!propertyEditors.TryGet("Umbraco.ContentPicker", out var editor)) return;
+            picker = new DataType(editor, serializer)
+            {
+                Name = name,
+                EditorUiAlias = "Umb.PropertyEditorUi.DocumentPicker",
+                DatabaseType = ValueStorageType.Nvarchar,
+                ConfigurationData = new Dictionary<string, object> { ["startNodeId"] = udi }
+            };
+            dataTypeService.Save(picker);
+        }
+        else
+        {
+            var current = picker.ConfigurationData.TryGetValue("startNodeId", out var v) ? v as string : null;
+            if (current != udi)
+            {
+                picker.ConfigurationData = new Dictionary<string, object> { ["startNodeId"] = udi };
+                dataTypeService.Save(picker);
+            }
+        }
+
+        var evt = contentTypeService.Get(A.EventType);
+        var venueProp = evt?.PropertyTypes.FirstOrDefault(p => p.Alias == A.EventVenue);
+        if (evt is not null && venueProp is not null && venueProp.DataTypeKey != picker.Key)
+        {
+            venueProp.DataTypeId = picker.Id;
+            venueProp.DataTypeKey = picker.Key;
+            contentTypeService.Save(evt, SuperUser);
+            logger.LogInformation("TicketingContentTypeSeeder: restricted the event venue picker to the Orte folder.");
+        }
+    }
+
+    private static bool CopyIfEmpty(IContent from, IContent to, string alias)
+    {
+        if (!string.IsNullOrWhiteSpace(to.GetValue<string>(alias))) return false;
+        var value = from.GetValue<string>(alias);
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        to.SetValue(alias, value);
+        return true;
     }
 
     private void EnsureNodeTemplate(string contentTypeAlias, string templateAlias)
