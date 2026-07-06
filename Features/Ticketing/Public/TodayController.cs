@@ -15,16 +15,14 @@ public sealed class TodayController(
     public async Task<IActionResult> Today()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var open = await events.GetPublicOpenAsync();
-        var todays = open.Where(e => e.Date == today).ToList();
+        var upcoming = (await events.GetPublicOpenAsync())
+            .OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList();
 
-        if (todays.Count == 1)
-        {
-            using var _ = contextFactory.EnsureUmbracoContext();
-            var url = urlProvider.GetUrl(todays[0].Id, UrlMode.Relative);
-            if (!string.IsNullOrEmpty(url) && url != "#") return Redirect(url);
-        }
+        var target = upcoming.FirstOrDefault(e => e.Date == today) ?? upcoming.FirstOrDefault();
+        if (target is null) return Redirect("/ticketing/");
 
-        return Redirect("/ticketing/");
+        using var _ = contextFactory.EnsureUmbracoContext();
+        var url = urlProvider.GetUrl(target.Id, UrlMode.Relative);
+        return Redirect(!string.IsNullOrEmpty(url) && url != "#" ? url : "/ticketing/");
     }
 }
