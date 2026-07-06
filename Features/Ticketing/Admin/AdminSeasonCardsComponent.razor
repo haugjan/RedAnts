@@ -1,4 +1,7 @@
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms
 @using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
 @inject ISeasonPassAdminReport Report
 @inject ISeasonPasses Passes
 
@@ -28,11 +31,12 @@
                 </div>
             </div>
             <div class="ta-toolbar-actions">
-                @if (_passes.Count > 0)
-                {
-                    <a class="ta-btn ta-btn-ghost" href="/admin/saisonkarten/season/@SelectedSeasonId/passes.csv"
-                       target="_blank" rel="noopener" title="Saisonkarten dieser Saison als CSV herunterladen">⬇ CSV</a>
-                }
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenImport">
+                    Daten importieren (CSV)
+                </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenExport">
+                    Saisonkarten exportieren (CSV)
+                </button>
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
                     Saisonkarte erstellen
                 </button>
@@ -262,6 +266,77 @@
     <VisitsOverlay Uuid="_visitsPass.Uuid" Title="@(_visitsPass.BuyerName ?? AdminFormat.TicketNo(_visitsPass.Uuid))" OnClose="CloseVisits" />
 }
 
+@if (_showImport)
+{
+    <div class="ta-overlay" @onmousedown="CloseImport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarten importieren</h2>
+
+            <div class="ta-field">
+                <label class="ta-label">Saison</label>
+                <div class="ta-readonly">@SelectedSeasonName</div>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label">CSV-Datei</label>
+                <InputFile OnChange="OnImportFileAsync" accept=".csv,text/csv" />
+                <p class="ta-hint">
+                    Spalten: Bundle, Kategorie, Firma, Vorname, Nachname, Strasse, PLZ, Ort, Land, E-Mail, Telefon.
+                    Pflicht: Bundle und Käufername (Firma oder Vor- und Nachname); übrige Felder optional.
+                    <a href="/admin/saisonkarten/beispiel.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
+                </p>
+            </div>
+
+            @if (_importFileName is not null)
+            {
+                <div class="ta-parse">
+                    <strong>@_importFileName</strong>: @_importRows.Count Zeile@(_importRows.Count == 1 ? "" : "n") erkannt.
+                    @if (_importWarnings.Count > 0)
+                    {
+                        <ul class="ta-warnings">
+                            @foreach (var w in _importWarnings) { <li>@w</li> }
+                        </ul>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_importError)) { <div class="ta-error">@_importError</div> }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_importSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="RunImportAsync" disabled="@(_importSaving || _importRows.Count == 0)">
+                    @(_importSaving ? "Wird importiert …" : $"{_importRows.Count} Saisonkarten importieren")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showExport)
+{
+    <div class="ta-overlay" @onmousedown="CloseExport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarten exportieren</h2>
+
+            <div class="ta-field">
+                <label class="ta-label" for="expBundle">Bundle</label>
+                <select id="expBundle" class="ta-select" @bind="_exportBundle">
+                    <option value="">Alle Saisonkarten dieser Saison</option>
+                    @foreach (var b in Bundles())
+                    {
+                        <option value="@b">@b</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Abbrechen</button>
+                <a class="ta-btn ta-btn-primary" href="@ExportUrl" target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
@@ -344,6 +419,74 @@
     private SeasonPassListItem? _visitsPass;
     private void OpenVisits(SeasonPassListItem p) => _visitsPass = p;
     private void CloseVisits() => _visitsPass = null;
+
+    private string SelectedSeasonName => _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
+
+    private IEnumerable<string> Bundles() =>
+        _passes.Where(p => !string.IsNullOrEmpty(p.Reference)).Select(p => p.Reference!).Distinct().OrderBy(r => r);
+
+    private bool _showImport;
+    private bool _importSaving;
+    private string? _importFileName;
+    private string? _importError;
+    private IReadOnlyList<SeasonPassImportRow> _importRows = [];
+    private IReadOnlyList<string> _importWarnings = [];
+
+    private void OpenImport()
+    {
+        _importFileName = null;
+        _importRows = [];
+        _importWarnings = [];
+        _importError = null;
+        _showImport = true;
+    }
+    private void CloseImport() { if (!_importSaving) _showImport = false; }
+
+    private async Task OnImportFileAsync(InputFileChangeEventArgs e)
+    {
+        _importError = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            var text = await reader.ReadToEndAsync();
+            var result = SeasonPassCsv.Parse(text);
+            _importFileName = e.File.Name;
+            _importRows = result.Rows;
+            _importWarnings = result.Warnings;
+        }
+        catch (Exception ex)
+        {
+            _importFileName = null;
+            _importRows = [];
+            _importWarnings = [];
+            _importError = $"Datei konnte nicht gelesen werden: {ex.Message}";
+        }
+    }
+
+    private async Task RunImportAsync()
+    {
+        _importError = null;
+        if (SelectedSeasonId <= 0) { _importError = "Bitte zuerst eine Saison wählen."; return; }
+        if (_importRows.Count == 0) { _importError = "Bitte eine CSV-Datei mit mindestens einer Zeile wählen."; return; }
+        _importSaving = true;
+        try
+        {
+            await Passes.ImportAsync(SelectedSeasonId, _importRows, Identity.Name, Identity.Email);
+            _showImport = false;
+            await ReloadPassesAsync();
+        }
+        catch (DomainException ex) { _importError = ex.Message; }
+        finally { _importSaving = false; }
+    }
+
+    private bool _showExport;
+    private string _exportBundle = "";
+    private void OpenExport() { _exportBundle = ""; _showExport = true; }
+    private void CloseExport() => _showExport = false;
+    private string ExportUrl => string.IsNullOrEmpty(_exportBundle)
+        ? $"/admin/saisonkarten/season/{SelectedSeasonId}/passes.csv"
+        : $"/admin/saisonkarten/season/{SelectedSeasonId}/passes.csv?bundle={Uri.EscapeDataString(_exportBundle)}";
 
     private static string StatusLabel(TicketStatus status) => status switch
     {
