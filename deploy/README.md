@@ -81,3 +81,18 @@ first boot; remove them again afterwards.
 
 Azure SQL and blob media both support multiple App Service instances, so the plan can be scaled
 out without losing media or session-independent state.
+
+## Backups
+
+Databases (server `sql-redants-ch`):
+- Automatic point-in-time restore (PITR): `sqldb-redants-prod` retains 14 days, `sqldb-redants-dev`
+  retains 7 days (Basic tier maximum).
+- Long-term retention (LTR): prod keeps a weekly backup for 4 weeks and a monthly backup for
+  12 months; dev keeps a weekly backup for 2 weeks.
+- Restore from PITR: `az sql db restore`; list/restore LTR backups: `az sql db ltr-backup list` /
+  `az sql db ltr-backup restore`.
+
+Media (storage accounts `stredantsprod`, `stredantsdev`, `stredants`):
+- Blob soft delete and container soft delete both retain 14 days; blob versioning and change feed
+  are enabled. Deleted or overwritten media can be restored within the retention window
+  (`az storage blob undelete` / restore a prior version).
