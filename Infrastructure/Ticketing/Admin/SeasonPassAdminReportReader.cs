@@ -15,7 +15,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
 
         var passes = await scope.Database.FetchAsync<Row>(@"
             SELECT sp.Uuid, sp.Category, sp.Price, sp.Status, sp.CreatedAt,
-                   sp.BuyerType, sp.BuyerFirstName, sp.BuyerLastName, sp.BuyerCompany, sp.CreatedByName,
+                   sp.BuyerType, sp.BuyerFirstName, sp.BuyerLastName, sp.BuyerCompany, sp.CreatedByName, sp.Reference,
                    o.OrderNumber AS OrderNumber, o.Status AS OrderStatus,
                    o.BillingFirstName AS BillingFirstName, o.BillingLastName AS BillingLastName
             FROM SeasonPasses sp
@@ -45,7 +45,8 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
                 p.OrderNumber,
                 p.OrderStatus is { } os ? PaymentState((OrderStatus)os) : null,
                 buyer?.Type,
-                p.CreatedByName);
+                p.CreatedByName,
+                p.Reference);
         }).ToList();
     }
 
@@ -76,6 +77,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         public string? BuyerLastName { get; set; }
         public string? BuyerCompany { get; set; }
         public string? CreatedByName { get; set; }
+        public string? Reference { get; set; }
         public string? OrderNumber { get; set; }
         public int? OrderStatus { get; set; }
         public string? BillingFirstName { get; set; }

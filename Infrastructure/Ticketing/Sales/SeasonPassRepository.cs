@@ -33,7 +33,8 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider) : ISeason
             BuyerLastName = pass.Buyer?.LastName,
             BuyerCompany = pass.Buyer?.Company,
             CreatedByName = pass.CreatedByName,
-            CreatedByEmail = pass.CreatedByEmail
+            CreatedByEmail = pass.CreatedByEmail,
+            Reference = pass.Reference
         };
         if (row.Id == 0) await scope.Database.InsertAsync(row);
         else await scope.Database.UpdateAsync(row);
@@ -52,5 +53,6 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider) : ISeason
             r.CreatedAt,
             Buyer.FromPersistence(r.BuyerType ?? 0, r.BuyerFirstName, r.BuyerLastName, r.BuyerCompany),
             r.CreatedByName,
-            r.CreatedByEmail);
+            r.CreatedByEmail,
+            r.Reference);
 }

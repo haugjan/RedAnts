@@ -13,10 +13,11 @@ public sealed class SeasonPass
     public Buyer? Buyer { get; private set; }
     public string? CreatedByName { get; private set; }
     public string? CreatedByEmail { get; private set; }
+    public string? Reference { get; private set; }
 
     private SeasonPass(int id, Guid uuid, int seasonId, TicketCategory category, decimal price,
         int? orderId, TicketStatus status, DateTime createdAt, Buyer? buyer,
-        string? createdByName, string? createdByEmail)
+        string? createdByName, string? createdByEmail, string? reference)
     {
         Id = id;
         Uuid = uuid;
@@ -29,22 +30,23 @@ public sealed class SeasonPass
         Buyer = buyer;
         CreatedByName = createdByName;
         CreatedByEmail = createdByEmail;
+        Reference = reference;
     }
 
     public static SeasonPass Create(int seasonId, TicketCategory category, decimal price, int? orderId,
-        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null)
+        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, string? reference = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         return new SeasonPass(0, Guid.NewGuid(), seasonId, category, decimal.Round(price, 2),
-            orderId, TicketStatus.Valid, DateTime.UtcNow, buyer, Clean(createdByName), Clean(createdByEmail));
+            orderId, TicketStatus.Valid, DateTime.UtcNow, buyer, Clean(createdByName), Clean(createdByEmail), Clean(reference));
     }
 
     public static SeasonPass FromPersistence(int id, Guid uuid, int seasonId, TicketCategory category,
         decimal price, int? orderId, TicketStatus status, DateTime createdAt,
-        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null) =>
+        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, string? reference = null) =>
         new(id, uuid, seasonId, category, price, orderId, status, createdAt, buyer,
-            Clean(createdByName), Clean(createdByEmail));
+            Clean(createdByName), Clean(createdByEmail), Clean(reference));
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

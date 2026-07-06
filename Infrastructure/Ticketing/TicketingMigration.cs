@@ -22,6 +22,23 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddFreeEntryUuid>("freeentry-uuid");
         To<AddSeasonPriceDualPricing>("seasonprices-dual-price");
         To<AddSeasonTicketDefaultColumns>("seasonprices-ticket-defaults");
+        To<AddSeasonPassReference>("seasonpasses-reference");
+    }
+}
+
+public class AddSeasonPassReference(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonPasses", "Reference"))
+        {
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonPasses ADD COLUMN Reference NVARCHAR(100) NULL").Do();
+            else
+                Alter.Table("SeasonPasses").AddColumn("Reference").AsString(100).Nullable().Do();
+        }
+        return Task.CompletedTask;
     }
 }
 

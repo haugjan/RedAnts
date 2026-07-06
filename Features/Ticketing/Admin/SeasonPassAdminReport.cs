@@ -13,7 +13,8 @@ public sealed record SeasonPassListItem(
     string? OrderNumber,
     string? PaymentState,
     BuyerType? BuyerType = null,
-    string? CreatedByName = null);
+    string? CreatedByName = null,
+    string? Reference = null);
 
 public interface ISeasonPassAdminReport
 {

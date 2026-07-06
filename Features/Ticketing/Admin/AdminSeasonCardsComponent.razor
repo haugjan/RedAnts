@@ -53,6 +53,7 @@
                             <th>Karten-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("bundle")'>Bundle <span class="ta-sort-ind">@Ind("bundle")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
@@ -81,6 +82,7 @@
                                     else { <span class="ta-muted">—</span> }
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
+                                <td>@(string.IsNullOrEmpty(p.Reference) ? "–" : p.Reference)</td>
                                 <td>
                                     <InlineSelectEdit TValue="TicketCategory" Value="p.Category" FieldLabel="Kategorie"
                                                       Options="CategoryOptions" Label="@(c => c.DisplayName())"
@@ -304,6 +306,7 @@
             "status" => _passes.OrderBy(p => p.Status),
             "visits" => _passes.OrderBy(p => p.EventVisits),
             "created" => _passes.OrderBy(p => p.CreatedAt),
+            "bundle" => _passes.OrderBy(p => p.Reference ?? "￿"),
             _ => _passes.OrderBy(p => p.BuyerName ?? "￿"),
         };
         return _sortAsc ? q : q.Reverse();
