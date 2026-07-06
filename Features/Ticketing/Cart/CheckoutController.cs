@@ -10,7 +10,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -154,6 +154,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var order = Order.Create(number, billing, current.TotalAmount, VatRate, paymentMethod, sellerUid: null);
         order.MarkPaid();
         var saved = await orders.SaveAsync(order);
+        await orderLog.AppendAsync(saved.Id, OrderStatus.Draft, "Online-Kauf", "Bestellung erstellt");
+        await orderLog.AppendAsync(saved.Id, OrderStatus.Paid, "Online-Kauf", "Online bezahlt");
         var buyer = billing.ToBuyer();
 
         var issued = new List<ConfirmationTicket>();
