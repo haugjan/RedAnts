@@ -11,7 +11,7 @@ namespace RedAnts.Features.Ticketing.Admin;
 
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 [ApiExplorerSettings(IgnoreApi = true)]
-public sealed class MemberExportController(IScopeProvider scopeProvider, ITicketTokens tokens) : Controller
+public sealed class MemberExportController(IScopeProvider scopeProvider, ITicketTokens tokens, IPublicBaseUrl publicUrl) : Controller
 {
     [HttpGet("/admin/mitglieder/referenzen")]
     public async Task<IActionResult> References()
@@ -34,7 +34,7 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
             "SELECT Uuid, SeasonId, FirstName, LastName, Birthday FROM MembershipCards " +
             "WHERE Reference = @0 ORDER BY LastName, FirstName", referenz);
 
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var baseUrl = publicUrl.Resolve(Request);
         var sb = new StringBuilder();
         sb.Append("Name;Vorname;Geburtsdatum;QrUrl\n");
         foreach (var r in rows)

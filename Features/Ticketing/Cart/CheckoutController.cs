@@ -10,7 +10,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -184,7 +184,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         await mailer.SendTicketsAsync(new OrderMailModel(
             saved.OrderNumber, billing.Email, billing.FullName, saved.TotalGross,
-            $"{Request.Scheme}://{Request.Host}", mailTickets));
+            publicUrl.Resolve(Request), mailTickets));
 
         cart.Clear();
         HttpContext.Session.Remove(FormKey);

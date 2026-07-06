@@ -15,7 +15,8 @@ public sealed class EmailTestController(
     ITicketTokens tokens,
     IQrCodeRenderer qr,
     IEvents events,
-    ISeasons seasons) : Controller
+    ISeasons seasons,
+    IPublicBaseUrl publicUrl) : Controller
 {
     [HttpGet("/dev/test-mail")]
     public async Task<IActionResult> Send(string? to, Guid? uuid)
@@ -29,7 +30,7 @@ public sealed class EmailTestController(
         if (uuid is Guid ticketId && await tickets.FindAsync(ticketId) is { } issued)
         {
             var token = tokens.Create(issued.Type, issued.Uuid, issued.ScopeId);
-            var url = $"{Request.Scheme}://{Request.Host}/ticket/{token}";
+            var url = $"{publicUrl.Resolve(Request)}/ticket/{token}";
             var qrPng = qr.RenderPngDataUri(url);
             var scopeName = issued.Type == TicketType.EventTicket
                 ? (await events.FindByIdAsync(issued.ScopeId))?.Name ?? "Anlass"

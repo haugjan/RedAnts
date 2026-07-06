@@ -11,7 +11,8 @@ public sealed class WebTicketController(
     IQrCodeRenderer qr,
     IIssuedTicketReader tickets,
     IEvents events,
-    ISeasons seasons) : Controller
+    ISeasons seasons,
+    IPublicBaseUrl publicUrl) : Controller
 {
     [HttpGet("/ticket/{token}")]
     public async Task<IActionResult> Show(string token)
@@ -44,7 +45,7 @@ public sealed class WebTicketController(
                 dateText = $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}";
         }
 
-        var absoluteUrl = $"{Request.Scheme}://{Request.Host}/ticket/{token}";
+        var absoluteUrl = $"{publicUrl.Resolve(Request)}/ticket/{token}";
         var svg = qr.RenderSvg(absoluteUrl);
 
         var model = new WebTicketViewModel(
@@ -68,7 +69,7 @@ public sealed class WebTicketController(
     public IActionResult QrPng(string token)
     {
         if (!tokens.TryVerify(token, out _)) return NotFound();
-        var url = $"{Request.Scheme}://{Request.Host}/ticket/{token}";
+        var url = $"{publicUrl.Resolve(Request)}/ticket/{token}";
         return File(qr.RenderPng(url, 8), "image/png");
     }
 

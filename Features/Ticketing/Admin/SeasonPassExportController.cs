@@ -10,7 +10,8 @@ namespace RedAnts.Features.Ticketing.Admin;
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 public sealed class SeasonPassExportController(
     ISeasonPassAdminReport report,
-    ITicketTokens tokens) : Controller
+    ITicketTokens tokens,
+    IPublicBaseUrl publicUrl) : Controller
 {
     [HttpGet("/admin/saisonkarten/season/{seasonId:int}/passes.csv")]
     public async Task<IActionResult> Export(int seasonId)
@@ -21,7 +22,7 @@ public sealed class SeasonPassExportController(
         sb.Append("Karten-Nr;Käufer;Kategorie;Link\r\n");
         foreach (var p in passes)
         {
-            var link = $"{Request.Scheme}://{Request.Host}/ticket/{tokens.Create(TicketType.SeasonPass, p.Uuid, seasonId)}";
+            var link = $"{publicUrl.Resolve(Request)}/ticket/{tokens.Create(TicketType.SeasonPass, p.Uuid, seasonId)}";
             sb.Append(ShortCode(p.Uuid)).Append(';')
               .Append(CsvField(p.BuyerName ?? "")).Append(';')
               .Append(CsvField(p.Category.DisplayName())).Append(';')

@@ -10,7 +10,8 @@ namespace RedAnts.Features.Ticketing.Admin;
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 public sealed class FlexBundleExportController(
     IFlexBundleTickets bundleTickets,
-    ITicketTokens tokens) : Controller
+    ITicketTokens tokens,
+    IPublicBaseUrl publicUrl) : Controller
 {
     [HttpGet("/admin/flextickets/bundle/{bundleId:int}/tickets.csv")]
     public async Task<IActionResult> Export(int bundleId)
@@ -21,7 +22,7 @@ public sealed class FlexBundleExportController(
         sb.Append("Referenz;Kurzkennung;Link\r\n");
         foreach (var t in tickets)
         {
-            var link = $"{Request.Scheme}://{Request.Host}/ticket/{tokens.Create(TicketType.SeasonSingle, t.Uuid, t.SeasonId)}";
+            var link = $"{publicUrl.Resolve(Request)}/ticket/{tokens.Create(TicketType.SeasonSingle, t.Uuid, t.SeasonId)}";
             sb.Append(CsvField(t.Reference)).Append(';')
               .Append(ShortCode(t.Uuid)).Append(';')
               .Append(link).Append("\r\n");
