@@ -26,7 +26,7 @@
 
 | Session | Branch | Paket | Status |
 |---|---|---|---|
-| S1 | `feature/s1-r3-heute-backups` | `/heute` (nächstes/heutiges Spiel) + DB- und Medien-Backups | offen |
+| S1 | `feature/s1-r3-heute-backups` | `/heute` (nächstes/heutiges Spiel) + DB- und Medien-Backups | **erledigt, in main gemerged** (`/heute` überarbeitet; Azure: prod PITR 14d + LTR 4W/12M, dev PITR 7d + LTR 2W; Storage Soft-Delete 14d + Versionierung auf allen 3 Konten; dokumentiert in deploy/README.md) |
 | S2 | `feature/s2-r3-admin-cleanup` | Admin: alle Erklärtexte nach dem Titel entfernen | offen |
 | S3 | `feature/s3-r3-logos-maps` | Team-Logos fixe Breite + Google-Karte/Link aus dem Ort | offen |
 | S4 | `feature/s4-r3-saisonkarten-csv` | Saisonkarten CSV-Import + Export (Bundle-Wahl) | offen |
