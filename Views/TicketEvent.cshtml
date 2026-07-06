@@ -1,5 +1,6 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @inject RedAnts.Features.Ticketing.Ports.IEventPricing Pricing
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Features.Ticketing.Public
@@ -206,12 +207,15 @@ else
             {
                 var geoId = venue.Value<string>("googleGeoId")?.Trim();
                 var hasGeo = !string.IsNullOrEmpty(geoId);
-                var mapQuery = hasGeo ? $"place_id:{geoId}" : venue.Name + ", Winterthur";
+                var mapsKey = Configuration["Google:MapsEmbedApiKey"];
+                var mapSrc = hasGeo && !string.IsNullOrEmpty(mapsKey)
+                    ? $"https://www.google.com/maps/embed/v1/place?key={Uri.EscapeDataString(mapsKey)}&q=place_id:{Uri.EscapeDataString(geoId!)}"
+                    : $"https://www.google.com/maps?q={Uri.EscapeDataString(venue.Name + ", Winterthur")}&output=embed";
                 var routeUrl = hasGeo
                     ? $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(venue.Name)}&destination_place_id={Uri.EscapeDataString(geoId!)}"
                     : $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(venue.Name + ", Winterthur")}";
                 <div class="evt-map">
-                    <iframe src="https://www.google.com/maps?q=@Uri.EscapeDataString(mapQuery)&output=embed"
+                    <iframe src="@mapSrc"
                             loading="lazy" referrerpolicy="no-referrer-when-downgrade"
                             title="Karte @venue.Name"></iframe>
                     <a class="evt-route" href="@routeUrl" target="_blank" rel="noopener">Route öffnen →</a>
