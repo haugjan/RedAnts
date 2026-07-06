@@ -73,9 +73,9 @@ else
                                     @if (!string.IsNullOrEmpty(evHome) || !string.IsNullOrEmpty(evAway))
                                     {
                                         <span class="event-item-logos">
-                                            @if (!string.IsNullOrEmpty(evHome)) { <img src="@evHome" alt="Heimteam" /> }
+                                            @if (!string.IsNullOrEmpty(evHome)) { <img class="team-logo" src="@evHome" alt="Heimteam" /> }
                                             <span class="event-item-vs">vs</span>
-                                            @if (!string.IsNullOrEmpty(evAway)) { <img src="@evAway" alt="Auswärtsteam" /> }
+                                            @if (!string.IsNullOrEmpty(evAway)) { <img class="team-logo" src="@evAway" alt="Auswärtsteam" /> }
                                         </span>
                                     }
                                     else if (!string.IsNullOrEmpty(evImage))
@@ -117,13 +117,12 @@ else
         .event-item-link:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
         .event-item-thumb { flex: 0 0 auto; width: 72px; height: 72px; border-radius: 8px; background-size: cover; background-position: center; }
         .event-item-logos { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-width: 72px; }
-        .event-item-logos img { height: 48px; width: auto; object-fit: contain; }
         .event-item-vs { font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase; font-size: .85rem; color: #999; }
         .event-item-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
         .event-item-date { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #C8102E; }
         .event-item-name { font-family: 'Oswald', sans-serif; font-size: 1.5rem; line-height: 1.1; color: #101010; }
         .event-item-venue { font-size: .9rem; color: #666; }
         .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
-        @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } .event-item-logos img { height: 38px; } }
+        @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
     </style>
 }

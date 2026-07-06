@@ -180,3 +180,10 @@ body {
 }
 
 .flexpage-main { min-height: 40vh; }
+
+.team-logo { flex: 0 0 auto; width: 64px; height: 46px; object-fit: contain; }
+.team-logo--lg { width: 104px; height: 74px; }
+@media (max-width: 560px) {
+  .team-logo { width: 46px; height: 36px; }
+  .team-logo--lg { width: 72px; height: 54px; }
+}

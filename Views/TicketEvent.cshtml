@@ -40,6 +40,8 @@
         .evt-fact__value { font-weight: 700; font-size: 1.12rem; }
         .evt-map { margin-top: 1.5rem; }
         .evt-map iframe { display: block; width: 100%; height: 300px; border: 0; border-radius: 6px; }
+        .evt-route { display: inline-block; margin-top: 0.75rem; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 0.95rem; color: var(--red); text-decoration: none; }
+        .evt-route:hover { color: var(--red-dark); }
         .evt-continue { display: none; margin-top: 1.75rem; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 1rem; background: #1c7c43; color: #fff; padding: 0.65rem 1.35rem; text-decoration: none; }
         .evt-continue:hover { background: #166535; color: #fff; }
         .evt-continue.is-visible { display: inline-block; }
@@ -147,9 +149,9 @@ else
             @if (!string.IsNullOrEmpty(homeLogo) || !string.IsNullOrEmpty(awayLogo))
             {
                 <div class="evt-logos">
-                    @if (!string.IsNullOrEmpty(homeLogo)) { <img src="@homeLogo" alt="Heimteam" /> }
+                    @if (!string.IsNullOrEmpty(homeLogo)) { <img class="team-logo team-logo--lg" src="@homeLogo" alt="Heimteam" /> }
                     <span class="vs">vs</span>
-                    @if (!string.IsNullOrEmpty(awayLogo)) { <img src="@awayLogo" alt="Auswärtsteam" /> }
+                    @if (!string.IsNullOrEmpty(awayLogo)) { <img class="team-logo team-logo--lg" src="@awayLogo" alt="Auswärtsteam" /> }
                 </div>
             }
 
@@ -202,11 +204,17 @@ else
 
             @if (venue is not null)
             {
-                var mapQuery = Uri.EscapeDataString(venue.Name + ", Winterthur");
+                var geoId = venue.Value<string>("googleGeoId")?.Trim();
+                var hasGeo = !string.IsNullOrEmpty(geoId);
+                var mapQuery = hasGeo ? $"place_id:{geoId}" : venue.Name + ", Winterthur";
+                var routeUrl = hasGeo
+                    ? $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(venue.Name)}&destination_place_id={Uri.EscapeDataString(geoId!)}"
+                    : $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(venue.Name + ", Winterthur")}";
                 <div class="evt-map">
-                    <iframe src="https://www.google.com/maps?q=@mapQuery&output=embed"
+                    <iframe src="https://www.google.com/maps?q=@Uri.EscapeDataString(mapQuery)&output=embed"
                             loading="lazy" referrerpolicy="no-referrer-when-downgrade"
                             title="Karte @venue.Name"></iframe>
+                    <a class="evt-route" href="@routeUrl" target="_blank" rel="noopener">Route öffnen →</a>
                 </div>
             }
         </div>
