@@ -45,6 +45,7 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
             if (tickets.Count == 0 && passes.Count == 0) continue;
 
             result.Add(new OrderListItem(
+                o.Id,
                 o.OrderNumber,
                 o.CreatedAt,
                 (OrderStatus)o.Status,

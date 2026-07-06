@@ -3,6 +3,7 @@ using RedAnts.Domain.Ticketing.Sales;
 namespace RedAnts.Features.Ticketing.Admin;
 
 public sealed record OrderListItem(
+    int OrderId,
     string OrderNumber,
     DateTime CreatedAt,
     OrderStatus Status,

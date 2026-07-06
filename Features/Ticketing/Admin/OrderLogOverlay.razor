@@ -1,0 +1,78 @@
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal ta-modal-visits" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Bestellverlauf</h2>
+        <p class="ta-modal-sub">@Title</p>
+
+        @if (_loading)
+        {
+            <p class="ta-muted-text">Wird geladen …</p>
+        }
+        else if (_entries.Count == 0)
+        {
+            <div class="ta-placeholder">Noch keine Einträge.</div>
+        }
+        else
+        {
+            <table class="ta-subtable">
+                <thead>
+                    <tr><th>Status</th><th>Zeit</th><th>Person</th><th>Notiz</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in _entries)
+                    {
+                        <tr>
+                            <td><span class="ta-badge @StatusClass(e.ToStatus)">@StatusLabel(e.ToStatus)</span></td>
+                            <td>@e.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@(string.IsNullOrEmpty(e.ChangedBy) ? "—" : e.ChangedBy)</td>
+                            <td>@(string.IsNullOrEmpty(e.Note) ? "—" : e.Note)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    [Inject] private IOrderLog Log { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<OrderLogEntry> _entries = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _entries = await Log.GetByOrderAsync(OrderId);
+        _loading = false;
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+
+    private static string StatusLabel(OrderStatus status) => status switch
+    {
+        OrderStatus.Paid => "Bezahlt",
+        OrderStatus.Draft => "Unbezahlt",
+        OrderStatus.Cancelled => "Storniert",
+        OrderStatus.Refunded => "Erstattet",
+        _ => status.ToString()
+    };
+
+    private static string StatusClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Paid => "ta-badge-valid",
+        OrderStatus.Draft => "ta-badge-draft",
+        OrderStatus.Cancelled => "ta-badge-cancelled",
+        OrderStatus.Refunded => "ta-badge-intern",
+        _ => "ta-badge-draft"
+    };
+}

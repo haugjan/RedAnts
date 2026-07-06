@@ -38,20 +38,20 @@
                 <table class="ta-table">
                     <thead>
                         <tr>
-                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Kaufdatum <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th>Bestell-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Adresse <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Kaufdatum <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Bezahlt <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("amount")'>Betrag <span class="ta-sort-ind">@Ind("amount")</span></th>
                             <th>Spieltickets</th>
                             <th>Saisonkarten</th>
-                            <th class="ta-num ta-th-sort" @onclick='() => Sort("amount")'>Betrag <span class="ta-sort-ind">@Ind("amount")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Bezahlt <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var o in Sorted())
                         {
                             <tr>
-                                <td>@o.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                                 <td><code class="ta-uuid">@o.OrderNumber</code></td>
                                 <td class="ta-cell-address">
                                     <div class="ta-addr-name">
@@ -65,10 +65,21 @@
                                     <div>@o.PostalCode @o.City@(IsSwitzerland(o.Country) ? "" : $", {o.Country}")</div>
                                     <div class="ta-addr-sub">@o.Email</div>
                                 </td>
+                                <td>@o.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>
+                                    <InlineSelectEdit TValue="OrderStatus" Value="o.Status" Options="_statusOptions" FieldLabel="Bezahlstatus"
+                                                      Label="@StatusLabel" Save="@(s => SaveStatusAsync(o, s))">
+                                        <Display Context="st">
+                                            <span class="ta-badge @StatusClass(st)">@StatusLabel(st)</span>
+                                        </Display>
+                                    </InlineSelectEdit>
+                                </td>
+                                <td class="ta-num">CHF @o.TotalGross.ToString("N2")</td>
                                 <td class="ta-cell-summary">@Cell(o.EventTicketCount, o.EventTicketSummary)</td>
                                 <td class="ta-cell-summary">@Cell(o.SeasonPassCount, o.SeasonPassSummary)</td>
-                                <td class="ta-num">CHF @o.TotalGross.ToString("N2")</td>
-                                <td><span class="ta-badge @StatusClass(o.Status)">@StatusLabel(o.Status)</span></td>
+                                <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="Bestellverlauf" @onclick="() => OpenLog(o)">🧾</button>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -84,12 +95,31 @@
     }
 </section>
 
+@if (_logOrder is not null)
+{
+    <OrderLogOverlay OrderId="_logOrder.OrderId" Title="@_logOrder.OrderNumber" OnClose="CloseLog" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private IOrderStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private static readonly OrderStatus[] _statusOptions = [OrderStatus.Paid, OrderStatus.Cancelled, OrderStatus.Refunded];
+
+    private async Task SaveStatusAsync(OrderListItem o, OrderStatus target)
+    {
+        await StatusEditor.SetStatusAsync(o.OrderId, target, Identity.Name);
+        await ReloadOrdersAsync();
+    }
+
+    private OrderListItem? _logOrder;
+    private void OpenLog(OrderListItem o) => _logOrder = o;
+    private void CloseLog() => _logOrder = null;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
