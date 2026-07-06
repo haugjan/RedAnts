@@ -31,7 +31,7 @@
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_cards.Count == 0)"
-                        title="Mitglieder einer Referenz als CSV herunterladen">⬇ CSV</button>
+                        title="Mitglieder einer Referenz als CSV herunterladen">Mitglieder exportieren (CSV)</button>
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
                     Mitglieder importieren (CSV)
                 </button>
@@ -54,10 +54,10 @@
                             <th>Karten-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("name")'>Inhaber:in <span class="ta-sort-ind">@Ind("name")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
@@ -77,6 +77,7 @@
                                     @if (c.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(c.CreatedAt, c.CreatedByName, null, null)">@AdminFormat.CreatedShort(c.CreatedAt, c.CreatedByName, null)</td>
+                                <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
                                 <td><span class="ta-badge @CategoryBadgeClass(c.Category)">@c.CategoryLabel</span></td>
                                 <td>
                                     <span class="ta-badge @(c.IsCancelled ? "ta-badge-cancelled" : "ta-badge-valid")">
@@ -93,7 +94,6 @@
                                         <span class="ta-muted">0</span>
                                     }
                                 </td>
-                                <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(c)">✎</button>
                                 </td>
