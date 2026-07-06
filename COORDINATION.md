@@ -31,7 +31,7 @@
 | S3 | `feature/s3-r3-logos-maps` | Team-Logos fixe Breite + Google-Karte/Link aus dem Ort | offen |
 | S4 | `feature/s4-r3-saisonkarten-csv` | Saisonkarten CSV-Import + Export (Bundle-Wahl) | **erledigt, in main gemerged (`0ef3bac`)**: `SeasonPass.Reference`-Bundle + Bundle-Spalte, CSV-Import „Daten importieren (CSV)" mit Beispieldatei (Bundle+Käufer Pflicht, Adresse optional → verknüpfte Order), Export „Saisonkarten exportieren (CSV)" mit Bundle-Wahl |
 | S5 | `feature/s5-r3-content-struktur` | Content-Struktur „Saisons" entdoppeln + Ort-Auswahl nur Venues | **erledigt, in main gemerged** (`561c568`; gegen Dev-DB verifiziert: Migration lief, /ticketing/ + /saisons/ je 200, idempotent) |
-| S6 | `feature/s6-r3-bestellungen` | Bestellungen (Reihenfolge, Bezahlstatus, Log) + Mitglieder-Spalte/Button | offen |
+| S6 | `feature/s6-r3-bestellungen` | Bestellungen (Reihenfolge, Bezahlstatus, Log) + Mitglieder-Spalte/Button | **erledigt, in main gemerged** (`09349e1`): Spaltenreihenfolge, Bezahlstatus inline (Nachfrage), `OrderStatusLogs`+`IOrderLog` mit Log-Overlay, Kauf/Bezahlt/Admin-Hooks; Mitglieder Referenz nach „Erstellt" + Export-Button umbenannt |
 
 Weitgehend unabhängig. Keine harte Reihenfolge; bei `Tabs`-Array/`ticketing-admin.css`/`Program.cs`
 additiv auflösen.
