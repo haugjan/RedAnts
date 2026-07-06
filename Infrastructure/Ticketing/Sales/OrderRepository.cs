@@ -44,6 +44,13 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
         return Map(row);
     }
 
+    public async Task<Order?> GetByIdAsync(int id)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var row = await scope.Database.SingleOrDefaultByIdAsync<OrderRecord>(id);
+        return row is null ? null : Map(row);
+    }
+
     public async Task<string> NextOrderNumberAsync()
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

@@ -166,3 +166,16 @@ public class EventFreeEntryQuotaRecord
     [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public int EventId { get; set; }
     [Column("SuQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? SuQuota { get; set; }
 }
+
+[TableName("OrderStatusLogs")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderStatusLogRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("ToStatus")] [NullSetting(NullSetting = NullSettings.NotNull)] public int ToStatus { get; set; }
+    [Column("ChangedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? ChangedBy { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime OccurredAt { get; set; }
+    [Column("Note")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Note { get; set; }
+}

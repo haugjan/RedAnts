@@ -68,4 +68,5 @@ public interface IOrders
 {
     Task<Order> SaveAsync(Order order);
     Task<string> NextOrderNumberAsync();
+    Task<Order?> GetByIdAsync(int id);
 }
