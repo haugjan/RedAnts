@@ -69,6 +69,8 @@
     {
         <ScanView EventId="_selected.Id" EventName="@_selected.Name" Operator="@_operator" OnBack="BackToList" />
     }
+
+    <p class="scan-app__version">Scanner v@Version</p>
 </div>
 
 <style>
@@ -88,9 +90,15 @@
         background: #1a7f37; color: #fff; border: none; border-radius: 10px;
         font-size: 1.05rem; font-weight: 800; cursor: pointer;
     }
+    .scan-app__version {
+        text-align: center; margin: 1.5rem 0 0.5rem; color: #b0b0b0;
+        font-size: 0.75rem; letter-spacing: 0.04em;
+    }
 </style>
 
 @code {
+    private const string Version = "2";
+
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
     private Event? _selected;
