@@ -1,6 +1,8 @@
 window.ticketScanner = (function () {
-    let instance = null;
+    let scanner = null;
+    let video = null;
     let dotNetRef = null;
+    let paused = false;
     let audioCtx = null;
 
     function ensureAudio() {
@@ -41,57 +43,83 @@ window.ticketScanner = (function () {
         }
     }
 
+    async function applyHd() {
+        const stream = video && video.srcObject;
+        if (!stream) return;
+        const track = stream.getVideoTracks()[0];
+        if (!track) return;
+        try {
+            await track.applyConstraints({
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: "environment"
+            });
+        } catch (e) { }
+    }
+
     async function start(elementId, ref) {
         dotNetRef = ref;
+        paused = false;
 
-        if (typeof Html5Qrcode === "undefined") {
-            throw new Error("html5-qrcode wurde nicht geladen.");
+        if (typeof QrScanner === "undefined") {
+            throw new Error("qr-scanner wurde nicht geladen.");
         }
 
         await stop();
 
-        const qrOnly = typeof Html5QrcodeSupportedFormats !== "undefined"
-            ? [Html5QrcodeSupportedFormats.QR_CODE]
-            : undefined;
+        const container = document.getElementById(elementId);
+        if (!container) {
+            throw new Error("Scanner-Element wurde nicht gefunden.");
+        }
+        container.innerHTML = "";
 
-        instance = new Html5Qrcode(elementId, {
-            verbose: false,
-            formatsToSupport: qrOnly,
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-        });
+        video = document.createElement("video");
+        video.setAttribute("playsinline", "");
+        video.setAttribute("muted", "");
+        video.muted = true;
+        video.style.width = "100%";
+        container.appendChild(video);
 
-        const config = {
-            fps: 15,
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-                const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
-                return { width: edge, height: edge };
+        scanner = new QrScanner(
+            video,
+            (result) => {
+                if (paused) return;
+                paused = true;
+                if (dotNetRef) {
+                    dotNetRef.invokeMethodAsync("OnCodeScanned", result.data);
+                }
+            },
+            {
+                preferredCamera: "environment",
+                maxScansPerSecond: 25,
+                highlightScanRegion: false,
+                highlightCodeOutline: false,
+                returnDetailedScanResult: true,
+                calculateScanRegion: (v) => ({
+                    x: 0, y: 0, width: v.videoWidth, height: v.videoHeight
+                })
             }
-        };
+        );
 
-        const onScanSuccess = (decodedText) => {
-            try { instance.pause(true); } catch (e) { }
-            if (dotNetRef) {
-                dotNetRef.invokeMethodAsync("OnCodeScanned", decodedText);
-            }
-        };
-
-        await instance.start({ facingMode: "environment" }, config, onScanSuccess, undefined);
+        await scanner.start();
+        await applyHd();
     }
 
     function resume() {
-        if (instance) {
-            try { instance.resume(); } catch (e) { }
-        }
+        paused = false;
     }
 
     async function stop() {
-        if (!instance) return;
-        try {
-            await instance.stop();
-            instance.clear();
-        } catch (e) {
+        paused = true;
+        if (scanner) {
+            try { scanner.stop(); } catch (e) { }
+            try { scanner.destroy(); } catch (e) { }
+            scanner = null;
         }
-        instance = null;
+        if (video && video.parentNode) {
+            video.parentNode.removeChild(video);
+        }
+        video = null;
     }
 
     return { start, resume, stop, beep };
