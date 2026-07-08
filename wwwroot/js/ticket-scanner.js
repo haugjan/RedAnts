@@ -1,3 +1,5 @@
+import QrScanner from "./qr-scanner.min.js";
+
 window.ticketScanner = (function () {
     let scanner = null;
     let video = null;
@@ -60,10 +62,6 @@ window.ticketScanner = (function () {
     async function start(elementId, ref) {
         dotNetRef = ref;
         paused = false;
-
-        if (typeof QrScanner === "undefined") {
-            throw new Error("qr-scanner wurde nicht geladen.");
-        }
 
         await stop();
 
