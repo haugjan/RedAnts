@@ -34,20 +34,21 @@ window.ticketScanner = (function () {
         gain.connect(ctx.destination);
         const t = ctx.currentTime + startOffset;
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.6, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.45, t + 0.03);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
         osc.start(t);
-        osc.stop(t + duration + 0.02);
+        osc.stop(t + duration + 0.03);
     }
 
     function beep(success) {
         const ctx = ensureAudio();
         if (!ctx) return;
         if (success) {
-            tone(ctx, 1568, 0, 0.35, "triangle");
+            tone(ctx, 587.33, 0, 0.16, "triangle");
+            tone(ctx, 880, 0.13, 0.3, "triangle");
         } else {
-            tone(ctx, 220, 0, 0.18, "square");
-            tone(ctx, 220, 0.28, 0.18, "square");
+            tone(ctx, 329.63, 0, 0.24, "triangle");
+            tone(ctx, 220, 0.22, 0.34, "triangle");
         }
     }
 
