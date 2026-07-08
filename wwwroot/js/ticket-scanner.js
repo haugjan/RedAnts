@@ -7,7 +7,11 @@ window.ticketScanner = (function () {
     let paused = false;
     let rafId = null;
     let lastScan = 0;
+    let heldCode = null;
+    let heldSeenAt = 0;
     let audioCtx = null;
+
+    const RearmMs = 1500;
 
     function ensureAudio() {
         if (!audioCtx) {
@@ -49,7 +53,7 @@ window.ticketScanner = (function () {
 
     function scanFrame() {
         rafId = requestAnimationFrame(scanFrame);
-        if (paused || !video || video.readyState < 2) return;
+        if (!video || video.readyState < 2) return;
 
         const now = performance.now();
         if (now - lastScan < 120) return;
@@ -71,10 +75,19 @@ window.ticketScanner = (function () {
 
         const code = jsQR(image.data, w, h, { inversionAttempts: "dontInvert" });
         if (code && code.data) {
+            if (code.data === heldCode) {
+                heldSeenAt = now;
+                return;
+            }
+            if (paused) return;
+            heldCode = code.data;
+            heldSeenAt = now;
             paused = true;
             if (dotNetRef) {
                 dotNetRef.invokeMethodAsync("OnCodeScanned", code.data);
             }
+        } else if (heldCode && now - heldSeenAt > RearmMs) {
+            heldCode = null;
         }
     }
 
@@ -122,6 +135,8 @@ window.ticketScanner = (function () {
 
         paused = false;
         lastScan = 0;
+        heldCode = null;
+        heldSeenAt = 0;
         scanFrame();
     }
 
