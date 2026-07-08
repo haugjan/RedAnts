@@ -1,10 +1,12 @@
-import QrScanner from "./qr-scanner.min.js";
-
 window.ticketScanner = (function () {
-    let scanner = null;
+    let stream = null;
     let video = null;
+    let canvas = null;
+    let ctx = null;
     let dotNetRef = null;
     let paused = false;
+    let rafId = null;
+    let lastScan = 0;
     let audioCtx = null;
 
     function ensureAudio() {
@@ -45,23 +47,44 @@ window.ticketScanner = (function () {
         }
     }
 
-    async function applyHd() {
-        const stream = video && video.srcObject;
-        if (!stream) return;
-        const track = stream.getVideoTracks()[0];
-        if (!track) return;
+    function scanFrame() {
+        rafId = requestAnimationFrame(scanFrame);
+        if (paused || !video || video.readyState < 2) return;
+
+        const now = performance.now();
+        if (now - lastScan < 120) return;
+        lastScan = now;
+
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        if (!w || !h) return;
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+        ctx.drawImage(video, 0, 0, w, h);
+
+        let image;
         try {
-            await track.applyConstraints({
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                facingMode: "environment"
-            });
-        } catch (e) { }
+            image = ctx.getImageData(0, 0, w, h);
+        } catch (e) {
+            return;
+        }
+
+        const code = jsQR(image.data, w, h, { inversionAttempts: "dontInvert" });
+        if (code && code.data) {
+            paused = true;
+            if (dotNetRef) {
+                dotNetRef.invokeMethodAsync("OnCodeScanned", code.data);
+            }
+        }
     }
 
     async function start(elementId, ref) {
         dotNetRef = ref;
         paused = false;
+
+        if (typeof jsQR === "undefined") {
+            throw new Error("QR-Dekoder wurde nicht geladen.");
+        }
 
         await stop();
 
@@ -78,29 +101,28 @@ window.ticketScanner = (function () {
         video.style.width = "100%";
         container.appendChild(video);
 
-        scanner = new QrScanner(
-            video,
-            (result) => {
-                if (paused) return;
-                paused = true;
-                if (dotNetRef) {
-                    dotNetRef.invokeMethodAsync("OnCodeScanned", result.data);
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 }
-            },
-            {
-                preferredCamera: "environment",
-                maxScansPerSecond: 25,
-                highlightScanRegion: false,
-                highlightCodeOutline: false,
-                returnDetailedScanResult: true,
-                calculateScanRegion: (v) => ({
-                    x: 0, y: 0, width: v.videoWidth, height: v.videoHeight
-                })
-            }
-        );
+            });
+        } catch (e) {
+            throw new Error("Kamerazugriff nicht möglich: " + (e && e.message ? e.message : e));
+        }
 
-        await scanner.start();
-        await applyHd();
+        video.srcObject = stream;
+        await video.play();
+
+        canvas = document.createElement("canvas");
+        ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+        paused = false;
+        lastScan = 0;
+        scanFrame();
     }
 
     function resume() {
@@ -109,15 +131,22 @@ window.ticketScanner = (function () {
 
     async function stop() {
         paused = true;
-        if (scanner) {
-            try { scanner.stop(); } catch (e) { }
-            try { scanner.destroy(); } catch (e) { }
-            scanner = null;
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
         }
-        if (video && video.parentNode) {
-            video.parentNode.removeChild(video);
+        if (stream) {
+            stream.getTracks().forEach((t) => { try { t.stop(); } catch (e) { } });
+            stream = null;
         }
-        video = null;
+        if (video) {
+            try { video.pause(); } catch (e) { }
+            video.srcObject = null;
+            if (video.parentNode) video.parentNode.removeChild(video);
+            video = null;
+        }
+        canvas = null;
+        ctx = null;
     }
 
     return { start, resume, stop, beep };
