@@ -61,9 +61,11 @@ window.ticketScanner = (function () {
         });
 
         const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
+            fps: 15,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+                return { width: edge, height: edge };
+            }
         };
 
         const onScanSuccess = (decodedText) => {
@@ -73,7 +75,13 @@ window.ticketScanner = (function () {
             }
         };
 
-        await instance.start({ facingMode: "environment" }, config, onScanSuccess, undefined);
+        const cameraConstraints = {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        };
+
+        await instance.start(cameraConstraints, config, onScanSuccess, undefined);
     }
 
     function resume() {
