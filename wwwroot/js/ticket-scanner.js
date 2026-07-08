@@ -50,7 +50,15 @@ window.ticketScanner = (function () {
 
         await stop();
 
-        instance = new Html5Qrcode(elementId, false);
+        const qrOnly = typeof Html5QrcodeSupportedFormats !== "undefined"
+            ? [Html5QrcodeSupportedFormats.QR_CODE]
+            : undefined;
+
+        instance = new Html5Qrcode(elementId, {
+            verbose: false,
+            formatsToSupport: qrOnly,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        });
 
         const config = {
             fps: 10,
