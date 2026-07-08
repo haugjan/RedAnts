@@ -70,7 +70,7 @@
         <ScanView EventId="_selected.Id" EventName="@_selected.Name" Operator="@_operator" OnBack="BackToList" />
     }
 
-    <p class="scan-app__version">Scanner v@Version</p>
+    <p class="scan-app__version">Scanner v@(Version)</p>
 </div>
 
 <style>
@@ -97,7 +97,7 @@
 </style>
 
 @code {
-    private const string Version = "2";
+    private const string Version = "3";
 
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
