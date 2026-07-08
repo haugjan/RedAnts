@@ -75,13 +75,7 @@ window.ticketScanner = (function () {
             }
         };
 
-        const cameraConstraints = {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        };
-
-        await instance.start(cameraConstraints, config, onScanSuccess, undefined);
+        await instance.start({ facingMode: "environment" }, config, onScanSuccess, undefined);
     }
 
     function resume() {
