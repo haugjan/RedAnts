@@ -154,12 +154,12 @@
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.PassOffered" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPrice" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassOffered)" @bind="c.PassQuota" /></td>
-                                <td class="ta-num"><input type="date" class="ta-input ta-input-date" disabled="@(!c.PassOffered)" @bind="c.PassAvailableUntil" /></td>
+                                <td class="ta-num"><DateBox @bind-Value="c.PassAvailableUntil" Disabled="@(!c.PassOffered)" /></td>
                                 <td class="ta-num">@c.Sold@(c.PassQuota is { } q ? $" / {q}" : "")</td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.TicketOffered" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.TicketOffered)" @bind="c.TicketPrice" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.TicketOffered)" @bind="c.TicketQuota" /></td>
-                                <td class="ta-num"><input type="date" class="ta-input ta-input-date" disabled="@(!c.TicketOffered)" @bind="c.TicketAvailableUntil" /></td>
+                                <td class="ta-num"><DateBox @bind-Value="c.TicketAvailableUntil" Disabled="@(!c.TicketOffered)" /></td>
                             </tr>
                         }
                     </tbody>
@@ -190,7 +190,7 @@
     .ta-subtable td { padding: 3px 5px; font-size: .85rem; }
     .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
     .ta-input-sm { width: 4.6rem; padding: .3rem .35rem; text-align: right; }
-    .ta-input-date { width: 8.6rem; padding: .3rem .35rem; }
+    .ta-subtable .ta-datebox-text { width: 6.3rem; padding: .3rem .35rem; }
     .ta-row-off td { opacity: .45; }
     .ta-row-off td:nth-child(-n+2) { opacity: 1; }
     .ta-period { white-space: nowrap; }
