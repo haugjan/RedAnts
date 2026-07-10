@@ -213,6 +213,35 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return view is null ? Redirect("/") : View("~/Views/Checkout/Confirmation.cshtml", view);
     }
 
+    [HttpGet("/kasse/erfolg")]
+    public async Task<IActionResult> Processing(int order)
+    {
+        var found = await orders.GetByIdAsync(order);
+        if (found is null) return Redirect("/");
+        return View("~/Views/Checkout/Processing.cshtml", new CheckoutProcessingView
+        {
+            OrderId = found.Id,
+            OrderNumber = found.OrderNumber,
+            Email = found.BillingAddress.Email,
+            AlreadyPaid = found.Status == OrderStatus.Paid
+        });
+    }
+
+    [HttpGet("/kasse/status")]
+    public async Task<IActionResult> Status(int order)
+    {
+        var found = await orders.GetByIdAsync(order);
+        if (found is null) return NotFound();
+        return Json(new
+        {
+            paid = found.Status == OrderStatus.Paid,
+            cancelled = found.Status is OrderStatus.Cancelled or OrderStatus.Refunded
+        });
+    }
+
+    [HttpGet("/kasse/abbruch")]
+    public IActionResult Cancelled() => View("~/Views/Checkout/Cancelled.cshtml");
+
     private async Task<string?> CheckSeasonPassCapacityAsync(Cart cart)
     {
         foreach (var bySeason in cart.Items.Where(i => i.Kind == CartItemKind.SeasonPass).GroupBy(i => i.SeasonId))

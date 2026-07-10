@@ -1,0 +1,45 @@
+@model RedAnts.Features.Ticketing.Cart.CheckoutProcessingView
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = "Zahlung wird verarbeitet";
+}
+
+<div class="text-center py-4" id="processing" style="@(Model.AlreadyPaid ? "display:none;" : "")">
+    <div class="spinner-border text-danger mb-3" role="status"><span class="visually-hidden">…</span></div>
+    <h1 class="h3">Zahlung wird verarbeitet</h1>
+    <p class="text-muted">Bitte dieses Fenster offen lassen. Wir bestätigen deine Zahlung in wenigen Sekunden.</p>
+    <p class="text-muted small">Bestellnummer @Model.OrderNumber</p>
+</div>
+
+<div class="text-center py-4" id="paid" style="@(Model.AlreadyPaid ? "" : "display:none;")">
+    <div style="font-size:3rem; line-height:1; color:#1c7c43;">&#10003;</div>
+    <h1 class="mt-2">Vielen Dank!</h1>
+    <p class="text-muted">Deine Zahlung ist bestätigt.</p>
+    <p>Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>.</p>
+    <a href="/" class="btn btn-outline-secondary mt-3">Zur Startseite</a>
+</div>
+
+<script>
+(function () {
+    if (@(Model.AlreadyPaid ? "true" : "false")) return;
+    var orderId = @Model.OrderId;
+    var processing = document.getElementById('processing');
+    var paid = document.getElementById('paid');
+    var tries = 0;
+    function reveal() { processing.style.display = 'none'; paid.style.display = ''; }
+    function schedule() { if (tries < 120) setTimeout(poll, 2500); }
+    function poll() {
+        tries++;
+        fetch('/kasse/status?order=' + orderId, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (s) {
+                if (!s) { schedule(); return; }
+                if (s.cancelled) { window.location.href = '/kasse/abbruch'; return; }
+                if (s.paid) { reveal(); return; }
+                schedule();
+            })
+            .catch(schedule);
+    }
+    setTimeout(poll, 2500);
+}());
+</script>

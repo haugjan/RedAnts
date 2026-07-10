@@ -46,6 +46,14 @@ public sealed class CheckoutExpressView
     public string Name { get; init; } = "";
 }
 
+public sealed class CheckoutProcessingView
+{
+    public int OrderId { get; init; }
+    public string OrderNumber { get; init; } = "";
+    public string Email { get; init; } = "";
+    public bool AlreadyPaid { get; init; }
+}
+
 public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName, string Token);
 
 public sealed class CheckoutConfirmationView
