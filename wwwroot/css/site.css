@@ -187,3 +187,53 @@ body {
   .team-logo { width: 46px; height: 36px; }
   .team-logo--lg { width: 72px; height: 54px; }
 }
+
+.site-footer {
+  margin-top: 4rem;
+  padding: 2rem 0;
+  border-top: 1px solid #ececec;
+  background: #fafafa;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: #8a8a8a;
+}
+.site-footer-inner {
+  max-width: 1280px; margin: 0 auto; padding: 0 2rem;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1.5rem; flex-wrap: wrap;
+}
+.site-footer-address { font-style: normal; }
+.site-footer-address strong { color: #6a6a6a; font-weight: 700; }
+.site-footer-address a { color: var(--red); text-decoration: none; }
+.site-footer-links {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  text-align: right; white-space: nowrap;
+}
+.site-footer-links a { color: #8a8a8a; text-decoration: none; }
+.site-footer-links a:hover, .site-footer-address a:hover { color: var(--red); }
+@media (max-width: 600px) {
+  .site-footer-inner { flex-direction: column; }
+  .site-footer-links { text-align: left; }
+}
+
+.legal-page { min-height: 60vh; padding-bottom: 3rem; }
+.legal-inner {
+  max-width: 780px; margin: 0 auto; padding: 2.5rem 2rem 0;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  color: var(--ink-light); line-height: 1.7;
+}
+.legal-inner h1 { color: var(--ink); margin: 0 0 1.5rem; }
+.legal-inner h2 {
+  font-family: var(--display); color: var(--ink);
+  font-size: 1.15rem; margin: 2.25rem 0 0.6rem;
+}
+.legal-inner h3 {
+  font-family: var(--display); color: var(--ink);
+  font-size: 1rem; margin: 1.5rem 0 0.5rem;
+}
+.legal-inner p { margin: 0 0 0.9rem; }
+.legal-inner ul { margin: 0 0 0.9rem; padding-left: 1.3rem; }
+.legal-inner li { margin: 0.2rem 0; }
+.legal-inner a { color: var(--red); text-decoration: none; }
+.legal-inner a:hover { text-decoration: underline; }

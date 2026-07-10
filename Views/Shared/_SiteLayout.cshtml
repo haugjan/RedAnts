@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/site.css?v=3" />
+  <link rel="stylesheet" href="/css/site.css?v=4" />
   <style>
     .nav-cart { display: inline-flex; align-items: center; gap: 0.4rem; }
     .nav-cart-badge {
@@ -88,6 +88,20 @@
 </nav>
 
 @RenderBody()
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <address class="site-footer-address">
+      <strong>Red Ants Rychenberg Winterthur</strong><br />
+      Geschäftsstelle · Ruhtalstrasse 20 · 8400 Winterthur<br />
+      <a href="mailto:sekretariat@redants.ch">sekretariat@redants.ch</a>
+    </address>
+    <nav class="site-footer-links" aria-label="Rechtliches">
+      <a href="/datenschutz">Datenschutzerklärung</a>
+      <a href="/scanntickets">Interner Bereich</a>
+    </nav>
+  </div>
+</footer>
 
 @RenderSection("Scripts", required: false)
 
