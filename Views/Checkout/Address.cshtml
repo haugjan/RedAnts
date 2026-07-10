@@ -73,6 +73,13 @@
                     <input name="Phone" value="@f.Phone" class="form-control" />
                 </div>
             </div>
+            <div class="form-check mt-4">
+                <input class="form-check-input" type="checkbox" name="AcceptNewsletter" value="true"
+                       id="acceptNewsletter" @(f.AcceptNewsletter ? "checked" : "") />
+                <label class="form-check-label" for="acceptNewsletter">
+                    Ich möchte den Newsletter der Red Ants abonnieren.
+                </label>
+            </div>
             <div class="d-flex justify-content-end mt-4">
                 <button type="submit" class="btn btn-danger">Weiter zur Zahlung</button>
             </div>

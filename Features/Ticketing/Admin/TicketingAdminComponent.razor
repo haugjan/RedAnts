@@ -37,6 +37,9 @@
                 case "orders":
                     <AdminOrdersComponent AdminUser="@AdminUser" />
                     break;
+                case "newsletter":
+                    <AdminNewsletterComponent AdminUser="@AdminUser" />
+                    break;
                 default:
                     <AdminEventsComponent AdminUser="@AdminUser" />
                     break;
@@ -112,6 +115,7 @@
         ("freeentries", TicketType.FreeEntry.DisplayName()),
         ("seasoncards", TicketType.SeasonPass.DisplayName()),
         ("membercards", TicketType.MemberCard.DisplayName()),
-        ("orders", "Bestellungen")
+        ("orders", "Bestellungen"),
+        ("newsletter", "Newsletter")
     ];
 }

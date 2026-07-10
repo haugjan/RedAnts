@@ -1,0 +1,115 @@
+@using RedAnts.Domain.Ticketing.Sales
+@inject INewsletterSignups Signups
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Newsletter</h1>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_signups.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Newsletter-Anmeldungen vorhanden.</div>
+    }
+    else
+    {
+        <div class="ta-table-wrap">
+            <table class="ta-table">
+                <thead>
+                    <tr>
+                        <th class="ta-th-sort" @onclick='() => Sort("email")'>E-Mail <span class="ta-sort-ind">@Ind("email")</span></th>
+                        <th>Name</th>
+                        <th>Quelle</th>
+                        <th class="ta-th-sort" @onclick='() => Sort("date")'>Angemeldet <span class="ta-sort-ind">@Ind("date")</span></th>
+                        <th class="ta-th-sort" @onclick='() => Sort("status")'>Übertragen <span class="ta-sort-ind">@Ind("status")</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Sorted())
+                    {
+                        <tr>
+                            <td>@s.Email</td>
+                            <td>@(string.IsNullOrWhiteSpace(s.Name) ? "—" : s.Name)</td>
+                            <td>@s.Source</td>
+                            <td>
+                                @s.SignedUpAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                @if (s.TransferredAt is { } at)
+                                {
+                                    <div class="ta-addr-sub">übertragen @at.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                                }
+                            </td>
+                            <td>
+                                <InlineSelectEdit TValue="NewsletterTransferStatus" Value="s.Status" Options="_statusOptions" FieldLabel="Übertragungsstatus"
+                                                  Label="@StatusLabel" Save="@(v => SaveStatusAsync(s, v))">
+                                    <Display Context="st">
+                                        <span class="ta-badge @StatusClass(st)">@StatusLabel(st)</span>
+                                    </Display>
+                                </InlineSelectEdit>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="ta-summary">
+            @_signups.Count Anmeldung@(_signups.Count == 1 ? "" : "en") ·
+            @_signups.Count(s => s.Status == NewsletterTransferStatus.Transferred) übertragen ·
+            @_signups.Count(s => s.Status == NewsletterTransferStatus.Pending) offen
+        </p>
+    }
+</section>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    private bool _loading = true;
+    private IReadOnlyList<NewsletterSignup> _signups = [];
+
+    private static readonly NewsletterTransferStatus[] _statusOptions =
+        [NewsletterTransferStatus.Pending, NewsletterTransferStatus.Transferred];
+
+    private string _sortCol = "date";
+    private bool _sortAsc = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadAsync() => _signups = await Signups.GetAllAsync();
+
+    private async Task SaveStatusAsync(NewsletterSignup s, NewsletterTransferStatus target)
+    {
+        await Signups.SetTransferStatusAsync(s.Id, target);
+        await ReloadAsync();
+    }
+
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<NewsletterSignup> Sorted()
+    {
+        IEnumerable<NewsletterSignup> q = _sortCol switch
+        {
+            "email" => _signups.OrderBy(s => s.Email),
+            "status" => _signups.OrderBy(s => s.Status),
+            _ => _signups.OrderBy(s => s.SignedUpAt),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
+    private static string StatusLabel(NewsletterTransferStatus status) => status switch
+    {
+        NewsletterTransferStatus.Transferred => "Übertragen",
+        NewsletterTransferStatus.Pending => "Offen",
+        _ => status.ToString()
+    };
+
+    private static string StatusClass(NewsletterTransferStatus status) => status switch
+    {
+        NewsletterTransferStatus.Transferred => "ta-badge-valid",
+        NewsletterTransferStatus.Pending => "ta-badge-draft",
+        _ => "ta-badge-draft"
+    };
+}

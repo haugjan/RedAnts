@@ -10,7 +10,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -88,7 +88,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         try { billing = ToBillingAddress(form); }
         catch (DomainException) { return Redirect("/kasse"); }
 
-        return await FinalizeOrderAsync(current, billing, paymentMethod);
+        return await FinalizeOrderAsync(current, billing, paymentMethod, form.AcceptNewsletter, "Kasse");
     }
 
     [HttpGet("/kasse/express")]
@@ -105,7 +105,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
     [HttpPost("/kasse/express")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ExpressPay(string email, string? name, PaymentMethod paymentMethod)
+    public async Task<IActionResult> ExpressPay(string email, string? name, PaymentMethod paymentMethod, bool acceptNewsletter)
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/ticketing/");
@@ -133,10 +133,10 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var billing = BillingAddress.FromPersistence((int)BuyerType.Private, firstName, lastName, null,
             "", null, "", "", "Schweiz", email, null);
 
-        return await FinalizeOrderAsync(current, billing, paymentMethod);
+        return await FinalizeOrderAsync(current, billing, paymentMethod, acceptNewsletter, "Express");
     }
 
-    private async Task<IActionResult> FinalizeOrderAsync(Cart current, BillingAddress billing, PaymentMethod paymentMethod)
+    private async Task<IActionResult> FinalizeOrderAsync(Cart current, BillingAddress billing, PaymentMethod paymentMethod, bool subscribeNewsletter, string newsletterSource)
     {
         var demand = current.Items
             .Where(i => i.Kind == CartItemKind.EventTicket)
@@ -187,6 +187,9 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         await mailer.SendTicketsAsync(new OrderMailModel(
             saved.OrderNumber, billing.Email, billing.FullName, saved.TotalGross,
             publicUrl.Resolve(Request), mailTickets));
+
+        if (subscribeNewsletter)
+            await newsletter.SubscribeAsync(billing.Email, billing.FullName, newsletterSource);
 
         cart.Clear();
         HttpContext.Session.Remove(FormKey);

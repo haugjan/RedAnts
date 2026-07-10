@@ -26,6 +26,12 @@
                 <label class="form-label" for="expressName">Name <span class="text-muted">(optional)</span></label>
                 <input class="form-control" type="text" id="expressName" name="name" autocomplete="name" value="@Model.Name" />
             </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="acceptNewsletter" value="true" id="expressNewsletter" />
+                <label class="form-check-label" for="expressNewsletter">
+                    Ich möchte den Newsletter der Red Ants abonnieren.
+                </label>
+            </div>
 
             @{ var first = true; }
             @foreach (var m in Model.Methods)
