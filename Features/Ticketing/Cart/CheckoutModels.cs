@@ -15,6 +15,7 @@ public sealed class CheckoutForm
     public string Country { get; set; } = "Schweiz";
     public string Email { get; set; } = "";
     public string? Phone { get; set; }
+    public bool AcceptNewsletter { get; set; }
 }
 
 public sealed class CheckoutAddressView

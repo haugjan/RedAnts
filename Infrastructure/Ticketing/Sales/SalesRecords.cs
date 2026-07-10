@@ -167,6 +167,20 @@ public class EventFreeEntryQuotaRecord
     [Column("SuQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? SuQuota { get; set; }
 }
 
+[TableName("NewsletterSignups")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class NewsletterSignupRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("Email")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] [Index(IndexTypes.NonClustered)] public string Email { get; set; } = "";
+    [Column("Name")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Name { get; set; }
+    [Column("Source")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(50)] public string Source { get; set; } = "";
+    [Column("SignedUpAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime SignedUpAt { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("TransferredAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? TransferredAt { get; set; }
+}
+
 [TableName("OrderStatusLogs")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]
