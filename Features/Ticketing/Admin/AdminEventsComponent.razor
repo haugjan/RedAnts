@@ -173,7 +173,7 @@
 @if (_pricingEvent is not null)
 {
     <div class="ta-overlay" @onmousedown="CancelPricing">
-        <div class="ta-modal ta-modal--wide" @onmousedown:stopPropagation="true">
+        <div class="ta-modal ta-modal--xwide" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Preise &amp; Kontingente</h2>
             <p class="ta-modal-sub">@_pricingEvent.Name · @_pricingEvent.Date.ToString("dd.MM.yyyy")</p>
 

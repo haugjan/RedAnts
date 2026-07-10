@@ -120,7 +120,7 @@
 @if (_editing is not null)
 {
     <div class="ta-overlay" @onmousedown="CancelEdit">
-        <div class="ta-modal ta-modal--wide" @onmousedown:stopPropagation="true">
+        <div class="ta-modal ta-modal--xwide" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Preise und Kontingente</h2>
             <p class="ta-modal-sub">@_editing.Name · @_editing.StartDate.ToString("dd.MM.yyyy") – @_editing.EndDate.ToString("dd.MM.yyyy")</p>
 
@@ -189,8 +189,12 @@
     .ta-subtable th { text-align: left; font-size: .68rem; text-transform: uppercase; color: var(--ta-muted); padding: 2px 5px; }
     .ta-subtable td { padding: 3px 5px; font-size: .85rem; }
     .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
-    .ta-input-sm { width: 4.6rem; padding: .3rem .35rem; text-align: right; }
-    .ta-subtable .ta-dateseg { padding: .25rem .3rem; }
+    .ta-input-sm { width: 5.3rem; padding: .3rem .35rem; text-align: right; }
+    .ta-subtable .ta-dateseg { padding: .28rem .3rem; }
+    .ta-subtable .ta-datebox { gap: .15rem; }
+    .ta-subtable .ta-seg-dm { width: 1.35rem; }
+    .ta-subtable .ta-seg-y { width: 2.4rem; }
+    .ta-subtable .ta-datebox-cal { padding: .28rem .35rem; }
     .ta-row-off td { opacity: .45; }
     .ta-row-off td:nth-child(-n+2) { opacity: 1; }
     .ta-period { white-space: nowrap; }
