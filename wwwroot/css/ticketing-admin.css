@@ -35,10 +35,26 @@
 .ta-field-hint, .ta-hint { margin: 0.3rem 0 0; font-size: 0.78rem; color: var(--ta-muted); }
 
 .ta-datebox { position: relative; display: inline-flex; align-items: center; gap: 0.25rem; }
-.ta-datebox-text { width: 7rem; }
+.ta-dateseg {
+    display: inline-flex; align-items: center; background: #fff;
+    border: 1px solid var(--ta-border); border-radius: 3px; padding: 0.4rem 0.45rem;
+}
+.ta-dateseg:focus-within { border-color: var(--ta-accent); box-shadow: 0 0 0 2px rgba(93,173,226,0.25); }
+.ta-datebox.is-disabled .ta-dateseg { background: #f5f5f5; }
+.ta-seg {
+    border: 0; padding: 0; margin: 0; background: transparent; text-align: center;
+    font-family: var(--ta-font); font-size: 0.95rem; color: var(--ta-ink); -moz-appearance: textfield;
+}
+.ta-seg:focus { outline: none; background: rgba(93,173,226,0.18); border-radius: 2px; }
+.ta-seg:disabled { color: var(--ta-muted); }
+.ta-seg::-webkit-outer-spin-button, .ta-seg::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ta-seg::placeholder { color: var(--ta-muted); }
+.ta-seg-dm { width: 1.5rem; }
+.ta-seg-y { width: 2.6rem; }
+.ta-seg-sep { color: var(--ta-muted); padding: 0 0.05rem; }
 .ta-datebox-cal {
     flex: 0 0 auto; border: 1px solid var(--ta-border); background: #fff; border-radius: 3px;
-    padding: 0.3rem 0.4rem; line-height: 1; cursor: pointer; font-size: 0.9rem;
+    padding: 0.35rem 0.45rem; line-height: 1; cursor: pointer; font-size: 0.9rem;
 }
 .ta-datebox-cal:hover:not(:disabled) { border-color: var(--ta-accent); }
 .ta-datebox-cal:disabled { opacity: 0.4; cursor: default; }

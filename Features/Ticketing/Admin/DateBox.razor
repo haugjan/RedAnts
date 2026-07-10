@@ -1,13 +1,24 @@
 @using System.Globalization
 @inject IJSRuntime JS
 
-<span class="ta-datebox">
-    <input type="text" class="ta-input ta-datebox-text" placeholder="TT.MM.JJJJ" inputmode="numeric"
-           value="@_text" @onchange="OnTextChanged" disabled="@Disabled" />
+<span class="ta-datebox @(Disabled ? "is-disabled" : "")" @onfocusin="() => _focused = true" @onfocusout="OnFocusOutAsync">
+    <span class="ta-dateseg">
+        <input @ref="_dayRef" class="ta-seg ta-seg-dm" placeholder="TT" inputmode="numeric" maxlength="2"
+               aria-label="Tag" value="@_day" disabled="@Disabled"
+               @oninput="e => OnInputAsync(0, e)" @onkeydown="e => OnKeyAsync(0, e)" @onfocus="() => SelectAsync(0)" />
+        <span class="ta-seg-sep">.</span>
+        <input @ref="_monthRef" class="ta-seg ta-seg-dm" placeholder="MM" inputmode="numeric" maxlength="2"
+               aria-label="Monat" value="@_month" disabled="@Disabled"
+               @oninput="e => OnInputAsync(1, e)" @onkeydown="e => OnKeyAsync(1, e)" @onfocus="() => SelectAsync(1)" />
+        <span class="ta-seg-sep">.</span>
+        <input @ref="_yearRef" class="ta-seg ta-seg-y" placeholder="JJJJ" inputmode="numeric" maxlength="4"
+               aria-label="Jahr" value="@_year" disabled="@Disabled"
+               @oninput="e => OnInputAsync(2, e)" @onkeydown="e => OnKeyAsync(2, e)" @onfocus="() => SelectAsync(2)" />
+    </span>
     <button type="button" class="ta-datebox-cal" title="Kalender öffnen" tabindex="-1"
             @onclick="OpenPickerAsync" disabled="@Disabled">📅</button>
     <input type="date" class="ta-datebox-native" @ref="_native" tabindex="-1" aria-hidden="true"
-           value="@(Value?.ToString("yyyy-MM-dd"))" @onchange="OnNativeChanged" disabled="@Disabled" />
+           value="@(Value?.ToString("yyyy-MM-dd"))" @onchange="OnNativeChangedAsync" disabled="@Disabled" />
 </span>
 
 @code {
@@ -15,12 +26,82 @@
     [Parameter] public EventCallback<DateOnly?> ValueChanged { get; set; }
     [Parameter] public bool Disabled { get; set; }
 
-    private ElementReference _native;
-    private string _text = "";
+    private ElementReference _dayRef, _monthRef, _yearRef, _native;
+    private string _day = "", _month = "", _year = "";
+    private bool _focused;
 
-    private static readonly string[] Formats = ["dd.MM.yyyy", "d.M.yyyy", "dd.MM.yy", "d.M.yy", "yyyy-MM-dd"];
+    protected override void OnParametersSet()
+    {
+        if (!_focused) SyncFromValue();
+    }
 
-    protected override void OnParametersSet() => _text = Value?.ToString("dd.MM.yyyy") ?? "";
+    private void SyncFromValue()
+    {
+        _day = Value is { } v ? v.Day.ToString("00") : "";
+        _month = Value is { } m ? m.Month.ToString("00") : "";
+        _year = Value is { } y ? y.Year.ToString("0000") : "";
+    }
+
+    private ElementReference Ref(int idx) => idx switch { 0 => _dayRef, 1 => _monthRef, _ => _yearRef };
+    private string Get(int idx) => idx switch { 0 => _day, 1 => _month, _ => _year };
+    private void Set(int idx, string v) { if (idx == 0) _day = v; else if (idx == 1) _month = v; else _year = v; }
+
+    private async Task OnInputAsync(int idx, ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? "";
+        var max = idx == 2 ? 4 : 2;
+        var cleaned = new string(raw.Where(char.IsDigit).ToArray());
+        if (cleaned.Length > max) cleaned = cleaned[..max];
+        Set(idx, cleaned);
+        if (cleaned != raw) await JS.InvokeVoidAsync("redants.setValue", Ref(idx), cleaned);
+        if (cleaned.Length == max && idx < 2) await FocusAsync(idx + 1);
+        await TryCommitAsync();
+    }
+
+    private async Task OnKeyAsync(int idx, KeyboardEventArgs e)
+    {
+        if (e.Key is "ArrowUp" or "ArrowDown")
+        {
+            Increment(idx, e.Key == "ArrowUp" ? 1 : -1);
+            await JS.InvokeVoidAsync("redants.setValue", Ref(idx), Get(idx));
+            await TryCommitAsync();
+        }
+        else if (e.Key == "Backspace" && Get(idx).Length == 0 && idx > 0)
+        {
+            await FocusAsync(idx - 1);
+        }
+    }
+
+    private void Increment(int idx, int delta)
+    {
+        if (idx == 2)
+        {
+            var y = int.TryParse(_year, out var yy) ? yy : DateTime.Today.Year;
+            _year = Math.Clamp(y + delta, 1, 9999).ToString("0000");
+            return;
+        }
+        var (min, max) = idx == 0 ? (1, 31) : (1, 12);
+        var cur = int.TryParse(Get(idx), out var c) ? c : (delta > 0 ? min - 1 : max + 1);
+        var next = cur + delta;
+        if (next > max) next = min;
+        if (next < min) next = max;
+        Set(idx, next.ToString("00"));
+    }
+
+    private async Task FocusAsync(int idx)
+    {
+        await Ref(idx).FocusAsync();
+        await SelectAsync(idx);
+    }
+
+    private async Task SelectAsync(int idx) => await JS.InvokeVoidAsync("redants.selectAll", Ref(idx));
+
+    private async Task OnFocusOutAsync()
+    {
+        _focused = false;
+        await TryCommitAsync();
+        SyncFromValue();
+    }
 
     private async Task OpenPickerAsync()
     {
@@ -29,22 +110,28 @@
         catch { }
     }
 
-    private async Task OnNativeChanged(ChangeEventArgs e) =>
-        await SetAsync(DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var d) ? d : null);
-
-    private async Task OnTextChanged(ChangeEventArgs e)
+    private async Task OnNativeChangedAsync(ChangeEventArgs e)
     {
-        var raw = (e.Value?.ToString() ?? "").Trim();
-        if (raw.Length == 0) { await SetAsync(null); return; }
-        await SetAsync(DateOnly.TryParseExact(raw, Formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
-            ? d : Value);
+        var picked = DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var d) ? (DateOnly?)d : null;
+        if (picked == Value) return;
+        Value = picked;
+        SyncFromValue();
+        await ValueChanged.InvokeAsync(picked);
     }
 
-    private async Task SetAsync(DateOnly? value)
+    private async Task TryCommitAsync()
     {
-        _text = value?.ToString("dd.MM.yyyy") ?? "";
-        if (value == Value) return;
-        Value = value;
-        await ValueChanged.InvokeAsync(value);
+        DateOnly? result;
+        if (_day.Length == 0 && _month.Length == 0 && _year.Length == 0)
+            result = null;
+        else if (_year.Length == 4
+                 && int.TryParse(_day, out var d) && int.TryParse(_month, out var m) && int.TryParse(_year, out var y)
+                 && m is >= 1 and <= 12 && d >= 1 && y >= 1 && d <= DateTime.DaysInMonth(y, m))
+            result = new DateOnly(y, m, d);
+        else
+            return;
+        if (result == Value) return;
+        Value = result;
+        await ValueChanged.InvokeAsync(result);
     }
 }
