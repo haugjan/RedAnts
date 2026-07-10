@@ -31,9 +31,9 @@
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_cards.Count == 0)"
-                        title="Mitglieder einer Referenz als CSV herunterladen">Mitglieder exportieren (CSV)</button>
+                        title="Mitglieder einer Referenz als CSV herunterladen">Export CSV</button>
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
-                    Mitglieder importieren (CSV)
+                    Import CSV
                 </button>
                 <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate" disabled="@(SelectedSeasonId <= 0)">
                     Mitgliederkarte erstellen

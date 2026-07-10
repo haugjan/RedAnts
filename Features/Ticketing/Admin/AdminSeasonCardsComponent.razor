@@ -32,10 +32,10 @@
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenImport">
-                    Daten importieren (CSV)
+                    Import CSV
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenExport">
-                    Saisonkarten exportieren (CSV)
+                    Export CSV
                 </button>
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
                     Saisonkarte erstellen
