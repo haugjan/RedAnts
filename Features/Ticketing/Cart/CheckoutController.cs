@@ -69,13 +69,19 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
     [HttpPost("/kasse/zahlung")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Pay(PaymentMethod paymentMethod)
+    public async Task<IActionResult> Pay(PaymentMethod paymentMethod, bool acceptPrivacy)
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/warenkorb");
         if (Methods.All(m => m.Method != paymentMethod)) return Redirect("/kasse/zahlung");
         var form = LoadForm();
         if (form is null) return Redirect("/kasse");
+
+        if (!acceptPrivacy)
+        {
+            TempData["CheckoutError"] = "Bitte bestätige, dass du die Datenschutzerklärung gelesen hast.";
+            return Redirect("/kasse/zahlung");
+        }
 
         var captchaToken = Request.Form["cf-turnstile-response"].ToString();
         if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
@@ -105,7 +111,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
     [HttpPost("/kasse/express")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ExpressPay(string email, string? name, PaymentMethod paymentMethod, bool acceptNewsletter)
+    public async Task<IActionResult> ExpressPay(string email, string? name, PaymentMethod paymentMethod, bool acceptNewsletter, bool acceptPrivacy)
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/ticketing/");
@@ -121,6 +127,9 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         email = (email ?? "").Trim();
         if (email.Length < 5 || !email.Contains('@') || !email.Contains('.'))
             return View("~/Views/Checkout/Express.cshtml", Invalid("Bitte eine gültige E-Mail-Adresse angeben."));
+
+        if (!acceptPrivacy)
+            return View("~/Views/Checkout/Express.cshtml", Invalid("Bitte bestätige, dass du die Datenschutzerklärung gelesen hast."));
 
         var captchaToken = Request.Form["cf-turnstile-response"].ToString();
         if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
