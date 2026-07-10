@@ -46,6 +46,12 @@
                 </div>
             </div>
             <div class="ta-toolbar-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_bundles.Count == 0)" @onclick="OpenExport">
+                    Export CSV
+                </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreateBundle">
+                    Bundle erstellen
+                </button>
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreate">
                     Ticket erstellen
                 </button>
@@ -68,6 +74,7 @@
                         <tr>
                             <th>Ticket-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th>Bundle</th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
@@ -94,6 +101,16 @@
                                     {
                                         @t.Buyer.DisplayName
                                         <span class="ta-badge ta-badge-buyer">@t.Buyer.Type.DisplayName()</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (t.BundleId is { } bundleId && _bundleRefById.TryGetValue(bundleId, out var bundleRef))
+                                    {
+                                        <span class="ta-badge ta-badge-buyer">@bundleRef</span>
                                     }
                                     else
                                     {
@@ -283,6 +300,78 @@
                    OnClose="() => _visitsFor = null" />
 }
 
+@if (_showCreateBundle)
+{
+    <div class="ta-overlay" @onmousedown="CloseCreateBundle">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Ticket-Bundle erstellen</h2>
+            <div class="ta-field">
+                <label class="ta-label">Anlass</label>
+                <div class="ta-readonly">@_selectedEventName</div>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundleCategory">Ticketkategorie</label>
+                <select id="bundleCategory" class="ta-select" @bind="_bundleCategory">
+                    @foreach (var cat in AllCategories)
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundleReference">Bundlename</label>
+                <input id="bundleReference" class="ta-input" type="text" maxlength="50" placeholder="z. B. Sponsoren 2026" @bind="_bundleReference" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundleQuantity">Anzahl Tickets</label>
+                <input id="bundleQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_bundleQuantity" />
+            </div>
+            @if (_bundleError is not null)
+            {
+                <p class="ta-modal-error">@_bundleError</p>
+            }
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreateBundle" disabled="@_bundleSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_bundleSaving">
+                    @(_bundleSaving ? "Wird erstellt …" : "Bundle erstellen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showExport)
+{
+    <div class="ta-overlay" @onmousedown="CloseExport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Bundle exportieren</h2>
+            <p class="ta-modal-sub">Bundle wählen, das als CSV heruntergeladen wird.</p>
+            @if (_bundles.Count == 0)
+            {
+                <p class="ta-muted-text">Für diesen Anlass sind keine Bundles erfasst.</p>
+            }
+            else
+            {
+                <ul class="ta-bundle-list">
+                    @foreach (var b in _bundles)
+                    {
+                        <li>
+                            <a class="ta-btn ta-btn-ghost" href="/admin/spieltickets/bundle/@b.Id/tickets.csv"
+                               target="_blank" rel="noopener"
+                               title="Bundle als Excel/CSV herunterladen (Referenz + Kurzkennung + Ticketlink)">
+                                @b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
@@ -290,6 +379,7 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IEventTickets Tickets { get; set; } = default!;
+    [Inject] private IEventTicketBundles Bundles { get; set; } = default!;
     [Inject] private IVisitLogReader Visits { get; set; } = default!;
     [Inject] private IAdmissionService Admission { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -305,6 +395,9 @@
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<Event> _events = [];
     private IReadOnlyList<EventTicket> _tickets = [];
+    private IReadOnlyList<EventTicketBundleView> _bundles = [];
+    private IReadOnlyDictionary<int, string> _bundleRefById = new Dictionary<int, string>();
+    private string _selectedEventName = "";
 
     public int SelectedSeasonId { get; set; }
     public int SelectedEventId { get; set; }
@@ -343,9 +436,14 @@
 
     private async Task ReloadTicketsAsync()
     {
+        _selectedEventName = _events.FirstOrDefault(e => e.Id == SelectedEventId)?.Name ?? "";
         _tickets = SelectedEventId > 0
             ? (await Tickets.GetByEventAsync(SelectedEventId)).OrderBy(t => t.CreatedAt).ToList()
             : [];
+        _bundles = SelectedEventId > 0
+            ? await Bundles.GetByEventAsync(SelectedEventId)
+            : [];
+        _bundleRefById = _bundles.ToDictionary(b => b.Id, b => b.Reference);
         _inside = SelectedEventId > 0
             ? await Visits.GetInsideByEventAsync(SelectedEventId)
             : new Dictionary<Guid, bool>();
@@ -364,7 +462,7 @@
     private async Task SaveCategoryAsync(EventTicket t, TicketCategory category)
     {
         await Tickets.SaveAsync(EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, category, t.Price,
-            t.OrderId, t.Status, t.CreatedAt, t.Redeemed, t.Buyer, t.CreatedByName, t.CreatedByEmail));
+            t.OrderId, t.Status, t.CreatedAt, t.Redeemed, t.Buyer, t.CreatedByName, t.CreatedByEmail, t.BundleId));
         await ReloadTicketsAsync();
     }
 
@@ -372,7 +470,7 @@
     {
         if (price is not { } p || p < 0) throw new DomainException("Der Abgabepreis darf nicht leer oder negativ sein.");
         await Tickets.SaveAsync(EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, decimal.Round(p, 2),
-            t.OrderId, t.Status, t.CreatedAt, t.Redeemed, t.Buyer, t.CreatedByName, t.CreatedByEmail));
+            t.OrderId, t.Status, t.CreatedAt, t.Redeemed, t.Buyer, t.CreatedByName, t.CreatedByEmail, t.BundleId));
         await ReloadTicketsAsync();
     }
 
@@ -432,11 +530,11 @@
 
     private static EventTicket WithStatus(EventTicket t, TicketStatus status) =>
         EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, t.Price, t.OrderId,
-            status, t.CreatedAt, RedeemedOnlyIfValid(status, t.Redeemed), t.Buyer, t.CreatedByName, t.CreatedByEmail);
+            status, t.CreatedAt, RedeemedOnlyIfValid(status, t.Redeemed), t.Buyer, t.CreatedByName, t.CreatedByEmail, t.BundleId);
 
     private static EventTicket WithRedeemed(EventTicket t, bool redeemed) =>
         EventTicket.FromPersistence(t.Id, t.Uuid, t.EventId, t.Category, t.Price, t.OrderId,
-            t.Status, t.CreatedAt, RedeemedOnlyIfValid(t.Status, redeemed), t.Buyer, t.CreatedByName, t.CreatedByEmail);
+            t.Status, t.CreatedAt, RedeemedOnlyIfValid(t.Status, redeemed), t.Buyer, t.CreatedByName, t.CreatedByEmail, t.BundleId);
 
     private void OpenCreate()
     {
@@ -463,6 +561,52 @@
         _showCreate = false;
         await ReloadTicketsAsync();
     }
+
+    private bool _showCreateBundle;
+    private bool _bundleSaving;
+    private TicketCategory _bundleCategory = TicketCategory.Adult;
+    private string _bundleReference = "";
+    private int _bundleQuantity = 1;
+    private string? _bundleError;
+
+    private void OpenCreateBundle()
+    {
+        _bundleCategory = TicketCategory.Adult;
+        _bundleReference = "";
+        _bundleQuantity = 1;
+        _bundleError = null;
+        _showCreateBundle = true;
+    }
+    private void CloseCreateBundle() => _showCreateBundle = false;
+
+    private async Task CreateBundleAsync()
+    {
+        _bundleError = null;
+        var reference = (_bundleReference ?? "").Trim();
+        if (SelectedEventId <= 0) { _bundleError = "Es ist kein Anlass gewählt."; return; }
+        if (reference.Length == 0) { _bundleError = "Bitte einen Bundlenamen angeben."; return; }
+        if (_bundleQuantity < 1) { _bundleError = "Die Anzahl muss mindestens 1 sein."; return; }
+
+        _bundleSaving = true;
+        try
+        {
+            if (await Bundles.ReferenceExistsAsync(SelectedEventId, reference))
+            {
+                _bundleError = $"Der Bundlename „{reference}“ ist für diesen Anlass bereits vergeben.";
+                return;
+            }
+            await Bundles.CreateAsync(SelectedEventId, _bundleCategory, reference, _bundleQuantity,
+                Identity?.Name ?? AdminUser, Identity?.Email);
+            _showCreateBundle = false;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _bundleError = ex.Message; }
+        finally { _bundleSaving = false; }
+    }
+
+    private bool _showExport;
+    private void OpenExport() => _showExport = true;
+    private void CloseExport() => _showExport = false;
 
     private EventTicket? _editing;
     private TicketCategory _editCategory;
@@ -495,7 +639,7 @@
             var redeemed = RedeemedOnlyIfValid(_editStatus, _editRedeemed);
             await Tickets.SaveAsync(EventTicket.FromPersistence(_editing.Id, _editing.Uuid, _editing.EventId,
                 _editCategory, decimal.Round(_editPrice, 2), _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed,
-                _editing.Buyer, _editing.CreatedByName, _editing.CreatedByEmail));
+                _editing.Buyer, _editing.CreatedByName, _editing.CreatedByEmail, _editing.BundleId));
             _editing = null;
             await ReloadTicketsAsync();
         }

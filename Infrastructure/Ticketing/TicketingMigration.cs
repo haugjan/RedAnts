@@ -24,6 +24,27 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonTicketDefaultColumns>("seasonprices-ticket-defaults");
         To<AddSeasonPassReference>("seasonpasses-reference");
         To<AddCategoryTimeWindows>("category-time-windows");
+        To<AddEventTicketBundles>("eventticket-bundles");
+    }
+}
+
+public class AddEventTicketBundles(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("EventTicketBundles"))
+            Create.Table<EventTicketBundleRecord>().Do();
+
+        if (!ColumnExists("EventTickets", "BundleId"))
+        {
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE EventTickets ADD COLUMN BundleId INTEGER NULL").Do();
+            else
+                Alter.Table("EventTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
+        }
+
+        return Task.CompletedTask;
     }
 }
 
@@ -81,6 +102,7 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<NewsletterSignupRecord>("NewsletterSignups");
 
         EnsureTable<FlexTicketBundleRecord>("FlexTicketBundles");
+        EnsureTable<EventTicketBundleRecord>("EventTicketBundles");
 
         EnsureTable<EventPriceRecord>("EventPrices");
         EnsureTable<EventPriceCategoryRecord>("EventPriceCategories");

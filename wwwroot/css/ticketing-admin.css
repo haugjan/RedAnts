@@ -154,6 +154,8 @@
 .ta-modal--xwide { max-width: min(1180px, 96vw); padding-left: 1.1rem; padding-right: 1.1rem; }
 .ta-modal-title { font-family: var(--ta-font); font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 0.2rem; }
 .ta-modal-sub { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 1.1rem; }
+.ta-bundle-list { list-style: none; margin: 0 0 1rem; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.ta-bundle-list a { display: block; text-align: left; }
 .ta-modal .ta-field { width: 100%; margin: 0 0 1.1rem; }
 .ta-modal-hint { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 0.4rem; }
 .ta-modal-error, .ta-error {
