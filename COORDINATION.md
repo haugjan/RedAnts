@@ -39,7 +39,7 @@ und schliesst ab (Sandbox-Test, Webhook-Registrierung, Gate-Ausnahme).
 |---|---|---|---|
 | S1 | `feature/s1-r4-payrexx-infra` | Secrets/Config, Gate-Ausnahme Webhook, Sandbox-E2E-Test, Doku | offen |
 | S2 | `feature/s2-r4-payrexx-client` | Payrexx-REST-Client (signiert): Gateway erstellen/abfragen, Refund | offen |
-| S3 | `feature/s3-r4-checkout-payrexx` | Checkout-Umbau: Draft + Redirect + Rückseiten | offen |
+| S3 | `feature/s3-r4-checkout-payrexx` | Checkout-Umbau: Draft + Redirect + Rückseiten | Rückseiten in main (`/kasse/erfolg`+Status-Polling, `/kasse/abbruch`); Draft/Redirect-Kern wartet auf S2+S4 |
 | S4 | `feature/s4-r4-order-items` | Order-Positionen persistieren (Fulfillment-Grundlage) | offen |
 | S5 | `feature/s5-r4-payrexx-webhook` | Webhook + Fulfillment (Tickets ausstellen nach `confirmed`) | offen |
 | S6 | `feature/s6-r4-orders-payrexx` | Admin: Provider-Status/Transaktion an der Bestellung, Refund | offen |
