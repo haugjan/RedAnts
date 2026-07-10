@@ -37,7 +37,8 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
                 EventPriceId = parent.Id,
                 Category = (int)c.Category,
                 SalePrice = c.SalePrice,
-                Quota = c.Quota
+                Quota = c.Quota,
+                AvailableUntil = c.AvailableUntil?.ToDateTime(TimeOnly.MinValue)
             });
 
         var cats = await scope.Database.FetchAsync<EventPriceCategoryRecord>(
@@ -54,7 +55,10 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
 
     private static EventPrice Map(EventPriceRecord p, IEnumerable<EventPriceCategoryRecord> cats) =>
         EventPrice.FromPersistence(p.Id, p.EventId, p.TotalSalesQuota, p.AdmissionQuota,
-            cats.Select(c => CategoryPrice.FromPersistence((TicketCategory)c.Category, c.SalePrice, c.Quota)).ToList());
+            cats.Select(c => CategoryPrice.FromPersistence(
+                (TicketCategory)c.Category, c.SalePrice, c.Quota, ToDateOnly(c.AvailableUntil))).ToList());
+
+    private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
 }
 
 public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeasonPrices
@@ -87,7 +91,9 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
                 TicketPrice = c.TicketPrice,
                 Offered = c.PassOffered,
                 TicketOffered = c.TicketOffered,
-                TicketQuota = c.TicketQuota
+                TicketQuota = c.TicketQuota,
+                PassAvailableUntil = c.PassAvailableUntil?.ToDateTime(TimeOnly.MinValue),
+                TicketAvailableUntil = c.TicketAvailableUntil?.ToDateTime(TimeOnly.MinValue)
             });
 
         var cats = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
@@ -106,7 +112,10 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
         SeasonPrice.FromPersistence(p.Id, p.SeasonId, p.TotalSalesQuota,
             cats.Select(c => SeasonCategoryPrice.FromPersistence(
                 (TicketCategory)c.Category, c.SalePrice, c.Offered ?? true, c.Quota,
-                c.TicketPrice ?? 0m, c.TicketOffered ?? c.Offered ?? true, c.TicketQuota)).ToList());
+                c.TicketPrice ?? 0m, c.TicketOffered ?? c.Offered ?? true, c.TicketQuota,
+                ToDateOnly(c.PassAvailableUntil), ToDateOnly(c.TicketAvailableUntil))).ToList());
+
+    private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
 }
 
 public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPricing
@@ -138,7 +147,7 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
             int? categoryRemaining = c.Quota is { } q ? Math.Max(0, q - sold) : null;
 
             var remaining = MinRemaining(categoryRemaining, totalRemaining);
-            var available = remaining is null || remaining > 0;
+            var available = (remaining is null || remaining > 0) && NotExpired(c.AvailableUntil);
             list.Add(new AvailableTicketCategory(category, category.DisplayName(), c.SalePrice, available, remaining));
         }
         return list;
@@ -175,7 +184,7 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
 
             foreach (var catGroup in evGroup.GroupBy(d => d.Category))
             {
-                if (!catByCategory.TryGetValue((int)catGroup.Key, out var c))
+                if (!catByCategory.TryGetValue((int)catGroup.Key, out var c) || !NotExpired(c.AvailableUntil))
                     return $"{catGroup.Key.DisplayName()} ist nicht mehr verfügbar.";
                 var requested = catGroup.Sum(d => d.Quantity);
                 var sold = soldByCategory.GetValueOrDefault((int)catGroup.Key);
@@ -194,6 +203,8 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
             (var x, null) => x,
             var (x, y) => Math.Min(x!.Value, y!.Value)
         };
+
+    private static bool NotExpired(DateTime? until) => until is null || DateTime.Today <= until.Value.Date;
 
     private sealed class CategoryCountRow
     {
@@ -274,7 +285,7 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
             var sold = soldByCategory.GetValueOrDefault(c.Category);
             int? categoryRemaining = c.Quota is { } q ? Math.Max(0, q - sold) : null;
             var remaining = Least(categoryRemaining, totalRemaining);
-            var selfAvailable = offered && (remaining is null || remaining > 0);
+            var selfAvailable = offered && (remaining is null || remaining > 0) && NotExpired(c.PassAvailableUntil);
             return new OfferRow(category, c.SalePrice, offered, remaining, totalRemaining, selfAvailable);
         }).ToList();
 
@@ -300,6 +311,8 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
             (var x, null) => x,
             var (x, y) => Math.Min(x!.Value, y!.Value)
         };
+
+    private static bool NotExpired(DateTime? until) => until is null || DateTime.Today <= until.Value.Date;
 
     private sealed class SoldRow
     {

@@ -177,11 +177,12 @@
             <h2 class="ta-modal-title">Preise &amp; Kontingente</h2>
             <p class="ta-modal-sub">@_pricingEvent.Name · @_pricingEvent.Date.ToString("dd.MM.yyyy")</p>
 
-            <div style="display:grid; grid-template-columns:1.5fr .7fr 1fr 1fr; gap:.4rem .75rem; align-items:center; margin-top:.5rem;">
+            <div style="display:grid; grid-template-columns:1.5fr .7fr 1fr 1fr 1.2fr; gap:.4rem .75rem; align-items:center; margin-top:.5rem;">
                 <span class="ta-label">Kategorie</span>
                 <span class="ta-label" style="text-align:center;">Anbieten</span>
                 <span class="ta-label">Preis (CHF)</span>
                 <span class="ta-label">Kontingent</span>
+                <span class="ta-label">Verkauf bis</span>
 
                 @foreach (var row in _priceRows)
                 {
@@ -191,9 +192,10 @@
                     </span>
                     <input type="number" min="0" step="0.01" class="ta-input" @bind="row.Price" disabled="@(!row.Enabled)" />
                     <input type="number" min="0" step="1" class="ta-input" placeholder="∞" @bind="row.Quota" disabled="@(!row.Enabled)" />
+                    <input type="date" class="ta-input" @bind="row.AvailableUntil" disabled="@(!row.Enabled)" />
                 }
             </div>
-            <p class="ta-field-hint">„Anbieten" abwählen entfernt die Kategorie aus dem Verkauf. Kontingent leer = für diese Kategorie unbegrenzt; das Totalkontingent des Anlasses zählt trotzdem.</p>
+            <p class="ta-field-hint">„Anbieten" abwählen entfernt die Kategorie aus dem Verkauf. Kontingent leer = für diese Kategorie unbegrenzt; das Totalkontingent des Anlasses zählt trotzdem. „Verkauf bis" leer = kein Enddatum; sonst ist die Kategorie nach diesem Tag nicht mehr verkäuflich. Massgebend ist, was zuerst erreicht wird: Kontingent oder Datum.</p>
 
             @if (_pricingError is not null)
             {
@@ -397,6 +399,7 @@
         public bool Enabled { get; set; }
         public decimal Price { get; set; }
         public int? Quota { get; set; }
+        public DateOnly? AvailableUntil { get; set; }
     }
 
     private Event? _pricingEvent;
@@ -413,7 +416,7 @@
         var byCategory = (_pricingExisting?.Categories ?? []).ToDictionary(c => c.Category);
         _priceRows = Enum.GetValues<TicketCategory>()
             .Select(cat => byCategory.TryGetValue(cat, out var existing)
-                ? new CategoryRow { Category = cat, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota }
+                ? new CategoryRow { Category = cat, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota, AvailableUntil = existing.AvailableUntil }
                 : new CategoryRow { Category = cat, Enabled = false, Price = 0m, Quota = null })
             .ToList();
     }
@@ -429,7 +432,7 @@
         {
             var categories = _priceRows
                 .Where(r => r.Enabled)
-                .Select(r => CategoryPrice.Create(r.Category, decimal.Round(r.Price, 2), r.Quota))
+                .Select(r => CategoryPrice.Create(r.Category, decimal.Round(r.Price, 2), r.Quota, r.AvailableUntil))
                 .ToList();
             var price = EventPrice.FromPersistence(
                 _pricingExisting?.Id ?? 0,

@@ -23,6 +23,28 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonPriceDualPricing>("seasonprices-dual-price");
         To<AddSeasonTicketDefaultColumns>("seasonprices-ticket-defaults");
         To<AddSeasonPassReference>("seasonpasses-reference");
+        To<AddCategoryTimeWindows>("category-time-windows");
+    }
+}
+
+public class AddCategoryTimeWindows(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddDate("EventPriceCategories", "AvailableUntil");
+        AddDate("SeasonPriceCategories", "PassAvailableUntil");
+        AddDate("SeasonPriceCategories", "TicketAvailableUntil");
+        return Task.CompletedTask;
+    }
+
+    private void AddDate(string table, string column)
+    {
+        if (ColumnExists(table, column)) return;
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite)
+            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} DATETIME NULL").Do();
+        else
+            Alter.Table(table).AddColumn(column).AsDateTime().Nullable().Do();
     }
 }
 
