@@ -63,6 +63,14 @@ public sealed class Order
         PaidAt ??= DateTime.UtcNow;
     }
 
+    public void MarkUnpaid()
+    {
+        if (Status is OrderStatus.Cancelled or OrderStatus.Refunded)
+            throw new DomainException("Stornierte oder erstattete Bestellung kann nicht auf unbezahlt gesetzt werden.");
+        Status = OrderStatus.Draft;
+        PaidAt = null;
+    }
+
     public void Cancel() => Status = OrderStatus.Cancelled;
     public void Refund() => Status = OrderStatus.Refunded;
 }

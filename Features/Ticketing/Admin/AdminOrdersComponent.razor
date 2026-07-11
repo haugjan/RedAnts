@@ -109,7 +109,7 @@
     [Inject] private IOrderStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
-    private static readonly OrderStatus[] _statusOptions = [OrderStatus.Paid, OrderStatus.Cancelled, OrderStatus.Refunded];
+    private static readonly OrderStatus[] _statusOptions = [OrderStatus.Paid, OrderStatus.Draft, OrderStatus.Cancelled, OrderStatus.Refunded];
 
     private async Task SaveStatusAsync(OrderListItem o, OrderStatus target)
     {
