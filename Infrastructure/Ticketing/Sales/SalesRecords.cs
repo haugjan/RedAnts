@@ -193,3 +193,19 @@ public class OrderStatusLogRecord
     [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime OccurredAt { get; set; }
     [Column("Note")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Note { get; set; }
 }
+
+[TableName("OrderAddOns")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderAddOnRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SeasonId { get; set; }
+    [Column("SeasonName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string SeasonName { get; set; } = "";
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("CategoryName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string CategoryName { get; set; } = "";
+    [Column("Label")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string Label { get; set; } = "";
+    [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
+    [Column("Quantity")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Quantity { get; set; }
+}

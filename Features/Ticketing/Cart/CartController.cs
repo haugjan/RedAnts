@@ -6,7 +6,7 @@ namespace RedAnts.Features.Ticketing.Cart;
 
 public sealed class CartController(
     ICartService cart, IEventPricing pricing, IEvents events,
-    ISeasonPassPricing passPricing, ISeasons seasons) : Controller
+    ISeasonPassPricing passPricing, ISeasons seasons, ISeasonAddOns seasonAddOns) : Controller
 {
     [HttpGet("/warenkorb")]
     public IActionResult Index() => View(cart.Get());
@@ -55,7 +55,7 @@ public sealed class CartController(
 
     [HttpPost("/warenkorb/add-saisonkarte")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddSeasonPass(int seasonId, TicketCategory category, int quantity, string? returnUrl)
+    public async Task<IActionResult> AddSeasonPass(int seasonId, TicketCategory category, int quantity, string? returnUrl, int[]? addOns)
     {
         if (quantity < 1) quantity = 1;
 
@@ -64,7 +64,16 @@ public sealed class CartController(
         var season = await seasons.FindByIdAsync(seasonId);
         var added = available is { Available: true } && season is not null;
         if (added)
-            cart.AddSeasonPass(seasonId, season!.Name, available!.Category, available.Name, available.Price, quantity);
+        {
+            var selectedIds = (addOns ?? []).ToHashSet();
+            var chosen = selectedIds.Count == 0
+                ? new List<CartAddOn>()
+                : (await seasonAddOns.GetBySeasonAsync(seasonId))
+                    .Where(a => a.Active && selectedIds.Contains(a.Id))
+                    .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price })
+                    .ToList();
+            cart.AddSeasonPass(seasonId, season!.Name, available!.Category, available.Name, available.Price, quantity, chosen);
+        }
 
         if (IsFetchRequest())
         {

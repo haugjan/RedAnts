@@ -70,3 +70,19 @@ public interface IOrders
     Task<string> NextOrderNumberAsync();
     Task<Order?> GetByIdAsync(int id);
 }
+
+public interface ISeasonAddOns
+{
+    Task<IReadOnlyList<SeasonAddOn>> GetBySeasonAsync(int seasonId);
+    Task ReplaceForSeasonAsync(int seasonId, IReadOnlyList<SeasonAddOn> options);
+}
+
+public sealed record OrderAddOnLine(
+    int SeasonId, string SeasonName, TicketCategory Category, string CategoryName,
+    string Label, decimal Price, int Quantity);
+
+public interface IOrderAddOns
+{
+    Task SaveAsync(int orderId, IReadOnlyList<OrderAddOnLine> lines);
+    Task<IReadOnlyList<OrderAddOnLine>> GetByOrderAsync(int orderId);
+}

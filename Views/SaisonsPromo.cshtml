@@ -1,8 +1,10 @@
 ﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Features.Ticketing.Ports
+@using RedAnts.Domain.Ticketing.Sales
 @inject ISeasonPassPricing PassPricing
 @inject RedAnts.Features.Ticketing.Ports.ISeasons Seasons
+@inject ISeasonAddOns SeasonAddOns
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
@@ -13,11 +15,13 @@
     ViewBag.PageTitle = title + " – Red Ants Winterthur";
     ViewBag.TransparentNav = true;
 
-    var passOffers = new List<(int SeasonId, string SeasonName, List<AvailableTicketCategory> Categories)>();
+    var passOffers = new List<(int SeasonId, string SeasonName, List<AvailableTicketCategory> Categories, List<SeasonAddOn> AddOns)>();
     foreach (var season in await Seasons.GetPublicOpenAsync())
     {
         var cats = (await PassPricing.GetAvailableAsync(season.Id)).Where(c => c.Available).ToList();
-        if (cats.Count > 0) passOffers.Add((season.Id, season.Name, cats));
+        if (cats.Count == 0) continue;
+        var addOns = (await SeasonAddOns.GetBySeasonAsync(season.Id)).Where(a => a.Active).ToList();
+        passOffers.Add((season.Id, season.Name, cats, addOns));
     }
 }
 
@@ -49,7 +53,7 @@
             else
             {
                 <ul class="pass-offer-list">
-                    @foreach (var (seasonId, seasonName, cats) in passOffers)
+                    @foreach (var (seasonId, seasonName, cats, addOns) in passOffers)
                     {
                         <li class="pass-offer">
                             <div class="pass-offer-head">
@@ -58,14 +62,30 @@
                             <ul class="pass-offer-cats">
                                 @foreach (var cat in cats)
                                 {
-                                    <li>
-                                        <span class="pass-offer-cat-name">@cat.Name</span>
-                                        <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
+                                    <li class="pass-offer-cat">
+                                        <div class="pass-offer-cat-top">
+                                            <span class="pass-offer-cat-name">@cat.Name</span>
+                                            <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
+                                        </div>
                                         <form method="post" action="/warenkorb/add-saisonkarte" class="pass-add-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="seasonId" value="@seasonId" />
                                             <input type="hidden" name="category" value="@((int)cat.Category)" />
                                             <input type="hidden" name="returnUrl" value="/saisons/" />
+                                            @if (addOns.Count > 0)
+                                            {
+                                                <div class="pass-addons">
+                                                    <span class="pass-addons-title">Zusatzoptionen</span>
+                                                    @foreach (var a in addOns)
+                                                    {
+                                                        <label class="pass-addon">
+                                                            <input type="checkbox" name="addOns" value="@a.Id" />
+                                                            <span class="pass-addon-label">@a.Label</span>
+                                                            <span class="pass-addon-price">+CHF @a.Price.ToString("0.##")</span>
+                                                        </label>
+                                                    }
+                                                </div>
+                                            }
                                             <button type="submit" class="pass-add-btn">In den Warenkorb</button>
                                         </form>
                                     </li>
@@ -100,11 +120,16 @@
     .pass-offer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 6px; }
     .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.3rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; }
     .pass-offer-cats { list-style: none; margin: 0; padding: 0; }
-    .pass-offer-cats li { display: flex; align-items: center; gap: 1rem; padding: 8px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
+    .pass-offer-cats li { padding: 10px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
+    .pass-offer-cat-top { display: flex; align-items: center; gap: 1rem; }
     .pass-offer-cat-name { flex: 1 1 auto; }
     .pass-offer-price { font-weight: 700; white-space: nowrap; }
-    .pass-add-form { flex: 0 0 auto; margin: 0; }
+    .pass-add-form { margin: 8px 0 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+    .pass-addons { display: flex; flex-direction: column; gap: 5px; width: 100%; max-width: 420px; background: #f6f7f9; border: 1px solid #ececec; border-radius: 6px; padding: 8px 10px; }
+    .pass-addons-title { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: #888; }
+    .pass-addon { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+    .pass-addon-label { flex: 1 1 auto; }
+    .pass-addon-price { font-weight: 600; color: #444; white-space: nowrap; }
     .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: .82rem; background: #C8102E; color: #fff; border: none; padding: .4rem .9rem; cursor: pointer; border-radius: 4px; }
     .pass-add-btn:hover { background: #a50d25; }
-    @@media (max-width: 560px) { .pass-offer-cats li { flex-wrap: wrap; } .pass-offer-cat-name { flex: 1 0 60%; } }
 </style>

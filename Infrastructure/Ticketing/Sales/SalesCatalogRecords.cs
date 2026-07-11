@@ -37,6 +37,19 @@ public class SeasonPriceRecord
     [Column("TotalSalesQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? TotalSalesQuota { get; set; }
 }
 
+[TableName("SeasonAddOns")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class SeasonAddOnRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int SeasonId { get; set; }
+    [Column("Label")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string Label { get; set; } = "";
+    [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
+    [Column("Active")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Active { get; set; }
+    [Column("SortOrder")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SortOrder { get; set; }
+}
+
 [TableName("SeasonPriceCategories")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]

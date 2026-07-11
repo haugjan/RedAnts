@@ -79,6 +79,7 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<EventFreeEntryQuotaRecord>("TicketEventFreeEntryQuotas");
         EnsureTable<OrderStatusLogRecord>("OrderStatusLogs");
         EnsureTable<NewsletterSignupRecord>("NewsletterSignups");
+        EnsureTable<OrderAddOnRecord>("OrderAddOns");
 
         EnsureTable<FlexTicketBundleRecord>("FlexTicketBundles");
 
@@ -86,6 +87,7 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<EventPriceCategoryRecord>("EventPriceCategories");
         EnsureTable<SeasonPriceRecord>("SeasonPrices");
         EnsureTable<SeasonPriceCategoryRecord>("SeasonPriceCategories");
+        EnsureTable<SeasonAddOnRecord>("SeasonAddOns");
 
         return Task.CompletedTask;
     }

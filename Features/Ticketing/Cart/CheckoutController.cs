@@ -10,7 +10,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IAddOnNotifier addOnNotifier) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -191,6 +191,17 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 mailTickets.Add(new OrderMailTicket(
                     TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, item.CategoryName));
             }
+        }
+
+        var addOnLines = current.Items
+            .Where(i => i.Kind == CartItemKind.SeasonPass && i.AddOns.Count > 0)
+            .SelectMany(i => i.AddOns.Select(a => new OrderAddOnLine(
+                i.SeasonId, i.EventName, i.Category, i.CategoryName, a.Label, a.Price, i.Quantity)))
+            .ToList();
+        if (addOnLines.Count > 0)
+        {
+            await orderAddOns.SaveAsync(saved.Id, addOnLines);
+            await addOnNotifier.NotifyAsync(saved.OrderNumber, billing.FullName, billing.Email, addOnLines);
         }
 
         await mailer.SendTicketsAsync(new OrderMailModel(
