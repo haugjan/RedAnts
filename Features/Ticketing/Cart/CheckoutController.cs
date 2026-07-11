@@ -101,6 +101,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     public IActionResult Express()
     {
         if (cart.Get().IsEmpty) return Redirect("/ticketing/");
+        if (!ExpressCheckout.IsAllowed(cart.Get())) return Redirect("/kasse");
         return View("~/Views/Checkout/Express.cshtml", new CheckoutExpressView
         {
             Cart = cart.Get(), Methods = Methods,
@@ -115,6 +116,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/ticketing/");
+        if (!ExpressCheckout.IsAllowed(current)) return Redirect("/kasse");
         if (Methods.All(m => m.Method != paymentMethod)) return Redirect("/kasse/express");
 
         CheckoutExpressView Invalid(string error) => new()

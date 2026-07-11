@@ -44,6 +44,16 @@ public sealed class Cart
     [JsonIgnore] public decimal TotalAmount => Items.Sum(i => i.LineTotal);
 }
 
+public static class ExpressCheckout
+{
+    public const decimal MaxAmount = 50m;
+
+    public static bool IsAllowed(Cart cart) =>
+        !cart.IsEmpty
+        && cart.TotalAmount < MaxAmount
+        && cart.Items.All(i => i.Kind != CartItemKind.SeasonPass);
+}
+
 public interface ICartService
 {
     Cart Get();

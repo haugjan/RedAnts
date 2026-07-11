@@ -22,7 +22,9 @@ public sealed class CartController(
         if (available is { Available: true } && evt is not null)
             cart.Add(eventId, evt.Name, available.Category, available.Name, available.Price, quantity);
 
-        return Redirect(cart.Get().IsEmpty ? "/warenkorb" : "/kasse/express");
+        var current = cart.Get();
+        if (current.IsEmpty) return Redirect("/warenkorb");
+        return Redirect(ExpressCheckout.IsAllowed(current) ? "/kasse/express" : "/kasse");
     }
 
     [HttpPost("/warenkorb/add")]
