@@ -25,6 +25,33 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonPassReference>("seasonpasses-reference");
         To<AddCategoryTimeWindows>("category-time-windows");
         To<AddEventTicketBundles>("eventticket-bundles");
+        To<AddSalesFilterIndexes>("sales-filter-indexes");
+    }
+}
+
+public class AddSalesFilterIndexes(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        EnsureIndex("EventTickets", "IX_EventTickets_EventId", "EventId");
+        EnsureIndex("EventTickets", "IX_EventTickets_BundleId", "BundleId");
+        EnsureIndex("SeasonSingleTickets", "IX_SeasonSingleTickets_SeasonId", "SeasonId");
+        EnsureIndex("SeasonPasses", "IX_SeasonPasses_SeasonId", "SeasonId");
+        EnsureIndex("MembershipCards", "IX_MembershipCards_SeasonId", "SeasonId");
+        return Task.CompletedTask;
+    }
+
+    private void EnsureIndex(string table, string indexName, string columns)
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite)
+        {
+            Execute.Sql($"CREATE INDEX IF NOT EXISTS {indexName} ON {table} ({columns})").Do();
+            return;
+        }
+        Execute.Sql(
+            $"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{indexName}' AND object_id = OBJECT_ID('{table}')) " +
+            $"CREATE NONCLUSTERED INDEX {indexName} ON {table} ({columns})").Do();
     }
 }
 
