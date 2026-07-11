@@ -320,3 +320,33 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
         public int Cnt { get; set; }
     }
 }
+
+public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeasonAddOns
+{
+    public async Task<IReadOnlyList<SeasonAddOn>> GetBySeasonAsync(int seasonId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<SeasonAddOnRecord>(
+            "WHERE SeasonId = @0 ORDER BY SortOrder, Id", seasonId);
+        return rows.Select(Map).ToList();
+    }
+
+    public async Task ReplaceForSeasonAsync(int seasonId, IReadOnlyList<SeasonAddOn> options)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync("DELETE FROM SeasonAddOns WHERE SeasonId = @0", seasonId);
+        var order = 0;
+        foreach (var o in options)
+            await scope.Database.InsertAsync(new SeasonAddOnRecord
+            {
+                SeasonId = seasonId,
+                Label = o.Label,
+                Price = o.Price,
+                Active = o.Active,
+                SortOrder = order++
+            });
+    }
+
+    private static SeasonAddOn Map(SeasonAddOnRecord r) =>
+        SeasonAddOn.FromPersistence(r.Id, r.SeasonId, r.Label, r.Price, r.Active, r.SortOrder);
+}

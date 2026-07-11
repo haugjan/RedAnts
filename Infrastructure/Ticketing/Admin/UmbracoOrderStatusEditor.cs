@@ -19,6 +19,7 @@ public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log) : IO
         switch (target)
         {
             case OrderStatus.Paid: order.MarkPaid(); break;
+            case OrderStatus.Draft: order.MarkUnpaid(); break;
             case OrderStatus.Cancelled: order.Cancel(); break;
             case OrderStatus.Refunded: order.Refund(); break;
             default: throw new DomainException("Dieser Bezahlstatus kann nicht gesetzt werden.");

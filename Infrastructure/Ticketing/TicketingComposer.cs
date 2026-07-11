@@ -1,5 +1,7 @@
+using RedAnts.Features.Ticketing.Email;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Infrastructure.Ticketing.Content;
+using RedAnts.Infrastructure.Ticketing.Email;
 using RedAnts.Infrastructure.Ticketing.Sales;
 using Umbraco.Cms.Core.Composing;
 
@@ -26,5 +28,8 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<IMemberCards, MemberCardRepository>();
         builder.Services.AddScoped<IOrders, OrderRepository>();
         builder.Services.AddScoped<INewsletterSignups, NewsletterSignupRepository>();
+        builder.Services.AddScoped<ISeasonAddOns, SeasonAddOnRepository>();
+        builder.Services.AddScoped<IOrderAddOns, OrderAddOnRepository>();
+        builder.Services.AddScoped<IAddOnNotifier, AddOnNotifier>();
     }
 }

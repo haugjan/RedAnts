@@ -26,6 +26,7 @@
     @@media (min-width: 576px) {
         .cart-mobile-total { display: none; }
     }
+    .cart-addons { list-style: none; margin: .25rem 0 0; padding: 0; font-weight: 400; font-size: .82rem; color: #666; }
 </style>
 
 <h1 class="mb-4">Warenkorb</h1>
@@ -58,7 +59,18 @@ else
                 @foreach (var item in Model.Items)
                 {
                     <tr>
-                        <td class="cart-name">@item.EventName</td>
+                        <td class="cart-name">
+                            @item.EventName
+                            @if (item.AddOns.Count > 0)
+                            {
+                                <ul class="cart-addons">
+                                    @foreach (var a in item.AddOns)
+                                    {
+                                        <li>+ @a.Label (CHF @a.Price.ToString("N2"))</li>
+                                    }
+                                </ul>
+                            }
+                        </td>
                         <td data-label="Kategorie">@item.CategoryName</td>
                         <td data-label="Preis" class="text-end">CHF @item.UnitPrice.ToString("N2")</td>
                         <td data-label="Menge">

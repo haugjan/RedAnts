@@ -17,6 +17,10 @@
 else
 {
     <select class="ta-select ta-inline-editor" @onchange="OnChanged" @onkeydown="OnKeyDown">
+        @if (!Options.Any(IsCurrent))
+        {
+            <option value="-1" selected disabled>@FormatValue(Value)</option>
+        }
         @for (var i = 0; i < Options.Count; i++)
         {
             var index = i;

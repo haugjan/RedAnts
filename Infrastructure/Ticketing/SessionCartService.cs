@@ -50,18 +50,23 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         Save(cart);
     }
 
-    public void AddSeasonPass(int seasonId, string seasonName, TicketCategory category, string categoryName, decimal unitPrice, int quantity)
+    public void AddSeasonPass(int seasonId, string seasonName, TicketCategory category, string categoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns)
     {
         if (quantity <= 0) return;
         var cart = Get();
+        var addOnList = (addOns ?? [])
+            .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price })
+            .ToList();
+        var addOnKey = addOnList.Count == 0 ? "" : string.Join("-", addOnList.Select(a => a.Id).OrderBy(x => x));
         var existing = cart.Items.FirstOrDefault(i =>
-            i.Kind == CartItemKind.SeasonPass && i.SeasonId == seasonId && i.Category == category);
+            i.Kind == CartItemKind.SeasonPass && i.SeasonId == seasonId && i.Category == category && i.AddOnKey == addOnKey);
         if (existing is not null)
         {
             existing.Quantity = Math.Min(existing.Quantity + quantity, MaxQuantityPerItem);
             existing.UnitPrice = unitPrice;
             existing.EventName = seasonName;
             existing.CategoryName = categoryName;
+            existing.AddOns = addOnList;
         }
         else
         {
@@ -73,7 +78,8 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 Category = category,
                 CategoryName = categoryName,
                 UnitPrice = unitPrice,
-                Quantity = Math.Min(quantity, MaxQuantityPerItem)
+                Quantity = Math.Min(quantity, MaxQuantityPerItem),
+                AddOns = addOnList
             });
         }
         Save(cart);

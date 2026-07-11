@@ -106,6 +106,7 @@
                             </td>
                             <td class="ta-col-actions">
                                 <button type="button" class="ta-icon-btn" title="Preise und Kontingente" @onclick="() => OpenEditAsync(s)">$</button>
+                                <button type="button" class="ta-icon-btn" title="Zusatzoptionen@(AddOnCount(s.Id) > 0 ? $" ({AddOnCount(s.Id)})" : "")" @onclick="() => OpenAddOns(s)">＋</button>
                             </td>
                         </tr>
                     }
@@ -183,7 +184,63 @@
     </div>
 }
 
+@if (_editingAddOns is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelAddOns">
+        <div class="ta-modal ta-modal--xwide" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Zusatzoptionen</h2>
+            <p class="ta-modal-sub">@_editingAddOns.Name · zubuchbar zu Saisonkarten dieser Saison</p>
+
+            <div class="ta-field">
+                <div class="ta-subtable-wrap">
+                <table class="ta-subtable">
+                    <thead>
+                        <tr>
+                            <th>Bezeichnung</th>
+                            <th class="ta-num">Preis (CHF)</th>
+                            <th class="ta-group-col">Aktiv</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _addOnRows)
+                        {
+                            <tr class="@(r.Active ? "" : "ta-row-off")">
+                                <td><input type="text" maxlength="200" class="ta-input ta-addon-label" placeholder="z. B. Livestream-Abo" @bind="r.Label" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" @bind="r.Price" /></td>
+                                <td class="ta-group-col"><input type="checkbox" @bind="r.Active" /></td>
+                                <td class="ta-num"><button type="button" class="ta-icon-btn" title="Entfernen" @onclick="() => RemoveAddOnRow(r)">×</button></td>
+                            </tr>
+                        }
+                        @if (_addOnRows.Count == 0)
+                        {
+                            <tr><td colspan="4" class="ta-muted">Noch keine Zusatzoptionen erfasst.</td></tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+                <button type="button" class="ta-btn ta-btn-ghost ta-addon-add" @onclick="AddAddOnRow">+ Option hinzufügen</button>
+                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden; der Preis wird zur Saisonkarte addiert. Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
+            </div>
+
+            @if (_addOnError is not null)
+            {
+                <p class="ta-modal-error">@_addOnError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelAddOns" disabled="@_addOnSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAddOns" disabled="@_addOnSaving">
+                    @(_addOnSaving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
+    .ta-addon-label { width: 100%; min-width: 12rem; text-align: left; }
+    .ta-addon-add { margin-top: .5rem; }
     .ta-subtable-wrap { overflow-x: auto; }
     .ta-subtable { width: 100%; border-collapse: collapse; margin-top: .4rem; }
     .ta-subtable th { text-align: left; font-size: .68rem; text-transform: uppercase; color: var(--ta-muted); padding: 2px 5px; }
@@ -209,6 +266,7 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private ISeasonPrices SeasonPrices { get; set; } = default!;
+    [Inject] private ISeasonAddOns SeasonAddOns { get; set; } = default!;
     [Inject] private ISeasonPassPricing PassPricing { get; set; } = default!;
     [Inject] private ISeasonStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private ISeasonStatsReader StatsReader { get; set; } = default!;
@@ -237,9 +295,11 @@
         _prices = new Dictionary<int, SeasonPrice?>();
         _eventCounts = new Dictionary<int, int>();
         _stats = new Dictionary<int, SeasonStats>();
+        _addOns = new Dictionary<int, IReadOnlyList<SeasonAddOn>>();
         foreach (var s in _seasons)
         {
             _prices[s.Id] = await SeasonPrices.GetBySeasonAsync(s.Id);
+            _addOns[s.Id] = await SeasonAddOns.GetBySeasonAsync(s.Id);
             var eventIds = (await Events.GetBySeasonAsync(s.Id)).Select(e => e.Id).ToList();
             _eventCounts[s.Id] = eventIds.Count;
             _stats[s.Id] = await StatsReader.GetAsync(s.Id, eventIds);
@@ -381,5 +441,53 @@
         public int? TicketQuota { get; set; }
         public DateOnly? TicketAvailableUntil { get; set; }
         public int Sold { get; set; }
+    }
+
+    private Dictionary<int, IReadOnlyList<SeasonAddOn>> _addOns = new();
+    private int AddOnCount(int seasonId) => _addOns.GetValueOrDefault(seasonId)?.Count ?? 0;
+
+    private Season? _editingAddOns;
+    private List<AddOnRow> _addOnRows = new();
+    private bool _addOnSaving;
+    private string? _addOnError;
+
+    private void OpenAddOns(Season s)
+    {
+        _editingAddOns = s;
+        _addOnRows = (_addOns.GetValueOrDefault(s.Id) ?? [])
+            .Select(a => new AddOnRow { Label = a.Label, Price = decimal.Round(a.Price, 2), Active = a.Active })
+            .ToList();
+        _addOnError = null;
+    }
+
+    private void CancelAddOns() { if (!_addOnSaving) { _editingAddOns = null; _addOnError = null; } }
+    private void AddAddOnRow() => _addOnRows.Add(new AddOnRow { Active = true });
+    private void RemoveAddOnRow(AddOnRow r) => _addOnRows.Remove(r);
+
+    private async Task SaveAddOns()
+    {
+        if (_editingAddOns is null) return;
+        _addOnSaving = true;
+        _addOnError = null;
+        try
+        {
+            var options = _addOnRows
+                .Where(r => !string.IsNullOrWhiteSpace(r.Label))
+                .Select(r => SeasonAddOn.Create(_editingAddOns.Id, r.Label, decimal.Round(r.Price, 2), r.Active, 0))
+                .ToList();
+            await SeasonAddOns.ReplaceForSeasonAsync(_editingAddOns.Id, options);
+            _editingAddOns = null;
+            await ReloadAsync();
+        }
+        catch (DomainException ex) { _addOnError = ex.Message; }
+        catch (Exception ex) { _addOnError = ex.Message; }
+        finally { _addOnSaving = false; }
+    }
+
+    private sealed class AddOnRow
+    {
+        public string Label { get; set; } = "";
+        public decimal Price { get; set; }
+        public bool Active { get; set; } = true;
     }
 }
