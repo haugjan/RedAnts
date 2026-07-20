@@ -8,10 +8,10 @@ public class DisplayNameTests
 {
     [Theory]
     [InlineData(TicketCategory.Adult, "Erwachsen")]
-    [InlineData(TicketCategory.AdultReduced, "Erwachsen reduziert")]
-    [InlineData(TicketCategory.Youth, "Jugend")]
-    [InlineData(TicketCategory.YouthReduced, "Jugend reduziert")]
-    [InlineData(TicketCategory.Child, "Kind")]
+    [InlineData(TicketCategory.AdultPromo, "Sonderaktion Erwachsen")]
+    [InlineData(TicketCategory.Youth, "Jugend (bis 19)")]
+    [InlineData(TicketCategory.YouthPromo, "Sonderaktion Jugend")]
+    [InlineData(TicketCategory.Child, "Kind (bis 5)")]
     public void TicketCategory_DisplayName(TicketCategory category, string expected)
     {
         Assert.Equal(expected, category.DisplayName());
