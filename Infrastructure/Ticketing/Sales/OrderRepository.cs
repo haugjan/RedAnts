@@ -37,7 +37,9 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
             PaymentMethod = (int)order.PaymentMethod,
             Status = (int)order.Status,
             CreatedAt = order.CreatedAt,
-            PaidAt = order.PaidAt
+            PaidAt = order.PaidAt,
+            PayrexxGatewayId = order.PayrexxGatewayId,
+            FulfillmentPayload = order.FulfillmentPayload
         };
         if (row.Id == 0) await scope.Database.InsertAsync(row);
         else await scope.Database.UpdateAsync(row);
@@ -49,6 +51,23 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var row = await scope.Database.SingleOrDefaultByIdAsync<OrderRecord>(id);
         return row is null ? null : Map(row);
+    }
+
+    public async Task<Order?> GetByNumberAsync(string orderNumber)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var row = await scope.Database.FirstOrDefaultAsync<OrderRecord>(
+            "WHERE OrderNumber = @0", orderNumber);
+        return row is null ? null : Map(row);
+    }
+
+    public async Task<bool> TryMarkPaidAsync(int orderId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var affected = await scope.Database.ExecuteAsync(
+            "UPDATE Orders SET Status = @0, PaidAt = @1 WHERE Id = @2 AND Status = @3",
+            (int)OrderStatus.Paid, DateTime.UtcNow, orderId, (int)OrderStatus.Draft);
+        return affected > 0;
     }
 
     public async Task<string> NextOrderNumberAsync()
@@ -78,5 +97,7 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
             (PaymentMethod)r.PaymentMethod,
             (OrderStatus)r.Status,
             r.CreatedAt,
-            r.PaidAt);
+            r.PaidAt,
+            r.PayrexxGatewayId,
+            r.FulfillmentPayload);
 }

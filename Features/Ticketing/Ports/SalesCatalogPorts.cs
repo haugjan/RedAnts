@@ -69,6 +69,8 @@ public interface IOrders
     Task<Order> SaveAsync(Order order);
     Task<string> NextOrderNumberAsync();
     Task<Order?> GetByIdAsync(int id);
+    Task<Order?> GetByNumberAsync(string orderNumber);
+    Task<bool> TryMarkPaidAsync(int orderId);
 }
 
 public interface ISeasonAddOns

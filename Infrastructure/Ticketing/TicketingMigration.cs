@@ -26,6 +26,33 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddCategoryTimeWindows>("category-time-windows");
         To<AddEventTicketBundles>("eventticket-bundles");
         To<AddSalesFilterIndexes>("sales-filter-indexes");
+        To<AddOrderPaymentColumns>("order-payment-columns");
+    }
+}
+
+public class AddOrderPaymentColumns(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+
+        if (!ColumnExists("Orders", "PayrexxGatewayId"))
+        {
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE Orders ADD COLUMN PayrexxGatewayId NVARCHAR(100) NULL").Do();
+            else
+                Alter.Table("Orders").AddColumn("PayrexxGatewayId").AsString(100).Nullable().Do();
+        }
+
+        if (!ColumnExists("Orders", "FulfillmentPayload"))
+        {
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE Orders ADD COLUMN FulfillmentPayload TEXT NULL").Do();
+            else
+                Execute.Sql("ALTER TABLE Orders ADD FulfillmentPayload NVARCHAR(MAX) NULL").Do();
+        }
+
+        return Task.CompletedTask;
     }
 }
 

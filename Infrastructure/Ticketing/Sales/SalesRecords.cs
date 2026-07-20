@@ -37,6 +37,9 @@ public class OrderRecord
 
     [Column("BillingType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BillingType { get; set; }
     [Column("BillingCompany")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BillingCompany { get; set; }
+
+    [Column("PayrexxGatewayId")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? PayrexxGatewayId { get; set; }
+    [Column("FulfillmentPayload")] [NullSetting(NullSetting = NullSettings.Null)] [SpecialDbType(SpecialDbTypes.NTEXT)] public string? FulfillmentPayload { get; set; }
 }
 
 [TableName("EventTickets")]

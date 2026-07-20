@@ -54,6 +54,18 @@ public sealed class CheckoutProcessingView
     public bool AlreadyPaid { get; init; }
 }
 
+public sealed record FulfillmentItem(
+    int Kind, int EventId, int SeasonId, int Category, decimal UnitPrice, int Quantity, string EventName, string CategoryName);
+
+public sealed record FulfillmentAddOn(
+    int SeasonId, string EventName, int Category, string CategoryName, string Label, decimal Price, int Quantity);
+
+public sealed record FulfillmentSnapshot(
+    List<FulfillmentItem> Items,
+    List<FulfillmentAddOn> AddOns,
+    bool SubscribeNewsletter,
+    string NewsletterSource);
+
 public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName, string Token);
 
 public sealed class CheckoutConfirmationView

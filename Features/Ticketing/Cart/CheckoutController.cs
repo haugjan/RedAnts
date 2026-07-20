@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Email;
@@ -10,7 +11,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IAddOnNotifier addOnNotifier) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IAddOnNotifier addOnNotifier, IPayrexxGateway payrexx, ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -163,56 +164,40 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         var number = await orders.NextOrderNumberAsync();
         var order = Order.Create(number, billing, current.TotalAmount, VatRate, paymentMethod, sellerUid: null);
-        order.MarkPaid();
+        order.SetFulfillmentPayload(BuildSnapshotJson(current, subscribeNewsletter, newsletterSource));
         var saved = await orders.SaveAsync(order);
         await orderLog.AppendAsync(saved.Id, OrderStatus.Draft, "Online-Kauf", "Bestellung erstellt");
-        await orderLog.AppendAsync(saved.Id, OrderStatus.Paid, "Online-Kauf", "Online bezahlt");
-        var buyer = billing.ToBuyer();
 
-        var issued = new List<ConfirmationTicket>();
-        var mailTickets = new List<OrderMailTicket>();
-        foreach (var item in current.Items)
+        if (payrexx.Enabled)
         {
-            for (var i = 0; i < item.Quantity; i++)
+            var baseUrl = publicUrl.Resolve(Request);
+            var request = new PayrexxCreateRequest(
+                AmountInCents: (int)Math.Round(saved.TotalGross * 100m, MidpointRounding.AwayFromZero),
+                Currency: saved.Currency,
+                Purpose: $"Red Ants Ticketing {saved.OrderNumber}",
+                ReferenceId: saved.OrderNumber,
+                SuccessUrl: $"{baseUrl}/kasse/erfolg?order={saved.Id}",
+                FailedUrl: $"{baseUrl}/kasse/zahlung",
+                CancelUrl: $"{baseUrl}/kasse/abbruch",
+                Email: billing.Email,
+                FirstName: billing.FirstName,
+                LastName: billing.LastName);
+            try
             {
-                if (item.Kind == CartItemKind.SeasonPass)
-                {
-                    var pass = await passes.SaveAsync(
-                        SeasonPass.Create(item.SeasonId, item.Category, item.UnitPrice, saved.Id, buyer, "Online-Kauf"));
-                    var passToken = tokens.Create(TicketType.SeasonPass, pass.Uuid, item.SeasonId);
-                    issued.Add(new ConfirmationTicket(pass.Uuid, item.EventName, item.CategoryName, passToken));
-                    mailTickets.Add(new OrderMailTicket(
-                        TicketType.SeasonPass, pass.Uuid, item.SeasonId, item.EventName, item.CategoryName));
-                    continue;
-                }
-
-                var ticket = await tickets.SaveAsync(
-                    EventTicket.Create(item.EventId, item.Category, item.UnitPrice, saved.Id, buyer, "Online-Kauf"));
-                var token = tokens.Create(TicketType.EventTicket, ticket.Uuid, item.EventId);
-                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName, token));
-                mailTickets.Add(new OrderMailTicket(
-                    TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, item.CategoryName));
+                var gateway = await payrexx.CreateGatewayAsync(request);
+                saved.SetPayrexxGatewayId(gateway.GatewayId);
+                await orders.SaveAsync(saved);
+                return Redirect(gateway.Link);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Payrexx gateway creation failed for order {Order}.", saved.OrderNumber);
+                TempData["CheckoutError"] = "Die Zahlung konnte nicht gestartet werden. Bitte versuche es erneut.";
+                return Redirect(newsletterSource == "Express" ? "/kasse/express" : "/kasse/zahlung");
             }
         }
 
-        var addOnLines = current.Items
-            .Where(i => i.Kind == CartItemKind.SeasonPass && i.AddOns.Count > 0)
-            .SelectMany(i => i.AddOns.Select(a => new OrderAddOnLine(
-                i.SeasonId, i.EventName, i.Category, i.CategoryName, a.Label, a.Price, i.Quantity)))
-            .ToList();
-        if (addOnLines.Count > 0)
-        {
-            await orderAddOns.SaveAsync(saved.Id, addOnLines);
-            await addOnNotifier.NotifyAsync(saved.OrderNumber, billing.FullName, billing.Email, addOnLines);
-        }
-
-        await mailer.SendTicketsAsync(new OrderMailModel(
-            saved.OrderNumber, billing.Email, billing.FullName, saved.TotalGross,
-            publicUrl.Resolve(Request), mailTickets));
-
-        if (subscribeNewsletter)
-            await newsletter.SubscribeAsync(billing.Email, billing.FullName, newsletterSource);
-
+        var issued = await FulfillAsync(saved.Id);
         cart.Clear();
         HttpContext.Session.Remove(FormKey);
         SaveConfirmation(new CheckoutConfirmationView
@@ -224,6 +209,76 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             Tickets = issued
         });
         return Redirect("/kasse/bestaetigung");
+    }
+
+    private static string BuildSnapshotJson(Cart cart, bool subscribeNewsletter, string newsletterSource)
+    {
+        var items = cart.Items
+            .Select(i => new FulfillmentItem((int)i.Kind, i.EventId, i.SeasonId, (int)i.Category, i.UnitPrice, i.Quantity, i.EventName, i.CategoryName))
+            .ToList();
+        var addOns = cart.Items
+            .Where(i => i.Kind == CartItemKind.SeasonPass && i.AddOns.Count > 0)
+            .SelectMany(i => i.AddOns.Select(a => new FulfillmentAddOn(i.SeasonId, i.EventName, (int)i.Category, i.CategoryName, a.Label, a.Price, i.Quantity)))
+            .ToList();
+        return JsonSerializer.Serialize(new FulfillmentSnapshot(items, addOns, subscribeNewsletter, newsletterSource));
+    }
+
+    private async Task<List<ConfirmationTicket>> FulfillAsync(int orderId)
+    {
+        var order = await orders.GetByIdAsync(orderId);
+        if (order is null || order.Status != OrderStatus.Draft || string.IsNullOrEmpty(order.FulfillmentPayload))
+            return [];
+        if (!await orders.TryMarkPaidAsync(orderId)) return [];
+        await orderLog.AppendAsync(order.Id, OrderStatus.Paid, "Online-Kauf", "Online bezahlt");
+
+        var snapshot = JsonSerializer.Deserialize<FulfillmentSnapshot>(order.FulfillmentPayload);
+        if (snapshot is null) return [];
+        var billing = order.BillingAddress;
+        var buyer = billing.ToBuyer();
+
+        var issued = new List<ConfirmationTicket>();
+        var mailTickets = new List<OrderMailTicket>();
+        foreach (var item in snapshot.Items)
+        {
+            for (var i = 0; i < item.Quantity; i++)
+            {
+                if (item.Kind == (int)CartItemKind.SeasonPass)
+                {
+                    var pass = await passes.SaveAsync(
+                        SeasonPass.Create(item.SeasonId, (TicketCategory)item.Category, item.UnitPrice, order.Id, buyer, "Online-Kauf"));
+                    var passToken = tokens.Create(TicketType.SeasonPass, pass.Uuid, item.SeasonId);
+                    issued.Add(new ConfirmationTicket(pass.Uuid, item.EventName, item.CategoryName, passToken));
+                    mailTickets.Add(new OrderMailTicket(
+                        TicketType.SeasonPass, pass.Uuid, item.SeasonId, item.EventName, item.CategoryName));
+                    continue;
+                }
+
+                var ticket = await tickets.SaveAsync(
+                    EventTicket.Create(item.EventId, (TicketCategory)item.Category, item.UnitPrice, order.Id, buyer, "Online-Kauf"));
+                var token = tokens.Create(TicketType.EventTicket, ticket.Uuid, item.EventId);
+                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName, token));
+                mailTickets.Add(new OrderMailTicket(
+                    TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, item.CategoryName));
+            }
+        }
+
+        if (snapshot.AddOns.Count > 0)
+        {
+            var addOnLines = snapshot.AddOns
+                .Select(a => new OrderAddOnLine(a.SeasonId, a.EventName, (TicketCategory)a.Category, a.CategoryName, a.Label, a.Price, a.Quantity))
+                .ToList();
+            await orderAddOns.SaveAsync(order.Id, addOnLines);
+            await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email, addOnLines);
+        }
+
+        await mailer.SendTicketsAsync(new OrderMailModel(
+            order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
+            publicUrl.Resolve(Request), mailTickets));
+
+        if (snapshot.SubscribeNewsletter)
+            await newsletter.SubscribeAsync(billing.Email, billing.FullName, snapshot.NewsletterSource);
+
+        return issued;
     }
 
     [HttpGet("/kasse/bestaetigung")]
@@ -240,6 +295,23 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     {
         var found = await orders.GetByIdAsync(order);
         if (found is null) return Redirect("/");
+
+        if (found.Status == OrderStatus.Draft && payrexx.Enabled && !string.IsNullOrEmpty(found.PayrexxGatewayId))
+        {
+            var status = await payrexx.GetGatewayStatusAsync(found.PayrexxGatewayId);
+            if (status == PayrexxStatus.Confirmed)
+            {
+                await FulfillAsync(found.Id);
+                cart.Clear();
+                HttpContext.Session.Remove(FormKey);
+                found = await orders.GetByIdAsync(order) ?? found;
+            }
+            else if (status is PayrexxStatus.Cancelled or PayrexxStatus.Declined)
+            {
+                return Redirect("/kasse/abbruch");
+            }
+        }
+
         return View("~/Views/Checkout/Processing.cshtml", new CheckoutProcessingView
         {
             OrderId = found.Id,
@@ -247,6 +319,32 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             Email = found.BillingAddress.Email,
             AlreadyPaid = found.Status == OrderStatus.Paid
         });
+    }
+
+    [HttpPost("/payrexx/webhook")]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> Webhook()
+    {
+        if (!Request.HasFormContentType) return Ok();
+        var reference = Request.Form["transaction[referenceId]"].ToString();
+        if (string.IsNullOrWhiteSpace(reference)) reference = Request.Form["referenceId"].ToString();
+        if (string.IsNullOrWhiteSpace(reference)) return Ok();
+
+        var order = await orders.GetByNumberAsync(reference.Trim());
+        if (order is null || order.Status != OrderStatus.Draft || string.IsNullOrEmpty(order.PayrexxGatewayId))
+            return Ok();
+
+        try
+        {
+            var status = await payrexx.GetGatewayStatusAsync(order.PayrexxGatewayId);
+            if (status == PayrexxStatus.Confirmed)
+                await FulfillAsync(order.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Payrexx webhook processing failed for order {Order}.", order.OrderNumber);
+        }
+        return Ok();
     }
 
     [HttpGet("/kasse/status")]
