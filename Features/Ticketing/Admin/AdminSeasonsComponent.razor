@@ -153,12 +153,12 @@
                             <tr class="@(c.PassOffered || c.TicketOffered ? "" : "ta-row-off")">
                                 <td>@c.Category.DisplayName()</td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.PassOffered" /></td>
-                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPrice" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPrice" @bind:after="() => c.PassPrice = decimal.Round(c.PassPrice, 2)" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassOffered)" @bind="c.PassQuota" /></td>
                                 <td class="ta-num"><DateBox @bind-Value="c.PassAvailableUntil" Disabled="@(!c.PassOffered)" /></td>
                                 <td class="ta-num">@c.Sold@(c.PassQuota is { } q ? $" / {q}" : "")</td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.TicketOffered" /></td>
-                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.TicketOffered)" @bind="c.TicketPrice" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.TicketOffered)" @bind="c.TicketPrice" @bind:after="() => c.TicketPrice = decimal.Round(c.TicketPrice, 2)" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.TicketOffered)" @bind="c.TicketQuota" /></td>
                                 <td class="ta-num"><DateBox @bind-Value="c.TicketAvailableUntil" Disabled="@(!c.TicketOffered)" /></td>
                             </tr>
@@ -207,7 +207,7 @@
                         {
                             <tr class="@(r.Active ? "" : "ta-row-off")">
                                 <td><input type="text" maxlength="200" class="ta-input ta-addon-label" placeholder="z. B. Livestream-Abo" @bind="r.Label" /></td>
-                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" @bind="r.Price" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" @bind="r.Price" @bind:after="() => r.Price = decimal.Round(r.Price, 2)" /></td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="r.Active" /></td>
                                 <td class="ta-num"><button type="button" class="ta-icon-btn" title="Entfernen" @onclick="() => RemoveAddOnRow(r)">×</button></td>
                             </tr>

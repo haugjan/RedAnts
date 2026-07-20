@@ -190,7 +190,7 @@
                     <span style="text-align:center;">
                         <input type="checkbox" @bind="row.Enabled" />
                     </span>
-                    <input type="number" min="0" step="0.01" class="ta-input" @bind="row.Price" disabled="@(!row.Enabled)" />
+                    <input type="number" min="0" step="0.01" class="ta-input" @bind="row.Price" @bind:after="() => row.Price = decimal.Round(row.Price, 2)" disabled="@(!row.Enabled)" />
                     <input type="number" min="0" step="1" class="ta-input" placeholder="∞" @bind="row.Quota" disabled="@(!row.Enabled)" />
                     <DateBox @bind-Value="row.AvailableUntil" Disabled="@(!row.Enabled)" />
                 }

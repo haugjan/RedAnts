@@ -65,7 +65,7 @@
                                     <li class="pass-offer-cat">
                                         <div class="pass-offer-cat-top">
                                             <span class="pass-offer-cat-name">@cat.Name</span>
-                                            <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
+                                            <span class="pass-offer-price">CHF @MoneyFormat.Amount(cat.Price)</span>
                                         </div>
                                         <form method="post" action="/warenkorb/add-saisonkarte" class="pass-add-form">
                                             @Html.AntiForgeryToken()
@@ -81,7 +81,7 @@
                                                         <label class="pass-addon">
                                                             <input type="checkbox" name="addOns" value="@a.Id" />
                                                             <span class="pass-addon-label">@a.Label</span>
-                                                            <span class="pass-addon-price">+CHF @a.Price.ToString("0.##")</span>
+                                                            <span class="pass-addon-price">+CHF @MoneyFormat.Amount(a.Price)</span>
                                                         </label>
                                                     }
                                                 </div>

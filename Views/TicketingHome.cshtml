@@ -70,7 +70,7 @@
                                 {
                                     <li>
                                         <span class="pass-offer-cat-name">@cat.Name</span>
-                                        <span class="pass-offer-price">CHF @cat.Price.ToString("0.##")</span>
+                                        <span class="pass-offer-price">CHF @MoneyFormat.Amount(cat.Price)</span>
                                     </li>
                                 }
                             </ul>
@@ -117,7 +117,7 @@
                                     <span class="event-item-date">@evStart.ToString("dd.MM.yyyy")@(evt.Value<bool>("timeUnknown") ? "" : $" · {evStart:HH:mm} Uhr")</span>
                                     <span class="event-item-name">@evt.Name</span>
                                     <span class="event-item-venue">
-                                        @if (venue != null) { <text>@venue.Name · </text> }ab CHF @minPrice.ToString("0.##")
+                                        @if (venue != null) { <text>@venue.Name · </text> }ab CHF @MoneyFormat.Amount(minPrice)
                                     </span>
                                 </span>
                                 <span class="event-item-cta">Tickets →</span>
