@@ -44,6 +44,7 @@ public sealed class WebsiteContentTypeSeeder(
         {
             EnsureContentTypes();
             EnsureSampleContent();
+            EnsureLegalContent();
             EnsureHomeIsFirstRoot();
         }
         catch (Exception ex)
@@ -64,6 +65,7 @@ public sealed class WebsiteContentTypeSeeder(
         var mediaPicker = ByEditor("Umbraco.MediaPicker3");
         var urlPicker = ByEditor("Umbraco.MultiUrlPicker");
         var contentPicker = ByEditor("Umbraco.ContentPicker");
+        var richText = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.RichText") ?? textBox;
 
         var flexTpl = EnsureTemplate("FlexPage");
 
@@ -106,7 +108,59 @@ public sealed class WebsiteContentTypeSeeder(
 
             logger.LogInformation("WebsiteContentTypeSeeder: created flexPage document type.");
         }
+
+        var legalTpl = EnsureTemplate("LegalPage");
+        if (contentTypeService.Get(A.LegalPageType) is null)
+        {
+            var legal = new ContentType(shortStringHelper, Constants.System.Root)
+            {
+                Alias = A.LegalPageType, Name = "Rechtliche Seite", Icon = "icon-document", AllowedAsRoot = true
+            };
+            legal.AddPropertyType(Prop(textBox, A.LegalTitle, "Titel"), Group, GroupName);
+            legal.AddPropertyType(Prop(textBox, A.LegalSlug, "Pfad (Slug)", "Fester URL-Pfad, z. B. impressum oder datenschutz. Bitte nicht ändern."), Group, GroupName);
+            legal.AddPropertyType(Prop(mediaPicker, A.LegalImage, "Headerbild", "Optionales Bild im Seitenkopf"), Group, GroupName);
+            legal.AddPropertyType(Prop(richText, A.LegalBodyText, "Inhalt", "Überschriften und Texte der Seite"), Group, GroupName);
+            AssignTemplate(legal, legalTpl);
+            contentTypeService.Save(legal, SuperUser);
+            logger.LogInformation("WebsiteContentTypeSeeder: created legalPage document type.");
+        }
     }
+
+    private void EnsureLegalContent()
+    {
+        if (contentTypeService.Get(A.LegalPageType) is null) return;
+        EnsureLegalPage("impressum", "Impressum", ImpressumBody());
+        EnsureLegalPage("datenschutz", "Datenschutzerklärung", DatenschutzBody());
+    }
+
+    private void EnsureLegalPage(string slug, string title, string bodyHtml)
+    {
+        var exists = contentService.GetRootContent().Any(c =>
+            c.ContentType.Alias == A.LegalPageType
+            && string.Equals(c.GetValue<string>(A.LegalSlug), slug, StringComparison.OrdinalIgnoreCase));
+        if (exists) return;
+
+        var node = contentService.Create(title, Constants.System.Root, A.LegalPageType);
+        node.SetValue(A.LegalTitle, title);
+        node.SetValue(A.LegalSlug, slug);
+        node.SetValue(A.LegalBodyText, Rte(bodyHtml));
+        contentService.Save(node, SuperUser);
+        contentService.Publish(node, new[] { "*" }, SuperUser);
+        logger.LogInformation("WebsiteContentTypeSeeder: seeded legal page {Slug}.", slug);
+    }
+
+    private static string Rte(string html) =>
+        JsonSerializer.Serialize(new
+        {
+            markup = html,
+            blocks = new
+            {
+                layout = new Dictionary<string, object>(),
+                contentData = Array.Empty<object>(),
+                settingsData = Array.Empty<object>(),
+                expose = Array.Empty<object>()
+            }
+        });
 
     private IContentType EnsureElementType(string alias, string name, string icon, Action<ContentType> addProps)
     {
@@ -271,6 +325,53 @@ public sealed class WebsiteContentTypeSeeder(
         dataTypeService.Save(dt);
         return dt;
     }
+
+    private static string ImpressumBody() =>
+        """
+        <p>Angaben gemäss den Vorgaben des schweizerischen Rechts (insbesondere Art. 3 Abs. 1 lit. s UWG).</p>
+        <h2>Verein</h2>
+        <p>Sportverein Red Ants Rychenberg Winterthur<br>Verein im Sinne von Art. 60 ff. ZGB</p>
+        <h2>Adresse</h2>
+        <p>Geschäftsstelle<br>Ruhtalstrasse 20<br>8400 Winterthur<br>Schweiz</p>
+        <h2>Kontakt</h2>
+        <p>E-Mail: <a href="mailto:sekretariat@redants.ch">sekretariat@redants.ch</a><br>Ticketing: <a href="mailto:tickets@redants.ch">tickets@redants.ch</a></p>
+        <h2>Vertretungsberechtigte Person</h2>
+        <p>[Name der Präsidentin oder des Präsidenten einsetzen]</p>
+        <h2>Mehrwertsteuer</h2>
+        <p>Der Verein ist nicht mehrwertsteuerpflichtig. Auf Käufen wird keine Mehrwertsteuer erhoben oder ausgewiesen.</p>
+        <h2>Haftungsausschluss</h2>
+        <p>Die Inhalte dieser Website werden mit grösstmöglicher Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte wird jedoch keine Gewähr übernommen. Für Inhalte externer Links sind ausschliesslich deren Betreiber verantwortlich.</p>
+        <h2>Urheberrecht</h2>
+        <p>Die auf dieser Website veröffentlichten Inhalte unterliegen dem schweizerischen Urheberrecht. Jede Verwendung, die nicht ausdrücklich vom Urheberrecht zugelassen ist, bedarf der vorherigen schriftlichen Zustimmung des Vereins.</p>
+        """;
+
+    private static string DatenschutzBody() =>
+        """
+        <p>Der verantwortungsvolle Umgang mit Ihren Daten ist dem Sportverein Red Ants Rychenberg Winterthur ein grosses Anliegen. In dieser Datenschutzerklärung informieren wir Sie darüber, wie wir Personendaten erheben und bearbeiten, wenn Sie unsere Website besuchen, Tickets oder Saisonkarten erwerben oder unseren Newsletter abonnieren.</p>
+        <p>Unsere Datenbearbeitung richtet sich nach dem Schweizer Datenschutzgesetz (DSG).</p>
+        <h2>1. Verantwortliche Stelle</h2>
+        <p>Verantwortlich für die in dieser Datenschutzerklärung beschriebenen Datenbearbeitungen ist:</p>
+        <p>Sportverein Red Ants Rychenberg Winterthur<br>Geschäftsstelle<br>Ruhtalstrasse 20<br>8400 Winterthur<br>E-Mail: <a href="mailto:sekretariat@redants.ch">sekretariat@redants.ch</a></p>
+        <h2>2. Hosting und Bereitstellung der Website</h2>
+        <p>Unsere Website wird auf Servern von Microsoft Azure gehostet. Beim Zugriff auf unsere Website werden automatisch Daten erhoben und in sogenannten Server-Logfiles gespeichert, die Ihr Browser automatisch an uns übermittelt. Dazu gehören IP-Adresse des anfragenden Endgeräts, Datum und Uhrzeit des Zugriffs, Name und URL der abgerufenen Datei, die Referrer-URL sowie der verwendete Browser und das Betriebssystem. Diese Daten sind technisch erforderlich, um Ihnen unsere Website stabil und sicher anzuzeigen.</p>
+        <h2>3. Verwendung von Cookies</h2>
+        <p>Wir verwenden auf unserer Website ausschliesslich technisch notwendige Cookies. Diese dienen dazu, den Betrieb, die Navigation und die grundlegenden Funktionen der Website zu gewährleisten. Wir setzen keine Cookies zu Marketing- oder Analysezwecken ein.</p>
+        <h2>4. Ticket- und Saisonkartenkauf</h2>
+        <p>Wenn Sie über unsere Homepage Tickets oder Saisonkarten erwerben, erheben wir die für die Abwicklung des Kaufs und den Einlass erforderlichen Daten (insbesondere Name, Vorname, E-Mail-Adresse und Postadresse).</p>
+        <h3>4.1 Zahlungsabwicklung via Payrexx</h3>
+        <p>Für die Abwicklung von Zahlungen im Onlineshop arbeiten wir mit dem Zahlungsdienstleister Payrexx (Payrexx AG, Burgstrasse 20, 3600 Thun) zusammen. Ihre Zahlungsdaten werden direkt an Payrexx übermittelt und dort verarbeitet. Die Red Ants Rychenberg Winterthur haben keinen Zugriff auf Ihre vollständigen Kreditkarten- oder Bankdaten. Es gelten die Datenschutzbestimmungen von Payrexx.</p>
+        <h3>4.2 Aufbewahrung von Saisonkartendaten</h3>
+        <p>Die Daten von Käuferinnen und Käufern von Saisonkarten werden separat von der regulären Mitgliederverwaltung des Vereins gespeichert und ausschliesslich für die Verwaltung und Gültigkeitsprüfung der Saisonkarten verwendet.</p>
+        <h2>5. Newsletter (Fairgate)</h2>
+        <p>Sie haben die Möglichkeit, auf unserer Website unseren Newsletter zu abonnieren. Wenn Sie sich für den Newsletter anmelden, verwenden wir die von Ihnen eingegebenen Daten ausschliesslich für diesen Zweck.</p>
+        <p>Für die Verwaltung und den Versand des Newsletters nutzen wir die Vereinssoftware Fairgate (Fairgate AG, Brühlstrasse 41, 8400 Winterthur). Die Daten werden gemäss den Datenschutzstandards von Fairgate verarbeitet. Sie können sich jederzeit über den Abmeldelink im Newsletter oder durch eine Mitteilung an unsere Geschäftsstelle vom Newsletter abmelden.</p>
+        <h2>6. Bild- und Tonaufnahmen bei Spielen</h2>
+        <p>Wir weisen darauf hin, dass bei Heimspielen der Red Ants Rychenberg Winterthur Fotos und Videos für die Vereinsberichterstattung, die Website, Social-Media-Kanäle sowie für Printmedien gemacht werden. Mit dem Besuch der Spiele beziehungsweise dem Erwerb eines Tickets nehmen Sie zur Kenntnis, dass Sie auf diesen Aufnahmen sichtbar sein können. Sollten Sie im Einzelfall nicht mit einer Veröffentlichung einverstanden sein, wenden Sie sich bitte direkt an das Aufnahmepersonal vor Ort oder an unsere Geschäftsstelle.</p>
+        <h2>7. Ihre Rechte</h2>
+        <p>Sie haben im Rahmen des geltenden Datenschutzrechts das Recht auf Auskunft über Ihre von uns verarbeiteten Personendaten, das Recht auf Berichtigung unrichtiger Daten sowie das Recht auf Löschung Ihrer Daten, sofern keine gesetzlichen Aufbewahrungspflichten oder berechtigten Interessen unsererseits entgegenstehen. Bitte wenden Sie sich zur Ausübung Ihrer Rechte direkt an unsere Geschäftsstelle.</p>
+        <h2>8. Änderungen dieser Datenschutzerklärung</h2>
+        <p>Wir behalten uns vor, diese Datenschutzerklärung jederzeit anzupassen, damit sie den aktuellen rechtlichen Anforderungen entspricht oder um Änderungen unserer Dienstleistungen umzusetzen.</p>
+        """;
 
     private PropertyType Prop(IDataType dataType, string alias, string name, string? description = null) =>
         new(shortStringHelper, dataType, alias) { Name = name, Description = description ?? string.Empty };

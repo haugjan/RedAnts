@@ -105,6 +105,8 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/media")
         || path.StartsWithSegments("/favicons")
         || path.StartsWithSegments("/lib")
+        || path.StartsWithSegments("/impressum")
+        || path.StartsWithSegments("/datenschutz")
         || path == "/favicon.ico"
         || path == "/scanner-sw.js"
         || path == "/site.webmanifest";

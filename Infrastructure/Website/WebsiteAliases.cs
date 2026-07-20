@@ -20,4 +20,10 @@ internal static class WebsiteAliases
     public const string HeroTags = "schlagwoerter";
     public const string HeroCtaText = "ctaText";
     public const string HeroCtaLink = "ctaLink";
+
+    public const string LegalPageType = "legalPage";
+    public const string LegalTitle = "titel";
+    public const string LegalSlug = "slug";
+    public const string LegalImage = "bild";
+    public const string LegalBodyText = "bodyText";
 }

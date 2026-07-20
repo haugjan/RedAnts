@@ -1,0 +1,24 @@
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@using Umbraco.Cms.Core.Models.PublishedContent
+@{
+    Layout = "~/Views/Shared/_SiteLayout.cshtml";
+
+    var title = Model.Value<string>("titel");
+    if (string.IsNullOrWhiteSpace(title)) { title = Model.Name; }
+    var headerImage = Model.Value<IPublishedContent>("bild")?.Url();
+    var bodyHtml = Model.Value<string>("bodyText");
+
+    ViewBag.PageTitle = title + " – Red Ants Winterthur";
+    ViewBag.TransparentNav = false;
+}
+
+<main class="legal-page" style="padding-top:66px;">
+  <div class="legal-inner">
+    @if (!string.IsNullOrEmpty(headerImage))
+    {
+        <img src="@headerImage" alt="@title" style="width:100%;height:auto;border-radius:10px;margin-bottom:24px;" />
+    }
+    <h1>@title</h1>
+    @Html.Raw(bodyHtml)
+  </div>
+</main>
