@@ -70,6 +70,14 @@ jobs:
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
             --src-path app.zip --type zip --track-status false --timeout 600000
+      - name: Configure Payrexx (dev)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+          PAYREXX_API_SECRET: ${{ secrets.PAYREXX_API_SECRET }}
+        run: |
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
+            --output none
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
