@@ -38,6 +38,7 @@
                         <th>Verkaufs&shy;status</th>
                         <th class="ta-num">Anlässe</th>
                         <th class="ta-num">Standard-Einlass&shy;kontingent</th>
+                        <th class="ta-num">Standard-Verkaufs&shy;kontingent</th>
                         <th class="ta-num">Verk. Saison&shy;karten</th>
                         <th class="ta-num">Verk. Tickets</th>
                         <th class="ta-num">Einlässe</th>
@@ -76,6 +77,11 @@
                                 <InlineNumberEdit Value="@((decimal?)Quota(s.Id))" FieldLabel="Standard-Einlasskontingent"
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveQuotaAsync(s, v))" />
+                            </td>
+                            <td class="ta-num">
+                                <InlineNumberEdit Value="@((decimal?)SalesQuota(s.Id))" FieldLabel="Standard-Verkaufskontingent"
+                                                  Min="0" AllowEmpty="true" EmptyLabel="∞"
+                                                  Save="@(v => SaveSalesQuotaAsync(s, v))" />
                             </td>
                             <td class="ta-num">@stats.PassesSold</td>
                             <td class="ta-num">@stats.TicketsSold</td>
@@ -314,6 +320,7 @@
 
     private SeasonPrice? Price(int seasonId) => _prices.GetValueOrDefault(seasonId);
     private int? Quota(int seasonId) => Price(seasonId)?.TotalSalesQuota;
+    private int? SalesQuota(int seasonId) => Price(seasonId)?.DefaultTicketSalesQuota;
     private int EventCount(int seasonId) => _eventCounts.GetValueOrDefault(seasonId);
     private SeasonStats Stats(int seasonId) => _stats.GetValueOrDefault(seasonId) ?? new SeasonStats(0, 0, 0);
     private SeasonLinks Links(int seasonId) => _links.GetValueOrDefault(seasonId) ?? new SeasonLinks(null, null);
@@ -352,7 +359,19 @@
         var existing = Price(s.Id);
         var price = existing is null
             ? SeasonPrice.Create(s.Id, quota, [])
-            : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, quota, existing.Categories);
+            : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, quota, existing.Categories, existing.DefaultTicketSalesQuota);
+        await SeasonPrices.SaveAsync(price);
+        await ReloadAsync();
+    }
+
+    private async Task SaveSalesQuotaAsync(Season s, decimal? value)
+    {
+        if (value is < 0) throw new DomainException("Das Verkaufskontingent darf nicht negativ sein.");
+        var quota = value is { } v ? (int?)Math.Round(v) : null;
+        var existing = Price(s.Id);
+        var price = existing is null
+            ? SeasonPrice.Create(s.Id, null, [], quota)
+            : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, existing.TotalSalesQuota, existing.Categories, quota);
         await SeasonPrices.SaveAsync(price);
         await ReloadAsync();
     }
@@ -424,7 +443,7 @@
             var existing = Price(_editing.Id);
             var price = existing is null
                 ? SeasonPrice.Create(_editing.Id, null, cats)
-                : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, existing.TotalSalesQuota, cats);
+                : SeasonPrice.FromPersistence(existing.Id, existing.SeasonId, existing.TotalSalesQuota, cats, existing.DefaultTicketSalesQuota);
             await SeasonPrices.SaveAsync(price);
             _editing = null;
             await ReloadAsync();

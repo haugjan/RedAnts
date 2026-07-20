@@ -76,7 +76,7 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
     public async Task<SeasonPrice> SaveAsync(SeasonPrice price)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var parent = new SeasonPriceRecord { Id = price.Id, SeasonId = price.SeasonId, TotalSalesQuota = price.TotalSalesQuota };
+        var parent = new SeasonPriceRecord { Id = price.Id, SeasonId = price.SeasonId, TotalSalesQuota = price.TotalSalesQuota, DefaultTicketSalesQuota = price.DefaultTicketSalesQuota };
         if (parent.Id == 0) await scope.Database.InsertAsync(parent);
         else await scope.Database.UpdateAsync(parent);
 
@@ -113,7 +113,8 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
             cats.Select(c => SeasonCategoryPrice.FromPersistence(
                 (TicketCategory)c.Category, c.SalePrice, c.Offered ?? true, c.Quota,
                 c.TicketPrice ?? 0m, c.TicketOffered ?? c.Offered ?? true, c.TicketQuota,
-                ToDateOnly(c.PassAvailableUntil), ToDateOnly(c.TicketAvailableUntil))).ToList());
+                ToDateOnly(c.PassAvailableUntil), ToDateOnly(c.TicketAvailableUntil))).ToList(),
+            p.DefaultTicketSalesQuota);
 
     private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
 }

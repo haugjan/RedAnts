@@ -30,9 +30,9 @@ public sealed class EventPriceDefaults(
                 .Where(c => c.TicketOffered)
                 .Select(c => CategoryPrice.Create(c.Category, c.TicketPrice, c.TicketQuota, c.TicketAvailableUntil))
                 .ToList();
-            if (categories.Count == 0 && seasonDefaults.TotalSalesQuota is null) continue;
+            if (categories.Count == 0 && seasonDefaults.TotalSalesQuota is null && seasonDefaults.DefaultTicketSalesQuota is null) continue;
 
-            await eventPrices.SaveAsync(EventPrice.Create(entity.Id, null, seasonDefaults.TotalSalesQuota, categories));
+            await eventPrices.SaveAsync(EventPrice.Create(entity.Id, seasonDefaults.DefaultTicketSalesQuota, seasonDefaults.TotalSalesQuota, categories));
         }
     }
 }

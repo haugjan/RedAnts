@@ -49,6 +49,7 @@
                         <th rowspan="2">Zeit</th>
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("status")'>Verkaufsstatus <span class="ta-sort-ind">@Ind("status")</span></th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
+                        <th rowspan="2" class="ta-num">Verkaufs&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
                         <th rowspan="2" class="ta-num">Verkaufte<br />@TicketType.EventTicket.DisplayName()</th>
                         <th colspan="5" class="ta-group">Eingelöste Zutritte</th>
@@ -98,6 +99,11 @@
                                 <InlineNumberEdit Value="@ToDecimal(Quota(e.Id))" FieldLabel="Einlasskontingent"
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveQuotaAsync(e, v))" />
+                            </td>
+                            <td class="ta-num">
+                                <InlineNumberEdit Value="@ToDecimal(SalesQuota(e.Id))" FieldLabel="Verkaufskontingent"
+                                                  Min="0" AllowEmpty="true" EmptyLabel="∞"
+                                                  Save="@(v => SaveSalesQuotaAsync(e, v))" />
                             </td>
                             <td class="ta-num">@c.TotalRedeemed</td>
                             <td class="ta-num">@c.SoldSingleTickets</td>
@@ -220,6 +226,7 @@
     [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
     [Inject] private IEventStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private IEventAdmissionQuota QuotaEditor { get; set; } = default!;
+    [Inject] private IEventSalesQuota SalesQuotaEditor { get; set; } = default!;
     [Inject] private IEventContentEditor ContentEditor { get; set; } = default!;
     [Inject] private ISuFreeEntryQuota SuQuota { get; set; } = default!;
     [Inject] private IEventPrices Prices { get; set; } = default!;
@@ -234,6 +241,7 @@
     private IReadOnlyList<Event> _events = [];
     private IReadOnlyDictionary<int, EventAdmissionCounts> _counts = new Dictionary<int, EventAdmissionCounts>();
     private IReadOnlyDictionary<int, int?> _quotas = new Dictionary<int, int?>();
+    private IReadOnlyDictionary<int, int?> _salesQuotas = new Dictionary<int, int?>();
     private IReadOnlyDictionary<int, EventLinks> _links = new Dictionary<int, EventLinks>();
 
     public int SelectedSeasonId { get; set; }
@@ -254,6 +262,7 @@
 
     private EventAdmissionCounts Counts(int eventId) => _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
     private int? Quota(int eventId) => _quotas.TryGetValue(eventId, out var q) ? q : null;
+    private int? SalesQuota(int eventId) => _salesQuotas.TryGetValue(eventId, out var q) ? q : null;
     private EventLinks Links(int eventId) => _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
 
     private string? _createEventUrl;
@@ -265,6 +274,7 @@
         {
             _events = await Events.GetBySeasonAsync(SelectedSeasonId);
             _quotas = await QuotaEditor.GetAllAsync();
+            _salesQuotas = await SalesQuotaEditor.GetAllAsync();
             _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);
             _createEventUrl = await CreateLinks.CreateEventUrlAsync(SelectedSeasonId);
         }
@@ -272,6 +282,7 @@
         {
             _events = [];
             _quotas = new Dictionary<int, int?>();
+            _salesQuotas = new Dictionary<int, int?>();
             _links = new Dictionary<int, EventLinks>();
             _createEventUrl = null;
         }
@@ -360,6 +371,12 @@
     private async Task SaveQuotaAsync(Event e, decimal? quota)
     {
         await QuotaEditor.SetAsync(e.Id, quota is null ? null : (int)quota.Value);
+        await ReloadEventsAsync();
+    }
+
+    private async Task SaveSalesQuotaAsync(Event e, decimal? quota)
+    {
+        await SalesQuotaEditor.SetAsync(e.Id, quota is null ? null : (int)quota.Value);
         await ReloadEventsAsync();
     }
 

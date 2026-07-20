@@ -28,6 +28,23 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSalesFilterIndexes>("sales-filter-indexes");
         To<AddOrderPaymentColumns>("order-payment-columns");
         To<AddSeasonAddOnScope>("seasonaddons-scope");
+        To<AddSeasonPriceDefaultTicketSalesQuota>("seasonprices-default-ticket-sales-quota");
+    }
+}
+
+public class AddSeasonPriceDefaultTicketSalesQuota(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonPrices", "DefaultTicketSalesQuota"))
+        {
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonPrices ADD COLUMN DefaultTicketSalesQuota INTEGER NULL").Do();
+            else
+                Alter.Table("SeasonPrices").AddColumn("DefaultTicketSalesQuota").AsInt32().Nullable().Do();
+        }
+        return Task.CompletedTask;
     }
 }
 

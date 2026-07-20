@@ -35,6 +35,7 @@ public class SeasonPriceRecord
     [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
     [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public int SeasonId { get; set; }
     [Column("TotalSalesQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? TotalSalesQuota { get; set; }
+    [Column("DefaultTicketSalesQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? DefaultTicketSalesQuota { get; set; }
 }
 
 [TableName("SeasonAddOns")]

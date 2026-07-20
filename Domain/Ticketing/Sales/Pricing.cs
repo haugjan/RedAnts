@@ -105,23 +105,26 @@ public sealed class SeasonPrice
     public int Id { get; private set; }
     public int SeasonId { get; private set; }
     public int? TotalSalesQuota { get; private set; }
+    public int? DefaultTicketSalesQuota { get; private set; }
     public IReadOnlyList<SeasonCategoryPrice> Categories { get; private set; }
 
-    private SeasonPrice(int id, int seasonId, int? totalSalesQuota, IReadOnlyList<SeasonCategoryPrice> categories)
+    private SeasonPrice(int id, int seasonId, int? totalSalesQuota, int? defaultTicketSalesQuota, IReadOnlyList<SeasonCategoryPrice> categories)
     {
         Id = id;
         SeasonId = seasonId;
         TotalSalesQuota = totalSalesQuota;
+        DefaultTicketSalesQuota = defaultTicketSalesQuota;
         Categories = categories;
     }
 
-    public static SeasonPrice Create(int seasonId, int? totalSalesQuota, IReadOnlyList<SeasonCategoryPrice> categories)
+    public static SeasonPrice Create(int seasonId, int? totalSalesQuota, IReadOnlyList<SeasonCategoryPrice> categories, int? defaultTicketSalesQuota = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (totalSalesQuota is < 0) throw new DomainException("Einlasskontingent darf nicht negativ sein.");
-        return new SeasonPrice(0, seasonId, totalSalesQuota, categories ?? []);
+        if (defaultTicketSalesQuota is < 0) throw new DomainException("Verkaufskontingent darf nicht negativ sein.");
+        return new SeasonPrice(0, seasonId, totalSalesQuota, defaultTicketSalesQuota, categories ?? []);
     }
 
-    public static SeasonPrice FromPersistence(int id, int seasonId, int? totalSalesQuota, IReadOnlyList<SeasonCategoryPrice> categories) =>
-        new(id, seasonId, totalSalesQuota, categories ?? []);
+    public static SeasonPrice FromPersistence(int id, int seasonId, int? totalSalesQuota, IReadOnlyList<SeasonCategoryPrice> categories, int? defaultTicketSalesQuota = null) =>
+        new(id, seasonId, totalSalesQuota, defaultTicketSalesQuota, categories ?? []);
 }
