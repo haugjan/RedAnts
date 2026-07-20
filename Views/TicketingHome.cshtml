@@ -25,11 +25,11 @@
         .OrderBy(c => c.Value<DateTime>("start"))
         .ToList();
 
-    var buyableEvents = new List<(IPublishedContent Node, decimal MinPrice)>();
+    var buyableEvents = new List<IPublishedContent>();
     foreach (var candidate in openEvents)
     {
         var cats = (await Pricing.GetAvailableAsync(candidate.Id)).Where(c => c.Available).ToList();
-        if (cats.Count > 0) buyableEvents.Add((candidate, cats.Min(c => c.Price)));
+        if (cats.Count > 0) buyableEvents.Add(candidate);
     }
 
     var passOffers = new List<(IPublishedContent Season, List<AvailableTicketCategory> Categories)>();
@@ -92,7 +92,7 @@
             else
             {
                 <ul class="event-list-items">
-                    @foreach (var (evt, minPrice) in buyableEvents)
+                    @foreach (var evt in buyableEvents)
                     {
                         var evStart = evt.Value<DateTime>("start");
                         var venue = evt.Value<IPublishedContent>("venue");
@@ -117,7 +117,7 @@
                                     <span class="event-item-date">@evStart.ToString("dd.MM.yyyy")@(evt.Value<bool>("timeUnknown") ? "" : $" · {evStart:HH:mm} Uhr")</span>
                                     <span class="event-item-name">@evt.Name</span>
                                     <span class="event-item-venue">
-                                        @if (venue != null) { <text>@venue.Name · </text> }ab CHF @MoneyFormat.Amount(minPrice)
+                                        @if (venue != null) { <text>@venue.Name</text> }
                                     </span>
                                 </span>
                                 <span class="event-item-cta">Tickets →</span>
