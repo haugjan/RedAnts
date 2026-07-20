@@ -66,6 +66,7 @@ public sealed class WebsiteContentTypeSeeder(
         var urlPicker = ByEditor("Umbraco.MultiUrlPicker");
         var contentPicker = ByEditor("Umbraco.ContentPicker");
         var richText = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.RichText") ?? textBox;
+        EnsureRichTextToolbar(richText);
 
         var flexTpl = EnsureTemplate("FlexPage");
 
@@ -338,6 +339,38 @@ public sealed class WebsiteContentTypeSeeder(
         };
 
         return JsonSerializer.Serialize(value);
+    }
+
+    private void EnsureRichTextToolbar(IDataType richText)
+    {
+        if (richText.EditorAlias != "Umbraco.RichText") return;
+
+        var existing = richText.ConfigurationData ?? new Dictionary<string, object>();
+        if (serializer.Serialize(existing).Contains("Umb.Tiptap.Toolbar.Heading2", StringComparison.Ordinal))
+            return;
+
+        var config = new Dictionary<string, object>(existing)
+        {
+            ["toolbar"] = new object[]
+            {
+                new object[]
+                {
+                    new[] { "Umb.Tiptap.Toolbar.SourceEditor" },
+                    new[] { "Umb.Tiptap.Toolbar.Heading2", "Umb.Tiptap.Toolbar.Heading3" },
+                    new[] { "Umb.Tiptap.Toolbar.Bold", "Umb.Tiptap.Toolbar.Italic", "Umb.Tiptap.Toolbar.Underline", "Umb.Tiptap.Toolbar.Strike" },
+                    new[] { "Umb.Tiptap.Toolbar.TextAlignLeft", "Umb.Tiptap.Toolbar.TextAlignCenter", "Umb.Tiptap.Toolbar.TextAlignRight" },
+                    new[] { "Umb.Tiptap.Toolbar.BulletList", "Umb.Tiptap.Toolbar.OrderedList" },
+                    new[] { "Umb.Tiptap.Toolbar.Blockquote", "Umb.Tiptap.Toolbar.HorizontalRule" },
+                    new[] { "Umb.Tiptap.Toolbar.Link", "Umb.Tiptap.Toolbar.Unlink" },
+                    new[] { "Umb.Tiptap.Toolbar.MediaPicker", "Umb.Tiptap.Toolbar.EmbeddedMedia" },
+                    new[] { "Umb.Tiptap.Toolbar.ClearFormatting" }
+                }
+            }
+        };
+
+        richText.ConfigurationData = config;
+        dataTypeService.Save(richText);
+        logger.LogInformation("WebsiteContentTypeSeeder: enriched Rich Text toolbar with headings and clear formatting.");
     }
 
     private IDataType EnsureBlockList(Guid heroTypeKey, Guid headerTypeKey, Guid eventListTypeKey)
