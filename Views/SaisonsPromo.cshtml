@@ -86,10 +86,7 @@
                                                     }
                                                 </div>
                                             }
-                                            <div class="pass-add-row">
-                                                <button type="submit" class="pass-add-btn">In den Warenkorb</button>
-                                                <span class="pass-add-status" role="status" aria-live="polite"></span>
-                                            </div>
+                                            <button type="submit" class="pass-add-btn">In den Warenkorb</button>
                                         </form>
                                     </li>
                                 }
@@ -133,13 +130,11 @@
     .pass-addon { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
     .pass-addon-label { flex: 1 1 auto; }
     .pass-addon-price { font-weight: 600; color: #444; white-space: nowrap; }
-    .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: .82rem; background: #C8102E; color: #fff; border: none; padding: .4rem .9rem; cursor: pointer; border-radius: 4px; }
+    .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: .82rem; background: #C8102E; color: #fff; border: none; padding: .4rem .9rem; cursor: pointer; border-radius: 4px; text-align: center; white-space: nowrap; }
     .pass-add-btn:hover { background: #a50d25; }
     .pass-add-btn:disabled { opacity: .75; cursor: default; }
     .pass-add-btn.is-added { background: #1c7c43; }
-    .pass-add-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
-    .pass-add-status { font-size: .82rem; font-weight: 600; color: #1c7c43; }
-    .pass-add-status.is-error { color: #C8102E; }
+    .pass-add-btn.is-error { background: #6c757d; }
     @@keyframes passBadgeBump { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
     .nav-cart-badge.badge-bump { animation: passBadgeBump .35s ease; }
 </style>
@@ -168,15 +163,14 @@
 
     document.querySelectorAll('.pass-add-form').forEach(function (form) {
         var btn = form.querySelector('.pass-add-btn');
-        var status = form.querySelector('.pass-add-status');
         var label = btn ? btn.textContent : '';
         var revert;
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             clearTimeout(revert);
+            if (!btn.style.minWidth) btn.style.minWidth = btn.offsetWidth + 'px';
             btn.disabled = true;
-            if (status) { status.textContent = ''; status.classList.remove('is-error'); }
 
             fetch('/warenkorb/add-saisonkarte', {
                 method: 'POST',
@@ -188,21 +182,22 @@
                 if (data.ok) {
                     btn.textContent = '✓ Hinzugefügt';
                     btn.classList.add('is-added');
-                    if (status) status.textContent = 'Zum Warenkorb hinzugefügt';
                     bumpBadge(data.totalQuantity);
                 } else {
-                    if (status) { status.textContent = 'Nicht mehr verfügbar'; status.classList.add('is-error'); }
+                    btn.textContent = 'Nicht verfügbar';
+                    btn.classList.add('is-error');
                 }
             })
             .catch(function () {
-                if (status) { status.textContent = 'Fehler, bitte erneut versuchen'; status.classList.add('is-error'); }
+                btn.textContent = 'Nicht möglich';
+                btn.classList.add('is-error');
             })
             .finally(function () {
                 revert = setTimeout(function () {
                     btn.disabled = false;
                     btn.textContent = label;
                     btn.classList.remove('is-added');
-                    if (status) { status.textContent = ''; status.classList.remove('is-error'); }
+                    btn.classList.remove('is-error');
                 }, 1600);
             });
         });

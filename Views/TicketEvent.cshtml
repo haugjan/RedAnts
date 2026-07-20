@@ -83,6 +83,7 @@
             font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
             font-weight: 600; font-size: 1rem; background: var(--red); color: #fff; border: none;
             padding: 0.5rem 1.15rem; cursor: pointer; transition: background 0.15s;
+            text-align: center; white-space: nowrap;
         }
         .evt-addbtn:hover { background: var(--red-dark); }
         .evt-addbtn--express { background: #fff; color: var(--red); border: 2px solid var(--red); padding: calc(0.5rem - 2px) 1.15rem; }
@@ -94,10 +95,7 @@
         }
         .evt-addbtn:disabled { opacity: 0.75; cursor: default; }
         .evt-addbtn.is-added { background: #1c7c43; }
-        .evt-add-status {
-            font-size: 0.85rem; font-weight: 600; color: #1c7c43; white-space: nowrap;
-        }
-        .evt-add-status.is-error { color: var(--red); }
+        .evt-addbtn.is-error { background: #6c757d; }
         @@keyframes evtBadgeBump { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
         .nav-cart-badge.badge-bump { animation: evtBadgeBump 0.35s ease; }
     </style>
@@ -190,7 +188,6 @@ else
                                     <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
                                     <button type="submit" class="evt-addbtn">In den Warenkorb</button>
                                     <button type="submit" class="evt-addbtn evt-addbtn--express" formaction="/warenkorb/direkt">Direkt kaufen</button>
-                                    <span class="evt-add-status" role="status" aria-live="polite"></span>
                                 </form>
                             }
                             else
@@ -249,7 +246,6 @@ else
 
     document.querySelectorAll('.evt-add-form').forEach(function (form) {
         var btn = form.querySelector('.evt-addbtn');
-        var status = form.querySelector('.evt-add-status');
         var label = btn ? btn.textContent : '';
         var revert;
 
@@ -257,8 +253,8 @@ else
             if (e.submitter && e.submitter.hasAttribute('formaction')) return;
             e.preventDefault();
             clearTimeout(revert);
+            if (!btn.style.minWidth) btn.style.minWidth = btn.offsetWidth + 'px';
             btn.disabled = true;
-            if (status) { status.textContent = ''; status.classList.remove('is-error'); }
 
             fetch('/warenkorb/add', {
                 method: 'POST',
@@ -270,23 +266,24 @@ else
                 if (data.ok) {
                     btn.textContent = '✓ Hinzugefügt';
                     btn.classList.add('is-added');
-                    if (status) status.textContent = 'Zum Warenkorb hinzugefügt';
                     bumpBadge(data.totalQuantity);
                     var cont = document.getElementById('evt-continue');
                     if (cont) cont.classList.add('is-visible');
                 } else {
-                    if (status) { status.textContent = 'Nicht mehr verfügbar'; status.classList.add('is-error'); }
+                    btn.textContent = 'Nicht verfügbar';
+                    btn.classList.add('is-error');
                 }
             })
             .catch(function () {
-                if (status) { status.textContent = 'Fehler, bitte erneut versuchen'; status.classList.add('is-error'); }
+                btn.textContent = 'Nicht möglich';
+                btn.classList.add('is-error');
             })
             .finally(function () {
                 revert = setTimeout(function () {
                     btn.disabled = false;
                     btn.textContent = label;
                     btn.classList.remove('is-added');
-                    if (status) { status.textContent = ''; status.classList.remove('is-error'); }
+                    btn.classList.remove('is-error');
                 }, 1600);
             });
         });
