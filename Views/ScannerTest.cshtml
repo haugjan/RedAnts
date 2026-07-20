@@ -1,0 +1,26 @@
+@model RedAnts.Features.Ticketing.Tickets.ScannerTestViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scanner-Test – Red Ants Winterthur</title>
+    <style>
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f4f4f4; color: #1a1a1a; text-align: center; padding: 2.4rem 1.2rem; }
+        h1 { font-size: 1.6rem; margin: 0 0 .5rem; }
+        .accent { height: 5px; width: 64px; background: #C8102E; margin: 0 auto 1.4rem; }
+        .qr { display: inline-block; background: #fff; padding: 18px; border-radius: 14px; box-shadow: 0 2px 14px rgba(0,0,0,.08); }
+        .qr svg { width: min(72vw, 320px); height: auto; display: block; }
+        p { max-width: 440px; margin: 1.3rem auto 0; color: #555; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <h1>Scanner-Test</h1>
+    <div class="accent"></div>
+    <div class="qr">@Html.Raw(Model.QrSvg)</div>
+    <p>Scanne diesen Code mit dem Ticket-Scanner. Funktioniert der Scanner, erscheint die grüne Bestätigung „Test erfolgreich". Es wird kein echtes Ticket eingecheckt.</p>
+</body>
+</html>

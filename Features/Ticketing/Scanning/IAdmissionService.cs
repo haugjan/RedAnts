@@ -2,7 +2,7 @@ using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Features.Ticketing.Scanning;
 
-public enum AdmissionOutcome { CheckedIn, CheckedOut, Rejected }
+public enum AdmissionOutcome { CheckedIn, CheckedOut, Rejected, Test }
 
 public enum ScanMode { CheckIn, CheckOut }
 

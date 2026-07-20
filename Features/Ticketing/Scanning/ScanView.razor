@@ -208,6 +208,7 @@
     .scan-result--in { background: #1a7f37; }
     .scan-result--out { background: #1f5fbf; }
     .scan-result--fail { background: #b42318; }
+    .scan-result--test { background: #0d9488; }
     .scan-result__icon { font-size: 5rem; line-height: 1; }
     .scan-result__title { font-size: 1.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.4rem; }
     .scan-result__category {
@@ -368,6 +369,7 @@
     {
         AdmissionOutcome.CheckedIn => "in",
         AdmissionOutcome.CheckedOut => "out",
+        AdmissionOutcome.Test => "test",
         _ => "fail"
     };
 
@@ -375,6 +377,7 @@
     {
         AdmissionOutcome.CheckedIn => "✓",
         AdmissionOutcome.CheckedOut => "↩",
+        AdmissionOutcome.Test => "🧪",
         _ => "✕"
     };
 
@@ -382,6 +385,7 @@
     {
         AdmissionOutcome.CheckedIn => "Eingecheckt",
         AdmissionOutcome.CheckedOut => "Ausgecheckt",
+        AdmissionOutcome.Test => "Test erfolgreich",
         _ => "Abgelehnt"
     };
 

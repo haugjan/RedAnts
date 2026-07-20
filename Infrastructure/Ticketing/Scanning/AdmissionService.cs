@@ -32,6 +32,10 @@ public sealed class AdmissionService(
         async Task<ScanOutcome> Reject(string reason) =>
             new(AdmissionOutcome.Rejected, type, Ref(uuid), reason, await OccAsync(db, eventId));
 
+        if (uuid == Guid.Empty)
+            return new ScanOutcome(AdmissionOutcome.Test, type, "TEST", null,
+                await OccAsync(db, eventId), CategoryLabel: "Scanner-Test");
+
         var issued = await tickets.FindAsync(uuid);
         if (issued is null) return await Reject("Unbekanntes Ticket.");
         if (issued.Type != type || issued.ScopeId != scopeId)

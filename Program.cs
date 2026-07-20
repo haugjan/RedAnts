@@ -108,6 +108,7 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/impressum")
         || path.StartsWithSegments("/datenschutz")
         || path.StartsWithSegments("/agb")
+        || path.StartsWithSegments("/scanner-test")
         || path.StartsWithSegments("/payrexx/webhook")
         || path == "/favicon.ico"
         || path == "/scanner-sw.js"
