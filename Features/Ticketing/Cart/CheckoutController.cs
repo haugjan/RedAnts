@@ -18,11 +18,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
     private const decimal VatRate = 0m;
 
-    private static readonly PaymentOption[] Methods =
-    [
-        new(PaymentMethod.Payrexx, "Kredit-/Debitkarte", "Online-Zahlung (Payrexx)"),
-        new(PaymentMethod.Twint, "TWINT", "Mit der TWINT-App bezahlen")
-    ];
+    private const string PaymentLabelText = "Online-Zahlung (Payrexx)";
 
     [HttpGet("/kasse")]
     public IActionResult Address()
@@ -62,7 +58,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return View("~/Views/Checkout/Payment.cshtml",
             new CheckoutPaymentView
             {
-                Cart = cart.Get(), Form = form, Methods = Methods,
+                Cart = cart.Get(), Form = form, PayrexxEnabled = payrexx.Enabled,
                 TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
                 Error = TempData["CheckoutError"] as string
             });
@@ -70,11 +66,10 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
     [HttpPost("/kasse/zahlung")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Pay(PaymentMethod paymentMethod, bool acceptPrivacy)
+    public async Task<IActionResult> Pay(bool acceptPrivacy)
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/warenkorb");
-        if (Methods.All(m => m.Method != paymentMethod)) return Redirect("/kasse/zahlung");
         var form = LoadForm();
         if (form is null) return Redirect("/kasse");
 
@@ -95,7 +90,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         try { billing = ToBillingAddress(form); }
         catch (DomainException) { return Redirect("/kasse"); }
 
-        return await FinalizeOrderAsync(current, billing, paymentMethod, form.AcceptNewsletter, "Kasse");
+        return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, form.AcceptNewsletter, "Kasse");
     }
 
     [HttpGet("/kasse/express")]
@@ -105,7 +100,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (!ExpressCheckout.IsAllowed(cart.Get())) return Redirect("/kasse");
         return View("~/Views/Checkout/Express.cshtml", new CheckoutExpressView
         {
-            Cart = cart.Get(), Methods = Methods,
+            Cart = cart.Get(), PayrexxEnabled = payrexx.Enabled,
             TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
             Error = TempData["CheckoutError"] as string
         });
@@ -113,16 +108,15 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
     [HttpPost("/kasse/express")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ExpressPay(string email, string? name, PaymentMethod paymentMethod, bool acceptNewsletter, bool acceptPrivacy)
+    public async Task<IActionResult> ExpressPay(string email, string? name, bool acceptNewsletter, bool acceptPrivacy)
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/ticketing/");
         if (!ExpressCheckout.IsAllowed(current)) return Redirect("/kasse");
-        if (Methods.All(m => m.Method != paymentMethod)) return Redirect("/kasse/express");
 
         CheckoutExpressView Invalid(string error) => new()
         {
-            Cart = current, Methods = Methods,
+            Cart = current, PayrexxEnabled = payrexx.Enabled,
             TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
             Error = error, Email = email ?? "", Name = name ?? ""
         };
@@ -145,7 +139,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var billing = BillingAddress.FromPersistence((int)BuyerType.Private, firstName, lastName, null,
             "", null, "", "", "Schweiz", email, null);
 
-        return await FinalizeOrderAsync(current, billing, paymentMethod, acceptNewsletter, "Express");
+        return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, acceptNewsletter, "Express");
     }
 
     private async Task<IActionResult> FinalizeOrderAsync(Cart current, BillingAddress billing, PaymentMethod paymentMethod, bool subscribeNewsletter, string newsletterSource)
@@ -205,7 +199,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             OrderNumber = saved.OrderNumber,
             Email = billing.Email,
             Total = saved.TotalGross,
-            PaymentLabel = Methods.FirstOrDefault(m => m.Method == paymentMethod)?.Label ?? paymentMethod.ToString(),
+            PaymentLabel = PaymentLabelText,
             Tickets = issued
         });
         return Redirect("/kasse/bestaetigung");

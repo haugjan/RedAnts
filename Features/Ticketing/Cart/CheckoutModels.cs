@@ -25,13 +25,11 @@ public sealed class CheckoutAddressView
     public string? Error { get; init; }
 }
 
-public sealed record PaymentOption(PaymentMethod Method, string Label, string Hint);
-
 public sealed class CheckoutPaymentView
 {
     public Cart Cart { get; init; } = new();
     public CheckoutForm Form { get; init; } = new();
-    public IReadOnlyList<PaymentOption> Methods { get; init; } = [];
+    public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
 }
@@ -39,7 +37,7 @@ public sealed class CheckoutPaymentView
 public sealed class CheckoutExpressView
 {
     public Cart Cart { get; init; } = new();
-    public IReadOnlyList<PaymentOption> Methods { get; init; } = [];
+    public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
     public string Email { get; init; } = "";
