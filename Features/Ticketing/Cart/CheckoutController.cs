@@ -79,7 +79,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         if (!acceptPrivacy)
         {
-            TempData["CheckoutError"] = "Bitte bestätige, dass du die Datenschutzerklärung gelesen hast.";
+            TempData["CheckoutError"] = "Bitte akzeptiere die AGB und die Datenschutzerklärung.";
             return Redirect("/kasse/zahlung");
         }
 
@@ -131,7 +131,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             return View("~/Views/Checkout/Express.cshtml", Invalid("Bitte eine gültige E-Mail-Adresse angeben."));
 
         if (!acceptPrivacy)
-            return View("~/Views/Checkout/Express.cshtml", Invalid("Bitte bestätige, dass du die Datenschutzerklärung gelesen hast."));
+            return View("~/Views/Checkout/Express.cshtml", Invalid("Bitte akzeptiere die AGB und die Datenschutzerklärung."));
 
         var captchaToken = Request.Form["cf-turnstile-response"].ToString();
         if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
