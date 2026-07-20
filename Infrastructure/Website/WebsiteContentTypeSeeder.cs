@@ -124,23 +124,82 @@ public sealed class WebsiteContentTypeSeeder(
             contentTypeService.Save(legal, SuperUser);
             logger.LogInformation("WebsiteContentTypeSeeder: created legalPage document type.");
         }
+
+        if (contentTypeService.Get(A.FooterFolderType) is null)
+        {
+            var footer = new ContentType(shortStringHelper, Constants.System.Root)
+            {
+                Alias = A.FooterFolderType, Name = "Footer", Icon = "icon-folder", AllowedAsRoot = true
+            };
+            contentTypeService.Save(footer, SuperUser);
+
+            if (contentTypeService.Get(A.LegalPageType) is { } legalType)
+            {
+                footer.AllowedContentTypes = new[] { new ContentTypeSort(legalType.Key, 0, legalType.Alias) };
+                contentTypeService.Save(footer, SuperUser);
+            }
+            logger.LogInformation("WebsiteContentTypeSeeder: created Footer folder document type.");
+        }
     }
 
     private void EnsureLegalContent()
     {
         if (contentTypeService.Get(A.LegalPageType) is null) return;
-        EnsureLegalPage("impressum", "Impressum", ImpressumBody());
-        EnsureLegalPage("datenschutz", "Datenschutzerklärung", DatenschutzBody());
+        if (contentTypeService.Get(A.FooterFolderType) is null) return;
+
+        var footerId = EnsureFooterFolder();
+        MoveRootLegalPagesUnder(footerId);
+        EnsureLegalPage(footerId, "impressum", "Impressum", ImpressumBody());
+        EnsureLegalPage(footerId, "datenschutz", "Datenschutzerklärung", DatenschutzBody());
+        EnsureLegalPage(footerId, "agb", "AGB", AgbBody());
+        PublishFooterLegalPages(footerId);
     }
 
-    private void EnsureLegalPage(string slug, string title, string bodyHtml)
+    private void PublishFooterLegalPages(int footerId)
     {
-        var exists = contentService.GetRootContent().Any(c =>
+        foreach (var node in contentService.GetPagedChildren(footerId, 0, 100, out _))
+        {
+            if (node.ContentType.Alias == A.LegalPageType && !node.Published)
+            {
+                contentService.Publish(node, new[] { "*" }, SuperUser);
+                logger.LogInformation("WebsiteContentTypeSeeder: republished legal page {Name} under Footer.", node.Name);
+            }
+        }
+    }
+
+    private int EnsureFooterFolder()
+    {
+        var existing = contentService.GetRootContent()
+            .FirstOrDefault(c => c.ContentType.Alias == A.FooterFolderType);
+        if (existing is not null) return existing.Id;
+
+        var node = contentService.Create("Footer", Constants.System.Root, A.FooterFolderType);
+        contentService.Save(node, SuperUser);
+        contentService.Publish(node, new[] { "*" }, SuperUser);
+        logger.LogInformation("WebsiteContentTypeSeeder: created Footer folder.");
+        return node.Id;
+    }
+
+    private void MoveRootLegalPagesUnder(int footerId)
+    {
+        var rootLegal = contentService.GetRootContent()
+            .Where(c => c.ContentType.Alias == A.LegalPageType)
+            .ToList();
+        foreach (var node in rootLegal)
+        {
+            contentService.Move(node, footerId, SuperUser);
+            logger.LogInformation("WebsiteContentTypeSeeder: moved legal page {Name} under Footer.", node.Name);
+        }
+    }
+
+    private void EnsureLegalPage(int parentId, string slug, string title, string bodyHtml)
+    {
+        var exists = contentService.GetPagedChildren(parentId, 0, 100, out _).Any(c =>
             c.ContentType.Alias == A.LegalPageType
             && string.Equals(c.GetValue<string>(A.LegalSlug), slug, StringComparison.OrdinalIgnoreCase));
         if (exists) return;
 
-        var node = contentService.Create(title, Constants.System.Root, A.LegalPageType);
+        var node = contentService.Create(title, parentId, A.LegalPageType);
         node.SetValue(A.LegalTitle, title);
         node.SetValue(A.LegalSlug, slug);
         node.SetValue(A.LegalBodyText, Rte(bodyHtml));
@@ -371,6 +430,11 @@ public sealed class WebsiteContentTypeSeeder(
         <p>Sie haben im Rahmen des geltenden Datenschutzrechts das Recht auf Auskunft über Ihre von uns verarbeiteten Personendaten, das Recht auf Berichtigung unrichtiger Daten sowie das Recht auf Löschung Ihrer Daten, sofern keine gesetzlichen Aufbewahrungspflichten oder berechtigten Interessen unsererseits entgegenstehen. Bitte wenden Sie sich zur Ausübung Ihrer Rechte direkt an unsere Geschäftsstelle.</p>
         <h2>8. Änderungen dieser Datenschutzerklärung</h2>
         <p>Wir behalten uns vor, diese Datenschutzerklärung jederzeit anzupassen, damit sie den aktuellen rechtlichen Anforderungen entspricht oder um Änderungen unserer Dienstleistungen umzusetzen.</p>
+        """;
+
+    private static string AgbBody() =>
+        """
+        <p>Die Allgemeinen Geschäftsbedingungen werden hier ergänzt.</p>
         """;
 
     private PropertyType Prop(IDataType dataType, string alias, string name, string? description = null) =>

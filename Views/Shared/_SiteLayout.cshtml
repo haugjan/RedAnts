@@ -9,6 +9,12 @@
         .Where(c => c.ContentType.Alias == "flexPage" && c.IsPublished())
         .ToList() ?? new List<IPublishedContent>();
 
+    var footerFolder = Umbraco.ContentAtRoot()?.FirstOrDefault(c => c.ContentType.Alias == "footerFolder");
+    var legalLinks = footerFolder?.Children()?
+        .Where(c => c.ContentType.Alias == "legalPage" && c.IsPublished())
+        .OrderBy(c => c.SortOrder)
+        .ToList() ?? new List<IPublishedContent>();
+
     var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
 
     var transparentNav = ViewBag.TransparentNav as bool? ?? false;
@@ -29,7 +35,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/site.css?v=4" />
+  <link rel="stylesheet" href="/css/site.css?v=5" />
   <style>
     .nav-cart { display: inline-flex; align-items: center; gap: 0.4rem; }
     .nav-cart-badge {
@@ -96,12 +102,23 @@
       Geschäftsstelle · Ruhtalstrasse 20 · 8400 Winterthur<br />
       <a href="mailto:sekretariat@redants.ch">sekretariat@redants.ch</a>
     </address>
-    <nav class="site-footer-links" aria-label="Rechtliches und interner Bereich">
-      <a href="/impressum">Impressum</a>
-      <a href="/datenschutz">Datenschutzerklärung</a>
-      <a href="/scanntickets">Scanner</a>
-      <a href="/umbraco">Verwaltung</a>
-    </nav>
+    <div class="site-footer-nav">
+      <nav class="site-footer-links" aria-label="Rechtliches">
+        @foreach (var lp in legalLinks)
+        {
+          var slug = lp.Value<string>("slug");
+          var title = lp.Value<string>("titel");
+          if (!string.IsNullOrWhiteSpace(slug))
+          {
+            <a href="/@slug">@(string.IsNullOrWhiteSpace(title) ? lp.Name : title)</a>
+          }
+        }
+      </nav>
+      <nav class="site-footer-intern" aria-label="Interner Bereich">
+        <a href="/scanntickets">Scanner</a>
+        <a href="/umbraco">Verwaltung</a>
+      </nav>
+    </div>
   </div>
 </footer>
 
