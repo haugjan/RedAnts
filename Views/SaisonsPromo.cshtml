@@ -67,10 +67,23 @@
                                             <span class="pass-offer-cat-name">@cat.Name</span>
                                             <span class="pass-offer-price">CHF @MoneyFormat.Amount(cat.Price)</span>
                                         </div>
+                                        @if (cat.AvailableUntil is { } until || cat.Remaining is not null)
+                                        {
+                                            <div class="pass-offer-avail">
+                                                @if (cat.AvailableUntil is { } u)
+                                                {
+                                                    <span class="pass-offer-note">verfügbar bis @u.ToString("dd.MM.yyyy")</span>
+                                                }
+                                                @if (cat.Remaining is { } rem)
+                                                {
+                                                    <span class="pass-offer-note">noch @rem übrig</span>
+                                                }
+                                            </div>
+                                        }
                                         <form method="post" action="/warenkorb/add-saisonkarte" class="pass-add-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="seasonId" value="@seasonId" />
-                                            <input type="hidden" name="category" value="@((int)cat.Category)" />
+                                            <input type="hidden" name="tierId" value="@cat.TierId" />
                                             <input type="hidden" name="returnUrl" value="/saisons/" />
                                             @if (addOns.Count > 0)
                                             {
@@ -124,6 +137,8 @@
     .pass-offer-cat-top { display: flex; align-items: center; gap: 1rem; }
     .pass-offer-cat-name { flex: 1 1 auto; font-weight: 700; }
     .pass-offer-price { color: var(--ink-light); font-weight: 400; white-space: nowrap; }
+    .pass-offer-avail { margin: .1rem 0 .35rem; display: flex; flex-wrap: wrap; gap: .1rem .8rem; }
+    .pass-offer-note { font-size: .8rem; color: #555; }
     .pass-add-form { margin: 8px 0 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
     .pass-addons { display: flex; flex-direction: column; gap: 5px; width: 100%; max-width: 420px; background: #f6f7f9; border: 1px solid #ececec; border-radius: 6px; padding: 8px 10px; }
     .pass-addons-title { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: #888; }

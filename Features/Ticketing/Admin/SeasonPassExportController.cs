@@ -28,7 +28,7 @@ public sealed class SeasonPassExportController(
             sb.Append(ShortCode(p.Uuid)).Append(';')
               .Append(CsvField(p.Reference ?? "")).Append(';')
               .Append(CsvField(p.BuyerName ?? "")).Append(';')
-              .Append(CsvField(p.Category.DisplayName())).Append(';')
+              .Append(CsvField(p.CategoryName)).Append(';')
               .Append(link).Append("\r\n");
         }
 

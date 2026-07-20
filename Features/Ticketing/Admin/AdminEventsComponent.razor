@@ -189,7 +189,7 @@
             <p class="ta-modal-sub">@_pricingEvent.Name · @_pricingEvent.Date.ToString("dd.MM.yyyy")</p>
 
             <div style="display:grid; grid-template-columns:1.5fr .7fr 1fr 1fr 1.2fr; gap:.4rem .75rem; align-items:center; margin-top:.5rem;">
-                <span class="ta-label">Kategorie</span>
+                <span class="ta-label">Stufe</span>
                 <span class="ta-label" style="text-align:center;">Anbieten</span>
                 <span class="ta-label">Preis (CHF)</span>
                 <span class="ta-label">Kontingent</span>
@@ -197,7 +197,7 @@
 
                 @foreach (var row in _priceRows)
                 {
-                    <span>@row.Category.DisplayName()</span>
+                    <span>@row.Name</span>
                     <span style="text-align:center;">
                         <input type="checkbox" @bind="row.Enabled" />
                     </span>
@@ -235,6 +235,7 @@
     [Inject] private IEventContentEditor ContentEditor { get; set; } = default!;
     [Inject] private IFreeEntryQuota FreeEntryQuota { get; set; } = default!;
     [Inject] private IEventPrices Prices { get; set; } = default!;
+    [Inject] private IPriceTiers PriceTiers { get; set; } = default!;
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
     [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -424,7 +425,8 @@
 
     private sealed class CategoryRow
     {
-        public TicketCategory Category { get; init; }
+        public int TierId { get; init; }
+        public string Name { get; init; } = "";
         public bool Enabled { get; set; }
         public decimal Price { get; set; }
         public int? Quota { get; set; }
@@ -442,11 +444,21 @@
         _pricingEvent = e;
         _pricingError = null;
         _pricingExisting = await Prices.GetByEventAsync(e.Id);
-        var byCategory = (_pricingExisting?.Categories ?? []).ToDictionary(c => c.Category);
-        _priceRows = Enum.GetValues<TicketCategory>()
-            .Select(cat => byCategory.TryGetValue(cat, out var existing)
-                ? new CategoryRow { Category = cat, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota, AvailableUntil = existing.AvailableUntil }
-                : new CategoryRow { Category = cat, Enabled = false, Price = 0m, Quota = null })
+        var byTier = (_pricingExisting?.Categories ?? [])
+            .Where(c => c.TierId is not null)
+            .ToDictionary(c => c.TierId!.Value);
+        var tiers = await PriceTiers.GetBySeasonAsync(SelectedSeasonId);
+        var nameById = tiers.ToDictionary(t => t.Id, t => t.Name);
+        _priceRows = tiers
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.PromoOfTierId ?? 0).ThenBy(t => t.Id)
+            .Select(t =>
+            {
+                var name = t.PromoOfTierId is { } parent && nameById.TryGetValue(parent, out var pn)
+                    ? $"{t.Name} (Aktion zu {pn})" : t.Name;
+                return byTier.TryGetValue(t.Id, out var existing)
+                    ? new CategoryRow { TierId = t.Id, Name = name, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota, AvailableUntil = existing.AvailableUntil }
+                    : new CategoryRow { TierId = t.Id, Name = name, Enabled = false, Price = 0m, Quota = null };
+            })
             .ToList();
     }
 
@@ -461,7 +473,7 @@
         {
             var categories = _priceRows
                 .Where(r => r.Enabled)
-                .Select(r => CategoryPrice.Create(r.Category, decimal.Round(r.Price, 2), r.Quota, r.AvailableUntil))
+                .Select(r => CategoryPrice.Create(default, decimal.Round(r.Price, 2), r.Quota, r.AvailableUntil, r.TierId))
                 .ToList();
             var price = EventPrice.FromPersistence(
                 _pricingExisting?.Id ?? 0,

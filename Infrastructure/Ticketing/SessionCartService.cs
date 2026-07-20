@@ -21,12 +21,12 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         return JsonSerializer.Deserialize<Cart>(json) ?? new Cart();
     }
 
-    public void Add(int eventId, string eventName, TicketCategory category, string categoryName, decimal unitPrice, int quantity)
+    public void Add(int eventId, string eventName, int tierId, string categoryName, decimal unitPrice, int quantity)
     {
         if (quantity <= 0) return;
         var cart = Get();
         var existing = cart.Items.FirstOrDefault(i =>
-            i.Kind == CartItemKind.EventTicket && i.EventId == eventId && i.Category == category);
+            i.Kind == CartItemKind.EventTicket && i.EventId == eventId && i.TierId == tierId);
         if (existing is not null)
         {
             existing.Quantity = Math.Min(existing.Quantity + quantity, MaxQuantityPerItem);
@@ -41,7 +41,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 Kind = CartItemKind.EventTicket,
                 EventId = eventId,
                 EventName = eventName,
-                Category = category,
+                TierId = tierId,
                 CategoryName = categoryName,
                 UnitPrice = unitPrice,
                 Quantity = Math.Min(quantity, MaxQuantityPerItem)
@@ -50,7 +50,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         Save(cart);
     }
 
-    public void AddSeasonPass(int seasonId, string seasonName, TicketCategory category, string categoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns)
+    public void AddSeasonPass(int seasonId, string seasonName, int tierId, string categoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns)
     {
         if (quantity <= 0) return;
         var cart = Get();
@@ -59,7 +59,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
             .ToList();
         var addOnKey = addOnList.Count == 0 ? "" : string.Join("-", addOnList.Select(a => a.Id).OrderBy(x => x));
         var existing = cart.Items.FirstOrDefault(i =>
-            i.Kind == CartItemKind.SeasonPass && i.SeasonId == seasonId && i.Category == category && i.AddOnKey == addOnKey);
+            i.Kind == CartItemKind.SeasonPass && i.SeasonId == seasonId && i.TierId == tierId && i.AddOnKey == addOnKey);
         if (existing is not null)
         {
             existing.Quantity = Math.Min(existing.Quantity + quantity, MaxQuantityPerItem);
@@ -75,7 +75,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 Kind = CartItemKind.SeasonPass,
                 SeasonId = seasonId,
                 EventName = seasonName,
-                Category = category,
+                TierId = tierId,
                 CategoryName = categoryName,
                 UnitPrice = unitPrice,
                 Quantity = Math.Min(quantity, MaxQuantityPerItem),

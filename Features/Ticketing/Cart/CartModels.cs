@@ -24,7 +24,7 @@ public sealed class CartItem
     public int EventId { get; set; }
     public int SeasonId { get; set; }
     public string EventName { get; set; } = "";
-    public TicketCategory Category { get; set; }
+    public int TierId { get; set; }
     public string CategoryName { get; set; } = "";
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
@@ -32,7 +32,7 @@ public sealed class CartItem
 
     [JsonIgnore] public int RefId => Kind == CartItemKind.SeasonPass ? SeasonId : EventId;
     [JsonIgnore] public string AddOnKey => AddOns.Count == 0 ? "" : string.Join("-", AddOns.Select(a => a.Id).OrderBy(x => x));
-    [JsonIgnore] public string Key => $"{(int)Kind}:{RefId}:{(int)Category}:{AddOnKey}";
+    [JsonIgnore] public string Key => $"{(int)Kind}:{RefId}:{TierId}:{AddOnKey}";
     [JsonIgnore] public decimal AddOnTotal => AddOns.Sum(a => a.Price);
     [JsonIgnore] public decimal LineTotal => (UnitPrice + AddOnTotal) * Quantity;
 }
@@ -60,8 +60,8 @@ public static class ExpressCheckout
 public interface ICartService
 {
     Cart Get();
-    void Add(int eventId, string eventName, TicketCategory category, string categoryName, decimal unitPrice, int quantity);
-    void AddSeasonPass(int seasonId, string seasonName, TicketCategory category, string categoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns);
+    void Add(int eventId, string eventName, int tierId, string categoryName, decimal unitPrice, int quantity);
+    void AddSeasonPass(int seasonId, string seasonName, int tierId, string categoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns);
     void AddOrderAddOns(IReadOnlyList<CartAddOn> addOns);
     void RemoveOrderAddOn(int addOnId);
     void SetQuantity(string key, int quantity);

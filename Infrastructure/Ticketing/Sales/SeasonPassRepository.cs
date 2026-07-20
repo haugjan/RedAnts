@@ -59,6 +59,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             Uuid = pass.Uuid.ToString(),
             SeasonId = pass.SeasonId,
             Category = (int)pass.Category,
+            TierId = pass.TierId,
             Price = pass.Price,
             OrderId = pass.OrderId,
             Status = (int)pass.Status,
@@ -89,5 +90,6 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             Buyer.FromPersistence(r.BuyerType ?? 0, r.BuyerFirstName, r.BuyerLastName, r.BuyerCompany),
             r.CreatedByName,
             r.CreatedByEmail,
-            r.Reference);
+            r.Reference,
+            r.TierId);
 }

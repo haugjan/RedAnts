@@ -21,9 +21,12 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
             ORDER BY CreatedAt DESC");
 
         var eventTickets = await scope.Database.FetchAsync<ItemRow>(
-            "SELECT OrderId, EventId AS RefId, Category FROM EventTickets WHERE OrderId IS NOT NULL");
+            "SELECT OrderId, EventId AS RefId, Category, TierId FROM EventTickets WHERE OrderId IS NOT NULL");
         var seasonPasses = await scope.Database.FetchAsync<ItemRow>(
-            "SELECT OrderId, SeasonId AS RefId, Category FROM SeasonPasses WHERE OrderId IS NOT NULL");
+            "SELECT OrderId, SeasonId AS RefId, Category, TierId FROM SeasonPasses WHERE OrderId IS NOT NULL");
+
+        var tierNames = (await scope.Database.FetchAsync<TierNameRow>("SELECT Id, Name FROM SeasonPriceTiers"))
+            .ToDictionary(t => t.Id, t => t.Name);
 
         var eventIdSet = new HashSet<int>(eventIds);
 
@@ -59,9 +62,9 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
                 o.BillingCountry ?? "",
                 o.BillingEmail ?? "",
                 tickets.Count,
-                Summarize(tickets),
+                Summarize(tickets, tierNames),
                 passes.Count,
-                Summarize(passes)));
+                Summarize(passes, tierNames)));
         }
         return result;
     }
@@ -74,13 +77,14 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
         return string.IsNullOrEmpty(name) ? "—" : name;
     }
 
-    private static string Summarize(List<ItemRow> items)
+    private static string Summarize(List<ItemRow> items, IReadOnlyDictionary<int, string> tierNames)
     {
         if (items.Count == 0) return "—";
         return string.Join(" · ", items
-            .GroupBy(i => (TicketCategory)i.Category)
+            .GroupBy(i => i.TierId is { } tid && tierNames.TryGetValue(tid, out var name)
+                ? name : ((TicketCategory)i.Category).DisplayName())
             .OrderBy(g => g.Key)
-            .Select(g => $"{g.Count()}× {g.Key.DisplayName()}"));
+            .Select(g => $"{g.Count()}× {g.Key}"));
     }
 
     public sealed class OrderRow
@@ -107,6 +111,13 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
         public int? OrderId { get; set; }
         public int RefId { get; set; }
         public int Category { get; set; }
+        public int? TierId { get; set; }
+    }
+
+    public sealed class TierNameRow
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
     }
 }
 

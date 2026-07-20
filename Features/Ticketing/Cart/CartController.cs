@@ -13,14 +13,14 @@ public sealed class CartController(
 
     [HttpPost("/warenkorb/direkt")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddAndCheckout(int eventId, TicketCategory category, int quantity)
+    public async Task<IActionResult> AddAndCheckout(int eventId, int tierId, int quantity)
     {
         if (quantity < 1) quantity = 1;
 
-        var available = await pricing.FindAvailableAsync(eventId, category);
+        var available = await pricing.FindAvailableByTierAsync(eventId, tierId);
         var evt = await events.FindByIdAsync(eventId);
         if (available is { Available: true } && evt is not null)
-            cart.Add(eventId, evt.Name, available.Category, available.Name, available.Price, quantity);
+            cart.Add(eventId, evt.Name, available.TierId, available.Name, available.Price, quantity);
 
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/warenkorb");
@@ -29,15 +29,15 @@ public sealed class CartController(
 
     [HttpPost("/warenkorb/add")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Add(int eventId, TicketCategory category, int quantity, string? returnUrl)
+    public async Task<IActionResult> Add(int eventId, int tierId, int quantity, string? returnUrl)
     {
         if (quantity < 1) quantity = 1;
 
-        var available = await pricing.FindAvailableAsync(eventId, category);
+        var available = await pricing.FindAvailableByTierAsync(eventId, tierId);
         var evt = await events.FindByIdAsync(eventId);
         var added = available is { Available: true } && evt is not null;
         if (added)
-            cart.Add(eventId, evt!.Name, available!.Category, available.Name, available.Price, quantity);
+            cart.Add(eventId, evt!.Name, available!.TierId, available.Name, available.Price, quantity);
 
         if (IsFetchRequest())
         {
@@ -46,7 +46,7 @@ public sealed class CartController(
             {
                 ok = added,
                 added = added ? quantity : 0,
-                categoryName = available?.Name ?? category.ToString(),
+                categoryName = available?.Name ?? "",
                 totalQuantity = current.TotalQuantity,
                 totalAmount = current.TotalAmount
             });
@@ -57,12 +57,11 @@ public sealed class CartController(
 
     [HttpPost("/warenkorb/add-saisonkarte")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddSeasonPass(int seasonId, TicketCategory category, int quantity, string? returnUrl, int[]? addOns)
+    public async Task<IActionResult> AddSeasonPass(int seasonId, int tierId, int quantity, string? returnUrl, int[]? addOns)
     {
         if (quantity < 1) quantity = 1;
 
-        var available = (await passPricing.GetAvailableAsync(seasonId))
-            .FirstOrDefault(c => c.Category == category);
+        var available = await passPricing.FindAvailableByTierAsync(seasonId, tierId);
         var season = await seasons.FindByIdAsync(seasonId);
         var added = available is { Available: true } && season is not null;
         if (added)
@@ -79,7 +78,7 @@ public sealed class CartController(
             var perOrder = chosen.Where(a => a.Scope == AddOnScope.PerOrder)
                 .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price, SeasonId = seasonId, SeasonName = season!.Name })
                 .ToList();
-            cart.AddSeasonPass(seasonId, season!.Name, available!.Category, available.Name, available.Price, quantity, perPass);
+            cart.AddSeasonPass(seasonId, season!.Name, available!.TierId, available.Name, available.Price, quantity, perPass);
             cart.AddOrderAddOns(perOrder);
         }
 
@@ -90,7 +89,7 @@ public sealed class CartController(
             {
                 ok = added,
                 added = added ? quantity : 0,
-                categoryName = available?.Name ?? category.ToString(),
+                categoryName = available?.Name ?? "",
                 totalQuantity = current.TotalQuantity,
                 totalAmount = current.TotalAmount
             });

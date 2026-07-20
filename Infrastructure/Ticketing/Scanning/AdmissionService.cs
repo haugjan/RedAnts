@@ -62,7 +62,7 @@ public sealed class AdmissionService(
                 return await Reject("Flexticket wurde bereits an einem anderen Anlass eingelöst.");
         }
 
-        var categoryLabel = issued.Category?.DisplayName();
+        var categoryLabel = issued.CategoryName ?? issued.Category?.DisplayName();
         var holder = HolderLabel(issued);
 
         var visit = await db.FirstOrDefaultAsync<EventVisitRecord>(

@@ -3,27 +3,31 @@ namespace RedAnts.Domain.Ticketing.Sales;
 public sealed class CategoryPrice
 {
     public TicketCategory Category { get; private set; }
+    public int? TierId { get; private set; }
     public decimal SalePrice { get; private set; }
     public int? Quota { get; private set; }
     public DateOnly? AvailableUntil { get; private set; }
 
-    private CategoryPrice(TicketCategory category, decimal salePrice, int? quota, DateOnly? availableUntil)
+    private CategoryPrice(TicketCategory category, int? tierId, decimal salePrice, int? quota, DateOnly? availableUntil)
     {
         Category = category;
+        TierId = tierId;
         SalePrice = salePrice;
         Quota = quota;
         AvailableUntil = availableUntil;
     }
 
-    public static CategoryPrice Create(TicketCategory category, decimal salePrice, int? quota, DateOnly? availableUntil = null)
+    public static CategoryPrice Create(TicketCategory category, decimal salePrice, int? quota,
+        DateOnly? availableUntil = null, int? tierId = null)
     {
         if (salePrice < 0) throw new DomainException("Verkaufspreis darf nicht negativ sein.");
         if (quota is < 0) throw new DomainException("Kontingent darf nicht negativ sein.");
-        return new CategoryPrice(category, decimal.Round(salePrice, 2), quota, availableUntil);
+        return new CategoryPrice(category, tierId, decimal.Round(salePrice, 2), quota, availableUntil);
     }
 
-    public static CategoryPrice FromPersistence(TicketCategory category, decimal salePrice, int? quota, DateOnly? availableUntil = null) =>
-        new(category, salePrice, quota, availableUntil);
+    public static CategoryPrice FromPersistence(TicketCategory category, decimal salePrice, int? quota,
+        DateOnly? availableUntil = null, int? tierId = null) =>
+        new(category, tierId, salePrice, quota, availableUntil);
 }
 
 public sealed class EventPrice
@@ -59,6 +63,7 @@ public sealed class EventPrice
 public sealed class SeasonCategoryPrice
 {
     public TicketCategory Category { get; private set; }
+    public int? TierId { get; private set; }
     public decimal PassPrice { get; private set; }
     public bool PassOffered { get; private set; }
     public int? PassQuota { get; private set; }
@@ -68,10 +73,11 @@ public sealed class SeasonCategoryPrice
     public int? TicketQuota { get; private set; }
     public DateOnly? TicketAvailableUntil { get; private set; }
 
-    private SeasonCategoryPrice(TicketCategory category, decimal passPrice, bool passOffered, int? passQuota,
+    private SeasonCategoryPrice(TicketCategory category, int? tierId, decimal passPrice, bool passOffered, int? passQuota,
         DateOnly? passAvailableUntil, decimal ticketPrice, bool ticketOffered, int? ticketQuota, DateOnly? ticketAvailableUntil)
     {
         Category = category;
+        TierId = tierId;
         PassPrice = passPrice;
         PassOffered = passOffered;
         PassQuota = passQuota;
@@ -84,19 +90,19 @@ public sealed class SeasonCategoryPrice
 
     public static SeasonCategoryPrice Create(TicketCategory category, decimal passPrice, bool passOffered, int? passQuota,
         decimal ticketPrice, bool ticketOffered, int? ticketQuota,
-        DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null)
+        DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null, int? tierId = null)
     {
         if (passPrice < 0) throw new DomainException("Saisonkarten-Preis darf nicht negativ sein.");
         if (ticketPrice < 0) throw new DomainException("Ticketpreis darf nicht negativ sein.");
         if (passQuota is < 0 || ticketQuota is < 0) throw new DomainException("Kontingent darf nicht negativ sein.");
-        return new SeasonCategoryPrice(category, decimal.Round(passPrice, 2), passOffered, passQuota, passAvailableUntil,
+        return new SeasonCategoryPrice(category, tierId, decimal.Round(passPrice, 2), passOffered, passQuota, passAvailableUntil,
             decimal.Round(ticketPrice, 2), ticketOffered, ticketQuota, ticketAvailableUntil);
     }
 
     public static SeasonCategoryPrice FromPersistence(TicketCategory category, decimal passPrice, bool passOffered,
         int? passQuota, decimal ticketPrice, bool ticketOffered, int? ticketQuota,
-        DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null) =>
-        new(category, passPrice, passOffered, passQuota, passAvailableUntil,
+        DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null, int? tierId = null) =>
+        new(category, tierId, passPrice, passOffered, passQuota, passAvailableUntil,
             ticketPrice, ticketOffered, ticketQuota, ticketAvailableUntil);
 }
 

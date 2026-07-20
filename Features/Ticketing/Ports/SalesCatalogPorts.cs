@@ -3,11 +3,23 @@ using RedAnts.Domain.Ticketing.Sales;
 namespace RedAnts.Features.Ticketing.Ports;
 
 public sealed record AvailableTicketCategory(
-    TicketCategory Category,
+    int TierId,
     string Name,
     decimal Price,
     bool Available,
-    int? Remaining);
+    int? Remaining,
+    DateOnly? AvailableUntil = null);
+
+public interface IPriceTiers
+{
+    Task<IReadOnlyList<PriceTier>> GetBySeasonAsync(int seasonId);
+    Task<IReadOnlyList<PriceTier>> SaveForSeasonAsync(int seasonId, IReadOnlyList<PriceTierInput> tiers);
+    Task<int> GetSoldCountAsync(int tierId);
+}
+
+public sealed record PriceTierInput(int Id, string Name, int? MaxAge, int SortOrder, PriceTierPromoInput? Promo);
+
+public sealed record PriceTierPromoInput(int Id, string Name);
 
 public interface IEventPrices
 {
@@ -23,22 +35,23 @@ public interface ISeasonPrices
     Task DeleteAsync(int seasonPriceId);
 }
 
-public sealed record TicketDemand(int EventId, TicketCategory Category, int Quantity);
+public sealed record TicketDemand(int EventId, int TierId, int Quantity);
 
 public interface IEventPricing
 {
     Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int eventId);
-    Task<AvailableTicketCategory?> FindAvailableAsync(int eventId, TicketCategory category);
+    Task<AvailableTicketCategory?> FindAvailableByTierAsync(int eventId, int tierId);
     Task<string?> CheckCapacityAsync(IReadOnlyList<TicketDemand> demand);
 }
 
-public sealed record PassDemand(int SeasonId, TicketCategory Category, int Quantity);
+public sealed record PassDemand(int SeasonId, int TierId, int Quantity);
 
 public interface ISeasonPassPricing
 {
     Task<IReadOnlyList<AvailableTicketCategory>> GetAvailableAsync(int seasonId);
+    Task<AvailableTicketCategory?> FindAvailableByTierAsync(int seasonId, int tierId);
     Task<string?> CheckCapacityAsync(IReadOnlyList<PassDemand> demand);
-    Task<IReadOnlyDictionary<TicketCategory, int>> GetSoldCountsAsync(int seasonId);
+    Task<IReadOnlyDictionary<int, int>> GetSoldCountsAsync(int seasonId);
 }
 
 public interface IEventTickets
@@ -81,7 +94,7 @@ public interface ISeasonAddOns
 
 public sealed record OrderAddOnLine(
     int SeasonId, string SeasonName, TicketCategory Category, string CategoryName,
-    string Label, decimal Price, int Quantity);
+    string Label, decimal Price, int Quantity, int? TierId = null);
 
 public interface IOrderAddOns
 {

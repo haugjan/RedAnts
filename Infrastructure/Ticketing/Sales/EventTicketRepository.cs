@@ -24,6 +24,7 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             Uuid = ticket.Uuid.ToString(),
             EventId = ticket.EventId,
             Category = (int)ticket.Category,
+            TierId = ticket.TierId,
             Price = ticket.Price,
             OrderId = ticket.OrderId,
             Status = (int)ticket.Status,
@@ -56,5 +57,6 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             Buyer.FromPersistence(r.BuyerType ?? 0, r.BuyerFirstName, r.BuyerLastName, r.BuyerCompany),
             r.CreatedByName,
             r.CreatedByEmail,
-            r.BundleId);
+            r.BundleId,
+            r.TierId);
 }

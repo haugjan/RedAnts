@@ -75,6 +75,7 @@
         }
         .evt-cat__name { font-weight: 700; }
         .evt-cat__price { color: var(--ink-light); margin-left: 0.5rem; font-weight: 400; }
+        .evt-cat__note { display: block; font-size: 0.8rem; color: var(--ink-light); margin-top: 0.15rem; }
         .evt-cat form { display: flex; align-items: center; gap: 0.5rem; }
         .evt-cat input[type=number] {
             width: 4.5rem; padding: 0.45rem; border: 1px solid #ccc; border-radius: 4px; font: inherit;
@@ -177,13 +178,21 @@ else
                             <div>
                                 <span class="evt-cat__name">@cat.Name</span>
                                 <span class="evt-cat__price">CHF @cat.Price.ToString("N2")</span>
+                                @if (cat.AvailableUntil is { } until)
+                                {
+                                    <span class="evt-cat__note">verfügbar bis @until.ToString("dd.MM.yyyy")</span>
+                                }
+                                @if (cat.Remaining is { } rem)
+                                {
+                                    <span class="evt-cat__note">noch @rem übrig</span>
+                                }
                             </div>
                             @if (cat.Available)
                             {
                                 <form method="post" action="/warenkorb/add" class="evt-add-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="eventId" value="@Model.Id" />
-                                    <input type="hidden" name="category" value="@((int)cat.Category)" />
+                                    <input type="hidden" name="tierId" value="@cat.TierId" />
                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                     <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
                                     <button type="submit" class="evt-addbtn">In den Warenkorb</button>

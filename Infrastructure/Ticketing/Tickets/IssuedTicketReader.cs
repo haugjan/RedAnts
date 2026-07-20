@@ -18,18 +18,21 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
         if (eventTicket is not null)
             return new IssuedTicket(TicketType.EventTicket, uuid, eventTicket.EventId,
                 (TicketCategory)eventTicket.Category, (TicketStatus)eventTicket.Status, eventTicket.CreatedAt, null,
-                BuyerName: BuyerLabel(eventTicket.BuyerType, eventTicket.BuyerFirstName, eventTicket.BuyerLastName, eventTicket.BuyerCompany));
+                BuyerName: BuyerLabel(eventTicket.BuyerType, eventTicket.BuyerFirstName, eventTicket.BuyerLastName, eventTicket.BuyerCompany),
+                CategoryName: await CategoryLabel(db, eventTicket.TierId, eventTicket.Category));
 
         var single = await db.FirstOrDefaultAsync<SeasonSingleTicketRecord>("WHERE Uuid = @0", key);
         if (single is not null)
             return new IssuedTicket(TicketType.SeasonSingle, uuid, single.SeasonId,
-                (TicketCategory)single.Category, (TicketStatus)single.Status, single.CreatedAt, null);
+                (TicketCategory)single.Category, (TicketStatus)single.Status, single.CreatedAt, null,
+                CategoryName: await CategoryLabel(db, single.TierId, single.Category));
 
         var pass = await db.FirstOrDefaultAsync<SeasonPassRecord>("WHERE Uuid = @0", key);
         if (pass is not null)
             return new IssuedTicket(TicketType.SeasonPass, uuid, pass.SeasonId,
                 (TicketCategory)pass.Category, (TicketStatus)pass.Status, pass.CreatedAt, null,
-                BuyerName: BuyerLabel(pass.BuyerType, pass.BuyerFirstName, pass.BuyerLastName, pass.BuyerCompany));
+                BuyerName: BuyerLabel(pass.BuyerType, pass.BuyerFirstName, pass.BuyerLastName, pass.BuyerCompany),
+                CategoryName: await CategoryLabel(db, pass.TierId, pass.Category));
 
         var card = await db.FirstOrDefaultAsync<MemberCardRecord>("WHERE Uuid = @0", key);
         if (card is not null)
@@ -44,6 +47,16 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
         }
 
         return null;
+    }
+
+    private static async Task<string?> CategoryLabel(IDatabase db, int? tierId, int category)
+    {
+        if (tierId is { } id)
+        {
+            var name = await db.ExecuteScalarAsync<string?>("SELECT Name FROM SeasonPriceTiers WHERE Id = @0", id);
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+        }
+        return ((TicketCategory)category).DisplayName();
     }
 
     private static string? BuyerLabel(int? type, string? first, string? last, string? company)

@@ -132,14 +132,16 @@
             <p class="ta-modal-sub">@_editing.Name · @_editing.StartDate.ToString("dd.MM.yyyy") – @_editing.EndDate.ToString("dd.MM.yyyy")</p>
 
             <div class="ta-field">
-                <label class="ta-label">Preise und Kontingent je Kategorie</label>
+                <label class="ta-label">Preisstufen dieser Saison</label>
                 <div class="ta-subtable-wrap">
                 <table class="ta-subtable">
                     <thead>
                         <tr>
-                            <th rowspan="2">Kategorie</th>
+                            <th rowspan="2">Stufe</th>
+                            <th rowspan="2" class="ta-num">Alter bis</th>
                             <th colspan="5" class="ta-subgroup">Saisonkarten</th>
                             <th colspan="4" class="ta-subgroup ta-subgroup-alt">Tickets (Standard für neue Anlässe)</th>
+                            <th rowspan="2"></th>
                         </tr>
                         <tr>
                             <th class="ta-group-col">Angeboten</th>
@@ -154,10 +156,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var c in _editCats)
+                        @foreach (var c in _editTiers)
                         {
                             <tr class="@(c.PassOffered || c.TicketOffered ? "" : "ta-row-off")">
-                                <td>@c.Category.DisplayName()</td>
+                                <td><input type="text" maxlength="200" class="ta-input ta-tier-name" placeholder="z. B. Erwachsen" @bind="c.Name" /></td>
+                                <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-age" placeholder="–" @bind="c.MaxAge" /></td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.PassOffered" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPrice" @bind:after="() => c.PassPrice = decimal.Round(c.PassPrice, 2)" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassOffered)" @bind="c.PassQuota" /></td>
@@ -167,12 +170,38 @@
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.TicketOffered)" @bind="c.TicketPrice" @bind:after="() => c.TicketPrice = decimal.Round(c.TicketPrice, 2)" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.TicketOffered)" @bind="c.TicketQuota" /></td>
                                 <td class="ta-num"><DateBox @bind-Value="c.TicketAvailableUntil" Disabled="@(!c.TicketOffered)" /></td>
+                                <td class="ta-num ta-tier-actions">
+                                    <button type="button" class="ta-icon-btn" title="@(c.HasPromo ? "Aktion entfernen" : "Aktion hinzufügen")" @onclick="() => TogglePromo(c)">@(c.HasPromo ? "★" : "☆")</button>
+                                    <button type="button" class="ta-icon-btn" title="@(c.CanDelete ? "Stufe löschen" : "Nicht löschbar: bereits verkauft")" disabled="@(!c.CanDelete)" @onclick="() => RemoveTier(c)">×</button>
+                                </td>
                             </tr>
+                            @if (c.HasPromo)
+                            {
+                                <tr class="ta-tier-promo">
+                                    <td class="ta-promo-name"><span class="ta-promo-arrow">↳</span><input type="text" maxlength="200" class="ta-input ta-tier-name" placeholder="Aktionsname" @bind="c.PromoName" /></td>
+                                    <td></td>
+                                    <td class="ta-group-col ta-muted">Aktion</td>
+                                    <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPromoPrice" @bind:after="() => c.PassPromoPrice = decimal.Round(c.PassPromoPrice, 2)" /></td>
+                                    <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassOffered)" @bind="c.PassPromoQuota" /></td>
+                                    <td class="ta-num"><DateBox @bind-Value="c.PassPromoAvailableUntil" Disabled="@(!c.PassOffered)" /></td>
+                                    <td class="ta-num">@c.PromoSold@(c.PassPromoQuota is { } pq ? $" / {pq}" : "")</td>
+                                    <td class="ta-group-col ta-muted">Aktion</td>
+                                    <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.TicketOffered)" @bind="c.TicketPromoPrice" @bind:after="() => c.TicketPromoPrice = decimal.Round(c.TicketPromoPrice, 2)" /></td>
+                                    <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.TicketOffered)" @bind="c.TicketPromoQuota" /></td>
+                                    <td class="ta-num"><DateBox @bind-Value="c.TicketPromoAvailableUntil" Disabled="@(!c.TicketOffered)" /></td>
+                                    <td></td>
+                                </tr>
+                            }
+                        }
+                        @if (_editTiers.Count == 0)
+                        {
+                            <tr><td colspan="12" class="ta-muted">Noch keine Preisstufen erfasst.</td></tr>
                         }
                     </tbody>
                 </table>
                 </div>
-                <p class="ta-field-hint">Links: Saisonkarten-Verkauf dieser Saison. Rechts: Standardwerte, die jeder NEUE Anlass beim Erstellen übernimmt (bestehende Anlässe bleiben unverändert). Solange eine angebotene Sonderaktion Restkontingent hat, ist die zugehörige normale Kategorie nicht verkäuflich. „Verkauf bis" leer = kein Enddatum; sonst endet der Verkauf dieser Kategorie nach dem Datum oder sobald das Kontingent erreicht ist, je nachdem was zuerst eintritt.</p>
+                <button type="button" class="ta-btn ta-btn-ghost ta-addon-add" @onclick="AddTier">+ Stufe hinzufügen</button>
+                <p class="ta-field-hint">Jede Stufe hat einen Namen und optional eine Altersgrenze (nur Anzeige). Links: Saisonkarten-Verkauf dieser Saison. Rechts: Standardwerte, die jeder NEUE Anlass beim Erstellen übernimmt (bestehende Anlässe bleiben unverändert). Mit ☆ fügst du einer Stufe eine benannte Aktion hinzu: Solange deren Kontingent und Datum nicht erreicht sind, gilt der Aktionspreis, danach der Normalpreis. „Verkauf bis" leer = kein Enddatum; sonst endet der Verkauf nach dem Datum oder sobald das Kontingent erreicht ist. Stufen lassen sich nur löschen, solange noch keine Karten verkauft wurden.</p>
             </div>
 
             @if (_editError is not null)
@@ -258,6 +287,12 @@
     .ta-subtable td { padding: 3px 5px; font-size: .85rem; }
     .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
     .ta-input-sm { width: 5.3rem; padding: .3rem .35rem; text-align: right; }
+    .ta-tier-name { width: 100%; min-width: 9rem; text-align: left; }
+    .ta-input-age { width: 3.4rem; padding: .3rem .35rem; text-align: right; }
+    .ta-tier-actions { white-space: nowrap; }
+    .ta-tier-promo td { background: rgba(200, 16, 46, .04); }
+    .ta-promo-name { white-space: nowrap; }
+    .ta-promo-arrow { color: var(--ta-muted); margin-right: .3rem; }
     .ta-subtable .ta-dateseg { padding: .28rem .3rem; }
     .ta-subtable .ta-datebox { gap: .15rem; }
     .ta-subtable .ta-seg-dm { width: 1.35rem; }
@@ -277,6 +312,7 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private ISeasonPrices SeasonPrices { get; set; } = default!;
+    [Inject] private IPriceTiers PriceTiers { get; set; } = default!;
     [Inject] private ISeasonAddOns SeasonAddOns { get; set; } = default!;
     [Inject] private ISeasonPassPricing PassPricing { get; set; } = default!;
     [Inject] private ISeasonStatusEditor StatusEditor { get; set; } = default!;
@@ -399,7 +435,7 @@
     }
 
     private Season? _editing;
-    private List<CatRow> _editCats = new();
+    private List<TierRow> _editTiers = new();
     private bool _saving;
     private string? _editError;
 
@@ -408,24 +444,59 @@
         _editing = s;
         var price = Price(s.Id);
         var sold = await PassPricing.GetSoldCountsAsync(s.Id);
-        var existing = (price?.Categories ?? []).ToDictionary(c => c.Category);
-        _editCats = Enum.GetValues<TicketCategory>()
-            .Select(cat => existing.TryGetValue(cat, out var cp)
-                ? new CatRow
+        var tiers = await PriceTiers.GetBySeasonAsync(s.Id);
+        var priceByTier = (price?.Categories ?? [])
+            .Where(c => c.TierId is not null)
+            .ToDictionary(c => c.TierId!.Value);
+        var promoByParent = tiers.Where(t => t.PromoOfTierId is not null).ToDictionary(t => t.PromoOfTierId!.Value);
+
+        _editTiers = tiers
+            .Where(t => t.PromoOfTierId is null)
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
+            .Select(t =>
+            {
+                var row = new TierRow { Id = t.Id, Name = t.Name, MaxAge = t.MaxAge, SortOrder = t.SortOrder, Sold = sold.GetValueOrDefault(t.Id) };
+                if (priceByTier.TryGetValue(t.Id, out var cp))
                 {
-                    Category = cat,
-                    PassOffered = cp.PassOffered, PassPrice = decimal.Round(cp.PassPrice, 2), PassQuota = cp.PassQuota,
-                    PassAvailableUntil = cp.PassAvailableUntil,
-                    TicketOffered = cp.TicketOffered, TicketPrice = decimal.Round(cp.TicketPrice, 2), TicketQuota = cp.TicketQuota,
-                    TicketAvailableUntil = cp.TicketAvailableUntil,
-                    Sold = sold.GetValueOrDefault(cat)
+                    row.PassOffered = cp.PassOffered; row.PassPrice = decimal.Round(cp.PassPrice, 2); row.PassQuota = cp.PassQuota;
+                    row.PassAvailableUntil = cp.PassAvailableUntil;
+                    row.TicketOffered = cp.TicketOffered; row.TicketPrice = decimal.Round(cp.TicketPrice, 2); row.TicketQuota = cp.TicketQuota;
+                    row.TicketAvailableUntil = cp.TicketAvailableUntil;
                 }
-                : new CatRow { Category = cat, Sold = sold.GetValueOrDefault(cat) })
+                if (promoByParent.GetValueOrDefault(t.Id) is { } promo)
+                {
+                    row.HasPromo = true; row.PromoId = promo.Id; row.PromoName = promo.Name;
+                    row.PromoSold = sold.GetValueOrDefault(promo.Id);
+                    if (priceByTier.TryGetValue(promo.Id, out var pp))
+                    {
+                        row.PassPromoPrice = decimal.Round(pp.PassPrice, 2); row.PassPromoQuota = pp.PassQuota;
+                        row.PassPromoAvailableUntil = pp.PassAvailableUntil;
+                        row.TicketPromoPrice = decimal.Round(pp.TicketPrice, 2); row.TicketPromoQuota = pp.TicketQuota;
+                        row.TicketPromoAvailableUntil = pp.TicketAvailableUntil;
+                    }
+                }
+                return row;
+            })
             .ToList();
         _editError = null;
     }
 
     private void CancelEdit() { if (!_saving) { _editing = null; _editError = null; } }
+
+    private void AddTier() =>
+        _editTiers.Add(new TierRow { Name = "", SortOrder = (_editTiers.Count == 0 ? 0 : _editTiers.Max(t => t.SortOrder) + 1) });
+
+    private void RemoveTier(TierRow r)
+    {
+        if (r.Sold > 0 || r.PromoSold > 0) return;
+        _editTiers.Remove(r);
+    }
+
+    private static void TogglePromo(TierRow r)
+    {
+        r.HasPromo = !r.HasPromo;
+        if (r.HasPromo && string.IsNullOrWhiteSpace(r.PromoName)) r.PromoName = $"Aktion {r.Name}".Trim();
+    }
 
     private async Task SaveEdit()
     {
@@ -434,12 +505,36 @@
         _editError = null;
         try
         {
-            var cats = _editCats
-                .Select(c => SeasonCategoryPrice.Create(
-                    c.Category, decimal.Round(c.PassPrice, 2), c.PassOffered, c.PassQuota,
-                    decimal.Round(c.TicketPrice, 2), c.TicketOffered, c.TicketQuota,
-                    c.PassAvailableUntil, c.TicketAvailableUntil))
+            var tierInputs = _editTiers
+                .Where(t => !string.IsNullOrWhiteSpace(t.Name))
+                .Select(t => new PriceTierInput(t.Id, t.Name.Trim(), t.MaxAge, t.SortOrder,
+                    t.HasPromo && !string.IsNullOrWhiteSpace(t.PromoName)
+                        ? new PriceTierPromoInput(t.PromoId, t.PromoName.Trim()) : null))
                 .ToList();
+            var saved = await PriceTiers.SaveForSeasonAsync(_editing.Id, tierInputs);
+
+            var savedNormals = saved.Where(t => t.PromoOfTierId is null).OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList();
+            var savedPromoByParent = saved.Where(t => t.PromoOfTierId is not null).ToDictionary(t => t.PromoOfTierId!.Value);
+
+            var cats = new List<SeasonCategoryPrice>();
+            var editable = _editTiers.Where(t => !string.IsNullOrWhiteSpace(t.Name))
+                .OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList();
+            for (var i = 0; i < editable.Count && i < savedNormals.Count; i++)
+            {
+                var t = editable[i];
+                var normal = savedNormals[i];
+                cats.Add(SeasonCategoryPrice.Create(default,
+                    decimal.Round(t.PassPrice, 2), t.PassOffered, t.PassQuota,
+                    decimal.Round(t.TicketPrice, 2), t.TicketOffered, t.TicketQuota,
+                    t.PassAvailableUntil, t.TicketAvailableUntil, normal.Id));
+
+                if (savedPromoByParent.GetValueOrDefault(normal.Id) is { } promo)
+                    cats.Add(SeasonCategoryPrice.Create(default,
+                        decimal.Round(t.PassPromoPrice, 2), t.PassOffered, t.PassPromoQuota,
+                        decimal.Round(t.TicketPromoPrice, 2), t.TicketOffered, t.TicketPromoQuota,
+                        t.PassPromoAvailableUntil, t.TicketPromoAvailableUntil, promo.Id));
+            }
+
             var existing = Price(_editing.Id);
             var price = existing is null
                 ? SeasonPrice.Create(_editing.Id, null, cats)
@@ -453,9 +548,12 @@
         finally { _saving = false; }
     }
 
-    private sealed class CatRow
+    private sealed class TierRow
     {
-        public TicketCategory Category { get; set; }
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public int? MaxAge { get; set; }
+        public int SortOrder { get; set; }
         public bool PassOffered { get; set; }
         public decimal PassPrice { get; set; }
         public int? PassQuota { get; set; }
@@ -465,6 +563,17 @@
         public int? TicketQuota { get; set; }
         public DateOnly? TicketAvailableUntil { get; set; }
         public int Sold { get; set; }
+        public bool HasPromo { get; set; }
+        public int PromoId { get; set; }
+        public string PromoName { get; set; } = "";
+        public decimal PassPromoPrice { get; set; }
+        public int? PassPromoQuota { get; set; }
+        public DateOnly? PassPromoAvailableUntil { get; set; }
+        public decimal TicketPromoPrice { get; set; }
+        public int? TicketPromoQuota { get; set; }
+        public DateOnly? TicketPromoAvailableUntil { get; set; }
+        public int PromoSold { get; set; }
+        public bool CanDelete => Sold == 0 && PromoSold == 0;
     }
 
     private Dictionary<int, IReadOnlyList<SeasonAddOn>> _addOns = new();

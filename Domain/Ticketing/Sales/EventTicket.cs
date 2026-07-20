@@ -6,6 +6,7 @@ public sealed class EventTicket
     public Guid Uuid { get; private set; }
     public int EventId { get; private set; }
     public TicketCategory Category { get; private set; }
+    public int? TierId { get; private set; }
     public decimal Price { get; private set; }
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
@@ -16,7 +17,7 @@ public sealed class EventTicket
     public string? CreatedByEmail { get; private set; }
     public int? BundleId { get; private set; }
 
-    private EventTicket(int id, Guid uuid, int eventId, TicketCategory category, decimal price,
+    private EventTicket(int id, Guid uuid, int eventId, TicketCategory category, int? tierId, decimal price,
         int? orderId, TicketStatus status, DateTime createdAt, bool redeemed, Buyer? buyer,
         string? createdByName, string? createdByEmail, int? bundleId)
     {
@@ -24,6 +25,7 @@ public sealed class EventTicket
         Uuid = uuid;
         EventId = eventId;
         Category = category;
+        TierId = tierId;
         Price = price;
         OrderId = orderId;
         Status = status;
@@ -36,27 +38,28 @@ public sealed class EventTicket
     }
 
     public static EventTicket Create(int eventId, TicketCategory category, decimal price, int? orderId,
-        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null)
+        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, int? tierId = null)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
-        return new EventTicket(0, Guid.NewGuid(), eventId, category, decimal.Round(price, 2),
+        return new EventTicket(0, Guid.NewGuid(), eventId, category, tierId, decimal.Round(price, 2),
             orderId, TicketStatus.Valid, DateTime.UtcNow, false, buyer, Clean(createdByName), Clean(createdByEmail), null);
     }
 
     public static EventTicket CreateForBundle(int eventId, TicketCategory category, int bundleId,
-        string? createdByName = null, string? createdByEmail = null)
+        string? createdByName = null, string? createdByEmail = null, int? tierId = null)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (bundleId <= 0) throw new DomainException("Ein Bundle muss zugewiesen sein.");
-        return new EventTicket(0, Guid.NewGuid(), eventId, category, 0m, null,
+        return new EventTicket(0, Guid.NewGuid(), eventId, category, tierId, 0m, null,
             TicketStatus.Valid, DateTime.UtcNow, false, null, Clean(createdByName), Clean(createdByEmail), bundleId);
     }
 
     public static EventTicket FromPersistence(int id, Guid uuid, int eventId, TicketCategory category,
         decimal price, int? orderId, TicketStatus status, DateTime createdAt, bool redeemed,
-        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, int? bundleId = null) =>
-        new(id, uuid, eventId, category, price, orderId, status, createdAt, redeemed, buyer,
+        Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, int? bundleId = null,
+        int? tierId = null) =>
+        new(id, uuid, eventId, category, tierId, price, orderId, status, createdAt, redeemed, buyer,
             Clean(createdByName), Clean(createdByEmail), bundleId);
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

@@ -146,7 +146,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     {
         var demand = current.Items
             .Where(i => i.Kind == CartItemKind.EventTicket)
-            .Select(i => new TicketDemand(i.EventId, i.Category, i.Quantity))
+            .Select(i => new TicketDemand(i.EventId, i.TierId, i.Quantity))
             .ToList();
         var capacityError = await pricing.CheckCapacityAsync(demand);
         capacityError ??= await CheckSeasonPassCapacityAsync(current);
@@ -208,11 +208,11 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     private static string BuildSnapshotJson(Cart cart, bool subscribeNewsletter, string newsletterSource)
     {
         var items = cart.Items
-            .Select(i => new FulfillmentItem((int)i.Kind, i.EventId, i.SeasonId, (int)i.Category, i.UnitPrice, i.Quantity, i.EventName, i.CategoryName))
+            .Select(i => new FulfillmentItem((int)i.Kind, i.EventId, i.SeasonId, i.TierId, i.UnitPrice, i.Quantity, i.EventName, i.CategoryName))
             .ToList();
         var addOns = cart.Items
             .Where(i => i.Kind == CartItemKind.SeasonPass && i.AddOns.Count > 0)
-            .SelectMany(i => i.AddOns.Select(a => new FulfillmentAddOn(i.SeasonId, i.EventName, (int)i.Category, i.CategoryName, a.Label, a.Price, i.Quantity)))
+            .SelectMany(i => i.AddOns.Select(a => new FulfillmentAddOn(i.SeasonId, i.EventName, i.TierId, i.CategoryName, a.Label, a.Price, i.Quantity)))
             .Concat(cart.OrderAddOns.Select(a => new FulfillmentAddOn(a.SeasonId, a.SeasonName, 0, "", a.Label, a.Price, 1)))
             .ToList();
         return JsonSerializer.Serialize(new FulfillmentSnapshot(items, addOns, subscribeNewsletter, newsletterSource));
@@ -240,7 +240,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 if (item.Kind == (int)CartItemKind.SeasonPass)
                 {
                     var pass = await passes.SaveAsync(
-                        SeasonPass.Create(item.SeasonId, (TicketCategory)item.Category, item.UnitPrice, order.Id, buyer, "Online-Kauf"));
+                        SeasonPass.Create(item.SeasonId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
                     var passToken = tokens.Create(TicketType.SeasonPass, pass.Uuid, item.SeasonId);
                     issued.Add(new ConfirmationTicket(pass.Uuid, item.EventName, item.CategoryName, passToken));
                     mailTickets.Add(new OrderMailTicket(
@@ -249,7 +249,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 }
 
                 var ticket = await tickets.SaveAsync(
-                    EventTicket.Create(item.EventId, (TicketCategory)item.Category, item.UnitPrice, order.Id, buyer, "Online-Kauf"));
+                    EventTicket.Create(item.EventId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
                 var token = tokens.Create(TicketType.EventTicket, ticket.Uuid, item.EventId);
                 issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName, token));
                 mailTickets.Add(new OrderMailTicket(
@@ -260,7 +260,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (snapshot.AddOns.Count > 0)
         {
             var addOnLines = snapshot.AddOns
-                .Select(a => new OrderAddOnLine(a.SeasonId, a.EventName, (TicketCategory)a.Category, a.CategoryName, a.Label, a.Price, a.Quantity))
+                .Select(a => new OrderAddOnLine(a.SeasonId, a.EventName, default, a.CategoryName, a.Label, a.Price, a.Quantity, a.TierId))
                 .ToList();
             await orderAddOns.SaveAsync(order.Id, addOnLines);
             await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email, addOnLines);
@@ -361,10 +361,10 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     {
         foreach (var bySeason in cart.Items.Where(i => i.Kind == CartItemKind.SeasonPass).GroupBy(i => i.SeasonId))
         {
-            var byCategory = (await passPricing.GetAvailableAsync(bySeason.Key)).ToDictionary(c => c.Category);
+            var byTier = (await passPricing.GetAvailableAsync(bySeason.Key)).ToDictionary(c => c.TierId);
             foreach (var item in bySeason)
             {
-                if (!byCategory.TryGetValue(item.Category, out var cat) || !cat.Available)
+                if (!byTier.TryGetValue(item.TierId, out var cat) || !cat.Available)
                     return $"{item.CategoryName} ist nicht mehr verfügbar.";
                 if (cat.Remaining is { } r && r < item.Quantity)
                     return $"{item.CategoryName} ist nicht mehr in dieser Anzahl verfügbar.";

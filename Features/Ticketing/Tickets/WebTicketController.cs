@@ -54,7 +54,7 @@ public sealed class WebTicketController(
             TypeLabel: DisplayTitle(data.Type, issued),
             ScopeName: scopeName,
             DateText: dateText,
-            CategoryLabel: issued is null ? null : (issued.Category?.DisplayName() ?? issued.MemberCategory?.DisplayName()),
+            CategoryLabel: issued is null ? null : (issued.CategoryName ?? issued.Category?.DisplayName() ?? issued.MemberCategory?.DisplayName()),
             HolderName: issued?.HolderName,
             TicketRef: data.Uuid.ToString("N")[..8].ToUpperInvariant(),
             QrSvg: svg,

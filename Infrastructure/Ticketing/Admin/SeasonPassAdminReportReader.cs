@@ -14,7 +14,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
         var passes = await scope.Database.FetchAsync<Row>(@"
-            SELECT sp.Uuid, sp.Category, sp.Price, sp.Status, sp.CreatedAt,
+            SELECT sp.Uuid, sp.Category, sp.TierId, sp.Price, sp.Status, sp.CreatedAt,
                    sp.BuyerType, sp.BuyerFirstName, sp.BuyerLastName, sp.BuyerCompany, sp.CreatedByName, sp.Reference,
                    o.OrderNumber AS OrderNumber, o.Status AS OrderStatus,
                    o.BillingFirstName AS BillingFirstName, o.BillingLastName AS BillingLastName
@@ -22,6 +22,10 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
             LEFT JOIN Orders o ON o.Id = sp.OrderId
             WHERE sp.SeasonId = @0
             ORDER BY sp.CreatedAt DESC", new object[] { seasonId });
+
+        var tierNames = (await scope.Database.FetchAsync<TierNameRow>(
+                "SELECT Id, Name FROM SeasonPriceTiers WHERE SeasonId = @0", new object[] { seasonId }))
+            .ToDictionary(t => t.Id, t => t.Name);
 
         var visitRows = await scope.Database.FetchAsync<UuidCountRow>(
             "SELECT TicketUuid AS Uuid, COUNT(DISTINCT EventId) AS Cnt FROM TicketEventVisits " +
@@ -37,6 +41,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
             return new SeasonPassListItem(
                 Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
                 (TicketCategory)p.Category,
+                p.TierId is { } tid && tierNames.TryGetValue(tid, out var tn) ? tn : ((TicketCategory)p.Category).DisplayName(),
                 p.Price,
                 (TicketStatus)p.Status,
                 p.CreatedAt,
@@ -69,6 +74,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
     {
         public string Uuid { get; set; } = "";
         public int Category { get; set; }
+        public int? TierId { get; set; }
         public decimal Price { get; set; }
         public int Status { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -88,6 +94,12 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
     {
         public string? Uuid { get; set; }
         public int Cnt { get; set; }
+    }
+
+    public sealed class TierNameRow
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
     }
 }
 

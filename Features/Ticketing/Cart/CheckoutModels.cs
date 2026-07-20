@@ -53,10 +53,10 @@ public sealed class CheckoutProcessingView
 }
 
 public sealed record FulfillmentItem(
-    int Kind, int EventId, int SeasonId, int Category, decimal UnitPrice, int Quantity, string EventName, string CategoryName);
+    int Kind, int EventId, int SeasonId, int TierId, decimal UnitPrice, int Quantity, string EventName, string CategoryName);
 
 public sealed record FulfillmentAddOn(
-    int SeasonId, string EventName, int Category, string CategoryName, string Label, decimal Price, int Quantity);
+    int SeasonId, string EventName, int TierId, string CategoryName, string Label, decimal Price, int Quantity);
 
 public sealed record FulfillmentSnapshot(
     List<FulfillmentItem> Items,

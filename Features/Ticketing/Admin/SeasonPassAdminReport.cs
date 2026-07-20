@@ -5,6 +5,7 @@ namespace RedAnts.Features.Ticketing.Admin;
 public sealed record SeasonPassListItem(
     Guid Uuid,
     TicketCategory Category,
+    string CategoryName,
     decimal Price,
     TicketStatus Status,
     DateTime CreatedAt,

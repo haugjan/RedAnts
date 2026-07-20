@@ -30,6 +30,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonAddOnScope>("seasonaddons-scope");
         To<AddSeasonPriceDefaultTicketSalesQuota>("seasonprices-default-ticket-sales-quota");
         To<AddFreeEntryTypeQuotas>("freeentry-type-quotas");
+        To<AddPriceTiers>("price-tiers");
     }
 }
 
@@ -68,6 +69,36 @@ public class AddFreeEntryTypeQuotas(IMigrationContext context) : AsyncMigrationB
             Execute.Sql($"ALTER TABLE TicketEventFreeEntryQuotas ADD COLUMN {column} INTEGER NULL").Do();
         else
             Alter.Table("TicketEventFreeEntryQuotas").AddColumn(column).AsInt32().Nullable().Do();
+    }
+}
+
+public class AddPriceTiers(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("SeasonPriceTiers"))
+            Create.Table<SeasonPriceTierRecord>().Do();
+        else
+            AddInt("SeasonPriceTiers", "LegacyCategory");
+
+        AddInt("EventPriceCategories", "TierId");
+        AddInt("SeasonPriceCategories", "TierId");
+        AddInt("EventTickets", "TierId");
+        AddInt("SeasonSingleTickets", "TierId");
+        AddInt("SeasonPasses", "TierId");
+        AddInt("OrderAddOns", "TierId");
+
+        return Task.CompletedTask;
+    }
+
+    private void AddInt(string table, string column)
+    {
+        if (ColumnExists(table, column)) return;
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite)
+            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} INTEGER NULL").Do();
+        else
+            Alter.Table(table).AddColumn(column).AsInt32().Nullable().Do();
     }
 }
 
@@ -221,6 +252,7 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<EventPriceRecord>("EventPrices");
         EnsureTable<EventPriceCategoryRecord>("EventPriceCategories");
         EnsureTable<SeasonPriceRecord>("SeasonPrices");
+        EnsureTable<SeasonPriceTierRecord>("SeasonPriceTiers");
         EnsureTable<SeasonPriceCategoryRecord>("SeasonPriceCategories");
         EnsureTable<SeasonAddOnRecord>("SeasonAddOns");
 

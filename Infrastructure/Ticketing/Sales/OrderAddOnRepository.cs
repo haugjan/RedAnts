@@ -18,6 +18,7 @@ public sealed class OrderAddOnRepository(IScopeProvider scopeProvider) : IOrderA
                 SeasonId = l.SeasonId,
                 SeasonName = l.SeasonName,
                 Category = (int)l.Category,
+                TierId = l.TierId,
                 CategoryName = l.CategoryName,
                 Label = l.Label,
                 Price = l.Price,
@@ -31,6 +32,6 @@ public sealed class OrderAddOnRepository(IScopeProvider scopeProvider) : IOrderA
         var rows = await scope.Database.FetchAsync<OrderAddOnRecord>(
             "WHERE OrderId = @0 ORDER BY Id", orderId);
         return rows.Select(r => new OrderAddOnLine(
-            r.SeasonId, r.SeasonName, (TicketCategory)r.Category, r.CategoryName, r.Label, r.Price, r.Quantity)).ToList();
+            r.SeasonId, r.SeasonName, (TicketCategory)r.Category, r.CategoryName, r.Label, r.Price, r.Quantity, r.TierId)).ToList();
     }
 }
