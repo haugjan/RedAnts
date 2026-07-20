@@ -70,7 +70,10 @@
         <ScanView EventId="_selected.Id" EventName="@_selected.Name" Operator="@_operator" OnBack="BackToList" />
     }
 
-    <p class="scan-app__version">Scanner v@(Version)</p>
+    <p class="scan-app__version">
+        <a class="scan-app__test" href="/scanner-test" target="_blank" rel="noopener">Scanner testen</a>
+        · Scanner v@(Version)
+    </p>
 </div>
 
 <style>
@@ -94,6 +97,7 @@
         text-align: center; margin: 1.5rem 0 0.5rem; color: #b0b0b0;
         font-size: 0.75rem; letter-spacing: 0.04em;
     }
+    .scan-app__test { color: #888; text-decoration: underline; }
 </style>
 
 @code {
