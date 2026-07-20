@@ -48,6 +48,7 @@ public class SeasonAddOnRecord
     [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
     [Column("Active")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Active { get; set; }
     [Column("SortOrder")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SortOrder { get; set; }
+    [Column("Scope")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Scope { get; set; }
 }
 
 [TableName("SeasonPriceCategories")]

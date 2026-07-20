@@ -80,7 +80,7 @@
                                                     {
                                                         <label class="pass-addon">
                                                             <input type="checkbox" name="addOns" value="@a.Id" />
-                                                            <span class="pass-addon-label">@a.Label</span>
+                                                            <span class="pass-addon-label">@a.Label@(a.Scope == AddOnScope.PerOrder ? " (einmalig pro Bestellung)" : "")</span>
                                                             <span class="pass-addon-price">+CHF @MoneyFormat.Amount(a.Price)</span>
                                                         </label>
                                                     }

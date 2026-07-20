@@ -27,6 +27,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddEventTicketBundles>("eventticket-bundles");
         To<AddSalesFilterIndexes>("sales-filter-indexes");
         To<AddOrderPaymentColumns>("order-payment-columns");
+        To<AddSeasonAddOnScope>("seasonaddons-scope");
     }
 }
 
@@ -50,6 +51,24 @@ public class AddOrderPaymentColumns(IMigrationContext context) : AsyncMigrationB
                 Execute.Sql("ALTER TABLE Orders ADD COLUMN FulfillmentPayload TEXT NULL").Do();
             else
                 Execute.Sql("ALTER TABLE Orders ADD FulfillmentPayload NVARCHAR(MAX) NULL").Do();
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+public class AddSeasonAddOnScope(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+
+        if (!ColumnExists("SeasonAddOns", "Scope"))
+        {
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonAddOns ADD COLUMN Scope INT NOT NULL DEFAULT 0").Do();
+            else
+                Alter.Table("SeasonAddOns").AddColumn("Scope").AsInt32().NotNullable().WithDefaultValue(0).Do();
         }
 
         return Task.CompletedTask;

@@ -55,7 +55,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         if (quantity <= 0) return;
         var cart = Get();
         var addOnList = (addOns ?? [])
-            .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price })
+            .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price, SeasonId = a.SeasonId, SeasonName = a.SeasonName })
             .ToList();
         var addOnKey = addOnList.Count == 0 ? "" : string.Join("-", addOnList.Select(a => a.Id).OrderBy(x => x));
         var existing = cart.Items.FirstOrDefault(i =>
@@ -82,6 +82,25 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 AddOns = addOnList
             });
         }
+        Save(cart);
+    }
+
+    public void AddOrderAddOns(IReadOnlyList<CartAddOn> addOns)
+    {
+        if (addOns is null || addOns.Count == 0) return;
+        var cart = Get();
+        foreach (var a in addOns)
+        {
+            if (cart.OrderAddOns.Any(x => x.Id == a.Id)) continue;
+            cart.OrderAddOns.Add(new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price, SeasonId = a.SeasonId, SeasonName = a.SeasonName });
+        }
+        Save(cart);
+    }
+
+    public void RemoveOrderAddOn(int addOnId)
+    {
+        var cart = Get();
+        cart.OrderAddOns.RemoveAll(a => a.Id == addOnId);
         Save(cart);
     }
 

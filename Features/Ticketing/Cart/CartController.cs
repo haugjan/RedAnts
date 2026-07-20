@@ -69,12 +69,18 @@ public sealed class CartController(
         {
             var selectedIds = (addOns ?? []).ToHashSet();
             var chosen = selectedIds.Count == 0
-                ? new List<CartAddOn>()
+                ? new List<SeasonAddOn>()
                 : (await seasonAddOns.GetBySeasonAsync(seasonId))
                     .Where(a => a.Active && selectedIds.Contains(a.Id))
-                    .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price })
                     .ToList();
-            cart.AddSeasonPass(seasonId, season!.Name, available!.Category, available.Name, available.Price, quantity, chosen);
+            var perPass = chosen.Where(a => a.Scope == AddOnScope.PerPass)
+                .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price })
+                .ToList();
+            var perOrder = chosen.Where(a => a.Scope == AddOnScope.PerOrder)
+                .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price, SeasonId = seasonId, SeasonName = season!.Name })
+                .ToList();
+            cart.AddSeasonPass(seasonId, season!.Name, available!.Category, available.Name, available.Price, quantity, perPass);
+            cart.AddOrderAddOns(perOrder);
         }
 
         if (IsFetchRequest())
@@ -106,6 +112,14 @@ public sealed class CartController(
     public IActionResult Remove(string key)
     {
         cart.Remove(key);
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("/warenkorb/addon-entfernen")]
+    [ValidateAntiForgeryToken]
+    public IActionResult RemoveAddOn(int addOnId)
+    {
+        cart.RemoveOrderAddOn(addOnId);
         return RedirectToAction(nameof(Index));
     }
 

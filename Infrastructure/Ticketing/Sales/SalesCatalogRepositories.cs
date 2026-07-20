@@ -343,10 +343,11 @@ public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeaso
                 Label = o.Label,
                 Price = o.Price,
                 Active = o.Active,
-                SortOrder = order++
+                SortOrder = order++,
+                Scope = (int)o.Scope
             });
     }
 
     private static SeasonAddOn Map(SeasonAddOnRecord r) =>
-        SeasonAddOn.FromPersistence(r.Id, r.SeasonId, r.Label, r.Price, r.Active, r.SortOrder);
+        SeasonAddOn.FromPersistence(r.Id, r.SeasonId, r.Label, r.Price, r.Active, r.SortOrder, (AddOnScope)r.Scope);
 }

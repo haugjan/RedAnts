@@ -213,6 +213,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var addOns = cart.Items
             .Where(i => i.Kind == CartItemKind.SeasonPass && i.AddOns.Count > 0)
             .SelectMany(i => i.AddOns.Select(a => new FulfillmentAddOn(i.SeasonId, i.EventName, (int)i.Category, i.CategoryName, a.Label, a.Price, i.Quantity)))
+            .Concat(cart.OrderAddOns.Select(a => new FulfillmentAddOn(a.SeasonId, a.SeasonName, 0, "", a.Label, a.Price, 1)))
             .ToList();
         return JsonSerializer.Serialize(new FulfillmentSnapshot(items, addOns, subscribeNewsletter, newsletterSource));
     }

@@ -62,6 +62,22 @@ public enum BuyerType
     Company
 }
 
+public enum AddOnScope
+{
+    PerPass,
+    PerOrder
+}
+
+public static class AddOnScopeExtensions
+{
+    public static string DisplayName(this AddOnScope scope) => scope switch
+    {
+        AddOnScope.PerPass => "pro Saisonkarte",
+        AddOnScope.PerOrder => "einmalig pro Bestellung",
+        _ => scope.ToString()
+    };
+}
+
 public static class BuyerTypeExtensions
 {
     public static string DisplayName(this BuyerType type) => type switch

@@ -17,7 +17,7 @@ public sealed class AddOnNotifier(IEmailSender email, IConfiguration config) : I
             ?? "tickets@redants.ch";
 
         var rows = string.Join("\n", lines.Select(l =>
-            $"{l.Quantity}× {l.Label} ({l.SeasonName}, {l.CategoryName}) – CHF {l.Price * l.Quantity:N2}"));
+            $"{l.Quantity}× {l.Label} ({l.SeasonName}{(string.IsNullOrWhiteSpace(l.CategoryName) ? "" : ", " + l.CategoryName)}) – CHF {l.Price * l.Quantity:N2}"));
         var total = lines.Sum(l => l.Price * l.Quantity);
 
         var body = $"Zu Bestellung {orderNumber} wurden Zusatzoptionen zu Saisonkarten gewählt:\n\n{rows}";

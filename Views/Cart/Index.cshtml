@@ -27,6 +27,7 @@
         .cart-mobile-total { display: none; }
     }
     .cart-addons { list-style: none; margin: .25rem 0 0; padding: 0; font-weight: 400; font-size: .82rem; color: #666; }
+    .cart-addon-once { display: inline-block; margin-left: .4rem; padding: .05rem .4rem; border-radius: 999px; background: #eee; color: #777; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; vertical-align: middle; }
 </style>
 
 <h1 class="mb-4">Warenkorb</h1>
@@ -87,6 +88,23 @@ else
                             <form method="post" action="/warenkorb/remove">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="key" value="@item.Key" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Entfernen">&times;</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @foreach (var a in Model.OrderAddOns)
+                {
+                    <tr>
+                        <td class="cart-name">@a.Label <span class="cart-addon-once">einmalig</span></td>
+                        <td data-label="Kategorie">Zusatzoption</td>
+                        <td data-label="Preis" class="text-end">CHF @a.Price.ToString("N2")</td>
+                        <td data-label="Menge">1</td>
+                        <td data-label="Total" class="text-end">CHF @a.Price.ToString("N2")</td>
+                        <td class="cart-remove text-end">
+                            <form method="post" action="/warenkorb/addon-entfernen">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="addOnId" value="@a.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Entfernen">&times;</button>
                             </form>
                         </td>
