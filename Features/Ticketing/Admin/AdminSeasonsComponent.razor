@@ -209,7 +209,7 @@
                             <tr class="@(r.Active ? "" : "ta-row-off")">
                                 <td><input type="text" maxlength="200" class="ta-input ta-addon-label" placeholder="z. B. Livestream-Abo" @bind="r.Label" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" @bind="r.Price" @bind:after="() => r.Price = decimal.Round(r.Price, 2)" /></td>
-                                <td><select class="ta-select ta-input-sm" @bind="r.Scope">
+                                <td><select class="ta-select ta-scope-select" @bind="r.Scope">
                                     <option value="@AddOnScope.PerPass">Pro Saisonkarte</option>
                                     <option value="@AddOnScope.PerOrder">Einmalig pro Bestellung</option>
                                 </select></td>

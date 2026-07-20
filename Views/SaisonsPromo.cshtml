@@ -86,7 +86,10 @@
                                                     }
                                                 </div>
                                             }
-                                            <button type="submit" class="pass-add-btn">In den Warenkorb</button>
+                                            <div class="pass-add-row">
+                                                <button type="submit" class="pass-add-btn">In den Warenkorb</button>
+                                                <span class="pass-add-status" role="status" aria-live="polite"></span>
+                                            </div>
                                         </form>
                                     </li>
                                 }
@@ -132,4 +135,78 @@
     .pass-addon-price { font-weight: 600; color: #444; white-space: nowrap; }
     .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: .82rem; background: #C8102E; color: #fff; border: none; padding: .4rem .9rem; cursor: pointer; border-radius: 4px; }
     .pass-add-btn:hover { background: #a50d25; }
+    .pass-add-btn:disabled { opacity: .75; cursor: default; }
+    .pass-add-btn.is-added { background: #1c7c43; }
+    .pass-add-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+    .pass-add-status { font-size: .82rem; font-weight: 600; color: #1c7c43; }
+    .pass-add-status.is-error { color: #C8102E; }
+    @@keyframes passBadgeBump { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
+    .nav-cart-badge.badge-bump { animation: passBadgeBump .35s ease; }
 </style>
+
+@section Scripts {
+<script>
+(function () {
+    function bumpBadge(total) {
+        document.querySelectorAll('.nav-cart, .nav-cart-mobile').forEach(function (link) {
+            var badge = link.querySelector('.nav-cart-badge');
+            if (total > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'nav-cart-badge';
+                    link.appendChild(badge);
+                }
+                badge.textContent = total;
+                badge.classList.remove('badge-bump');
+                void badge.offsetWidth;
+                badge.classList.add('badge-bump');
+            } else if (badge) {
+                badge.remove();
+            }
+        });
+    }
+
+    document.querySelectorAll('.pass-add-form').forEach(function (form) {
+        var btn = form.querySelector('.pass-add-btn');
+        var status = form.querySelector('.pass-add-status');
+        var label = btn ? btn.textContent : '';
+        var revert;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            clearTimeout(revert);
+            btn.disabled = true;
+            if (status) { status.textContent = ''; status.classList.remove('is-error'); }
+
+            fetch('/warenkorb/add-saisonkarte', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'fetch' },
+                body: new FormData(form)
+            })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function (data) {
+                if (data.ok) {
+                    btn.textContent = '✓ Hinzugefügt';
+                    btn.classList.add('is-added');
+                    if (status) status.textContent = 'Zum Warenkorb hinzugefügt';
+                    bumpBadge(data.totalQuantity);
+                } else {
+                    if (status) { status.textContent = 'Nicht mehr verfügbar'; status.classList.add('is-error'); }
+                }
+            })
+            .catch(function () {
+                if (status) { status.textContent = 'Fehler, bitte erneut versuchen'; status.classList.add('is-error'); }
+            })
+            .finally(function () {
+                revert = setTimeout(function () {
+                    btn.disabled = false;
+                    btn.textContent = label;
+                    btn.classList.remove('is-added');
+                    if (status) { status.textContent = ''; status.classList.remove('is-error'); }
+                }, 1600);
+            });
+        });
+    });
+}());
+</script>
+}
