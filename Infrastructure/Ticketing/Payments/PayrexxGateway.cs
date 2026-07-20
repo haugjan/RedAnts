@@ -94,9 +94,9 @@ public sealed class PayrexxGateway(
 
     private string SignedBody(IReadOnlyList<KeyValuePair<string, string>> fields)
     {
-        var query = string.Join("&", fields.Select(kv => $"{PhpUrlEncode(kv.Key)}={PhpUrlEncode(kv.Value)}"));
-        var signature = Sign(query);
-        return query + "&ApiSignature=" + PhpUrlEncode(signature);
+        var signQuery = string.Join("&", fields.Select(kv => $"{EncSign(kv.Key)}={EncSign(kv.Value)}"));
+        var bodyQuery = string.Join("&", fields.Select(kv => $"{EncBody(kv.Key)}={EncBody(kv.Value)}"));
+        return bodyQuery + "&ApiSignature=" + EncBody(Sign(signQuery));
     }
 
     private string Sign(string data)
@@ -105,21 +105,9 @@ public sealed class PayrexxGateway(
         return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(data)));
     }
 
-    internal static string PhpUrlEncode(string value)
-    {
-        var sb = new StringBuilder();
-        foreach (var b in Encoding.UTF8.GetBytes(value))
-        {
-            var c = (char)b;
-            if (c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '-' or '_' or '.')
-                sb.Append(c);
-            else if (c == ' ')
-                sb.Append('+');
-            else
-                sb.Append('%').Append(b.ToString("X2"));
-        }
-        return sb.ToString();
-    }
+    private static string EncBody(string value) => Uri.EscapeDataString(value);
+
+    private static string EncSign(string value) => Uri.EscapeDataString(value).Replace("%20", "+").Replace("~", "%7E");
 }
 
 public sealed class PayrexxGatewayComposer : IComposer
