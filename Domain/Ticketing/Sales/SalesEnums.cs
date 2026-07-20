@@ -102,9 +102,9 @@ public static class TicketCategoryExtensions
     {
         TicketCategory.Adult => "Erwachsen",
         TicketCategory.AdultPromo => "Sonderaktion Erwachsen",
-        TicketCategory.Youth => "Jugend (bis 16)",
+        TicketCategory.Youth => "Jugend (bis 19)",
         TicketCategory.YouthPromo => "Sonderaktion Jugend",
-        TicketCategory.Child => "Kind (bis 6)",
+        TicketCategory.Child => "Kind (bis 5)",
         _ => category.ToString()
     };
 
