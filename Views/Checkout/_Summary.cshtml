@@ -5,7 +5,7 @@
         @foreach (var item in Model.Items)
         {
             <li class="list-group-item d-flex justify-content-between px-0">
-                <span>@item.Quantity × @item.EventName <span class="text-muted">(@item.CategoryName)</span></span>
+                <span>@item.Quantity × @item.EventName <span class="text-muted">@item.CategoryName</span></span>
                 <span class="text-nowrap">CHF @item.LineTotal.ToString("N2")</span>
             </li>
         }
