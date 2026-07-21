@@ -99,6 +99,12 @@
         .evt-addbtn.is-error { background: #6c757d; }
         @@keyframes evtBadgeBump { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
         .nav-cart-badge.badge-bump { animation: evtBadgeBump 0.35s ease; }
+        .evt-cat__stock {
+            display: inline-block; margin-left: 0.5rem; padding: 0.15rem 0.6rem;
+            border-radius: 999px; font-family: var(--display); font-size: 0.82rem; font-weight: 700;
+            letter-spacing: 0.02em; background: #e4f4ea; color: #1c7c43; vertical-align: middle;
+        }
+        .evt-cat__stock.is-low { background: #fdecea; color: #c0392b; }
     </style>
 }
 
@@ -184,7 +190,7 @@ else
                                 }
                                 @if (cat.Remaining is { } rem)
                                 {
-                                    <span class="evt-cat__note">noch @rem übrig</span>
+                                    <span class="evt-cat__stock @(rem <= 10 ? "is-low" : "")">@(rem <= 10 ? $"Nur noch {rem} verfügbar" : $"Noch {rem} verfügbar")</span>
                                 }
                             </div>
                             @if (cat.Available)
