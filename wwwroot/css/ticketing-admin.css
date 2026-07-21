@@ -257,8 +257,8 @@
 .ta-subtable .ta-datebox { gap: 0.15rem; }
 .ta-subtable .ta-dateseg { padding: 0.28rem 0.3rem; }
 .ta-subtable .ta-seg { font-size: 0.82rem; }
-.ta-subtable .ta-seg-dm { width: 1.4rem; }
-.ta-subtable .ta-seg-y { width: 2.1rem; }
+.ta-subtable .ta-seg-dm { width: 1.75rem; }
+.ta-subtable .ta-seg-y { width: 2.5rem; }
 .ta-subtable .ta-datebox-cal { padding: 0.24rem 0.3rem; font-size: 0.8rem; }
 .ta-subtable .ta-promo-toggle { padding: 0.2rem 0.4rem; font-size: 0.72rem; white-space: nowrap; }
 .ta-subtable .ta-tier-actions { white-space: nowrap; }
