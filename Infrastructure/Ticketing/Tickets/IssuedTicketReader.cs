@@ -53,8 +53,17 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
     {
         if (tierId is { } id)
         {
-            var name = await db.ExecuteScalarAsync<string?>("SELECT Name FROM SeasonPriceTiers WHERE Id = @0", id);
-            if (!string.IsNullOrWhiteSpace(name)) return name;
+            var tier = await db.FirstOrDefaultAsync<SeasonPriceTierRecord>("WHERE Id = @0", id);
+            if (tier is not null)
+            {
+                if (tier.PromoOfTierId is { } parentId)
+                {
+                    var parentName = await db.ExecuteScalarAsync<string?>(
+                        "SELECT Name FROM SeasonPriceTiers WHERE Id = @0", parentId);
+                    if (!string.IsNullOrWhiteSpace(parentName)) return parentName;
+                }
+                if (!string.IsNullOrWhiteSpace(tier.Name)) return tier.Name;
+            }
         }
         return ((TicketCategory)category).DisplayName();
     }
