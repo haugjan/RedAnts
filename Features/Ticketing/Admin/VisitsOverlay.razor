@@ -15,10 +15,23 @@
         }
         else
         {
-            @foreach (var v in _visits)
+            @if (_visits.Count > 1)
             {
+                <div class="ta-visits-bar">
+                    <span class="ta-muted">@_visits.Count Anlässe · @_visits.Sum(v => v.Scans.Count) Scans</span>
+                    <button type="button" class="ta-linkbtn" @onclick="ToggleAll">
+                        @(_expanded.Count == _visits.Count ? "Alle zuklappen" : "Alle aufklappen")
+                    </button>
+                </div>
+            }
+            @for (var i = 0; i < _visits.Count; i++)
+            {
+                var index = i;
+                var v = _visits[index];
+                var open = _expanded.Contains(index);
                 <div class="ta-visit">
-                    <div class="ta-visit-head">
+                    <button type="button" class="ta-visit-toggle" @onclick="() => Toggle(index)">
+                        <span class="ta-visit-chevron">@(open ? "▾" : "▸")</span>
                         <span class="ta-visit-event">@v.EventName</span>
                         @if (v.EventDate is { } d)
                         {
@@ -27,8 +40,9 @@
                         <span class="ta-badge @(v.IsInside ? "ta-badge-valid" : "ta-badge-draft")">
                             @(v.IsInside ? "Drin" : "Draussen")
                         </span>
-                    </div>
-                    @if (v.Scans.Count > 0)
+                        <span class="ta-visit-summary">@Summary(v)</span>
+                    </button>
+                    @if (open && v.Scans.Count > 0)
                     {
                         <table class="ta-subtable">
                             <thead>
@@ -56,6 +70,15 @@
     </div>
 </div>
 
+<style>
+    .ta-visits-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; font-size: .85rem; }
+    .ta-linkbtn { background: none; border: none; padding: 0; cursor: pointer; color: var(--ta-accent); font: inherit; text-decoration: underline; }
+    .ta-visit-toggle { display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: .55rem .1rem; font: inherit; color: var(--ta-ink); }
+    .ta-visit-toggle:hover { background: rgba(0,0,0,.03); }
+    .ta-visit-chevron { color: var(--ta-muted); font-size: .8rem; width: .9rem; flex-shrink: 0; }
+    .ta-visit-summary { margin-left: auto; color: var(--ta-muted); font-size: .82rem; white-space: nowrap; }
+</style>
+
 @code {
     [Parameter] public Guid Uuid { get; set; }
     [Parameter] public string Title { get; set; } = "";
@@ -65,11 +88,31 @@
 
     private bool _loading = true;
     private IReadOnlyList<TicketVisitEntry> _visits = [];
+    private readonly HashSet<int> _expanded = [];
 
     protected override async Task OnInitializedAsync()
     {
         _visits = await Visits.GetByTicketUuidAsync(Uuid);
+        if (_visits.Count == 1) _expanded.Add(0);
         _loading = false;
+    }
+
+    private void Toggle(int index)
+    {
+        if (!_expanded.Remove(index)) _expanded.Add(index);
+    }
+
+    private void ToggleAll()
+    {
+        if (_expanded.Count == _visits.Count) _expanded.Clear();
+        else for (var i = 0; i < _visits.Count; i++) _expanded.Add(i);
+    }
+
+    private static string Summary(TicketVisitEntry v)
+    {
+        if (v.Scans.Count == 0) return "keine Scans";
+        var last = v.Scans.Max(s => s.OccurredAt).ToLocalTime();
+        return $"{v.Scans.Count} Scan{(v.Scans.Count == 1 ? "" : "s")} · zuletzt {last:dd.MM.yyyy HH:mm}";
     }
 
     private Task Close() => OnClose.InvokeAsync();
