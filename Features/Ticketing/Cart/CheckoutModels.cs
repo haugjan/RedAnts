@@ -22,6 +22,8 @@ public sealed class CheckoutAddressView
 {
     public CheckoutForm Form { get; init; } = new();
     public Cart Cart { get; init; } = new();
+    public bool PayrexxEnabled { get; init; }
+    public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
 }
 

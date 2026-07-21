@@ -2,14 +2,21 @@
 @model RedAnts.Features.Ticketing.Cart.CheckoutAddressView
 @{
     Layout = "~/Views/Shared/_TicketsLayout.cshtml";
-    ViewData["Title"] = "Kasse – Rechnungsadresse";
+    ViewData["Title"] = "Kasse";
     var f = Model.Form;
     var isCompany = f.Type == BuyerType.Company;
 }
 
 <a href="/warenkorb" class="tk-back">&larr; Warenkorb</a>
 <h1 class="mb-1">Kasse</h1>
-<p class="text-muted mb-4">Schritt 1 von 2 · Rechnungsadresse</p>
+<p class="text-muted mb-4">Rechnungsadresse &amp; Bezahlung</p>
+
+@if (!Model.PayrexxEnabled)
+{
+    <div class="alert alert-info">
+        <strong>Testmodus:</strong> Es wird keine echte Zahlung ausgelöst. Der Kauf ist immer erfolgreich.
+    </div>
+}
 
 @if (Model.Error is not null)
 {
@@ -73,6 +80,7 @@
                     <input name="Phone" value="@f.Phone" class="form-control" />
                 </div>
             </div>
+
             <div class="form-check mt-4">
                 <input class="form-check-input" type="checkbox" name="AcceptNewsletter" value="true"
                        id="acceptNewsletter" @(f.AcceptNewsletter ? "checked" : "") />
@@ -80,8 +88,23 @@
                     Ich möchte den Newsletter der Red Ants abonnieren.
                 </label>
             </div>
+
+            @if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
+            {
+                <div class="cf-turnstile mt-4" data-sitekey="@Model.TurnstileSiteKey"></div>
+            }
+
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" name="acceptPrivacy" value="true" id="acceptPrivacy" required />
+                <label class="form-check-label" for="acceptPrivacy">
+                    Ich akzeptiere die <a href="/agb" target="_blank" rel="noopener">AGB</a> und die <a href="/datenschutz" target="_blank" rel="noopener">Datenschutzerklärung</a>. *
+                </label>
+            </div>
+
+            <p class="text-muted small mt-3 mb-0">Alle Preise verstehen sich ohne MwSt. Der Verein ist nicht mehrwertsteuerpflichtig.</p>
+
             <div class="d-flex justify-content-end mt-4">
-                <button type="submit" class="btn btn-danger">Weiter zur Zahlung</button>
+                <button type="submit" class="btn btn-danger">Kostenpflichtig bestellen</button>
             </div>
         </form>
     </div>
@@ -89,6 +112,11 @@
         @await Html.PartialAsync("~/Views/Checkout/_Summary.cshtml", Model.Cart)
     </div>
 </div>
+
+@if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+}
 
 <script>
     function raToggleBuyer() {

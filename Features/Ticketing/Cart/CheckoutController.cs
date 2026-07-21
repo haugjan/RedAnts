@@ -24,74 +24,44 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     public IActionResult Address()
     {
         if (cart.Get().IsEmpty) return Redirect("/warenkorb");
-        return View("~/Views/Checkout/Address.cshtml",
-            new CheckoutAddressView { Form = LoadForm() ?? new CheckoutForm(), Cart = cart.Get() });
+        return CheckoutView(LoadForm() ?? new CheckoutForm(), TempData["CheckoutError"] as string);
     }
 
     [HttpPost("/kasse")]
     [ValidateAntiForgeryToken]
-    public IActionResult Address(CheckoutForm form)
+    public async Task<IActionResult> Checkout(CheckoutForm form, bool acceptPrivacy)
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/warenkorb");
-
-        try
-        {
-            _ = ToBillingAddress(form);
-        }
-        catch (DomainException ex)
-        {
-            return View("~/Views/Checkout/Address.cshtml",
-                new CheckoutAddressView { Form = form, Cart = current, Error = ex.Message });
-        }
 
         SaveForm(form);
-        return Redirect("/kasse/zahlung");
-    }
-
-    [HttpGet("/kasse/zahlung")]
-    public IActionResult Payment()
-    {
-        if (cart.Get().IsEmpty) return Redirect("/warenkorb");
-        var form = LoadForm();
-        if (form is null) return Redirect("/kasse");
-        return View("~/Views/Checkout/Payment.cshtml",
-            new CheckoutPaymentView
-            {
-                Cart = cart.Get(), Form = form, PayrexxEnabled = payrexx.Enabled,
-                TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
-                Error = TempData["CheckoutError"] as string
-            });
-    }
-
-    [HttpPost("/kasse/zahlung")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Pay(bool acceptPrivacy)
-    {
-        var current = cart.Get();
-        if (current.IsEmpty) return Redirect("/warenkorb");
-        var form = LoadForm();
-        if (form is null) return Redirect("/kasse");
-
-        if (!acceptPrivacy)
-        {
-            TempData["CheckoutError"] = "Bitte akzeptiere die AGB und die Datenschutzerklärung.";
-            return Redirect("/kasse/zahlung");
-        }
-
-        var captchaToken = Request.Form["cf-turnstile-response"].ToString();
-        if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
-        {
-            TempData["CheckoutError"] = "Bitte bestätige, dass du kein Roboter bist.";
-            return Redirect("/kasse/zahlung");
-        }
 
         BillingAddress billing;
         try { billing = ToBillingAddress(form); }
-        catch (DomainException) { return Redirect("/kasse"); }
+        catch (DomainException ex) { return CheckoutView(form, ex.Message); }
+
+        if (!acceptPrivacy)
+            return CheckoutView(form, "Bitte akzeptiere die AGB und die Datenschutzerklärung.");
+
+        var captchaToken = Request.Form["cf-turnstile-response"].ToString();
+        if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
+            return CheckoutView(form, "Bitte bestätige, dass du kein Roboter bist.");
 
         return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, form.AcceptNewsletter, "Kasse");
     }
+
+    [HttpGet("/kasse/zahlung")]
+    public IActionResult Payment() => Redirect("/kasse");
+
+    private IActionResult CheckoutView(CheckoutForm form, string? error) =>
+        View("~/Views/Checkout/Address.cshtml", new CheckoutAddressView
+        {
+            Form = form,
+            Cart = cart.Get(),
+            PayrexxEnabled = payrexx.Enabled,
+            TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
+            Error = error
+        });
 
     [HttpGet("/kasse/express")]
     public IActionResult Express()
@@ -181,7 +151,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 Purpose: $"Red Ants Ticketing {saved.OrderNumber}",
                 ReferenceId: saved.OrderNumber,
                 SuccessUrl: $"{baseUrl}/kasse/erfolg?order={saved.Id}",
-                FailedUrl: $"{baseUrl}/kasse/zahlung",
+                FailedUrl: $"{baseUrl}/kasse",
                 CancelUrl: $"{baseUrl}/kasse/abbruch",
                 Email: billing.Email,
                 FirstName: billing.FirstName,
@@ -197,7 +167,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             {
                 logger.LogError(ex, "Payrexx gateway creation failed for order {Order}.", saved.OrderNumber);
                 TempData["CheckoutError"] = "Die Zahlung konnte nicht gestartet werden. Bitte versuche es erneut.";
-                return Redirect(newsletterSource == "Express" ? "/kasse/express" : "/kasse/zahlung");
+                return Redirect(newsletterSource == "Express" ? "/kasse/express" : "/kasse");
             }
         }
 
