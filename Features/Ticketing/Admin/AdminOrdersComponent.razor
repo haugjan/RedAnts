@@ -141,7 +141,7 @@
                    ConfirmLabel="@ActionLabel(_action)"
                    Danger="@(_action != OrderAction.MarkPaid)"
                    Busy="_actionBusy"
-                   Error="_actionError"
+                   Error="@_actionError"
                    OnConfirm="ConfirmActionAsync"
                    OnCancel="CancelAction" />
 }
