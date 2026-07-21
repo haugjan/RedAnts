@@ -24,6 +24,18 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
+var sessionCacheConnectionString = builder.Configuration.GetConnectionString("umbracoDbDSN");
+if (!string.IsNullOrWhiteSpace(sessionCacheConnectionString))
+{
+    SessionCacheSchema.Ensure(sessionCacheConnectionString);
+    builder.Services.AddDistributedSqlServerCache(options =>
+    {
+        options.ConnectionString = sessionCacheConnectionString;
+        options.SchemaName = SessionCacheSchema.SchemaName;
+        options.TableName = SessionCacheSchema.TableName;
+    });
+}
+
 builder.Services.AddSession(options =>
 {
     options.Cookie.Name = "RedAnts.Cart";
