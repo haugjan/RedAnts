@@ -17,9 +17,10 @@ public sealed class HelperInviteMailer(
     public string DefaultSubject => "Dein Zugang zum Red Ants Scan-Tool";
 
     public string DefaultBody =>
-        "Hallo {Vorname} {Nachname}\n\n" +
-        "vielen Dank, dass du beim Einlass der Red Ants mithilfst! Mit deinem persönlichen Zugang " +
+        "Hallo {Vorname}\n\n" +
+        "Vielen Dank, dass du beim Einlass der Red Ants mithilfst! Mit deinem persönlichen Zugang " +
         "kannst du am Anlass die Tickets scannen.\n\n" +
+        "Bitte nimm dein persönliches Mobiltelefon mit und schaue, dass dieses genügend geladen ist.\n\n" +
         "Deinen Login-Link und dein Passwort findest du unten. Eine kurze Anleitung zum Scan-Tool " +
         "liegt dieser E-Mail als PDF bei.\n\n" +
         "Bei Fragen antworte einfach auf diese E-Mail. Bis bald in der Halle!";
@@ -28,7 +29,6 @@ public sealed class HelperInviteMailer(
         Helper helper, string subject, string body, string loginLink, CancellationToken cancellationToken = default)
     {
         var resolvedSubject = Fill(subject, helper, loginLink);
-        var greeting = $"Hallo {helper.FirstName}".Trim() + ",";
         var bodyHtml = WebUtility.HtmlEncode(Fill(body, helper, loginLink)).Replace("\r\n", "\n");
 
         var access =
@@ -37,7 +37,7 @@ public sealed class HelperInviteMailer(
             $"Login-Link: <a href=\"{WebUtility.HtmlEncode(loginLink)}\">{WebUtility.HtmlEncode(loginLink)}</a>";
 
         var note = "Die Anleitung zum Scan-Tool findest du im PDF-Anhang dieser E-Mail.";
-        var html = EmailLayout.Render(resolvedSubject, bodyHtml, greeting, access, note);
+        var html = EmailLayout.Render(resolvedSubject, bodyHtml, greeting: null, access, note);
 
         var attachments = LoadGuideAttachment();
         return await email.SendAsync(helper.Email, helper.FullName, resolvedSubject, html, attachments, cancellationToken);
