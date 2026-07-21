@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Red Ants – Ticket-Design Vorschläge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#eceef1; --card:#ffffff; --ink:#111315; --muted:#6b7178;
+    --line:#eef0f2; --ra-red:#C8102E; --ra-red-dk:#A50D26;
+    --display:'Oswald',Impact,sans-serif; --mono:'Roboto Mono',ui-monospace,Consolas,monospace;
+    --body:Verdana,Geneva,Tahoma,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;line-height:1.5}
+  .page{max-width:1180px;margin:0 auto;padding:40px 20px 80px}
+
+  /* intro */
+  .lead{border-left:5px solid var(--ra-red);padding:2px 0 2px 18px;margin:0 0 8px}
+  .lead h1{font-family:var(--display);text-transform:uppercase;font-weight:700;letter-spacing:.01em;font-size:clamp(1.8rem,4vw,2.6rem);margin:0;line-height:1}
+  .lead p{max-width:70ch;color:#3a3f44;margin:14px 0 0}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 8px}
+  .legend .chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 8px;font-size:.82rem}
+  .legend .swatch{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
+  .legend .swatch svg{width:15px;height:15px}
+  .legend b{font-family:var(--display);text-transform:uppercase;letter-spacing:.03em;font-weight:600}
+  .legend small{color:var(--muted)}
+
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin:56px 0 6px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+  .sec-head .no{font-family:var(--mono);font-weight:600;color:var(--ra-red);font-size:.9rem}
+  .sec-head h2{font-family:var(--display);text-transform:uppercase;font-weight:600;letter-spacing:.02em;font-size:1.5rem;margin:0}
+  .sec-head .tag{margin-left:auto;font-size:.8rem;color:var(--muted)}
+  .sec-desc{color:#3a3f44;max-width:78ch;margin:14px 0 26px}
+  .grid{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start}
+
+  /* ============ shared bits ============ */
+  .qr{display:block}
+  .serial{font-family:var(--mono);font-weight:600;letter-spacing:.06em}
+  .antmark{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;font-weight:600;font-size:.72rem;color:var(--muted)}
+  .antmark svg{width:15px;height:15px}
+
+  /* ============ A · STUB ============ */
+  .a-card{width:340px;background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 10px 34px rgba(17,19,21,.12);font-family:var(--body)}
+  .a-top{height:6px;background:
+     repeating-linear-gradient(90deg,currentColor 0 14px,transparent 14px 22px)}
+  .a-head{position:relative;padding:16px 18px 18px;color:#fff;overflow:hidden}
+  .a-head .ghost{position:absolute;right:-14px;top:-10px;width:120px;height:120px;opacity:.16}
+  .a-head .ghost svg{width:100%;height:100%}
+  .a-kicker{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 10px;font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;font-weight:500;font-size:.66rem}
+  .a-kicker svg{width:13px;height:13px}
+  .a-type{font-family:var(--display);text-transform:uppercase;font-weight:700;letter-spacing:.02em;font-size:1.5rem;line-height:1.02;margin:10px 0 2px}
+  .a-scope{font-size:.85rem;opacity:.95}
+  .a-logo{position:absolute;right:16px;bottom:14px;background:#fff;border-radius:7px;padding:4px 6px;line-height:0}
+  .a-logo svg{width:30px;height:30px}
+  .a-seam{position:relative;height:0}
+  .a-seam::before,.a-seam::after{content:"";position:absolute;top:-11px;width:22px;height:22px;border-radius:50%;background:var(--paper)}
+  .a-seam::before{left:-11px}.a-seam::after{right:-11px}
+  .a-dash{border-top:2px dashed rgba(17,19,21,.16);margin:0 12px}
+  .a-body{padding:18px 18px 6px;text-align:center}
+  .a-qr{width:168px;height:168px;margin:0 auto;border-radius:10px}
+  .a-scan{color:var(--muted);font-size:.78rem;margin:8px 0 2px}
+  .a-serial{margin-top:4px;font-size:.92rem;color:var(--ink)}
+  .a-meta{padding:12px 18px 6px}
+  .a-row{display:flex;justify-content:space-between;gap:12px;font-size:.85rem;padding:7px 0;border-top:1px solid var(--line)}
+  .a-row .k{color:var(--muted)} .a-row .v{font-weight:700}
+  .a-foot{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 16px}
+  .a-ok{display:inline-flex;align-items:center;gap:6px;background:#e7f6ec;color:#1a7f37;border-radius:999px;padding:3px 10px;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em}
+
+  /* ============ B · EMBLEM ============ */
+  .b-card{width:320px;background:var(--card);border-radius:22px;overflow:hidden;box-shadow:0 10px 34px rgba(17,19,21,.12);text-align:center;font-family:var(--body)}
+  .b-band{height:78px;position:relative;overflow:hidden}
+  .b-band .pat{position:absolute;inset:0;opacity:.22;background-size:26px 26px}
+  .b-emblem{width:88px;height:88px;border-radius:50%;margin:-46px auto 0;position:relative;display:flex;align-items:center;justify-content:center;color:#fff;border:5px solid #fff;box-shadow:0 6px 16px rgba(17,19,21,.20)}
+  .b-emblem svg{width:42px;height:42px}
+  .b-kicker{font-family:var(--display);text-transform:uppercase;letter-spacing:.14em;font-weight:600;font-size:.68rem;margin:12px 0 0}
+  .b-type{font-family:var(--display);text-transform:uppercase;font-weight:700;letter-spacing:.01em;font-size:1.55rem;line-height:1;margin:2px 0 0}
+  .b-scope{color:var(--muted);font-size:.86rem;margin:5px 18px 0}
+  .b-qr{width:170px;height:170px;margin:16px auto 0;padding:10px;background:#fff;border:1px solid var(--line);border-radius:14px}
+  .b-serial{margin:8px 0 0;font-size:.9rem}
+  .b-scan{color:var(--muted);font-size:.76rem;margin:2px 0 0}
+  .b-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 16px 0}
+  .b-chip{background:#f4f5f6;border-radius:999px;padding:5px 12px;font-size:.78rem}
+  .b-chip b{font-weight:700}
+  .b-foot{margin:16px 0 18px}
+
+  /* ============ C · BOARDING PASS ============ */
+  .c-card{width:540px;max-width:100%;display:flex;background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 10px 34px rgba(17,19,21,.12);font-family:var(--body)}
+  .c-rail{width:44px;flex:0 0 44px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14px 0}
+  .c-rail .rico{opacity:.9}.c-rail .rico svg{width:20px;height:20px;display:block;margin:7px 0}
+  .c-rail .rv{writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--display);text-transform:uppercase;letter-spacing:.18em;font-weight:600;font-size:.66rem}
+  .c-main{flex:1;padding:16px 18px;min-width:0}
+  .c-kicker{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;font-weight:600;font-size:.66rem;padding:3px 9px;border-radius:999px;color:#fff}
+  .c-kicker svg{width:12px;height:12px}
+  .c-type{font-family:var(--display);text-transform:uppercase;font-weight:700;letter-spacing:.01em;font-size:1.5rem;line-height:1.02;margin:9px 0 1px}
+  .c-scope{color:var(--muted);font-size:.85rem}
+  .c-meta{margin:12px 0 0}
+  .c-row{display:flex;justify-content:space-between;gap:10px;font-size:.83rem;padding:6px 0;border-top:1px solid var(--line)}
+  .c-row .k{color:var(--muted)} .c-row .v{font-weight:700}
+  .c-perf{width:0;border-left:2px dashed rgba(17,19,21,.16);position:relative;margin:10px 0}
+  .c-perf::before,.c-perf::after{content:"";position:absolute;left:-11px;width:22px;height:22px;border-radius:50%;background:var(--paper)}
+  .c-perf::before{top:-21px}.c-perf::after{bottom:-21px}
+  .c-stub{flex:0 0 168px;padding:16px 14px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .c-qr{width:130px;height:130px;border-radius:9px}
+  .c-scan{color:var(--muted);font-size:.72rem;margin:7px 0 3px}
+  .c-serial{font-size:.85rem}
+  @media(max-width:560px){
+    .c-card{flex-direction:column;width:340px}
+    .c-rail{width:100%;flex-basis:auto;flex-direction:row;justify-content:flex-start;gap:12px;padding:8px 14px}
+    .c-rail .rv{writing-mode:horizontal-tb;transform:none}
+    .c-rail .rico{display:none}
+    .c-perf{width:auto;height:0;border-left:0;border-top:2px dashed rgba(17,19,21,.16);margin:0 10px}
+    .c-perf::before,.c-perf::after{top:-11px}
+    .c-perf::before{left:-11px}.c-perf::after{left:auto;right:-11px;bottom:auto}
+    .c-stub{flex-basis:auto}
+  }
+
+  /* ============ D · COURT / SPIELFELD ============ */
+  .d-card{width:326px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 34px rgba(17,19,21,.12);position:relative}
+  .d-lines{position:absolute;inset:0;color:#e6e9ec;pointer-events:none}
+  .d-lines svg{width:100%;height:100%}
+  .d-body{position:relative;padding:22px 18px 8px;text-align:center}
+  .d-emblem{width:72px;height:72px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #fff;box-shadow:0 4px 12px rgba(17,19,21,.18)}
+  .d-emblem svg{width:34px;height:34px}
+  .d-kicker{font-family:var(--display);text-transform:uppercase;letter-spacing:.13em;font-weight:600;font-size:.66rem;margin:12px 0 0}
+  .d-type{font-family:var(--display);text-transform:uppercase;font-weight:700;font-size:1.5rem;line-height:1;margin:2px 0 0}
+  .d-scope{color:var(--muted);font-size:.84rem;margin:4px 0 0}
+  .d-qr{width:158px;height:158px;margin:14px auto 4px;border-radius:9px}
+  .d-scan{color:var(--muted);font-size:.76rem}
+  .d-meta{position:relative;padding:8px 20px 4px;text-align:left}
+  .d-row{display:flex;justify-content:space-between;gap:12px;font-size:.83rem;padding:6px 0;border-top:1px solid var(--line)}
+  .d-row .k{color:var(--muted)} .d-row .v{font-weight:700}
+  .d-foot{position:relative;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:11px 18px;margin-top:8px}
+  .d-foot .serial{font-size:.85rem} .d-foot .st{font-weight:700;text-transform:uppercase;letter-spacing:.03em;font-size:.72rem}
+
+  /* ============ E · TRIKOT / JERSEY ============ */
+  .e-card{width:320px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 34px rgba(17,19,21,.12)}
+  .e-top{position:relative;color:#fff;padding:16px 18px 20px 26px;overflow:hidden}
+  .e-stripe{position:absolute;left:0;top:0;bottom:0;width:9px;background:repeating-linear-gradient(180deg,rgba(255,255,255,.85) 0 10px,transparent 10px 20px)}
+  .e-num{position:absolute;right:2px;bottom:-26px;font-family:var(--display);font-weight:700;font-size:7.4rem;line-height:.8;opacity:.17}
+  .e-name{position:relative;font-family:var(--display);text-transform:uppercase;letter-spacing:.16em;font-weight:500;font-size:.72rem;opacity:.95;display:flex;align-items:center;gap:7px}
+  .e-name svg{width:15px;height:15px}
+  .e-type{position:relative;font-family:var(--display);text-transform:uppercase;font-weight:700;font-size:1.7rem;line-height:1;margin:6px 0 1px}
+  .e-scope{position:relative;font-size:.82rem;opacity:.94}
+  .e-body{padding:16px 18px 6px;text-align:center}
+  .e-qr{width:162px;height:162px;margin:0 auto;border-radius:9px}
+  .e-scan{color:var(--muted);font-size:.76rem;margin-top:7px}
+  .e-serial{font-family:var(--mono);font-weight:600;font-size:.88rem;margin-top:2px}
+  .e-meta{padding:8px 18px 16px}
+  .e-row{display:flex;justify-content:space-between;gap:12px;font-size:.83rem;padding:6px 0;border-top:1px solid var(--line)}
+  .e-row .k{color:var(--muted)} .e-row .v{font-weight:700}
+
+  /* ============ F · ROSETTE / AUSZEICHNUNG ============ */
+  .f-card{width:320px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 34px rgba(17,19,21,.12);padding-top:20px}
+  .f-head{display:flex;align-items:center;gap:15px;padding:2px 18px 16px}
+  .f-ros{position:relative;width:62px;height:62px;flex:0 0 auto}
+  .f-ros .pleats{position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(var(--c) 0 12deg,rgba(0,0,0,.28) 12deg 24deg);box-shadow:0 2px 8px rgba(17,19,21,.2)}
+  .f-ros .disc{position:absolute;inset:11px;border-radius:50%;background:var(--c);display:flex;align-items:center;justify-content:center;color:#fff;z-index:2;box-shadow:inset 0 0 0 2px rgba(255,255,255,.6)}
+  .f-ros .disc svg{width:26px;height:26px}
+  .f-ros .tail{position:absolute;top:48px;width:13px;height:24px;background:var(--c);z-index:1;clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}
+  .f-ros .tail.l{left:16px;transform:rotate(10deg)} .f-ros .tail.r{right:16px;transform:rotate(-10deg)}
+  .f-ht{min-width:0}
+  .f-kicker{font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-weight:600;font-size:.66rem;color:var(--c)}
+  .f-type{font-family:var(--display);text-transform:uppercase;font-weight:700;font-size:1.45rem;line-height:1.02;margin:2px 0 1px}
+  .f-scope{color:var(--muted);font-size:.83rem}
+  .f-bar{height:4px;background:var(--c)}
+  .f-body{padding:16px 18px 6px;text-align:center}
+  .f-qr{width:160px;height:160px;margin:0 auto;border-radius:9px}
+  .f-scan{color:var(--muted);font-size:.76rem;margin-top:7px}
+  .f-serial{font-family:var(--mono);font-weight:600;font-size:.88rem;margin-top:2px}
+  .f-meta{padding:8px 18px 16px}
+  .f-row{display:flex;justify-content:space-between;gap:12px;font-size:.83rem;padding:6px 0;border-top:1px solid var(--line)}
+  .f-row .k{color:var(--muted)} .f-row .v{font-weight:700}
+</style>
+</head>
+<body>
+<!-- ===== emblem sprite ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-ball" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+    <g fill="currentColor"><circle cx="9" cy="9" r="1.25"/><circle cx="15" cy="9" r="1.25"/><circle cx="12" cy="12.5" r="1.25"/><circle cx="8.6" cy="15" r="1.25"/><circle cx="15.4" cy="15" r="1.25"/></g>
+  </symbol>
+  <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2 L4 13.5 h5.5 L8.5 22 20 9.5 h-6 L15 2 Z" fill="currentColor"/></symbol>
+  <symbol id="ic-sticks" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 L15 14.5 l3.4 0"/><path d="M18 4 L9 14.5 l-3.4 0"/></g></symbol>
+  <symbol id="ic-ant" viewBox="0 0 24 24"><g fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="5.6" r="2.1" stroke="none"/><ellipse cx="12" cy="10.6" rx="1.9" ry="2.5" stroke="none"/><ellipse cx="12" cy="16.8" rx="2.7" ry="3.3" stroke="none"/><g fill="none"><path d="M10.6 4.2 L9 2.4 M13.4 4.2 L15 2.4"/><path d="M10.2 9.4 L5.8 7.6 M10.2 11.2 L5.8 12.4 M13.8 9.4 L18.2 7.6 M13.8 11.2 L18.2 12.4 M10.4 15.4 L6 17.4 M13.6 15.4 L18 17.4"/></g></g></symbol>
+  <symbol id="ic-gift" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9.5" width="16" height="10.5" rx="1.2"/><path d="M2.5 9.5 h19 M12 9.5 V20"/><path d="M12 9.5 C12 6, 8.5 5.4, 8.2 7.4 C8 9, 12 9.5 12 9.5 M12 9.5 C12 6, 15.5 5.4, 15.8 7.4 C16 9, 12 9.5 12 9.5"/></g></symbol>
+</svg>
+
+<div class="page">
+  <div class="lead">
+    <h1>Ticket-Design — drei Richtungen</h1>
+    <p>Ein gemeinsames Ticket-Bauteil für alle vier Orte (Online-Ticket, E-Mail, Checkout-Bestätigung, PDF). Jede Ticketart bekommt neben der Farbe ein eigenes <b>Emblem</b> und einen <b>Kicker</b>, damit sie auch in Graustufen und für Farbsehschwäche unterscheidbar bleibt. Mehr Branding über das Ameisen-Signet, die Oswald-Typo, eine physische Ticket-Anmutung (Abriss/Perforation) und die Seriennummer.</p>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <!-- A -->
+  <div class="sec-head"><span class="no">A</span><h2>Stub — Abriss-Ticket</h2><span class="tag">physisch · Seriennummer · Perforation</span></div>
+  <p class="sec-desc">Klassisches Eintrittsticket mit Kopf-Band, geghostetem Emblem, echtem Abriss (gestrichelt + Kerben) und Seriennummer im Mono-Font. Am nächsten an einem „richtigen“ Ticket, stark im Branding. Signatur: der Abriss-Rand.</p>
+  <div class="grid" id="gridA"></div>
+
+  <!-- B -->
+  <div class="sec-head"><span class="no">B</span><h2>Emblem — Medaillen-Pass</h2><span class="tag">modern · app-artig · Emblem als Held</span></div>
+  <p class="sec-desc">Ruhige, moderne Karte. Ein grosses rundes Emblem (Icon der Ticketart) sitzt wie eine Medaille auf der Kante zwischen Farbband und Karte. Der Icon-Disc ist der Held, alles andere bleibt still. Signatur: die überlappende Emblem-Medaille.</p>
+  <div class="grid" id="gridB"></div>
+
+  <!-- C -->
+  <div class="sec-head"><span class="no">C</span><h2>Boarding-Pass — quer</h2><span class="tag">breit · Print/PDF-freundlich · Perforation</span></div>
+  <p class="sec-desc">Querformat wie ein Boarding-Pass: farbige Icon-Leiste, Infospalte links, abtrennbarer QR-Stub rechts mit vertikaler Perforation. Ideal für PDF und Desktop, klappt auf dem Handy vertikal um. Signatur: die vertikale Perforation mit Icon-Leiste.</p>
+  <div class="grid" id="gridC"></div>
+
+  <!-- D -->
+  <div class="sec-head"><span class="no">D</span><h2>Spielfeld — Court-Lines</h2><span class="tag">sportspezifisch · Unihockey-Feld als Raster</span></div>
+  <p class="sec-desc">Das Ticket ist das Spielfeld: feine Bandenlinien, Mittellinie und Mittelkreis als Grafik-System. Das Emblem sitzt wie der Anspiel-Punkt im Mittelkreis, unten schliesst eine farbige Torraum-Linie ab. Am stärksten „Unihockey“. Signatur: die Court-Geometrie.</p>
+  <div class="grid" id="gridD"></div>
+
+  <!-- E -->
+  <div class="sec-head"><span class="no">E</span><h2>Trikot — Nameset & Nummer</h2><span class="tag">Team-Kit · grosse Rückennummer</span></div>
+  <p class="sec-desc">Das Ticket im Look eines Spieler-Trikots: Farbband mit Club-Streifen, grosse geghostete Rückennummer, die Ticketart als „Nameset“ darüber und ein Crest-Emblem. Bold und sportlich, sehr wiedererkennbar. Signatur: die grosse Nummer.</p>
+  <div class="grid" id="gridE"></div>
+
+  <!-- F -->
+  <div class="sec-head"><span class="no">F</span><h2>Rosette — Auszeichnung</h2><span class="tag">Medaillen-Rosette · wertig</span></div>
+  <p class="sec-desc">Eine plissierte Auszeichnungs-Rosette in der Ticketfarbe mit Emblem und Bändern als Kopf. Vermittelt Wertigkeit und „Zugehörigkeit“, passt besonders zu Saisonkarte und Mitgliedschaft. Signatur: die Rosette.</p>
+  <div class="grid" id="gridF"></div>
+</div>
+
+<script>
+const TYPES = [
+  {key:'spiel',  label:'Spielticket',     kicker:'Einzelspiel',   color:'#C8102E', ic:'ic-ball',   scope:'Red Ants vs. Laupen', date:'27.09.2026, 18:00 Uhr', cat:'Erwachsen', holder:null,          ref:'5C57B730'},
+  {key:'flex',   label:'Flexticket',      kicker:'1 Spiel frei',  color:'#E4720F', ic:'ic-bolt',   scope:'Saison 2026/27',      date:'gültig ganze Saison',   cat:'Jugend',    holder:null,          ref:'A19F0C42'},
+  {key:'saison', label:'Saisonkarte',     kicker:'Ganze Saison',  color:'#1F5FBF', ic:'ic-sticks', scope:'Saison 2026/27',      date:'19.09.2026 – 30.04.2027', cat:'Erwachsen', holder:'Ben Beispiel', ref:'77B31E90'},
+  {key:'member', label:'Mitgliederkarte', kicker:'Mitglied',      color:'#1A7F37', ic:'ic-ant',    scope:'Saison 2026/27',      date:'19.09.2026 – 30.04.2027', cat:'Aktiv',     holder:'Mia Muster',   ref:'0B4D2213'},
+  {key:'free',   label:'Freier Eintritt', kicker:'Gast',          color:'#6B4EA0', ic:'ic-gift',   scope:'Red Ants vs. Laupen', date:'27.09.2026, 18:00 Uhr', cat:'Ehrengast', holder:null,          ref:'E5570A18'},
+];
+const ANT = '<svg viewBox="0 0 24 24"><use href="#ic-ant"/></svg>';
+const RALOGO = '<svg viewBox="0 0 24 24" style="color:#C8102E"><use href="#ic-ant"/></svg>';
+const use = (id)=>`<svg viewBox="0 0 24 24"><use href="#${id}"/></svg>`;
+// deterministic QR-like placeholder (real finder patterns + dense modules) so the layout reads like a real ticket
+function qr(seed,size){
+  const n=21, cell=size/n; let s=0; for(const c of seed) s=(s*31+c.charCodeAt(0))>>>0;
+  const rnd=()=>{s=(s*1103515245+12345)>>>0; return (s>>>16)&1;};
+  const on=(x,y)=>`<rect x="${(x*cell).toFixed(2)}" y="${(y*cell).toFixed(2)}" width="${(cell+0.4).toFixed(2)}" height="${(cell+0.4).toFixed(2)}"/>`;
+  let r='';
+  const inFinder=(x,y)=>((x<8&&y<8)||(x>n-9&&y<8)||(x<8&&y>n-9));
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){ if(inFinder(x,y)){continue;} if(rnd()) r+=on(x,y); }
+  const finder=(ox,oy)=>{for(let y=0;y<7;y++)for(let x=0;x<7;x++){const edge=(x===0||x===6||y===0||y===6);const core=(x>=2&&x<=4&&y>=2&&y<=4);if(edge||core)r+=on(ox+x,oy+y);}};
+  finder(0,0); finder(n-7,0); finder(0,n-7);
+  return `<svg class="qr" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="#fff"/><g fill="#101315">${r}</g></svg>`;
+}
+
+// legend
+document.getElementById('legend').innerHTML = TYPES.map(t=>
+  `<span class="chip"><span class="swatch" style="background:${t.color}">${use(t.ic)}</span><b>${t.label}</b><small>${t.kicker}</small></span>`).join('');
+
+// A · stub
+document.getElementById('gridA').innerHTML = TYPES.map(t=>`
+  <div class="a-card">
+    <div class="a-top" style="color:${t.color}"></div>
+    <div class="a-head" style="background:${t.color}">
+      <div class="ghost">${use(t.ic)}</div>
+      <span class="a-kicker">${use(t.ic)} ${t.kicker}</span>
+      <div class="a-type">${t.label}</div>
+      <div class="a-scope">${t.scope}</div>
+      <div class="a-logo">${RALOGO}</div>
+    </div>
+    <div class="a-seam"><div class="a-dash"></div></div>
+    <div class="a-body">
+      ${qr(t.ref,168).replace('class="qr"','class="qr a-qr"')}
+      <div class="a-scan">Am Eingang scannen lassen</div>
+      <div class="a-serial serial">N° ${t.ref}</div>
+    </div>
+    <div class="a-meta">
+      <div class="a-row"><span class="k">Datum</span><span class="v">${t.date}</span></div>
+      <div class="a-row"><span class="k">Kategorie</span><span class="v">${t.cat}</span></div>
+      ${t.holder?`<div class="a-row"><span class="k">Inhaber:in</span><span class="v">${t.holder}</span></div>`:''}
+    </div>
+    <div class="a-foot">
+      <span class="antmark">${ANT} Red Ants Winterthur</span>
+      <span class="a-ok">Gültig</span>
+    </div>
+  </div>`).join('');
+
+// B · emblem
+document.getElementById('gridB').innerHTML = TYPES.map(t=>`
+  <div class="b-card">
+    <div class="b-band" style="background:${t.color}">
+      <div class="pat" style="background-image:radial-gradient(#fff 1.4px,transparent 1.5px)"></div>
+    </div>
+    <div class="b-emblem" style="background:${t.color}">${use(t.ic)}</div>
+    <div class="b-kicker" style="color:${t.color}">${t.kicker}</div>
+    <div class="b-type">${t.label}</div>
+    <div class="b-scope">${t.scope}</div>
+    <div class="b-qr">${qr(t.ref,150)}</div>
+    <div class="b-serial serial">N° ${t.ref}</div>
+    <div class="b-scan">Am Eingang scannen lassen</div>
+    <div class="b-chips">
+      <span class="b-chip">${t.date}</span>
+      <span class="b-chip"><b>${t.cat}</b></span>
+      ${t.holder?`<span class="b-chip">${t.holder}</span>`:''}
+    </div>
+    <div class="b-foot"><span class="antmark">${ANT} Red Ants Winterthur</span></div>
+  </div>`).join('');
+
+// C · boarding pass
+document.getElementById('gridC').innerHTML = TYPES.map(t=>`
+  <div class="c-card">
+    <div class="c-rail" style="background:${t.color}">
+      <span class="rico">${use(t.ic)}</span>
+      <span class="rv">${t.kicker}</span>
+      <span class="rico">${ANT}</span>
+    </div>
+    <div class="c-main">
+      <span class="c-kicker" style="background:${t.color}">${use(t.ic)} ${t.label}</span>
+      <div class="c-type">${t.scope}</div>
+      <div class="c-scope">${t.date}</div>
+      <div class="c-meta">
+        <div class="c-row"><span class="k">Kategorie</span><span class="v">${t.cat}</span></div>
+        ${t.holder?`<div class="c-row"><span class="k">Inhaber:in</span><span class="v">${t.holder}</span></div>`:''}
+        <div class="c-row"><span class="k">Status</span><span class="v" style="color:#1a7f37">Gültig</span></div>
+      </div>
+    </div>
+    <div class="c-perf"></div>
+    <div class="c-stub">
+      ${qr(t.ref,130)}
+      <div class="c-scan">scannen</div>
+      <div class="c-serial serial">N° ${t.ref}</div>
+    </div>
+  </div>`).join('');
+
+// D · court
+const courtSvg = `<svg viewBox="0 0 326 560" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="2">
+  <rect x="12" y="12" width="302" height="536" rx="26"/>
+  <line x1="12" y1="150" x2="314" y2="150"/>
+  <circle cx="163" cy="150" r="52"/>
+  <path d="M110 548 a53 53 0 0 1 106 0"/>
+</svg>`;
+document.getElementById('gridD').innerHTML = TYPES.map(t=>`
+  <div class="d-card">
+    <div class="d-lines">${courtSvg}</div>
+    <div class="d-body">
+      <div class="d-emblem" style="background:${t.color}">${use(t.ic)}</div>
+      <div class="d-kicker" style="color:${t.color}">${t.kicker}</div>
+      <div class="d-type">${t.label}</div>
+      <div class="d-scope">${t.scope}</div>
+      ${qr(t.ref,158).replace('class="qr"','class="qr d-qr"')}
+      <div class="d-scan">Am Eingang scannen lassen</div>
+    </div>
+    <div class="d-meta">
+      <div class="d-row"><span class="k">Datum</span><span class="v">${t.date}</span></div>
+      <div class="d-row"><span class="k">Kategorie</span><span class="v">${t.cat}</span></div>
+      ${t.holder?`<div class="d-row"><span class="k">Inhaber:in</span><span class="v">${t.holder}</span></div>`:''}
+    </div>
+    <div class="d-foot" style="background:${t.color}">
+      <span class="serial">N° ${t.ref}</span><span class="st">✓ Gültig</span>
+    </div>
+  </div>`).join('');
+
+// E · jersey
+const jerseyNum = (ref)=>((parseInt(ref.slice(0,2),16)%98)+1);
+document.getElementById('gridE').innerHTML = TYPES.map(t=>`
+  <div class="e-card">
+    <div class="e-top" style="background:${t.color}">
+      <div class="e-stripe"></div>
+      <div class="e-num">${t.key==='member'?4:jerseyNum(t.ref)}</div>
+      <div class="e-name">${use(t.ic)} ${t.kicker}</div>
+      <div class="e-type">${t.label}</div>
+      <div class="e-scope">${t.scope}</div>
+    </div>
+    <div class="e-body">
+      ${qr(t.ref,162).replace('class="qr"','class="qr e-qr"')}
+      <div class="e-scan">Am Eingang scannen lassen</div>
+      <div class="e-serial">N° ${t.ref}</div>
+    </div>
+    <div class="e-meta">
+      <div class="e-row"><span class="k">Datum</span><span class="v">${t.date}</span></div>
+      <div class="e-row"><span class="k">Kategorie</span><span class="v">${t.cat}</span></div>
+      ${t.holder?`<div class="e-row"><span class="k">Inhaber:in</span><span class="v">${t.holder}</span></div>`:''}
+    </div>
+  </div>`).join('');
+
+// F · rosette
+document.getElementById('gridF').innerHTML = TYPES.map(t=>`
+  <div class="f-card" style="--c:${t.color}">
+    <div class="f-head">
+      <div class="f-ros">
+        <div class="tail l"></div><div class="tail r"></div>
+        <div class="pleats"></div>
+        <div class="disc">${use(t.ic)}</div>
+      </div>
+      <div class="f-ht">
+        <div class="f-kicker">${t.kicker}</div>
+        <div class="f-type">${t.label}</div>
+        <div class="f-scope">${t.scope}</div>
+      </div>
+    </div>
+    <div class="f-bar"></div>
+    <div class="f-body">
+      ${qr(t.ref,160).replace('class="qr"','class="qr f-qr"')}
+      <div class="f-scan">Am Eingang scannen lassen</div>
+      <div class="f-serial">N° ${t.ref}</div>
+    </div>
+    <div class="f-meta">
+      <div class="f-row"><span class="k">Datum</span><span class="v">${t.date}</span></div>
+      <div class="f-row"><span class="k">Kategorie</span><span class="v">${t.cat}</span></div>
+      ${t.holder?`<div class="f-row"><span class="k">Inhaber:in</span><span class="v">${t.holder}</span></div>`:''}
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>

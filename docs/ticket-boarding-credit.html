@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Red Ants – Boarding-Pass · Kreditkarte · monochrom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --red:#D02D38; --ink:#14171A; --muted:#6b7178; --paper:#eceef1;
+    --line:#e6e8ec; --display:'Oswald',Impact,sans-serif; --mono:'Roboto Mono',ui-monospace,Consolas,monospace;
+    --body:Verdana,Geneva,Tahoma,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .page{max-width:1120px;margin:0 auto;padding:40px 20px 80px}
+  .lead{border-left:5px solid var(--red);padding:2px 0 2px 18px}
+  .lead h1{font-family:var(--display);text-transform:uppercase;font-weight:700;font-size:clamp(1.7rem,4vw,2.4rem);margin:0;line-height:1}
+  .lead p{max-width:74ch;color:#3a3f44;margin:12px 0 0}
+  .idea{margin:22px 0 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .idea b{font-family:var(--display);text-transform:uppercase;letter-spacing:.02em}
+  .idea ul{margin:8px 0 0;padding-left:18px}.idea li{margin:4px 0}
+
+  .sec{display:flex;align-items:baseline;gap:12px;margin:52px 0 6px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+  .sec .no{font-family:var(--mono);font-weight:600;color:var(--red);font-size:.9rem}
+  .sec h2{font-family:var(--display);text-transform:uppercase;font-weight:600;font-size:1.4rem;margin:0}
+  .sec .tag{margin-left:auto;font-size:.8rem;color:var(--muted)}
+  .desc{color:#3a3f44;max-width:80ch;margin:12px 0 24px}
+  .grid{display:flex;flex-wrap:wrap;gap:26px}
+
+  /* type system swatches */
+  .sys{display:flex;flex-wrap:wrap;gap:12px}
+  .sw{width:200px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .sw .cap{height:56px;display:flex;align-items:center;gap:9px;padding:0 12px;color:#fff}
+  .sw .cap.is-hollow{color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
+  .sw .cap svg{width:24px;height:24px}
+  .sw .cap b{font-family:var(--display);text-transform:uppercase;font-weight:700;font-size:1rem;line-height:1}
+  .sw .cap small{display:block;font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-weight:500;font-size:.58rem;opacity:.9}
+  .sw .meta{padding:9px 12px;font-size:.76rem;color:var(--muted)}
+  .sw .meta i{font-style:normal;color:var(--ink);font-weight:700}
+
+  /* red fill patterns (monochrom: rot + weiss) */
+  .pat-solid{background:var(--red)}
+  .pat-stripes{background:var(--red);background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 5px,transparent 5px 12px)}
+  .pat-dots{background:var(--red);background-image:radial-gradient(rgba(255,255,255,.30) 1.4px,transparent 1.7px);background-size:9px 9px}
+  .pat-cross{background:var(--red);background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.16) 0 1px,transparent 1px 7px),repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 7px)}
+  .pat-outline{background:#fff}
+
+  /* shared credit-card frame: ISO ID-1 ratio 1.586:1 */
+  .cc{width:min(92vw,384px);aspect-ratio:1.586/1;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(17,19,21,.14);border:1px solid var(--line);display:flex;flex-direction:column}
+  .qr{display:block}
+  .antword{display:inline-flex;align-items:center;gap:5px;font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:.68rem}
+  .antword svg{width:14px;height:14px}
+
+  /* ===== V1 · Top-Strip ===== */
+  .v1-strip{flex:0 0 40%;display:flex;align-items:center;gap:11px;padding:0 15px;color:#fff;position:relative}
+  .v1-strip.is-hollow{color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
+  .v1-em{width:34px;height:34px;flex:0 0 auto}.v1-em svg{width:100%;height:100%}
+  .v1-tt{flex:1;min-width:0}
+  .v1-kick{font-family:var(--display);text-transform:uppercase;letter-spacing:.12em;font-weight:500;font-size:.6rem;opacity:.92}
+  .v1-type{font-family:var(--display);text-transform:uppercase;font-weight:700;font-size:1.35rem;line-height:1}
+  .v1-brand{flex:0 0 auto;opacity:.92}
+  .v1-body{flex:1;display:flex;min-height:0}
+  .v1-info{flex:1;padding:11px 15px;display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0}
+  .v1-scope{font-family:var(--display);text-transform:uppercase;font-weight:600;font-size:1.02rem;line-height:1.04;color:var(--ink)}
+  .v1-line{font-size:.78rem;color:var(--muted)}
+  .v1-serial{font-family:var(--mono);font-weight:600;font-size:.8rem;color:var(--ink);margin-top:2px}
+  .v1-perf{width:0;border-left:2px dashed #d6dade;margin:12px 0}
+  .v1-qr{flex:0 0 auto;width:132px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 10px}
+  .v1-qr .qr{width:112px;height:112px}
+  .v1-scan{font-size:.6rem;color:var(--muted);margin-top:5px;text-align:center}
+
+  /* ===== V2 · Side-Rail ===== */
+  .v2{flex-direction:row}
+  .v2-rail{flex:0 0 30%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:13px 6px;color:#fff}
+  .v2-rail.is-hollow{color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
+  .v2-rail .em{width:42px;height:42px}.v2-rail .em svg{width:100%;height:100%}
+  .v2-rail .rt{writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--display);text-transform:uppercase;font-weight:700;letter-spacing:.05em;font-size:1.05rem;line-height:1}
+  .v2-rail .rk{font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-weight:500;font-size:.54rem;opacity:.9}
+  .v2-body{flex:1;display:flex}
+  .v2-info{flex:1;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0}
+  .v2-brand{color:var(--red)}
+  .v2-scope{font-family:var(--display);text-transform:uppercase;font-weight:600;font-size:1.02rem;line-height:1.04}
+  .v2-line{font-size:.78rem;color:var(--muted)}
+  .v2-serial{font-family:var(--mono);font-weight:600;font-size:.8rem;margin-top:2px}
+  .v2-perf{width:0;border-left:2px dashed #d6dade;margin:12px 0}
+  .v2-qr{flex:0 0 auto;width:128px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 10px}
+  .v2-qr .qr{width:110px;height:110px}
+  .v2-scan{font-size:.6rem;color:var(--muted);margin-top:5px;text-align:center}
+
+  /* phone demo */
+  .phone{width:300px;border:10px solid #14171A;border-radius:34px;background:#f4f5f6;padding:16px 12px;box-shadow:0 14px 40px rgba(17,19,21,.2)}
+  .phone .note{font-size:.72rem;color:var(--muted);text-align:center;margin:0 0 12px}
+  .phone .cc{width:100%;margin:0 auto 14px}
+  .printnote{background:#fff;border:1px dashed var(--red);border-radius:10px;padding:12px 16px;font-size:.86rem;max-width:60ch}
+  .flex{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="9" cy="9" r="1.25"/><circle cx="15" cy="9" r="1.25"/><circle cx="12" cy="12.5" r="1.25"/><circle cx="8.6" cy="15" r="1.25"/><circle cx="15.4" cy="15" r="1.25"/></g></symbol>
+  <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2 L4 13.5 h5.5 L8.5 22 20 9.5 h-6 L15 2 Z" fill="currentColor"/></symbol>
+  <symbol id="ic-sticks" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 L15 14.5 l3.4 0"/><path d="M18 4 L9 14.5 l-3.4 0"/></g></symbol>
+  <symbol id="ic-ant" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="5.6" r="2.1"/><ellipse cx="12" cy="10.6" rx="1.9" ry="2.5"/><ellipse cx="12" cy="16.8" rx="2.7" ry="3.3"/></g><g fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M10.6 4.2 L9 2.4 M13.4 4.2 L15 2.4"/><path d="M10.2 9.4 L5.8 7.6 M10.2 11.2 L5.8 12.4 M13.8 9.4 L18.2 7.6 M13.8 11.2 L18.2 12.4 M10.4 15.4 L6 17.4 M13.6 15.4 L18 17.4"/></g></symbol>
+  <symbol id="ic-gift" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9.5" width="16" height="10.5" rx="1.2"/><path d="M2.5 9.5 h19 M12 9.5 V20"/><path d="M12 9.5 C12 6, 8.5 5.4, 8.2 7.4 C8 9, 12 9.5 12 9.5 M12 9.5 C12 6, 15.5 5.4, 15.8 7.4 C16 9, 12 9.5 12 9.5"/></g></symbol>
+</svg>
+
+<div class="page">
+  <div class="lead">
+    <h1>Boarding-Pass — Kreditkarte, monochrom</h1>
+    <p>Ein Ticket-Format für alle vier Orte (Online, E-Mail, Bestätigung, PDF): Boarding-Pass-Aufteilung (Info | QR) im Kreditkarten-Seitenverhältnis. Nur ein Rot, die Ticketart liest man am Emblem, am Kicker und am Muster im roten Feld.</p>
+  </div>
+  <div class="idea">
+    <b>Die Idee in Kürze</b>
+    <ul>
+      <li><b>Ein Rot:</b> überall <i>#D02D38</i>. Sekundär nur Schwarz, Weiss, Grau.</li>
+      <li><b>Typ = Emblem + Kicker + Muster</b> (voll · diagonal · Punkte · Raster · Kontur), nicht Farbe. Funktioniert auch in Graustufen.</li>
+      <li><b>Kreditkarten-Format (ID-1, 85,6 × 54 mm):</b> klein genug fürs Handy (passt in die Breite, ~340 × 214 px), 1:1 druckbar in Wallet-Grösse.</li>
+      <li><b>Gast/Frei = hohl:</b> weisses Feld mit roter Kontur statt Vollfläche, hebt sich ab ohne zweite Farbe.</li>
+    </ul>
+  </div>
+
+  <div class="sec"><span class="no">·</span><h2>Typ-System</h2><span class="tag">Emblem + Muster je Art</span></div>
+  <div class="sys" id="sys"></div>
+
+  <div class="sec"><span class="no">V1</span><h2>Variante Top-Strip</h2><span class="tag">Kopfband + QR-Stub rechts</span></div>
+  <p class="desc">Rotes Kopfband (mit Typ-Muster) trägt Emblem, Ticketart und das Red-Ants-Wort. Darunter Info links, abtrennbarer QR rechts. Ruhig und gut lesbar.</p>
+  <div class="grid" id="gridV1"></div>
+
+  <div class="sec"><span class="no">V2</span><h2>Variante Seiten-Rail</h2><span class="tag">Emblem gross auf der Leiste</span></div>
+  <p class="desc">Rote Leiste links mit grossem Emblem und vertikaler Ticketart, Info in der Mitte, QR rechts. Am nächsten am klassischen Boarding-Pass, das Emblem ist der Held.</p>
+  <div class="grid" id="gridV2"></div>
+
+  <div class="sec"><span class="no">▸</span><h2>Handy & Druck</h2><span class="tag">passt in die Breite · ID-1</span></div>
+  <div class="flex">
+    <div class="phone">
+      <p class="note">Handy-Ansicht: Karten stapeln vertikal, jede passt in die Breite</p>
+      <div id="phoneStack"></div>
+    </div>
+    <div class="printnote">
+      <b>Druck:</b> Im Print-Stylesheet bekommt die Karte exakt <b>85,6 × 54 mm</b> (ISO ID-1), also echte Kreditkarten-/Wallet-Grösse. QR bleibt immer schwarz auf weiss für die Scanbarkeit. Auf einem A4-Blatt lassen sich 10 Karten zum Ausschneiden anordnen (2 × 5).
+      <div style="margin-top:12px;font-size:.8rem;color:var(--muted)">Der QR hier ist ein Platzhalter-Muster; im echten Ticket steht der signierte Ticket-QR.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TYPES = [
+  {key:'spiel',  label:'Spielticket',     kicker:'Einzelspiel',  ic:'ic-ball',   pat:'pat-solid',   patName:'Vollfläche', scope:'Red Ants vs. Laupen', date:'27.09.2026, 18:00 Uhr', cat:'Erwachsen', ref:'5C57B730'},
+  {key:'flex',   label:'Flexticket',      kicker:'1 Spiel frei', ic:'ic-bolt',   pat:'pat-stripes', patName:'Diagonal',   scope:'Saison 2026/27',      date:'gültig ganze Saison',   cat:'Jugend',    ref:'A19F0C42'},
+  {key:'saison', label:'Saisonkarte',     kicker:'Ganze Saison', ic:'ic-sticks', pat:'pat-dots',    patName:'Punkte',     scope:'Saison 2026/27',      date:'19.09.2026 – 30.04.2027', cat:'Erwachsen', ref:'77B31E90'},
+  {key:'member', label:'Mitgliederkarte', kicker:'Mitglied',     ic:'ic-ant',    pat:'pat-cross',   patName:'Raster',     scope:'Saison 2026/27',      date:'19.09.2026 – 30.04.2027', cat:'Aktiv',     ref:'0B4D2213'},
+  {key:'free',   label:'Freier Eintritt', kicker:'Gast',         ic:'ic-gift',   pat:'pat-outline', patName:'Kontur (hohl)', scope:'Red Ants vs. Laupen', date:'27.09.2026, 18:00 Uhr', cat:'Ehrengast', ref:'E5570A18'},
+];
+const use=(id)=>`<svg viewBox="0 0 24 24"><use href="#${id}"/></svg>`;
+const ANT=`<span class="antword">${use('ic-ant')} Red Ants</span>`;
+const hollow=(t)=>t.pat==='pat-outline'?' is-hollow':'';
+function qr(seed,size){const n=21,cell=size/n;let s=0;for(const c of seed)s=(s*31+c.charCodeAt(0))>>>0;const rnd=()=>{s=(s*1103515245+12345)>>>0;return (s>>>16)&1;};const on=(x,y)=>`<rect x="${(x*cell).toFixed(2)}" y="${(y*cell).toFixed(2)}" width="${(cell+0.4).toFixed(2)}" height="${(cell+0.4).toFixed(2)}"/>`;let r='';const inF=(x,y)=>((x<8&&y<8)||(x>n-9&&y<8)||(x<8&&y>n-9));for(let y=0;y<n;y++)for(let x=0;x<n;x++){if(inF(x,y))continue;if(rnd())r+=on(x,y);}const f=(ox,oy)=>{for(let y=0;y<7;y++)for(let x=0;x<7;x++){const e=(x===0||x===6||y===0||y===6),c=(x>=2&&x<=4&&y>=2&&y<=4);if(e||c)r+=on(ox+x,oy+y);}};f(0,0);f(n-7,0);f(0,n-7);return `<svg class="qr" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="#fff"/><g fill="#101315">${r}</g></svg>`;}
+
+document.getElementById('sys').innerHTML = TYPES.map(t=>`
+  <div class="sw">
+    <div class="cap ${t.pat}${hollow(t)}">${use(t.ic)}<span><b>${t.label}</b><small>${t.kicker}</small></span></div>
+    <div class="meta">Emblem + <i>${t.patName}</i></div>
+  </div>`).join('');
+
+const v1=(t)=>`
+  <div class="cc">
+    <div class="v1-strip ${t.pat}${hollow(t)}">
+      <span class="v1-em">${use(t.ic)}</span>
+      <span class="v1-tt"><span class="v1-kick">${t.kicker}</span><div class="v1-type">${t.label}</div></span>
+      <span class="v1-brand antword">${use('ic-ant')} Red Ants</span>
+    </div>
+    <div class="v1-body">
+      <div class="v1-info">
+        <div class="v1-scope">${t.scope}</div>
+        <div class="v1-line">${t.date}</div>
+        <div class="v1-line">${t.cat}</div>
+        <div class="v1-serial">N° ${t.ref}</div>
+      </div>
+      <div class="v1-perf"></div>
+      <div class="v1-qr">${qr(t.ref,112)}<div class="v1-scan">scannen</div></div>
+    </div>
+  </div>`;
+document.getElementById('gridV1').innerHTML = TYPES.map(v1).join('');
+
+const v2=(t)=>`
+  <div class="cc v2">
+    <div class="v2-rail ${t.pat}${hollow(t)}">
+      <span class="em">${use(t.ic)}</span>
+      <span class="rt">${t.label.replace('ticket','').replace('karte','').trim()}</span>
+      <span class="rk">${t.kicker}</span>
+    </div>
+    <div class="v2-body">
+      <div class="v2-info">
+        <span class="antword v2-brand">${use('ic-ant')} Red Ants</span>
+        <div class="v2-scope">${t.scope}</div>
+        <div class="v2-line">${t.date}</div>
+        <div class="v2-line">${t.cat}</div>
+        <div class="v2-serial">N° ${t.ref}</div>
+      </div>
+      <div class="v2-perf"></div>
+      <div class="v2-qr">${qr(t.ref,110)}<div class="v2-scan">scannen</div></div>
+    </div>
+  </div>`;
+document.getElementById('gridV2').innerHTML = TYPES.map(v2).join('');
+
+document.getElementById('phoneStack').innerHTML = [TYPES[0],TYPES[2],TYPES[4]].map(v1).join('');
+</script>
+</body>
+</html>
