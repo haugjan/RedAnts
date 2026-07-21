@@ -107,6 +107,11 @@
                 <div class="scan-result__holder">@o.Holder</div>
             }
 
+            @if (o.Outcome == AdmissionOutcome.CheckedIn && o.Occupancy is { Quota: { } cap } co && co.Inside >= cap)
+            {
+                <div class="scan-result__warn">⚠ Hallenkapazität @(co.Inside > cap ? "überschritten" : "erreicht") (@co.Inside / @cap)</div>
+            }
+
             @if (!o.Ok)
             {
                 <div class="scan-result__reason">@o.Reason</div>
@@ -217,6 +222,10 @@
         padding: 0.5rem 1.2rem; border-radius: 14px;
     }
     .scan-result__holder { margin-top: 0.9rem; font-size: 1.6rem; font-weight: 700; }
+    .scan-result__warn {
+        margin-top: 1rem; padding: 0.5rem 1rem; border-radius: 10px;
+        background: rgba(255,255,255,0.22); font-size: 1.15rem; font-weight: 800;
+    }
     .scan-result__reason { margin-top: 1rem; font-size: 1.25rem; font-weight: 700; }
     .scan-result__prior { margin-top: 0.5rem; font-size: 1rem; opacity: 0.95; }
     .scan-result__meta { margin-top: 1rem; font-size: 0.95rem; opacity: 0.9; }

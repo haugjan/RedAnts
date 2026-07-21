@@ -11,7 +11,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IAddOnNotifier addOnNotifier, IPayrexxGateway payrexx, ILogger<CheckoutController> logger) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IAddOnNotifier addOnNotifier, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -148,6 +148,15 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             .Where(i => i.Kind == CartItemKind.EventTicket)
             .Select(i => new TicketDemand(i.EventId, i.TierId, i.Quantity))
             .ToList();
+        foreach (var eventId in current.Items.Where(i => i.Kind == CartItemKind.EventTicket).Select(i => i.EventId).Distinct())
+        {
+            if ((await admission.GetOccupancyAsync(eventId)).Full)
+            {
+                TempData["CartError"] = "Abendkasse geschlossen: Die Halle ist voll. Es können keine Tickets mehr gekauft werden.";
+                return Redirect("/warenkorb");
+            }
+        }
+
         var capacityError = await pricing.CheckCapacityAsync(demand);
         capacityError ??= await CheckSeasonPassCapacityAsync(current);
         if (capacityError is not null)

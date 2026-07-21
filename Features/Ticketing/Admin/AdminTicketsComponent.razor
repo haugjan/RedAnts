@@ -551,6 +551,8 @@
     {
         if (SelectedEventId <= 0) { _createError = "Es ist kein Anlass gewählt."; return; }
         if (_newPrice < 0) { _createError = "Der Abgabepreis darf nicht negativ sein."; return; }
+        if ((await Admission.GetOccupancyAsync(SelectedEventId)).Full)
+        { _createError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
         try
         {
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
@@ -586,6 +588,8 @@
         if (SelectedEventId <= 0) { _bundleError = "Es ist kein Anlass gewählt."; return; }
         if (reference.Length == 0) { _bundleError = "Bitte einen Bundlenamen angeben."; return; }
         if (_bundleQuantity < 1) { _bundleError = "Die Anzahl muss mindestens 1 sein."; return; }
+        if ((await Admission.GetOccupancyAsync(SelectedEventId)).Full)
+        { _bundleError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
 
         _bundleSaving = true;
         try

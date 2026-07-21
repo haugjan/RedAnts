@@ -192,8 +192,9 @@ public sealed class AdmissionService(
         var db = scope.Database;
 
         var occ = await OccAsync(db, eventId);
-        if (occ.Full)
-            return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, null, "Halle ist voll.", occ);
+        if (occ.Full && type is FreeEntryType.SwissUnihockeyFreeCard or FreeEntryType.Child)
+            return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, null,
+                $"Halle voll — kein Gratiseintritt ({type.DisplayName()}) mehr.", occ);
 
         var quotaRecord = await db.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId);
         if (quotaRecord is not null && FreeEntryQuotas.Get(quotaRecord, type) is { } q)
