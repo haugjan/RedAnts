@@ -12,8 +12,13 @@ public sealed class BrevoEmailSender(
 {
     private const string Endpoint = "https://api.brevo.com/v3/smtp/email";
 
-    public async Task<EmailSendResult> SendAsync(
+    public Task<EmailSendResult> SendAsync(
         string toEmail, string? toName, string subject, string htmlBody, CancellationToken cancellationToken = default)
+        => SendAsync(toEmail, toName, subject, htmlBody, null, cancellationToken);
+
+    public async Task<EmailSendResult> SendAsync(
+        string toEmail, string? toName, string subject, string htmlBody,
+        IReadOnlyList<EmailAttachment>? attachments, CancellationToken cancellationToken = default)
     {
         var apiKey = config["Brevo:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -36,6 +41,9 @@ public sealed class BrevoEmailSender(
         var adminBcc = config["Brevo:AdminBcc"];
         if (!string.IsNullOrWhiteSpace(adminBcc))
             payload["bcc"] = new[] { new { email = adminBcc } };
+
+        if (attachments is { Count: > 0 })
+            payload["attachment"] = attachments.Select(a => new { name = a.FileName, content = a.Base64Content }).ToArray();
 
         var client = httpClientFactory.CreateClient("brevo");
         using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint);

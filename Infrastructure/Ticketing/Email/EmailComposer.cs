@@ -12,6 +12,7 @@ public sealed class EmailComposer : IComposer
     {
         builder.Services.AddHttpClient("brevo");
         builder.Services.AddScoped<IEmailSender, BrevoEmailSender>();
+        builder.Services.AddScoped<IHelperInviteMailer, HelperInviteMailer>();
         builder.Services.AddUnique<Umbraco.Cms.Core.Mail.IEmailSender, BrevoUmbracoEmailSender>();
     }
 }

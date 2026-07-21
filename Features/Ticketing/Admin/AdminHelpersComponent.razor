@@ -1,6 +1,8 @@
 @using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Email
 @inject IHelpers Helpers
 @inject IHelperScanReport ScanReport
+@inject IHelperInviteMailer InviteMailer
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
@@ -50,8 +52,10 @@
                             <th>Name</th>
                             <th>E-Mail</th>
                             <th>Passwort</th>
-                            <th>Login-Link</th>
-                            <th class="ta-num">Scans</th>
+                            <th>Zuweisung</th>
+                            <th class="ta-num" title="An wie vielen verschiedenen Anlässen dieser Helfer Einlässe / Auslässe gescannt hat">Anlässe Ein/Aus</th>
+                            <th class="ta-num" title="Gesamtzahl der gescannten Einlässe / Auslässe">Scans Ein/Aus</th>
+                            <th>E-Mail senden</th>
                             <th>Aktiv</th>
                             <th class="ta-col-actions"></th>
                         </tr>
@@ -59,26 +63,37 @@
                     <tbody>
                         @foreach (var h in _helpers)
                         {
+                            var a = Agg(h);
                             <tr class="@(h.Active ? "" : "ta-row-off")">
                                 <td>@h.FullName</td>
-                                <td>@(string.IsNullOrWhiteSpace(h.Email) ? "—" : h.Email)</td>
+                                <td>@h.Email</td>
                                 <td>
                                     <code class="ta-uuid">@h.Code</code>
                                     <button type="button" class="ta-icon-btn" title="Passwort kopieren" @onclick="() => CopyAsync(h.Code)">⧉</button>
-                                </td>
-                                <td>
                                     <button type="button" class="ta-icon-btn" title="Login-Link kopieren" @onclick="() => CopyAsync(LoginLink(h))">🔗</button>
                                 </td>
-                                <td class="ta-num">
-                                    <button type="button" class="ta-visits-link" title="Scan-Übersicht dieses Helfers" @onclick="() => OpenScans(h)">
-                                        📊 @ScanTotal(h)
+                                <td>
+                                    <button type="button" class="ta-visits-link" title="Anlass-Zuweisung bearbeiten" @onclick="() => OpenAssign(h)">
+                                        @AssignmentLabel(h) ✎
                                     </button>
+                                </td>
+                                <td class="ta-num @(a.UnassignedEvents > 0 ? "ta-warn" : "")"
+                                    title="@(a.UnassignedEvents > 0 ? $"Hat an {a.UnassignedEvents} nicht zugewiesenen Anlässen gescannt" : "Verschiedene Anlässe mit Einlässen / Auslässen")">
+                                    <button type="button" class="ta-visits-link" @onclick="() => OpenScans(h)">@a.EventsIn / @a.EventsOut</button>
+                                </td>
+                                <td class="ta-num">@a.ScansIn / <span class="@(a.ScansOut > 0 ? "ta-warn" : "")">@a.ScansOut</span></td>
+                                <td>
+                                    <button type="button" class="ta-icon-btn" title="E-Mail mit Zugang an diesen Helfer senden" @onclick="() => OpenMail(h)">✉</button>
                                 </td>
                                 <td>
                                     <input type="checkbox" checked="@h.Active" @onchange="@(e => ToggleActiveAsync(h, e.Value is true))" />
                                 </td>
                                 <td class="ta-col-actions">
-                                    @if (_confirmDelete == h.Id)
+                                    @if (HasScans(h))
+                                    {
+                                        <span class="ta-muted" title="Helfer mit erfassten Scans können nicht gelöscht werden">🔒</span>
+                                    }
+                                    else if (_confirmDelete == h.Id)
                                     {
                                         <button type="button" class="ta-btn ta-btn-ghost ta-btn-sm" @onclick="() => _confirmDelete = null">Abbrechen</button>
                                         <button type="button" class="ta-btn ta-btn-danger ta-btn-sm" @onclick="() => DeleteAsync(h)">Löschen</button>
@@ -117,7 +132,7 @@
                 <input id="newHelperLast" class="ta-input" type="text" maxlength="100" @bind="_newLast" />
             </div>
             <div class="ta-field">
-                <label class="ta-label" for="newHelperEmail">E-Mail (optional)</label>
+                <label class="ta-label" for="newHelperEmail">E-Mail</label>
                 <input id="newHelperEmail" class="ta-input" type="email" maxlength="200" @bind="_newEmail" />
             </div>
 
@@ -130,6 +145,85 @@
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate" disabled="@_adding">Abbrechen</button>
                 <button type="button" class="ta-btn ta-btn-primary" @onclick="AddAsync" disabled="@_adding">
                     @(_adding ? "Wird erfasst …" : "Erfassen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_assignFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseAssign">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Anlass-Zuweisung</h2>
+            <p class="ta-modal-sub">@_assignFor.FullName</p>
+
+            <label class="ta-assign-all">
+                <input type="checkbox" checked="@_assignAll" @onchange="@(e => _assignAll = e.Value is true)" />
+                Alle Anlässe (auch künftig neu hinzukommende)
+            </label>
+
+            @if (!_assignAll)
+            {
+                @if (_events.Count == 0)
+                {
+                    <div class="ta-placeholder">Diese Saison hat noch keine Anlässe.</div>
+                }
+                else
+                {
+                    <div class="ta-assign-events">
+                        @foreach (var ev in _events)
+                        {
+                            <label class="ta-assign-event">
+                                <input type="checkbox" checked="@_assignEventIds.Contains(ev.Id)"
+                                       @onchange="@(e => ToggleAssignEvent(ev.Id, e.Value is true))" />
+                                @ev.Name <span class="ta-muted">· @ev.Date.ToString("dd.MM.yyyy")</span>
+                            </label>
+                        }
+                    </div>
+                }
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAssign" disabled="@_assignSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAssign" disabled="@_assignSaving">
+                    @(_assignSaving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_mailFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseMail">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">E-Mail an Helfer</h2>
+            <p class="ta-modal-sub">@_mailFor.FullName · @_mailFor.Email</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="mailSubject">Betreff</label>
+                <input id="mailSubject" class="ta-input" type="text" maxlength="200" @bind="_mailSubject" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="mailBody">Text</label>
+                <textarea id="mailBody" class="ta-input" rows="9" @bind="_mailBody"></textarea>
+                <p class="ta-field-hint">Platzhalter: {Vorname}, {Nachname}, {Passwort}, {Link}. Zugangslink, Passwort und die PDF-Anleitung werden automatisch mitgeschickt.</p>
+            </div>
+
+            @if (_mailError is not null)
+            {
+                <div class="ta-modal-error">@_mailError</div>
+            }
+            @if (_mailSent)
+            {
+                <div class="ta-copied">E-Mail wurde versendet.</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseMail" disabled="@_mailSending">Schliessen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@_mailSending">
+                    @(_mailSending ? "Wird gesendet …" : "Senden")
                 </button>
             </div>
         </div>
@@ -162,7 +256,7 @@
                             @foreach (var d in _scanDetail)
                             {
                                 <tr>
-                                    <td>@d.EventName <span class="ta-muted">· @d.EventDate.ToString("dd.MM.yyyy")</span></td>
+                                    <td>@d.EventName <span class="ta-muted">· @d.EventDate.ToString("dd.MM.yyyy")</span>@(d.Unassigned ? " ⚠" : "")</td>
                                     <td class="ta-num">@d.CheckIns</td>
                                     <td class="ta-num @(d.CheckOuts > 0 ? "ta-warn" : "")">@d.CheckOuts</td>
                                 </tr>
@@ -190,6 +284,9 @@
     .ta-warn { color: #b42318; font-weight: 700; }
     .ta-btn-sm { padding: .25rem .6rem; font-size: .8rem; }
     .ta-table tfoot td { font-weight: 700; border-top: 2px solid var(--ta-border); }
+    .ta-assign-all { display: flex; align-items: center; gap: .5rem; font-weight: 700; margin: 0 0 .8rem; }
+    .ta-assign-events { display: flex; flex-direction: column; gap: .35rem; max-height: 320px; overflow-y: auto; padding: .2rem 0; }
+    .ta-assign-event { display: flex; align-items: center; gap: .5rem; }
 </style>
 
 @code {
@@ -203,6 +300,7 @@
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<Helper> _helpers = [];
     private IReadOnlyList<HelperScanRow> _scanRows = [];
+    private IReadOnlyList<Event> _events = [];
     private Dictionary<int, Event> _eventById = new();
 
     public int SelectedSeasonId { get; set; }
@@ -217,10 +315,23 @@
     private int? _confirmDelete;
     private bool _copied;
 
+    private Helper? _assignFor;
+    private bool _assignAll;
+    private HashSet<int> _assignEventIds = new();
+    private bool _assignSaving;
+
+    private Helper? _mailFor;
+    private string _mailSubject = "";
+    private string _mailBody = "";
+    private bool _mailSending;
+    private bool _mailSent;
+    private string? _mailError;
+
     private Helper? _scanFor;
     private IReadOnlyList<HelperScanDetail> _scanDetail = [];
 
-    private sealed record HelperScanDetail(string EventName, DateOnly EventDate, int CheckIns, int CheckOuts);
+    private sealed record HelperScanDetail(string EventName, DateOnly EventDate, int CheckIns, int CheckOuts, bool Unassigned);
+    private sealed record HelperAgg(int EventsIn, int EventsOut, int ScansIn, int ScansOut, int UnassignedEvents);
 
     protected override async Task OnInitializedAsync()
     {
@@ -241,17 +352,33 @@
         {
             _helpers = [];
             _scanRows = [];
+            _events = [];
             _eventById = new();
             return;
         }
         _helpers = await Helpers.GetBySeasonAsync(SelectedSeasonId);
-        var events = await Events.GetBySeasonAsync(SelectedSeasonId);
-        _eventById = events.ToDictionary(e => e.Id);
-        _scanRows = await ScanReport.GetByEventsAsync(events.Select(e => e.Id).ToList());
+        _events = (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderByDescending(e => e.Date).ToList();
+        _eventById = _events.ToDictionary(e => e.Id);
+        _scanRows = await ScanReport.GetByEventsAsync(_events.Select(e => e.Id).ToList());
     }
 
-    private int ScanTotal(Helper h) =>
-        _scanRows.Where(r => r.Person == h.FullName).Sum(r => r.Total);
+    private HelperAgg Agg(Helper h)
+    {
+        var rows = _scanRows.Where(r => r.Person == h.FullName).ToList();
+        var eventsIn = rows.Where(r => r.CheckIns > 0).Select(r => r.EventId).Distinct().Count();
+        var eventsOut = rows.Where(r => r.CheckOuts > 0).Select(r => r.EventId).Distinct().Count();
+        var scansIn = rows.Sum(r => r.CheckIns);
+        var scansOut = rows.Sum(r => r.CheckOuts);
+        var unassigned = h.AllEvents
+            ? 0
+            : rows.Where(r => r.Total > 0).Select(r => r.EventId).Distinct().Count(id => !h.EventIds.Contains(id));
+        return new HelperAgg(eventsIn, eventsOut, scansIn, scansOut, unassigned);
+    }
+
+    private bool HasScans(Helper h) => _scanRows.Where(r => r.Person == h.FullName).Sum(r => r.Total) > 0;
+
+    private string AssignmentLabel(Helper h) =>
+        h.AllEvents ? "Alle Anlässe" : $"{h.EventIds.Count(id => _eventById.ContainsKey(id))} Anlässe";
 
     private void OpenCreate()
     {
@@ -282,17 +409,74 @@
         finally { _adding = false; }
     }
 
+    private void OpenAssign(Helper h)
+    {
+        _assignFor = h;
+        _assignAll = h.AllEvents;
+        _assignEventIds = h.EventIds.ToHashSet();
+    }
+
+    private void CloseAssign() { if (!_assignSaving) _assignFor = null; }
+
+    private void ToggleAssignEvent(int eventId, bool on)
+    {
+        if (on) _assignEventIds.Add(eventId);
+        else _assignEventIds.Remove(eventId);
+    }
+
+    private async Task SaveAssign()
+    {
+        if (_assignFor is null) return;
+        _assignSaving = true;
+        try
+        {
+            var ids = _assignEventIds.Where(id => _eventById.ContainsKey(id)).ToList();
+            await Helpers.SetAssignmentAsync(_assignFor.Id, _assignAll, ids);
+            _assignFor = null;
+            await ReloadAsync();
+        }
+        finally { _assignSaving = false; }
+    }
+
     private void OpenScans(Helper h)
     {
         _scanFor = h;
         _scanDetail = _scanRows
             .Where(r => r.Person == h.FullName && _eventById.ContainsKey(r.EventId))
-            .Select(r => new HelperScanDetail(_eventById[r.EventId].Name, _eventById[r.EventId].Date, r.CheckIns, r.CheckOuts))
+            .Select(r => new HelperScanDetail(_eventById[r.EventId].Name, _eventById[r.EventId].Date, r.CheckIns, r.CheckOuts,
+                !h.AllEvents && !h.EventIds.Contains(r.EventId)))
             .OrderByDescending(d => d.EventDate)
             .ToList();
     }
 
     private void CloseScans() => _scanFor = null;
+
+    private void OpenMail(Helper h)
+    {
+        _mailFor = h;
+        _mailSubject = InviteMailer.DefaultSubject;
+        _mailBody = InviteMailer.DefaultBody;
+        _mailSent = false;
+        _mailError = null;
+    }
+
+    private void CloseMail() { if (!_mailSending) { _mailFor = null; _mailError = null; _mailSent = false; } }
+
+    private async Task SendMail()
+    {
+        if (_mailFor is null) return;
+        _mailSending = true;
+        _mailError = null;
+        _mailSent = false;
+        try
+        {
+            var result = await InviteMailer.SendAsync(_mailFor, _mailSubject, _mailBody, LoginLink(_mailFor));
+            if (result.Success) _mailSent = true;
+            else _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
+        }
+        catch (Exception ex) { _mailError = ex.Message; }
+        finally { _mailSending = false; }
+    }
 
     private async Task ToggleActiveAsync(Helper h, bool active)
     {
@@ -302,6 +486,7 @@
 
     private async Task DeleteAsync(Helper h)
     {
+        if (HasScans(h)) { _confirmDelete = null; return; }
         await Helpers.DeleteAsync(h.Id);
         _confirmDelete = null;
         await ReloadAsync();
