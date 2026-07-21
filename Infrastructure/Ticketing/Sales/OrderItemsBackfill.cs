@@ -29,7 +29,6 @@ SELECT DISTINCT o.OrderId FROM (
     SELECT OrderId FROM EventTickets WHERE OrderId IS NOT NULL
     UNION ALL SELECT OrderId FROM SeasonSingleTickets WHERE OrderId IS NOT NULL
     UNION ALL SELECT OrderId FROM SeasonPasses WHERE OrderId IS NOT NULL
-    UNION ALL SELECT OrderId FROM MembershipCards WHERE OrderId IS NOT NULL
     UNION ALL SELECT OrderId FROM OrderAddOns
 ) o
 LEFT JOIN OrderItems i ON i.OrderId = o.OrderId
@@ -57,10 +56,6 @@ WHERE i.OrderId IS NULL");
                 foreach (var g in await GroupTicketsAsync(db, "SeasonPasses", "SeasonId", orderId))
                     items.Add(OrderItem.Create(orderId, OrderItemKind.SeasonPass, g.RefId, (TicketCategory)g.Category,
                         TicketLabel(seasonNames, g.RefId, (TicketCategory)g.Category), g.Qty, g.Price));
-
-                foreach (var g in await GroupCardsAsync(db, orderId))
-                    items.Add(OrderItem.Create(orderId, OrderItemKind.MemberCard, g.RefId, default,
-                        CardLabel(seasonNames, g.RefId, (MemberCategory)g.Category), g.Qty, 0m));
 
                 var addOns = await db.FetchAsync<AddOnRow>(
                     "SELECT SeasonId AS RefId, Category, Label, Price, Quantity AS Qty FROM OrderAddOns WHERE OrderId = @0", orderId);
@@ -98,18 +93,7 @@ WHERE i.OrderId IS NULL");
             $"SELECT {refColumn} AS RefId, Category, Price, COUNT(*) AS Qty FROM {table} " +
             $"WHERE OrderId = @0 GROUP BY {refColumn}, Category, Price", orderId);
 
-    private static async Task<List<GroupRow>> GroupCardsAsync(IDatabase db, int orderId) =>
-        await db.FetchAsync<GroupRow>(
-            "SELECT SeasonId AS RefId, Category, CAST(0 AS decimal(18,2)) AS Price, COUNT(*) AS Qty FROM MembershipCards " +
-            "WHERE OrderId = @0 GROUP BY SeasonId, Category", orderId);
-
     private static string TicketLabel(IReadOnlyDictionary<int, string> names, int refId, TicketCategory category)
-    {
-        var cat = category.DisplayName();
-        return names.TryGetValue(refId, out var name) && !string.IsNullOrWhiteSpace(name) ? $"{name} · {cat}" : cat;
-    }
-
-    private static string CardLabel(IReadOnlyDictionary<int, string> names, int refId, MemberCategory category)
     {
         var cat = category.DisplayName();
         return names.TryGetValue(refId, out var name) && !string.IsNullOrWhiteSpace(name) ? $"{name} · {cat}" : cat;

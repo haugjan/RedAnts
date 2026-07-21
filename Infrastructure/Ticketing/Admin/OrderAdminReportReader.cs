@@ -24,8 +24,6 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
             "SELECT OrderId, EventId AS RefId, Category, TierId FROM EventTickets WHERE OrderId IS NOT NULL");
         var seasonPasses = await scope.Database.FetchAsync<ItemRow>(
             "SELECT OrderId, SeasonId AS RefId, Category, TierId FROM SeasonPasses WHERE OrderId IS NOT NULL");
-        var memberCards = await scope.Database.FetchAsync<ItemRow>(
-            "SELECT OrderId, SeasonId AS RefId, Category, NULL AS TierId FROM MembershipCards WHERE OrderId IS NOT NULL");
         var flexTickets = await scope.Database.FetchAsync<ItemRow>(
             "SELECT OrderId, SeasonId AS RefId, Category, TierId FROM SeasonSingleTickets WHERE OrderId IS NOT NULL");
 
@@ -44,11 +42,6 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
             .GroupBy(p => p.OrderId!.Value)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var membersByOrder = memberCards
-            .Where(m => m.OrderId is not null && m.RefId == seasonId)
-            .GroupBy(m => m.OrderId!.Value)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
         var flexByOrder = flexTickets
             .Where(f => f.OrderId is not null && f.RefId == seasonId)
             .GroupBy(f => f.OrderId!.Value)
@@ -59,9 +52,8 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
         {
             var tickets = ticketsByOrder.GetValueOrDefault(o.Id) ?? [];
             var passes = passesByOrder.GetValueOrDefault(o.Id) ?? [];
-            var members = membersByOrder.GetValueOrDefault(o.Id) ?? [];
             var flex = flexByOrder.GetValueOrDefault(o.Id) ?? [];
-            if (tickets.Count == 0 && passes.Count == 0 && members.Count == 0 && flex.Count == 0) continue;
+            if (tickets.Count == 0 && passes.Count == 0 && flex.Count == 0) continue;
 
             result.Add(new OrderListItem(
                 o.Id,
@@ -81,8 +73,6 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
                 Summarize(tickets, tierNames),
                 passes.Count,
                 Summarize(passes, tierNames),
-                members.Count,
-                SummarizeMembers(members),
                 flex.Count,
                 Summarize(flex, tierNames),
                 ResolvePaymentSource(o)));
@@ -94,15 +84,6 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
     {
         if (o.PaymentSource is { } ps) return (PaymentSource)ps;
         return o.PaymentMethod == (int)PaymentMethod.Payrexx ? PaymentSource.Online : null;
-    }
-
-    private static string SummarizeMembers(List<ItemRow> items)
-    {
-        if (items.Count == 0) return "—";
-        return string.Join(" · ", items
-            .GroupBy(i => ((MemberCategory)i.Category).DisplayName())
-            .OrderBy(g => g.Key)
-            .Select(g => $"{g.Count()}× {g.Key}"));
     }
 
     private static string BuyerName(OrderRow o)

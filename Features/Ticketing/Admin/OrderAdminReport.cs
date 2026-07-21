@@ -20,8 +20,6 @@ public sealed record OrderListItem(
     string EventTicketSummary,
     int SeasonPassCount,
     string SeasonPassSummary,
-    int MemberCardCount,
-    string MemberCardSummary,
     int FlexTicketCount,
     string FlexTicketSummary,
     PaymentSource? PaymentSource);

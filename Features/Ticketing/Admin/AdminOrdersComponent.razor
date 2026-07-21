@@ -46,7 +46,6 @@
                             <th>Zahlart</th>
                             <th>Spieltickets</th>
                             <th>Saisonkarten</th>
-                            <th>Mitgliederkarten</th>
                             <th>Flextickets</th>
                             <th class="ta-col-actions"></th>
                         </tr>
@@ -81,7 +80,6 @@
                                 <td>@(o.PaymentSource is { } ps ? ps.DisplayName() : "—")</td>
                                 <td class="ta-cell-summary">@Cell(o.EventTicketCount, o.EventTicketSummary)</td>
                                 <td class="ta-cell-summary">@Cell(o.SeasonPassCount, o.SeasonPassSummary)</td>
-                                <td class="ta-cell-summary">@Cell(o.MemberCardCount, o.MemberCardSummary)</td>
                                 <td class="ta-cell-summary">@Cell(o.FlexTicketCount, o.FlexTicketSummary)</td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="Positionen anzeigen" @onclick="() => OpenItems(o)">📦</button>
