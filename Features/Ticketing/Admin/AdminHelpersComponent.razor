@@ -63,8 +63,8 @@
                                 <td>@h.FullName</td>
                                 <td>@(string.IsNullOrWhiteSpace(h.Email) ? "—" : h.Email)</td>
                                 <td>
-                                    <code class="ta-uuid">@h.Password</code>
-                                    <button type="button" class="ta-icon-btn" title="Passwort kopieren" @onclick="() => CopyAsync(h.Password)">⧉</button>
+                                    <code class="ta-uuid">@h.Code</code>
+                                    <button type="button" class="ta-icon-btn" title="Passwort kopieren" @onclick="() => CopyAsync(h.Code)">⧉</button>
                                 </td>
                                 <td>
                                     <button type="button" class="ta-icon-btn" title="Login-Link kopieren" @onclick="() => CopyAsync(LoginLink(h))">🔗</button>
@@ -313,7 +313,7 @@
         var baseUrl = !string.IsNullOrWhiteSpace(configured)
             ? configured.TrimEnd('/')
             : new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
-        return $"{baseUrl}/scan/{h.Password}";
+        return $"{baseUrl}/scan/{h.Code}";
     }
 
     private async Task CopyAsync(string text)

@@ -355,7 +355,6 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<NewsletterSignupRecord>("NewsletterSignups");
         EnsureTable<OrderAddOnRecord>("OrderAddOns");
         EnsureTable<OrderItemRecord>("OrderItems");
-        EnsureTable<HelperRecord>("Helpers");
 
         EnsureTable<FlexTicketBundleRecord>("FlexTicketBundles");
         EnsureTable<EventTicketBundleRecord>("EventTicketBundles");

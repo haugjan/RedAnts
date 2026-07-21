@@ -243,18 +243,3 @@ public class OrderItemRecord
     [Column("Quantity")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Quantity { get; set; }
     [Column("UnitPrice")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal UnitPrice { get; set; }
 }
-
-[TableName("Helpers")]
-[PrimaryKey("Id", AutoIncrement = true)]
-[ExplicitColumns]
-public class HelperRecord
-{
-    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
-    [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int SeasonId { get; set; }
-    [Column("FirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? FirstName { get; set; }
-    [Column("LastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? LastName { get; set; }
-    [Column("Email")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Email { get; set; }
-    [Column("Password")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(80)] [Index(IndexTypes.NonClustered)] public string Password { get; set; } = "";
-    [Column("Active")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Active { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
-}
