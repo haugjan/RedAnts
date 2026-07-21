@@ -238,6 +238,8 @@
     text-transform: uppercase; letter-spacing: 0.04em; vertical-align: middle;
 }
 .ta-promo-arrow { color: var(--ta-muted); margin-right: 0.15rem; }
+.ta-promo-name { display: flex; align-items: center; gap: 0.25rem; }
+.ta-promo-name .ta-tier-name { flex: 1 1 auto; min-width: 0; width: auto; }
 
 .ta-subtable th.ta-subgroup { text-align: center; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--ta-accent); background: #eef6fc; border-left: 1px solid #d7e8f6; }
 .ta-subtable th.ta-subgroup-alt { color: #1a7f37; background: #e9f6ee; border-left: 1px solid #cde9d8; }
