@@ -172,7 +172,7 @@
                 else
                 {
                     <div class="ta-assign-events">
-                        @foreach (var ev in _events)
+                        @foreach (var ev in _events.OrderBy(e => e.Date).ThenBy(e => e.StartTime))
                         {
                             <label class="ta-assign-event">
                                 <input type="checkbox" checked="@_assignEventIds.Contains(ev.Id)"
