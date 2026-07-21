@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -5,12 +6,24 @@ using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class TicketPdfRenderer : ITicketPdf
+public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
 {
     private const string Red = "#D02D38";
     private const string RedDk = "#B0242E";
     private const string Ink = "#14171A";
     private const string Muted = "#6B7178";
+
+    private readonly byte[]? _logo = LoadLogo(env);
+
+    private static byte[]? LoadLogo(IWebHostEnvironment env)
+    {
+        try
+        {
+            var path = Path.Combine(env.WebRootPath ?? "wwwroot", "img", "logo-redants.png");
+            return File.Exists(path) ? File.ReadAllBytes(path) : null;
+        }
+        catch { return null; }
+    }
 
     public byte[] Render(TicketPdfModel m) =>
         Document.Create(doc =>
@@ -26,10 +39,13 @@ public sealed class TicketPdfRenderer : ITicketPdf
                     {
                         head.Item().Row(row =>
                         {
-                            row.RelativeItem().Text(m.Kicker.ToUpperInvariant()).FontColor(Colors.White).FontSize(6.5f);
-                            row.AutoItem().AlignRight().Text("RED ANTS").FontColor(Colors.White).Bold().FontSize(6.5f);
+                            row.RelativeItem().AlignMiddle().Text(m.Kicker.ToUpperInvariant()).FontColor(Colors.White).FontSize(6.5f);
+                            if (_logo is { } logo)
+                                row.AutoItem().Height(6, Unit.Millimetre).AlignRight().Image(logo);
+                            else
+                                row.AutoItem().AlignRight().Text("RED ANTS").FontColor(Colors.White).Bold().FontSize(6.5f);
                         });
-                        head.Item().PaddingTop(1).Text(m.TypeLabel).FontColor(Colors.White).Bold().FontSize(14);
+                        head.Item().PaddingTop(1).Text(m.TypeLabel.ToUpperInvariant()).FontColor(Colors.White).Bold().FontSize(14);
                     });
 
                     col.Item().PaddingTop(8).AlignCenter().Width(28, Unit.Millimetre).Image(m.QrPng);

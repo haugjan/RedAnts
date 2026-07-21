@@ -10,6 +10,7 @@
 .rtk-kick{font-family:'Oswald',Impact,sans-serif;text-transform:uppercase;letter-spacing:.13em;font-weight:500;font-size:.66rem;opacity:.92}
 .rtk-type{font-family:'Oswald',Impact,sans-serif;text-transform:uppercase;font-weight:700;font-size:1.5rem;line-height:1;margin-top:2px}
 .rtk-brand{flex:0 0 auto;font-family:'Oswald',Impact,sans-serif;text-transform:uppercase;letter-spacing:.08em;font-weight:600;font-size:.72rem;white-space:nowrap}
+.rtk-logo{flex:0 0 auto;height:26px;width:auto;display:block}
 .rtk-qrwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 16px 10px}
 .rtk-qr{width:172px;max-width:66%;height:auto;display:block}
 .rtk-qr img,.rtk-qr svg{width:100%;height:auto;display:block}

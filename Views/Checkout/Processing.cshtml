@@ -1,8 +1,12 @@
 @model RedAnts.Features.Ticketing.Cart.CheckoutProcessingView
+@using RedAnts.Features.Ticketing.Tickets
+@using RedAnts.Domain.Ticketing.Sales
 @{
     Layout = "~/Views/Shared/_TicketsLayout.cshtml";
     ViewData["Title"] = "Zahlung wird verarbeitet";
 }
+
+<link rel="stylesheet" href="/css/ticket-card.css?v=2" />
 
 <div class="text-center py-4" id="processing" style="@(Model.AlreadyPaid ? "display:none;" : "")">
     <div class="spinner-border text-danger mb-3" role="status"><span class="visually-hidden">…</span></div>
@@ -21,22 +25,24 @@
 
     @if (Model.Tickets.Count > 0)
     {
-        <div class="card p-4">
-            <h2 class="h5 mb-2">Deine Tickets</h2>
-            <p class="text-muted small mb-3">Du kannst die QR-Codes auch direkt hier am Eingang scannen lassen:</p>
-            <div class="row g-3">
-                @foreach (var t in Model.Tickets)
-                {
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="border rounded p-3 text-center h-100">
-                            <img src="/ticket/@t.Token/qr.png" alt="Ticket-QR" width="160" height="160" class="img-fluid" style="max-width:160px;" />
-                            <div class="fw-bold small mt-2">@t.EventName</div>
-                            <div class="text-muted small">@t.CategoryName</div>
-                            <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
-                        </div>
-                    </div>
-                }
-            </div>
+        <h2 class="h5 mb-3 text-center">Deine Tickets</h2>
+        <div class="ra-ticket-grid">
+            @foreach (var t in Model.Tickets)
+            {
+                var card = new TicketCardModel(
+                    Kicker: TicketDisplay.Kicker((TicketType)t.Type),
+                    TypeLabel: TicketDisplay.TypeLabel((TicketType)t.Type),
+                    ScopeName: t.EventName,
+                    DateText: t.DateText,
+                    CategoryLabel: t.CategoryName,
+                    HolderName: null,
+                    Serial: t.Uuid.ToString("N")[..8].ToUpperInvariant(),
+                    QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />");
+                <div class="ra-ticket-cell">
+                    <partial name="~/Views/Partials/_TicketCard.cshtml" model="card" />
+                    <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
+                </div>
+            }
         </div>
     }
 
@@ -44,6 +50,12 @@
         <a href="/" class="btn btn-outline-secondary">Zur Startseite</a>
     </div>
 </div>
+
+<style>
+    .ra-ticket-grid { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; }
+    .ra-ticket-cell { display: flex; flex-direction: column; align-items: center; width: 300px; max-width: 100%; }
+    .ra-ticket-cell .rtk-card { --rtk-notch: #ffffff; }
+</style>
 
 <script>
 (function () {
