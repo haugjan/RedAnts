@@ -8,8 +8,7 @@
 }
 else
 {
-    <input @ref="EditorElement" class="ta-input ta-inline-editor" type="date" value="@(Value?.ToString("yyyy-MM-dd"))"
-           @onchange="OnChanged" @onkeydown="OnKeyDown" @onblur="HandleBlur" />
+    <DateBox Value="@Value" ValueChanged="OnDateChanged" />
 }
 
 @if (ConfirmOpen)
@@ -29,25 +28,9 @@ else
 
     protected override string FormatValue(DateOnly? value) => value?.ToString("dd.MM.yyyy") ?? EmptyLabel;
 
-    private void OnChanged(ChangeEventArgs e)
+    private void OnDateChanged(DateOnly? date)
     {
-        var raw = (e.Value?.ToString() ?? "").Trim();
-        if (raw.Length == 0)
-        {
-            if (AllowEmpty) RequestSave(null);
-            else CancelEdit();
-            return;
-        }
-        if (!DateOnly.TryParse(raw, out var parsed))
-        {
-            CancelEdit();
-            return;
-        }
-        RequestSave(parsed);
-    }
-
-    private void OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Escape") CancelEdit();
+        if (date is null && !AllowEmpty) { CancelEdit(); return; }
+        RequestSave(date);
     }
 }
