@@ -1,11 +1,24 @@
+using Microsoft.AspNetCore.Hosting;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class TicketPdfRenderer : ITicketPdf
+public sealed class TicketPdfRenderer(IWebHostEnvironment environment) : ITicketPdf
 {
+    private byte[]? _logo;
+    private bool _logoResolved;
+
+    private byte[]? Logo()
+    {
+        if (_logoResolved) return _logo;
+        var path = Path.Combine(environment.WebRootPath, "img", "logo-redants.png");
+        _logo = File.Exists(path) ? File.ReadAllBytes(path) : null;
+        _logoResolved = true;
+        return _logo;
+    }
+
     public byte[] Render(TicketPdfModel m) =>
         Document.Create(doc =>
         {
@@ -16,6 +29,12 @@ public sealed class TicketPdfRenderer : ITicketPdf
                 page.DefaultTextStyle(t => t.FontSize(11).FontColor("#101010"));
                 page.Content().Column(col =>
                 {
+                    var logo = Logo();
+                    if (logo is not null)
+                    {
+                        col.Item().PaddingTop(16).PaddingBottom(6).AlignCenter().Width(88).Image(logo);
+                    }
+
                     col.Item().Background(m.AccentHex).Padding(18).Column(head =>
                     {
                         head.Item().Text(m.TypeLabel).FontColor(Colors.White).Bold().FontSize(18);
