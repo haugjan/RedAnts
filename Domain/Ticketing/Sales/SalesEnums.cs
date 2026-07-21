@@ -74,7 +74,8 @@ public enum PaymentSource
     Online,
     Cash,
     TwintCode,
-    Terminal
+    Terminal,
+    Invoice
 }
 
 public enum BuyerType
@@ -110,12 +111,13 @@ public static class PaymentSourceExtensions
         PaymentSource.Cash => "Cash",
         PaymentSource.TwintCode => "TWINT-Code",
         PaymentSource.Terminal => "Terminal",
+        PaymentSource.Invoice => "Rechnung",
         _ => source.ToString()
     };
 
     public static IReadOnlyList<PaymentSource> AdminChoicesForPrice(decimal totalGross) =>
         totalGross > 0m
-            ? [PaymentSource.Cash, PaymentSource.TwintCode, PaymentSource.Terminal]
+            ? [PaymentSource.Cash, PaymentSource.TwintCode, PaymentSource.Terminal, PaymentSource.Invoice]
             : [PaymentSource.Sponsoring, PaymentSource.Marketing, PaymentSource.Goodwill];
 }
 
