@@ -132,6 +132,18 @@ jobs:
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
             --src-path app.zip --type zip --track-status false --timeout 600000
+      - name: Configure Payrexx (prod)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+          PAYREXX_API_SECRET: ${{ secrets.PAYREXX_API_SECRET }}
+        run: |
+          if [ -z "$PAYREXX_API_SECRET" ]; then
+            echo "Payrexx secret not set for prod; skipping."; exit 0
+          fi
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
+            --output none
+          echo "Payrexx settings applied to $WEBAPP."
       - name: Configure Google Wallet (prod)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
