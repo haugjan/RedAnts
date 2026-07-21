@@ -45,7 +45,7 @@ rebasen und sich additiv einhängen.
 | S2 | `feature/s2-r5-addon-texts` | Zusatzoptionen: Vorabinfo (Info-Icon-Tooltip) + Nachkauf-Info (Bestätigung UND Mail) | offen |
 | S3 | `feature/s3-r5-wallet-pdf` | Google Wallet + PDF; Download-Links auf Ticket-Seite und in der Bestätigungsmail | offen |
 | S4 | `feature/s4-r5-event-columns-links` | Event-Tabelle: neue Summenspalte + Einfärbungen; Link-Kopier-Overlay (Events + Seasons) | offen |
-| S5 | `feature/s5-r5-admin-infra` | Inline-Edit auch per Mausklick verlassen; Admin-Position (Tab/Saison/Anlass/Bundle) via URL merken | offen |
+| S5 | `feature/s5-r5-admin-infra` | Inline-Edit auch per Mausklick verlassen; Admin-Position (Tab/Saison/Anlass/Bundle) via URL merken | erledigt, in main gemerged (`682f5f7`; App-Boot gegen Dev-DB verifiziert, Admin-Route auth-geschützt 302, Public 200) |
 | S6 | `feature/s6-r5-public-format-fixes` | iFrame-Slim „Nächster Anlass"; restliche Datumsfelder auf dd.MM.yyyy; Venue-Bug „Ort nicht änderbar"; CSV-QR-Spalte prüfen/vereinheitlichen | offen |
 
 ---
@@ -149,4 +149,5 @@ Neueste zuerst. Nur Änderungen eintragen, die andere Sessions betreffen.
 
 | Datum | Session | Was | Auswirkung |
 |---|---|---|---|
+| 21.07.2026 | S5 | `TicketingAdminState` ist jetzt beobachtbar (`event Changed`) und trägt zusätzlich `SelectedEventId` + `SelectedBundleId`. `SelectedSeasonId` etc. sind Properties, die `Changed` auslösen. `TicketingAdminComponent` spiegelt Tab/Saison/Anlass/Bundle in die URL-Query. | Wer `TicketingAdminState` neu nutzt: Property-Semantik (löst `Changed` aus), rein additiv. `InlineEditBase` schliesst Editiermodus zusätzlich per Blur (`HandleBlur`) und hat neu `EditorElement` (Auto-Fokus). Keine Signaturänderung an den Inline-Editoren. |
 | 21.07.2026 | S1 | Runde-5-Plan verteilt (dieses Dokument). | Alle: Runde-5-Branch anlegen; S1 zuerst mergen, S2/S3 danach rebasen. |
