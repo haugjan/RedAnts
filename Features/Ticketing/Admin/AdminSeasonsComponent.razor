@@ -150,14 +150,14 @@
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.TicketOffered)" @bind="c.TicketQuota" /></td>
                                 <td class="ta-num"><DateBox @bind-Value="c.TicketAvailableUntil" Disabled="@(!c.TicketOffered)" /></td>
                                 <td class="ta-num ta-tier-actions">
-                                    <button type="button" class="ta-icon-btn" title="@(c.HasPromo ? "Aktion entfernen" : "Aktion hinzufügen")" @onclick="() => TogglePromo(c)">@(c.HasPromo ? "★" : "☆")</button>
+                                    <button type="button" class="ta-promo-toggle @(c.HasPromo ? "is-on" : "")" title="@(c.HasPromo ? "Sonderaktion für diese Stufe entfernen" : "Sonderaktion für diese Stufe hinzufügen")" @onclick="() => TogglePromo(c)">@(c.HasPromo ? "★ Aktion" : "☆ Aktion")</button>
                                     <button type="button" class="ta-icon-btn" title="@(c.CanDelete ? "Stufe löschen" : "Nicht löschbar: bereits verkauft")" disabled="@(!c.CanDelete)" @onclick="() => RemoveTier(c)">×</button>
                                 </td>
                             </tr>
                             @if (c.HasPromo)
                             {
                                 <tr class="ta-tier-promo">
-                                    <td class="ta-promo-name"><span class="ta-promo-arrow">↳</span><input type="text" maxlength="200" class="ta-input ta-tier-name" placeholder="Aktionsname" @bind="c.PromoName" /></td>
+                                    <td class="ta-promo-name"><span class="ta-promo-arrow">↳</span><span class="ta-promo-tag">Sonderaktion</span><input type="text" maxlength="200" class="ta-input ta-tier-name" placeholder="Aktionsname" @bind="c.PromoName" /></td>
                                     <td></td>
                                     <td class="ta-group-col ta-muted">Aktion</td>
                                     <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPromoPrice" @bind:after="() => c.PassPromoPrice = decimal.Round(c.PassPromoPrice, 2)" /></td>
@@ -490,8 +490,10 @@
         _editError = null;
         try
         {
-            var tierInputs = _editTiers
-                .Where(t => !string.IsNullOrWhiteSpace(t.Name))
+            var ordered = _editTiers.Where(t => !string.IsNullOrWhiteSpace(t.Name)).ToList();
+            for (var i = 0; i < ordered.Count; i++) ordered[i].SortOrder = i;
+
+            var tierInputs = ordered
                 .Select(t => new PriceTierInput(t.Id, t.Name.Trim(), t.MaxAge, t.SortOrder,
                     t.HasPromo && !string.IsNullOrWhiteSpace(t.PromoName)
                         ? new PriceTierPromoInput(t.PromoId, t.PromoName.Trim()) : null))
@@ -502,11 +504,9 @@
             var savedPromoByParent = saved.Where(t => t.PromoOfTierId is not null).ToDictionary(t => t.PromoOfTierId!.Value);
 
             var cats = new List<SeasonCategoryPrice>();
-            var editable = _editTiers.Where(t => !string.IsNullOrWhiteSpace(t.Name))
-                .OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList();
-            for (var i = 0; i < editable.Count && i < savedNormals.Count; i++)
+            for (var i = 0; i < ordered.Count && i < savedNormals.Count; i++)
             {
-                var t = editable[i];
+                var t = ordered[i];
                 var normal = savedNormals[i];
                 cats.Add(SeasonCategoryPrice.Create(default,
                     decimal.Round(t.PassPrice, 2), t.PassOffered, t.PassQuota,
