@@ -276,6 +276,7 @@
     [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
     [Inject] private IFlexBundleEditor BundleEditor { get; set; } = default!;
     [Inject] private IAdmissionService Admission { get; set; } = default!;
+    [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
@@ -471,6 +472,9 @@
                 _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
                 return;
             }
+            await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
+                Identity?.Name ?? AdminUser);
             var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email);
             _showCreate = false;

@@ -610,6 +610,9 @@
                 _bundleError = $"Der Bundlename „{reference}“ ist für diesen Anlass bereits vergeben.";
                 return;
             }
+            await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _bundleCategory, $"Ticket-Bundle · {reference}", _bundleQuantity, 0m)],
+                Identity?.Name ?? AdminUser);
             await Bundles.CreateAsync(SelectedEventId, _bundleCategory, reference, _bundleQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email);
             _showCreateBundle = false;
