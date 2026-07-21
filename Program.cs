@@ -280,12 +280,7 @@ if (!string.IsNullOrEmpty(gatePassword))
         if (context.Request.Query["key"].ToString() == gatePassword)
         {
             SetGateCookie(context);
-            var stripped = QueryString.Empty;
-            foreach (var kv in context.Request.Query)
-                if (!string.Equals(kv.Key, "key", StringComparison.OrdinalIgnoreCase))
-                    foreach (var v in kv.Value)
-                        stripped = stripped.Add(kv.Key, v ?? "");
-            context.Response.Redirect(context.Request.Path.Add(stripped));
+            await next();
             return;
         }
 
