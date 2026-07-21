@@ -217,7 +217,14 @@ internal static class TierOffer
             if (promoByParent.GetValueOrDefault(normal.TierId) is { Offered: true } promo
                 && Pick(promo, totalRemaining) is { Available: true } pick)
             {
-                result.Add(pick);
+                var action = promo.Name.Trim();
+                if (action.StartsWith(normal.Name + " ", StringComparison.OrdinalIgnoreCase))
+                    action = action[normal.Name.Length..].TrimStart();
+                result.Add(pick with
+                {
+                    ShortName = normal.Name,
+                    ActionText = string.IsNullOrWhiteSpace(action) ? null : action
+                });
                 continue;
             }
             result.Add(Pick(normal, totalRemaining));

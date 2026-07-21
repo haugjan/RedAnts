@@ -54,29 +54,35 @@
 
     @if (passOffers.Count > 0)
     {
+        var passLogo = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
         <section class="event-list" id="saisonkarten">
             <div class="event-list-inner">
                 <h2 class="event-list-title">Saisonkarten</h2>
-                <ul class="pass-offer-list">
-                    @foreach (var (season, cats) in passOffers)
-                    {
-                        <li class="pass-offer">
-                            <div class="pass-offer-head">
-                                <span class="pass-offer-season">@season.Name</span>
-                                <a class="pass-offer-more" href="/saisons/">Saisonkarten kaufen →</a>
-                            </div>
-                            <ul class="pass-offer-cats">
-                                @foreach (var cat in cats)
-                                {
-                                    <li>
-                                        <span class="pass-offer-cat-name">@cat.Name</span>
-                                        <span class="pass-offer-price">CHF @MoneyFormat.Amount(cat.Price)</span>
-                                    </li>
-                                }
-                            </ul>
-                        </li>
-                    }
-                </ul>
+                @foreach (var (season, cats) in passOffers)
+                {
+                    <div class="pass-season-label">@season.Name</div>
+                    <ul class="event-list-items">
+                        @foreach (var cat in cats)
+                        {
+                            <li class="event-item">
+                                <a class="event-item-link" href="/saisons/">
+                                    <span class="event-item-logos">
+                                        <img class="team-logo" src="@passLogo" alt="Red Ants Winterthur" />
+                                    </span>
+                                    <span class="event-item-body">
+                                        @if (!string.IsNullOrWhiteSpace(cat.ActionText))
+                                        {
+                                            <span class="event-item-date">@cat.ActionText</span>
+                                        }
+                                        <span class="event-item-name">@(string.IsNullOrWhiteSpace(cat.ShortName) ? cat.Name : cat.ShortName)</span>
+                                        <span class="event-item-venue pass-cat-price">CHF @MoneyFormat.Amount(cat.Price)</span>
+                                    </span>
+                                    <span class="event-item-cta">Saisonkarten kaufen →</span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
             </div>
         </section>
     }
@@ -156,13 +162,8 @@
     .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
     @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
 
-    .pass-offer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-    .pass-offer { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; }
-    .pass-offer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 6px; }
-    .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.3rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; }
-    .pass-offer-more { color: #C8102E; font-weight: 700; text-decoration: none; font-size: .9rem; white-space: nowrap; }
-    .pass-offer-cats { list-style: none; margin: 0; padding: 0; }
-    .pass-offer-cats li { display: flex; align-items: center; gap: 1rem; padding: 8px 0; border-top: 1px solid #f3f3f3; font-size: .92rem; }
-    .pass-offer-cat-name { flex: 1 1 auto; }
-    .pass-offer-price { font-weight: 700; white-space: nowrap; }
+    .pass-season-label { font-family: 'Oswald', sans-serif; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; margin: 4px 0 10px; }
+    .pass-season-label:not(:first-of-type) { margin-top: 24px; }
+    #saisonkarten .event-list-items { margin-bottom: 4px; }
+    .pass-cat-price { font-weight: 700; color: #101010; }
 </style>

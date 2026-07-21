@@ -8,7 +8,9 @@ public sealed record AvailableTicketCategory(
     decimal Price,
     bool Available,
     int? Remaining,
-    DateOnly? AvailableUntil = null);
+    DateOnly? AvailableUntil = null,
+    string? ShortName = null,
+    string? ActionText = null);
 
 public interface IPriceTiers
 {
