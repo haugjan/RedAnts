@@ -79,7 +79,7 @@ app.Use(async (context, next) =>
         if (context.Request.IsHttps)
             headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
 
-        var isEmbed = path.Equals("/heute/embed", StringComparison.OrdinalIgnoreCase);
+        var isEmbed = path.Equals("/next/embed", StringComparison.OrdinalIgnoreCase);
         if (!isEmbed)
             headers["X-Frame-Options"] = "SAMEORIGIN";
 

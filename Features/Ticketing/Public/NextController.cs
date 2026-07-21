@@ -6,13 +6,13 @@ using Umbraco.Cms.Core.Web;
 
 namespace RedAnts.Features.Ticketing.Public;
 
-public sealed class TodayController(
+public sealed class NextController(
     IEvents events,
     IPublishedUrlProvider urlProvider,
     IUmbracoContextFactory contextFactory) : Controller
 {
-    [HttpGet("/heute")]
-    public async Task<IActionResult> Today()
+    [HttpGet("/next")]
+    public async Task<IActionResult> Next()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
         var upcoming = (await events.GetPublicOpenAsync())
@@ -26,7 +26,7 @@ public sealed class TodayController(
         return Redirect(!string.IsNullOrEmpty(url) && url != "#" ? url : "/ticketing/");
     }
 
-    [HttpGet("/heute/embed")]
+    [HttpGet("/next/embed")]
     public async Task<IActionResult> Embed()
     {
         Response.Headers["Content-Security-Policy"] = "frame-ancestors *";

@@ -17,7 +17,7 @@ public sealed class WarmupController(
     IUmbracoContextFactory contextFactory) : Controller
 {
     private static readonly string[] CorePaths =
-        ["/", "/ticketing/", "/saisons/", "/heute", "/heute/embed", "/umbraco"];
+        ["/", "/ticketing/", "/saisons/", "/next", "/next/embed", "/umbraco"];
 
     [HttpGet("/warmup")]
     public async Task<IActionResult> Warmup()
