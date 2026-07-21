@@ -316,7 +316,7 @@ public sealed class TicketingContentTypeSeeder(
         var venuesFolder = FindFolderNode(A.VenuesFolderType);
         if (venuesFolder is null) return;
 
-        var udi = venuesFolder.GetUdi().ToString();
+        var startNode = venuesFolder.Key.ToString();
 
         const string name = "Ticketing Ort (Venues)";
         var picker = dataTypeService.GetAll().FirstOrDefault(d => d.Name == name);
@@ -328,16 +328,16 @@ public sealed class TicketingContentTypeSeeder(
                 Name = name,
                 EditorUiAlias = "Umb.PropertyEditorUi.DocumentPicker",
                 DatabaseType = ValueStorageType.Nvarchar,
-                ConfigurationData = new Dictionary<string, object> { ["startNodeId"] = udi }
+                ConfigurationData = new Dictionary<string, object> { ["startNodeId"] = startNode }
             };
             dataTypeService.Save(picker);
         }
         else
         {
             var current = picker.ConfigurationData.TryGetValue("startNodeId", out var v) ? v as string : null;
-            if (current != udi)
+            if (current != startNode)
             {
-                picker.ConfigurationData = new Dictionary<string, object> { ["startNodeId"] = udi };
+                picker.ConfigurationData = new Dictionary<string, object> { ["startNodeId"] = startNode };
                 dataTypeService.Save(picker);
             }
         }
