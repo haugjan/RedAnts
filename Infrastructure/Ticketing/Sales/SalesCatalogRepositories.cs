@@ -427,11 +427,22 @@ public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeaso
                 SortOrder = order++,
                 Scope = (int)o.Scope,
                 InfoBeforePurchase = o.InfoBeforePurchase,
-                InfoAfterPurchase = o.InfoAfterPurchase
+                InfoAfterPurchase = o.InfoAfterPurchase,
+                LongTitle = o.LongTitle,
+                AllowedTierIds = o.AllowedTierIds.Count == 0 ? null : string.Join(',', o.AllowedTierIds)
             });
     }
 
     private static SeasonAddOn Map(SeasonAddOnRecord r) =>
         SeasonAddOn.FromPersistence(r.Id, r.SeasonId, r.Label, r.Price, r.Active, r.SortOrder, (AddOnScope)r.Scope,
-            r.InfoBeforePurchase, r.InfoAfterPurchase);
+            r.InfoBeforePurchase, r.InfoAfterPurchase, r.LongTitle, ParseTierIds(r.AllowedTierIds));
+
+    private static IReadOnlyList<int> ParseTierIds(string? csv) =>
+        string.IsNullOrWhiteSpace(csv)
+            ? []
+            : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => int.TryParse(s, out var id) ? id : 0)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
 }

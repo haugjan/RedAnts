@@ -188,6 +188,10 @@
 .ta-subtable td { padding: 3px 6px; font-size: 0.82rem; border-top: 1px solid #f2f2f2; }
 .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
 .ta-scope-select { width: auto; min-width: 13rem; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+.ta-addon-longtitle { min-width: 12rem; }
+.ta-addon-tiers { display: flex; flex-direction: column; gap: 0.15rem; }
+.ta-addon-tier { display: flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; white-space: nowrap; }
+.ta-addon-tier input { margin: 0; }
 
 .ta-cell-address { white-space: normal; min-width: 190px; line-height: 1.4; }
 .ta-cell-address .ta-addr-name { font-weight: 600; }

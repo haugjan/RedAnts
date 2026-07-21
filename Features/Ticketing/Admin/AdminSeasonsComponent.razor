@@ -210,9 +210,11 @@
                 <table class="ta-subtable">
                     <thead>
                         <tr>
-                            <th>Bezeichnung</th>
+                            <th>Kurztitel</th>
+                            <th>Langtitel (öffentlich)</th>
                             <th class="ta-num">Preis (CHF)</th>
                             <th>Geltung</th>
+                            <th>Stufen</th>
                             <th>Vorabinfo</th>
                             <th>Nachkauf-Info</th>
                             <th class="ta-group-col">Aktiv</th>
@@ -224,11 +226,27 @@
                         {
                             <tr class="@(r.Active ? "" : "ta-row-off")">
                                 <td><input type="text" maxlength="200" class="ta-input ta-addon-label" placeholder="z. B. Livestream-Abo" @bind="r.Label" /></td>
+                                <td><input type="text" maxlength="500" class="ta-input ta-addon-longtitle" placeholder="Bewerbungstext auf der Saisonseite" @bind="r.LongTitle" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" @bind="r.Price" @bind:after="() => r.Price = decimal.Round(r.Price, 2)" /></td>
                                 <td><select class="ta-select ta-scope-select" @bind="r.Scope">
                                     <option value="@AddOnScope.PerPass">Pro Saisonkarte</option>
                                     <option value="@AddOnScope.PerOrder">Einmalig pro Bestellung</option>
                                 </select></td>
+                                <td>
+                                    @if (_addOnTiers.Count == 0)
+                                    {
+                                        <span class="ta-muted">keine Stufen</span>
+                                    }
+                                    else
+                                    {
+                                        <div class="ta-addon-tiers">
+                                            @foreach (var t in _addOnTiers)
+                                            {
+                                                <label class="ta-addon-tier"><input type="checkbox" checked="@r.AllowedTierIds.Contains(t.Id)" @onchange="e => ToggleAddOnTier(r, t.Id, (bool)e.Value!)" /> @t.Name</label>
+                                            }
+                                        </div>
+                                    }
+                                </td>
                                 <td><textarea rows="2" maxlength="2000" class="ta-input ta-addon-info" placeholder="Hinweis vor dem Kauf (Info-Tooltip)" @bind="r.InfoBefore"></textarea></td>
                                 <td><textarea rows="2" maxlength="2000" class="ta-input ta-addon-info" placeholder="Hinweis nach dem Kauf (Bestätigung + Mail)" @bind="r.InfoAfter"></textarea></td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="r.Active" /></td>
@@ -237,13 +255,13 @@
                         }
                         @if (_addOnRows.Count == 0)
                         {
-                            <tr><td colspan="7" class="ta-muted">Noch keine Zusatzoptionen erfasst.</td></tr>
+                            <tr><td colspan="9" class="ta-muted">Noch keine Zusatzoptionen erfasst.</td></tr>
                         }
                     </tbody>
                 </table>
                 </div>
                 <button type="button" class="ta-btn ta-btn-ghost ta-addon-add" @onclick="AddAddOnRow">+ Option hinzufügen</button>
-                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
+                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. Der Kurztitel erscheint auf Beleg und Ticket-Mail, der Langtitel bewirbt die Option auf der öffentlichen Saisonseite (fehlt er, wird der Kurztitel angezeigt). Ohne Stufenauswahl gilt die Option für alle Stufen, sonst nur für die angehakten. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
             </div>
 
             @if (_addOnError is not null)
@@ -566,15 +584,21 @@
 
     private Season? _editingAddOns;
     private List<AddOnRow> _addOnRows = new();
+    private List<(int Id, string Name)> _addOnTiers = new();
     private bool _addOnSaving;
     private string? _addOnError;
 
-    private void OpenAddOns(Season s)
+    private async Task OpenAddOns(Season s)
     {
         _editingAddOns = s;
+        _addOnTiers = (await PriceTiers.GetBySeasonAsync(s.Id))
+            .Where(t => t.PromoOfTierId is null)
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
+            .Select(t => (t.Id, t.Name))
+            .ToList();
         _addOnRows = (_addOns.GetValueOrDefault(s.Id) ?? [])
-            .Select(a => new AddOnRow { Label = a.Label, Price = decimal.Round(a.Price, 2), Active = a.Active, Scope = a.Scope,
-                InfoBefore = a.InfoBeforePurchase ?? "", InfoAfter = a.InfoAfterPurchase ?? "" })
+            .Select(a => new AddOnRow { Label = a.Label, LongTitle = a.LongTitle ?? "", Price = decimal.Round(a.Price, 2), Active = a.Active, Scope = a.Scope,
+                InfoBefore = a.InfoBeforePurchase ?? "", InfoAfter = a.InfoAfterPurchase ?? "", AllowedTierIds = a.AllowedTierIds.ToHashSet() })
             .ToList();
         _addOnError = null;
     }
@@ -582,6 +606,7 @@
     private void CancelAddOns() { if (!_addOnSaving) { _editingAddOns = null; _addOnError = null; } }
     private void AddAddOnRow() => _addOnRows.Add(new AddOnRow { Active = true });
     private void RemoveAddOnRow(AddOnRow r) => _addOnRows.Remove(r);
+    private static void ToggleAddOnTier(AddOnRow r, int tierId, bool on) { if (on) r.AllowedTierIds.Add(tierId); else r.AllowedTierIds.Remove(tierId); }
 
     private async Task SaveAddOns()
     {
@@ -590,9 +615,11 @@
         _addOnError = null;
         try
         {
+            var validTierIds = _addOnTiers.Select(t => t.Id).ToHashSet();
             var options = _addOnRows
                 .Where(r => !string.IsNullOrWhiteSpace(r.Label))
-                .Select(r => SeasonAddOn.Create(_editingAddOns.Id, r.Label, decimal.Round(r.Price, 2), r.Active, 0, r.Scope, r.InfoBefore, r.InfoAfter))
+                .Select(r => SeasonAddOn.Create(_editingAddOns.Id, r.Label, decimal.Round(r.Price, 2), r.Active, 0, r.Scope, r.InfoBefore, r.InfoAfter,
+                    r.LongTitle, r.AllowedTierIds.Where(validTierIds.Contains).ToList()))
                 .ToList();
             await SeasonAddOns.ReplaceForSeasonAsync(_editingAddOns.Id, options);
             _editingAddOns = null;
@@ -606,10 +633,12 @@
     private sealed class AddOnRow
     {
         public string Label { get; set; } = "";
+        public string LongTitle { get; set; } = "";
         public decimal Price { get; set; }
         public bool Active { get; set; } = true;
         public AddOnScope Scope { get; set; } = AddOnScope.PerPass;
         public string InfoBefore { get; set; } = "";
         public string InfoAfter { get; set; } = "";
+        public HashSet<int> AllowedTierIds { get; set; } = new();
     }
 }

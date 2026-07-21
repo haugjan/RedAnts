@@ -5,6 +5,7 @@
 @inject ISeasonPassPricing PassPricing
 @inject RedAnts.Features.Ticketing.Ports.ISeasons Seasons
 @inject ISeasonAddOns SeasonAddOns
+@inject IPriceTiers PriceTiers
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
@@ -15,13 +16,14 @@
     ViewBag.PageTitle = title + " – Red Ants Winterthur";
     ViewBag.TransparentNav = true;
 
-    var passOffers = new List<(int SeasonId, string SeasonName, List<AvailableTicketCategory> Categories, List<SeasonAddOn> AddOns)>();
+    var passOffers = new List<(int SeasonId, string SeasonName, List<AvailableTicketCategory> Categories, List<SeasonAddOn> AddOns, Dictionary<int, int> TierBase)>();
     foreach (var season in await Seasons.GetPublicOpenAsync())
     {
         var cats = (await PassPricing.GetAvailableAsync(season.Id)).Where(c => c.Available).ToList();
         if (cats.Count == 0) continue;
         var addOns = (await SeasonAddOns.GetBySeasonAsync(season.Id)).Where(a => a.Active).ToList();
-        passOffers.Add((season.Id, season.Name, cats, addOns));
+        var tierBase = (await PriceTiers.GetBySeasonAsync(season.Id)).ToDictionary(t => t.Id, t => t.PromoOfTierId ?? t.Id);
+        passOffers.Add((season.Id, season.Name, cats, addOns, tierBase));
     }
 }
 
@@ -53,7 +55,7 @@
             else
             {
                 <ul class="pass-offer-list">
-                    @foreach (var (seasonId, seasonName, cats, addOns) in passOffers)
+                    @foreach (var (seasonId, seasonName, cats, addOns, tierBase) in passOffers)
                     {
                         <li class="pass-offer">
                             <div class="pass-offer-head">
@@ -62,6 +64,8 @@
                             <ul class="pass-offer-cats">
                                 @foreach (var cat in cats)
                                 {
+                                    var baseTierId = tierBase.GetValueOrDefault(cat.TierId, cat.TierId);
+                                    var catAddOns = addOns.Where(a => a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId)).ToList();
                                     <li class="pass-offer-cat">
                                         <div class="pass-offer-cat-top">
                                             <span class="pass-offer-cat-name">@cat.Name</span>
@@ -85,15 +89,15 @@
                                             <input type="hidden" name="seasonId" value="@seasonId" />
                                             <input type="hidden" name="tierId" value="@cat.TierId" />
                                             <input type="hidden" name="returnUrl" value="/saisons/" />
-                                            @if (addOns.Count > 0)
+                                            @if (catAddOns.Count > 0)
                                             {
                                                 <div class="pass-addons">
                                                     <span class="pass-addons-title">Zusatzoptionen</span>
-                                                    @foreach (var a in addOns)
+                                                    @foreach (var a in catAddOns)
                                                     {
                                                         <label class="pass-addon">
                                                             <input type="checkbox" name="addOns" value="@a.Id" />
-                                                            <span class="pass-addon-label">@a.Label@(a.Scope == AddOnScope.PerOrder ? " (einmalig pro Bestellung)" : "")</span>
+                                                            <span class="pass-addon-label">@(string.IsNullOrWhiteSpace(a.LongTitle) ? a.Label : a.LongTitle)@(a.Scope == AddOnScope.PerOrder ? " (einmalig pro Bestellung)" : "")</span>
                                                             @if (!string.IsNullOrWhiteSpace(a.InfoBeforePurchase))
                                                             {
                                                                 <span class="pass-addon-info" title="@a.InfoBeforePurchase" role="img" aria-label="@a.InfoBeforePurchase"

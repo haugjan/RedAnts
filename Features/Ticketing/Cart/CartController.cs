@@ -6,7 +6,8 @@ namespace RedAnts.Features.Ticketing.Cart;
 
 public sealed class CartController(
     ICartService cart, IEventPricing pricing, IEvents events,
-    ISeasonPassPricing passPricing, ISeasons seasons, ISeasonAddOns seasonAddOns) : Controller
+    ISeasonPassPricing passPricing, ISeasons seasons, ISeasonAddOns seasonAddOns,
+    IPriceTiers priceTiers) : Controller
 {
     [HttpGet("/warenkorb")]
     public IActionResult Index() => View(cart.Get());
@@ -67,11 +68,18 @@ public sealed class CartController(
         if (added)
         {
             var selectedIds = (addOns ?? []).ToHashSet();
-            var chosen = selectedIds.Count == 0
-                ? new List<SeasonAddOn>()
-                : (await seasonAddOns.GetBySeasonAsync(seasonId))
-                    .Where(a => a.Active && selectedIds.Contains(a.Id))
+            List<SeasonAddOn> chosen;
+            if (selectedIds.Count == 0)
+                chosen = new List<SeasonAddOn>();
+            else
+            {
+                var tierBase = (await priceTiers.GetBySeasonAsync(seasonId)).ToDictionary(t => t.Id, t => t.PromoOfTierId ?? t.Id);
+                var baseTierId = tierBase.GetValueOrDefault(available!.TierId, available.TierId);
+                chosen = (await seasonAddOns.GetBySeasonAsync(seasonId))
+                    .Where(a => a.Active && selectedIds.Contains(a.Id)
+                        && (a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId)))
                     .ToList();
+            }
             var perPass = chosen.Where(a => a.Scope == AddOnScope.PerPass)
                 .Select(a => new CartAddOn { Id = a.Id, Label = a.Label, Price = a.Price })
                 .ToList();
