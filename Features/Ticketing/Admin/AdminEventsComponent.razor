@@ -408,7 +408,8 @@
         await ReloadEventsAsync();
     }
 
-    private static readonly FreeEntryType[] FreeEntryTypes = Enum.GetValues<FreeEntryType>();
+    private static readonly FreeEntryType[] FreeEntryTypes =
+        Enum.GetValues<FreeEntryType>().Where(t => t != FreeEntryType.Child).ToArray();
 
     private Event? _editing;
     private Dictionary<FreeEntryType, int?> _editQuotas = new();

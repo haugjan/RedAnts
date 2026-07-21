@@ -11,6 +11,7 @@ public static class FreeEntryQuotas
         FreeEntryType.Official => record.OfficialQuota,
         FreeEntryType.SwissUnihockeyFreeCard => record.SuQuota,
         FreeEntryType.Child => record.ChildQuota,
+        FreeEntryType.Helper => record.HelperQuota,
         _ => null
     };
 
@@ -23,6 +24,7 @@ public static class FreeEntryQuotas
             case FreeEntryType.Official: record.OfficialQuota = quota; break;
             case FreeEntryType.SwissUnihockeyFreeCard: record.SuQuota = quota; break;
             case FreeEntryType.Child: record.ChildQuota = quota; break;
+            case FreeEntryType.Helper: record.HelperQuota = quota; break;
         }
     }
 
@@ -33,6 +35,7 @@ public static class FreeEntryQuotas
         FreeEntryType.Official => record.OfficialFixed,
         FreeEntryType.SwissUnihockeyFreeCard => record.SuFixed,
         FreeEntryType.Child => record.ChildFixed,
+        FreeEntryType.Helper => record.HelperFixed,
         _ => null
     };
 
@@ -45,10 +48,11 @@ public static class FreeEntryQuotas
             case FreeEntryType.Official: record.OfficialFixed = fixedCount; break;
             case FreeEntryType.SwissUnihockeyFreeCard: record.SuFixed = fixedCount; break;
             case FreeEntryType.Child: record.ChildFixed = fixedCount; break;
+            case FreeEntryType.Helper: record.HelperFixed = fixedCount; break;
         }
     }
 
     public static int FixedTotal(EventFreeEntryQuotaRecord record) =>
         (record.PlayerFixed ?? 0) + (record.StaffFixed ?? 0) + (record.OfficialFixed ?? 0)
-        + (record.SuFixed ?? 0) + (record.ChildFixed ?? 0);
+        + (record.SuFixed ?? 0) + (record.ChildFixed ?? 0) + (record.HelperFixed ?? 0);
 }

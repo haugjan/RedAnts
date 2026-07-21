@@ -48,6 +48,7 @@ public class AddFreeEntryFixedCounts(IMigrationContext context) : AsyncMigration
         AddInt("StaffFixed");
         AddInt("OfficialFixed");
         AddInt("ChildFixed");
+        AddInt("HelperFixed");
         return Task.CompletedTask;
     }
 
@@ -167,6 +168,7 @@ public class AddFreeEntryTypeQuotas(IMigrationContext context) : AsyncMigrationB
         AddInt("StaffQuota");
         AddInt("OfficialQuota");
         AddInt("ChildQuota");
+        AddInt("HelperQuota");
         return Task.CompletedTask;
     }
 
