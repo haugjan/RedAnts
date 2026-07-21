@@ -239,10 +239,13 @@
                                     }
                                     else
                                     {
-                                        <div class="ta-addon-tiers">
+                                        <div class="ta-tier-chips">
+                                            <button type="button" class="ta-tier-chip @(r.AllowedTierIds.Count == 0 ? "is-on" : "")"
+                                                    title="Gilt für alle Stufen dieser Saison, auch künftig neue" @onclick="() => r.AllowedTierIds.Clear()">Alle</button>
                                             @foreach (var t in _addOnTiers)
                                             {
-                                                <label class="ta-addon-tier"><input type="checkbox" checked="@r.AllowedTierIds.Contains(t.Id)" @onchange="e => ToggleAddOnTier(r, t.Id, (bool)e.Value!)" /> @t.Name</label>
+                                                <button type="button" class="ta-tier-chip @(r.AllowedTierIds.Contains(t.Id) ? "is-on" : "")"
+                                                        @onclick="() => ToggleAddOnTier(r, t.Id)">@t.Name</button>
                                             }
                                         </div>
                                     }
@@ -261,7 +264,7 @@
                 </table>
                 </div>
                 <button type="button" class="ta-btn ta-btn-ghost ta-addon-add" @onclick="AddAddOnRow">+ Option hinzufügen</button>
-                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. Der Kurztitel erscheint auf Beleg und Ticket-Mail, der Langtitel bewirbt die Option auf der öffentlichen Saisonseite (fehlt er, wird der Kurztitel angezeigt). Ohne Stufenauswahl gilt die Option für alle Stufen, sonst nur für die angehakten. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
+                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. Der Kurztitel erscheint auf Beleg und Ticket-Mail, der Langtitel bewirbt die Option auf der öffentlichen Saisonseite (fehlt er, wird der Kurztitel angezeigt). Die Stufen entsprechen den Preisstufen dieser Saison. „Alle" gilt für sämtliche Stufen (auch künftig neue), sonst nur für die gewählten. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
             </div>
 
             @if (_addOnError is not null)
@@ -614,7 +617,7 @@
     private void CancelAddOns() { if (!_addOnSaving) { _editingAddOns = null; _addOnError = null; } }
     private void AddAddOnRow() => _addOnRows.Add(new AddOnRow { Active = true });
     private void RemoveAddOnRow(AddOnRow r) => _addOnRows.Remove(r);
-    private static void ToggleAddOnTier(AddOnRow r, int tierId, bool on) { if (on) r.AllowedTierIds.Add(tierId); else r.AllowedTierIds.Remove(tierId); }
+    private static void ToggleAddOnTier(AddOnRow r, int tierId) { if (!r.AllowedTierIds.Add(tierId)) r.AllowedTierIds.Remove(tierId); }
 
     private async Task SaveAddOns()
     {

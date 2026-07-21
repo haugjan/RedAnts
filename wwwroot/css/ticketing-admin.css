@@ -198,9 +198,14 @@
 .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
 .ta-scope-select { width: auto; min-width: 13rem; padding-top: 0.3rem; padding-bottom: 0.3rem; }
 .ta-addon-longtitle { min-width: 12rem; }
-.ta-addon-tiers { display: flex; flex-direction: column; gap: 0.15rem; }
-.ta-addon-tier { display: flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; white-space: nowrap; }
-.ta-addon-tier input { margin: 0; }
+.ta-tier-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.ta-tier-chip {
+    font: inherit; font-size: 0.72rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--ta-border); border-radius: 999px; background: #fff;
+    color: var(--ta-muted); padding: 0.15rem 0.6rem; white-space: nowrap;
+}
+.ta-tier-chip:hover { border-color: var(--ta-accent); color: var(--ta-accent); }
+.ta-tier-chip.is-on { background: var(--ta-accent); border-color: var(--ta-accent); color: #fff; }
 
 .ta-cell-address { white-space: normal; min-width: 190px; line-height: 1.4; }
 .ta-cell-address .ta-addr-name { font-weight: 600; }
