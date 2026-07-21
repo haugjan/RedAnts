@@ -228,7 +228,16 @@
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newPrice">Abgabepreis (CHF)</label>
-                <input id="newPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" @bind:after="() => _newPrice = decimal.Round(_newPrice, 2)" />
+                <input id="newPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" @bind:after="OnNewPriceChanged" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newTicketPaymentSource">Zahlart</label>
+                <select id="newTicketPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(_newPrice))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
             </div>
             @if (_createError is not null)
             {
@@ -326,6 +335,15 @@
                 <label class="ta-label" for="bundleQuantity">Anzahl Tickets</label>
                 <input id="bundleQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_bundleQuantity" />
             </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundlePaymentSource">Zahlart</label>
+                <select id="bundlePaymentSource" class="ta-select" @bind="_bundlePaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
+            </div>
             @if (_bundleError is not null)
             {
                 <p class="ta-modal-error">@_bundleError</p>
@@ -409,11 +427,19 @@
     private bool _showCreate;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private decimal _newPrice;
+    private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
     private BuyerType _newBuyerType = BuyerType.Private;
     private string _newFirstName = "";
     private string _newLastName = "";
     private string _newCompany = "";
     private string? _createError;
+
+    private void OnNewPriceChanged()
+    {
+        _newPrice = decimal.Round(_newPrice, 2);
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(_newPrice);
+        if (!choices.Contains(_newPaymentSource)) _newPaymentSource = choices[0];
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -548,6 +574,7 @@
     {
         _newCategory = TicketCategory.Adult;
         _newPrice = 0m;
+        _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
         _newBuyerType = BuyerType.Private;
         _newFirstName = _newLastName = _newCompany = "";
         _createError = null;
@@ -564,9 +591,10 @@
         try
         {
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
+            var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
             var order = await OrderFactory.CreateAsync(buyer, Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
-                Identity?.Name ?? AdminUser);
+                Identity?.Name ?? AdminUser, paymentSource);
             await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, order.Id, buyer,
                 Identity?.Name ?? AdminUser, Identity?.Email));
         }
@@ -580,13 +608,21 @@
     private TicketCategory _bundleCategory = TicketCategory.Adult;
     private string _bundleReference = "";
     private int _bundleQuantity = 1;
+    private PaymentSource _bundlePaymentSource = PaymentSource.Sponsoring;
     private string? _bundleError;
+
+    private static PaymentSource ClampPaymentSource(PaymentSource source, decimal price)
+    {
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(price);
+        return choices.Contains(source) ? source : choices[0];
+    }
 
     private void OpenCreateBundle()
     {
         _bundleCategory = TicketCategory.Adult;
         _bundleReference = "";
         _bundleQuantity = 1;
+        _bundlePaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
         _bundleError = null;
         _showCreateBundle = true;
     }
@@ -612,7 +648,7 @@
             }
             var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _bundleCategory, $"Ticket-Bundle · {reference}", _bundleQuantity, 0m)],
-                Identity?.Name ?? AdminUser);
+                Identity?.Name ?? AdminUser, _bundlePaymentSource);
             await Bundles.CreateAsync(SelectedEventId, _bundleCategory, reference, _bundleQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
             _showCreateBundle = false;

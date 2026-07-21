@@ -50,9 +50,9 @@
                         <th rowspan="2" class="ta-th-sort" @onclick='() => Sort("status")'>Verkaufsstatus <span class="ta-sort-ind">@Ind("status")</span></th>
                         <th rowspan="2" class="ta-num">Einlass&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Verkaufs&shy;kontingent</th>
-                        <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
                         <th rowspan="2" class="ta-num">Verkaufte<br />@TicketType.EventTicket.DisplayName()</th>
-                        <th rowspan="2" class="ta-num">Erwartete<br />Zutritte</th>
+                        <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
+                        <th rowspan="2" class="ta-num" title="Erwartete Personenzahl am Anlass: verkaufte Spieltickets + gültige Saisonkartenbesitzer + Mitglieder + bisherige Freieinlässe. Rot bei Überschreitung des Einlasskontingents; Hinweis bei möglicher Überbuchung.">Erwartete<br />Zutritte</th>
                         <th colspan="5" class="ta-group">Eingelöste Zutritte</th>
                         <th rowspan="2"></th>
                         <th rowspan="2" class="ta-col-actions"></th>
@@ -105,8 +105,8 @@
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveSalesQuotaAsync(e, v))" />
                             </td>
-                            <td class="ta-num @PastClass(e, c)">@c.TotalRedeemed</td>
                             <td class="ta-num">@c.SoldSingleTickets</td>
+                            <td class="ta-num @PastClass(e, c)">@c.TotalRedeemed</td>
                             <td class="ta-num @ExpectedClass(e, c)" title="@ExpectedTitle(e, c)">@c.ExpectedAdmissions</td>
                             <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
                             <td class="ta-num">@c.RedeemedSeasonSingleTickets</td>

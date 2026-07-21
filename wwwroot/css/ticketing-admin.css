@@ -188,6 +188,10 @@
 .ta-subtable td { padding: 3px 6px; font-size: 0.82rem; border-top: 1px solid #f2f2f2; }
 .ta-subtable th.ta-num, .ta-subtable td.ta-num { text-align: right; }
 .ta-scope-select { width: auto; min-width: 13rem; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+.ta-addon-longtitle { min-width: 12rem; }
+.ta-addon-tiers { display: flex; flex-direction: column; gap: 0.15rem; }
+.ta-addon-tier { display: flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; white-space: nowrap; }
+.ta-addon-tier input { margin: 0; }
 
 .ta-cell-address { white-space: normal; min-width: 190px; line-height: 1.4; }
 .ta-cell-address .ta-addr-name { font-weight: 600; }
@@ -202,14 +206,29 @@
 .ta-visit-date { color: var(--ta-muted); font-size: 0.82rem; }
 
 .ta-inline {
-    background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+    background: none; border: none; padding: 0 0 1px; margin: 0; cursor: pointer;
     font: inherit; color: inherit; text-align: inherit;
-    border-bottom: 1px dashed transparent;
+    border-bottom: 1px dashed #b9c6d2;
 }
 .ta-inline:hover:not(:disabled) { border-bottom-color: var(--ta-accent); }
-.ta-inline:disabled { cursor: default; }
+.ta-inline:disabled { cursor: default; border-bottom-color: transparent; }
 .ta-inline-editor { width: auto; min-width: 7rem; max-width: 12rem; padding: 0.25rem 0.4rem; font-size: 0.82rem; }
 .ta-inline-num { text-align: right; min-width: 5.5rem; max-width: 7rem; }
+
+.ta-promo-toggle {
+    font: inherit; font-size: 0.72rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--ta-border); border-radius: 999px; background: #fff;
+    color: var(--ta-muted); padding: 0.1rem 0.55rem; white-space: nowrap;
+}
+.ta-promo-toggle:hover { border-color: var(--ta-accent); color: var(--ta-accent); }
+.ta-promo-toggle.is-on { background: #fff3d6; border-color: #e0a92a; color: #8a5a00; }
+.ta-tier-promo > td { background: #fff9ec; }
+.ta-promo-tag {
+    display: inline-block; margin-right: 0.4rem; padding: 0.02rem 0.4rem; border-radius: 3px;
+    background: #f2d79a; color: #7a5200; font-size: 0.62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em; vertical-align: middle;
+}
+.ta-promo-arrow { color: var(--ta-muted); margin-right: 0.15rem; }
 
 .ta-subtable th.ta-subgroup { text-align: center; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--ta-accent); background: #eef6fc; border-left: 1px solid #d7e8f6; }
 .ta-subtable th.ta-subgroup-alt { color: #1a7f37; background: #e9f6ee; border-left: 1px solid #cde9d8; }

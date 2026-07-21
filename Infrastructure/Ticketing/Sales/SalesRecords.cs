@@ -31,6 +31,7 @@ public class OrderRecord
     [Column("SellerUid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(30)] public string? SellerUid { get; set; }
 
     [Column("PaymentMethod")] [NullSetting(NullSetting = NullSettings.NotNull)] public int PaymentMethod { get; set; }
+    [Column("PaymentSource")] [NullSetting(NullSetting = NullSettings.Null)] public int? PaymentSource { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
     [Column("PaidAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? PaidAt { get; set; }

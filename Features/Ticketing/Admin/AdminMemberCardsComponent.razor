@@ -139,6 +139,15 @@
                 <label class="ta-label" for="newMcReference">Referenz</label>
                 <input id="newMcReference" class="ta-input" type="text" maxlength="100" placeholder="Eindeutig pro Saison" @bind="_newReference" />
             </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcPaymentSource">Zahlart</label>
+                <select id="newMcPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
+            </div>
 
             @if (!string.IsNullOrEmpty(_createError))
             {
@@ -369,6 +378,7 @@
     private string _newLastName = "";
     private DateOnly? _newBirthday;
     private string _newReference = "";
+    private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
     private string? _createError;
 
     private void OpenCreate()
@@ -376,6 +386,7 @@
         _newCategory = MemberCategory.RedAnts;
         _newFirstName = _newLastName = _newReference = "";
         _newBirthday = null;
+        _newPaymentSource = PaymentSource.Sponsoring;
         _createError = null;
         _showCreate = true;
     }
@@ -394,7 +405,7 @@
             var last = string.IsNullOrWhiteSpace(_newLastName) ? null : _newLastName;
             var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Private, first, last, null), Identity.Email,
                 [new AdminOrderLine(OrderItemKind.MemberCard, SelectedSeasonId, default, _newCategory.DisplayName(), 1, 0m)],
-                Identity.Name);
+                Identity.Name, _newPaymentSource);
             await Members.CreateAsync(SelectedSeasonId, _newCategory, first, last,
                 _newBirthday, _newReference.Trim(), Identity.Name, Identity.Email, order.Id);
             _showCreate = false;

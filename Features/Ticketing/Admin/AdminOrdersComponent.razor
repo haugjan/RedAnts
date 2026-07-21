@@ -43,8 +43,11 @@
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Kaufdatum <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Bezahlt <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("amount")'>Betrag <span class="ta-sort-ind">@Ind("amount")</span></th>
+                            <th>Zahlart</th>
                             <th>Spieltickets</th>
                             <th>Saisonkarten</th>
+                            <th>Mitgliederkarten</th>
+                            <th>Flextickets</th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
@@ -75,8 +78,11 @@
                                     </InlineSelectEdit>
                                 </td>
                                 <td class="ta-num">CHF @o.TotalGross.ToString("N2")</td>
+                                <td>@(o.PaymentSource is { } ps ? ps.DisplayName() : "—")</td>
                                 <td class="ta-cell-summary">@Cell(o.EventTicketCount, o.EventTicketSummary)</td>
                                 <td class="ta-cell-summary">@Cell(o.SeasonPassCount, o.SeasonPassSummary)</td>
+                                <td class="ta-cell-summary">@Cell(o.MemberCardCount, o.MemberCardSummary)</td>
+                                <td class="ta-cell-summary">@Cell(o.FlexTicketCount, o.FlexTicketSummary)</td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="Positionen anzeigen" @onclick="() => OpenItems(o)">📦</button>
                                     <button type="button" class="ta-icon-btn" title="Bestellverlauf" @onclick="() => OpenLog(o)">🧾</button>

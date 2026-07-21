@@ -166,7 +166,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         }
 
         var number = await orders.NextOrderNumberAsync();
-        var order = Order.Create(number, billing, current.TotalAmount, VatRate, paymentMethod, sellerUid: null);
+        var order = Order.Create(number, billing, current.TotalAmount, VatRate, paymentMethod, sellerUid: null,
+            paymentSource: PaymentSource.Online);
         order.SetFulfillmentPayload(BuildSnapshotJson(current, subscribeNewsletter, newsletterSource));
         var saved = await orders.SaveAsync(order);
         await orderLog.AppendAsync(saved.Id, OrderStatus.Draft, "Online-Kauf", "Bestellung erstellt");

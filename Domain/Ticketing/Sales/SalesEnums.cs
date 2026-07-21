@@ -66,6 +66,17 @@ public enum OrderItemKind
     AddOn
 }
 
+public enum PaymentSource
+{
+    Sponsoring,
+    Marketing,
+    Goodwill,
+    Online,
+    Cash,
+    TwintCode,
+    Terminal
+}
+
 public enum BuyerType
 {
     Private,
@@ -86,6 +97,26 @@ public static class AddOnScopeExtensions
         AddOnScope.PerOrder => "einmalig pro Bestellung",
         _ => scope.ToString()
     };
+}
+
+public static class PaymentSourceExtensions
+{
+    public static string DisplayName(this PaymentSource source) => source switch
+    {
+        PaymentSource.Sponsoring => "Sponsoring",
+        PaymentSource.Marketing => "Marketing",
+        PaymentSource.Goodwill => "Goodwill",
+        PaymentSource.Online => "Online",
+        PaymentSource.Cash => "Cash",
+        PaymentSource.TwintCode => "TWINT-Code",
+        PaymentSource.Terminal => "Terminal",
+        _ => source.ToString()
+    };
+
+    public static IReadOnlyList<PaymentSource> AdminChoicesForPrice(decimal totalGross) =>
+        totalGross > 0m
+            ? [PaymentSource.Cash, PaymentSource.TwintCode, PaymentSource.Terminal]
+            : [PaymentSource.Sponsoring, PaymentSource.Marketing, PaymentSource.Goodwill];
 }
 
 public static class BuyerTypeExtensions

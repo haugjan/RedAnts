@@ -33,6 +33,24 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddPriceTiers>("price-tiers");
         To<AddArticleGuids>("article-guids");
         To<AddSeasonAddOnInfoTexts>("seasonaddons-info-texts");
+        To<AddOrderPaymentSource>("order-payment-source");
+        To<AddSeasonAddOnTitleAndTiers>("seasonaddons-title-tiers");
+    }
+}
+
+public class AddOrderPaymentSource(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("Orders", "PaymentSource"))
+        {
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE Orders ADD COLUMN PaymentSource INTEGER NULL").Do();
+            else
+                Alter.Table("Orders").AddColumn("PaymentSource").AsInt32().Nullable().Do();
+        }
+        return Task.CompletedTask;
     }
 }
 
@@ -77,6 +95,26 @@ public class AddSeasonAddOnInfoTexts(IMigrationContext context) : AsyncMigration
                 Execute.Sql($"ALTER TABLE SeasonAddOns ADD COLUMN {column} NVARCHAR(2000) NULL").Do();
             else
                 Alter.Table("SeasonAddOns").AddColumn(column).AsString(2000).Nullable().Do();
+        }
+    }
+}
+
+public class AddSeasonAddOnTitleAndTiers(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        AddText("LongTitle");
+        AddText("AllowedTierIds");
+        return Task.CompletedTask;
+
+        void AddText(string column)
+        {
+            if (ColumnExists("SeasonAddOns", column)) return;
+            if (isSqlite)
+                Execute.Sql($"ALTER TABLE SeasonAddOns ADD COLUMN {column} NVARCHAR(500) NULL").Do();
+            else
+                Alter.Table("SeasonAddOns").AddColumn(column).AsString(500).Nullable().Do();
         }
     }
 }

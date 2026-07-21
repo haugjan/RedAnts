@@ -7,5 +7,6 @@ public sealed record AdminOrderLine(
 
 public interface IAdminOrderFactory
 {
-    Task<Order> CreateAsync(Buyer buyer, string? email, IReadOnlyList<AdminOrderLine> lines, string createdBy);
+    Task<Order> CreateAsync(Buyer buyer, string? email, IReadOnlyList<AdminOrderLine> lines, string createdBy,
+        PaymentSource paymentSource);
 }

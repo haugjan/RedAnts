@@ -19,7 +19,12 @@ public sealed record OrderListItem(
     int EventTicketCount,
     string EventTicketSummary,
     int SeasonPassCount,
-    string SeasonPassSummary);
+    string SeasonPassSummary,
+    int MemberCardCount,
+    string MemberCardSummary,
+    int FlexTicketCount,
+    string FlexTicketSummary,
+    PaymentSource? PaymentSource);
 
 public interface IOrderAdminReport
 {
