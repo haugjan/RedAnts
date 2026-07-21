@@ -58,6 +58,13 @@
         .wt-badge.ok { background: #e7f6ec; color: #1a7f37; }
         .wt-badge.no { background: #fdeaea; color: #b42318; }
         .wt-note { text-align: center; color: #888; font-size: .82rem; margin: .6rem 0 1.2rem; }
+        .wt-actions { display: flex; flex-direction: column; gap: .5rem; padding: 0 1.2rem 1.3rem; }
+        .wt-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; font-family: var(--ra-display); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; font-size: .92rem; padding: .62rem 1rem; border-radius: 8px; }
+        .wt-btn--pdf { background: #101010; color: #fff; }
+        .wt-btn--pdf:hover { background: #2a2a2a; }
+        .wt-btn--wallet { background: #000; color: #fff; }
+        .wt-btn--wallet:hover { background: #222; }
+        @@media print { .wt-actions { display: none; } }
         .wt-empty { text-align: center; padding: 2.5rem 1.4rem; }
         .wt-empty h1 { font-family: var(--ra-display); text-transform: uppercase; font-size: 1.4rem; margin: 0 0 .5rem; }
         .wt-empty p { color: #888; margin: 0; font-size: .95rem; line-height: 1.5; }
@@ -132,6 +139,14 @@
                         </span>
                     </div>
                     <div class="wt-row"><span class="wt-k">Ticket-Nr.</span><span class="wt-v">@Model.TicketRef</span></div>
+                </div>
+
+                <div class="wt-actions">
+                    <a class="wt-btn wt-btn--pdf" href="/ticket/@Model.Token/pdf">Als PDF herunterladen</a>
+                    @if (Model.WalletEnabled)
+                    {
+                        <a class="wt-btn wt-btn--wallet" href="/ticket/@Model.Token/wallet">In Google Wallet speichern</a>
+                    }
                 </div>
             </div>
         }

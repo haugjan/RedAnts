@@ -13,6 +13,7 @@ public sealed class OrderMailer(
     ITicketTokens tokens,
     IEvents events,
     ISeasons seasons,
+    IWalletPass wallet,
     ILogger<OrderMailer> logger) : IOrderMailer
 {
     private const string LogoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
@@ -102,7 +103,8 @@ public sealed class OrderMailer(
                 $"<tr><td align=\"center\" style=\"padding:16px 16px 4px;\"><img src=\"{qrUrl}\" alt=\"Ticket QR\" width=\"200\" height=\"200\" style=\"display:block;border:1px solid #eeeeee;border-radius:8px;\"></td></tr>" +
                 "<tr><td align=\"center\" style=\"padding:2px 16px 10px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#888888;font-size:12px;\">Am Eingang scannen lassen</td></tr>" +
                 $"<tr><td style=\"padding:0 20px 6px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">{rows}</table></td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:8px 16px 18px;\"><a href=\"{url}\" style=\"display:inline-block;background:{accent};color:#ffffff;text-decoration:none;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;font-size:14px;padding:11px 22px;border-radius:6px;\">Online-Ticket öffnen</a></td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:8px 16px 6px;\"><a href=\"{url}\" style=\"display:inline-block;background:{accent};color:#ffffff;text-decoration:none;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;font-size:14px;padding:11px 22px;border-radius:6px;\">Online-Ticket öffnen</a></td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:0 16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;font-size:12px;\"><a href=\"{url}/pdf\" style=\"color:#666666;text-decoration:underline;\">Als PDF</a>{(wallet.Enabled ? $" &nbsp;·&nbsp; <a href=\"{url}/wallet\" style=\"color:#666666;text-decoration:underline;\">In Google Wallet</a>" : "")}</td></tr>" +
             "</table>";
     }
 
