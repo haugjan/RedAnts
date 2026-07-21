@@ -100,7 +100,53 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseStatusCodePagesWithReExecute("/404");
+var notFoundPage = Path.Combine(app.Environment.WebRootPath, "404.html");
+var notFoundHtml = File.Exists(notFoundPage) ? await File.ReadAllTextAsync(notFoundPage) : "<h1>404</h1>";
+
+app.Use(async (context, next) =>
+{
+    var request = context.Request;
+    var handle404 = HttpMethods.IsGet(request.Method)
+        && request.Path.HasValue
+        && !Path.HasExtension(request.Path.Value)
+        && !request.Path.StartsWithSegments("/umbraco")
+        && !request.Path.StartsWithSegments("/App_Plugins")
+        && !request.Path.StartsWithSegments("/_blazor")
+        && !request.Path.StartsWithSegments("/_framework")
+        && !request.Path.StartsWithSegments("/api")
+        && !request.Path.StartsWithSegments("/ticket")
+        && !request.Path.StartsWithSegments("/warmup");
+
+    if (!handle404)
+    {
+        await next();
+        return;
+    }
+
+    var originalBody = context.Response.Body;
+    await using var buffer = new MemoryStream();
+    context.Response.Body = buffer;
+    try
+    {
+        await next();
+        context.Response.Body = originalBody;
+        if (context.Response.StatusCode == 404 && !context.Response.HasStarted)
+        {
+            context.Response.Headers.ContentLength = null;
+            context.Response.ContentType = "text/html; charset=utf-8";
+            await context.Response.WriteAsync(notFoundHtml);
+        }
+        else
+        {
+            buffer.Seek(0, SeekOrigin.Begin);
+            await buffer.CopyToAsync(originalBody);
+        }
+    }
+    finally
+    {
+        context.Response.Body = originalBody;
+    }
+});
 
 app.Use(async (context, next) =>
 {
@@ -164,7 +210,6 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/scanntickets")
         || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/payrexx/webhook")
-        || path.StartsWithSegments("/404")
         || path.StartsWithSegments("/warmup")
         || path == "/favicon.ico"
         || path == "/scanner-sw.js"
