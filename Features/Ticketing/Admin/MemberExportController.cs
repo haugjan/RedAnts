@@ -36,7 +36,7 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
 
         var baseUrl = publicUrl.Resolve(Request);
         var sb = new StringBuilder();
-        sb.Append("Name;Vorname;Geburtsdatum;QrUrl\n");
+        sb.Append("Name;Vorname;Geburtsdatum;Link\r\n");
         foreach (var r in rows)
         {
             var birthday = r.Birthday?.ToString("dd.MM.yyyy") ?? "";
@@ -47,7 +47,7 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
             sb.Append(Csv(r.LastName)).Append(';')
               .Append(Csv(r.FirstName)).Append(';')
               .Append(Csv(birthday)).Append(';')
-              .Append(Csv(url)).Append('\n');
+              .Append(Csv(url)).Append("\r\n");
         }
 
         var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(sb.ToString());
