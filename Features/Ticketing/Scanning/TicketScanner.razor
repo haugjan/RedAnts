@@ -145,6 +145,8 @@
     private const string Version = "11";
 
     [Parameter] public string HelperName { get; set; } = "";
+    [Parameter] public bool AllEvents { get; set; } = true;
+    [Parameter] public string AllowedEventIds { get; set; } = "";
 
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
     private IReadOnlyList<Event>? _events;
@@ -159,7 +161,17 @@
     {
         if (!string.IsNullOrWhiteSpace(HelperName)) _operator = HelperName.Trim();
         _venues = (await Venues.GetAllAsync()).ToDictionary(v => v.Id, v => v.Name);
-        _events = await Events.GetUpcomingForScanningAsync();
+        var events = await Events.GetUpcomingForScanningAsync();
+        if (!string.IsNullOrEmpty(HelperName) && !AllEvents)
+        {
+            var allowed = AllowedEventIds
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => int.TryParse(s, out var id) ? id : 0)
+                .Where(id => id > 0)
+                .ToHashSet();
+            events = events.Where(e => allowed.Contains(e.Id)).ToList();
+        }
+        _events = events;
     }
 
     private void OnLoginKey(KeyboardEventArgs e)

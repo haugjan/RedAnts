@@ -2,6 +2,8 @@
 @{
     Layout = null;
     var helperName = HttpContext.Items["HelperName"] as string ?? "";
+    var helperAllEvents = HttpContext.Items["HelperAllEvents"] as bool? ?? true;
+    var helperEventIds = HttpContext.Items["HelperEventIds"] as string ?? "";
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -22,7 +24,9 @@
 </head>
 <body>
     <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="Server"
-               param-HelperName="@helperName" />
+               param-HelperName="@helperName"
+               param-AllEvents="@helperAllEvents"
+               param-AllowedEventIds="@helperEventIds" />
 
     <button id="pwaInstall" class="pwa-install" hidden>App installieren</button>
 

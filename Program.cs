@@ -279,14 +279,16 @@ if (!string.IsNullOrEmpty(gatePassword))
             Domain = string.IsNullOrWhiteSpace(cookieDomain) ? null : cookieDomain,
         });
 
-    async Task<string?> HelperNameAsync(HttpContext ctx)
+    async Task<(string Name, bool AllEvents, string EventIds)?> HelperSessionAsync(HttpContext ctx)
     {
         var value = ctx.Request.Cookies[helperCookie];
         if (string.IsNullOrEmpty(value)) return null;
         int id;
         try { id = int.Parse(helperProtector.Unprotect(value)); } catch { return null; }
         var helper = await ctx.RequestServices.GetRequiredService<IHelpers>().FindByIdAsync(id);
-        return helper is { Active: true } ? helper.FullName : null;
+        return helper is { Active: true }
+            ? (helper.FullName, helper.AllEvents, string.Join(",", helper.EventIds))
+            : null;
     }
 
     async Task WriteHelperLogin(HttpContext ctx, bool failed)
@@ -342,13 +344,15 @@ if (!string.IsNullOrEmpty(gatePassword))
 
         if (path.StartsWithSegments("/scanntickets"))
         {
-            var name = await HelperNameAsync(context);
-            if (name is null)
+            var session = await HelperSessionAsync(context);
+            if (session is not { } helper)
             {
                 context.Response.Redirect("/scan/login");
                 return;
             }
-            context.Items["HelperName"] = name;
+            context.Items["HelperName"] = helper.Name;
+            context.Items["HelperAllEvents"] = helper.AllEvents;
+            context.Items["HelperEventIds"] = helper.EventIds;
         }
 
         await next();
