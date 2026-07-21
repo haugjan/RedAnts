@@ -140,16 +140,22 @@
             <h2 class="ta-modal-title">Freieintritt-Kontingente</h2>
             <p class="ta-modal-sub">@_editing.Name · @_editing.Date.ToString("dd.MM.yyyy")</p>
 
-            @foreach (var type in FreeEntryTypes)
-            {
-                <div class="ta-field">
-                    <label class="ta-label">@type.DisplayName()</label>
+            <div class="ta-freeentry-grid">
+                <div class="ta-freeentry-head"></div>
+                <div class="ta-freeentry-head">Max. Kontingent</div>
+                <div class="ta-freeentry-head">Vorab fix erfasst</div>
+                @foreach (var type in FreeEntryTypes)
+                {
+                    <label class="ta-label ta-freeentry-name">@type.DisplayName()</label>
                     <input type="number" min="0" step="1" class="ta-input" placeholder="Unbegrenzt"
                            value="@(_editQuotas.GetValueOrDefault(type)?.ToString())"
                            @onchange="e => SetQuota(type, e.Value?.ToString())" />
-                </div>
-            }
-            <p class="ta-field-hint">Maximale Anzahl Freieintritte pro Typ für diesen Anlass. Leer = unbegrenzt.</p>
+                    <input type="number" min="0" step="1" class="ta-input" placeholder="0"
+                           value="@(_editFixed.GetValueOrDefault(type)?.ToString())"
+                           @onchange="e => SetFixed(type, e.Value?.ToString())" />
+                }
+            </div>
+            <p class="ta-field-hint">„Max. Kontingent" = maximale Anzahl Freieintritte pro Typ (leer = unbegrenzt). „Vorab fix erfasst" = Personen, die nicht am Eingang scannen (z. B. Spieler:innen, Staff); sie gelten als bereits eingelassen, verbrauchen das Kontingent und zählen zur Hallenbelegung.</p>
 
             @if (_editError is not null)
             {
@@ -406,6 +412,7 @@
 
     private Event? _editing;
     private Dictionary<FreeEntryType, int?> _editQuotas = new();
+    private Dictionary<FreeEntryType, int?> _editFixed = new();
     private bool _saving;
     private string? _editError;
 
@@ -413,6 +420,7 @@
     {
         _editing = e;
         _editQuotas = new Dictionary<FreeEntryType, int?>(await FreeEntryQuota.GetAsync(e.Id));
+        _editFixed = new Dictionary<FreeEntryType, int?>(await FreeEntryQuota.GetFixedAsync(e.Id));
         _editError = null;
     }
 
@@ -420,6 +428,12 @@
     {
         if (string.IsNullOrWhiteSpace(value)) { _editQuotas[type] = null; return; }
         _editQuotas[type] = int.TryParse(value, out var n) ? Math.Max(0, n) : null;
+    }
+
+    private void SetFixed(FreeEntryType type, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) { _editFixed[type] = null; return; }
+        _editFixed[type] = int.TryParse(value, out var n) ? Math.Max(0, n) : null;
     }
 
     private void CancelEdit() { _editing = null; _editError = null; }
@@ -431,7 +445,7 @@
         _editError = null;
         try
         {
-            await FreeEntryQuota.SetAllAsync(_editing.Id, _editQuotas);
+            await FreeEntryQuota.SetAllAsync(_editing.Id, _editQuotas, _editFixed);
             _editing = null;
             await ReloadEventsAsync();
         }

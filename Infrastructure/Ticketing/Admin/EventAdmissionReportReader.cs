@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Admin;
 using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Infrastructure.Ticketing.Sales;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.Scoping;
@@ -47,6 +48,13 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
             "WHERE TicketType = @0 GROUP BY EventId",
             (int)TicketType.FreeEntry);
 
+        var fixedFree = new Dictionary<int, int>();
+        foreach (var r in await scope.Database.FetchAsync<EventFreeEntryQuotaRecord>())
+        {
+            var total = FreeEntryQuotas.FixedTotal(r);
+            if (total > 0) fixedFree[r.EventId] = total;
+        }
+
         var passHolders = await Counts(
             "SELECT SeasonId AS EventId, COUNT(*) AS Cnt FROM SeasonPasses WHERE Status = @0 GROUP BY SeasonId",
             (int)TicketStatus.Valid);
@@ -63,6 +71,7 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
         ids.UnionWith(passVisits.Keys);
         ids.UnionWith(memberVisits.Keys);
         ids.UnionWith(freeEntries.Keys);
+        ids.UnionWith(fixedFree.Keys);
         ids.UnionWith(eventToSeason.Keys);
 
         var result = new Dictionary<int, EventAdmissionCounts>();
@@ -75,7 +84,7 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
                 redeemedSingle.GetValueOrDefault(id),
                 passVisits.GetValueOrDefault(id),
                 memberVisits.GetValueOrDefault(id),
-                freeEntries.GetValueOrDefault(id),
+                freeEntries.GetValueOrDefault(id) + fixedFree.GetValueOrDefault(id),
                 passHolders.GetValueOrDefault(seasonId),
                 memberHolders.GetValueOrDefault(seasonId));
         }

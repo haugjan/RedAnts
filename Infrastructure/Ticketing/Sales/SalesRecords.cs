@@ -177,6 +177,11 @@ public class EventFreeEntryQuotaRecord
     [Column("StaffQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? StaffQuota { get; set; }
     [Column("OfficialQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? OfficialQuota { get; set; }
     [Column("ChildQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? ChildQuota { get; set; }
+    [Column("SuFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? SuFixed { get; set; }
+    [Column("PlayerFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? PlayerFixed { get; set; }
+    [Column("StaffFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? StaffFixed { get; set; }
+    [Column("OfficialFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? OfficialFixed { get; set; }
+    [Column("ChildFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? ChildFixed { get; set; }
 }
 
 [TableName("NewsletterSignups")]

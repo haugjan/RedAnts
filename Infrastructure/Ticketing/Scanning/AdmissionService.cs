@@ -204,9 +204,10 @@ public sealed class AdmissionService(
                 "JOIN TicketEventVisits v ON v.Id = f.VisitId " +
                 "WHERE v.EventId = @0 AND f.FreeEntryType = @1",
                 eventId, (int)type);
-            if (granted >= q)
+            var used = granted + (FreeEntryQuotas.GetFixed(quotaRecord, type) ?? 0);
+            if (used >= q)
                 return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, null,
-                    $"Kontingent für {type.DisplayName()} erschöpft ({granted}/{q}).", occ);
+                    $"Kontingent für {type.DisplayName()} erschöpft ({used}/{q}).", occ);
         }
 
         var row = new EventVisitRecord
@@ -254,7 +255,9 @@ public sealed class AdmissionService(
         var freeInside = await db.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM TicketEventVisits WHERE EventId = @0 AND IsInside = 1 AND TicketType = @1",
             eventId, (int)TicketType.FreeEntry);
-        return new Occupancy(inside, quota, freeInside);
+        var fixedRecord = await db.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId);
+        var fixedTotal = fixedRecord is null ? 0 : FreeEntryQuotas.FixedTotal(fixedRecord);
+        return new Occupancy(inside + fixedTotal, quota, freeInside + fixedTotal);
     }
 
     private static async Task LogAsync(IUmbracoDatabase db, long visitId, AdmissionOutcome action, string? by) =>

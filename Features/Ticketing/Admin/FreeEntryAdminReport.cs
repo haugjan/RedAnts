@@ -18,5 +18,8 @@ public interface IFreeEntryQuota
 {
     Task<IReadOnlyDictionary<FreeEntryType, int?>> GetAsync(int eventId);
 
-    Task SetAllAsync(int eventId, IReadOnlyDictionary<FreeEntryType, int?> quotas);
+    Task<IReadOnlyDictionary<FreeEntryType, int?>> GetFixedAsync(int eventId);
+
+    Task SetAllAsync(int eventId, IReadOnlyDictionary<FreeEntryType, int?> quotas,
+        IReadOnlyDictionary<FreeEntryType, int?> fixedCounts);
 }

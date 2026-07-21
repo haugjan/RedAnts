@@ -49,13 +49,23 @@ public sealed class FreeEntryQuotaStore(IScopeProvider scopeProvider) : IFreeEnt
         return Enum.GetValues<FreeEntryType>().ToDictionary(t => t, t => FreeEntryQuotas.Get(record, t));
     }
 
-    public async Task SetAllAsync(int eventId, IReadOnlyDictionary<FreeEntryType, int?> quotas)
+    public async Task<IReadOnlyDictionary<FreeEntryType, int?>> GetFixedAsync(int eventId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var record = await scope.Database.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId)
+                     ?? new EventFreeEntryQuotaRecord { EventId = eventId };
+        return Enum.GetValues<FreeEntryType>().ToDictionary(t => t, t => FreeEntryQuotas.GetFixed(record, t));
+    }
+
+    public async Task SetAllAsync(int eventId, IReadOnlyDictionary<FreeEntryType, int?> quotas,
+        IReadOnlyDictionary<FreeEntryType, int?> fixedCounts)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
         var existing = await db.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId);
         var record = existing ?? new EventFreeEntryQuotaRecord { EventId = eventId };
         foreach (var (type, quota) in quotas) FreeEntryQuotas.Set(record, type, quota);
+        foreach (var (type, fixedCount) in fixedCounts) FreeEntryQuotas.SetFixed(record, type, fixedCount);
         if (existing is null) await db.InsertAsync(record);
         else await db.UpdateAsync(record);
     }

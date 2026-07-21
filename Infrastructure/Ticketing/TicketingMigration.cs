@@ -35,6 +35,30 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonAddOnInfoTexts>("seasonaddons-info-texts");
         To<AddOrderPaymentSource>("order-payment-source");
         To<AddSeasonAddOnTitleAndTiers>("seasonaddons-title-tiers");
+        To<AddFreeEntryFixedCounts>("freeentry-fixed-counts");
+    }
+}
+
+public class AddFreeEntryFixedCounts(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddInt("SuFixed");
+        AddInt("PlayerFixed");
+        AddInt("StaffFixed");
+        AddInt("OfficialFixed");
+        AddInt("ChildFixed");
+        return Task.CompletedTask;
+    }
+
+    private void AddInt(string column)
+    {
+        if (ColumnExists("TicketEventFreeEntryQuotas", column)) return;
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite)
+            Execute.Sql($"ALTER TABLE TicketEventFreeEntryQuotas ADD COLUMN {column} INTEGER NULL").Do();
+        else
+            Alter.Table("TicketEventFreeEntryQuotas").AddColumn(column).AsInt32().Nullable().Do();
     }
 }
 
