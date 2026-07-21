@@ -12,6 +12,8 @@ CultureInfo.DefaultThreadCurrentUICulture = swissCulture;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
 builder.Services.Configure<HostOptions>(options =>
 {
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
@@ -50,6 +52,54 @@ umbracoBuilder.Build();
 WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
+
+const string publicCsp =
+    "default-src 'self'; base-uri 'self'; object-src 'none'; " +
+    "img-src 'self' data: https:; " +
+    "font-src 'self' https://fonts.gstatic.com data:; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com; " +
+    "connect-src 'self' https://challenges.cloudflare.com; " +
+    "frame-src 'self' https://www.google.com https://challenges.cloudflare.com https://payrexx.com https://*.payrexx.com; " +
+    "form-action 'self' https://payrexx.com https://*.payrexx.com; " +
+    "frame-ancestors 'self'";
+
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var headers = context.Response.Headers;
+        var path = context.Request.Path;
+
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        headers.Remove("X-Powered-By");
+
+        if (context.Request.IsHttps)
+            headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+
+        var isEmbed = path.Equals("/heute/embed", StringComparison.OrdinalIgnoreCase);
+        if (!isEmbed)
+            headers["X-Frame-Options"] = "SAMEORIGIN";
+
+        var cspExempt = isEmbed
+            || path.StartsWithSegments("/umbraco")
+            || path.StartsWithSegments("/App_Plugins")
+            || path.StartsWithSegments("/_blazor")
+            || path.StartsWithSegments("/_framework")
+            || path.StartsWithSegments("/admin")
+            || path.StartsWithSegments("/scanntickets")
+            || path.StartsWithSegments("/scan")
+            || path.StartsWithSegments("/scanner-test");
+        if (!cspExempt && !headers.ContainsKey("Content-Security-Policy"))
+            headers["Content-Security-Policy"] = publicCsp;
+
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
+app.UseStatusCodePagesWithReExecute("/404");
 
 app.Use(async (context, next) =>
 {
@@ -113,6 +163,8 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/scanntickets")
         || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/payrexx/webhook")
+        || path.StartsWithSegments("/404")
+        || path.StartsWithSegments("/warmup")
         || path == "/favicon.ico"
         || path == "/scanner-sw.js"
         || path == "/site.webmanifest";

@@ -1,0 +1,43 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>404 – Kein Tor! · Red Ants Winterthur</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root { --red: #C8102E; --red-dark: #A50D26; --ink: #101010; --display: 'Oswald', Impact, sans-serif; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; }
+        body { font-family: Verdana, Geneva, Tahoma, sans-serif; color: var(--ink); background: #f6f7f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem; }
+        .e4 { max-width: 640px; width: 100%; text-align: center; }
+        .e4-img { width: 100%; max-width: 340px; height: auto; margin: 0 auto 1.5rem; display: block; border-radius: 12px; }
+        .e4-title { font-family: var(--display); text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; color: var(--ink); font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1; margin: 0; }
+        .e4-title::after { content: ""; display: block; width: 64px; height: 5px; background: var(--red); margin: 1rem auto 0; }
+        .e4-text { margin: 1.5rem auto 0; max-width: 520px; line-height: 1.7; font-size: 1.05rem; color: #333; }
+        .e4-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; justify-content: center; margin-top: 2rem; }
+        .e4-btn { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; font-size: 1rem; text-decoration: none; padding: 0.7rem 1.6rem; transition: background 0.15s, color 0.15s; }
+        .e4-btn--primary { background: var(--red); color: #fff; }
+        .e4-btn--primary:hover { background: var(--red-dark); color: #fff; }
+        .e4-btn--ghost { background: #fff; color: var(--red); border: 2px solid var(--red); padding: calc(0.7rem - 2px) calc(1.6rem - 2px); }
+        .e4-btn--ghost:hover { background: var(--red); color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="e4">
+        <img class="e4-img" src="/img/schiedsrichterin.png" alt="Schiedsrichterin pfeift" />
+        <h1 class="e4-title">404 – Kein Tor!</h1>
+        <p class="e4-text">Die Schiedsrichterin hat gepfiffen: Diese Seite wurde wegen Stockschlag, Bodenspiel oder einem anderen Spielvergehen abgepfiffen. Der Inhalt, den du suchst, existiert nicht oder wurde auf die Strafbank versetzt.</p>
+        <div class="e4-actions">
+            <a class="e4-btn e4-btn--primary" href="/">Zurück auf die Bank</a>
+            <a class="e4-btn e4-btn--ghost" href="/impressum">Protest einlegen</a>
+        </div>
+    </div>
+</body>
+</html>
