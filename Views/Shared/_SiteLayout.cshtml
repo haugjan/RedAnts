@@ -28,6 +28,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>@pageTitle</title>
+  @{
+      var reqHost = Context.Request.Host.Host;
+      var isIndexable = reqHost.EndsWith("redants.ch", StringComparison.OrdinalIgnoreCase)
+          && !(ViewBag.NoIndex as bool? ?? false);
+      var canonicalUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
+      var metaDescription = ViewBag.MetaDescription as string
+          ?? "Red Ants Rychenberg Winterthur – Unihockey aus Leidenschaft. Spielplan, Tickets, Saisonkarten und News der Red Ants Winterthur.";
+  }
+  <meta name="description" content="@metaDescription" />
+  <link rel="canonical" href="@canonicalUrl" />
+  <meta name="robots" content="@(isIndexable ? "index,follow" : "noindex,nofollow")" />
+  <meta name="theme-color" content="#C8102E" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Red Ants Winterthur" />
+  <meta property="og:locale" content="de_CH" />
+  <meta property="og:title" content="@pageTitle" />
+  <meta property="og:description" content="@metaDescription" />
+  <meta property="og:url" content="@canonicalUrl" />
+  <meta property="og:image" content="@logoUrl" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="@pageTitle" />
+  <meta name="twitter:description" content="@metaDescription" />
+  <meta name="twitter:image" content="@logoUrl" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png" />
@@ -48,6 +71,24 @@
     @@media (max-width: 900px) { .nav-cart-mobile { display: inline-flex; } }
   </style>
   @RenderSection("Head", required: false)
+  <script type="application/ld+json">
+  {
+    "@@context": "https://schema.org",
+    "@@type": "SportsOrganization",
+    "name": "Red Ants Rychenberg Winterthur",
+    "sport": "Floorball",
+    "url": "https://tickets.redants.ch/",
+    "logo": "@logoUrl",
+    "email": "sekretariat@@redants.ch",
+    "address": {
+      "@@type": "PostalAddress",
+      "streetAddress": "Ruhtalstrasse 20",
+      "postalCode": "8400",
+      "addressLocality": "Winterthur",
+      "addressCountry": "CH"
+    }
+  }
+  </script>
 </head>
 <body>
 <nav class="site-nav" id="siteNav"
