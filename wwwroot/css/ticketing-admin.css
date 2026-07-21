@@ -49,7 +49,7 @@
 .ta-seg:disabled { color: var(--ta-muted); }
 .ta-seg::-webkit-outer-spin-button, .ta-seg::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .ta-seg::placeholder { color: var(--ta-muted); }
-.ta-seg-dm { width: 1.5rem; }
+.ta-seg-dm { width: 1.8rem; }
 .ta-seg-y { width: 2.6rem; }
 .ta-seg-sep { color: var(--ta-muted); padding: 0 0.05rem; }
 .ta-datebox-cal {
@@ -257,7 +257,7 @@
 .ta-subtable .ta-datebox { gap: 0.15rem; }
 .ta-subtable .ta-dateseg { padding: 0.28rem 0.3rem; }
 .ta-subtable .ta-seg { font-size: 0.82rem; }
-.ta-subtable .ta-seg-dm { width: 1.15rem; }
+.ta-subtable .ta-seg-dm { width: 1.4rem; }
 .ta-subtable .ta-seg-y { width: 2.1rem; }
 .ta-subtable .ta-datebox-cal { padding: 0.24rem 0.3rem; font-size: 0.8rem; }
 .ta-subtable .ta-promo-toggle { padding: 0.2rem 0.4rem; font-size: 0.72rem; white-space: nowrap; }
