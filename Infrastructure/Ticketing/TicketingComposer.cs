@@ -32,5 +32,6 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<ISeasonAddOns, SeasonAddOnRepository>();
         builder.Services.AddScoped<IOrderAddOns, OrderAddOnRepository>();
         builder.Services.AddScoped<IAddOnNotifier, AddOnNotifier>();
+        builder.Services.AddScoped<IHelpers, HelperRepository>();
     }
 }

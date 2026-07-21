@@ -1,6 +1,7 @@
 @page "/scanntickets"
 @{
     Layout = null;
+    var helperName = HttpContext.Items["HelperName"] as string ?? "";
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -20,7 +21,8 @@
     <meta name="apple-mobile-web-app-title" content="RA Scanner" />
 </head>
 <body>
-    <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="Server" />
+    <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="Server"
+               param-HelperName="@helperName" />
 
     <button id="pwaInstall" class="pwa-install" hidden>App installieren</button>
 

@@ -1,6 +1,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @inject IEvents Events
 @inject IVenues Venues
+@inject NavigationManager Navigation
 
 <div class="scan-app">
     @if (string.IsNullOrEmpty(_operator))
@@ -103,6 +104,8 @@
 @code {
     private const string Version = "10";
 
+    [Parameter] public string HelperName { get; set; } = "";
+
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
     private Event? _selected;
@@ -112,6 +115,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!string.IsNullOrWhiteSpace(HelperName)) _operator = HelperName.Trim();
         _venues = (await Venues.GetAllAsync()).ToDictionary(v => v.Id, v => v.Name);
         _events = await Events.GetUpcomingForScanningAsync();
     }
@@ -130,6 +134,11 @@
 
     private void Logout()
     {
+        if (!string.IsNullOrWhiteSpace(HelperName))
+        {
+            Navigation.NavigateTo("/scan/logout", forceLoad: true);
+            return;
+        }
         _operator = null;
         _operatorInput = "";
         _selected = null;

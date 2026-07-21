@@ -1,0 +1,260 @@
+@using RedAnts.Domain.Ticketing.Sales
+@inject IHelpers Helpers
+@inject IHelperScanReport ScanReport
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Helfer</h1>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="helperSeason">Saison</label>
+                    <select id="helperSeason" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="helper-add">
+            <input class="ta-input" placeholder="Vorname" @bind="_newFirst" />
+            <input class="ta-input" placeholder="Nachname" @bind="_newLast" />
+            <input class="ta-input" placeholder="E-Mail (optional)" @bind="_newEmail" />
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="AddAsync" disabled="@_adding">
+                @(_adding ? "…" : "Helfer hinzufügen")
+            </button>
+        </div>
+        @if (_addError is not null)
+        {
+            <p class="ta-modal-error">@_addError</p>
+        }
+
+        @if (_helpers.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Helfer erfasst.</div>
+        }
+        else
+        {
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>E-Mail</th>
+                            <th>Passwort</th>
+                            <th>Login-Link</th>
+                            <th>Aktiv</th>
+                            <th class="ta-col-actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var h in _helpers)
+                        {
+                            <tr class="@(h.Active ? "" : "ta-row-off")">
+                                <td>@h.FullName</td>
+                                <td>@(string.IsNullOrWhiteSpace(h.Email) ? "—" : h.Email)</td>
+                                <td>
+                                    <code class="ta-uuid">@h.Password</code>
+                                    <button type="button" class="ta-icon-btn" title="Passwort kopieren" @onclick="() => CopyAsync(h.Password)">⧉</button>
+                                </td>
+                                <td>
+                                    <button type="button" class="ta-icon-btn" title="Login-Link kopieren" @onclick="() => CopyAsync(LoginLink(h))">🔗</button>
+                                </td>
+                                <td>
+                                    <input type="checkbox" checked="@h.Active" @onchange="@(e => ToggleActiveAsync(h, e.Value is true))" />
+                                </td>
+                                <td class="ta-col-actions">
+                                    @if (_confirmDelete == h.Id)
+                                    {
+                                        <button type="button" class="ta-btn ta-btn-ghost ta-btn-sm" @onclick="() => _confirmDelete = null">Abbrechen</button>
+                                        <button type="button" class="ta-btn ta-btn-danger ta-btn-sm" @onclick="() => DeleteAsync(h)">Löschen</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="ta-icon-btn" title="Helfer löschen" @onclick="() => _confirmDelete = h.Id">🗑</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_copied)
+            {
+                <p class="ta-copied">In Zwischenablage kopiert</p>
+            }
+        }
+
+        <h2 class="ta-subhead">Scans pro Anlass</h2>
+        @if (_eventsWithScans.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison wurden noch keine Scans erfasst.</div>
+        }
+        else
+        {
+            @foreach (var ev in _eventsWithScans)
+            {
+                <h3 class="ta-report-title">@ev.Name <span class="ta-muted">· @ev.Date.ToString("dd.MM.yyyy")</span></h3>
+                <div class="ta-table-wrap">
+                    <table class="ta-table">
+                        <thead>
+                            <tr>
+                                <th>Person</th>
+                                <th class="ta-num">Scans total</th>
+                                <th class="ta-num">Einlässe</th>
+                                <th class="ta-num">Auslässe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in _reportByEvent[ev.Id].OrderByDescending(r => r.Total))
+                            {
+                                <tr>
+                                    <td>@r.Person</td>
+                                    <td class="ta-num">@r.Total</td>
+                                    <td class="ta-num">@r.CheckIns</td>
+                                    <td class="ta-num @(r.CheckOuts > 0 ? "ta-warn" : "")">@r.CheckOuts</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    }
+</section>
+
+<style>
+    .helper-add { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: .5rem 0 1rem; }
+    .helper-add .ta-input { min-width: 10rem; }
+    .ta-subhead { font-family: var(--ta-font); font-size: 1.2rem; font-weight: 700; margin: 2.2rem 0 .6rem; color: var(--ta-ink); }
+    .ta-report-title { font-size: 1rem; margin: 1.2rem 0 .4rem; }
+    .ta-warn { color: #b42318; font-weight: 700; }
+    .ta-btn-sm { padding: .25rem .6rem; font-size: .8rem; }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<Helper> _helpers = [];
+    private IReadOnlyList<Event> _eventsWithScans = [];
+    private Dictionary<int, List<HelperScanRow>> _reportByEvent = new();
+
+    public int SelectedSeasonId { get; set; }
+
+    private string _newFirst = "";
+    private string _newLast = "";
+    private string _newEmail = "";
+    private bool _adding;
+    private string? _addError;
+    private int? _confirmDelete;
+    private bool _copied;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await ReloadAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        _confirmDelete = null;
+        if (SelectedSeasonId <= 0)
+        {
+            _helpers = [];
+            _eventsWithScans = [];
+            _reportByEvent = new();
+            return;
+        }
+        _helpers = await Helpers.GetBySeasonAsync(SelectedSeasonId);
+        var events = await Events.GetBySeasonAsync(SelectedSeasonId);
+        var rows = await ScanReport.GetByEventsAsync(events.Select(e => e.Id).ToList());
+        _reportByEvent = rows.GroupBy(r => r.EventId).ToDictionary(g => g.Key, g => g.ToList());
+        _eventsWithScans = events.Where(e => _reportByEvent.ContainsKey(e.Id))
+            .OrderByDescending(e => e.Date).ToList();
+    }
+
+    private async Task AddAsync()
+    {
+        if (SelectedSeasonId <= 0) return;
+        _adding = true;
+        _addError = null;
+        try
+        {
+            await Helpers.AddAsync(SelectedSeasonId, _newFirst, _newLast, _newEmail);
+            _newFirst = _newLast = _newEmail = "";
+            await ReloadAsync();
+        }
+        catch (Exception ex) { _addError = ex.Message; }
+        finally { _adding = false; }
+    }
+
+    private async Task ToggleActiveAsync(Helper h, bool active)
+    {
+        await Helpers.SetActiveAsync(h.Id, active);
+        await ReloadAsync();
+    }
+
+    private async Task DeleteAsync(Helper h)
+    {
+        await Helpers.DeleteAsync(h.Id);
+        _confirmDelete = null;
+        await ReloadAsync();
+    }
+
+    private string LoginLink(Helper h)
+    {
+        var configured = Config["Scanner:PublicUrl"];
+        var baseUrl = !string.IsNullOrWhiteSpace(configured)
+            ? configured.TrimEnd('/')
+            : new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+        return $"{baseUrl}/scan/{h.Password}";
+    }
+
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            _copied = true;
+            StateHasChanged();
+            await Task.Delay(1500);
+            _copied = false;
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+}
