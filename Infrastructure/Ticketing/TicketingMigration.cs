@@ -29,6 +29,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddOrderPaymentColumns>("order-payment-columns");
         To<AddSeasonAddOnScope>("seasonaddons-scope");
         To<AddSeasonPriceDefaultTicketSalesQuota>("seasonprices-default-ticket-sales-quota");
+        To<AddFreeEntryTypeQuotas>("freeentry-type-quotas");
     }
 }
 
@@ -45,6 +46,28 @@ public class AddSeasonPriceDefaultTicketSalesQuota(IMigrationContext context) : 
                 Alter.Table("SeasonPrices").AddColumn("DefaultTicketSalesQuota").AsInt32().Nullable().Do();
         }
         return Task.CompletedTask;
+    }
+}
+
+public class AddFreeEntryTypeQuotas(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddInt("PlayerQuota");
+        AddInt("StaffQuota");
+        AddInt("OfficialQuota");
+        AddInt("ChildQuota");
+        return Task.CompletedTask;
+    }
+
+    private void AddInt(string column)
+    {
+        if (ColumnExists("TicketEventFreeEntryQuotas", column)) return;
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite)
+            Execute.Sql($"ALTER TABLE TicketEventFreeEntryQuotas ADD COLUMN {column} INTEGER NULL").Do();
+        else
+            Alter.Table("TicketEventFreeEntryQuotas").AddColumn(column).AsInt32().Nullable().Do();
     }
 }
 

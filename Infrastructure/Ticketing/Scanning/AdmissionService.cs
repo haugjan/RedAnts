@@ -195,21 +195,17 @@ public sealed class AdmissionService(
         if (occ.Full)
             return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, null, "Halle ist voll.", occ);
 
-        if (type == FreeEntryType.SwissUnihockeyFreeCard)
+        var quotaRecord = await db.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId);
+        if (quotaRecord is not null && FreeEntryQuotas.Get(quotaRecord, type) is { } q)
         {
-            var quota = await db.ExecuteScalarAsync<int?>(
-                "SELECT SuQuota FROM TicketEventFreeEntryQuotas WHERE EventId = @0", eventId);
-            if (quota is { } q)
-            {
-                var granted = await db.ExecuteScalarAsync<int>(
-                    "SELECT COUNT(*) FROM TicketEventFreeEntries f " +
-                    "JOIN TicketEventVisits v ON v.Id = f.VisitId " +
-                    "WHERE v.EventId = @0 AND f.FreeEntryType = @1",
-                    eventId, (int)FreeEntryType.SwissUnihockeyFreeCard);
-                if (granted >= q)
-                    return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, null,
-                        $"SU-Freieintritt-Kontingent erschöpft ({granted}/{q}).", occ);
-            }
+            var granted = await db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM TicketEventFreeEntries f " +
+                "JOIN TicketEventVisits v ON v.Id = f.VisitId " +
+                "WHERE v.EventId = @0 AND f.FreeEntryType = @1",
+                eventId, (int)type);
+            if (granted >= q)
+                return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, null,
+                    $"Kontingent für {type.DisplayName()} erschöpft ({granted}/{q}).", occ);
         }
 
         var row = new EventVisitRecord

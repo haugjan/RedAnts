@@ -169,6 +169,10 @@ public class EventFreeEntryQuotaRecord
     [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
     [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public int EventId { get; set; }
     [Column("SuQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? SuQuota { get; set; }
+    [Column("PlayerQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? PlayerQuota { get; set; }
+    [Column("StaffQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? StaffQuota { get; set; }
+    [Column("OfficialQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? OfficialQuota { get; set; }
+    [Column("ChildQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? ChildQuota { get; set; }
 }
 
 [TableName("NewsletterSignups")]

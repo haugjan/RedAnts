@@ -39,27 +39,25 @@ public sealed class FreeEntryAdminReportReader(IScopeProvider scopeProvider) : I
     }
 }
 
-public sealed class SuFreeEntryQuotaStore(IScopeProvider scopeProvider) : ISuFreeEntryQuota
+public sealed class FreeEntryQuotaStore(IScopeProvider scopeProvider) : IFreeEntryQuota
 {
-    public async Task<int?> GetAsync(int eventId)
+    public async Task<IReadOnlyDictionary<FreeEntryType, int?>> GetAsync(int eventId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        return await scope.Database.ExecuteScalarAsync<int?>(
-            "SELECT SuQuota FROM TicketEventFreeEntryQuotas WHERE EventId = @0", eventId);
+        var record = await scope.Database.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId)
+                     ?? new EventFreeEntryQuotaRecord { EventId = eventId };
+        return Enum.GetValues<FreeEntryType>().ToDictionary(t => t, t => FreeEntryQuotas.Get(record, t));
     }
 
-    public async Task SetAsync(int eventId, int? quota)
+    public async Task SetAllAsync(int eventId, IReadOnlyDictionary<FreeEntryType, int?> quotas)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
         var existing = await db.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId);
-        if (existing is null)
-            await db.InsertAsync(new EventFreeEntryQuotaRecord { EventId = eventId, SuQuota = quota });
-        else
-        {
-            existing.SuQuota = quota;
-            await db.UpdateAsync(existing);
-        }
+        var record = existing ?? new EventFreeEntryQuotaRecord { EventId = eventId };
+        foreach (var (type, quota) in quotas) FreeEntryQuotas.Set(record, type, quota);
+        if (existing is null) await db.InsertAsync(record);
+        else await db.UpdateAsync(record);
     }
 }
 
@@ -68,6 +66,6 @@ public sealed class FreeEntryAdminReportComposer : IComposer
     public void Compose(IUmbracoBuilder builder)
     {
         builder.Services.AddScoped<IFreeEntryAdminReport, FreeEntryAdminReportReader>();
-        builder.Services.AddScoped<ISuFreeEntryQuota, SuFreeEntryQuotaStore>();
+        builder.Services.AddScoped<IFreeEntryQuota, FreeEntryQuotaStore>();
     }
 }

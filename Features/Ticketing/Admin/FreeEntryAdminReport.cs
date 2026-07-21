@@ -14,9 +14,9 @@ public interface IFreeEntryAdminReport
     Task<IReadOnlyList<FreeEntryListItem>> GetByEventAsync(int eventId);
 }
 
-public interface ISuFreeEntryQuota
+public interface IFreeEntryQuota
 {
-    Task<int?> GetAsync(int eventId);
+    Task<IReadOnlyDictionary<FreeEntryType, int?>> GetAsync(int eventId);
 
-    Task SetAsync(int eventId, int? quota);
+    Task SetAllAsync(int eventId, IReadOnlyDictionary<FreeEntryType, int?> quotas);
 }
