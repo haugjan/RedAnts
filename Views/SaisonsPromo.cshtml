@@ -94,6 +94,11 @@
                                                         <label class="pass-addon">
                                                             <input type="checkbox" name="addOns" value="@a.Id" />
                                                             <span class="pass-addon-label">@a.Label@(a.Scope == AddOnScope.PerOrder ? " (einmalig pro Bestellung)" : "")</span>
+                                                            @if (!string.IsNullOrWhiteSpace(a.InfoBeforePurchase))
+                                                            {
+                                                                <span class="pass-addon-info" title="@a.InfoBeforePurchase" role="img" aria-label="@a.InfoBeforePurchase"
+                                                                      onclick="event.preventDefault();event.stopPropagation();">&#9432;</span>
+                                                            }
                                                             <span class="pass-addon-price">+CHF @MoneyFormat.Amount(a.Price)</span>
                                                         </label>
                                                     }
@@ -144,6 +149,7 @@
     .pass-addons-title { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: #888; }
     .pass-addon { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
     .pass-addon-label { flex: 1 1 auto; }
+    .pass-addon-info { flex: 0 0 auto; color: #C8102E; cursor: help; font-size: .95rem; line-height: 1; }
     .pass-addon-price { font-weight: 600; color: #444; white-space: nowrap; }
     .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: 1rem; background: #C8102E; color: #fff; border: none; padding: .5rem 1.15rem; cursor: pointer; transition: background .15s; text-align: center; white-space: nowrap; }
     .pass-add-btn:hover { background: #a50d25; }

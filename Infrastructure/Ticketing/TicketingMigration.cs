@@ -32,6 +32,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddFreeEntryTypeQuotas>("freeentry-type-quotas");
         To<AddPriceTiers>("price-tiers");
         To<AddArticleGuids>("article-guids");
+        To<AddSeasonAddOnInfoTexts>("seasonaddons-info-texts");
     }
 }
 
@@ -57,6 +58,26 @@ public class AddArticleGuids(IMigrationContext context) : AsyncMigrationBase(con
         }
         if (!isSqlite)
             Execute.Sql($"UPDATE {table} SET ArticleGuid = NEWID() WHERE ArticleGuid IS NULL").Do();
+    }
+}
+
+public class AddSeasonAddOnInfoTexts(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        AddText("InfoBeforePurchase");
+        AddText("InfoAfterPurchase");
+        return Task.CompletedTask;
+
+        void AddText(string column)
+        {
+            if (ColumnExists("SeasonAddOns", column)) return;
+            if (isSqlite)
+                Execute.Sql($"ALTER TABLE SeasonAddOns ADD COLUMN {column} NVARCHAR(2000) NULL").Do();
+            else
+                Alter.Table("SeasonAddOns").AddColumn(column).AsString(2000).Nullable().Do();
+        }
     }
 }
 

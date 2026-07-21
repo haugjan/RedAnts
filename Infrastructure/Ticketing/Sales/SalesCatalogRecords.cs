@@ -53,6 +53,8 @@ public class SeasonAddOnRecord
     [Column("SortOrder")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SortOrder { get; set; }
     [Column("Scope")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Scope { get; set; }
     [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
+    [Column("InfoBeforePurchase")] [NullSetting(NullSetting = NullSettings.Null)] [Length(2000)] public string? InfoBeforePurchase { get; set; }
+    [Column("InfoAfterPurchase")] [NullSetting(NullSetting = NullSettings.Null)] [Length(2000)] public string? InfoAfterPurchase { get; set; }
 }
 
 [TableName("SeasonPriceTiers")]

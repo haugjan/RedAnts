@@ -213,6 +213,8 @@
                             <th>Bezeichnung</th>
                             <th class="ta-num">Preis (CHF)</th>
                             <th>Geltung</th>
+                            <th>Vorabinfo</th>
+                            <th>Nachkauf-Info</th>
                             <th class="ta-group-col">Aktiv</th>
                             <th></th>
                         </tr>
@@ -227,13 +229,15 @@
                                     <option value="@AddOnScope.PerPass">Pro Saisonkarte</option>
                                     <option value="@AddOnScope.PerOrder">Einmalig pro Bestellung</option>
                                 </select></td>
+                                <td><textarea rows="2" maxlength="2000" class="ta-input ta-addon-info" placeholder="Hinweis vor dem Kauf (Info-Tooltip)" @bind="r.InfoBefore"></textarea></td>
+                                <td><textarea rows="2" maxlength="2000" class="ta-input ta-addon-info" placeholder="Hinweis nach dem Kauf (Bestätigung + Mail)" @bind="r.InfoAfter"></textarea></td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="r.Active" /></td>
                                 <td class="ta-num"><button type="button" class="ta-icon-btn" title="Entfernen" @onclick="() => RemoveAddOnRow(r)">×</button></td>
                             </tr>
                         }
                         @if (_addOnRows.Count == 0)
                         {
-                            <tr><td colspan="5" class="ta-muted">Noch keine Zusatzoptionen erfasst.</td></tr>
+                            <tr><td colspan="7" class="ta-muted">Noch keine Zusatzoptionen erfasst.</td></tr>
                         }
                     </tbody>
                 </table>
@@ -268,6 +272,7 @@
 
 <style>
     .ta-addon-label { width: 100%; min-width: 12rem; text-align: left; }
+    .ta-addon-info { width: 100%; min-width: 12rem; resize: vertical; font-family: inherit; }
     .ta-addon-add { margin-top: .5rem; }
     .ta-subtable-wrap { overflow-x: auto; }
     .ta-subtable { width: 100%; border-collapse: collapse; margin-top: .4rem; }
@@ -568,7 +573,8 @@
     {
         _editingAddOns = s;
         _addOnRows = (_addOns.GetValueOrDefault(s.Id) ?? [])
-            .Select(a => new AddOnRow { Label = a.Label, Price = decimal.Round(a.Price, 2), Active = a.Active, Scope = a.Scope })
+            .Select(a => new AddOnRow { Label = a.Label, Price = decimal.Round(a.Price, 2), Active = a.Active, Scope = a.Scope,
+                InfoBefore = a.InfoBeforePurchase ?? "", InfoAfter = a.InfoAfterPurchase ?? "" })
             .ToList();
         _addOnError = null;
     }
@@ -586,7 +592,7 @@
         {
             var options = _addOnRows
                 .Where(r => !string.IsNullOrWhiteSpace(r.Label))
-                .Select(r => SeasonAddOn.Create(_editingAddOns.Id, r.Label, decimal.Round(r.Price, 2), r.Active, 0, r.Scope))
+                .Select(r => SeasonAddOn.Create(_editingAddOns.Id, r.Label, decimal.Round(r.Price, 2), r.Active, 0, r.Scope, r.InfoBefore, r.InfoAfter))
                 .ToList();
             await SeasonAddOns.ReplaceForSeasonAsync(_editingAddOns.Id, options);
             _editingAddOns = null;
@@ -603,5 +609,7 @@
         public decimal Price { get; set; }
         public bool Active { get; set; } = true;
         public AddOnScope Scope { get; set; } = AddOnScope.PerPass;
+        public string InfoBefore { get; set; } = "";
+        public string InfoAfter { get; set; } = "";
     }
 }
