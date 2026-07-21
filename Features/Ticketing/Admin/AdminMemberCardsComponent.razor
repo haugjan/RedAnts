@@ -132,8 +132,8 @@
                 <input id="newMcFirstName" class="ta-input" type="text" maxlength="100" @bind="_newFirstName" />
             </div>
             <div class="ta-field">
-                <label class="ta-label" for="newMcBirthday">Geburtsdatum (optional)</label>
-                <input id="newMcBirthday" class="ta-input" type="date" @bind="_newBirthday" />
+                <label class="ta-label">Geburtsdatum (optional)</label>
+                <DateBox @bind-Value="_newBirthday" />
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newMcReference">Referenz</label>
@@ -262,8 +262,8 @@
                 <input id="editFirstName" class="ta-input" type="text" maxlength="100" @bind="_editFirstName" />
             </div>
             <div class="ta-field">
-                <label class="ta-label" for="editBirthday">Geburtsdatum</label>
-                <input id="editBirthday" class="ta-input" type="date" @bind="_editBirthday" />
+                <label class="ta-label">Geburtsdatum</label>
+                <DateBox @bind-Value="_editBirthday" />
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="editCategory">Kategorie</label>
