@@ -1,120 +1,145 @@
-# Session-Koordination v2 (Worktrees + Branches) — Runde 4: Payrexx
+# Session-Koordination v2 (Worktrees + Branches) — Runde 5: Bestellpositionen, Wallet, Admin-UX
 
 > Worktree-Modell wie gehabt (`C:\development\RedAnts-s<N>`, eigener Branch je Session).
-> Runde 1–3 sind komplett in `main`. Diese Runde integriert die echte Zahlung über
-> **Payrexx** (https://docs.payrexx.com/developer). Aktuell ist der Checkout Pseudo:
-> `CheckoutController` legt die Bestellung an, ruft sofort `MarkPaid()` und stellt Tickets aus.
+> Runde 1–4 sind komplett in `main` (inkl. Payrexx-Zahlung). Diese Runde bündelt
+> mehrere Feature- und UX-Pakete: ein echtes Bestellpositionen-Modell mit Artikel-GUID,
+> Google-Wallet/PDF-Auslieferung, sowie diverse Admin- und Public-Verbesserungen.
 
 ## Arbeitsmodell
 
-Runde-4-Branch vom aktuellen `main` anlegen; frei arbeiten; sofort committen; Schema-/Contract-
-Änderungen im Änderungs-Log ankündigen; vor Merge auf `main` rebasen, Release-Build grün,
-mergen, pushen; `main` bleibt immer grün. Keine Kommentare im Code, Enums als int, keine
-Secrets im Code, kein Co-Authored-By. Admin-Bausteine wiederverwenden.
-
-## Zielbild (Architektur)
-
-Payrexx **Gateway API** (gehostete Bezahlseite): Kauf → Bestellung als **Draft** + Warenkorb-
-Positionen persistiert → Redirect auf die Payrexx-`link`-Seite → Kunde bezahlt (Karte/TWINT) →
-**Webhook** (Server-zu-Server) meldet den Transaktionsstatus → bei `confirmed`: Bestellung
-`MarkPaid()`, **Tickets/Karten werden erst jetzt ausgestellt** (aus den persistierten
-Positionen), Mail versandt. Rückseite `/kasse/erfolg` zeigt „Zahlung wird verarbeitet" und
-pollt den Bestellstatus; `/kasse/abbruch` bei Abbruch. Tickets entstehen also **nie vor
-bestätigter Zahlung**. Twint läuft ebenfalls über die Payrexx-Gateway (als Payment-Methode).
-
-**Fallback (wichtig):** Solange `Payrexx:ApiSecret` NICHT gesetzt ist (lokal/Testphase),
-behält der Checkout das bisherige Pseudo-Verhalten (sofort bezahlt), damit nichts bricht,
-bevor die Keys da sind. Analog zum Turnstile-`Enabled`-Muster.
+Runde-5-Branch `feature/s<N>-r5-<kurz>` vom aktuellen `main` anlegen; frei arbeiten; sofort
+committen; Schema-/Contract-Änderungen im Änderungs-Log ankündigen; vor Merge auf `main`
+rebasen, Release-Build grün, mergen, pushen; `main` bleibt immer grün. Keine Kommentare im
+Code (Rationale in `ARCHITECTURE.md`), Enums als int, keine Secrets im Code, kein
+Co-Authored-By. Admin-Bausteine wiederverwenden (`InlineSelectEdit`, `InlineNumberEdit`,
+`InlineDateEdit`, `ConfirmDialog`, `OrderLogOverlay`/`VisitsOverlay`-Muster, `AdminFormat`,
+`AdminIdentity`-CascadingParameter). `.cshtml`/`.razor` durch Starten der App verifizieren
+(`dotnet run` mit `ASPNETCORE_ENVIRONMENT=Development`), nicht nur durch den Build.
 
 ## Reihenfolge / Abhängigkeiten
 
-Fundament zuerst und früh mergen: **S2 (Payrexx-Client)** und **S4 (Order-Positionen)** sind
-unabhängig voneinander. Darauf bauen **S3 (Checkout-Umbau)** und **S5 (Webhook/Fulfillment)**.
-**S6 (Admin/Bestellungen)** hängt an S5. **S1 (Konfig/Secrets/Infra/Test)** ist querschnittlich
-und schliesst ab (Sandbox-Test, Webhook-Registrierung, Gate-Ausnahme).
+**S1 ist Fundament und sollte zuerst mergen** (führt `OrderItems`-Tabelle + Artikel-GUID +
+Order-Erzeugung überall ein). **S4, S5, S6 sind unabhängig und starten sofort.** **S2 und S3**
+bauen auf S1s Fulfillment-/Positionen-Pipeline auf: parallel starten, aber nach S1s Merge
+rebasen und sich additiv einhängen.
 
-## Aufgabenpakete Runde 4
+## Fixierte Entscheidungen (gelten für alle)
+
+1. **Artikel-GUID:** Jeder kaufbare Katalog-Artikel (Event-Kategorie, Saisonkarten-Kategorie,
+   Zusatzoption, Mitglieder-Kategorie, Flex/SeasonSingle) bekommt eine **persistierte, stabile
+   GUID**. `OrderItems` speichert `ArticleGuid` + Menge + Preis + Label + verknüpfte Ticket-Uuids.
+2. **Neue Event-Summenspalte heisst „Erwartete Zutritte"** = verkaufte Spieltickets +
+   Saisonkartenbesitzer + Mitglieder + bisherige Freieinlässe. **Rot** wenn > Einlasskontingent;
+   zusätzlicher **Hinweis** wenn > Einlasskontingent + verbleibende Verkaufstickets.
+3. **„Bisherige Einlässe"**: rot wenn > Einlasskontingent, orange wenn ≤ 10 übrig.
+4. **Event-Spaltenreihenfolge** (Ziel, entspricht bereits dem aktuellen Code): Einlasskontingent,
+   Verkaufskontingent, Bisherige Einlässe, Verkaufte Spieltickets, **Erwartete Zutritte**, dann
+   Gruppe „Eingelöste Zutritte". S4 fügt nur die neue Spalte + Einfärbungen hinzu.
+5. **PDF-Library:** QuestPDF (MIT, keine nativen Abhängigkeiten).
+
+## Aufgabenpakete Runde 5
 
 | Session | Branch | Paket | Status |
 |---|---|---|---|
-| S1 | `feature/s1-r4-payrexx-infra` | Secrets/Config, Gate-Ausnahme Webhook, Sandbox-E2E-Test, Doku | offen |
-| S2 | `feature/s2-r4-payrexx-client` | Payrexx-REST-Client (signiert): Gateway erstellen/abfragen, Refund | offen |
-| S3 | `feature/s3-r4-checkout-payrexx` | Checkout-Umbau: Draft + Redirect + Rückseiten | Rückseiten in main (`/kasse/erfolg`+Status-Polling, `/kasse/abbruch`); Draft/Redirect-Kern wartet auf S2+S4 |
-| S4 | `feature/s4-r4-order-items` | Order-Positionen persistieren (Fulfillment-Grundlage) | offen |
-| S5 | `feature/s5-r4-payrexx-webhook` | Webhook + Fulfillment (Tickets ausstellen nach `confirmed`) | offen |
-| S6 | `feature/s6-r4-orders-payrexx` | Admin: Provider-Status/Transaktion an der Bestellung, Refund | offen |
+| S1 | `feature/s1-r5-order-items` | Artikel-GUID + `OrderItems`-Tabelle; Bestellung+Positionen bei jeder Ticket-Erzeugung (inkl. Admin); Positionen-Overlay in Bestellungen; Gratis-only überspringt Payrexx | offen |
+| S2 | `feature/s2-r5-addon-texts` | Zusatzoptionen: Vorabinfo (Info-Icon-Tooltip) + Nachkauf-Info (Bestätigung UND Mail) | offen |
+| S3 | `feature/s3-r5-wallet-pdf` | Google Wallet + PDF; Download-Links auf Ticket-Seite und in der Bestätigungsmail | offen |
+| S4 | `feature/s4-r5-event-columns-links` | Event-Tabelle: neue Summenspalte + Einfärbungen; Link-Kopier-Overlay (Events + Seasons) | offen |
+| S5 | `feature/s5-r5-admin-infra` | Inline-Edit auch per Mausklick verlassen; Admin-Position (Tab/Saison/Anlass/Bundle) via URL merken | offen |
+| S6 | `feature/s6-r5-public-format-fixes` | iFrame-Slim „Nächster Anlass"; restliche Datumsfelder auf dd.MM.yyyy; Venue-Bug „Ort nicht änderbar"; CSV-QR-Spalte prüfen/vereinheitlichen | offen |
 
 ---
 
-### S2 — Payrexx-Client (`feature/s2-r4-payrexx-client`) — Fundament
+### S1 — Bestellpositionen-Fundament (`feature/s1-r5-order-items`) — zuerst mergen
 
-- Infrastructure-REST-Client gegen `https://api.payrexx.com/v1.0/`. Auth: Query-Param
-  `instance=<Instance>`, jede Anfrage signiert mit **`ApiSignature` = base64(HMAC-SHA256(
-  querystring, ApiSecret))** (auch bei leerem Body die leere Signatur). Config
-  `Payrexx:Instance`/`Payrexx:ApiSecret` (+ optional `Payrexx:BaseUrl` für Sandbox).
-- Port `IPayrexxGateway`:
-  - `CreateGatewayAsync(amountRappen, "CHF", referenceId=OrderNumber, purpose, successUrl,
-    failedUrl, cancelUrl, pm[], prefill email/vorname/nachname)` → `{ GatewayId, Link }`.
-  - `RetrieveGatewayAsync(gatewayId)` / `RetrieveTransactionAsync(id)` (Status verifizieren,
-    dem Webhook-Body nie blind vertrauen).
-  - `RefundTransactionAsync(transactionId, amountRappen?)`.
-- Statuswerte kapseln (`waiting/confirmed/authorized/cancelled/declined/refunded/…`),
-  `Paid = confirmed`. Bei fehlendem `ApiSecret`: `Enabled = false`.
+- **Artikel-GUID:** stabile, persistierte GUID pro Katalog-Artikel (Event-Kategorie-Preis,
+  Saisonkarten-Kategorie, `SeasonAddOn`, Mitglieder-Kategorie, Flex/SeasonSingle). Additive
+  nullable `ArticleGuid`-Spalte je Katalog-Tabelle, einmalig befüllt (idempotent beim Boot).
+- **Neue Tabelle `OrderItems`** (`OrderId`, `ArticleGuid`, `Kind` int, `RefId`, `Category` int,
+  `Quantity`, `UnitPrice`, `Label`; additiv via `EnsureTable`). Domäne `OrderItem`, Port
+  `IOrderItems` (`SaveAsync`, `GetByOrderAsync`). Ersetzt/ergänzt das bisherige `OrderAddOns` +
+  `FulfillmentPayload`-Provisorium für die Positions-Darstellung.
+- **`CheckoutController.FulfillAsync`** schreibt für jede Ticket-/Pass-/Add-on-Position eine
+  `OrderItems`-Zeile. **Gratis-Skip:** `if (payrexx.Enabled && saved.TotalGross > 0m)` … `else
+  { await FulfillAsync(...); }` — reine Gratis-Bestellungen (nur Kinderkarten o.ä.) laufen nicht
+  durch Payrexx.
+- **Admin-Erzeugung legt eine Bestellung an:** `AdminTicketsComponent`,
+  `AdminSeasonCardsComponent`, `AdminMemberCardsComponent`, `AdminFlexTicketsComponent` erzeugen
+  künftig über einen gemeinsamen Weg eine `Order` (Zahlart z.B. „Manuell/Admin", Status Paid,
+  Käufer aus dem Formular) + `OrderItems`, und verknüpfen das/die Ticket(s) via `OrderId`.
+- **`AdminOrdersComponent`:** Button „Positionen anzeigen" → Overlay (Muster wie
+  `OrderLogOverlay`), liest `IOrderItems.GetByOrderAsync`.
+- Contract-Log: neue Tabelle/Spalten, `IOrderItems`, evtl. neuer `IOrderFactory`/Service für die
+  Admin-Order-Erzeugung.
 
-### S4 — Order-Positionen (`feature/s4-r4-order-items`) — Fundament
+### S2 — Zusatzoptionen-Texte (`feature/s2-r5-addon-texts`) — nach S1
 
-- Neue Tabelle **`OrderItems`** (`OrderId`, `Kind` int [EventTicket/SeasonPass], `EventId`,
-  `SeasonId`, `Category` int, `Quantity`, `UnitPrice`, `EventName`, `CategoryName`;
-  additiv via `EnsureTable`). Domäne `OrderItem`, Port `IOrderItems`
-  (`SaveAsync(items)`, `GetByOrderAsync(orderId)`). Damit ist eine Draft-Bestellung
-  serverseitig (aus dem Webhook, ohne Session) erfüllbar.
+- `SeasonAddOn` + `SeasonAddOns`-Tabelle: zwei additive Textspalten `InfoBeforePurchase`
+  (Vorabinfo) und `InfoAfterPurchase` (Nachkauf-Info). Admin-Add-on-Editor
+  (`AdminSeasonsComponent`, Zusatzoptionen-Modal): zwei Textareas + Spalten.
+- **Vorabinfo:** auf `SaisonsPromo` als **Info-Icon mit Tooltip** hinter der Option (nur wenn Text
+  gesetzt).
+- **Nachkauf-Info:** wird für die gewählten Optionen durch die Fulfillment-Pipeline
+  (`FulfillmentSnapshot`/`FulfillAsync`) gereicht und in `Views/Checkout/Confirmation.cshtml`
+  **und** in der Bestätigungsmail (`OrderMailer`) ausgegeben.
+- Additiv zu S1: S2 erweitert die von S1 geformte Fulfillment-/Positionen-Pipeline; nach S1s
+  Merge rebasen.
 
-### S3 — Checkout-Umbau (`feature/s3-r4-checkout-payrexx`) — nach S2+S4
+### S3 — Google Wallet + PDF + Auslieferung (`feature/s3-r5-wallet-pdf`) — nach S1
 
-- `CheckoutController` (regulär UND Express): Bestellung als **Draft** anlegen, Positionen via
-  `IOrderItems` persistieren, **KEINE** sofortige `MarkPaid()`/Ticketausstellung mehr. Payrexx-
-  Gateway erstellen (`IPayrexxGateway`, S2), auf `Link` redirecten. Gateway-Id an der Bestellung
-  ablegen (S6-Feld nutzen/ankündigen).
-- Rückseiten: `/kasse/erfolg?order=…` (zeigt „Zahlung wird verarbeitet", pollt Bestellstatus
-  bis `Paid` → dann Tickets/QR wie bisher) und `/kasse/abbruch`.
-- **Fallback**: wenn Payrexx `Enabled == false`, alter Pseudo-Weg (sofort bezahlt + ausstellen).
+- Neuer `IWalletPass`-Service (Google Wallet: JWT-„Save to Google Wallet"-Link je Ticket) und
+  PDF-Service (QuestPDF, Ticket mit QR). Config `GoogleWallet:IssuerId` /
+  `GoogleWallet:ServiceAccountJson` (User liefert, siehe unten).
+- **Ticket-Seite** (`WebTicketController` `/ticket/{token}`, `Views/WebTicket.cshtml`): Links
+  „Als Google Wallet speichern" und „Als PDF herunterladen" (neue Endpunkte, z.B.
+  `/ticket/{token}/wallet` und `/ticket/{token}/pdf`).
+- **Bestätigungsmail** (`OrderMailer`): pro Ticket dieselben zwei Download-Links.
+- Fallback: ohne Wallet-Credentials bleibt der Wallet-Link inaktiv/versteckt, PDF funktioniert
+  unabhängig.
 
-### S5 — Webhook + Fulfillment (`feature/s5-r4-payrexx-webhook`) — nach S2+S4
+### S4 — Event/Saison-Admin-Tabellen (`feature/s4-r5-event-columns-links`) — sofort
 
-- Endpoint **`POST /payrexx/webhook`** (anonym, gate-frei → S1). Transaktion/Gateway via
-  `IPayrexxGateway.RetrieveTransactionAsync` verifizieren (nicht dem Body vertrauen), Bestellung
-  über `referenceId`/Gateway-Id finden.
-- Bei `confirmed`: `MarkPaid()` + `IOrderLog.AppendAsync(Paid, "Payrexx")`, **Tickets/Karten aus
-  `IOrderItems` ausstellen** (EventTicket/SeasonPass, Käufer aus Order), Mail versenden.
-  **Idempotent** (Doppel-Webhooks: nur ausstellen, wenn Order noch nicht `Paid`; Dedupe über
-  Transaktions-Id). Bei `cancelled/declined`: Order `Cancel()` + Log. `refunded`: `Refund()` + Log.
+- **`AdminEventsComponent`:** neue Spalte **„Erwartete Zutritte"** (nach „Verkaufte Spieltickets")
+  mit Einfärbung (rot / Hinweis) sowie **„Bisherige Einlässe"** rot/orange (siehe fixierte
+  Entscheidungen). `EventAdmissionReport`/`EventAdmissionCounts` um Saisonkarten-Bestand,
+  Mitglieder-Bestand und Freieinlässe erweitern, damit die Summe berechnet werden kann.
+- **Link-Overlay:** Klick auf die „Link"-Spalte (Events **und** Seasons) öffnet ein Overlay mit
+  öffentlichem + internem Link, je einem „In Zwischenablage kopieren"-Button; Statushinweise: bei
+  Status Intern Hinweis am öffentlichen Link, bei weder öffentlich noch intern Hinweis an beiden.
+  Bestehendes `Copy(...)` + `EventLinks`/`SeasonLinks` wiederverwenden.
 
-### S6 — Admin/Bestellungen Payrexx (`feature/s6-r4-orders-payrexx`) — nach S5
+### S5 — Admin-Infrastruktur (`feature/s5-r5-admin-infra`) — sofort
 
-- Bestellung um **`PayrexxGatewayId`/`PayrexxTransactionId`** (additive Spalten) erweitern; in
-  der Bestellungen-Tabelle Provider-Status/Transaktion anzeigen.
-- Admin-**Rückerstattung** aus der Bestellung heraus (ruft `IPayrexxGateway.RefundTransactionAsync`,
-  loggt via `IOrderLog`). Der bestehende Bezahlstatus-Inline-Edit bleibt (manuelle Korrektur).
+- **Inline-Edit per Mausklick verlassen:** `InlineEditBase`-Ableitungen (`InlineTextEdit`,
+  `InlineSelectEdit`, `InlineNumberEdit`, `InlineDateEdit`, `InlineTimeEdit`) sollen den
+  Editiermodus nicht nur per ESC, sondern auch per Blur/Click-away schliessen (zentraler
+  Mechanismus, analog dem bestehenden Blur in `DateBox`).
+- **Admin-URL-State:** `TicketingAdminComponent` (heute nur `_tab` in-memory) + `TicketingAdminState`
+  sollen den aktuell gewählten **Tab + Saison + Anlass/Bundle** als Query-Parameter in die URL
+  schreiben (`NavigationManager`) und beim Laden wiederherstellen. Kopierter Link → gleiche
+  Position.
 
-### S1 — Konfig/Secrets/Infra/Test (`feature/s1-r4-payrexx-infra`) — querschnittlich
+### S6 — Public-Slim + Format + Fixes (`feature/s6-r5-public-format-fixes`) — sofort
 
-- Payrexx-**Sandbox** + **Prod**: `Payrexx__Instance`/`Payrexx__ApiSecret` als Azure-App-Settings
-  (dev+prod), Secrets nie ins Repo.
-- **Gate-Ausnahme** für `/payrexx/webhook` in `Program.cs` (`IsExempt`), sonst blockt das Gate
-  den Server-zu-Server-Callback.
-- **Webhook-URL** im Payrexx-Dashboard registrieren (`https://tickets.redants.ch/payrexx/webhook`
-  bzw. dev). End-to-End-Test im Sandbox (Kauf → Bezahlung → Webhook → Tickets/Mail). In
-  `deploy/README.md` dokumentieren.
+- **iFrame-Slim „Nächster Anlass":** abgespeckte Ansicht via Query-Parameter (ohne Site-Nav/Footer)
+  mit Titel, Heim-vs-Gegner-Logos und „Hier Tickets kaufen"-Link. Eigene Route/Layout für die
+  iFrame-Einbindung auf der Hauptseite.
+- **Datumsformate:** die noch nicht in `dd.MM.yyyy` dargestellten Felder finden (v.a. native
+  Date-Inputs in Create-Modals) und auf das `DateBox`/`InlineDateEdit`-Muster („Verkauf bis")
+  bringen. (Der Grossteil der Admin-Anzeigen ist bereits `dd.MM.yyyy`.)
+- **Venue-Bug „Ort nicht änderbar":** `EnsureVenuePicker` in `TicketingContentTypeSeeder`
+  (startNodeId / Datentyp-Konfiguration des eingeschränkten Venue-ContentPickers) prüfen und
+  fixen, sodass der „Ort" am Event wieder wählbar ist.
+- **CSV-QR-Spalte:** alle Exporte (`EventBundleExportController`, `FlexBundleExportController`,
+  `SeasonPassExportController`, `MemberExportController`) enthalten bereits eine QR-taugliche
+  Spalte (`Link`/`QrUrl` = voller Ticket-Token-URL). Prüfen/vereinheitlichen (Benennung) und bei
+  neuen Exporten (falls S1 einen Positions-Export ergänzt) mitziehen.
 
 ## Vom Nutzer benötigt (blockierend für Live)
 
-1. **Payrexx-Konto** (Sandbox zuerst, dann Prod): **Instance-Name** + **API-Secret**
-   (Payrexx-Dashboard → API & Webhooks). Payment-Methoden (Karte, TWINT) im Dashboard aktivieren.
-2. Zugang, um die **Webhook-URL** im Dashboard zu hinterlegen (oder du trägst sie ein).
-3. Bestätigung: Währung CHF, MWST 0 (wie gehabt), Rückerstattungen laufen über den Admin.
-
-Bis die Keys da sind, wird gegen die Sandbox gebaut; ohne `ApiSecret` bleibt der Pseudo-Checkout
-aktiv, `main` bleibt deploybar.
+1. **Google Wallet (S3):** **Issuer-ID** + **Service-Account-JSON** (Google Cloud, „Google Wallet
+   API" aktiviert), als Azure-App-Settings `GoogleWallet__IssuerId` / `GoogleWallet__ServiceAccountJson`.
+   Ohne diese baut S3 die Integration, testet aber nicht end-to-end; PDF funktioniert unabhängig.
 
 ---
 
@@ -124,18 +149,4 @@ Neueste zuerst. Nur Änderungen eintragen, die andere Sessions betreffen.
 
 | Datum | Session | Was | Auswirkung |
 |---|---|---|---|
-| 21.07.2026 | S2 | **Helfer-Zugang für den Scanner (in `main`, `5c9911a`).** Neue additive Tabelle **`Helpers`** (`SeasonId`, `FirstName?`, `LastName?`, `Email?`, `Password`, `Active`, `CreatedAt`; via `EnsureTable`). Neuer Port **`IHelpers`** + `HelperRepository` (Zwei-Wort-Passwort-Generator, global eindeutig). Neuer Admin-Tab **„Helfer"** (pro Saison: erfassen, Passwort/Login-Link kopieren, aktiv/löschen) + Report **`IHelperScanReport`** (Scans je Person pro Anlass, inkl. Auslässe). **Scanner-Auth in `Program.cs`**: neues Cookie `RedAnts.Helper` (DataProtection `RedAnts.HelperSession.v1`), Helfer-Middleware VOR dem Gate; `/scanntickets` verlangt Helfer-Login (`/scan/login` = Passwort ohne Benutzername, `/scan/{passwort}`-Link, `/scan/logout`); `/scanntickets` + `/scan` neu in `IsExempt`. `ScanTickets.cshtml` reicht den Helfernamen als `param-HelperName` an `TicketScanner` (überspringt Namenseingabe, Name = Scan-Operator). Nur aktiv, wenn `BasicAuth:Password` gesetzt ist (Dev unverändert). Optional Config `Scanner:PublicUrl` für den Login-Link. | Wer an `Program.cs`/Gate arbeitet (S1): Helfer-Middleware + neue `IsExempt`-Einträge beibehalten. Nur additive Tabelle. |
-| 20.07.2026 | S2 | **Verkaufskontingent für Einzeltickets pro Anlass + Saison-Default (in `main`, `f6bb097`).** Neue additive Spalte **`SeasonPrices.DefaultTicketSalesQuota`** (nullable int; Migration `seasonprices-default-ticket-sales-quota`). `SeasonPrice` hat neu Feld `DefaultTicketSalesQuota` (optionaler letzter Parameter in `Create`/`FromPersistence`). Neuer schmaler Port **`IEventSalesQuota`** (`GetAllAsync`/`SetAsync`) + `EventSalesQuotaEditor` (schreibt `EventPrices.TotalSalesQuota`). Anlässe-Admin: neue Inline-Spalte „Verkaufskontingent"; Saisons-Admin: neue Inline-Spalte „Standard-Verkaufskontingent". `EventPriceDefaults` kopiert neu `SeasonPrice.DefaultTicketSalesQuota` → `EventPrice.TotalSalesQuota` bei neuen Anlässen (bestehendes Mapping `SeasonPrice.TotalSalesQuota` → `EventPrice.AdmissionQuota` unverändert). | Wer `SeasonPrice.Create/FromPersistence` beim Aktualisieren eines bestehenden Preises aufruft: neuen optionalen `defaultTicketSalesQuota` mitgeben, sonst wird er auf null gesetzt. Nur additive Spalte. |
-| 20.07.2026 | S4 | **Zentrale Preisstufen pro Saison (Branch `feature/season-price-tiers`).** Neue Tabelle **`SeasonPriceTiers`** (`Id`, `SeasonId`, `Name`, `MaxAge?`, `PromoOfTierId?`, `SortOrder`, `LegacyCategory?`); additive Spalte **`TierId`** (int null) auf `EventPriceCategories`, `SeasonPriceCategories`, `EventTickets`, `SeasonSingleTickets`, `SeasonPasses`, `OrderAddOns`. Verkauf/Preise/Anzeige laufen jetzt über die Stufen-Id; das `TicketCategory`-Enum bleibt als Platzhalter bestehen (neue Direktverkäufe schreiben `Category=0` + echte `TierId`). Idempotenter Startup-Seeder `PriceTierSeeder` legt pro Saison 5 Standardstufen an (Erwachsen/Jugend/Kind + 2 Aktionen) und backfillt `TierId` auf Preis- und Verkaufszeilen (Enum→Stufe via `LegacyCategory`). **Contract-Änderungen:** `AvailableTicketCategory` ist jetzt `(int TierId, string Name, decimal Price, bool Available, int? Remaining, DateOnly? AvailableUntil)` (kein `Category`-Enum mehr); `TicketDemand`/`PassDemand` tragen `TierId` statt `Category`; `IEventPricing.FindAvailableAsync`→`FindAvailableByTierAsync(eventId, tierId)`, `ISeasonPassPricing` neu `FindAvailableByTierAsync` + `GetSoldCountsAsync` liefert `IReadOnlyDictionary<int,int>` (Stufen-Id); neuer Port **`IPriceTiers`**; `ICartService.Add`/`AddSeasonPass` nehmen `int tierId` statt `TicketCategory`; `CartItem.Category`→`TierId`, `CartItem.Key` enthält `TierId`; `FulfillmentItem`/`FulfillmentAddOn` tragen `TierId`; `OrderAddOnLine` + `SeasonPassListItem` + `IssuedTicket` haben zusätzlich `TierId`/`CategoryName`. Bundles/CSV-Import/manuelle Saisonkarten-Erfassung bleiben vorerst auf dem Enum (Tickets werden per Backfill einer Stufe zugeordnet). | Wer `IEventPricing`/`ISeasonPassPricing`/`ICartService` mockt oder `AvailableTicketCategory`/`TicketDemand`/`PassDemand`/`FulfillmentItem`/`OrderAddOnLine` konstruiert: neue Signaturen. Wer `SeasonPass.Create`/`EventTicket.Create`/`SeasonSingleTicket.Create` aufruft: optionaler `tierId`-Parameter am Ende. Nur additive Tabellen/Spalten. |
-| 20.07.2026 | S2 | **Scanner-Selbsttest-QR (in `main`, `fac233e`).** Neuer Enum-Wert **`AdmissionOutcome.Test`**. `AdmissionService.ScanTicketAsync` erkennt einen Test-Token (Ticket-Token mit `uuid == Guid.Empty`) und liefert ohne DB-Zugriff das Ergebnis „Test erfolgreich" (Scanner zeigt es türkis). Öffentliche, gate-freie Seite **`/scanner-test`** (`ScannerTestController` + `Views/ScannerTest.cshtml`) zeigt den Test-QR (kodiert `…/ticket/{Test-Token}` wie echte Tickets). | Wer erschöpfend über `AdmissionOutcome` schaltet: neuen Wert `Test` behandeln (`ScanOutcome.Ok` ist bei Test true). Reservierte Test-UUID `Guid.Empty` nicht für echte Tickets verwenden. Kein DB-Schema. |
-| 20.07.2026 | S2 | **Express-Regel + MwSt-Hinweis + rechtliche Content-Seiten (in `main`, `cd55d91` + `b996df3`).** (1) Express-Checkout „Direkt kaufen" nur noch bei Total < 50 CHF **und** ohne Saisonkarte im Warenkorb; sonst Pflicht-Checkout mit Adresse. Neue Policy **`ExpressCheckout.IsAllowed(cart)`** (Cart-Namespace); `Express()`/`ExpressPay()`/`CartController.AddAndCheckout` leiten sonst auf `/kasse`. (2) MwSt-Hinweis auf Bezahl- und Express-Seite. (3) Neuer Doctype **`legalPage`** (Titel/Slug/Bild/RichText) + Template `LegalPage.cshtml`; zwei geseedete, backoffice-editierbare Knoten **Impressum** (`/impressum`) und **Datenschutz** (`/datenschutz`), geroutet über `LegalPageContentFinder` (per Slug). `LegalController` + `Views/Datenschutz.cshtml` **entfernt**; Gate-Ausnahme für `/impressum` + `/datenschutz`; Footer mit Impressum-Link. | S3 (Checkout-Umbau): `ExpressCheckout.IsAllowed`-Gate beibehalten. `/datenschutz` ist neu ein Content-Knoten statt MVC-Route (Slug `datenschutz` nicht umbenennen). Kein DB-Schema, nur Umbraco-Content. |
-| 11.07.2026 | S2 | **Saisonkarten-Zusatzoptionen (in `main`, `9a7e925`).** Zwei neue additive Tabellen: **`SeasonAddOns`** (`SeasonId`, `Label`, `Price`, `Active`, `SortOrder`) und **`OrderAddOns`** (`OrderId`, `SeasonId`, `SeasonName`, `Category` int, `CategoryName`, `Label`, `Price`, `Quantity`); beide via `EnsureTable`. Neue Ports **`ISeasonAddOns`** (`GetBySeasonAsync`/`ReplaceForSeasonAsync`), **`IOrderAddOns`** (`SaveAsync`/`GetByOrderAsync`), **`IAddOnNotifier`** (Mail an tickets@redants.ch); Domäne `SeasonAddOn`, Record `OrderAddOnLine`. **`ICartService.AddSeasonPass` hat neu einen Parameter `IReadOnlyList<CartAddOn> addOns`**; `CartItem` hat neu `AddOns` und der `Key` enthält jetzt die Add-on-Ids. `CartController.AddSeasonPass` nimmt `int[]? addOns`. `CheckoutController` hat zwei neue Ctor-Abhängigkeiten (`IOrderAddOns`, `IAddOnNotifier`); persistiert gewählte Optionen und benachrichtigt den Admin nach dem Kauf. Zusatzoptionen werden im Admin-Bereich **Saisons** (Aktions-Button „＋") erfasst. | S3 (Checkout-Umbau): Add-on-Persistenz + Admin-Mail beim Fulfillment mitnehmen (aktuell in `FinalizeOrderAsync`). Wer `ICartService` implementiert/mockt: neuer `addOns`-Parameter. Wer `CartItem.Key` annimmt: enthält jetzt Add-on-Ids. Nur additive Tabellen. |
-| 10.07.2026 | S2 | **Pflicht-Bestätigung Datenschutzerklärung im Checkout (in `main`, `cdee839`).** `Pay` und `ExpressPay` haben neu den Parameter `acceptPrivacy`; ohne Bestätigung wird der Kauf abgelehnt (Fehlermeldung, keine Bestellung). Auf der Bezahlseite und in der Express-Kasse eine `required`-Checkbox mit Link auf `/datenschutz` (Seite von S1). | S3 (Checkout-Umbau): den `acceptPrivacy`-Gate vor dem Anlegen des Drafts beibehalten. Kein Schema. |
-| 10.07.2026 | S2 | **Newsletter-Opt-in (in `main`, `4f49268`).** Neue additive Tabelle **`NewsletterSignups`** (`Email`, `Name?`, `Source`, `SignedUpAt`, `Status` int [Pending/Transferred], `TransferredAt?`; via `EnsureTable` in `CreateTicketingSchema`). Neuer Port **`INewsletterSignups`** (`SubscribeAsync`/`GetAllAsync`/`SetTransferStatusAsync`), Domäne `NewsletterSignup` + Enum `NewsletterTransferStatus`. `CheckoutForm` hat neu `AcceptNewsletter` (bool); `ExpressPay` hat neu Parameter `acceptNewsletter`; `FinalizeOrderAsync` hat zwei neue Parameter (`subscribeNewsletter`, `newsletterSource`). Neuer Admin-Tab **„Newsletter"** mit Inline-Status-Umschaltung (offen/übertragen). | S3 (Checkout-Umbau): die neuen Parameter beibehalten und das Opt-in in den Draft-Weg übernehmen (Anmeldung ist unabhängig vom Zahlungsergebnis). Wer `INewsletterSignups` mockt: drei Methoden. Nur additive Tabelle. |
-| 06.07.2026 | S1 | Runde-4-Plan (Payrexx) verteilt (dieses Dokument). | Alle: Runde-4-Branch anlegen; S2/S4 zuerst mergen. |
-| 06.07.2026 | S6 | **Bestellungen-Log + Bezahlstatus (in `main`).** Neue Tabelle **`OrderStatusLogs`** (`OrderId`, `ToStatus` int, `ChangedBy`, `OccurredAt`, `Note?`; additiv via `EnsureTable`). Neuer Port **`IOrderLog`** (`AppendAsync`/`GetByOrderAsync`) + Record `OrderLogEntry`; `IOrders` hat neu **`GetByIdAsync(int)`**; neuer `IOrderStatusEditor` (wendet `MarkPaid`/`Cancel`/`Refund` an und loggt mit `AdminIdentity`). `OrderListItem` hat neu ein erstes Feld **`int OrderId`**. `CheckoutController.FinalizeOrderAsync` loggt Kauf (Draft) + Bezahlt. | Wer `IOrders` implementiert/mockt: neue `GetByIdAsync`. Wer `OrderListItem` konstruiert: neues erstes Feld `OrderId`. Nur additive Tabelle. |
-| 06.07.2026 | S5 | **Content-Struktur konsolidiert (in main, `561c568`).** Der doppelte „Saisons"-Baum ist weg (`saisonsPromo`-Root-Knoten + Doctype entfernt; Header/Bild/Text auf den `seasonsFolder`-Hauptknoten migriert). `seasonsFolder` hat neu `headerText`/`headerImage`/`bodyText` + `SaisonsPromo`-Template. Neuer `SaisonsContentFinder` routet `/saisons/`. Event-„Ort" nutzt einen eingeschränkten Venue-ContentPicker. | Alias `SaisonsPromoType`/-Doctype/-Knoten existieren nicht mehr; `/saisons/` bleibt als Route. Kein DB-Schema. |
-| 06.07.2026 | S4 | **Saisonkarten CSV-Import/Export + Bundle (in `main`, `0ef3bac`):** additive Spalte `SeasonPasses.Reference`; `SeasonPass.Create/FromPersistence` mit optionalem `reference`; Port `ISeasonPasses.ImportAsync(...)` + Records; `SeasonPassListItem.Reference`; Endpunkte `/admin/saisonkarten/beispiel.csv` + `.../passes.csv?bundle=`. | Wer `ISeasonPasses` mockt: neue `ImportAsync`. `SeasonPass.Create`-`reference` optional. Nur additive nullable Spalte. |
-| 06.07.2026 | S1 | **Kanonische Ticket-URL (in `main`):** Service `IPublicBaseUrl.Resolve(request)` (Config `Tickets:PublicBaseUrl`, Azure prod=`https://tickets.redants.ch`/dev=`https://tickets-dev.redants.ch`, Fallback Request-Host). Alle absoluten Ticket-URLs/QRs bauen darüber statt `Request.Host`. | Wer Ticket-Links/QRs baut: `IPublicBaseUrl` injizieren. Kein Schema/Enum. |
-| 05.07.2026 | S1 | Gate-Ausnahmen (`Program.cs` `IsExempt`): `/App_Plugins`, `/css`, `/js`, `/lib`, `scanner-sw.js`, `site.webmanifest`. | Wer am Gate arbeitet: neue Assets/Pfade in `IsExempt` aufnehmen. |
-| 05.07.2026 | S1 | `FreeEntryType.Child` (int 4); getrennte Saison-Angebote `PassOffered`/`PassQuota` + `TicketOffered`/`TicketQuota` (`SeasonCategoryPrice`); `EventPriceDefaults`; `TicketEventFreeEntryQuotas`; Abendkasse-Express; Mail „Ticket X von Y". | Wer `SeasonCategoryPrice`/`IAdmissionService`/`FreeEntryType` nutzt: neue Signaturen/Werte. |
+| 21.07.2026 | S1 | Runde-5-Plan verteilt (dieses Dokument). | Alle: Runde-5-Branch anlegen; S1 zuerst mergen, S2/S3 danach rebasen. |
