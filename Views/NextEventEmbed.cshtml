@@ -1,0 +1,67 @@
+@model RedAnts.Features.Ticketing.Public.NextEventEmbedModel
+@using RedAnts.Features.Ticketing.Public
+@{
+    Layout = null;
+    var culture = DisplayCulture.From(Context.Request);
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nächster Anlass – Red Ants Winterthur</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root { --red: #C8102E; --red-dark: #A50D26; --ink: #101010; --display: 'Oswald', Impact, sans-serif; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; }
+        body { font-family: Verdana, Geneva, Tahoma, sans-serif; color: var(--ink); background: transparent; }
+        .ne { max-width: 520px; margin: 0 auto; padding: 1.25rem; text-align: center; }
+        .ne-title { font-family: var(--display); text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; font-size: clamp(1.4rem, 4.5vw, 2rem); line-height: 1.05; margin: 0; }
+        .ne-title::after { content: ""; display: block; width: 56px; height: 4px; background: var(--red); margin: 0.6rem auto 0; }
+        .ne-date { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; color: #555; font-size: 0.95rem; margin: 0.85rem 0 0; }
+        .ne-logos { display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin: 1.35rem 0; }
+        .ne-logos img { height: 80px; width: auto; object-fit: contain; }
+        .ne-vs { font-family: var(--display); font-weight: 700; text-transform: uppercase; font-size: 1.5rem; color: #999; }
+        .ne-cta { display: inline-block; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; font-size: 1.05rem; background: var(--red); color: #fff; text-decoration: none; padding: 0.7rem 1.6rem; margin-top: 0.5rem; transition: background 0.15s; }
+        .ne-cta:hover { background: var(--red-dark); color: #fff; }
+        .ne-empty { font-family: var(--display); text-transform: uppercase; color: #777; letter-spacing: 0.05em; padding: 1.5rem; }
+    </style>
+</head>
+<body>
+    @if (!Model.HasEvent)
+    {
+        <div class="ne"><p class="ne-empty">Aktuell ist kein Anlass geplant.</p></div>
+    }
+    else
+    {
+        <div class="ne">
+            <h1 class="ne-title">@Model.Title</h1>
+            <p class="ne-date">
+                @Model.Date.ToDateTime(Model.StartTime).ToString("dddd, dd.MM.yyyy", culture)
+                @if (!Model.TimeUnknown)
+                {
+                    <text>· @Model.StartTime.ToString("HH:mm") Uhr</text>
+                }
+            </p>
+            @if (!string.IsNullOrEmpty(Model.HomeLogoUrl) || !string.IsNullOrEmpty(Model.AwayLogoUrl))
+            {
+                <div class="ne-logos">
+                    @if (!string.IsNullOrEmpty(Model.HomeLogoUrl))
+                    {
+                        <img src="@Model.HomeLogoUrl" alt="Heimteam" />
+                    }
+                    <span class="ne-vs">vs</span>
+                    @if (!string.IsNullOrEmpty(Model.AwayLogoUrl))
+                    {
+                        <img src="@Model.AwayLogoUrl" alt="Gegner" />
+                    }
+                </div>
+            }
+            <a class="ne-cta" href="@Model.TicketsUrl" target="_top" rel="noopener">Hier Tickets kaufen</a>
+        </div>
+    }
+</body>
+</html>
