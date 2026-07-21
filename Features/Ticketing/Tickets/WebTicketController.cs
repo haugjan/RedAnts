@@ -31,6 +31,7 @@ public sealed class WebTicketController(
         var model = new WebTicketViewModel(
             Found: issued is not null,
             Valid: issued is { Status: TicketStatus.Valid },
+            Kicker: TicketDisplay.Kicker(data.Type),
             TypeLabel: DisplayTitle(data.Type, issued),
             ScopeName: scopeName,
             DateText: dateText,
@@ -64,6 +65,7 @@ public sealed class WebTicketController(
         var absoluteUrl = $"{publicUrl.Resolve(Request)}/ticket/{token}";
 
         var bytes = pdf.Render(new TicketPdfModel(
+            Kicker: TicketDisplay.Kicker(data.Type),
             TypeLabel: DisplayTitle(data.Type, issued),
             ScopeName: scopeName,
             DateText: dateText,
@@ -169,6 +171,7 @@ public sealed class WebTicketController(
 public sealed record WebTicketViewModel(
     bool Found,
     bool Valid,
+    string Kicker,
     string TypeLabel,
     string ScopeName,
     string? DateText,
@@ -183,5 +186,5 @@ public sealed record WebTicketViewModel(
     bool WalletEnabled = false)
 {
     public static WebTicketViewModel Invalid() =>
-        new(false, false, "Ticket", "", null, null, null, "", "");
+        new(false, false, "", "Ticket", "", null, null, null, "", "");
 }

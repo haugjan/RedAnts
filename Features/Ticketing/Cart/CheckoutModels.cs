@@ -64,7 +64,7 @@ public sealed record FulfillmentSnapshot(
     bool SubscribeNewsletter,
     string NewsletterSource);
 
-public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName, string Token);
+public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName, string Token, int Type = 0, string? DateText = null);
 
 public sealed class CheckoutConfirmationView
 {

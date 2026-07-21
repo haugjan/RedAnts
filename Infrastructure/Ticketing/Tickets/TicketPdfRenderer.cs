@@ -1,64 +1,58 @@
-using Microsoft.AspNetCore.Hosting;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class TicketPdfRenderer(IWebHostEnvironment environment) : ITicketPdf
+public sealed class TicketPdfRenderer : ITicketPdf
 {
-    private byte[]? _logo;
-    private bool _logoResolved;
-
-    private byte[]? Logo()
-    {
-        if (_logoResolved) return _logo;
-        var path = Path.Combine(environment.WebRootPath, "img", "logo-redants.png");
-        _logo = File.Exists(path) ? File.ReadAllBytes(path) : null;
-        _logoResolved = true;
-        return _logo;
-    }
+    private const string Red = "#D02D38";
+    private const string RedDk = "#B0242E";
+    private const string Ink = "#14171A";
+    private const string Muted = "#6B7178";
 
     public byte[] Render(TicketPdfModel m) =>
         Document.Create(doc =>
         {
             doc.Page(page =>
             {
-                page.Size(PageSizes.A6);
+                page.Size(54, 85.6f, Unit.Millimetre);
                 page.Margin(0);
-                page.DefaultTextStyle(t => t.FontSize(11).FontColor("#101010"));
+                page.DefaultTextStyle(t => t.FontSize(8).FontColor(Ink));
                 page.Content().Column(col =>
                 {
-                    var logo = Logo();
-                    if (logo is not null)
+                    col.Item().Background(Red).Padding(8).Column(head =>
                     {
-                        col.Item().PaddingTop(10).PaddingBottom(2).AlignCenter().Width(44).Image(logo);
-                    }
-
-                    col.Item().Background(m.AccentHex).Padding(14).Column(head =>
-                    {
-                        head.Item().Text(m.TypeLabel).FontColor(Colors.White).Bold().FontSize(18);
-                        head.Item().PaddingTop(2).Text(m.ScopeName).FontColor(Colors.White).FontSize(12);
+                        head.Item().Row(row =>
+                        {
+                            row.RelativeItem().Text(m.Kicker.ToUpperInvariant()).FontColor(Colors.White).FontSize(6.5f);
+                            row.AutoItem().AlignRight().Text("RED ANTS").FontColor(Colors.White).Bold().FontSize(6.5f);
+                        });
+                        head.Item().PaddingTop(1).Text(m.TypeLabel).FontColor(Colors.White).Bold().FontSize(14);
                     });
 
-                    col.Item().PaddingTop(10).AlignCenter().Width(150).Image(m.QrPng);
-                    col.Item().PaddingTop(4).AlignCenter().Text("Am Eingang scannen lassen").FontColor("#888888").FontSize(9);
+                    col.Item().PaddingTop(8).AlignCenter().Width(28, Unit.Millimetre).Image(m.QrPng);
+                    col.Item().PaddingTop(2).AlignCenter().Text("Am Eingang scannen lassen").FontColor(Muted).FontSize(6.5f);
 
-                    col.Item().PaddingHorizontal(20).PaddingTop(8).Column(meta =>
+                    col.Item().PaddingHorizontal(12).PaddingVertical(6).LineHorizontal(1).LineColor("#D6DADE");
+
+                    col.Item().PaddingHorizontal(14).Text(m.ScopeName).Bold().FontSize(10).FontColor(Ink);
+                    col.Item().PaddingHorizontal(14).PaddingTop(2).Column(meta =>
                     {
-                        if (m.DateText is not null) MetaRow(meta, "Datum", m.DateText);
-                        if (m.CategoryLabel is not null) MetaRow(meta, "Kategorie", m.CategoryLabel);
-                        if (m.HolderName is not null) MetaRow(meta, "Name", m.HolderName);
-                        MetaRow(meta, "Ticket-Nr.", m.TicketRef);
+                        if (m.DateText is not null) MetaRow(meta, "Datum", m.DateText, RedDk);
+                        if (m.CategoryLabel is not null) MetaRow(meta, "Kategorie", m.CategoryLabel, Ink);
+                        if (m.HolderName is not null) MetaRow(meta, "Name", m.HolderName, Ink);
+                        MetaRow(meta, "Ticket-Nr.", m.TicketRef, Ink);
                     });
                 });
             });
         }).GeneratePdf();
 
-    private static void MetaRow(ColumnDescriptor col, string label, string value) =>
-        col.Item().BorderTop(1).BorderColor("#F0F0F0").PaddingVertical(5).Row(row =>
+    private static void MetaRow(ColumnDescriptor col, string label, string value, string valueColor) =>
+        col.Item().BorderTop(1).BorderColor("#EEF0F2").PaddingVertical(2).Row(row =>
         {
-            row.RelativeItem().Text(label).FontColor("#666666").FontSize(10);
-            row.RelativeItem().AlignRight().Text(value).Bold().FontSize(10);
+            row.RelativeItem().Text(label).FontColor(Muted).FontSize(7.5f);
+            row.RelativeItem().AlignRight().Text(value).Bold().FontSize(7.5f).FontColor(valueColor);
         });
 }

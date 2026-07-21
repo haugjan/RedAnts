@@ -1,0 +1,37 @@
+.rtk-card{
+  --rtk-notch:#eceef1;
+  width:100%;max-width:340px;margin:0 auto;background:#fff;
+  border:1px solid #e6e8ec;border-radius:16px;overflow:hidden;
+  box-shadow:0 8px 26px rgba(17,19,21,.10);
+  font-family:Verdana,Geneva,Tahoma,sans-serif;color:#14171A;
+}
+.rtk-strip{background:#D02D38;color:#fff;padding:14px 18px 15px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.rtk-tt{min-width:0}
+.rtk-kick{font-family:'Oswald',Impact,sans-serif;text-transform:uppercase;letter-spacing:.13em;font-weight:500;font-size:.66rem;opacity:.92}
+.rtk-type{font-family:'Oswald',Impact,sans-serif;text-transform:uppercase;font-weight:700;font-size:1.5rem;line-height:1;margin-top:2px}
+.rtk-brand{flex:0 0 auto;font-family:'Oswald',Impact,sans-serif;text-transform:uppercase;letter-spacing:.08em;font-weight:600;font-size:.72rem;white-space:nowrap}
+.rtk-qrwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 16px 10px}
+.rtk-qr{width:172px;max-width:66%;height:auto;display:block}
+.rtk-qr img,.rtk-qr svg{width:100%;height:auto;display:block}
+.rtk-scan{color:#6b7178;font-size:.72rem;margin-top:8px;text-align:center}
+.rtk-scan--invalid{color:#D02D38;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.rtk-seam{position:relative;height:0}
+.rtk-seam::before,.rtk-seam::after{content:"";position:absolute;top:-11px;width:22px;height:22px;border-radius:50%;background:var(--rtk-notch)}
+.rtk-seam::before{left:-11px}
+.rtk-seam::after{right:-11px}
+.rtk-dash{border-top:2px dashed #d6dade;margin:0 12px}
+.rtk-info{padding:15px 20px 18px}
+.rtk-scope{font-family:'Oswald',Impact,sans-serif;text-transform:uppercase;font-weight:600;font-size:1.08rem;line-height:1.06;color:#14171A}
+.rtk-row{display:flex;justify-content:space-between;gap:10px;font-size:.82rem;padding:6px 0;border-top:1px solid #eef0f2;margin-top:2px}
+.rtk-row:first-of-type{border-top:0}
+.rtk-row .rtk-k{color:#6b7178}
+.rtk-row .rtk-v{font-weight:700;text-align:right}
+.rtk-row .rtk-v--date{color:#B0242E}
+.rtk-row .rtk-v--serial{font-family:'Roboto Mono',ui-monospace,Consolas,monospace;font-weight:600}
+
+@media print{
+  .rtk-card{width:54mm;max-width:54mm;height:85.6mm;box-shadow:none;border:1px solid #ccc;display:flex;flex-direction:column;break-inside:avoid}
+  .rtk-qrwrap{flex:1;padding:5mm 4mm 2mm}
+  .rtk-qr{width:33mm;max-width:33mm}
+  .rtk-info{padding:3mm 5mm 4mm}
+}

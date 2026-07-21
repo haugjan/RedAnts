@@ -1,8 +1,12 @@
 @model RedAnts.Features.Ticketing.Cart.CheckoutConfirmationView
+@using RedAnts.Features.Ticketing.Tickets
+@using RedAnts.Domain.Ticketing.Sales
 @{
     Layout = "~/Views/Shared/_TicketsLayout.cshtml";
     ViewData["Title"] = "Bestellung bestätigt";
 }
+
+<link rel="stylesheet" href="/css/ticket-card.css" />
 
 <div class="text-center py-3">
     <div style="font-size:3rem; line-height:1; color:#1c7c43;">&#10003;</div>
@@ -23,17 +27,22 @@
     <hr />
     <p class="mb-3">Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>. Du kannst die QR-Codes auch direkt hier am Eingang scannen lassen:</p>
 
-    <h2 class="h5 mb-2">Deine Tickets</h2>
-    <div class="row g-3">
+    <h2 class="h5 mb-3">Deine Tickets</h2>
+    <div class="ra-ticket-grid">
         @foreach (var t in Model.Tickets)
         {
-            <div class="col-12 col-sm-6 col-lg-4">
-                <div class="border rounded p-3 text-center h-100">
-                    <img src="/ticket/@t.Token/qr.png" alt="Ticket-QR" width="160" height="160" class="img-fluid" style="max-width:160px;" />
-                    <div class="fw-bold small mt-2">@t.EventName</div>
-                    <div class="text-muted small">@t.CategoryName</div>
-                    <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
-                </div>
+            var card = new TicketCardModel(
+                Kicker: TicketDisplay.Kicker((TicketType)t.Type),
+                TypeLabel: TicketDisplay.TypeLabel((TicketType)t.Type),
+                ScopeName: t.EventName,
+                DateText: t.DateText,
+                CategoryLabel: t.CategoryName,
+                HolderName: null,
+                Serial: t.Uuid.ToString("N")[..8].ToUpperInvariant(),
+                QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />");
+            <div class="ra-ticket-cell">
+                <partial name="~/Views/Partials/_TicketCard.cshtml" model="card" />
+                <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
             </div>
         }
     </div>
@@ -51,3 +60,9 @@
 <div class="mt-4">
     <a href="/" class="btn btn-outline-secondary">Zur Startseite</a>
 </div>
+
+<style>
+    .ra-ticket-grid { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; }
+    .ra-ticket-cell { display: flex; flex-direction: column; align-items: center; width: 300px; max-width: 100%; }
+    .ra-ticket-cell .rtk-card { --rtk-notch: #ffffff; }
+</style>

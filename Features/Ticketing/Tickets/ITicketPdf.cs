@@ -8,7 +8,8 @@ public sealed record TicketPdfModel(
     string? HolderName,
     string TicketRef,
     string AccentHex,
-    byte[] QrPng);
+    byte[] QrPng,
+    string Kicker = "");
 
 public interface ITicketPdf
 {
