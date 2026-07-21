@@ -107,13 +107,13 @@
                style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">@item.Name</a></li>
       }
       <li>
-        <a href="/warenkorb" class="nav-link nav-cart" aria-label="Warenkorb"
+        <a href="/cart" class="nav-link nav-cart" aria-label="Warenkorb"
            style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">
           <span>Warenkorb</span>@if (cartCount > 0) { <span class="nav-cart-badge">@cartCount</span> }
         </a>
       </li>
     </ul>
-    <a href="/warenkorb" class="nav-cart-mobile nav-link" aria-label="Warenkorb"
+    <a href="/cart" class="nav-cart-mobile nav-link" aria-label="Warenkorb"
        style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">
       🛒@if (cartCount > 0) { <span class="nav-cart-badge">@cartCount</span> }
     </a>
@@ -129,7 +129,7 @@
       {
         <li><a href="@item.Url()">@item.Name</a></li>
       }
-      <li><a href="/warenkorb"><span>Warenkorb</span>@if (cartCount > 0) { <text> (@cartCount)</text> }</a></li>
+      <li><a href="/cart"><span>Warenkorb</span>@if (cartCount > 0) { <text> (@cartCount)</text> }</a></li>
     </ul>
   </div>
 </nav>
@@ -156,7 +156,7 @@
         }
       </nav>
       <nav class="site-footer-intern" aria-label="Interner Bereich">
-        <a href="/scanntickets">Scanner</a>
+        <a href="/scan">Scanner</a>
         <a href="/umbraco">Verwaltung</a>
       </nav>
     </div>

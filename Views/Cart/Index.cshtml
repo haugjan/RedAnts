@@ -75,7 +75,7 @@ else
                         <td data-label="Kategorie">@item.CategoryName</td>
                         <td data-label="Preis" class="text-end">CHF @item.UnitPrice.ToString("N2")</td>
                         <td data-label="Menge">
-                            <form method="post" action="/warenkorb/update" class="d-flex gap-1">
+                            <form method="post" action="/cart/update" class="d-flex gap-1">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="key" value="@item.Key" />
                                 <input type="number" name="quantity" value="@item.Quantity" min="0"
@@ -85,7 +85,7 @@ else
                         </td>
                         <td data-label="Total" class="text-end">CHF @item.LineTotal.ToString("N2")</td>
                         <td class="cart-remove text-end">
-                            <form method="post" action="/warenkorb/remove">
+                            <form method="post" action="/cart/remove">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="key" value="@item.Key" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Entfernen">&times;</button>
@@ -102,7 +102,7 @@ else
                         <td data-label="Menge">1</td>
                         <td data-label="Total" class="text-end">CHF @a.Price.ToString("N2")</td>
                         <td class="cart-remove text-end">
-                            <form method="post" action="/warenkorb/addon-entfernen">
+                            <form method="post" action="/cart/remove-addon">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="addOnId" value="@a.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Entfernen">&times;</button>
@@ -126,11 +126,11 @@ else
     <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mt-3">
         <a href="/" class="btn btn-outline-secondary">Weiter einkaufen</a>
         <div class="d-flex gap-2">
-            <form method="post" action="/warenkorb/clear">
+            <form method="post" action="/cart/clear">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-danger">Warenkorb leeren</button>
             </form>
-            <a href="/kasse" class="btn btn-danger">Zur Kasse</a>
+            <a href="/checkout" class="btn btn-danger">Zur Kasse</a>
         </div>
     </div>
 }

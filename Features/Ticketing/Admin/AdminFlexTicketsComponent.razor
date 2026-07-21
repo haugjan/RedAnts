@@ -48,7 +48,7 @@
             <div class="ta-toolbar-actions">
                 @if (SelectedBundle is not null)
                 {
-                    <a class="ta-btn ta-btn-ghost" href="/admin/flextickets/bundle/@SelectedBundle.Id/tickets.csv"
+                    <a class="ta-btn ta-btn-ghost" href="/admin/flex-tickets/bundle/@SelectedBundle.Id/tickets.csv"
                        target="_blank" rel="noopener" title="Bundle als Excel/CSV herunterladen (Referenz + Kurzkennung + Ticketlink)">Export CSV</a>
                     <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => OpenEdit(SelectedBundle)">Referenz bearbeiten</button>
                 }

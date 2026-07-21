@@ -53,11 +53,11 @@
     function schedule() { if (tries < 120) setTimeout(poll, 2500); }
     function poll() {
         tries++;
-        fetch('/kasse/status?order=' + orderId, { headers: { 'Accept': 'application/json' } })
+        fetch('/checkout/status?order=' + orderId, { headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (s) {
                 if (!s) { schedule(); return; }
-                if (s.cancelled) { window.location.href = '/kasse/abbruch'; return; }
+                if (s.cancelled) { window.location.href = '/checkout/cancel'; return; }
                 if (s.paid) { window.location.reload(); return; }
                 schedule();
             })

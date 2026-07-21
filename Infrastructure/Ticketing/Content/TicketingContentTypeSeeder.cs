@@ -173,7 +173,7 @@ public sealed class TicketingContentTypeSeeder(
         var root = contentService.Create("Ticketing", Constants.System.Root, A.RootType);
         Publish(root);
 
-        var seasonsFolder = contentService.Create("Saisons", root.Id, A.SeasonsFolderType);
+        var seasonsFolder = contentService.Create("Seasons", root.Id, A.SeasonsFolderType);
         Publish(seasonsFolder);
 
         var venuesFolder = contentService.Create("Orte", root.Id, A.VenuesFolderType);
@@ -281,6 +281,11 @@ public sealed class TicketingContentTypeSeeder(
             if (promoTemplate is not null && seasonsFolder.TemplateId != promoTemplate.Id)
             {
                 seasonsFolder.TemplateId = promoTemplate.Id;
+                folderChanged = true;
+            }
+            if (seasonsFolder.Name != "Seasons")
+            {
+                seasonsFolder.Name = "Seasons";
                 folderChanged = true;
             }
             if (folderChanged) Publish(seasonsFolder);

@@ -101,7 +101,7 @@ app.Use(async (context, next) =>
             || path.StartsWithSegments("/_blazor")
             || path.StartsWithSegments("/_framework")
             || path.StartsWithSegments("/admin")
-            || path.StartsWithSegments("/scanntickets")
+            || path.StartsWithSegments("/scan")
             || path.StartsWithSegments("/scan")
             || path.StartsWithSegments("/scanner-test");
         if (!cspExempt && !headers.ContainsKey("Content-Security-Policy"))
@@ -168,7 +168,7 @@ app.Use(async (context, next) =>
         var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase);
         var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
             || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
-        context.Response.Redirect(isScanHost ? "/scanntickets" : isAdminHost ? "/umbraco" : "/ticketing/");
+        context.Response.Redirect(isScanHost ? "/scan" : isAdminHost ? "/umbraco" : "/ticketing/");
         return;
     }
     await next();
@@ -219,7 +219,7 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/datenschutz")
         || path.StartsWithSegments("/agb")
         || path.StartsWithSegments("/scanner-test")
-        || path.StartsWithSegments("/scanntickets")
+        || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/payrexx/webhook")
         || path.StartsWithSegments("/warmup")
@@ -325,7 +325,7 @@ if (!string.IsNullOrEmpty(gatePassword))
                 if (helper is not null)
                 {
                     SetHelperCookie(context, helper.Id);
-                    context.Response.Redirect("/scanntickets");
+                    context.Response.Redirect("/scan");
                     return;
                 }
                 await WriteHelperLogin(context, true);
@@ -350,11 +350,11 @@ if (!string.IsNullOrEmpty(gatePassword))
             var code = Uri.UnescapeDataString(rest.Value.Trim('/'));
             var helper = await context.RequestServices.GetRequiredService<IHelpers>().FindByPasswordAsync(code);
             if (helper is not null) SetHelperCookie(context, helper.Id);
-            context.Response.Redirect("/scanntickets");
+            context.Response.Redirect("/scan");
             return;
         }
 
-        if (path.StartsWithSegments("/scanntickets"))
+        if (path.StartsWithSegments("/scan"))
         {
             var session = await HelperSessionAsync(context);
             if (session is not { } helper)

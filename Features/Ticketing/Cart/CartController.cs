@@ -9,10 +9,10 @@ public sealed class CartController(
     ISeasonPassPricing passPricing, ISeasons seasons, ISeasonAddOns seasonAddOns,
     IPriceTiers priceTiers) : Controller
 {
-    [HttpGet("/warenkorb")]
+    [HttpGet("/cart")]
     public IActionResult Index() => View(cart.Get());
 
-    [HttpPost("/warenkorb/direkt")]
+    [HttpPost("/cart/direct")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddAndCheckout(int eventId, int tierId, int quantity)
     {
@@ -24,11 +24,11 @@ public sealed class CartController(
             cart.Add(eventId, evt.Name, available.TierId, available.Name, available.Price, quantity);
 
         var current = cart.Get();
-        if (current.IsEmpty) return Redirect("/warenkorb");
-        return Redirect(ExpressCheckout.IsAllowed(current) ? "/kasse/express" : "/kasse");
+        if (current.IsEmpty) return Redirect("/cart");
+        return Redirect(ExpressCheckout.IsAllowed(current) ? "/checkout/express" : "/checkout");
     }
 
-    [HttpPost("/warenkorb/add")]
+    [HttpPost("/cart/add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Add(int eventId, int tierId, int quantity, string? returnUrl)
     {
@@ -56,7 +56,7 @@ public sealed class CartController(
         return RedirectBack(returnUrl);
     }
 
-    [HttpPost("/warenkorb/add-saisonkarte")]
+    [HttpPost("/cart/add-season-pass")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddSeasonPass(int seasonId, int tierId, int quantity, string? returnUrl, int[]? addOns)
     {
@@ -108,7 +108,7 @@ public sealed class CartController(
         return RedirectBack(returnUrl);
     }
 
-    [HttpPost("/warenkorb/update")]
+    [HttpPost("/cart/update")]
     [ValidateAntiForgeryToken]
     public IActionResult Update(string key, int quantity)
     {
@@ -116,7 +116,7 @@ public sealed class CartController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost("/warenkorb/remove")]
+    [HttpPost("/cart/remove")]
     [ValidateAntiForgeryToken]
     public IActionResult Remove(string key)
     {
@@ -124,7 +124,7 @@ public sealed class CartController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost("/warenkorb/addon-entfernen")]
+    [HttpPost("/cart/remove-addon")]
     [ValidateAntiForgeryToken]
     public IActionResult RemoveAddOn(int addOnId)
     {
@@ -132,7 +132,7 @@ public sealed class CartController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost("/warenkorb/clear")]
+    [HttpPost("/cart/clear")]
     [ValidateAntiForgeryToken]
     public IActionResult Clear()
     {

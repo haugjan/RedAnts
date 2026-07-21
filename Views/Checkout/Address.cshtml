@@ -7,7 +7,7 @@
     var isCompany = f.Type == BuyerType.Company;
 }
 
-<a href="/warenkorb" class="tk-back">&larr; Warenkorb</a>
+<a href="/cart" class="tk-back">&larr; Warenkorb</a>
 <h1 class="mb-1">Kasse</h1>
 <p class="text-muted mb-4">Rechnungsadresse &amp; Bezahlung</p>
 
@@ -25,7 +25,7 @@
 
 <div class="row g-4">
     <div class="col-lg-7">
-        <form method="post" action="/kasse" class="card p-4">
+        <form method="post" action="/checkout" class="card p-4">
             @Html.AntiForgeryToken()
             <div class="row g-3">
                 <div class="col-12">

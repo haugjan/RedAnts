@@ -1,4 +1,4 @@
-@page "/scanntickets"
+@page "/scan"
 @{
     Layout = null;
     var helperName = HttpContext.Items["HelperName"] as string ?? "";
@@ -65,7 +65,7 @@
 
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function () {
-                    navigator.serviceWorker.register('/scanner-sw.js', { scope: '/scanntickets' })
+                    navigator.serviceWorker.register('/scanner-sw.js', { scope: '/scan' })
                         .catch(function (err) { console.warn('SW registration failed:', err); });
                 });
             }

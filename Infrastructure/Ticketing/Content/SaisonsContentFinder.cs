@@ -14,7 +14,7 @@ public sealed class SaisonsContentFinder(IHttpContextAccessor httpContextAccesso
     public Task<bool> TryFindContent(IPublishedRequestBuilder request)
     {
         var path = request.AbsolutePathDecoded.TrimEnd('/');
-        if (!path.Equals("/saisons", StringComparison.OrdinalIgnoreCase))
+        if (!path.Equals("/seasons", StringComparison.OrdinalIgnoreCase))
             return Task.FromResult(false);
 
         var query = httpContextAccessor.HttpContext?.RequestServices.GetService<IPublishedContentQuery>();

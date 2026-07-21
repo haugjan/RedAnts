@@ -74,7 +74,7 @@ public sealed class CheckoutPayrexxView
     public string GatewayLink { get; init; } = "";
     public string OrderNumber { get; init; } = "";
     public decimal Total { get; init; }
-    public string CancelUrl { get; init; } = "/kasse";
+    public string CancelUrl { get; init; } = "/checkout";
 }
 
 public sealed class CheckoutConfirmationView

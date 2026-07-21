@@ -13,7 +13,7 @@ public sealed class EventBundleExportController(
     ITicketTokens tokens,
     IPublicBaseUrl publicUrl) : Controller
 {
-    [HttpGet("/admin/spieltickets/bundle/{bundleId:int}/tickets.csv")]
+    [HttpGet("/admin/event-tickets/bundle/{bundleId:int}/tickets.csv")]
     public async Task<IActionResult> Export(int bundleId)
     {
         var tickets = await bundleTickets.GetByBundleAsync(bundleId);

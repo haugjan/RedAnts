@@ -20,19 +20,19 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
     private const string PaymentLabelText = "Online-Zahlung (Payrexx)";
 
-    [HttpGet("/kasse")]
+    [HttpGet("/checkout")]
     public IActionResult Address()
     {
-        if (cart.Get().IsEmpty) return Redirect("/warenkorb");
+        if (cart.Get().IsEmpty) return Redirect("/cart");
         return CheckoutView(LoadForm() ?? new CheckoutForm(), TempData["CheckoutError"] as string);
     }
 
-    [HttpPost("/kasse")]
+    [HttpPost("/checkout")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(CheckoutForm form, bool acceptPrivacy)
     {
         var current = cart.Get();
-        if (current.IsEmpty) return Redirect("/warenkorb");
+        if (current.IsEmpty) return Redirect("/cart");
 
         SaveForm(form);
 
@@ -50,8 +50,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, form.AcceptNewsletter, "Kasse");
     }
 
-    [HttpGet("/kasse/zahlung")]
-    public IActionResult Payment() => Redirect("/kasse");
+    [HttpGet("/checkout/payment")]
+    public IActionResult Payment() => Redirect("/checkout");
 
     private IActionResult CheckoutView(CheckoutForm form, string? error) =>
         View("~/Views/Checkout/Address.cshtml", new CheckoutAddressView
@@ -63,11 +63,11 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             Error = error
         });
 
-    [HttpGet("/kasse/express")]
+    [HttpGet("/checkout/express")]
     public IActionResult Express()
     {
         if (cart.Get().IsEmpty) return Redirect("/ticketing/");
-        if (!ExpressCheckout.IsAllowed(cart.Get())) return Redirect("/kasse");
+        if (!ExpressCheckout.IsAllowed(cart.Get())) return Redirect("/checkout");
         return View("~/Views/Checkout/Express.cshtml", new CheckoutExpressView
         {
             Cart = cart.Get(), PayrexxEnabled = payrexx.Enabled,
@@ -76,13 +76,13 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         });
     }
 
-    [HttpPost("/kasse/express")]
+    [HttpPost("/checkout/express")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ExpressPay(string email, string? name, bool acceptNewsletter, bool acceptPrivacy)
     {
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/ticketing/");
-        if (!ExpressCheckout.IsAllowed(current)) return Redirect("/kasse");
+        if (!ExpressCheckout.IsAllowed(current)) return Redirect("/checkout");
 
         CheckoutExpressView Invalid(string error) => new()
         {
@@ -123,7 +123,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             if ((await admission.GetOccupancyAsync(eventId)).Full)
             {
                 TempData["CartError"] = "Abendkasse geschlossen: Die Halle ist voll. Es können keine Tickets mehr gekauft werden.";
-                return Redirect("/warenkorb");
+                return Redirect("/cart");
             }
         }
 
@@ -132,7 +132,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (capacityError is not null)
         {
             TempData["CartError"] = capacityError;
-            return Redirect("/warenkorb");
+            return Redirect("/cart");
         }
 
         var number = await orders.NextOrderNumberAsync();
@@ -150,9 +150,9 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 Currency: saved.Currency,
                 Purpose: $"Red Ants Ticketing {saved.OrderNumber}",
                 ReferenceId: saved.OrderNumber,
-                SuccessUrl: $"{baseUrl}/kasse/erfolg?order={saved.Id}",
-                FailedUrl: $"{baseUrl}/kasse",
-                CancelUrl: $"{baseUrl}/kasse/abbruch",
+                SuccessUrl: $"{baseUrl}/checkout/success?order={saved.Id}",
+                FailedUrl: $"{baseUrl}/checkout",
+                CancelUrl: $"{baseUrl}/checkout/cancel",
                 Email: billing.Email,
                 FirstName: billing.FirstName,
                 LastName: billing.LastName);
@@ -166,14 +166,14 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                     GatewayLink = gateway.Link,
                     OrderNumber = saved.OrderNumber,
                     Total = saved.TotalGross,
-                    CancelUrl = newsletterSource == "Express" ? "/kasse/express" : "/kasse/zahlung"
+                    CancelUrl = newsletterSource == "Express" ? "/checkout/express" : "/checkout"
                 });
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Payrexx gateway creation failed for order {Order}.", saved.OrderNumber);
                 TempData["CheckoutError"] = "Die Zahlung konnte nicht gestartet werden. Bitte versuche es erneut.";
-                return Redirect(newsletterSource == "Express" ? "/kasse/express" : "/kasse");
+                return Redirect(newsletterSource == "Express" ? "/checkout/express" : "/checkout");
             }
         }
 
@@ -189,7 +189,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             Tickets = issued,
             AddOnInfoTexts = addOnInfos
         });
-        return Redirect("/kasse/bestaetigung");
+        return Redirect("/checkout/confirmation");
     }
 
     private static string BuildSnapshotJson(Cart cart, bool subscribeNewsletter, string newsletterSource)
@@ -293,7 +293,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return (issued, addOnInfos);
     }
 
-    [HttpGet("/kasse/bestaetigung")]
+    [HttpGet("/checkout/confirmation")]
     public IActionResult Confirmation()
     {
         var json = HttpContext.Session.GetString(ConfirmationKey);
@@ -302,7 +302,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return view is null ? Redirect("/") : View("~/Views/Checkout/Confirmation.cshtml", view);
     }
 
-    [HttpGet("/kasse/erfolg")]
+    [HttpGet("/checkout/success")]
     public async Task<IActionResult> Processing(int order)
     {
         var found = await orders.GetByIdAsync(order);
@@ -320,7 +320,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             }
             else if (status is PayrexxStatus.Cancelled or PayrexxStatus.Declined)
             {
-                return Redirect("/kasse/abbruch");
+                return Redirect("/checkout/cancel");
             }
         }
 
@@ -390,7 +390,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return Ok();
     }
 
-    [HttpGet("/kasse/status")]
+    [HttpGet("/checkout/status")]
     public async Task<IActionResult> Status(int order)
     {
         var found = await orders.GetByIdAsync(order);
@@ -402,7 +402,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         });
     }
 
-    [HttpGet("/kasse/abbruch")]
+    [HttpGet("/checkout/cancel")]
     public IActionResult Cancelled() => View("~/Views/Checkout/Cancelled.cshtml");
 
     private async Task<string?> CheckSeasonPassCapacityAsync(Cart cart)

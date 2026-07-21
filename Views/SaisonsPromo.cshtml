@@ -87,11 +87,11 @@
                                                 }
                                             </div>
                                         }
-                                        <form method="post" action="/warenkorb/add-saisonkarte" class="pass-add-form">
+                                        <form method="post" action="/cart/add-season-pass" class="pass-add-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="seasonId" value="@seasonId" />
                                             <input type="hidden" name="tierId" value="@cat.TierId" />
-                                            <input type="hidden" name="returnUrl" value="/saisons/" />
+                                            <input type="hidden" name="returnUrl" value="/seasons/" />
                                             @if (catAddOns.Count > 0)
                                             {
                                                 <div class="pass-addons">
@@ -208,7 +208,7 @@
             if (!btn.style.minWidth) btn.style.minWidth = btn.offsetWidth + 'px';
             btn.disabled = true;
 
-            fetch('/warenkorb/add-saisonkarte', {
+            fetch('/cart/add-season-pass', {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'fetch' },
                 body: new FormData(form)

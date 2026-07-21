@@ -63,7 +63,7 @@ Do not assume or generate ModelsBuilder classes.
 
 ## Public URLs
 
-Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqid}`, `/saisonkarten/{sqid}`), not Umbraco content-node URLs. Reordering or demoting root content nodes therefore does not break ticketing links. The website homepage is the first `flexPage` root node (the seeder sorts it to first so it serves at `/`).
+Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqid}`), not Umbraco content-node URLs. Reordering or demoting root content nodes therefore does not break ticketing links. All routes are English: public `/cart`, `/checkout` (+ `/express`, `/success`, `/cancel`, `/confirmation`), `/seasons`, `/scan`; admin `/admin/members`, `/admin/season-passes`, `/admin/event-tickets`, `/admin/flex-tickets` (the earlier German routes were removed, no redirects). The website homepage is the first `flexPage` root node (the seeder sorts it to first so it serves at `/`).
 
 ## Conventions
 

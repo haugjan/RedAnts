@@ -13,7 +13,7 @@ namespace RedAnts.Features.Ticketing.Admin;
 [ApiExplorerSettings(IgnoreApi = true)]
 public sealed class MemberExportController(IScopeProvider scopeProvider, ITicketTokens tokens, IPublicBaseUrl publicUrl) : Controller
 {
-    [HttpGet("/admin/mitglieder/referenzen")]
+    [HttpGet("/admin/members/references")]
     public async Task<IActionResult> References()
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -23,7 +23,7 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
         return Json(rows.Select(r => r.Reference).ToList());
     }
 
-    [HttpGet("/admin/mitglieder/export.csv")]
+    [HttpGet("/admin/members/export.csv")]
     public async Task<IActionResult> ExportCsv([FromQuery] string? referenz)
     {
         if (string.IsNullOrWhiteSpace(referenz))

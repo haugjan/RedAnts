@@ -182,7 +182,7 @@
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
                 @if (!string.IsNullOrEmpty(_exportReference))
                 {
-                    <a class="ta-btn ta-btn-primary" href="/admin/mitglieder/export.csv?referenz=@Uri.EscapeDataString(_exportReference)"
+                    <a class="ta-btn ta-btn-primary" href="/admin/members/export.csv?referenz=@Uri.EscapeDataString(_exportReference)"
                        target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
                 }
             </div>
@@ -211,7 +211,7 @@
                 <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
                 <p class="ta-hint">
                     Spalten: Kategorie (Red Ants / Block 4), Name, Vorname, Geburtsdatum (dd.MM.yyyy). Fehlende Angaben ausser der Referenz sind erlaubt.
-                    <a href="/admin/mitglieder/beispiel.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
+                    <a href="/admin/members/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
             </div>
 

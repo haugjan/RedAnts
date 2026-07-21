@@ -293,7 +293,7 @@
                 <p class="ta-hint">
                     Spalten: Bundle, Kategorie, Firma, Vorname, Nachname, Strasse, PLZ, Ort, Land, E-Mail, Telefon.
                     Pflicht: Bundle und Käufername (Firma oder Vor- und Nachname); übrige Felder optional.
-                    <a href="/admin/saisonkarten/beispiel.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
+                    <a href="/admin/season-passes/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
             </div>
 
@@ -495,8 +495,8 @@
     private void OpenExport() { _exportBundle = ""; _showExport = true; }
     private void CloseExport() => _showExport = false;
     private string ExportUrl => string.IsNullOrEmpty(_exportBundle)
-        ? $"/admin/saisonkarten/season/{SelectedSeasonId}/passes.csv"
-        : $"/admin/saisonkarten/season/{SelectedSeasonId}/passes.csv?bundle={Uri.EscapeDataString(_exportBundle)}";
+        ? $"/admin/season-passes/season/{SelectedSeasonId}/passes.csv"
+        : $"/admin/season-passes/season/{SelectedSeasonId}/passes.csv?bundle={Uri.EscapeDataString(_exportBundle)}";
 
     private static string StatusLabel(TicketStatus status) => status switch
     {

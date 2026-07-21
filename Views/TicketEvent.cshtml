@@ -198,14 +198,14 @@ else
                             </div>
                             @if (cat.Available)
                             {
-                                <form method="post" action="/warenkorb/add" class="evt-add-form">
+                                <form method="post" action="/cart/add" class="evt-add-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="eventId" value="@Model.Id" />
                                     <input type="hidden" name="tierId" value="@cat.TierId" />
                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                     <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
                                     <button type="submit" class="evt-addbtn">In den Warenkorb</button>
-                                    <button type="submit" class="evt-addbtn evt-addbtn--express" formaction="/warenkorb/direkt">Direkt kaufen</button>
+                                    <button type="submit" class="evt-addbtn evt-addbtn--express" formaction="/cart/direct">Direkt kaufen</button>
                                 </form>
                             }
                             else
@@ -215,7 +215,7 @@ else
                         </div>
                     }
                 }
-                <a href="/warenkorb" class="evt-continue" id="evt-continue">Weiter zum Warenkorb &rarr;</a>
+                <a href="/cart" class="evt-continue" id="evt-continue">Weiter zum Warenkorb &rarr;</a>
             </div>
 
             @if (venue is not null)
@@ -274,7 +274,7 @@ else
             if (!btn.style.minWidth) btn.style.minWidth = btn.offsetWidth + 'px';
             btn.disabled = true;
 
-            fetch('/warenkorb/add', {
+            fetch('/cart/add', {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'fetch' },
                 body: new FormData(form)

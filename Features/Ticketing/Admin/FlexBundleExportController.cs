@@ -13,7 +13,7 @@ public sealed class FlexBundleExportController(
     ITicketTokens tokens,
     IPublicBaseUrl publicUrl) : Controller
 {
-    [HttpGet("/admin/flextickets/bundle/{bundleId:int}/tickets.csv")]
+    [HttpGet("/admin/flex-tickets/bundle/{bundleId:int}/tickets.csv")]
     public async Task<IActionResult> Export(int bundleId)
     {
         var tickets = await bundleTickets.GetByBundleAsync(bundleId);

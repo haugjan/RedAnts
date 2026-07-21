@@ -13,7 +13,7 @@ public sealed class SeasonPassExportController(
     ITicketTokens tokens,
     IPublicBaseUrl publicUrl) : Controller
 {
-    [HttpGet("/admin/saisonkarten/season/{seasonId:int}/passes.csv")]
+    [HttpGet("/admin/season-passes/season/{seasonId:int}/passes.csv")]
     public async Task<IActionResult> Export(int seasonId, [FromQuery] string? bundle)
     {
         var passes = await report.GetBySeasonAsync(seasonId);

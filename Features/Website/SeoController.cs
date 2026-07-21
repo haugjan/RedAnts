@@ -21,9 +21,9 @@ public sealed class SeoController(UmbracoHelper umbraco, IUmbracoContextFactory 
         if (IsIndexableHost(Request.Host.Host))
         {
             sb.Append("Disallow: /umbraco\n");
-            sb.Append("Disallow: /kasse\n");
-            sb.Append("Disallow: /warenkorb\n");
-            sb.Append("Disallow: /scanntickets\n");
+            sb.Append("Disallow: /checkout\n");
+            sb.Append("Disallow: /cart\n");
+            sb.Append("Disallow: /scan\n");
             sb.Append("Disallow: /ticket/\n");
             sb.Append($"Sitemap: {Request.Scheme}://{Request.Host}/sitemap.xml\n");
         }
@@ -46,7 +46,7 @@ public sealed class SeoController(UmbracoHelper umbraco, IUmbracoContextFactory 
             foreach (var root in umbraco.ContentAtRoot())
                 Collect(root, baseUrl, urls);
         }
-        urls.Add($"{baseUrl}/saisons/");
+        urls.Add($"{baseUrl}/seasons/");
 
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var doc = new XDocument(new XElement(ns + "urlset",
