@@ -78,6 +78,13 @@ jobs:
           az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
             --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
             --output none
+      - name: Configure ticketing data purge (dev)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Ticketing__PurgeTransactionalDataToken=reset-2026-07-21 \
+            --output none
       - name: Configure Google Wallet (dev)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -162,6 +169,14 @@ jobs:
             --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
             --output none
           echo "Payrexx settings applied to $WEBAPP."
+      - name: Configure ticketing data purge (prod)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Ticketing__PurgeTransactionalDataToken=reset-2026-07-21 \
+            --output none
+          echo "Purge token applied to $WEBAPP."
       - name: Configure Google Wallet (prod)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
