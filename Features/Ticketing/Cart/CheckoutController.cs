@@ -286,22 +286,29 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         }
         addOnInfos = addOnInfos.Distinct().ToList();
 
-        var orderItemLines = new List<OrderItem>();
-        foreach (var item in snapshot.Items)
-        {
-            var kind = item.Kind == (int)CartItemKind.SeasonPass ? OrderItemKind.SeasonPass : OrderItemKind.EventTicket;
-            var refId = item.Kind == (int)CartItemKind.SeasonPass ? item.SeasonId : item.EventId;
-            var label = string.IsNullOrEmpty(item.CategoryName) ? item.EventName : $"{item.EventName} · {item.CategoryName}";
-            orderItemLines.Add(OrderItem.Create(order.Id, kind, refId, default, label, item.Quantity, item.UnitPrice));
-        }
-        foreach (var a in snapshot.AddOns)
-            orderItemLines.Add(OrderItem.Create(order.Id, OrderItemKind.AddOn, a.SeasonId, default, a.Label, a.Quantity, a.Price));
-        if (orderItemLines.Count > 0)
-            await orderItems.SaveAsync(order.Id, orderItemLines);
-
         await mailer.SendTicketsAsync(new OrderMailModel(
             order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
             publicUrl.Resolve(Request), mailTickets, addOnInfos));
+
+        try
+        {
+            var orderItemLines = new List<OrderItem>();
+            foreach (var item in snapshot.Items)
+            {
+                var kind = item.Kind == (int)CartItemKind.SeasonPass ? OrderItemKind.SeasonPass : OrderItemKind.EventTicket;
+                var refId = item.Kind == (int)CartItemKind.SeasonPass ? item.SeasonId : item.EventId;
+                var label = string.IsNullOrEmpty(item.CategoryName) ? item.EventName : $"{item.EventName} · {item.CategoryName}";
+                orderItemLines.Add(OrderItem.Create(order.Id, kind, refId, default, label, item.Quantity, item.UnitPrice));
+            }
+            foreach (var a in snapshot.AddOns)
+                orderItemLines.Add(OrderItem.Create(order.Id, OrderItemKind.AddOn, a.SeasonId, default, a.Label, a.Quantity, a.Price));
+            if (orderItemLines.Count > 0)
+                await orderItems.SaveAsync(order.Id, orderItemLines);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "OrderItems für Bestellung {OrderNumber} konnten nicht gespeichert werden (per Backfill nachholbar)", order.OrderNumber);
+        }
 
         if (snapshot.SubscribeNewsletter)
             await newsletter.SubscribeAsync(billing.Email, billing.FullName, snapshot.NewsletterSource);
