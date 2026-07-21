@@ -3,6 +3,7 @@
 @{
     Layout = "~/Views/Shared/_TicketsLayout.cshtml";
     ViewData["Title"] = Model.Name;
+    ViewData["PlainLayout"] = true;
     var image = Model.Value<IPublishedContent>("image")?.Url();
     var description = Model.Value<string>("description");
     var geo = Model.Value<string>("googleGeoId");

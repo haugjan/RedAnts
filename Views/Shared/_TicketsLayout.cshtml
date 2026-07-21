@@ -1,13 +1,42 @@
+@inject RedAnts.Features.Ticketing.Cart.ICartService Cart
+@inject Umbraco.Cms.Core.IPublishedContentQuery ContentQuery
+@using System.Linq
+@using Umbraco.Cms.Core.Models.PublishedContent
+@using Umbraco.Extensions
 @{
     Layout = null;
     var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
+
+    var roots = ContentQuery.ContentAtRoot().ToList();
+    var home = roots.FirstOrDefault(c => c.ContentType.Alias == "flexPage");
+    var cartCount = Cart.Get().TotalQuantity;
+    var navPages = home?.Children()?
+        .Where(c => c.ContentType.Alias == "flexPage" && c.IsPublished())
+        .ToList() ?? new List<IPublishedContent>();
+
+    var footerFolder = roots.FirstOrDefault(c => c.ContentType.Alias == "footerFolder");
+    var legalLinks = footerFolder?.Children()?
+        .Where(c => c.ContentType.Alias == "legalPage" && c.IsPublished())
+        .OrderBy(c => c.SortOrder)
+        .ToList() ?? new List<IPublishedContent>();
+
+    var ticketingRoot = roots.FirstOrDefault(c => c.ContentType.Alias == "ticketingRoot");
+    var headerImage = ticketingRoot?.Value<IPublishedContent>("headerImage")?.Url();
+
+    var title = ViewData["Title"] as string ?? "Red Ants Ticketing";
+    var plain = ViewData["PlainLayout"] as bool? ?? false;
+    var showBand = !plain;
+    var transparentNav = showBand;
+    var navBg = transparentNav ? "rgba(16,16,16,0.55)" : "rgba(255,255,255,0.97)";
+    var navBorder = transparentNav ? "rgba(255,255,255,0.12)" : "#f0f0f0";
 }
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@(ViewData["Title"] ?? "Red Ants Ticketing")</title>
+    <title>@title – Red Ants Winterthur</title>
+    <meta name="robots" content="noindex,nofollow" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png" />
@@ -16,80 +45,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/site.css?v=8" />
     <style>
-        :root {
-            --ra-red: #C8102E;
-            --ra-red-dark: #A50D26;
-            --ra-ink: #101010;
-            --ra-display: 'Oswald', Impact, sans-serif;
-        }
+        :root { --ra-red: #C8102E; --ra-red-dark: #A50D26; }
 
-        body {
-            font-family: Verdana, Geneva, Tahoma, sans-serif;
-            background: #f7f7f8;
-            color: var(--ra-ink);
-            padding-top: 66px;
-            -webkit-font-smoothing: antialiased;
+        .nav-cart { display: inline-flex; align-items: center; gap: 0.4rem; }
+        .nav-cart-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem;
+            border-radius: 999px; background: var(--red); color: #fff;
+            font-family: Verdana, sans-serif; font-size: 0.72rem; font-weight: 700; line-height: 1;
         }
+        .nav-cart-mobile { display: none; align-items: center; gap: 0.3rem; margin-left: auto; margin-right: 0.75rem; text-decoration: none; font-size: 1.25rem; line-height: 1; }
+        @@media (max-width: 900px) { .nav-cart-mobile { display: inline-flex; } }
 
-        h1, h2, h3, h4, h5, h6 {
-            font-family: var(--ra-display);
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            text-transform: uppercase;
-            line-height: 1.05;
-        }
-        h1 { letter-spacing: 0.02em; font-weight: 700; }
+        .page-header { position: relative; background-size: cover; background-position: center; min-height: 260px; display: flex; align-items: flex-end; }
+        .page-header--plain { background: #101010; }
+        .page-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.75) 100%); }
+        .page-header-inner { position: relative; z-index: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px 34px; }
+        .page-header-title { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1; margin: 0; }
+        .page-header-title::after { content: ""; display: block; width: 64px; height: 5px; background: var(--ra-red); margin-top: 14px; }
 
-        .tk-nav {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 50;
-            height: 66px;
-            display: flex; align-items: center;
-            background: rgba(255,255,255,0.97);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid #f0f0f0;
-            box-shadow: 0 1px 12px rgba(0,0,0,0.06);
-        }
-        .tk-nav-inner {
-            max-width: 1280px; width: 100%; margin: 0 auto;
-            padding: 0 2rem;
-            display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
-        }
-        .tk-logo { display: flex; align-items: center; text-decoration: none; transition: opacity .2s; }
-        .tk-logo:hover { opacity: 0.75; }
-        .tk-logo img { height: 42px; width: auto; display: block; }
-        .tk-logo-fallback {
-            font-family: var(--ra-display); color: var(--ra-red);
-            font-size: 1.6rem; font-weight: 600; letter-spacing: 0.04em;
-            text-transform: uppercase; line-height: 0.9;
-        }
-        .tk-nav-right { display: flex; align-items: center; gap: 1.5rem; }
-        .tk-nav-link {
-            font-family: var(--ra-display); font-size: 1.1rem; font-weight: 600;
-            letter-spacing: 0.08em; text-transform: uppercase;
-            text-decoration: none; color: var(--ra-ink); transition: color .15s;
-        }
-        .tk-nav-link:hover { color: var(--ra-red); }
-        .tk-nav-btn {
-            font-family: var(--ra-display); font-size: 1.05rem; font-weight: 600;
-            letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none;
-            padding: 0.4rem 1.2rem; background: var(--ra-red); color: #fff;
-            border: 1.5px solid var(--ra-red);
-            transition: background .15s, border-color .15s;
-        }
-        .tk-nav-btn:hover { background: var(--ra-red-dark); border-color: var(--ra-red-dark); color: #fff; }
-        @@media (max-width: 560px) { .tk-nav-link { display: none; } }
+        .tk-main { max-width: 960px; margin: 0 auto; padding: 2rem 1rem 3rem; }
+        .tk-no-band .tk-main { padding-top: 92px; }
 
-        .tk-back {
-            display: inline-block; margin-bottom: 0.75rem;
-            font-family: var(--ra-display); font-size: 1.05rem; font-weight: 500;
-            letter-spacing: 0.06em; text-transform: uppercase;
-            color: var(--ra-ink); text-decoration: none; opacity: 0.7;
-            transition: opacity .15s, color .15s;
-        }
-        .tk-back:hover { color: var(--ra-red); opacity: 1; }
-
-        .btn { font-family: var(--ra-display); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', Impact, sans-serif; }
+        .btn { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
         .btn-danger {
             --bs-btn-bg: var(--ra-red); --bs-btn-border-color: var(--ra-red);
             --bs-btn-hover-bg: var(--ra-red-dark); --bs-btn-hover-border-color: var(--ra-red-dark);
@@ -101,50 +82,131 @@
             --bs-btn-active-bg: var(--ra-red); --bs-btn-active-border-color: var(--ra-red);
         }
         .text-danger { color: var(--ra-red) !important; }
-        .card {
-            border: none; border-radius: 14px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.05);
+        .card { border: none; border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.05); }
+        .form-control:focus, .form-select:focus { border-color: var(--ra-red); box-shadow: 0 0 0 0.2rem rgba(200,16,46,0.18); }
+        .tk-back {
+            display: inline-block; margin-bottom: 0.75rem;
+            font-family: 'Oswald', sans-serif; font-size: 1.05rem; font-weight: 500;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--ink); text-decoration: none; opacity: 0.7; transition: opacity .15s, color .15s;
         }
-        .list-group-item { border-color: #eee; }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--ra-red);
-            box-shadow: 0 0 0 0.2rem rgba(200,16,46,0.18);
-        }
-        .tk-banner {
-            width: 100%; max-height: 340px; object-fit: cover;
-            border-radius: 16px; margin: 0.25rem 0 1.25rem;
-        }
-
-        .tk-footer {
-            margin-top: 3rem; padding: 1.75rem 0;
-            border-top: 1px solid #ececec;
-            font-size: 0.8rem; color: #8a8a8a;
-        }
-        .tk-footer a { color: var(--ra-red); text-decoration: none; }
+        .tk-back:hover { color: var(--ra-red); opacity: 1; }
+        .tk-banner { width: 100%; max-height: 340px; object-fit: cover; border-radius: 16px; margin: 0.25rem 0 1.25rem; }
     </style>
+    @RenderSection("Head", required: false)
 </head>
-<body>
-    <nav class="tk-nav">
-        <div class="tk-nav-inner">
-            <a href="/" class="tk-logo" aria-label="Startseite">
-                <img src="@logoUrl" alt="Red Ants Winterthur"
-                     onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
-                <span class="tk-logo-fallback" style="display:none;">Red Ants</span>
-            </a>
-            <div class="tk-nav-right">
-                <a href="/" class="tk-nav-link">Website</a>
-            </div>
+<body class="@(showBand ? "tk-has-band" : "tk-no-band")">
+<nav class="site-nav" id="siteNav"
+     style="background:@navBg; border-bottom-color:@navBorder; @(transparentNav ? "" : "box-shadow:0 1px 12px rgba(0,0,0,0.06);")">
+  <div class="site-nav-inner">
+    <a href="@(home?.Url() ?? "/")" class="site-nav-logo" aria-label="Startseite">
+      <img src="@logoUrl" alt="Red Ants Winterthur"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+      <span class="site-nav-logo-fallback" style="display:none;">Red Ants</span>
+    </a>
+    <ul class="nav-links">
+      @foreach (var item in navPages)
+      {
+        <li><a href="@item.Url()" class="nav-link" style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">@item.Name</a></li>
+      }
+      <li>
+        <a href="/cart" class="nav-link nav-cart" aria-label="Warenkorb" style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">
+          <span>Warenkorb</span>@if (cartCount > 0) { <span class="nav-cart-badge">@cartCount</span> }
+        </a>
+      </li>
+    </ul>
+    <a href="/cart" class="nav-cart-mobile nav-link" aria-label="Warenkorb" style="@(transparentNav ? "color:rgba(255,255,255,0.85);" : "")">
+      🛒@if (cartCount > 0) { <span class="nav-cart-badge">@cartCount</span> }
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Navigation">
+      <svg width="22" height="18" fill="none" stroke="@(transparentNav ? "white" : "currentColor")" stroke-width="2" stroke-linecap="square" id="navToggleIcon">
+        <line x1="0" y1="2" x2="22" y2="2"/><line x1="0" y1="9" x2="22" y2="9"/><line x1="0" y1="16" x2="22" y2="16"/>
+      </svg>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <ul>
+      @foreach (var item in navPages)
+      {
+        <li><a href="@item.Url()">@item.Name</a></li>
+      }
+      <li><a href="/cart"><span>Warenkorb</span>@if (cartCount > 0) { <text> (@cartCount)</text> }</a></li>
+    </ul>
+  </div>
+</nav>
+
+@if (showBand)
+{
+    <section class="page-header @(string.IsNullOrEmpty(headerImage) ? "page-header--plain" : "")"
+             style="@(string.IsNullOrEmpty(headerImage) ? "" : $"background-image:url('{headerImage}');")">
+        @if (!string.IsNullOrEmpty(headerImage))
+        {
+            <div class="page-header-overlay"></div>
+        }
+        <div class="page-header-inner">
+            <h1 class="page-header-title">@title</h1>
         </div>
-    </nav>
+    </section>
+}
 
-    <main class="container pb-4" style="max-width: 960px; padding-top: 2rem;">
-        @RenderBody()
+<main class="tk-main">
+    @RenderBody()
+</main>
 
-        <footer class="tk-footer">
-            Red Ants Winterthur · <a href="/">redants.ch</a>
-        </footer>
-    </main>
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <address class="site-footer-address">
+      <strong>Red Ants Rychenberg Winterthur</strong><br />
+      Geschäftsstelle · Ruhtalstrasse 20 · 8400 Winterthur<br />
+      <a href="mailto:sekretariat@redants.ch">sekretariat@redants.ch</a>
+    </address>
+    <div class="site-footer-nav">
+      <nav class="site-footer-links" aria-label="Rechtliches">
+        @foreach (var lp in legalLinks)
+        {
+          var slug = lp.Value<string>("slug");
+          var lpTitle = lp.Value<string>("titel");
+          if (!string.IsNullOrWhiteSpace(slug))
+          {
+            <a href="/@slug">@(string.IsNullOrWhiteSpace(lpTitle) ? lp.Name : lpTitle)</a>
+          }
+        }
+      </nav>
+      <nav class="site-footer-intern" aria-label="Interner Bereich">
+        <a href="/scan">Scanner</a>
+        <a href="/umbraco">Verwaltung</a>
+      </nav>
+    </div>
+  </div>
+</footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+@RenderSection("Scripts", required: false)
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+  var nav = document.getElementById('siteNav');
+  var transparent = @(transparentNav ? "true" : "false");
+  if (transparent && nav) {
+    var onScroll = function () {
+      var past = window.scrollY > 60;
+      nav.style.background = past ? 'rgba(255,255,255,0.97)' : 'rgba(16,16,16,0.55)';
+      nav.style.borderBottomColor = past ? '#f0f0f0' : 'rgba(255,255,255,0.12)';
+      nav.style.boxShadow = past ? '0 1px 12px rgba(0,0,0,0.06)' : 'none';
+      nav.querySelectorAll('.nav-link').forEach(function (a) { a.style.color = past ? '' : 'rgba(255,255,255,0.85)'; });
+      var icon = document.getElementById('navToggleIcon');
+      if (icon) icon.setAttribute('stroke', past ? 'currentColor' : 'white');
+    };
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+  }
+  var toggle = document.getElementById('navToggle');
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      document.getElementById('mobileMenu').classList.toggle('is-open');
+    });
+  }
+}());
+</script>
 </body>
 </html>
