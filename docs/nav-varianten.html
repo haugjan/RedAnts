@@ -10,6 +10,8 @@
 <style>
   :root {
     --red: #C8102E; --red-dark: #A50D26; --ink: #101010; --display: 'Oswald', Impact, sans-serif;
+    /* Hintergrundbild: hier eine echte Red-Ants-Spielfoto-URL einsetzen. */
+    --bg: url('https://picsum.photos/seed/redants-arena/1600/1300');
   }
   * { box-sizing: border-box; }
   body {
@@ -34,17 +36,12 @@
   /* ---- Demo frame: a nav sticks while colourful content scrolls behind it ---- */
   .frame { height: 340px; overflow: hidden; position: relative; }
   .scroller { height: 100%; overflow-y: auto; scroll-behavior: smooth; }
-  .stage { min-height: 820px; padding: 0; position: relative; }
-  .stage-hero {
-    height: 240px; display: flex; align-items: flex-end; padding: 1.2rem;
-    background: radial-gradient(120% 90% at 80% 10%, #ff5a76 0%, #C8102E 42%, #7d0a1c 100%);
-    color: #fff;
+  .stage {
+    min-height: 1150px; position: relative;
+    background-image: var(--bg); background-size: cover; background-position: center;
   }
-  .stage-hero h3 { font-family: var(--display); font-weight: 700; font-size: 1.9rem; margin: 0; text-transform: uppercase; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,.25); }
-  .stage-body { padding: 1.2rem; }
-  .stage-body .row { height: 26px; border-radius: 6px; margin: 0 0 .7rem; background: linear-gradient(90deg, #dfe3ea, #eef1f5); }
-  .stage-body .row:nth-child(3n) { width: 70%; }
-  .stage-body .row.tall { height: 120px; background: linear-gradient(120deg, #ffd23f33, #C8102E22); }
+  .stage-title { position: absolute; left: 0; right: 0; top: 128px; padding: 1.2rem; }
+  .stage-title h3 { font-family: var(--display); font-weight: 700; font-size: 2rem; margin: 0; color: #fff; text-transform: uppercase; line-height: 1; text-shadow: 0 2px 18px rgba(0,0,0,.55); }
   .scroll-hint { position: absolute; right: 12px; bottom: 10px; font-size: .72rem; color: #888; background: rgba(255,255,255,.8); padding: .15rem .5rem; border-radius: 999px; pointer-events: none; }
 
   /* ---- The navigation bar (shared skeleton) ---- */
@@ -109,7 +106,7 @@
 <div class="page">
   <div class="page-head">
     <h1>Navigations-Blur – Varianten</h1>
-    <p>Sechs Vorschläge für die Nav-Leiste im Red-Ants-Look. Scrolle in jeder Kachel (der bunte Inhalt läuft unter der Leiste durch), um den Blur zu beurteilen. Unter jeder Variante steht das CSS. Variante 1 ist der aktuelle Zustand, Variante 2 der von dir angesprochene Blur-Verlauf.</p>
+    <p>Sechs Vorschläge für die Nav-Leiste im Red-Ants-Look, jeweils über einem Hintergrundfoto. Scrolle in jeder Kachel (das Foto läuft unter der Leiste durch), um den Blur zu beurteilen. Unter jeder Variante steht das CSS. Variante 1 ist der aktuelle Zustand, Variante 2 der von dir angesprochene Blur-Verlauf. Das Foto ist ein Platzhalter: oben im CSS die Variable <code>--bg</code> auf eine echte Red-Ants-Spielfoto-URL setzen.</p>
   </div>
 
   <div class="grid">
@@ -123,7 +120,7 @@
       </div>
       <div class="frame"><div class="scroller">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
         <span class="scroll-hint">↕ scrollen</span>
       </div></div>
       <details><summary>CSS</summary><pre>.nav {
@@ -142,7 +139,7 @@
       </div>
       <div class="frame"><div class="scroller">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
         <span class="scroll-hint">↕ scrollen</span>
       </div></div>
       <details><summary>CSS</summary><pre>.nav { position: sticky; top: 0;
@@ -166,7 +163,7 @@
       </div>
       <div class="frame"><div class="scroller">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
         <span class="scroll-hint">↕ scrollen</span>
       </div></div>
       <details><summary>CSS</summary><pre>.nav {
@@ -186,7 +183,7 @@
       </div>
       <div class="frame"><div class="scroller">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
         <span class="scroll-hint">↕ scrollen</span>
       </div></div>
       <details><summary>CSS</summary><pre>.nav {
@@ -206,7 +203,7 @@
       </div>
       <div class="frame"><div class="scroller">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
         <span class="scroll-hint">↕ scrollen</span>
       </div></div>
       <details><summary>CSS</summary><pre>.nav {
@@ -227,7 +224,7 @@
       </div>
       <div class="frame"><div class="scroller">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
         <span class="scroll-hint">↕ scrollen</span>
       </div></div>
       <details><summary>CSS</summary><pre>.nav {
