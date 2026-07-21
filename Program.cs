@@ -59,8 +59,8 @@ const string publicCsp =
     "img-src 'self' data: https:; " +
     "font-src 'self' https://fonts.gstatic.com data:; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com; " +
-    "connect-src 'self' https://challenges.cloudflare.com; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://media.payrexx.com; " +
+    "connect-src 'self' https://challenges.cloudflare.com https://*.payrexx.com; " +
     "frame-src 'self' https://www.google.com https://challenges.cloudflare.com https://payrexx.com https://*.payrexx.com; " +
     "form-action 'self' https://payrexx.com https://*.payrexx.com; " +
     "frame-ancestors 'self'";

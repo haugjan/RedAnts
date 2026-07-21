@@ -68,6 +68,14 @@ public sealed record FulfillmentSnapshot(
 
 public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName, string Token, int Type = 0, string? DateText = null);
 
+public sealed class CheckoutPayrexxView
+{
+    public string GatewayLink { get; init; } = "";
+    public string OrderNumber { get; init; } = "";
+    public decimal Total { get; init; }
+    public string CancelUrl { get; init; } = "/kasse";
+}
+
 public sealed class CheckoutConfirmationView
 {
     public string OrderNumber { get; init; } = "";
