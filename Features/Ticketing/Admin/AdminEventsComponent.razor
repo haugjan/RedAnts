@@ -52,6 +52,7 @@
                         <th rowspan="2" class="ta-num">Verkaufs&shy;kontingent</th>
                         <th rowspan="2" class="ta-num">Bisherige<br />Einlässe</th>
                         <th rowspan="2" class="ta-num">Verkaufte<br />@TicketType.EventTicket.DisplayName()</th>
+                        <th rowspan="2" class="ta-num">Erwartete<br />Zutritte</th>
                         <th colspan="5" class="ta-group">Eingelöste Zutritte</th>
                         <th rowspan="2"></th>
                         <th rowspan="2" class="ta-col-actions"></th>
@@ -68,7 +69,6 @@
                     @foreach (var e in Sorted())
                     {
                         var c = Counts(e.Id);
-                        var links = Links(e.Id);
                         <tr>
                             <td class="ta-cell-name">
                                 <InlineTextEdit Value="@e.Name" FieldLabel="Bezeichnung" MaxLength="200"
@@ -105,32 +105,17 @@
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveSalesQuotaAsync(e, v))" />
                             </td>
-                            <td class="ta-num">@c.TotalRedeemed</td>
+                            <td class="ta-num @PastClass(e, c)">@c.TotalRedeemed</td>
                             <td class="ta-num">@c.SoldSingleTickets</td>
+                            <td class="ta-num @ExpectedClass(e, c)" title="@ExpectedTitle(e, c)">@c.ExpectedAdmissions</td>
                             <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
                             <td class="ta-num">@c.RedeemedSeasonSingleTickets</td>
                             <td class="ta-num">@c.RedeemedSeasonPasses</td>
                             <td class="ta-num">@c.RedeemedMemberCards</td>
                             <td class="ta-num">@c.RedeemedFreeEntries</td>
                             <td class="ta-links">
-                                @if (e.Status == EventStatus.Open)
-                                {
-                                    <button type="button" class="ta-link-btn"
-                                            disabled="@(string.IsNullOrEmpty(links.Public))"
-                                            title="@(string.IsNullOrEmpty(links.Public) ? "Noch nicht veröffentlicht" : "Öffentlichen Link kopieren")"
-                                            @onclick="() => Copy(e.Id, false, links.Public)">
-                                        @(IsCopied(e.Id, false) ? "✓" : "🔗")
-                                    </button>
-                                }
-                                else if (e.Status == EventStatus.Intern)
-                                {
-                                    <button type="button" class="ta-link-btn"
-                                            disabled="@(string.IsNullOrEmpty(links.Intern))"
-                                            title="@(string.IsNullOrEmpty(links.Intern) ? "Noch nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
-                                            @onclick="() => Copy(e.Id, true, links.Intern)">
-                                        @(IsCopied(e.Id, true) ? "✓" : "🔒")
-                                    </button>
-                                }
+                                <button type="button" class="ta-link-btn" title="Links anzeigen und kopieren"
+                                        @onclick="() => OpenLinks(e)">🔗</button>
                             </td>
                             <td class="ta-col-actions">
                                 <button type="button" class="ta-icon-btn" title="Preise &amp; Kontingente pro Kategorie"
@@ -223,6 +208,15 @@
     </div>
 }
 
+@if (_linkEvent is not null)
+{
+    var l = Links(_linkEvent.Id);
+    <LinkOverlay Subtitle="@($"{_linkEvent.Name} · {_linkEvent.Date:dd.MM.yyyy}")"
+                 PublicUrl="@l.Public" InternUrl="@l.Intern"
+                 PublicHint="@PublicLinkHint(_linkEvent.Status)" InternHint="@InternLinkHint(_linkEvent.Status)"
+                 OnClose="() => _linkEvent = null" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
@@ -239,8 +233,6 @@
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
     [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
-    [Inject] private IJSRuntime JS { get; set; } = default!;
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
@@ -270,6 +262,33 @@
     private int? Quota(int eventId) => _quotas.TryGetValue(eventId, out var q) ? q : null;
     private int? SalesQuota(int eventId) => _salesQuotas.TryGetValue(eventId, out var q) ? q : null;
     private EventLinks Links(int eventId) => _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
+
+    private string PastClass(Event e, EventAdmissionCounts c)
+    {
+        if (Quota(e.Id) is not { } q) return "";
+        if (c.TotalRedeemed > q) return "ta-cell-over";
+        return q - c.TotalRedeemed <= 10 ? "ta-cell-warn" : "";
+    }
+
+    private string ExpectedClass(Event e, EventAdmissionCounts c)
+    {
+        if (Quota(e.Id) is not { } q) return "";
+        if (c.ExpectedAdmissions > q) return "ta-cell-over";
+        return PotentialAdmissions(e, c) > q ? "ta-cell-warn" : "";
+    }
+
+    private string? ExpectedTitle(Event e, EventAdmissionCounts c)
+    {
+        if (Quota(e.Id) is not { } q) return null;
+        if (c.ExpectedAdmissions > q)
+            return $"Erwartete Zutritte ({c.ExpectedAdmissions}) über dem Einlasskontingent ({q}).";
+        return PotentialAdmissions(e, c) > q
+            ? "Mit den noch verkaufbaren Tickets könnte das Einlasskontingent überschritten werden."
+            : null;
+    }
+
+    private int PotentialAdmissions(Event e, EventAdmissionCounts c) =>
+        SalesQuota(e.Id) is { } sq ? c.ExpectedAdmissions + Math.Max(0, sq - c.SoldSingleTickets) : int.MaxValue;
 
     private string? _createEventUrl;
 
@@ -322,24 +341,21 @@
         _ => "Entwurf"
     };
 
-    private (int EventId, bool Intern)? _copied;
-    private bool IsCopied(int eventId, bool intern) => _copied is { } c && c.EventId == eventId && c.Intern == intern;
+    private Event? _linkEvent;
+    private void OpenLinks(Event e) => _linkEvent = e;
 
-    private async Task Copy(int eventId, bool intern, string? relative)
+    private static string? PublicLinkHint(EventStatus status) => status switch
     {
-        if (string.IsNullOrEmpty(relative)) return;
-        var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
-        var absolute = relative.StartsWith("http") ? relative : origin + relative;
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", absolute);
-            _copied = (eventId, intern);
-            StateHasChanged();
-            await Task.Delay(1500);
-            if (IsCopied(eventId, intern)) { _copied = null; StateHasChanged(); }
-        }
-        catch { }
-    }
+        EventStatus.Open => null,
+        EventStatus.Intern => "Anlass ist intern: der öffentliche Link ist derzeit nicht aktiv.",
+        _ => "Anlass ist nicht im Verkauf: der Link ist derzeit nicht aktiv."
+    };
+
+    private static string? InternLinkHint(EventStatus status) => status switch
+    {
+        EventStatus.Open or EventStatus.Intern => null,
+        _ => "Anlass ist nicht im Verkauf: der Link ist derzeit nicht aktiv."
+    };
 
     private readonly EventStatus[] _statuses = Enum.GetValues<EventStatus>();
 

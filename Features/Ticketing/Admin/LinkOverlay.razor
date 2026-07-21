@@ -1,0 +1,84 @@
+@using Microsoft.JSInterop
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal ta-modal-links" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Links</h2>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="ta-modal-sub">@Subtitle</p>
+        }
+
+        <div class="ta-linkrow">
+            <div class="ta-linkrow-top">
+                <span class="ta-label">Öffentlicher Link</span>
+                <button type="button" class="ta-btn ta-btn-ghost ta-linkrow-copy"
+                        disabled="@string.IsNullOrEmpty(PublicUrl)"
+                        @onclick="() => CopyAsync(PublicUrl, true)">
+                    @(_copied == true ? "✓ Kopiert" : "In Zwischenablage kopieren")
+                </button>
+            </div>
+            <div class="ta-linkrow-url">@(string.IsNullOrEmpty(PublicUrl) ? "—" : Absolute(PublicUrl))</div>
+            @if (!string.IsNullOrEmpty(PublicHint))
+            {
+                <div class="ta-linkrow-hint">@PublicHint</div>
+            }
+        </div>
+
+        <div class="ta-linkrow">
+            <div class="ta-linkrow-top">
+                <span class="ta-label">Interner Link (mit Geheimnis)</span>
+                <button type="button" class="ta-btn ta-btn-ghost ta-linkrow-copy"
+                        disabled="@string.IsNullOrEmpty(InternUrl)"
+                        @onclick="() => CopyAsync(InternUrl, false)">
+                    @(_copied == false ? "✓ Kopiert" : "In Zwischenablage kopieren")
+                </button>
+            </div>
+            <div class="ta-linkrow-url">@(string.IsNullOrEmpty(InternUrl) ? "—" : Absolute(InternUrl))</div>
+            @if (!string.IsNullOrEmpty(InternHint))
+            {
+                <div class="ta-linkrow-hint">@InternHint</div>
+            }
+        </div>
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public string? PublicUrl { get; set; }
+    [Parameter] public string? InternUrl { get; set; }
+    [Parameter] public string? PublicHint { get; set; }
+    [Parameter] public string? InternHint { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private bool? _copied;
+
+    private string Absolute(string relative)
+    {
+        if (relative.StartsWith("http")) return relative;
+        var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+        return origin + relative;
+    }
+
+    private async Task CopyAsync(string? relative, bool isPublic)
+    {
+        if (string.IsNullOrEmpty(relative)) return;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Absolute(relative));
+            _copied = isPublic;
+            StateHasChanged();
+            await Task.Delay(1500);
+            if (_copied == isPublic) { _copied = null; StateHasChanged(); }
+        }
+        catch { }
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+}

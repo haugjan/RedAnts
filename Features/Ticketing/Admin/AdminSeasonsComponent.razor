@@ -49,7 +49,6 @@
                 <tbody>
                     @foreach (var s in _seasons)
                     {
-                        var links = Links(s.Id);
                         var stats = Stats(s.Id);
                         <tr>
                             <td class="ta-period">
@@ -87,28 +86,8 @@
                             <td class="ta-num">@stats.TicketsSold</td>
                             <td class="ta-num">@stats.Admissions</td>
                             <td class="ta-links">
-                                @if (s.Status == SeasonStatus.Open)
-                                {
-                                    <button type="button" class="ta-link-btn"
-                                            disabled="@(string.IsNullOrEmpty(links.Public))"
-                                            title="@(string.IsNullOrEmpty(links.Public) ? "Nicht veröffentlicht" : "Öffentlichen Link kopieren")"
-                                            @onclick="() => Copy(s.Id, false, links.Public)">🔗</button>
-                                }
-                                else if (s.Status == SeasonStatus.Intern)
-                                {
-                                    <button type="button" class="ta-link-btn"
-                                            disabled="@(string.IsNullOrEmpty(links.Intern))"
-                                            title="@(string.IsNullOrEmpty(links.Intern) ? "Nicht veröffentlicht" : "Internen Link (mit Geheimnis) kopieren")"
-                                            @onclick="() => Copy(s.Id, true, links.Intern)">🔒</button>
-                                }
-                                else
-                                {
-                                    <span class="ta-muted">–</span>
-                                }
-                                @if (_copied is { } c && c.SeasonId == s.Id)
-                                {
-                                    <span class="ta-copied">in Zwischenablage kopiert</span>
-                                }
+                                <button type="button" class="ta-link-btn" title="Links anzeigen und kopieren"
+                                        @onclick="() => OpenLinks(s)">🔗</button>
                             </td>
                             <td class="ta-col-actions">
                                 <button type="button" class="ta-icon-btn" title="Preise und Kontingente" @onclick="() => OpenEditAsync(s)">$</button>
@@ -278,6 +257,15 @@
     </div>
 }
 
+@if (_linkSeason is not null)
+{
+    var l = Links(_linkSeason.Id);
+    <LinkOverlay Subtitle="@_linkSeason.Name"
+                 PublicUrl="@l.Public" InternUrl="@l.Intern"
+                 PublicHint="@PublicLinkHint(_linkSeason.Status)" InternHint="@InternLinkHint(_linkSeason.Status)"
+                 OnClose="() => _linkSeason = null" />
+}
+
 <style>
     .ta-addon-label { width: 100%; min-width: 12rem; text-align: left; }
     .ta-addon-add { margin-top: .5rem; }
@@ -319,8 +307,6 @@
     [Inject] private ISeasonStatsReader StatsReader { get; set; } = default!;
     [Inject] private ISeasonLinkReader LinkReader { get; set; } = default!;
     [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
-    [Inject] private IJSRuntime JS { get; set; } = default!;
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private static readonly IReadOnlyList<SeasonStatus> _statusOptions = Enum.GetValues<SeasonStatus>();
 
@@ -412,27 +398,21 @@
         await ReloadAsync();
     }
 
-    private (int SeasonId, bool Intern)? _copied;
+    private Season? _linkSeason;
+    private void OpenLinks(Season s) => _linkSeason = s;
 
-    private async Task Copy(int seasonId, bool intern, string? relative)
+    private static string? PublicLinkHint(SeasonStatus status) => status switch
     {
-        if (string.IsNullOrEmpty(relative)) return;
-        var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
-        var absolute = relative.StartsWith("http") ? relative : origin + relative;
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", absolute);
-            _copied = (seasonId, intern);
-            StateHasChanged();
-            await Task.Delay(2000);
-            if (_copied is { } c && c.SeasonId == seasonId && c.Intern == intern)
-            {
-                _copied = null;
-                StateHasChanged();
-            }
-        }
-        catch { }
-    }
+        SeasonStatus.Open => null,
+        SeasonStatus.Intern => "Saison ist intern: der öffentliche Link ist derzeit nicht aktiv.",
+        _ => "Saison ist nicht im Verkauf: der Link ist derzeit nicht aktiv."
+    };
+
+    private static string? InternLinkHint(SeasonStatus status) => status switch
+    {
+        SeasonStatus.Open or SeasonStatus.Intern => null,
+        _ => "Saison ist nicht im Verkauf: der Link ist derzeit nicht aktiv."
+    };
 
     private Season? _editing;
     private List<TierRow> _editTiers = new();

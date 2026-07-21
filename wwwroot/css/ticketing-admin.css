@@ -214,3 +214,13 @@
 .ta-subtable th.ta-subgroup { text-align: center; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--ta-accent); background: #eef6fc; border-left: 1px solid #d7e8f6; }
 .ta-subtable th.ta-subgroup-alt { color: #1a7f37; background: #e9f6ee; border-left: 1px solid #cde9d8; }
 .ta-subtable th.ta-group-col, .ta-subtable td.ta-group-col { border-left: 1px solid var(--ta-border); }
+
+.ta-cell-over { color: #c8102e; font-weight: 700; }
+.ta-cell-warn { color: #b8620a; font-weight: 700; }
+
+.ta-modal-links { max-width: 640px; }
+.ta-linkrow { border: 1px solid var(--ta-border); border-radius: 8px; padding: 0.6rem 0.75rem; margin-top: 0.6rem; }
+.ta-linkrow-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.ta-linkrow-copy { white-space: nowrap; }
+.ta-linkrow-url { margin-top: 0.35rem; font-size: 0.82rem; color: #555; word-break: break-all; font-family: monospace; }
+.ta-linkrow-hint { margin-top: 0.35rem; font-size: 0.8rem; color: #b8620a; }
