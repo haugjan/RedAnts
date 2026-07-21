@@ -8,47 +8,70 @@
     <p class="text-muted mb-1">Bestellung @Model.OrderNumber</p>
     <p class="mb-3"><strong>Total: CHF @Model.Total.ToString("N2")</strong></p>
 
-    <p id="pay-hint" class="mb-3">Das Bezahlfenster öffnet sich automatisch …</p>
+    <p id="pay-hint" class="mb-3">Die Zahlung öffnet sich als Overlay …</p>
 
     <button type="button" id="pay-open" class="btn btn-danger">Zahlung öffnen</button>
 
     <p class="mt-3 mb-0 small">
-        <a id="pay-fallback" href="@Model.GatewayLink">Fenster öffnet nicht? Hier direkt bezahlen</a>
+        <a id="pay-fallback" href="@Model.GatewayLink">Overlay öffnet nicht? Hier direkt bezahlen</a>
     </p>
     <p class="mt-2 mb-0 small">
         <a href="@Model.CancelUrl">Zurück zur Kasse</a>
     </p>
 </div>
 
-<script src="https://media.payrexx.com/modal/v1.1/payrexx-modal.min.js"></script>
+<div id="pay-overlay" class="pay-overlay" hidden>
+    <div class="pay-overlay__inner">
+        <button type="button" id="pay-close" class="pay-overlay__close" aria-label="Schliessen">&times;</button>
+        <iframe id="pay-frame" class="pay-overlay__frame" title="Zahlung" src="about:blank" allow="payment"></iframe>
+    </div>
+</div>
+
+<style>
+    .pay-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(15, 15, 15, .72); }
+    .pay-overlay[hidden] { display: none; }
+    .pay-overlay__inner { position: relative; width: min(560px, 100%); height: min(88vh, 820px); background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 70px rgba(0, 0, 0, .45); }
+    .pay-overlay__frame { width: 100%; height: 100%; border: 0; }
+    .pay-overlay__close { position: absolute; top: 4px; right: 10px; z-index: 1; border: 0; background: transparent; font-size: 2rem; line-height: 1; color: #444; cursor: pointer; }
+    .pay-overlay__close:hover { color: #000; }
+</style>
+
 <script>
 (function () {
     var link = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.GatewayLink));
+    var orderId = @Model.OrderId;
+    var overlay = document.getElementById('pay-overlay');
+    var frame = document.getElementById('pay-frame');
 
-    function openModal() {
-        if (window.Payrexx && window.Payrexx.Modal) {
-            window.Payrexx.Modal.open({ href: link });
-            return true;
-        }
-        return false;
+    function openOverlay() {
+        if (frame.getAttribute('src') !== link) frame.setAttribute('src', link);
+        overlay.hidden = false;
+        document.body.style.overflow = 'hidden';
     }
 
-    var openBtn = document.getElementById('pay-open');
-    if (openBtn) {
-        openBtn.addEventListener('click', function () {
-            if (!openModal()) window.location.href = link;
-        });
+    function closeOverlay() {
+        overlay.hidden = true;
+        frame.setAttribute('src', 'about:blank');
+        document.body.style.overflow = '';
     }
+
+    document.getElementById('pay-open').addEventListener('click', openOverlay);
+    document.getElementById('pay-close').addEventListener('click', closeOverlay);
 
     var tries = 0;
-    var timer = setInterval(function () {
+    function poll() {
         tries++;
-        if (openModal()) {
-            clearInterval(timer);
-        } else if (tries >= 25) {
-            clearInterval(timer);
-            window.location.href = link;
-        }
-    }, 200);
+        fetch('/checkout/status?order=' + orderId, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (s) {
+                if (s && s.paid) { window.location.href = '/checkout/success?order=' + orderId; return; }
+                if (s && s.cancelled) { window.location.href = '/checkout/cancel'; return; }
+                if (tries < 240) setTimeout(poll, 2500);
+            })
+            .catch(function () { if (tries < 240) setTimeout(poll, 2500); });
+    }
+
+    openOverlay();
+    setTimeout(poll, 2500);
 }());
 </script>

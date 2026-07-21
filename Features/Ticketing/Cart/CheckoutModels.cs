@@ -71,6 +71,7 @@ public sealed record ConfirmationTicket(Guid Uuid, string EventName, string Cate
 
 public sealed class CheckoutPayrexxView
 {
+    public int OrderId { get; init; }
     public string GatewayLink { get; init; } = "";
     public string OrderNumber { get; init; } = "";
     public decimal Total { get; init; }

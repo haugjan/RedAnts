@@ -163,6 +163,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 await orders.SaveAsync(saved);
                 return View("~/Views/Checkout/Payrexx.cshtml", new CheckoutPayrexxView
                 {
+                    OrderId = saved.Id,
                     GatewayLink = gateway.Link,
                     OrderNumber = saved.OrderNumber,
                     Total = saved.TotalGross,
