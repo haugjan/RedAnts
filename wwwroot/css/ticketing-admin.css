@@ -151,7 +151,7 @@
     max-height: calc(100vh - 6rem); overflow-y: auto;
 }
 .ta-modal--wide { max-width: 900px; }
-.ta-modal--xwide { max-width: min(1180px, 96vw); padding-left: 1.1rem; padding-right: 1.1rem; }
+.ta-modal--xwide { max-width: min(1320px, 98vw); padding-left: 1.1rem; padding-right: 1.1rem; }
 .ta-modal-title { font-family: var(--ta-font); font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 0.2rem; }
 .ta-modal-sub { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 1.1rem; }
 .ta-bundle-list { list-style: none; margin: 0 0 1rem; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -243,3 +243,17 @@
 .ta-linkrow-copy { white-space: nowrap; }
 .ta-linkrow-url { margin-top: 0.35rem; font-size: 0.82rem; color: #555; word-break: break-all; font-family: monospace; }
 .ta-linkrow-hint { margin-top: 0.35rem; font-size: 0.8rem; color: #b8620a; }
+
+.ta-subtable-wrap { overflow-x: auto; }
+.ta-subtable .ta-input-sm { width: 4.2rem; }
+.ta-subtable .ta-input-age { width: 3rem; }
+.ta-subtable .ta-tier-name { width: 100%; min-width: 7rem; }
+.ta-subtable input.ta-input { padding: 0.3rem 0.4rem; font-size: 0.82rem; }
+.ta-subtable .ta-datebox { gap: 0.15rem; }
+.ta-subtable .ta-dateseg { padding: 0.28rem 0.3rem; }
+.ta-subtable .ta-seg { font-size: 0.82rem; }
+.ta-subtable .ta-seg-dm { width: 1.15rem; }
+.ta-subtable .ta-seg-y { width: 2.1rem; }
+.ta-subtable .ta-datebox-cal { padding: 0.24rem 0.3rem; font-size: 0.8rem; }
+.ta-subtable .ta-promo-toggle { padding: 0.2rem 0.4rem; font-size: 0.72rem; white-space: nowrap; }
+.ta-subtable .ta-tier-actions { white-space: nowrap; }
