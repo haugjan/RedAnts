@@ -25,6 +25,12 @@
                         }
                     </select>
                 </div>
+                <div class="ta-field ta-field--grow">
+                    <label class="ta-label" for="ordSearch">Suche</label>
+                    <input id="ordSearch" type="search" class="ta-input ta-orders-search"
+                           placeholder="Name, E-Mail, Ort, PLZ, Bestell-Nr., Kategorie …"
+                           @bind="_search" @bind:event="oninput" />
+                </div>
             </div>
         </div>
 
@@ -34,6 +40,7 @@
         }
         else
         {
+            var shown = Sorted().ToList();
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
@@ -51,7 +58,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var o in Sorted())
+                        @foreach (var o in shown)
                         {
                             <tr>
                                 <td><code class="ta-uuid">@o.OrderNumber</code></td>
@@ -90,11 +97,22 @@
                     </tbody>
                 </table>
             </div>
+            @if (shown.Count == 0)
+            {
+                <div class="ta-placeholder">Keine Bestellung passt zur Suche „@_search".</div>
+            }
             <p class="ta-summary">
-                @_orders.Count Bestellung@(_orders.Count == 1 ? "" : "en") ·
-                @_orders.Count(o => o.Status == OrderStatus.Paid) bezahlt ·
-                @_orders.Count(o => o.Status != OrderStatus.Paid) offen ·
-                Total bezahlt CHF @_orders.Where(o => o.Status == OrderStatus.Paid).Sum(o => o.TotalGross).ToString("N2")
+                @if (!string.IsNullOrWhiteSpace(_search))
+                {
+                    <text>@shown.Count von @_orders.Count Bestellungen · </text>
+                }
+                else
+                {
+                    <text>@_orders.Count Bestellung@(_orders.Count == 1 ? "" : "en") · </text>
+                }
+                @shown.Count(o => o.Status == OrderStatus.Paid) bezahlt ·
+                @shown.Count(o => o.Status != OrderStatus.Paid) offen ·
+                Total bezahlt CHF @shown.Where(o => o.Status == OrderStatus.Paid).Sum(o => o.TotalGross).ToString("N2")
             </p>
         }
     }
@@ -109,6 +127,11 @@
 {
     <OrderItemsOverlay OrderId="_itemsOrder.OrderId" Title="@_itemsOrder.OrderNumber" OnClose="CloseItems" />
 }
+
+<style>
+    .ta-field--grow { flex: 1 1 18rem; }
+    .ta-orders-search { width: 100%; min-width: 14rem; }
+</style>
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
@@ -138,6 +161,7 @@
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<OrderListItem> _orders = [];
+    private string _search = "";
 
     public int SelectedSeasonId { get; set; }
 
@@ -166,15 +190,31 @@
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<OrderListItem> Sorted()
     {
+        var src = Filtered();
         IEnumerable<OrderListItem> q = _sortCol switch
         {
-            "buyer" => _orders.OrderBy(o => o.BuyerName),
-            "amount" => _orders.OrderBy(o => o.TotalGross),
-            "status" => _orders.OrderBy(o => o.Status),
-            _ => _orders.OrderBy(o => o.CreatedAt),
+            "buyer" => src.OrderBy(o => o.BuyerName),
+            "amount" => src.OrderBy(o => o.TotalGross),
+            "status" => src.OrderBy(o => o.Status),
+            _ => src.OrderBy(o => o.CreatedAt),
         };
         return _sortAsc ? q : q.Reverse();
     }
+
+    private IEnumerable<OrderListItem> Filtered()
+    {
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return terms.Length == 0
+            ? _orders
+            : _orders.Where(o => terms.All(t => Haystack(o).Contains(t, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static string Haystack(OrderListItem o) => string.Join(' ', new[]
+    {
+        o.OrderNumber, o.BuyerName, o.Email, o.Street, o.AddressLine2 ?? "", o.PostalCode, o.City, o.Country,
+        o.EventTicketSummary, o.SeasonPassSummary, o.FlexTicketSummary,
+        o.PaymentSource is { } ps ? ps.DisplayName() : "", StatusLabel(o.Status)
+    });
 
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
