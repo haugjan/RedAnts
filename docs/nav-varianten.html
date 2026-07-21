@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Red Ants – Navigations-Blur Varianten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Verdana&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --red: #C8102E; --red-dark: #A50D26; --ink: #101010; --display: 'Oswald', Impact, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #eef0f3; color: var(--ink);
+    font-family: Verdana, Geneva, Tahoma, sans-serif; line-height: 1.6;
+  }
+  .page { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  .page-head h1 { font-family: var(--display); font-weight: 700; font-size: 2rem; margin: 0 0 .4rem; text-transform: uppercase; letter-spacing: .02em; }
+  .page-head p { max-width: 60ch; color: #444; margin: 0 0 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 1.75rem; }
+  @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+
+  .variant { background: #fff; border: 1px solid #e3e5e9; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,.06); }
+  .variant-info { padding: 1rem 1.15rem .35rem; }
+  .variant-info h2 { font-family: var(--display); font-weight: 600; font-size: 1.1rem; margin: 0 0 .25rem; text-transform: uppercase; letter-spacing: .02em; }
+  .variant-info .tag { display: inline-block; font-size: .72rem; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .3rem; }
+  .variant-info p { font-size: .86rem; color: #555; margin: 0 0 .5rem; }
+  details { font-size: .78rem; color: #666; padding: 0 1.15rem 1rem; }
+  details summary { cursor: pointer; color: var(--red); font-weight: 700; }
+  pre { background: #14161c; color: #e6e6e6; border-radius: 8px; padding: .8rem .9rem; overflow-x: auto; font-size: .74rem; line-height: 1.5; margin: .6rem 0 0; }
+
+  /* ---- Demo frame: a nav sticks while colourful content scrolls behind it ---- */
+  .frame { height: 340px; overflow: hidden; position: relative; }
+  .scroller { height: 100%; overflow-y: auto; scroll-behavior: smooth; }
+  .stage { min-height: 820px; padding: 0; position: relative; }
+  .stage-hero {
+    height: 240px; display: flex; align-items: flex-end; padding: 1.2rem;
+    background: radial-gradient(120% 90% at 80% 10%, #ff5a76 0%, #C8102E 42%, #7d0a1c 100%);
+    color: #fff;
+  }
+  .stage-hero h3 { font-family: var(--display); font-weight: 700; font-size: 1.9rem; margin: 0; text-transform: uppercase; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,.25); }
+  .stage-body { padding: 1.2rem; }
+  .stage-body .row { height: 26px; border-radius: 6px; margin: 0 0 .7rem; background: linear-gradient(90deg, #dfe3ea, #eef1f5); }
+  .stage-body .row:nth-child(3n) { width: 70%; }
+  .stage-body .row.tall { height: 120px; background: linear-gradient(120deg, #ffd23f33, #C8102E22); }
+  .scroll-hint { position: absolute; right: 12px; bottom: 10px; font-size: .72rem; color: #888; background: rgba(255,255,255,.8); padding: .15rem .5rem; border-radius: 999px; pointer-events: none; }
+
+  /* ---- The navigation bar (shared skeleton) ---- */
+  .nav { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 1rem; padding: .7rem 1.15rem; }
+  .nav-logo { font-family: var(--display); font-weight: 700; letter-spacing: .04em; font-size: 1.05rem; color: var(--red); text-transform: uppercase; }
+  .nav-links { margin-left: auto; display: flex; gap: 1.1rem; }
+  .nav-links a { font-family: var(--display); font-weight: 500; font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; color: var(--ink); text-decoration: none; }
+  .nav-links a.active { color: var(--red); }
+
+  /* ============ VARIANT 1 – current: solid blur ============ */
+  .v-current .nav {
+    background: rgba(255,255,255,.72);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  /* ============ VARIANT 2 – progressive blur (Blur-Verlauf) ============ */
+  .v-progressive .nav { background: linear-gradient(to bottom, rgba(255,255,255,.6), rgba(255,255,255,0)); }
+  .v-progressive .nav::before {
+    content: ""; position: absolute; inset: 0 0 -22px 0; z-index: -1; pointer-events: none;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
+  }
+
+  /* ============ VARIANT 3 – frosted glass ============ */
+  .v-frosted .nav {
+    background: rgba(255,255,255,.55);
+    -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%);
+    border-bottom: 1px solid rgba(255,255,255,.6);
+    box-shadow: 0 6px 24px rgba(16,16,16,.10);
+  }
+
+  /* ============ VARIANT 4 – tinted gradient blur ============ */
+  .v-tinted .nav {
+    background: linear-gradient(to bottom, rgba(255,255,255,.82), rgba(200,16,46,.09));
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(200,16,46,.18);
+  }
+
+  /* ============ VARIANT 5 – seamless fade-out edge ============ */
+  .v-fade .nav {
+    background: linear-gradient(to bottom, rgba(255,255,255,.85) 40%, rgba(255,255,255,0));
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+    mask-image: linear-gradient(to bottom, #000 55%, transparent);
+    padding-bottom: 1.4rem;
+  }
+
+  /* ============ VARIANT 6 – dark blur (for dark/hero contexts) ============ */
+  .v-dark .nav {
+    background: rgba(16,16,16,.5);
+    -webkit-backdrop-filter: blur(10px) saturate(140%); backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .v-dark .nav-logo { color: #fff; }
+  .v-dark .nav-links a { color: rgba(255,255,255,.9); }
+  .v-dark .nav-links a.active { color: #ffd23f; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-head">
+    <h1>Navigations-Blur – Varianten</h1>
+    <p>Sechs Vorschläge für die Nav-Leiste im Red-Ants-Look. Scrolle in jeder Kachel (der bunte Inhalt läuft unter der Leiste durch), um den Blur zu beurteilen. Unter jeder Variante steht das CSS. Variante 1 ist der aktuelle Zustand, Variante 2 der von dir angesprochene Blur-Verlauf.</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- 1 -->
+    <div class="variant v-current">
+      <div class="variant-info">
+        <span class="tag">Aktuell</span>
+        <h2>1 · Solid-Blur</h2>
+        <p>Gleichmässiger Weichzeichner auf halbtransparentem Weiss mit feiner Trennlinie. Ruhig, neutral, gut lesbar.</p>
+      </div>
+      <div class="frame"><div class="scroller">
+        <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
+        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <span class="scroll-hint">↕ scrollen</span>
+      </div></div>
+      <details><summary>CSS</summary><pre>.nav {
+  background: rgba(255,255,255,.72);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #f0f0f0;
+}</pre></details>
+    </div>
+
+    <!-- 2 -->
+    <div class="variant v-progressive">
+      <div class="variant-info">
+        <span class="tag">Empfehlung</span>
+        <h2>2 · Blur-Verlauf (progressiv)</h2>
+        <p>Der Weichzeichner ist oben stark und läuft nach unten weich aus (per Masken-Verlauf). Kein harter Rand, sehr modern – das „iOS-Gefühl“.</p>
+      </div>
+      <div class="frame"><div class="scroller">
+        <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
+        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <span class="scroll-hint">↕ scrollen</span>
+      </div></div>
+      <details><summary>CSS</summary><pre>.nav { position: sticky; top: 0;
+  background: linear-gradient(to bottom,
+     rgba(255,255,255,.6), rgba(255,255,255,0));
+}
+.nav::before {           /* geblurte Ebene mit Verlaufsmaske */
+  content: ""; position: absolute; inset: 0 0 -22px 0;
+  z-index: -1; pointer-events: none;
+  backdrop-filter: blur(14px);
+  mask-image: linear-gradient(to bottom, #000 45%, transparent);
+}</pre></details>
+    </div>
+
+    <!-- 3 -->
+    <div class="variant v-frosted">
+      <div class="variant-info">
+        <span class="tag">Kräftig</span>
+        <h2>3 · Frosted Glass</h2>
+        <p>Stärkerer Blur mit erhöhter Farbsättigung und weichem Schatten. Wirkt wie Milchglas, hebt die Leiste deutlicher ab.</p>
+      </div>
+      <div class="frame"><div class="scroller">
+        <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
+        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <span class="scroll-hint">↕ scrollen</span>
+      </div></div>
+      <details><summary>CSS</summary><pre>.nav {
+  background: rgba(255,255,255,.55);
+  backdrop-filter: blur(18px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,.6);
+  box-shadow: 0 6px 24px rgba(16,16,16,.10);
+}</pre></details>
+    </div>
+
+    <!-- 4 -->
+    <div class="variant v-tinted">
+      <div class="variant-info">
+        <span class="tag">Markenton</span>
+        <h2>4 · Getönter Verlauf</h2>
+        <p>Blur mit einem zarten Rot-Verlauf nach unten. Bringt die Vereinsfarbe subtil in die Leiste, ohne die Lesbarkeit zu stören.</p>
+      </div>
+      <div class="frame"><div class="scroller">
+        <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
+        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <span class="scroll-hint">↕ scrollen</span>
+      </div></div>
+      <details><summary>CSS</summary><pre>.nav {
+  background: linear-gradient(to bottom,
+     rgba(255,255,255,.82), rgba(200,16,46,.09));
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(200,16,46,.18);
+}</pre></details>
+    </div>
+
+    <!-- 5 -->
+    <div class="variant v-fade">
+      <div class="variant-info">
+        <span class="tag">Nahtlos</span>
+        <h2>5 · Auslaufende Kante</h2>
+        <p>Sowohl Fläche als auch Blur laufen nach unten in Transparenz aus – die Leiste verschmilzt randlos mit dem Inhalt. Am dezentesten.</p>
+      </div>
+      <div class="frame"><div class="scroller">
+        <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
+        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <span class="scroll-hint">↕ scrollen</span>
+      </div></div>
+      <details><summary>CSS</summary><pre>.nav {
+  background: linear-gradient(to bottom,
+     rgba(255,255,255,.85) 40%, rgba(255,255,255,0));
+  backdrop-filter: blur(12px);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  padding-bottom: 1.4rem;
+}</pre></details>
+    </div>
+
+    <!-- 6 -->
+    <div class="variant v-dark">
+      <div class="variant-info">
+        <span class="tag">Dunkel</span>
+        <h2>6 · Dunkler Blur</h2>
+        <p>Dunkle, geblurte Leiste mit hellem Text – ideal über Bild-Heros. Passt zur bestehenden transparent-auf-Hero-Logik (dunkel statt hell beim Scrollen).</p>
+      </div>
+      <div class="frame"><div class="scroller">
+        <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
+        <div class="stage"><div class="stage-hero"><h3>Red Ants<br>Winterthur</h3></div><div class="stage-body"><div class="row tall"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div>
+        <span class="scroll-hint">↕ scrollen</span>
+      </div></div>
+      <details><summary>CSS</summary><pre>.nav {
+  background: rgba(16,16,16,.5);
+  backdrop-filter: blur(10px) saturate(140%);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.nav-logo { color:#fff; } .nav-links a { color: rgba(255,255,255,.9); }</pre></details>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
