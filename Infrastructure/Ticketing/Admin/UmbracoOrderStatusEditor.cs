@@ -8,7 +8,7 @@ using Umbraco.Cms.Core.DependencyInjection;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log) : IOrderStatusEditor
+public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPayrexxGateway payrexx) : IOrderStatusEditor
 {
     public async Task SetStatusAsync(int orderId, OrderStatus target, string? changedBy)
     {
@@ -27,6 +27,32 @@ public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log) : IO
 
         await orders.SaveAsync(order);
         await log.AppendAsync(orderId, target, changedBy, "Admin-Änderung");
+    }
+
+    public async Task RefundAsync(int orderId, string? changedBy)
+    {
+        var order = await orders.GetByIdAsync(orderId)
+            ?? throw new DomainException("Bestellung wurde nicht gefunden.");
+        if (order.Status == OrderStatus.Refunded) return;
+        if (order.Status != OrderStatus.Paid)
+            throw new DomainException("Nur bezahlte Bestellungen können zurückerstattet werden.");
+
+        string note;
+        if (!string.IsNullOrWhiteSpace(order.PayrexxGatewayId) && payrexx.Enabled)
+        {
+            var refunded = await payrexx.RefundGatewayAsync(order.PayrexxGatewayId!);
+            if (!refunded)
+                throw new DomainException("Payrexx-Rückerstattung fehlgeschlagen. Bitte im Payrexx-Portal prüfen.");
+            note = "Rückerstattung über Payrexx";
+        }
+        else
+        {
+            note = "Rückerstattung (manuell)";
+        }
+
+        order.Refund();
+        await orders.SaveAsync(order);
+        await log.AppendAsync(orderId, OrderStatus.Refunded, changedBy, note);
     }
 }
 

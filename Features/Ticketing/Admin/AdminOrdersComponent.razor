@@ -76,12 +76,18 @@
                                 </td>
                                 <td>@o.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                                 <td>
-                                    <InlineSelectEdit TValue="OrderStatus" Value="o.Status" Options="_statusOptions" FieldLabel="Bezahlstatus"
-                                                      Label="@StatusLabel" Save="@(s => SaveStatusAsync(o, s))">
-                                        <Display Context="st">
-                                            <span class="ta-badge @StatusClass(st)">@StatusLabel(st)</span>
-                                        </Display>
-                                    </InlineSelectEdit>
+                                    <span class="ta-badge @StatusClass(o.Status)">@StatusLabel(o.Status)</span>
+                                    @{ var actions = ActionsFor(o.Status); }
+                                    @if (actions.Length > 0)
+                                    {
+                                        <div class="ta-status-actions">
+                                            @foreach (var a in actions)
+                                            {
+                                                <button type="button" class="ta-link-btn @(a == OrderAction.Refund ? "ta-link-danger" : "")"
+                                                        @onclick="() => Ask(o, a)">@ActionLabel(a)</button>
+                                            }
+                                        </div>
+                                    }
                                 </td>
                                 <td class="ta-num">CHF @o.TotalGross.ToString("N2")</td>
                                 <td>@(o.PaymentSource is { } ps ? ps.DisplayName() : "—")</td>
@@ -128,6 +134,18 @@
     <OrderItemsOverlay OrderId="_itemsOrder.OrderId" Title="@_itemsOrder.OrderNumber" OnClose="CloseItems" />
 }
 
+@if (_actionOrder is not null)
+{
+    <ConfirmDialog Title="@ActionTitle(_action)"
+                   Message="@ActionMessage(_action, _actionOrder)"
+                   ConfirmLabel="@ActionLabel(_action)"
+                   Danger="@(_action != OrderAction.MarkPaid)"
+                   Busy="_actionBusy"
+                   Error="_actionError"
+                   OnConfirm="ConfirmActionAsync"
+                   OnCancel="CancelAction" />
+}
+
 <style>
     .ta-field--grow { flex: 1 1 18rem; }
     .ta-orders-search { width: 100%; min-width: 14rem; }
@@ -142,13 +160,83 @@
     [Inject] private IOrderStatusEditor StatusEditor { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
-    private static readonly OrderStatus[] _statusOptions = [OrderStatus.Paid, OrderStatus.Draft, OrderStatus.Cancelled, OrderStatus.Refunded];
+    private enum OrderAction { MarkPaid, Cancel, Refund }
 
-    private async Task SaveStatusAsync(OrderListItem o, OrderStatus target)
+    private OrderListItem? _actionOrder;
+    private OrderAction _action;
+    private bool _actionBusy;
+    private string? _actionError;
+
+    private static OrderAction[] ActionsFor(OrderStatus status) => status switch
     {
-        await StatusEditor.SetStatusAsync(o.OrderId, target, Identity.Name);
-        await ReloadOrdersAsync();
+        OrderStatus.Draft => [OrderAction.MarkPaid, OrderAction.Cancel],
+        OrderStatus.Paid => [OrderAction.Cancel, OrderAction.Refund],
+        _ => []
+    };
+
+    private void Ask(OrderListItem o, OrderAction action)
+    {
+        _actionOrder = o;
+        _action = action;
+        _actionError = null;
+        _actionBusy = false;
     }
+
+    private void CancelAction()
+    {
+        _actionOrder = null;
+        _actionError = null;
+    }
+
+    private async Task ConfirmActionAsync()
+    {
+        if (_actionOrder is null) return;
+        _actionBusy = true;
+        _actionError = null;
+        try
+        {
+            switch (_action)
+            {
+                case OrderAction.MarkPaid: await StatusEditor.SetStatusAsync(_actionOrder.OrderId, OrderStatus.Paid, Identity.Name); break;
+                case OrderAction.Cancel: await StatusEditor.SetStatusAsync(_actionOrder.OrderId, OrderStatus.Cancelled, Identity.Name); break;
+                case OrderAction.Refund: await StatusEditor.RefundAsync(_actionOrder.OrderId, Identity.Name); break;
+            }
+            _actionOrder = null;
+            await ReloadOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _actionBusy = false;
+        }
+    }
+
+    private static string ActionLabel(OrderAction action) => action switch
+    {
+        OrderAction.MarkPaid => "Als bezahlt",
+        OrderAction.Cancel => "Stornieren",
+        OrderAction.Refund => "Rückerstatten",
+        _ => ""
+    };
+
+    private static string ActionTitle(OrderAction action) => action switch
+    {
+        OrderAction.MarkPaid => "Als bezahlt markieren",
+        OrderAction.Cancel => "Bestellung stornieren",
+        OrderAction.Refund => "Bestellung zurückerstatten",
+        _ => "Bestätigen"
+    };
+
+    private static string ActionMessage(OrderAction action, OrderListItem o) => action switch
+    {
+        OrderAction.MarkPaid => $"Bestellung {o.OrderNumber} als bezahlt markieren?",
+        OrderAction.Cancel => $"Bestellung {o.OrderNumber} stornieren? Dies kann nicht rückgängig gemacht werden.",
+        OrderAction.Refund => $"Bestellung {o.OrderNumber} über CHF {o.TotalGross:N2} zurückerstatten? Die Rückerstattung wird bei Payrexx ausgelöst und kann nicht rückgängig gemacht werden.",
+        _ => ""
+    };
 
     private OrderListItem? _logOrder;
     private void OpenLog(OrderListItem o) => _logOrder = o;

@@ -84,6 +84,74 @@ public sealed class PayrexxGateway(
         return MapStatus(status);
     }
 
+    public async Task<bool> RefundGatewayAsync(string gatewayId, CancellationToken cancellationToken = default)
+    {
+        if (!Enabled) return false;
+
+        var (transactionId, amountInCents) = await GetConfirmedTransactionAsync(gatewayId, cancellationToken);
+        if (transactionId is null)
+        {
+            logger.LogError("Payrexx refund: no confirmed transaction for gateway {GatewayId}", gatewayId);
+            return false;
+        }
+
+        var fields = new List<KeyValuePair<string, string>>
+        {
+            new("amount", amountInCents.ToString(CultureInfo.InvariantCulture))
+        };
+        var body = SignedBody(fields);
+        var url = $"{BaseUrl}Transaction/{Uri.EscapeDataString(transactionId)}/refund/?instance={Uri.EscapeDataString(Instance!)}";
+
+        var client = httpClientFactory.CreateClient("payrexx");
+        using var content = new StringContent(body, Encoding.UTF8, "application/x-www-form-urlencoded");
+        using var response = await client.PostAsync(url, content, cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogError("Payrexx refund failed: {Status} {Body}", response.StatusCode, json);
+            return false;
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var status = doc.RootElement.TryGetProperty("status", out var st) ? st.GetString() : null;
+        return string.Equals(status, "success", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<(string? TransactionId, int AmountInCents)> GetConfirmedTransactionAsync(string gatewayId, CancellationToken cancellationToken)
+    {
+        var signature = Sign("");
+        var url = $"{BaseUrl}Gateway/{Uri.EscapeDataString(gatewayId)}/?instance={Uri.EscapeDataString(Instance!)}&ApiSignature={Uri.EscapeDataString(signature)}";
+
+        var client = httpClientFactory.CreateClient("payrexx");
+        using var response = await client.GetAsync(url, cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogError("Payrexx retrieve gateway for refund failed: {Status} {Body}", response.StatusCode, json);
+            return (null, 0);
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var data = doc.RootElement.GetProperty("data")[0];
+        if (!data.TryGetProperty("invoices", out var invoices) || invoices.ValueKind != JsonValueKind.Array) return (null, 0);
+
+        foreach (var invoice in invoices.EnumerateArray())
+        {
+            if (!invoice.TryGetProperty("transactions", out var transactions) || transactions.ValueKind != JsonValueKind.Array) continue;
+            foreach (var tx in transactions.EnumerateArray())
+            {
+                var txStatus = tx.TryGetProperty("status", out var s) ? s.GetString() ?? "" : "";
+                if (MapStatus(txStatus) != PayrexxStatus.Confirmed) continue;
+                if (!tx.TryGetProperty("id", out var idEl)) continue;
+                var id = idEl.GetInt64().ToString(CultureInfo.InvariantCulture);
+                var amount = tx.TryGetProperty("amount", out var amtEl) && amtEl.TryGetInt32(out var a) ? a : 0;
+                return (id, amount);
+            }
+        }
+
+        return (null, 0);
+    }
+
     private static PayrexxStatus MapStatus(string status) => status.ToLowerInvariant() switch
     {
         "confirmed" or "authorized" or "reserved" => PayrexxStatus.Confirmed,

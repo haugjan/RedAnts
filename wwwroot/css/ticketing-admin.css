@@ -115,6 +115,11 @@
 .ta-qr-link:hover { opacity: 0.75; }
 .ta-col-actions > * + *, .ta-links > * + * { margin-left: 1rem; }
 
+.ta-status-actions { display: flex; flex-wrap: wrap; gap: 0.1rem 0.6rem; margin-top: 0.35rem; }
+.ta-status-actions .ta-link-btn { padding: 0; font-size: 0.78rem; color: var(--ta-accent); }
+.ta-status-actions .ta-link-btn:hover:not(:disabled) { background: none; border-color: transparent; text-decoration: underline; }
+.ta-status-actions .ta-link-danger { color: #a3283a; }
+
 .ta-badge { display: inline-block; padding: 0.12rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
 .ta-badge-valid, .ta-badge-open { background: #e4f4ea; color: #1c7c43; }
 .ta-badge-redeemed { background: #e2eefb; color: #1c5aa3; }

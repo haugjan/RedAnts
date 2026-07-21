@@ -29,4 +29,6 @@ public interface IPayrexxGateway
     Task<PayrexxGatewayResult> CreateGatewayAsync(PayrexxCreateRequest request, CancellationToken cancellationToken = default);
 
     Task<PayrexxStatus> GetGatewayStatusAsync(string gatewayId, CancellationToken cancellationToken = default);
+
+    Task<bool> RefundGatewayAsync(string gatewayId, CancellationToken cancellationToken = default);
 }
