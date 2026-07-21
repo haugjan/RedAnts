@@ -233,7 +233,7 @@
 @if (_scanFor is not null)
 {
     <div class="ta-overlay" @onmousedown="CloseScans">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <div class="ta-modal ta-modal-scans" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Scan-Übersicht</h2>
             <p class="ta-modal-sub">@_scanFor.FullName</p>
 
@@ -287,6 +287,11 @@
     .ta-assign-all { display: flex; align-items: center; gap: .5rem; font-weight: 700; margin: 0 0 .8rem; }
     .ta-assign-events { display: flex; flex-direction: column; gap: .35rem; max-height: 320px; overflow-y: auto; padding: .2rem 0; }
     .ta-assign-event { display: flex; align-items: center; gap: .5rem; }
+
+    .ta-modal-scans .ta-table-wrap { overflow-x: visible; }
+    .ta-modal-scans .ta-table { min-width: 0; width: 100%; }
+    .ta-modal-scans .ta-table th.ta-num, .ta-modal-scans .ta-table td.ta-num { width: 5rem; white-space: nowrap; }
+    .ta-modal-scans .ta-table th:first-child, .ta-modal-scans .ta-table td:first-child { white-space: normal; }
 </style>
 
 @code {
