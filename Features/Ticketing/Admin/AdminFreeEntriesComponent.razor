@@ -118,11 +118,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var restoreEventId = AdminState.SelectedEventId;
         _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await OnSeasonChangedAsync();
+        if (restoreEventId is int eid && eid != SelectedEventId && _events.Any(e => e.Id == eid))
+        {
+            SelectedEventId = eid;
+            await ReloadEntriesAsync();
+        }
         _loading = false;
     }
 
@@ -138,6 +144,7 @@
 
     private async Task ReloadEntriesAsync()
     {
+        AdminState.SelectedEventId = SelectedEventId > 0 ? SelectedEventId : null;
         _entries = SelectedEventId > 0 ? await Report.GetByEventAsync(SelectedEventId) : [];
     }
 

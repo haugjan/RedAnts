@@ -303,11 +303,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var restoreBundleId = AdminState.SelectedBundleId;
         _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await OnSeasonChangedAsync();
+        if (restoreBundleId is int bid && bid != SelectedBundleId && _bundles.Any(b => b.Id == bid))
+        {
+            SelectedBundleId = bid;
+            await ReloadTicketsAsync();
+        }
         _loading = false;
     }
 
@@ -322,6 +328,7 @@
 
     private async Task ReloadTicketsAsync()
     {
+        AdminState.SelectedBundleId = SelectedBundleId > 0 ? SelectedBundleId : null;
         _tickets = SelectedBundleId > 0 ? await Bundles.GetTicketsAsync(SelectedBundleId) : [];
     }
 

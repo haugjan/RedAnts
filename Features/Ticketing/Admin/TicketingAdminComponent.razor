@@ -1,4 +1,7 @@
 @using RedAnts.Domain.Ticketing.Sales
+@using Microsoft.AspNetCore.WebUtilities
+@implements IDisposable
+@inject NavigationManager Navigation
 
 <div class="ta-app">
     <nav class="ta-subnav">
@@ -6,7 +9,7 @@
         {
             <button type="button"
                     class="ta-subnav-btn @(_tab == t.Key ? "active" : "")"
-                    @onclick="() => _tab = t.Key">
+                    @onclick="() => SelectTab(t.Key)">
                 @t.Label
             </button>
         }
@@ -105,9 +108,60 @@
     [Parameter] public string AdminUser { get; set; } = "admin";
     [Parameter] public string? AdminEmail { get; set; }
 
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
     private AdminIdentity Identity => new(AdminUser, AdminEmail);
 
     private string _tab = "seasons";
+    private bool _ready;
+
+    protected override void OnInitialized()
+    {
+        var query = QueryHelpers.ParseQuery(new Uri(Navigation.Uri).Query);
+        if (query.TryGetValue("tab", out var tab) && Tabs.Any(t => t.Key == tab)) _tab = tab!;
+        if (query.TryGetValue("season", out var season) && int.TryParse(season, out var seasonId))
+            AdminState.SelectedSeasonId = seasonId;
+        if (query.TryGetValue("event", out var evt) && int.TryParse(evt, out var eventId))
+            AdminState.SelectedEventId = eventId;
+        if (query.TryGetValue("bundle", out var bundle) && int.TryParse(bundle, out var bundleId))
+            AdminState.SelectedBundleId = bundleId;
+        AdminState.Changed += OnStateChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+        _ready = true;
+        WriteUrl();
+    }
+
+    private void SelectTab(string key)
+    {
+        if (_tab == key) return;
+        _tab = key;
+        if (_ready) WriteUrl();
+    }
+
+    private void OnStateChanged()
+    {
+        if (_ready) WriteUrl();
+    }
+
+    private void WriteUrl()
+    {
+        var showEvent = _tab is "tickets" or "freeentries";
+        var showBundle = _tab is "flextickets";
+        var url = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["tab"] = _tab,
+            ["season"] = AdminState.SelectedSeasonId,
+            ["event"] = showEvent ? AdminState.SelectedEventId : null,
+            ["bundle"] = showBundle ? AdminState.SelectedBundleId : null
+        });
+        Navigation.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    public void Dispose() => AdminState.Changed -= OnStateChanged;
 
     private static readonly (string Key, string Label)[] Tabs =
     [

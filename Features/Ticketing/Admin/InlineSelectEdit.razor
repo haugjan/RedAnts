@@ -16,7 +16,7 @@
 }
 else
 {
-    <select class="ta-select ta-inline-editor" @onchange="OnChanged" @onkeydown="OnKeyDown">
+    <select @ref="EditorElement" class="ta-select ta-inline-editor" @onchange="OnChanged" @onkeydown="OnKeyDown" @onblur="HandleBlur">
         @if (!Options.Any(IsCurrent))
         {
             <option value="-1" selected disabled>@FormatValue(Value)</option>

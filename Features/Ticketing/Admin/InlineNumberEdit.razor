@@ -9,9 +9,9 @@
 }
 else
 {
-    <input class="ta-input ta-inline-editor ta-inline-num" type="number" min="@Min" step="@Step"
+    <input @ref="EditorElement" class="ta-input ta-inline-editor ta-inline-num" type="number" min="@Min" step="@Step"
            value="@(Value?.ToString(CultureInfo.InvariantCulture))" placeholder="@EmptyLabel"
-           @onchange="OnChanged" @onkeydown="OnKeyDown" />
+           @onchange="OnChanged" @onkeydown="OnKeyDown" @onblur="HandleBlur" />
 }
 
 @if (ConfirmOpen)

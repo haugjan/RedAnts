@@ -15,6 +15,9 @@ public abstract class InlineEditBase<TValue> : ComponentBase
     protected string? Error;
     protected TValue Pending = default!;
 
+    protected ElementReference EditorElement;
+    private bool _focusPending;
+
     protected abstract string FormatValue(TValue value);
 
     protected string ConfirmTitle => $"{FieldLabel} ändern";
@@ -28,6 +31,23 @@ public abstract class InlineEditBase<TValue> : ComponentBase
         Pending = Value;
         Error = null;
         Editing = true;
+        _focusPending = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending && Editing && !ConfirmOpen)
+        {
+            _focusPending = false;
+            try { await EditorElement.FocusAsync(); }
+            catch { }
+        }
+    }
+
+    protected void HandleBlur()
+    {
+        if (ConfirmOpen || Busy) return;
+        CancelEdit();
     }
 
     protected void CancelEdit()

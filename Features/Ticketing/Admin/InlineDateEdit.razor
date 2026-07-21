@@ -8,8 +8,8 @@
 }
 else
 {
-    <input class="ta-input ta-inline-editor" type="date" value="@(Value?.ToString("yyyy-MM-dd"))"
-           @onchange="OnChanged" @onkeydown="OnKeyDown" />
+    <input @ref="EditorElement" class="ta-input ta-inline-editor" type="date" value="@(Value?.ToString("yyyy-MM-dd"))"
+           @onchange="OnChanged" @onkeydown="OnKeyDown" @onblur="HandleBlur" />
 }
 
 @if (ConfirmOpen)
