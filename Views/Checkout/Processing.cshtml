@@ -11,22 +11,45 @@
     <p class="text-muted small">Bestellnummer @Model.OrderNumber</p>
 </div>
 
-<div class="text-center py-4" id="paid" style="@(Model.AlreadyPaid ? "" : "display:none;")">
-    <div style="font-size:3rem; line-height:1; color:#1c7c43;">&#10003;</div>
-    <h1 class="mt-2">Vielen Dank!</h1>
-    <p class="text-muted">Deine Zahlung ist bestätigt.</p>
-    <p>Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>.</p>
-    <a href="/" class="btn btn-outline-secondary mt-3">Zur Startseite</a>
+<div id="paid" style="@(Model.AlreadyPaid ? "" : "display:none;")">
+    <div class="text-center py-4">
+        <div style="font-size:3rem; line-height:1; color:#1c7c43;">&#10003;</div>
+        <h1 class="mt-2">Vielen Dank!</h1>
+        <p class="text-muted">Deine Zahlung ist bestätigt.</p>
+        <p>Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>.</p>
+    </div>
+
+    @if (Model.Tickets.Count > 0)
+    {
+        <div class="card p-4">
+            <h2 class="h5 mb-2">Deine Tickets</h2>
+            <p class="text-muted small mb-3">Du kannst die QR-Codes auch direkt hier am Eingang scannen lassen:</p>
+            <div class="row g-3">
+                @foreach (var t in Model.Tickets)
+                {
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <div class="border rounded p-3 text-center h-100">
+                            <img src="/ticket/@t.Token/qr.png" alt="Ticket-QR" width="160" height="160" class="img-fluid" style="max-width:160px;" />
+                            <div class="fw-bold small mt-2">@t.EventName</div>
+                            <div class="text-muted small">@t.CategoryName</div>
+                            <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="text-center mt-4">
+        <a href="/" class="btn btn-outline-secondary">Zur Startseite</a>
+    </div>
 </div>
 
 <script>
 (function () {
     if (@(Model.AlreadyPaid ? "true" : "false")) return;
     var orderId = @Model.OrderId;
-    var processing = document.getElementById('processing');
-    var paid = document.getElementById('paid');
     var tries = 0;
-    function reveal() { processing.style.display = 'none'; paid.style.display = ''; }
     function schedule() { if (tries < 120) setTimeout(poll, 2500); }
     function poll() {
         tries++;
@@ -35,7 +58,7 @@
             .then(function (s) {
                 if (!s) { schedule(); return; }
                 if (s.cancelled) { window.location.href = '/kasse/abbruch'; return; }
-                if (s.paid) { reveal(); return; }
+                if (s.paid) { window.location.reload(); return; }
                 schedule();
             })
             .catch(schedule);

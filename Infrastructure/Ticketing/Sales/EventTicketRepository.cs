@@ -15,6 +15,14 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
         return rows.Select(Map).ToList();
     }
 
+    public async Task<IReadOnlyList<EventTicket>> GetByOrderAsync(int orderId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<EventTicketRecord>(
+            "WHERE OrderId = @0 ORDER BY CreatedAt, Id", orderId);
+        return rows.Select(Map).ToList();
+    }
+
     public async Task<EventTicket> SaveAsync(EventTicket ticket)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

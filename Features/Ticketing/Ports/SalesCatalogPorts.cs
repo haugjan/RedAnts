@@ -59,6 +59,7 @@ public interface ISeasonPassPricing
 public interface IEventTickets
 {
     Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId);
+    Task<IReadOnlyList<EventTicket>> GetByOrderAsync(int orderId);
     Task<EventTicket> SaveAsync(EventTicket ticket);
 }
 
@@ -74,6 +75,7 @@ public sealed record SeasonPassImportRow(string Reference, TicketCategory Catego
 public interface ISeasonPasses
 {
     Task<SeasonPass?> GetByUuidAsync(Guid uuid);
+    Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId);
     Task<SeasonPass> SaveAsync(SeasonPass pass);
     Task<int> ImportAsync(int seasonId, IReadOnlyList<SeasonPassImportRow> rows,
         string? createdByName = null, string? createdByEmail = null);

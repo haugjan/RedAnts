@@ -50,6 +50,14 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
         return row is null ? null : Map(row);
     }
 
+    public async Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<SeasonPassRecord>(
+            "WHERE OrderId = @0 ORDER BY CreatedAt, Id", orderId);
+        return rows.Select(Map).ToList();
+    }
+
     public async Task<SeasonPass> SaveAsync(SeasonPass pass)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

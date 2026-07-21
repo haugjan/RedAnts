@@ -324,13 +324,44 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             }
         }
 
+        var paid = found.Status == OrderStatus.Paid;
         return View("~/Views/Checkout/Processing.cshtml", new CheckoutProcessingView
         {
             OrderId = found.Id,
             OrderNumber = found.OrderNumber,
             Email = found.BillingAddress.Email,
-            AlreadyPaid = found.Status == OrderStatus.Paid
+            AlreadyPaid = paid,
+            Tickets = paid ? await BuildOrderTicketsAsync(found) : []
         });
+    }
+
+    private async Task<List<ConfirmationTicket>> BuildOrderTicketsAsync(Order order)
+    {
+        var names = new Dictionary<(int Kind, int RefId, int TierId), (string EventName, string CategoryName)>();
+        if (!string.IsNullOrEmpty(order.FulfillmentPayload)
+            && JsonSerializer.Deserialize<FulfillmentSnapshot>(order.FulfillmentPayload) is { } snapshot)
+        {
+            foreach (var i in snapshot.Items)
+            {
+                var refId = i.Kind == (int)CartItemKind.SeasonPass ? i.SeasonId : i.EventId;
+                names[(i.Kind, refId, i.TierId)] = (i.EventName, i.CategoryName);
+            }
+        }
+
+        var result = new List<ConfirmationTicket>();
+        foreach (var t in await tickets.GetByOrderAsync(order.Id))
+        {
+            names.TryGetValue(((int)CartItemKind.EventTicket, t.EventId, t.TierId ?? 0), out var n);
+            var token = tokens.Create(TicketType.EventTicket, t.Uuid, t.EventId);
+            result.Add(new ConfirmationTicket(t.Uuid, n.EventName ?? "", n.CategoryName ?? "", token));
+        }
+        foreach (var p in await passes.GetByOrderAsync(order.Id))
+        {
+            names.TryGetValue(((int)CartItemKind.SeasonPass, p.SeasonId, p.TierId ?? 0), out var n);
+            var token = tokens.Create(TicketType.SeasonPass, p.Uuid, p.SeasonId);
+            result.Add(new ConfirmationTicket(p.Uuid, n.EventName ?? "", n.CategoryName ?? "", token));
+        }
+        return result;
     }
 
     [HttpPost("/payrexx/webhook")]

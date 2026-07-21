@@ -52,6 +52,7 @@ public sealed class CheckoutProcessingView
     public string OrderNumber { get; init; } = "";
     public string Email { get; init; } = "";
     public bool AlreadyPaid { get; init; }
+    public IReadOnlyList<ConfirmationTicket> Tickets { get; init; } = [];
 }
 
 public sealed record FulfillmentItem(
