@@ -19,8 +19,8 @@
 
     var transparentNav = ViewBag.TransparentNav as bool? ?? false;
     var pageTitle = ViewBag.PageTitle as string ?? "Red Ants Winterthur";
-    var navBg = transparentNav ? "rgba(16,16,16,0)" : "rgba(16,16,16,0.55)";
-    var navBorder = transparentNav ? "transparent" : "rgba(255,255,255,0.12)";
+    var navBg = transparentNav ? "rgba(16,16,16,0.55)" : "rgba(255,255,255,0.97)";
+    var navBorder = transparentNav ? "rgba(255,255,255,0.12)" : "#f0f0f0";
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -58,7 +58,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/site.css?v=7" />
+  <link rel="stylesheet" href="/css/site.css?v=8" />
   <style>
     .nav-cart { display: inline-flex; align-items: center; gap: 0.4rem; }
     .nav-cart-badge {
@@ -172,9 +172,9 @@
   if (transparent) {
     var onScroll = function () {
       var past = window.scrollY > 60;
-      nav.style.background = past ? 'rgba(16,16,16,0.55)' : 'rgba(16,16,16,0)';
-      nav.style.borderBottomColor = past ? 'rgba(255,255,255,0.12)' : 'transparent';
-      nav.style.boxShadow = past ? '0 1px 14px rgba(0,0,0,0.22)' : 'none';
+      nav.style.background = past ? 'rgba(255,255,255,0.97)' : 'rgba(16,16,16,0.55)';
+      nav.style.borderBottomColor = past ? '#f0f0f0' : 'rgba(255,255,255,0.12)';
+      nav.style.boxShadow = past ? '0 1px 12px rgba(0,0,0,0.06)' : 'none';
       nav.querySelectorAll('.nav-link').forEach(function (a) {
         a.style.color = past ? '' : 'rgba(255,255,255,0.85)';
       });
