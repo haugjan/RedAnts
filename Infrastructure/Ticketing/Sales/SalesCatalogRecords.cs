@@ -26,6 +26,7 @@ public class EventPriceCategoryRecord
     [Column("SalePrice")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal SalePrice { get; set; }
     [Column("Quota")] [NullSetting(NullSetting = NullSettings.Null)] public int? Quota { get; set; }
     [Column("AvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? AvailableUntil { get; set; }
+    [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
 }
 
 [TableName("SeasonPrices")]
@@ -51,6 +52,7 @@ public class SeasonAddOnRecord
     [Column("Active")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Active { get; set; }
     [Column("SortOrder")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SortOrder { get; set; }
     [Column("Scope")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Scope { get; set; }
+    [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
 }
 
 [TableName("SeasonPriceTiers")]
@@ -84,4 +86,5 @@ public class SeasonPriceCategoryRecord
     [Column("TicketQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? TicketQuota { get; set; }
     [Column("PassAvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? PassAvailableUntil { get; set; }
     [Column("TicketAvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? TicketAvailableUntil { get; set; }
+    [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
 }

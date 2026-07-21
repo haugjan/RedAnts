@@ -31,6 +31,32 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonPriceDefaultTicketSalesQuota>("seasonprices-default-ticket-sales-quota");
         To<AddFreeEntryTypeQuotas>("freeentry-type-quotas");
         To<AddPriceTiers>("price-tiers");
+        To<AddArticleGuids>("article-guids");
+    }
+}
+
+public class AddArticleGuids(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddGuid("EventPriceCategories");
+        AddGuid("SeasonPriceCategories");
+        AddGuid("SeasonAddOns");
+        return Task.CompletedTask;
+    }
+
+    private void AddGuid(string table)
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (!ColumnExists(table, "ArticleGuid"))
+        {
+            if (isSqlite)
+                Execute.Sql($"ALTER TABLE {table} ADD COLUMN ArticleGuid TEXT NULL").Do();
+            else
+                Alter.Table(table).AddColumn("ArticleGuid").AsGuid().Nullable().Do();
+        }
+        if (!isSqlite)
+            Execute.Sql($"UPDATE {table} SET ArticleGuid = NEWID() WHERE ArticleGuid IS NULL").Do();
     }
 }
 
@@ -245,6 +271,7 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<OrderStatusLogRecord>("OrderStatusLogs");
         EnsureTable<NewsletterSignupRecord>("NewsletterSignups");
         EnsureTable<OrderAddOnRecord>("OrderAddOns");
+        EnsureTable<OrderItemRecord>("OrderItems");
         EnsureTable<HelperRecord>("Helpers");
 
         EnsureTable<FlexTicketBundleRecord>("FlexTicketBundles");

@@ -382,6 +382,7 @@
     [Inject] private IEventTicketBundles Bundles { get; set; } = default!;
     [Inject] private IVisitLogReader Visits { get; set; } = default!;
     [Inject] private IAdmissionService Admission { get; set; } = default!;
+    [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private static readonly TicketCategory[] AllCategories = Enum.GetValues<TicketCategory>();
@@ -563,7 +564,10 @@
         try
         {
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
-            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, null, buyer,
+            var order = await OrderFactory.CreateAsync(buyer, Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
+                Identity?.Name ?? AdminUser);
+            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, order.Id, buyer,
                 Identity?.Name ?? AdminUser, Identity?.Email));
         }
         catch (DomainException ex) { _createError = ex.Message; return; }

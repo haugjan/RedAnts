@@ -78,6 +78,7 @@
                                 <td class="ta-cell-summary">@Cell(o.EventTicketCount, o.EventTicketSummary)</td>
                                 <td class="ta-cell-summary">@Cell(o.SeasonPassCount, o.SeasonPassSummary)</td>
                                 <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="Positionen anzeigen" @onclick="() => OpenItems(o)">📦</button>
                                     <button type="button" class="ta-icon-btn" title="Bestellverlauf" @onclick="() => OpenLog(o)">🧾</button>
                                 </td>
                             </tr>
@@ -100,6 +101,11 @@
     <OrderLogOverlay OrderId="_logOrder.OrderId" Title="@_logOrder.OrderNumber" OnClose="CloseLog" />
 }
 
+@if (_itemsOrder is not null)
+{
+    <OrderItemsOverlay OrderId="_itemsOrder.OrderId" Title="@_itemsOrder.OrderNumber" OnClose="CloseItems" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
@@ -120,6 +126,10 @@
     private OrderListItem? _logOrder;
     private void OpenLog(OrderListItem o) => _logOrder = o;
     private void CloseLog() => _logOrder = null;
+
+    private OrderListItem? _itemsOrder;
+    private void OpenItems(OrderListItem o) => _itemsOrder = o;
+    private void CloseItems() => _itemsOrder = null;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];

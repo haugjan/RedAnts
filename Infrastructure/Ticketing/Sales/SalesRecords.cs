@@ -222,6 +222,22 @@ public class OrderAddOnRecord
     [Column("Quantity")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Quantity { get; set; }
 }
 
+[TableName("OrderItems")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderItemRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("Kind")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Kind { get; set; }
+    [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
+    [Column("RefId")] [NullSetting(NullSetting = NullSettings.NotNull)] public int RefId { get; set; }
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("Label")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string Label { get; set; } = "";
+    [Column("Quantity")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Quantity { get; set; }
+    [Column("UnitPrice")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal UnitPrice { get; set; }
+}
+
 [TableName("Helpers")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]

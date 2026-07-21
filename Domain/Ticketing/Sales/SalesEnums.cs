@@ -53,7 +53,17 @@ public enum PaymentMethod
     Payrexx,
     Cash,
     Twint,
-    Invoice
+    Invoice,
+    Manual
+}
+
+public enum OrderItemKind
+{
+    EventTicket,
+    SeasonSingle,
+    SeasonPass,
+    MemberCard,
+    AddOn
 }
 
 public enum BuyerType

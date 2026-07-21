@@ -4,6 +4,7 @@
 @using RedAnts.Features.Ticketing.Ports
 @inject ISeasonPassAdminReport Report
 @inject ISeasonPasses Passes
+@inject IAdminOrderFactory OrderFactory
 
 <section class="ta-page">
     <h1 class="ta-page-title">Saisonkarten</h1>
@@ -527,7 +528,10 @@
         try
         {
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
-            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, null,
+            var order = await OrderFactory.CreateAsync(buyer, Identity.Email,
+                [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
+                Identity.Name);
+            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, order.Id,
                 buyer, Identity.Name, Identity.Email));
             _showCreate = false;
             await ReloadPassesAsync();

@@ -11,7 +11,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IAddOnNotifier addOnNotifier, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, ILogger<CheckoutController> logger) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -171,7 +171,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var saved = await orders.SaveAsync(order);
         await orderLog.AppendAsync(saved.Id, OrderStatus.Draft, "Online-Kauf", "Bestellung erstellt");
 
-        if (payrexx.Enabled)
+        if (payrexx.Enabled && saved.TotalGross > 0m)
         {
             var baseUrl = publicUrl.Resolve(Request);
             var request = new PayrexxCreateRequest(
@@ -274,6 +274,19 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             await orderAddOns.SaveAsync(order.Id, addOnLines);
             await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email, addOnLines);
         }
+
+        var orderItemLines = new List<OrderItem>();
+        foreach (var item in snapshot.Items)
+        {
+            var kind = item.Kind == (int)CartItemKind.SeasonPass ? OrderItemKind.SeasonPass : OrderItemKind.EventTicket;
+            var refId = item.Kind == (int)CartItemKind.SeasonPass ? item.SeasonId : item.EventId;
+            var label = string.IsNullOrEmpty(item.CategoryName) ? item.EventName : $"{item.EventName} · {item.CategoryName}";
+            orderItemLines.Add(OrderItem.Create(order.Id, kind, refId, default, label, item.Quantity, item.UnitPrice));
+        }
+        foreach (var a in snapshot.AddOns)
+            orderItemLines.Add(OrderItem.Create(order.Id, OrderItemKind.AddOn, a.SeasonId, default, a.Label, a.Quantity, a.Price));
+        if (orderItemLines.Count > 0)
+            await orderItems.SaveAsync(order.Id, orderItemLines);
 
         await mailer.SendTicketsAsync(new OrderMailModel(
             order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
