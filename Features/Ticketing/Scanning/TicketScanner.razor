@@ -45,12 +45,17 @@
                 @for (var i = 0; i < _events.Count; i++)
                 {
                     var evt = _events[i];
-                    var isNext = i == 0;
+                    var isToday = evt.Date == _today;
+                    var isNext = i == 0 && !isToday;
                     <li>
                         <button type="button"
-                                class="event-card @(isNext ? "event-card--next" : "")"
+                                class="event-card @(isToday ? "event-card--today" : "") @(isNext ? "event-card--next" : "")"
                                 @onclick="() => Select(evt)">
-                            @if (isNext)
+                            @if (isToday)
+                            {
+                                <span class="event-card__badge event-card__badge--today">Heute</span>
+                            }
+                            else if (isNext)
                             {
                                 <span class="event-card__badge">Nächstes Event</span>
                             }
@@ -69,6 +74,20 @@
     else
     {
         <ScanView EventId="_selected.Id" EventName="@_selected.Name" Operator="@_operator" OnBack="BackToList" />
+    }
+
+    @if (_pendingEvent is { } pend)
+    {
+        <div class="scan-confirm" @onclick="() => _pendingEvent = null">
+            <div class="scan-confirm__box" @onclick:stopPropagation="true">
+                <p class="scan-confirm__question">Dieser Anlass ist nicht heute. Bist du sicher?</p>
+                <p class="scan-confirm__detail">@pend.Name · @pend.Date.ToString("dd.MM.yyyy")</p>
+                <div class="scan-confirm__actions scan-confirm__actions--stack">
+                    <button type="button" class="scan-confirm__btn scan-confirm__btn--yes" @onclick="() => ConfirmSelect(pend)">Ja, trotzdem scannen</button>
+                    <button type="button" class="scan-confirm__btn" @onclick="() => _pendingEvent = null">Abbrechen</button>
+                </div>
+            </div>
+        </div>
     }
 
     <p class="scan-app__version">
@@ -99,16 +118,39 @@
         font-size: 0.75rem; letter-spacing: 0.04em;
     }
     .scan-app__test { color: #888; text-decoration: underline; }
+
+    .event-card--today { border-color: #1a7f37; border-width: 2px; box-shadow: 0 4px 16px rgba(26, 127, 55, 0.18); }
+    .event-card__badge--today { background: #1a7f37; }
+
+    .scan-confirm {
+        position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    .scan-confirm__box {
+        background: #fff; border-radius: 14px; padding: 1.4rem 1.5rem; width: 100%; max-width: 340px;
+        text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .scan-confirm__question { margin: 0 0 0.4rem; font-size: 1.1rem; font-weight: 700; color: #222; }
+    .scan-confirm__detail { margin: 0 0 1.1rem; font-size: 0.9rem; color: #666; }
+    .scan-confirm__actions { display: flex; gap: 0.6rem; }
+    .scan-confirm__actions--stack { flex-direction: column; }
+    .scan-confirm__btn {
+        flex: 1 1 0; padding: 0.75rem; border-radius: 8px; border: 1px solid #ccc;
+        background: #fff; color: #555; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    }
+    .scan-confirm__btn--yes { background: #1a7f37; color: #fff; border-color: #1a7f37; }
 </style>
 
 @code {
-    private const string Version = "10";
+    private const string Version = "11";
 
     [Parameter] public string HelperName { get; set; } = "";
 
+    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
     private Event? _selected;
+    private Event? _pendingEvent;
     private string? _operator;
     private string _operatorInput = "";
     private string? _loginError;
@@ -144,7 +186,17 @@
         _selected = null;
     }
 
-    private void Select(Event evt) => _selected = evt;
+    private void Select(Event evt)
+    {
+        if (evt.Date == _today) _selected = evt;
+        else _pendingEvent = evt;
+    }
+
+    private void ConfirmSelect(Event evt)
+    {
+        _pendingEvent = null;
+        _selected = evt;
+    }
 
     private void BackToList() => _selected = null;
 

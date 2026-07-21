@@ -128,6 +128,16 @@ if (!string.IsNullOrEmpty(gatePassword))
         catch { return false; }
     }
 
+    void SetGateCookie(HttpContext ctx) =>
+        ctx.Response.Cookies.Append(gateCookie, protector.Protect("ok"), new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            MaxAge = TimeSpan.FromDays(30),
+            Domain = string.IsNullOrWhiteSpace(cookieDomain) ? null : cookieDomain,
+        });
+
     async Task WriteGate(HttpContext ctx, string returnUrl, bool failed)
     {
         ctx.Response.StatusCode = failed ? StatusCodes.Status401Unauthorized : StatusCodes.Status200OK;
@@ -256,14 +266,7 @@ if (!string.IsNullOrEmpty(gatePassword))
                 var returnUrl = SafeReturn(form["returnUrl"].ToString());
                 if (form["password"].ToString() == gatePassword)
                 {
-                    context.Response.Cookies.Append(gateCookie, protector.Protect("ok"), new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = true,
-                        SameSite = SameSiteMode.Lax,
-                        MaxAge = TimeSpan.FromDays(30),
-                        Domain = string.IsNullOrWhiteSpace(cookieDomain) ? null : cookieDomain,
-                    });
+                    SetGateCookie(context);
                     context.Response.Redirect(returnUrl);
                     return;
                 }
@@ -271,6 +274,18 @@ if (!string.IsNullOrEmpty(gatePassword))
                 return;
             }
             await WriteGate(context, SafeReturn(context.Request.Query["returnUrl"].ToString()), false);
+            return;
+        }
+
+        if (context.Request.Query["key"].ToString() == gatePassword)
+        {
+            SetGateCookie(context);
+            var stripped = QueryString.Empty;
+            foreach (var kv in context.Request.Query)
+                if (!string.Equals(kv.Key, "key", StringComparison.OrdinalIgnoreCase))
+                    foreach (var v in kv.Value)
+                        stripped = stripped.Add(kv.Key, v ?? "");
+            context.Response.Redirect(context.Request.Path.Add(stripped));
             return;
         }
 
