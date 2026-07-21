@@ -157,3 +157,123 @@ Neueste zuerst. Nur Änderungen eintragen, die andere Sessions betreffen.
 | 21.07.2026 | S4 | **Event/Saison-Admin-Tabellen (in `main`, `591c250`).** `EventAdmissionCounts` hat zwei neue optionale Felder `SeasonPassHolders`/`MemberHolders` + berechnete Property `ExpectedAdmissions` (= verkaufte Spieltickets + Saisonkartenbesitzer + Mitglieder + bisherige Freieinlässe); `EventAdmissionReportReader` injiziert neu `IEvents` (Anlass→Saison-Zuordnung für die Bestandszahlen). Neue wiederverwendbare Komponente **`LinkOverlay.razor`** (öffentlicher + interner Link mit Kopier-Button + statusabhängige Hinweise). `AdminEventsComponent`: neue Spalte „Erwartete Zutritte" (rot bei Überschreitung Einlasskontingent, oranger Hinweis bei potenzieller Überbuchung), „Bisherige Einlässe" rot/orange; Link-Spalte (Events **und** Seasons) öffnet jetzt das `LinkOverlay` statt Direktkopie. | Wer `EventAdmissionCounts` konstruiert: zwei neue optionale Felder (Default 0). Wer `IEventAdmissionReport` implementiert/mockt bzw. `EventAdmissionReportReader` ersetzt: Reader braucht `IEvents`. Neuer Admin-Baustein `LinkOverlay` steht anderen Sessions zur Verfügung. Kein DB-Schema. |
 | 21.07.2026 | S5 | `TicketingAdminState` ist jetzt beobachtbar (`event Changed`) und trägt zusätzlich `SelectedEventId` + `SelectedBundleId`. `SelectedSeasonId` etc. sind Properties, die `Changed` auslösen. `TicketingAdminComponent` spiegelt Tab/Saison/Anlass/Bundle in die URL-Query. | Wer `TicketingAdminState` neu nutzt: Property-Semantik (löst `Changed` aus), rein additiv. `InlineEditBase` schliesst Editiermodus zusätzlich per Blur (`HandleBlur`) und hat neu `EditorElement` (Auto-Fokus). Keine Signaturänderung an den Inline-Editoren. |
 | 21.07.2026 | S1 | Runde-5-Plan verteilt (dieses Dokument). | Alle: Runde-5-Branch anlegen; S1 zuerst mergen, S2/S3 danach rebasen. |
+| 21.07.2026 | S1 | **Payrexx-Prod-Fix (in `main`, `4da90bb`).** `deploy-prod` konfiguriert jetzt auch `Payrexx__Instance`/`Payrexx__ApiSecret` (vorher nur `deploy-dev`), sonst blieb Payrexx auf Prod deaktiviert und bezahlte Checkouts übersprangen den Gateway. | Keine Code-Auswirkung. Wenn `PAYREXX_API_SECRET` nur ein dev-Environment-Secret ist, muss es dem `prod`-Environment (oder Repo) hinzugefügt werden, sonst greift der Skip-Guard. |
+| 21.07.2026 | S1 | **Runde-6-Plan verteilt** (Abschnitt „Runde 6" unten). | Alle: Runde-6-Branch anlegen; S1 zuerst mergen; S2 wartet automatisch auf S1 (Snippet im Plan); Rest startet sofort und rebast vor Merge. |
+
+---
+
+# Runde 6 — Zahlarten, Add-on-Feinschliff, Admin-UX, Scanning, Helfer, Härtung
+
+> Arbeitsmodell wie Runde 5 (eigener Worktree `C:\development\RedAnts-s<N>`, Branch
+> `feature/s<N>-r6-<kurz>` vom aktuellen `main`; sofort committen; Schema-/Contract-Änderungen
+> im Änderungs-Log ankündigen; vor Merge rebasen, Release-Build grün, `main` immer grün; keine
+> Kommentare im Code, Enums als int, keine Secrets im Code, kein Co-Authored-By; `.razor`/`.cshtml`
+> durch Starten der App verifizieren). Admin-Bausteine wiederverwenden (`InlineSelectEdit`,
+> `InlineNumberEdit`, `InlineDateEdit`, `ConfirmDialog`, `LinkOverlay`, `OrderItemsOverlay`,
+> `AdminFormat`, `AdminIdentity`).
+
+## Automatische Koordination (Sessions warten selbst)
+
+Nur **eine harte Abhängigkeit**: **S1 ist Fundament (Zahlarten) und merged zuerst.** **S2** wartet
+automatisch auf S1, bevor es die Checkout-/Order-Teile anfasst. **S3, S4, S5, S6 starten sofort**
+und rebasen nur vor dem Merge. Wait-Snippet (Bash), das die abhängige Session selbst ausführt und
+erst weiterläuft, wenn S1s Fundament in `main` ist:
+
+```bash
+until git fetch -q origin && git cat-file -p origin/main:Domain/Ticketing/Sales/SalesEnums.cs 2>/dev/null | grep -q "enum PaymentSource"; do
+  echo "warte auf S1-Fundament (PaymentSource)…"; sleep 30
+done
+git -c core.safecrlf=false rebase origin/main
+```
+
+## Aufgabenpakete Runde 6
+
+| Session | Branch | Paket | Abhängig |
+|---|---|---|---|
+| S1 | `feature/s1-r6-payment-sources` | Zahlart (PaymentSource) bei JEDER Order-/Ticket-/Bundle-Erstellung, preisabhängig gefiltert; Fix „Mitgliederkarten erzeugen keine Bestellung" | zuerst mergen |
+| S2 | `feature/s2-r6-addon-titles-tiers` | Zusatzoptionen: kurzer + langer Titel; Zusatzoption optional nur für bestimmte Stufen (Tiers) | wartet auf S1 |
+| S3 | `feature/s3-r6-pricing-ux` | Stufen/Preis-Verwaltung intuitiver (Sonderaktion aktiv/inaktiv klar; Sonderaktion auch für zusätzliche Stufen); editierbare vs. fixe Werte optisch unterscheidbar; Event-Tabelle: Spaltentausch + Tooltip | unabhängig |
+| S4 | `feature/s4-r6-scanning` | Scanning-Eventauswahl: heutige Events hervorheben, Rückfrage (aber zulassen) bei Fremd-Tag; Zugangspasswort `stockschlag` auch per Query-Parameter | unabhängig |
+| S5 | `feature/s5-r6-helpers` | Helfer: Erfassung per Overlay; „Scans pro Anlass" entfernen; Icon-Spalte mit Helfer-Scan-Übersicht pro Anlass (Ein-/Ausgänge separat) | unabhängig |
+| S6 | `feature/s6-r6-frontend-hardening` | Public-Breiten angleichen; eigene 404-Seite; PDF-Ticket-Logo; E-Mail-Logo-Grösse; Security-Header; RuntimeMode=Production; Notification-From-E-Mail; Imaging-HMAC; Warmup erweitern | unabhängig |
+
+---
+
+### S1 — Zahlarten-Fundament (`feature/s1-r6-payment-sources`) — zuerst mergen
+
+- Neues Enum **`PaymentSource`** (int, `Domain/Ticketing/Sales/SalesEnums.cs`): `Sponsoring, Marketing,
+  Goodwill, Online, Cash, TwintCode, Terminal`. Order bekommt eine additive int-Spalte **`PaymentSource`**
+  (Migration additiv; `PaymentMethod` bleibt für die technische Zahlungsart Payrexx/Manual bestehen).
+- **Regel (immer angeben):** Preis == 0 → nur `Sponsoring/Marketing/Goodwill`; Preis > 0 →
+  `Cash/TwintCode/Terminal`; **`Online`** wird ausschliesslich vom Online-Checkout automatisch gesetzt
+  (im Admin nicht wählbar).
+- **Alle Admin-Erstellungswege** (Einzelticket, Einzel-Saisonkarte, Mitgliederkarte, Flex-Bundle,
+  Event-Bundle) bekommen einen **Zahlart-Selektor** (nach Preisregel gefiltert) und geben die Zahlart an
+  `IAdminOrderFactory.CreateAsync` (neuer Parameter). Zahlart in der Bestellübersicht anzeigen.
+- **Fix „Mitgliederkarten erzeugen keine Bestellung":** Ursache prüfen (Admin-Weg ruft zwar
+  `AdminOrderFactory`, aber Bestellung erscheint nicht/entsteht nicht) und sicherstellen, dass jede
+  Mitgliederkarten-Erstellung eine sichtbare Order + Positionen erzeugt.
+- P0 Payrexx-Prod-Config ist bereits erledigt (`4da90bb`); nur verifizieren, dass ein bezahlter Kauf auf
+  Prod den Gateway öffnet.
+- **Ankündigen:** `PaymentSource`-Enum, `Orders.PaymentSource`-Spalte, `AdminOrderFactory`-Signatur.
+
+### S2 — Zusatzoptionen: zwei Titel + Tier-Beschränkung (`feature/s2-r6-addon-titles-tiers`)
+
+- Wait-Snippet oben ausführen (wartet auf S1), dann arbeiten.
+- `SeasonAddOn`: zwei additive Textfelder — **`ShortTitle`** (kurz, kommt auf Saisonkarte/Beleg/Mail,
+  z. B. „Erwachsen - reduziert") und **`LongTitle`** (lang, Bewerbung auf der Seite, z. B. „Erwachsen -
+  Erste 85 zum halben Preis inkl. Cüpli am ersten Spiel"). Bestehendes `Label` als Kurztitel weiterführen.
+- **Tier-Beschränkung:** Zusatzoption optional nur für bestimmte Stufen gültig/angeboten (additive
+  Verknüpfung AddOn↔Tier, z. B. CSV-Spalte `AllowedTierIds` oder Link-Tabelle). Leer = alle Stufen.
+- Admin-Zusatzoptionen-Modal: beide Titel + Tier-Mehrfachauswahl. Public-Saison-Seite bewirbt den
+  Langtitel; Kauf/Beleg/Mail nutzen den Kurztitel. Tier-Read über bestehende Tier-API (nicht ändern).
+
+### S3 — Preis/Stufen-Verwaltung-UX + Tabellen (`feature/s3-r6-pricing-ux`)
+
+- Stufen/Preis-Verwaltung intuitiver: **Sonderaktion je Stufe klar aktivierbar/deaktivierbar** (Toggle,
+  klare Trennung Normalpreis vs. Sonderaktion) und **Bug beheben: für zusätzliche/eigene Stufen lassen
+  sich keine Sonderaktionen mehr erfassen** → Sonderaktion für JEDE Stufe erfassbar machen.
+- **Editierbare vs. fixe Werte** in Admin-Tabellen optisch unterscheidbar: eine wiederverwendbare
+  CSS-Konvention (z. B. gestrichelte Unterlinie + Stift-Cursor auf Inline-Editoren) definieren und
+  **ankündigen**, damit andere Sessions sie übernehmen.
+- Event-Tabelle (`AdminEventsComponent`): Spalten **„Bisherige Einlässe" und „Verkaufte Spieltickets"
+  tauschen**; **Tooltip** mit Erklärung für „Erwartete Zutritte".
+
+### S4 — Scanning-UX + Zugang (`feature/s4-r6-scanning`)
+
+- Event-Auswahl beim Scannen: **Anlässe von heute optisch hervorheben.** Wählt jemand einen Anlass, der
+  nicht heute stattfindet, **Rückfrage** („Dieser Anlass ist nicht heute. Bist du sicher?") via
+  `ConfirmDialog`, danach **trotzdem zulassen**.
+- Zugangspasswort `stockschlag` **auch per Query-Parameter** übergeben können (zusätzlich zum Formular,
+  z. B. `?key=stockschlag`), damit ein vorbereiteter Link direkt einloggt.
+
+### S5 — Helfer-Rework (`feature/s5-r6-helpers`)
+
+- **Neuen Helfer per Overlay** erfassen (nicht mehr inline/integriert), Muster wie andere Erstell-Overlays.
+- Spalte/Ansicht **„Scans pro Anlass" entfernen**.
+- Stattdessen **Icon-Spalte** je Helfer, die ein Overlay öffnet mit der Übersicht, an welchen Anlässen
+  dieser Helfer wie viel gescannt hat — **Einlässe und Ausgänge separat** (aus den Visit-Logs).
+
+### S6 — Public-Auslieferung & Härtung (`feature/s6-r6-frontend-hardening`)
+
+Alleiniger Owner von `Program.cs`, `appsettings*.json`, Views/CSS, PDF-/Mail-Templates und dem
+Warmup-Teil von `deploy.yml` (keine andere Session fasst diese Dateien an → konfliktfrei).
+
+- **Breiten angleichen:** Saison-Übersicht (`/saisons/`) und Saison-Detail wirken unterschiedlich
+  (Anlässe horizontal, Saison vertikal, andere Gesamtbreite). Container-Breite auf ALLEN öffentlichen
+  Seiten prüfen und auf einen gemeinsamen Wert vereinheitlichen.
+- **Eigene 404-Seite:** Bild `C:\Users\Jan.Haug\Downloads\Schiedsrichterin.png` (nach `wwwroot` kopieren),
+  Titel „404 – Kein Tor!", Text (Schiedsrichter-Motto, siehe Auftrag), Button 1 „Zurück auf die Bank"
+  (Startseite), Button 2 „Protest einlegen" (Kontakt). Über `UseStatusCodePages…`/Fehlerseiten-Route.
+- **PDF-Ticket:** fehlendes **Red-Ants-Logo** ergänzen. **E-Mail:** Logo-Grösse auf sinnvolles Maass
+  begrenzen (aktuell zu gross).
+- **Security-Header** (Middleware, prod scharf, Backoffice nicht brechen): `X-Frame-Options`,
+  `X-Content-Type-Options: nosniff`, `Strict-Transport-Security` (HTTPS), `Content-Security-Policy`
+  (konservativ/ggf. nur Public; Backoffice + `/heute/embed` `frame-ancestors` beachten), `Server`-Header
+  entfernen (`AddServerHeader=false`).
+- **RuntimeMode=Production** für prod (`Umbraco:CMS:RuntimeMode`), dev bleibt Development.
+  **Notification-From-E-Mail** von `your@email.here` auf echte Adresse. **Imaging-HMAC:**
+  `Umbraco:CMS:Imaging:HMACSecretKey` (Secret/Config).
+- **Warmup erweitern:** interne Warmup-Seite/Endpoint (z. B. `/warmup`), die serverseitig mehrere
+  Kernseiten vorlädt (Home, `/saisons/`, ein Saison-Detail, `/tickets`, Admin-Login), damit die
+  Razor-Runtime-Kompilierung vorgewärmt ist; den GitHub-Warmup-Step `/warmup` statt nur `/` aufrufen lassen.
