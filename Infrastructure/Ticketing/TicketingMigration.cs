@@ -36,6 +36,23 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddOrderPaymentSource>("order-payment-source");
         To<AddSeasonAddOnTitleAndTiers>("seasonaddons-title-tiers");
         To<AddFreeEntryFixedCounts>("freeentry-fixed-counts");
+        To<AddSeasonAddOnPromoOnly>("seasonaddons-promo-only");
+    }
+}
+
+public class AddSeasonAddOnPromoOnly(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonAddOns", "PromoOnly"))
+        {
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE SeasonAddOns ADD COLUMN PromoOnly BIT NOT NULL DEFAULT 0").Do();
+            else
+                Alter.Table("SeasonAddOns").AddColumn("PromoOnly").AsBoolean().NotNullable().WithDefaultValue(false).Do();
+        }
+        return Task.CompletedTask;
     }
 }
 

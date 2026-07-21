@@ -75,9 +75,11 @@ public sealed class CartController(
             {
                 var tierBase = (await priceTiers.GetBySeasonAsync(seasonId)).ToDictionary(t => t.Id, t => t.PromoOfTierId ?? t.Id);
                 var baseTierId = tierBase.GetValueOrDefault(available!.TierId, available.TierId);
+                var isPromoOffer = baseTierId != available.TierId;
                 chosen = (await seasonAddOns.GetBySeasonAsync(seasonId))
                     .Where(a => a.Active && selectedIds.Contains(a.Id)
-                        && (a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId)))
+                        && (a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId))
+                        && (!a.PromoOnly || isPromoOffer))
                     .ToList();
             }
             var perPass = chosen.Where(a => a.Scope == AddOnScope.PerPass)

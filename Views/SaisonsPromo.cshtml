@@ -65,7 +65,10 @@
                                 @foreach (var cat in cats)
                                 {
                                     var baseTierId = tierBase.GetValueOrDefault(cat.TierId, cat.TierId);
-                                    var catAddOns = addOns.Where(a => a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId)).ToList();
+                                    var isPromoOffer = baseTierId != cat.TierId;
+                                    var catAddOns = addOns.Where(a =>
+                                        (a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId))
+                                        && (!a.PromoOnly || isPromoOffer)).ToList();
                                     <li class="pass-offer-cat">
                                         <div class="pass-offer-cat-top">
                                             <span class="pass-offer-cat-name">@cat.Name</span>
@@ -96,7 +99,7 @@
                                                     @foreach (var a in catAddOns)
                                                     {
                                                         <label class="pass-addon">
-                                                            <input type="checkbox" name="addOns" value="@a.Id" />
+                                                            <input type="checkbox" name="addOns" value="@a.Id" checked="@(a.Price == 0m)" />
                                                             <span class="pass-addon-label">@(string.IsNullOrWhiteSpace(a.LongTitle) ? a.Label : a.LongTitle)@(a.Scope == AddOnScope.PerOrder ? " (einmalig pro Bestellung)" : "")</span>
                                                             @if (!string.IsNullOrWhiteSpace(a.InfoBeforePurchase))
                                                             {

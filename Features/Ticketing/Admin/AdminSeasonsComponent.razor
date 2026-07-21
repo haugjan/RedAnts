@@ -247,6 +247,8 @@
                                                 <button type="button" class="ta-tier-chip @(r.AllowedTierIds.Contains(t.Id) ? "is-on" : "")"
                                                         @onclick="() => ToggleAddOnTier(r, t.Id)">@t.Name</button>
                                             }
+                                            <button type="button" class="ta-tier-chip ta-tier-chip--promo @(r.PromoOnly ? "is-on" : "")"
+                                                    title="Nur anbieten, wenn für die Stufe gerade eine Sonderaktion aktiv ist" @onclick="() => r.PromoOnly = !r.PromoOnly">Nur Aktion</button>
                                         </div>
                                     }
                                 </td>
@@ -264,7 +266,7 @@
                 </table>
                 </div>
                 <button type="button" class="ta-btn ta-btn-ghost ta-addon-add" @onclick="AddAddOnRow">+ Option hinzufügen</button>
-                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. Der Kurztitel erscheint auf Beleg und Ticket-Mail, der Langtitel bewirbt die Option auf der öffentlichen Saisonseite (fehlt er, wird der Kurztitel angezeigt). Die Stufen entsprechen den Preisstufen dieser Saison. „Alle" gilt für sämtliche Stufen (auch künftig neue), sonst nur für die gewählten. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
+                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. Der Kurztitel erscheint auf Beleg und Ticket-Mail, der Langtitel bewirbt die Option auf der öffentlichen Saisonseite (fehlt er, wird der Kurztitel angezeigt). Die Stufen entsprechen den Preisstufen dieser Saison. „Alle" gilt für sämtliche Stufen (auch künftig neue), sonst nur für die gewählten. „Nur Aktion" bietet die Option nur an, wenn für die Stufe gerade eine Sonderaktion läuft. Optionen zu 0 CHF sind auf der Kaufseite standardmässig angehakt. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
             </div>
 
             @if (_addOnError is not null)
@@ -609,7 +611,7 @@
             .ToList();
         _addOnRows = (_addOns.GetValueOrDefault(s.Id) ?? [])
             .Select(a => new AddOnRow { Label = a.Label, LongTitle = a.LongTitle ?? "", Price = decimal.Round(a.Price, 2), Active = a.Active, Scope = a.Scope,
-                InfoBefore = a.InfoBeforePurchase ?? "", InfoAfter = a.InfoAfterPurchase ?? "", AllowedTierIds = a.AllowedTierIds.ToHashSet() })
+                InfoBefore = a.InfoBeforePurchase ?? "", InfoAfter = a.InfoAfterPurchase ?? "", AllowedTierIds = a.AllowedTierIds.ToHashSet(), PromoOnly = a.PromoOnly })
             .ToList();
         _addOnError = null;
     }
@@ -630,7 +632,7 @@
             var options = _addOnRows
                 .Where(r => !string.IsNullOrWhiteSpace(r.Label))
                 .Select(r => SeasonAddOn.Create(_editingAddOns.Id, r.Label, decimal.Round(r.Price, 2), r.Active, 0, r.Scope, r.InfoBefore, r.InfoAfter,
-                    r.LongTitle, r.AllowedTierIds.Where(validTierIds.Contains).ToList()))
+                    r.LongTitle, r.AllowedTierIds.Where(validTierIds.Contains).ToList(), r.PromoOnly))
                 .ToList();
             await SeasonAddOns.ReplaceForSeasonAsync(_editingAddOns.Id, options);
             _editingAddOns = null;
@@ -651,5 +653,6 @@
         public string InfoBefore { get; set; } = "";
         public string InfoAfter { get; set; } = "";
         public HashSet<int> AllowedTierIds { get; set; } = new();
+        public bool PromoOnly { get; set; }
     }
 }

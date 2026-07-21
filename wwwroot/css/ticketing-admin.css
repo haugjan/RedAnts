@@ -206,6 +206,7 @@
 }
 .ta-tier-chip:hover { border-color: var(--ta-accent); color: var(--ta-accent); }
 .ta-tier-chip.is-on { background: var(--ta-accent); border-color: var(--ta-accent); color: #fff; }
+.ta-tier-chip--promo.is-on { background: #fff3d6; border-color: #e0a92a; color: #8a5a00; }
 
 .ta-cell-address { white-space: normal; min-width: 190px; line-height: 1.4; }
 .ta-cell-address .ta-addr-name { font-weight: 600; }
