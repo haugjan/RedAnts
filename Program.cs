@@ -22,6 +22,7 @@ builder.Services.Configure<HostOptions>(options =>
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 
 builder.Services.AddSession(options =>
 {

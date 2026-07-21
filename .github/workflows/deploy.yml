@@ -91,17 +91,35 @@ jobs:
           az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" --settings @gw-settings.json --output none
           rm -f gw-settings.json
           echo "GoogleWallet settings applied to $WEBAPP."
+      - name: Configure Imaging HMAC (dev)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+          IMAGING_HMAC_KEY: ${{ secrets.IMAGING_HMAC_KEY }}
+        run: |
+          if [ -z "$IMAGING_HMAC_KEY" ]; then
+            echo "Imaging HMAC secret not set; skipping."; exit 0
+          fi
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Umbraco__CMS__Imaging__HMACSecretKey="$IMAGING_HMAC_KEY" \
+            --output none
+          echo "Imaging HMAC applied to $WEBAPP."
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
           # "Up" = 2xx, 3xx or 401: the root redirects to /ticketing/ (3xx) and the site gate
-          # answers 401 without credentials - both mean Umbraco booted. Best-effort: never fail here.
+          # answers 401 without credentials - both mean Umbraco booted. Then hit /warmup so the
+          # runtime-compiled Razor views are precompiled. Best-effort: never fail the deploy here.
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
-            case "$S" in 2*|3*|401) echo "Up."; exit 0 ;; esac
+            case "$S" in
+              2*|3*|401)
+                echo "Up. Warming core pages via /warmup..."
+                curl -s --max-time 180 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
+                exit 0 ;;
+            esac
             sleep 15
           done
           echo "App did not respond within the warm-up window (best-effort)."; exit 0
@@ -157,6 +175,18 @@ jobs:
           az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" --settings @gw-settings.json --output none
           rm -f gw-settings.json
           echo "GoogleWallet settings applied to $WEBAPP."
+      - name: Configure Imaging HMAC (prod)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+          IMAGING_HMAC_KEY: ${{ secrets.IMAGING_HMAC_KEY }}
+        run: |
+          if [ -z "$IMAGING_HMAC_KEY" ]; then
+            echo "Imaging HMAC secret not set; skipping."; exit 0
+          fi
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Umbraco__CMS__Imaging__HMACSecretKey="$IMAGING_HMAC_KEY" \
+            --output none
+          echo "Imaging HMAC applied to $WEBAPP."
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -165,7 +195,12 @@ jobs:
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
-            case "$S" in 2*|3*|401) echo "Up."; exit 0 ;; esac
+            case "$S" in
+              2*|3*|401)
+                echo "Up. Warming core pages via /warmup..."
+                curl -s --max-time 180 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
+                exit 0 ;;
+            esac
             sleep 15
           done
           echo "App did not respond within the warm-up window (best-effort)."; exit 0
