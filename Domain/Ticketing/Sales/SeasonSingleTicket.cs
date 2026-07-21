@@ -43,13 +43,13 @@ public sealed class SeasonSingleTicket
     }
 
     public static SeasonSingleTicket CreateForBundle(int seasonId, TicketCategory category, decimal price, int bundleId,
-        int? tierId = null)
+        int? tierId = null, int? orderId = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         if (bundleId <= 0) throw new DomainException("Ein Bundle muss zugewiesen sein.");
         return new SeasonSingleTicket(0, Guid.NewGuid(), seasonId, category, tierId, decimal.Round(price, 2),
-            null, TicketStatus.Valid, DateTime.UtcNow, null, false, bundleId);
+            orderId, TicketStatus.Valid, DateTime.UtcNow, null, false, bundleId);
     }
 
     public static SeasonSingleTicket FromPersistence(int id, Guid uuid, int seasonId, TicketCategory category,

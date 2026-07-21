@@ -20,5 +20,5 @@ public interface IEventTicketBundles
     Task<bool> ReferenceExistsAsync(int eventId, string reference);
 
     Task<EventTicketBundleView> CreateAsync(int eventId, TicketCategory category, string reference, int quantity,
-        string? createdByName = null, string? createdByEmail = null);
+        string? createdByName = null, string? createdByEmail = null, int? orderId = null);
 }

@@ -39,7 +39,7 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
     }
 
     public async Task<EventTicketBundleView> CreateAsync(int eventId, TicketCategory category, string reference, int quantity,
-        string? createdByName = null, string? createdByEmail = null)
+        string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
         if (quantity > MaxBundleSize) throw new DomainException($"Die Anzahl darf höchstens {MaxBundleSize} sein.");
@@ -65,7 +65,7 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
 
         for (var i = 0; i < quantity; i++)
         {
-            var ticket = EventTicket.CreateForBundle(eventId, category, record.Id, bundle.CreatedByName, bundle.CreatedByEmail);
+            var ticket = EventTicket.CreateForBundle(eventId, category, record.Id, bundle.CreatedByName, bundle.CreatedByEmail, orderId: orderId);
             await db.InsertAsync(new EventTicketRecord
             {
                 Uuid = ticket.Uuid.ToString(),

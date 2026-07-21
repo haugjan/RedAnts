@@ -472,11 +472,11 @@
                 _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
                 return;
             }
-            await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+            var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
                 Identity?.Name ?? AdminUser);
             var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
-                Identity?.Name ?? AdminUser, Identity?.Email);
+                Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
             _showCreate = false;
             _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
             SelectedBundleId = created.Id;

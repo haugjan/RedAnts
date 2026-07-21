@@ -392,11 +392,11 @@
         {
             var first = string.IsNullOrWhiteSpace(_newFirstName) ? null : _newFirstName;
             var last = string.IsNullOrWhiteSpace(_newLastName) ? null : _newLastName;
-            await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Private, first, last, null), Identity.Email,
+            var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Private, first, last, null), Identity.Email,
                 [new AdminOrderLine(OrderItemKind.MemberCard, SelectedSeasonId, default, _newCategory.DisplayName(), 1, 0m)],
                 Identity.Name);
             await Members.CreateAsync(SelectedSeasonId, _newCategory, first, last,
-                _newBirthday, _newReference.Trim(), Identity.Name, Identity.Email);
+                _newBirthday, _newReference.Trim(), Identity.Name, Identity.Email, order.Id);
             _showCreate = false;
             await ReloadCardsAsync();
         }

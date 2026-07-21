@@ -37,5 +37,5 @@ public interface IFlexTicketBundles
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
 
     Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
-        string? createdByName = null, string? createdByEmail = null);
+        string? createdByName = null, string? createdByEmail = null, int? orderId = null);
 }

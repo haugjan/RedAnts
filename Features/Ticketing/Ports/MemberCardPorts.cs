@@ -10,7 +10,7 @@ public interface IMemberCards
         string? createdByName = null, string? createdByEmail = null);
 
     Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,
-        DateOnly? birthday, string reference, string? createdByName = null, string? createdByEmail = null);
+        DateOnly? birthday, string reference, string? createdByName = null, string? createdByEmail = null, int? orderId = null);
 
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
 }

@@ -78,7 +78,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
     }
 
     public async Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
-        string? createdByName = null, string? createdByEmail = null)
+        string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
         if (quantity > MaxBundleSize) throw new DomainException($"Die Anzahl darf höchstens {MaxBundleSize} sein.");
@@ -104,7 +104,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
 
         for (var i = 0; i < quantity; i++)
         {
-            var ticket = SeasonSingleTicket.CreateForBundle(seasonId, category, 0m, record.Id);
+            var ticket = SeasonSingleTicket.CreateForBundle(seasonId, category, 0m, record.Id, orderId: orderId);
             await db.InsertAsync(new SeasonSingleTicketRecord
             {
                 Uuid = ticket.Uuid.ToString(),

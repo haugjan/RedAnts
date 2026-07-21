@@ -28,7 +28,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
     }
 
     public async Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,
-        DateOnly? birthday, string reference, string? createdByName = null, string? createdByEmail = null)
+        DateOnly? birthday, string reference, string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         var reff = (reference ?? "").Trim();
@@ -37,7 +37,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
             throw new DomainException($"Die Referenz „{reff}“ ist in dieser Saison bereits vergeben.");
 
         var card = MemberCard.Create(seasonId, category, firstName, lastName, birthday, reff,
-            createdByName: createdByName, createdByEmail: createdByEmail);
+            orderId: orderId, createdByName: createdByName, createdByEmail: createdByEmail);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await scope.Database.InsertAsync(ToRecord(card));

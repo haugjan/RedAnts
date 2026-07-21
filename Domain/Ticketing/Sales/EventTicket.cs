@@ -47,11 +47,11 @@ public sealed class EventTicket
     }
 
     public static EventTicket CreateForBundle(int eventId, TicketCategory category, int bundleId,
-        string? createdByName = null, string? createdByEmail = null, int? tierId = null)
+        string? createdByName = null, string? createdByEmail = null, int? tierId = null, int? orderId = null)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (bundleId <= 0) throw new DomainException("Ein Bundle muss zugewiesen sein.");
-        return new EventTicket(0, Guid.NewGuid(), eventId, category, tierId, 0m, null,
+        return new EventTicket(0, Guid.NewGuid(), eventId, category, tierId, 0m, orderId,
             TicketStatus.Valid, DateTime.UtcNow, false, null, Clean(createdByName), Clean(createdByEmail), bundleId);
     }
 
