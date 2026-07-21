@@ -37,6 +37,15 @@
             </div>
         }
     </div>
+    @if (Model.AddOnInfoTexts.Count > 0)
+    {
+        <hr />
+        <h2 class="h5 mb-2">Zu deinen Zusatzoptionen</h2>
+        @foreach (var info in Model.AddOnInfoTexts)
+        {
+            <div class="alert alert-info small mb-2" style="white-space:pre-line;">@info</div>
+        }
+    }
 </div>
 
 <div class="mt-4">

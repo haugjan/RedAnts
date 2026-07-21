@@ -48,7 +48,19 @@ public sealed class OrderMailer(
         var total = model.Tickets.Count;
         var blocks = string.Concat(model.Tickets.Select((t, i) =>
             TicketCard(model.BaseUrl, t, dates.GetValueOrDefault((t.Type, t.ScopeId)), i + 1, total)));
-        return intro + blocks;
+        return intro + blocks + AddOnInfoBlock(model.AddOnInfoTexts);
+    }
+
+    private static string AddOnInfoBlock(IReadOnlyList<string>? infos)
+    {
+        if (infos is null || infos.Count == 0) return "";
+        var items = string.Concat(infos.Select(info =>
+            $"<p style=\"margin:0 0 10px;\">{WebUtility.HtmlEncode(info).Replace("\n", "<br>")}</p>"));
+        return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:400px;margin:0 auto 32px;background:#f5f5f5;border-left:4px solid #C8102E;border-radius:4px;\">" +
+            "<tr><td style=\"padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:14px;line-height:1.6;\">" +
+                "<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#101010;font-size:14px;margin:0 0 8px;\">Zu deinen Zusatzoptionen</div>" +
+                items +
+            "</td></tr></table>";
     }
 
     private async Task<Dictionary<(TicketType, int), string?>> ResolveDatesAsync(IReadOnlyList<OrderMailTicket> tickets)

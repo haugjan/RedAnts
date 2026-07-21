@@ -11,7 +11,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, ILogger<CheckoutController> logger) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -200,7 +200,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             }
         }
 
-        var issued = await FulfillAsync(saved.Id);
+        var (issued, addOnInfos) = await FulfillAsync(saved.Id);
         cart.Clear();
         HttpContext.Session.Remove(FormKey);
         SaveConfirmation(new CheckoutConfirmationView
@@ -209,7 +209,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             Email = billing.Email,
             Total = saved.TotalGross,
             PaymentLabel = PaymentLabelText,
-            Tickets = issued
+            Tickets = issued,
+            AddOnInfoTexts = addOnInfos
         });
         return Redirect("/kasse/bestaetigung");
     }
@@ -221,22 +222,22 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             .ToList();
         var addOns = cart.Items
             .Where(i => i.Kind == CartItemKind.SeasonPass && i.AddOns.Count > 0)
-            .SelectMany(i => i.AddOns.Select(a => new FulfillmentAddOn(i.SeasonId, i.EventName, i.TierId, i.CategoryName, a.Label, a.Price, i.Quantity)))
-            .Concat(cart.OrderAddOns.Select(a => new FulfillmentAddOn(a.SeasonId, a.SeasonName, 0, "", a.Label, a.Price, 1)))
+            .SelectMany(i => i.AddOns.Select(a => new FulfillmentAddOn(a.Id, i.SeasonId, i.EventName, i.TierId, i.CategoryName, a.Label, a.Price, i.Quantity)))
+            .Concat(cart.OrderAddOns.Select(a => new FulfillmentAddOn(a.Id, a.SeasonId, a.SeasonName, 0, "", a.Label, a.Price, 1)))
             .ToList();
         return JsonSerializer.Serialize(new FulfillmentSnapshot(items, addOns, subscribeNewsletter, newsletterSource));
     }
 
-    private async Task<List<ConfirmationTicket>> FulfillAsync(int orderId)
+    private async Task<(List<ConfirmationTicket> Tickets, List<string> AddOnInfos)> FulfillAsync(int orderId)
     {
         var order = await orders.GetByIdAsync(orderId);
         if (order is null || order.Status != OrderStatus.Draft || string.IsNullOrEmpty(order.FulfillmentPayload))
-            return [];
-        if (!await orders.TryMarkPaidAsync(orderId)) return [];
+            return ([], []);
+        if (!await orders.TryMarkPaidAsync(orderId)) return ([], []);
         await orderLog.AppendAsync(order.Id, OrderStatus.Paid, "Online-Kauf", "Online bezahlt");
 
         var snapshot = JsonSerializer.Deserialize<FulfillmentSnapshot>(order.FulfillmentPayload);
-        if (snapshot is null) return [];
+        if (snapshot is null) return ([], []);
         var billing = order.BillingAddress;
         var buyer = billing.ToBuyer();
 
@@ -275,6 +276,16 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email, addOnLines);
         }
 
+        var addOnInfos = new List<string>();
+        foreach (var group in snapshot.AddOns.GroupBy(a => a.SeasonId))
+        {
+            var byId = (await seasonAddOns.GetBySeasonAsync(group.Key)).ToDictionary(a => a.Id);
+            foreach (var a in group)
+                if (byId.TryGetValue(a.Id, out var entity) && !string.IsNullOrWhiteSpace(entity.InfoAfterPurchase))
+                    addOnInfos.Add(entity.InfoAfterPurchase!);
+        }
+        addOnInfos = addOnInfos.Distinct().ToList();
+
         var orderItemLines = new List<OrderItem>();
         foreach (var item in snapshot.Items)
         {
@@ -290,12 +301,12 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         await mailer.SendTicketsAsync(new OrderMailModel(
             order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
-            publicUrl.Resolve(Request), mailTickets));
+            publicUrl.Resolve(Request), mailTickets, addOnInfos));
 
         if (snapshot.SubscribeNewsletter)
             await newsletter.SubscribeAsync(billing.Email, billing.FullName, snapshot.NewsletterSource);
 
-        return issued;
+        return (issued, addOnInfos);
     }
 
     [HttpGet("/kasse/bestaetigung")]

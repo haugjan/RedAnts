@@ -10,7 +10,8 @@ public sealed record OrderMailModel(
     string ToName,
     decimal Total,
     string BaseUrl,
-    IReadOnlyList<OrderMailTicket> Tickets);
+    IReadOnlyList<OrderMailTicket> Tickets,
+    IReadOnlyList<string>? AddOnInfoTexts = null);
 
 public interface IOrderMailer
 {
