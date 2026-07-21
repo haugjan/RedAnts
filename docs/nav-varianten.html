@@ -36,16 +36,20 @@
   /* ---- Demo frame: a nav sticks while colourful content scrolls behind it ---- */
   .frame { height: 340px; overflow: hidden; position: relative; }
   .scroller { height: 100%; overflow-y: auto; scroll-behavior: smooth; }
-  .stage {
-    min-height: 1150px; position: relative;
+  .hero {
+    height: 300px; position: relative;
     background-image: var(--bg); background-size: cover; background-position: center;
   }
-  .stage-title { position: absolute; left: 0; right: 0; top: 128px; padding: 1.2rem; }
-  .stage-title h3 { font-family: var(--display); font-weight: 700; font-size: 2rem; margin: 0; color: #fff; text-transform: uppercase; line-height: 1; text-shadow: 0 2px 18px rgba(0,0,0,.55); }
+  .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,.22), transparent 45%, transparent 75%, rgba(0,0,0,.12)); }
+  .hero-title { position: absolute; left: 1.2rem; bottom: 1rem; z-index: 1; }
+  .hero-title h3 { font-family: var(--display); font-weight: 700; font-size: 2rem; margin: 0; color: #fff; text-transform: uppercase; line-height: 1; text-shadow: 0 2px 18px rgba(0,0,0,.55); }
+  .page-content { background: #fff; padding: 1.4rem 1.2rem; min-height: 420px; }
+  .page-content .row { height: 24px; border-radius: 6px; margin: 0 0 .7rem; background: linear-gradient(90deg,#e4e7ec,#f1f3f6); }
+  .page-content .row.w70 { width: 70%; }
   .scroll-hint { position: absolute; right: 12px; bottom: 10px; font-size: .72rem; color: #888; background: rgba(255,255,255,.8); padding: .15rem .5rem; border-radius: 999px; pointer-events: none; }
 
   /* ---- The navigation bar (shared skeleton) ---- */
-  .nav { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 1rem; padding: .7rem 1.15rem; }
+  .nav { position: absolute; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 1rem; padding: .7rem 1.15rem; }
   .nav-logo { font-family: var(--display); font-weight: 700; letter-spacing: .04em; font-size: 1.05rem; color: var(--red); text-transform: uppercase; }
   .nav-links { margin-left: auto; display: flex; gap: 1.1rem; }
   .nav-links a { font-family: var(--display); font-weight: 500; font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; color: var(--ink); text-decoration: none; }
@@ -106,7 +110,7 @@
 <div class="page">
   <div class="page-head">
     <h1>Navigations-Blur – Varianten</h1>
-    <p>Sechs Vorschläge für die Nav-Leiste im Red-Ants-Look, jeweils über einem Hintergrundfoto. Scrolle in jeder Kachel (das Foto läuft unter der Leiste durch), um den Blur zu beurteilen. Unter jeder Variante steht das CSS. Variante 1 ist der aktuelle Zustand, Variante 2 der von dir angesprochene Blur-Verlauf. Das Foto ist ein Platzhalter: oben im CSS die Variable <code>--bg</code> auf eine echte Red-Ants-Spielfoto-URL setzen.</p>
+    <p>Sechs Vorschläge für die Nav-Leiste im Red-Ants-Look. Wie auf der Seite liegt die Navigation transparent über dem Header-Bild – das Bild reicht bis ganz nach oben und überragt die Leiste. Scrolle in jeder Kachel, dann läuft Hero und Inhalt unter der Leiste durch und du siehst den Blur. Unter jeder Variante steht das CSS. Variante 1 ist der aktuelle Zustand, Variante 2 der von dir angesprochene Blur-Verlauf. Das Header-Foto ist ein Platzhalter: oben im CSS die Variable <code>--bg</code> auf ein echtes Red-Ants-Bild setzen.</p>
   </div>
 
   <div class="grid">
@@ -118,11 +122,14 @@
         <h2>1 · Solid-Blur</h2>
         <p>Gleichmässiger Weichzeichner auf halbtransparentem Weiss mit feiner Trennlinie. Ruhig, neutral, gut lesbar.</p>
       </div>
-      <div class="frame"><div class="scroller">
+      <div class="frame">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+        <div class="scroller">
+          <div class="hero"><div class="hero-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+          <div class="page-content"><div class="row"></div><div class="row w70"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+        </div>
         <span class="scroll-hint">↕ scrollen</span>
-      </div></div>
+      </div>
       <details><summary>CSS</summary><pre>.nav {
   background: rgba(255,255,255,.72);
   backdrop-filter: blur(8px);
@@ -137,11 +144,14 @@
         <h2>2 · Blur-Verlauf (progressiv)</h2>
         <p>Der Weichzeichner ist oben stark und läuft nach unten weich aus (per Masken-Verlauf). Kein harter Rand, sehr modern – das „iOS-Gefühl“.</p>
       </div>
-      <div class="frame"><div class="scroller">
+      <div class="frame">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+        <div class="scroller">
+          <div class="hero"><div class="hero-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+          <div class="page-content"><div class="row"></div><div class="row w70"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+        </div>
         <span class="scroll-hint">↕ scrollen</span>
-      </div></div>
+      </div>
       <details><summary>CSS</summary><pre>.nav { position: sticky; top: 0;
   background: linear-gradient(to bottom,
      rgba(255,255,255,.6), rgba(255,255,255,0));
@@ -161,11 +171,14 @@
         <h2>3 · Frosted Glass</h2>
         <p>Stärkerer Blur mit erhöhter Farbsättigung und weichem Schatten. Wirkt wie Milchglas, hebt die Leiste deutlicher ab.</p>
       </div>
-      <div class="frame"><div class="scroller">
+      <div class="frame">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+        <div class="scroller">
+          <div class="hero"><div class="hero-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+          <div class="page-content"><div class="row"></div><div class="row w70"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+        </div>
         <span class="scroll-hint">↕ scrollen</span>
-      </div></div>
+      </div>
       <details><summary>CSS</summary><pre>.nav {
   background: rgba(255,255,255,.55);
   backdrop-filter: blur(18px) saturate(180%);
@@ -181,11 +194,14 @@
         <h2>4 · Getönter Verlauf</h2>
         <p>Blur mit einem zarten Rot-Verlauf nach unten. Bringt die Vereinsfarbe subtil in die Leiste, ohne die Lesbarkeit zu stören.</p>
       </div>
-      <div class="frame"><div class="scroller">
+      <div class="frame">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+        <div class="scroller">
+          <div class="hero"><div class="hero-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+          <div class="page-content"><div class="row"></div><div class="row w70"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+        </div>
         <span class="scroll-hint">↕ scrollen</span>
-      </div></div>
+      </div>
       <details><summary>CSS</summary><pre>.nav {
   background: linear-gradient(to bottom,
      rgba(255,255,255,.82), rgba(200,16,46,.09));
@@ -201,11 +217,14 @@
         <h2>5 · Auslaufende Kante</h2>
         <p>Sowohl Fläche als auch Blur laufen nach unten in Transparenz aus – die Leiste verschmilzt randlos mit dem Inhalt. Am dezentesten.</p>
       </div>
-      <div class="frame"><div class="scroller">
+      <div class="frame">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+        <div class="scroller">
+          <div class="hero"><div class="hero-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+          <div class="page-content"><div class="row"></div><div class="row w70"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+        </div>
         <span class="scroll-hint">↕ scrollen</span>
-      </div></div>
+      </div>
       <details><summary>CSS</summary><pre>.nav {
   background: linear-gradient(to bottom,
      rgba(255,255,255,.85) 40%, rgba(255,255,255,0));
@@ -222,11 +241,14 @@
         <h2>6 · Dunkler Blur</h2>
         <p>Dunkle, geblurte Leiste mit hellem Text – ideal über Bild-Heros. Passt zur bestehenden transparent-auf-Hero-Logik (dunkel statt hell beim Scrollen).</p>
       </div>
-      <div class="frame"><div class="scroller">
+      <div class="frame">
         <nav class="nav"><span class="nav-logo">Red Ants</span><span class="nav-links"><a class="active">Start</a><a>Tickets</a><a>Saisonkarten</a><a>Team</a></span></nav>
-        <div class="stage"><div class="stage-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+        <div class="scroller">
+          <div class="hero"><div class="hero-title"><h3>Red Ants<br>Winterthur</h3></div></div>
+          <div class="page-content"><div class="row"></div><div class="row w70"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+        </div>
         <span class="scroll-hint">↕ scrollen</span>
-      </div></div>
+      </div>
       <details><summary>CSS</summary><pre>.nav {
   background: rgba(16,16,16,.5);
   backdrop-filter: blur(10px) saturate(140%);
