@@ -35,6 +35,7 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
             TotalGross = order.TotalGross,
             SellerUid = order.SellerUid,
             PaymentMethod = (int)order.PaymentMethod,
+            PaymentSource = order.PaymentSource is { } ps ? (int)ps : null,
             Status = (int)order.Status,
             CreatedAt = order.CreatedAt,
             PaidAt = order.PaidAt,
@@ -99,5 +100,6 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
             r.CreatedAt,
             r.PaidAt,
             r.PayrexxGatewayId,
-            r.FulfillmentPayload);
+            r.FulfillmentPayload,
+            r.PaymentSource is { } ps ? (PaymentSource)ps : null);
 }

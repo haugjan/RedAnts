@@ -33,6 +33,23 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddPriceTiers>("price-tiers");
         To<AddArticleGuids>("article-guids");
         To<AddSeasonAddOnInfoTexts>("seasonaddons-info-texts");
+        To<AddOrderPaymentSource>("order-payment-source");
+    }
+}
+
+public class AddOrderPaymentSource(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("Orders", "PaymentSource"))
+        {
+            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+            if (isSqlite)
+                Execute.Sql("ALTER TABLE Orders ADD COLUMN PaymentSource INTEGER NULL").Do();
+            else
+                Alter.Table("Orders").AddColumn("PaymentSource").AsInt32().Nullable().Do();
+        }
+        return Task.CompletedTask;
     }
 }
 

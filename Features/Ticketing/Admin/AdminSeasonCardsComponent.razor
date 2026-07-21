@@ -171,7 +171,16 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="newSpPrice">Preis (CHF)</label>
-                <input id="newSpPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" @bind:after="() => _newPrice = decimal.Round(_newPrice, 2)" />
+                <input id="newSpPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" @bind:after="OnNewPriceChanged" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newSpPaymentSource">Zahlart</label>
+                <select id="newSpPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(_newPrice))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
             </div>
 
             @if (_createError is not null)
@@ -501,16 +510,31 @@
     private bool _creating;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private decimal _newPrice;
+    private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
     private BuyerType _newBuyerType = BuyerType.Private;
     private string _newFirstName = "";
     private string _newLastName = "";
     private string _newCompany = "";
     private string? _createError;
 
+    private void OnNewPriceChanged()
+    {
+        _newPrice = decimal.Round(_newPrice, 2);
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(_newPrice);
+        if (!choices.Contains(_newPaymentSource)) _newPaymentSource = choices[0];
+    }
+
+    private static PaymentSource ClampPaymentSource(PaymentSource source, decimal price)
+    {
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(price);
+        return choices.Contains(source) ? source : choices[0];
+    }
+
     private void OpenCreate()
     {
         _newCategory = TicketCategory.Adult;
         _newPrice = 0m;
+        _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
         _newBuyerType = BuyerType.Private;
         _newFirstName = _newLastName = _newCompany = "";
         _createError = null;
@@ -528,9 +552,10 @@
         try
         {
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
+            var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
             var order = await OrderFactory.CreateAsync(buyer, Identity.Email,
                 [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
-                Identity.Name);
+                Identity.Name, paymentSource);
             await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, order.Id,
                 buyer, Identity.Name, Identity.Email));
             _showCreate = false;

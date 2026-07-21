@@ -170,6 +170,15 @@
                 <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
                 <input id="newQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_newQuantity" />
             </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
+                <select id="newFlexPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
+            </div>
 
             @if (!string.IsNullOrEmpty(_createError))
             {
@@ -299,6 +308,7 @@
     private bool _saving;
     private string? _createError;
     private TicketCategory _newCategory = TicketCategory.Adult;
+    private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
     private string _newReference = "";
     private int _newQuantity = 1;
 
@@ -448,6 +458,7 @@
         _newCategory = TicketCategory.Adult;
         _newReference = "";
         _newQuantity = 1;
+        _newPaymentSource = PaymentSource.Sponsoring;
         _showCreate = true;
     }
 
@@ -474,7 +485,7 @@
             }
             var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
-                Identity?.Name ?? AdminUser);
+                Identity?.Name ?? AdminUser, _newPaymentSource);
             var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
             _showCreate = false;

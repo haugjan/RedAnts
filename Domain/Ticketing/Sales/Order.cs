@@ -12,6 +12,7 @@ public sealed class Order
     public decimal TotalGross { get; private set; }
     public string? SellerUid { get; private set; }
     public PaymentMethod PaymentMethod { get; private set; }
+    public PaymentSource? PaymentSource { get; private set; }
     public OrderStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? PaidAt { get; private set; }
@@ -20,7 +21,7 @@ public sealed class Order
 
     private Order(int id, string orderNumber, BillingAddress billingAddress, string currency,
         decimal subtotalNet, decimal vatRate, decimal vatAmount, decimal totalGross, string? sellerUid,
-        PaymentMethod paymentMethod, OrderStatus status, DateTime createdAt, DateTime? paidAt,
+        PaymentMethod paymentMethod, PaymentSource? paymentSource, OrderStatus status, DateTime createdAt, DateTime? paidAt,
         string? payrexxGatewayId, string? fulfillmentPayload)
     {
         Id = id;
@@ -33,6 +34,7 @@ public sealed class Order
         TotalGross = totalGross;
         SellerUid = sellerUid;
         PaymentMethod = paymentMethod;
+        PaymentSource = paymentSource;
         Status = status;
         CreatedAt = createdAt;
         PaidAt = paidAt;
@@ -41,7 +43,8 @@ public sealed class Order
     }
 
     public static Order Create(string orderNumber, BillingAddress billingAddress, decimal totalGross,
-        decimal vatRate, PaymentMethod paymentMethod, string? sellerUid, string currency = "CHF")
+        decimal vatRate, PaymentMethod paymentMethod, string? sellerUid, string currency = "CHF",
+        PaymentSource? paymentSource = null)
     {
         if (string.IsNullOrWhiteSpace(orderNumber)) throw new DomainException("Bestellnummer ist erforderlich.");
         if (totalGross < 0) throw new DomainException("Betrag darf nicht negativ sein.");
@@ -52,15 +55,17 @@ public sealed class Order
 
         return new Order(0, orderNumber.Trim(), billingAddress, currency, net, vatRate, vatAmount, gross,
             string.IsNullOrWhiteSpace(sellerUid) ? null : sellerUid.Trim(),
-            paymentMethod, OrderStatus.Draft, DateTime.UtcNow, null, null, null);
+            paymentMethod, paymentSource, OrderStatus.Draft, DateTime.UtcNow, null, null, null);
     }
+
+    public void SetPaymentSource(PaymentSource? paymentSource) => PaymentSource = paymentSource;
 
     public static Order FromPersistence(int id, string orderNumber, BillingAddress billingAddress, string currency,
         decimal subtotalNet, decimal vatRate, decimal vatAmount, decimal totalGross, string? sellerUid,
         PaymentMethod paymentMethod, OrderStatus status, DateTime createdAt, DateTime? paidAt,
-        string? payrexxGatewayId = null, string? fulfillmentPayload = null) =>
+        string? payrexxGatewayId = null, string? fulfillmentPayload = null, PaymentSource? paymentSource = null) =>
         new(id, orderNumber ?? "", billingAddress, string.IsNullOrWhiteSpace(currency) ? "CHF" : currency,
-            subtotalNet, vatRate, vatAmount, totalGross, sellerUid, paymentMethod, status, createdAt, paidAt,
+            subtotalNet, vatRate, vatAmount, totalGross, sellerUid, paymentMethod, paymentSource, status, createdAt, paidAt,
             payrexxGatewayId, fulfillmentPayload);
 
     public void SetFulfillmentPayload(string? payload) => FulfillmentPayload = payload;
