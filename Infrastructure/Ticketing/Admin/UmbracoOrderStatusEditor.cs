@@ -29,7 +29,7 @@ public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPay
         await log.AppendAsync(orderId, target, changedBy, "Admin-Änderung");
     }
 
-    public async Task RefundAsync(int orderId, string? changedBy)
+    public async Task RefundAsync(int orderId, bool viaPayrexx, string? changedBy)
     {
         var order = await orders.GetByIdAsync(orderId)
             ?? throw new DomainException("Bestellung wurde nicht gefunden.");
@@ -38,8 +38,10 @@ public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPay
             throw new DomainException("Nur bezahlte Bestellungen können zurückerstattet werden.");
 
         string note;
-        if (!string.IsNullOrWhiteSpace(order.PayrexxGatewayId) && payrexx.Enabled)
+        if (viaPayrexx)
         {
+            if (string.IsNullOrWhiteSpace(order.PayrexxGatewayId) || !payrexx.Enabled)
+                throw new DomainException("Diese Bestellung wurde nicht online über Payrexx bezahlt und kann nicht über Payrexx zurückerstattet werden.");
             var refunded = await payrexx.RefundGatewayAsync(order.PayrexxGatewayId!);
             if (!refunded)
                 throw new DomainException("Payrexx-Rückerstattung fehlgeschlagen. Bitte im Payrexx-Portal prüfen.");

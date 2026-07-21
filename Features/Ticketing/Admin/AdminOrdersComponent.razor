@@ -143,7 +143,28 @@
                    Busy="_actionBusy"
                    Error="@_actionError"
                    OnConfirm="ConfirmActionAsync"
-                   OnCancel="CancelAction" />
+                   OnCancel="CancelAction">
+        @if (_action == OrderAction.Refund)
+        {
+            @if (_refundOnlineAvailable)
+            {
+                <div class="ta-refund-choice">
+                    <label class="ta-radio">
+                        <input type="radio" name="refundMethod" checked="@_refundViaPayrexx" @onchange="() => _refundViaPayrexx = true" />
+                        <span>Direkt über Payrexx zurückerstatten</span>
+                    </label>
+                    <label class="ta-radio">
+                        <input type="radio" name="refundMethod" checked="@(!_refundViaPayrexx)" @onchange="() => _refundViaPayrexx = false" />
+                        <span>Auf anderem Weg erledigt (nur vermerken)</span>
+                    </label>
+                </div>
+            }
+            else
+            {
+                <p class="ta-modal-note">Diese Bestellung wurde nicht online über Payrexx bezahlt. Die Rückerstattung wird nur als erledigt vermerkt.</p>
+            }
+        }
+    </ConfirmDialog>
 }
 
 <style>
@@ -166,6 +187,8 @@
     private OrderAction _action;
     private bool _actionBusy;
     private string? _actionError;
+    private bool _refundOnlineAvailable;
+    private bool _refundViaPayrexx;
 
     private static OrderAction[] ActionsFor(OrderStatus status) => status switch
     {
@@ -180,6 +203,8 @@
         _action = action;
         _actionError = null;
         _actionBusy = false;
+        _refundOnlineAvailable = o.PaymentSource == PaymentSource.Online && o.TotalGross > 0m;
+        _refundViaPayrexx = _refundOnlineAvailable;
     }
 
     private void CancelAction()
@@ -199,7 +224,7 @@
             {
                 case OrderAction.MarkPaid: await StatusEditor.SetStatusAsync(_actionOrder.OrderId, OrderStatus.Paid, Identity.Name); break;
                 case OrderAction.Cancel: await StatusEditor.SetStatusAsync(_actionOrder.OrderId, OrderStatus.Cancelled, Identity.Name); break;
-                case OrderAction.Refund: await StatusEditor.RefundAsync(_actionOrder.OrderId, Identity.Name); break;
+                case OrderAction.Refund: await StatusEditor.RefundAsync(_actionOrder.OrderId, _refundViaPayrexx, Identity.Name); break;
             }
             _actionOrder = null;
             await ReloadOrdersAsync();
@@ -234,7 +259,7 @@
     {
         OrderAction.MarkPaid => $"Bestellung {o.OrderNumber} als bezahlt markieren?",
         OrderAction.Cancel => $"Bestellung {o.OrderNumber} stornieren? Dies kann nicht rückgängig gemacht werden.",
-        OrderAction.Refund => $"Bestellung {o.OrderNumber} über CHF {o.TotalGross:N2} zurückerstatten? Die Rückerstattung wird bei Payrexx ausgelöst und kann nicht rückgängig gemacht werden.",
+        OrderAction.Refund => $"Bestellung {o.OrderNumber} über CHF {o.TotalGross:N2} zurückerstatten? Dies kann nicht rückgängig gemacht werden.",
         _ => ""
     };
 

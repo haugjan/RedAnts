@@ -6,5 +6,5 @@ public interface IOrderStatusEditor
 {
     Task SetStatusAsync(int orderId, OrderStatus target, string? changedBy);
 
-    Task RefundAsync(int orderId, string? changedBy);
+    Task RefundAsync(int orderId, bool viaPayrexx, string? changedBy);
 }

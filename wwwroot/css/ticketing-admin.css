@@ -159,6 +159,10 @@
 .ta-modal--xwide { max-width: min(1320px, 98vw); padding-left: 1.1rem; padding-right: 1.1rem; }
 .ta-modal-title { font-family: var(--ta-font); font-size: 1.2rem; font-weight: 700; color: var(--ta-ink); margin: 0 0 0.2rem; }
 .ta-modal-sub { color: var(--ta-muted); font-size: 0.82rem; margin: 0 0 1.1rem; }
+.ta-modal-note { color: var(--ta-muted); font-size: 0.8rem; margin: 0 0 1.1rem; }
+.ta-refund-choice { display: flex; flex-direction: column; gap: 0.5rem; margin: 0 0 1.1rem; }
+.ta-refund-choice .ta-radio { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
+.ta-refund-choice .ta-radio input { margin: 0; }
 .ta-bundle-list { list-style: none; margin: 0 0 1rem; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
 .ta-bundle-list a { display: block; text-align: left; }
 .ta-modal .ta-field { width: 100%; margin: 0 0 1.1rem; }
