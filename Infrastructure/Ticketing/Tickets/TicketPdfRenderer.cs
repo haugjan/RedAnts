@@ -32,19 +32,19 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment environment) : ITicket
                     var logo = Logo();
                     if (logo is not null)
                     {
-                        col.Item().PaddingTop(16).PaddingBottom(6).AlignCenter().Width(88).Image(logo);
+                        col.Item().PaddingTop(10).PaddingBottom(2).AlignCenter().Width(44).Image(logo);
                     }
 
-                    col.Item().Background(m.AccentHex).Padding(18).Column(head =>
+                    col.Item().Background(m.AccentHex).Padding(14).Column(head =>
                     {
                         head.Item().Text(m.TypeLabel).FontColor(Colors.White).Bold().FontSize(18);
                         head.Item().PaddingTop(2).Text(m.ScopeName).FontColor(Colors.White).FontSize(12);
                     });
 
-                    col.Item().PaddingTop(18).AlignCenter().Width(190).Image(m.QrPng);
+                    col.Item().PaddingTop(10).AlignCenter().Width(150).Image(m.QrPng);
                     col.Item().PaddingTop(4).AlignCenter().Text("Am Eingang scannen lassen").FontColor("#888888").FontSize(9);
 
-                    col.Item().PaddingHorizontal(20).PaddingTop(12).Column(meta =>
+                    col.Item().PaddingHorizontal(20).PaddingTop(8).Column(meta =>
                     {
                         if (m.DateText is not null) MetaRow(meta, "Datum", m.DateText);
                         if (m.CategoryLabel is not null) MetaRow(meta, "Kategorie", m.CategoryLabel);
