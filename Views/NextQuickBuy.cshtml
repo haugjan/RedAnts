@@ -3,19 +3,13 @@
 @using RedAnts.Features.Ticketing.Public
 @{
     Layout = "~/Views/Shared/_TicketsLayout.cshtml";
-    ViewData["PlainLayout"] = true;
     ViewData["Title"] = Model.HasEvent ? Model.Title : "Direktkauf";
+    ViewData["HeaderImage"] = Model.HasEvent ? Model.ImageUrl : null;
     var culture = DisplayCulture.From(Context.Request);
 }
 
 @section Head {
     <style>
-        .nq-header { position: relative; background-size: cover; background-position: center; min-height: 240px; display: flex; align-items: flex-end; border-radius: 16px; overflow: hidden; margin-bottom: 1.5rem; }
-        .nq-header--plain { background: #101010; }
-        .nq-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.78) 100%); }
-        .nq-header-inner { position: relative; z-index: 1; width: 100%; padding: 0 24px 26px; }
-        .nq-header-title { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-size: clamp(1.8rem, 5vw, 3.2rem); line-height: 1; margin: 0; }
-        .nq-header-title::after { content: ""; display: block; width: 56px; height: 5px; background: var(--ra-red); margin-top: 12px; }
         .nq-facts { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0 0 1.5rem; padding: 1rem 1.25rem; background: #f7f7f7; border-left: 4px solid var(--ra-red); }
         .nq-fact { display: flex; flex-direction: column; gap: 2px; }
         .nq-fact__label { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: #68676b; }
@@ -43,17 +37,6 @@
 else
 {
     <a href="/ticketing/" class="tk-back">&larr; Zur Übersicht</a>
-
-    <div class="nq-header @(string.IsNullOrEmpty(Model.ImageUrl) ? "nq-header--plain" : "")"
-         style="@(string.IsNullOrEmpty(Model.ImageUrl) ? "" : $"background-image:url('{Model.ImageUrl}');")">
-        @if (!string.IsNullOrEmpty(Model.ImageUrl))
-        {
-            <div class="nq-header-overlay"></div>
-        }
-        <div class="nq-header-inner">
-            <h1 class="nq-header-title">@Model.Title</h1>
-        </div>
-    </div>
 
     <div class="nq-facts">
         <div class="nq-fact">

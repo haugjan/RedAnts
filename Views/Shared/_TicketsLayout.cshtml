@@ -21,7 +21,7 @@
         .ToList() ?? new List<IPublishedContent>();
 
     var ticketingRoot = roots.FirstOrDefault(c => c.ContentType.Alias == "ticketingRoot");
-    var headerImage = ticketingRoot?.Value<IPublishedContent>("headerImage")?.Url();
+    var headerImage = ViewData["HeaderImage"] as string ?? ticketingRoot?.Value<IPublishedContent>("headerImage")?.Url();
 
     var title = ViewData["Title"] as string ?? "Red Ants Ticketing";
     var plain = ViewData["PlainLayout"] as bool? ?? false;
