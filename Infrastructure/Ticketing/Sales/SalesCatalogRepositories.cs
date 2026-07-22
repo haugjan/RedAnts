@@ -226,7 +226,7 @@ internal static class TierOffer
                 {
                     ShortName = normal.Name,
                     ActionText = string.IsNullOrWhiteSpace(action) ? null : action,
-                    OriginalPrice = normal.Price > pick.Price ? normal.Price : null
+                    OriginalPrice = pick.Price < normal.Price ? normal.Price : null
                 });
                 continue;
             }
