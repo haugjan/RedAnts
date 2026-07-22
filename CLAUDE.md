@@ -71,3 +71,12 @@ Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqi
 - Keep the two slices decoupled: no direct references from Website code into Ticketing internals (go through ports if a genuine dependency arises).
 - New website block elements: element type + alias in `WebsiteAliases`, register the block in the "Website Content Blocks" Block List, add a partial under `Views/Partials/Blocks/{alias}.cshtml`, add styles to `wwwroot/css/site.css`.
 - Secrets (Payrexx, Brevo, Turnstile) come from configuration / user secrets, never hardcoded.
+
+## Session workflow: preview & deploy
+
+Parallel sessions (S1–S6) each work in their own worktree `C:\development\RedAnts-s<N>` on their own branch `feature/s<N>-<short>`, never directly on `main`, and commit immediately. After each change, classify it:
+
+- **Simple (no DB/schema change)** — CSS, views/layout, text, front-end, PDF/mail templates, config without a migration: **run it locally, do NOT deploy to dev.** `dotnet run` (`ASPNETCORE_ENVIRONMENT=Development`, `--no-build` once built) on the session's own port `560<N>` (S1 → 5601 … S6 → 5606) against the Azure **dev** DB (the user-secrets DSN). Give the user the **localhost URL** (`http://localhost:560<N>/…`, reachable because the agent runs on the user's own machine) plus a one-line summary. Deploying every simple change to the single shared `app-redants-dev` makes parallel sessions overwrite each other, so don't.
+- **Complicated** — DB schema/migrations/seeders, or a flow that needs the real domain (Payrexx payment, backoffice/OIDC login, host-based `scan.`/`admin.` behaviour): **push the feature branch** (the pipeline deploys DEV only; `deploy-prod` is gated to `main`), watch the run, and report the matching dev link — tickets `tickets-dev.redants.ch`, scanning `scan-dev.redants.ch`, admin `admin-dev.redants.ch` (prod: the same hosts without `-dev`).
+
+Then always ask **"Auf prod deployen? Ja/Nein"** (Ja first, so the user can arrow + Enter). On **Ja**: `git push origin HEAD:main` (prod deploys); watch the CI build and report when green.
