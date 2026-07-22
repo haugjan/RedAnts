@@ -109,7 +109,7 @@ public sealed class OrderMailer(
                             $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.4px;opacity:.92;\">{kicker}</div>" +
                             $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:24px;font-weight:700;text-transform:uppercase;line-height:1;padding-top:2px;\">{typeLabel}</div>" +
                         "</td>" +
-                        $"<td align=\"right\" style=\"vertical-align:top;\"><img src=\"{baseUrl}/img/logo-redants-white.png\" alt=\"Red Ants\" height=\"26\" style=\"display:block;height:26px;width:auto;\"></td>" +
+                        $"<td align=\"right\" style=\"vertical-align:top;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td width=\"42\" height=\"42\" style=\"width:42px;height:42px;background:#ffffff;border-radius:50%;text-align:center;vertical-align:middle;\"><img src=\"{baseUrl}/img/logo-ant.png\" alt=\"Red Ants\" width=\"27\" style=\"display:inline-block;width:27px;height:auto;vertical-align:middle;\"></td></tr></table></td>" +
                     "</tr></table>" +
                 "</td></tr>" +
                 $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrUrl}\" alt=\"Ticket QR\" width=\"200\" height=\"200\" style=\"display:block;\"></td></tr>" +
