@@ -37,6 +37,25 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonAddOnTitleAndTiers>("seasonaddons-title-tiers");
         To<AddFreeEntryFixedCounts>("freeentry-fixed-counts");
         To<AddSeasonAddOnPromoOnly>("seasonaddons-promo-only");
+        To<AddOrderNumberSequence>("order-number-sequence");
+    }
+}
+
+public class AddOrderNumberSequence(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite) return Task.CompletedTask;
+
+        var exists = Database.ExecuteScalar<int>("SELECT COUNT(*) FROM sys.sequences WHERE name = 'OrderNumberSeq'");
+        if (exists > 0) return Task.CompletedTask;
+
+        var maxSuffix = Database.ExecuteScalar<int?>("SELECT MAX(TRY_CONVERT(int, RIGHT(OrderNumber, 6))) FROM Orders") ?? 0;
+        var start = maxSuffix + 1;
+        Execute.Sql($"CREATE SEQUENCE OrderNumberSeq AS bigint START WITH {start} INCREMENT BY 1").Do();
+
+        return Task.CompletedTask;
     }
 }
 

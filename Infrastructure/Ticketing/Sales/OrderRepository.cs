@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using NPoco;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
@@ -7,7 +8,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
+public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration config) : IOrders
 {
     public async Task<Order> SaveAsync(Order order)
     {
@@ -74,11 +75,10 @@ public sealed class OrderRepository(IScopeProvider scopeProvider) : IOrders
     public async Task<string> NextOrderNumberAsync()
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var seq = await scope.Database.ExecuteScalarAsync<long>("SELECT NEXT VALUE FOR OrderNumberSeq");
+        var prefix = config["Orders:NumberPrefix"] ?? "";
         var year = DateTime.UtcNow.Year;
-        var prefix = $"{year}-";
-        var count = await scope.Database.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM Orders WHERE OrderNumber LIKE @0", prefix + "%");
-        return $"{prefix}{count + 1:000000}";
+        return $"{prefix}{year}-{seq:000000}";
     }
 
     private static Order Map(OrderRecord r) =>

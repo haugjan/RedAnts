@@ -82,6 +82,14 @@ jobs:
             --settings Payrexx__Instance=redants-test Payrexx__ApiSecret="$PAYREXX_TEST_API_SECRET" \
             --output none
           echo "Payrexx test instance (redants-test) applied to $WEBAPP."
+      - name: Configure order-number prefix (dev)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Orders__NumberPrefix=DEV- \
+            --output none
+          echo "Order-number prefix DEV- applied to $WEBAPP."
       - name: Configure Imaging HMAC (dev)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
