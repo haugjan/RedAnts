@@ -82,19 +82,6 @@ jobs:
             --settings Payrexx__Instance=redants-test Payrexx__ApiSecret="$PAYREXX_TEST_API_SECRET" \
             --output none
           echo "Payrexx test instance (redants-test) applied to $WEBAPP."
-      - name: Configure Google Wallet (dev)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
-          GW_ISSUER_ID: ${{ secrets.GOOGLEWALLET_ISSUER_ID }}
-          GW_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLEWALLET_SERVICE_ACCOUNT_JSON }}
-        run: |
-          if [ -z "$GW_ISSUER_ID" ] || [ -z "$GW_SERVICE_ACCOUNT_JSON" ]; then
-            echo "GoogleWallet secrets not set; skipping."; exit 0
-          fi
-          python3 -c "import json,os;open('gw-settings.json','w').write(json.dumps([{'name':'GoogleWallet__IssuerId','value':os.environ['GW_ISSUER_ID'],'slotSetting':False},{'name':'GoogleWallet__ServiceAccountJson','value':os.environ['GW_SERVICE_ACCOUNT_JSON'],'slotSetting':False}]))"
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" --settings @gw-settings.json --output none
-          rm -f gw-settings.json
-          echo "GoogleWallet settings applied to $WEBAPP."
       - name: Configure Imaging HMAC (dev)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -166,19 +153,6 @@ jobs:
             --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
             --output none
           echo "Payrexx settings applied to $WEBAPP."
-      - name: Configure Google Wallet (prod)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
-          GW_ISSUER_ID: ${{ secrets.GOOGLEWALLET_ISSUER_ID }}
-          GW_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLEWALLET_SERVICE_ACCOUNT_JSON }}
-        run: |
-          if [ -z "$GW_ISSUER_ID" ] || [ -z "$GW_SERVICE_ACCOUNT_JSON" ]; then
-            echo "GoogleWallet secrets not set; skipping."; exit 0
-          fi
-          python3 -c "import json,os;open('gw-settings.json','w').write(json.dumps([{'name':'GoogleWallet__IssuerId','value':os.environ['GW_ISSUER_ID'],'slotSetting':False},{'name':'GoogleWallet__ServiceAccountJson','value':os.environ['GW_SERVICE_ACCOUNT_JSON'],'slotSetting':False}]))"
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" --settings @gw-settings.json --output none
-          rm -f gw-settings.json
-          echo "GoogleWallet settings applied to $WEBAPP."
       - name: Configure Imaging HMAC (prod)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}

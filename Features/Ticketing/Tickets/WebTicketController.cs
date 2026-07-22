@@ -14,8 +14,7 @@ public sealed class WebTicketController(
     ISeasons seasons,
     IVenues venues,
     IPublicBaseUrl publicUrl,
-    ITicketPdf pdf,
-    IWalletPass wallet) : Controller
+    ITicketPdf pdf) : Controller
 {
     [HttpGet("/ticket/{token}")]
     public async Task<IActionResult> Show(string token)
@@ -44,7 +43,6 @@ public sealed class WebTicketController(
             AwayLogo: awayLogo,
             TypeKey: TypeKey(data.Type, issued?.MemberCategory),
             Token: token,
-            WalletEnabled: wallet.Enabled,
             VenueName: venueName);
 
         return View("~/Views/WebTicket.cshtml", model);
@@ -78,29 +76,6 @@ public sealed class WebTicketController(
             QrPng: qr.RenderPng(absoluteUrl, 10)));
 
         return File(bytes, "application/pdf", $"redants-ticket-{TicketRef(data.Uuid)}.pdf");
-    }
-
-    [HttpGet("/ticket/{token}/wallet")]
-    public async Task<IActionResult> Wallet(string token)
-    {
-        if (!wallet.Enabled) return NotFound();
-        if (!tokens.TryVerify(token, out var data)) return NotFound();
-        var issued = await tickets.FindAsync(data.Uuid);
-        var (scopeName, dateText, _, _, _) = await ResolveContextAsync(data);
-        var origin = publicUrl.Resolve(Request);
-
-        var url = wallet.SaveUrl(new WalletTicketModel(
-            Uuid: data.Uuid,
-            TypeLabel: DisplayTitle(data.Type, issued),
-            ScopeName: scopeName,
-            DateText: dateText,
-            CategoryLabel: CategoryLabel(issued),
-            HolderName: issued?.HolderName,
-            TicketRef: TicketRef(data.Uuid),
-            TicketUrl: $"{origin}/ticket/{token}",
-            AccentHex: TypeAccentHex(data.Type)), origin);
-
-        return url is null ? NotFound() : Redirect(url);
     }
 
     [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
@@ -186,7 +161,6 @@ public sealed record WebTicketViewModel(
     string? AwayLogo = null,
     string TypeKey = "spiel",
     string Token = "",
-    bool WalletEnabled = false,
     string? VenueName = null)
 {
     public static WebTicketViewModel Invalid() =>

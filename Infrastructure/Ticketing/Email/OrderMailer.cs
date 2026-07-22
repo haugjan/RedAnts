@@ -15,7 +15,6 @@ public sealed class OrderMailer(
     IQrCodeRenderer qr,
     IEvents events,
     ISeasons seasons,
-    IWalletPass wallet,
     IWebHostEnvironment environment,
     ILogger<OrderMailer> logger) : IOrderMailer
 {
@@ -140,7 +139,7 @@ public sealed class OrderMailer(
                 $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:17px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scopeName}</div></td></tr>" +
                 $"<tr><td style=\"padding:0 20px 8px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">{rows}</table></td></tr>" +
                 $"<tr><td align=\"center\" style=\"padding:6px 16px 6px;\"><a href=\"{url}\" style=\"display:inline-block;background:{red};color:#ffffff;text-decoration:none;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;font-size:14px;padding:11px 22px;border-radius:8px;\">Online-Ticket öffnen</a></td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:0 16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;font-size:12px;\"><a href=\"{url}/pdf\" style=\"color:#666666;text-decoration:underline;\">Als PDF</a>{(wallet.Enabled ? $" &nbsp;·&nbsp; <a href=\"{url}/wallet\" style=\"color:#666666;text-decoration:underline;\">In Google Wallet</a>" : "")}</td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:0 16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;font-size:12px;\"><a href=\"{url}/pdf\" style=\"color:#666666;text-decoration:underline;\">Als PDF</a></td></tr>" +
             "</table>";
     }
 

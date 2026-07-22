@@ -38,8 +38,6 @@
         .wt-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; font-size: .92rem; padding: .62rem 1rem; border-radius: 10px; }
         .wt-btn--pdf { background: #14171A; color: #fff; }
         .wt-btn--pdf:hover { background: #2a2e33; }
-        .wt-btn--wallet { background: #000; color: #fff; }
-        .wt-btn--wallet:hover { background: #222; }
         .wt-empty { background: #fff; border: 1px solid #e6e8ec; border-radius: 16px; text-align: center; padding: 2.5rem 1.4rem; }
         .wt-empty h1 { font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; font-size: 1.4rem; margin: 0 0 .5rem; }
         .wt-empty p { color: #6b7178; margin: 0; font-size: .95rem; line-height: 1.5; }
@@ -60,10 +58,6 @@
             <partial name="~/Views/Partials/_TicketCard.cshtml" model="card!" />
             <div class="wt-actions">
                 <a class="wt-btn wt-btn--pdf" href="/ticket/@Model.Token/pdf">Als PDF herunterladen</a>
-                @if (Model.WalletEnabled)
-                {
-                    <a class="wt-btn wt-btn--wallet" href="/ticket/@Model.Token/wallet">In Google Wallet speichern</a>
-                }
             </div>
         }
     </div>

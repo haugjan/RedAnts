@@ -10,6 +10,5 @@ public sealed class TicketDeliveryComposer : IComposer
     {
         QuestPDF.Settings.License = LicenseType.Community;
         builder.Services.AddSingleton<ITicketPdf, TicketPdfRenderer>();
-        builder.Services.AddSingleton<IWalletPass, GoogleWalletPass>();
     }
 }

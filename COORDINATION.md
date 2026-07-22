@@ -178,6 +178,7 @@ Neueste zuerst. Nur Änderungen eintragen, die andere Sessions betreffen.
 | 21.07.2026 | S1 | Runde-5-Plan verteilt (dieses Dokument). | Alle: Runde-5-Branch anlegen; S1 zuerst mergen, S2/S3 danach rebasen. |
 | 21.07.2026 | S1 | **Payrexx-Prod-Fix (in `main`, `4da90bb`).** `deploy-prod` konfiguriert jetzt auch `Payrexx__Instance`/`Payrexx__ApiSecret` (vorher nur `deploy-dev`), sonst blieb Payrexx auf Prod deaktiviert und bezahlte Checkouts übersprangen den Gateway. | Keine Code-Auswirkung. Wenn `PAYREXX_API_SECRET` nur ein dev-Environment-Secret ist, muss es dem `prod`-Environment (oder Repo) hinzugefügt werden, sonst greift der Skip-Guard. |
 | 21.07.2026 | S1 | **Runde-6-Plan verteilt** (Abschnitt „Runde 6" unten). | Alle: Runde-6-Branch anlegen; S1 zuerst mergen; S2 wartet automatisch auf S1 (Snippet im Plan); Rest startet sofort und rebast vor Merge. |
+| 22.07.2026 | S4 | **Google Wallet komplett entfernt** (`feature/s4-remove-google-wallet`). Gelöscht: `IWalletPass`/`WalletTicketModel`, `GoogleWalletPass`, `/ticket/{token}/wallet`-Endpoint, Wallet-Button auf der Ticket-Seite, Wallet-Link in der Bestätigungsmail, `GoogleWallet`-Config in `appsettings.json`, die beiden „Configure Google Wallet"-Steps in `deploy.yml`. PDF-Auslieferung bleibt unverändert. | `IWalletPass` existiert nicht mehr (war nur per DI aufgelöst). `OrderMailer`- und `WebTicketController`-Ctor haben den `IWalletPass`-Parameter verloren; `WebTicketViewModel` das Feld `WalletEnabled`. Wer eines davon konstruiert/mockt: Parameter/Feld entfernen. |
 
 ---
 
