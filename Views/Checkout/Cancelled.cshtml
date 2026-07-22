@@ -3,6 +3,12 @@
     ViewData["Title"] = "Zahlung abgebrochen";
 }
 
+<script>
+    if (window.top !== window.self) {
+        window.top.location.replace('/checkout?payment=aborted');
+    }
+</script>
+
 <div class="text-center py-4">
     <div style="font-size:3rem; line-height:1; color:#b02a37;">&#10007;</div>
     <p class="text-muted mt-2">Deine Zahlung wurde nicht abgeschlossen. Es wurde nichts belastet.</p>

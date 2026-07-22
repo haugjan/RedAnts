@@ -33,10 +33,13 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     private const string PaymentLabelText = "Online-Zahlung (Payrexx)";
 
     [HttpGet("/checkout")]
-    public IActionResult Address()
+    public IActionResult Address(string? payment = null)
     {
         if (cart.Get().IsEmpty) return Redirect("/cart");
-        return CheckoutView(LoadForm() ?? new CheckoutForm(), TempData["CheckoutError"] as string);
+        var error = payment == "aborted"
+            ? "Die Zahlung wurde abgebrochen oder ist fehlgeschlagen. Bitte versuche es erneut."
+            : TempData["CheckoutError"] as string;
+        return CheckoutView(LoadForm() ?? new CheckoutForm(), error);
     }
 
     [HttpPost("/checkout")]
@@ -163,7 +166,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 Purpose: $"Red Ants Ticketing {saved.OrderNumber}",
                 ReferenceId: saved.OrderNumber,
                 SuccessUrl: $"{baseUrl}/checkout/success?t={Uri.EscapeDataString(ProtectOrder(saved.Id))}",
-                FailedUrl: $"{baseUrl}/checkout",
+                FailedUrl: $"{baseUrl}/checkout/cancel",
                 CancelUrl: $"{baseUrl}/checkout/cancel",
                 Email: billing.Email,
                 FirstName: billing.FirstName,
