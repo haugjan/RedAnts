@@ -2,6 +2,18 @@
 
 Public website and self-service ticketing application for Red Ants Winterthur, built on **Umbraco CMS 17 / .NET 10**.
 
+## Environments
+
+Each surface has its own custom domain, routed by host in `Program.cs`:
+
+| Surface | Production | Dev |
+|---|---|---|
+| Public / tickets | `tickets.redants.ch` | `tickets-dev.redants.ch` |
+| Scanning | `scan.redants.ch` | `scan-dev.redants.ch` |
+| Admin / backoffice | `admin.redants.ch` | `admin-dev.redants.ch` |
+
+App Services `app-redants-prod` / `app-redants-dev` (Switzerland North). Only `tickets.redants.ch` is search-indexed; all other hosts (every `*-dev`, the scan/admin subdomains, `*.azurewebsites.net`) send `noindex`. Payrexx: prod uses the live `redants` instance, dev the `redants-test` instance.
+
 ## Requirements
 
 - .NET 10 SDK

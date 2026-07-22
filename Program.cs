@@ -102,7 +102,6 @@ app.Use(async (context, next) =>
             || path.StartsWithSegments("/_framework")
             || path.StartsWithSegments("/admin")
             || path.StartsWithSegments("/scan")
-            || path.StartsWithSegments("/scan")
             || path.StartsWithSegments("/scanner-test");
         if (!cspExempt && !headers.ContainsKey("Content-Security-Policy"))
             headers["Content-Security-Policy"] = publicCsp;
@@ -165,7 +164,8 @@ app.Use(async (context, next) =>
     if (context.Request.Path == "/")
     {
         var host = context.Request.Host.Host;
-        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase);
+        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("scan-dev.", StringComparison.OrdinalIgnoreCase);
         var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
             || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
         context.Response.Redirect(isScanHost ? "/scan" : isAdminHost ? "/umbraco" : "/ticketing/");

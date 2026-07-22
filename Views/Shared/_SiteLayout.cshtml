@@ -30,7 +30,7 @@
   <title>@pageTitle</title>
   @{
       var reqHost = Context.Request.Host.Host;
-      var isIndexable = reqHost.EndsWith("redants.ch", StringComparison.OrdinalIgnoreCase)
+      var isIndexable = reqHost.Equals("tickets.redants.ch", StringComparison.OrdinalIgnoreCase)
           && !(ViewBag.NoIndex as bool? ?? false);
       var canonicalUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
       var metaDescription = ViewBag.MetaDescription as string

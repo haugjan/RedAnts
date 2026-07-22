@@ -61,6 +61,18 @@ Do not assume or generate ModelsBuilder classes.
 - `dotnet build` does **not** catch errors in `.cshtml` files. To validate a view you must run the app and hit the page.
 - Gotcha: a `foreach` loop variable named `page` breaks compilation, because `@page.Url()` is parsed as the `@page` directive. Use a different name (e.g. `item`).
 
+## Environments (custom domains)
+
+Host-based routing (`Program.cs`): the root `/` redirects by host — `scan[-dev].redants.ch` → `/scan`, `admin[-dev].redants.ch` → `/umbraco`, everything else → `/ticketing/`.
+
+| Surface | PROD | DEV |
+|---|---|---|
+| Public / tickets | `tickets.redants.ch` | `tickets-dev.redants.ch` |
+| Scanning | `scan.redants.ch` | `scan-dev.redants.ch` |
+| Admin / backoffice | `admin.redants.ch` | `admin-dev.redants.ch` |
+
+Underlying App Services: `app-redants-prod` / `app-redants-dev`. **Only `tickets.redants.ch` is search-indexed** (`index,follow`); every other host — all `*-dev`, plus `scan.*`/`admin.*` and `*.azurewebsites.net` — is `noindex,nofollow`.
+
 ## Public URLs
 
 Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqid}`), not Umbraco content-node URLs. Reordering or demoting root content nodes therefore does not break ticketing links. All routes are English: public `/cart`, `/checkout` (+ `/express`, `/success`, `/cancel`, `/confirmation`), `/seasons`, `/scan`; admin `/admin/members`, `/admin/season-passes`, `/admin/event-tickets`, `/admin/flex-tickets` (the earlier German routes were removed, no redirects). The website homepage is the first `flexPage` root node (the seeder sorts it to first so it serves at `/`).

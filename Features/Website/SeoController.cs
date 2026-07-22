@@ -11,7 +11,7 @@ namespace RedAnts.Features.Website;
 public sealed class SeoController(UmbracoHelper umbraco, IUmbracoContextFactory contextFactory) : Controller
 {
     private static bool IsIndexableHost(string host) =>
-        host.EndsWith("redants.ch", StringComparison.OrdinalIgnoreCase);
+        host.Equals("tickets.redants.ch", StringComparison.OrdinalIgnoreCase);
 
     [HttpGet("/robots.txt")]
     public IActionResult Robots()
