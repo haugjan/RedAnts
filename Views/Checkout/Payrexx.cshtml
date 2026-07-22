@@ -49,14 +49,10 @@
         document.body.style.overflow = 'hidden';
     }
 
-    function closeOverlay() {
-        overlay.hidden = true;
-        frame.setAttribute('src', 'about:blank');
-        document.body.style.overflow = '';
-    }
-
     document.getElementById('pay-open').addEventListener('click', openOverlay);
-    document.getElementById('pay-close').addEventListener('click', closeOverlay);
+    document.getElementById('pay-close').addEventListener('click', function () {
+        window.location.href = '/checkout?payment=aborted';
+    });
 
     var tries = 0;
     function poll() {
