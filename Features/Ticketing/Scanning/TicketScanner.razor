@@ -102,7 +102,7 @@
 
     @if (_selected is null && !_testMode)
     {
-        <a class="scan-app__testlink" href="/scanner-test" target="_blank" rel="noopener">
+        <a class="scan-app__testlink" href="/scanner-test">
             <span class="scan-app__testlink-icon" aria-hidden="true">&#9636;</span> Test QR-Code
         </a>
         <p class="scan-app__version">Scanner v@(Version)</p>
@@ -165,7 +165,7 @@
 </style>
 
 @code {
-    private const string Version = "12";
+    private const string Version = "13";
 
     [Parameter] public string HelperName { get; set; } = "";
     [Parameter] public bool AllEvents { get; set; } = true;
