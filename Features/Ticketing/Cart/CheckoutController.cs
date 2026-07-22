@@ -176,15 +176,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 var gateway = await payrexx.CreateGatewayAsync(request);
                 saved.SetPayrexxGatewayId(gateway.GatewayId);
                 await orders.SaveAsync(saved);
-                return View("~/Views/Checkout/Payrexx.cshtml", new CheckoutPayrexxView
-                {
-                    OrderId = saved.Id,
-                    Token = ProtectOrder(saved.Id),
-                    GatewayLink = gateway.Link,
-                    OrderNumber = saved.OrderNumber,
-                    Total = saved.TotalGross,
-                    CancelUrl = newsletterSource == "Express" ? "/checkout/express" : "/checkout"
-                });
+                return Redirect(gateway.Link);
             }
             catch (Exception ex)
             {
