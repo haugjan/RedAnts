@@ -89,7 +89,14 @@
                                     <input type="checkbox" checked="@h.Active" @onchange="@(e => ToggleActiveAsync(h, e.Value is true))" />
                                 </td>
                                 <td class="ta-col-actions">
-                                    <button type="button" class="ta-icon-btn" title="Helfer löschen" @onclick="() => OpenDelete(h)">🗑</button>
+                                    @if (HasScans(h) && !Identity.IsAdmin)
+                                    {
+                                        <span class="ta-muted" title="Helfer mit erfassten Scans können nur von Admins gelöscht werden">🔒</span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="ta-icon-btn" title="Helfer löschen" @onclick="() => OpenDelete(h)">🗑</button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -314,6 +321,7 @@
 
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
