@@ -70,14 +70,18 @@ jobs:
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
             --src-path app.zip --type zip --track-status false --timeout 600000
-      - name: Configure Payrexx (dev)
+      - name: Configure Payrexx (dev — test instance)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
-          PAYREXX_API_SECRET: ${{ secrets.PAYREXX_API_SECRET }}
+          PAYREXX_TEST_API_SECRET: ${{ secrets.PAYREXX_TEST_API_SECRET }}
         run: |
+          if [ -z "$PAYREXX_TEST_API_SECRET" ]; then
+            echo "Payrexx test secret (PAYREXX_TEST_API_SECRET) not set; leaving dev Payrexx config unchanged."; exit 0
+          fi
           az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
+            --settings Payrexx__Instance=redants-test Payrexx__ApiSecret="$PAYREXX_TEST_API_SECRET" \
             --output none
+          echo "Payrexx test instance (redants-test) applied to $WEBAPP."
       - name: Configure Google Wallet (dev)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
