@@ -23,7 +23,7 @@ public sealed class AdmissionService(
         return await OccAsync(scope.Database, eventId);
     }
 
-    public async Task<ScanOutcome> ScanTicketAsync(int eventId, TicketType type, Guid uuid, int scopeId, ScanMode mode, string? scannedBy)
+    public async Task<ScanOutcome> ScanTicketAsync(int eventId, TicketType type, Guid uuid, int scopeId, ScanMode mode, string? scannedBy, bool test = false)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
@@ -42,6 +42,10 @@ public sealed class AdmissionService(
             return await Reject("Ticket stimmt nicht mit dem Datensatz überein.");
         if (issued.Status != TicketStatus.Valid)
             return await Reject(issued.Status == TicketStatus.Blocked ? "Ticket ist gesperrt." : "Ticket ist storniert.");
+
+        if (test)
+            return new ScanOutcome(AdmissionOutcome.Test, type, Ref(uuid), null,
+                await OccAsync(db, eventId), issued.CategoryName ?? issued.Category?.DisplayName(), HolderLabel(issued));
 
         if (type == TicketType.EventTicket)
         {
@@ -140,7 +144,7 @@ public sealed class AdmissionService(
         return age is < 0 or > 120 ? null : age;
     }
 
-    public async Task<ScanOutcome> ScanCodeAsync(int eventId, string shortCode, ScanMode mode, string? scannedBy)
+    public async Task<ScanOutcome> ScanCodeAsync(int eventId, string shortCode, ScanMode mode, string? scannedBy, bool test = false)
     {
         var code = (shortCode ?? "").Trim().Replace(" ", "").ToLowerInvariant();
         if (code.Length != 8 || !code.All(Uri.IsHexDigit))
@@ -151,7 +155,7 @@ public sealed class AdmissionService(
             return await RejectCodeAsync(eventId, code.ToUpperInvariant(), "Kein Ticket mit diesem Code gefunden.");
 
         var (type, uuid, scopeId) = resolved.Value;
-        return await ScanTicketAsync(eventId, type, uuid, scopeId, mode, scannedBy);
+        return await ScanTicketAsync(eventId, type, uuid, scopeId, mode, scannedBy, test);
     }
 
     private async Task<ScanOutcome> RejectCodeAsync(int eventId, string? reference, string reason)

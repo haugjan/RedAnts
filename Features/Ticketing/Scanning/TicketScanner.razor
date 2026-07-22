@@ -21,6 +21,10 @@
             <button type="button" class="scan-login__btn" @onclick="Login">Weiter</button>
         </div>
     }
+    else if (_testMode)
+    {
+        <ScanView EventId="0" EventName="Testevent" Operator="@_operator" IsTest="true" OnBack="BackToList" />
+    }
     else if (_selected is null)
     {
         <header class="scan-app__header scan-app__header--events">
@@ -70,6 +74,12 @@
                 }
             </ul>
         }
+
+        <button type="button" class="event-card event-card--test" @onclick="() => _testMode = true">
+            <span class="event-card__badge event-card__badge--test">Test</span>
+            <span class="event-card__name">Testevent</span>
+            <span class="event-card__meta">Beliebiges gültiges Ticket prüfen – ohne ein- oder auszuchecken.</span>
+        </button>
     }
     else
     {
@@ -90,10 +100,13 @@
         </div>
     }
 
-    <p class="scan-app__version">
-        <a class="scan-app__test" href="/scanner-test" target="_blank" rel="noopener">Scanner testen</a>
-        · Scanner v@(Version)
-    </p>
+    @if (_selected is null && !_testMode)
+    {
+        <p class="scan-app__version">
+            <a class="scan-app__test" href="/scanner-test" target="_blank" rel="noopener">Scanner testen</a>
+            · Scanner v@(Version)
+        </p>
+    }
 </div>
 
 <style>
@@ -121,6 +134,8 @@
 
     .event-card--today { border-color: #1a7f37; border-width: 2px; box-shadow: 0 4px 16px rgba(26, 127, 55, 0.18); }
     .event-card__badge--today { background: #1a7f37; }
+    .event-card--test { border: 2px dashed #0d9488; background: #f0fbfa; margin-top: 0.9rem; width: 100%; text-align: left; cursor: pointer; }
+    .event-card__badge--test { background: #0d9488; }
 
     .scan-confirm {
         position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,0.5);
@@ -152,6 +167,7 @@
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
     private Event? _selected;
+    private bool _testMode;
     private Event? _pendingEvent;
     private string? _operator;
     private string _operatorInput = "";
@@ -210,7 +226,7 @@
         _selected = evt;
     }
 
-    private void BackToList() => _selected = null;
+    private void BackToList() { _selected = null; _testMode = false; }
 
     private string VenueName(int venueId) => _venues.TryGetValue(venueId, out var name) ? name : "";
 

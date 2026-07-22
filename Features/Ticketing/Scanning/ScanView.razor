@@ -6,19 +6,18 @@
 @inject ITicketTokens Tickets
 @inject IAdmissionService Admission
 
-<div class="scan-view scan-view--@ModeKey">
+<div class="scan-view scan-view--@ModeKey @(IsTest ? "scan-view--test" : "")">
     <header class="scan-view__header">
         <button type="button" class="scan-view__back" @onclick="OnBack">&larr; Event-Auswahl</button>
         <span class="scan-view__title">@EventName</span>
     </header>
 
-    <div class="scan-mode scan-mode--@ModeKey">
-        <span class="scan-mode__icon">@(_mode == ScanMode.CheckIn ? "⤵" : "⤴")</span>
-        <span class="scan-mode__label">@(_mode == ScanMode.CheckIn ? "Einchecken" : "Auschecken")</span>
-        <span class="scan-mode__who">@Operator</span>
+    <div class="scan-status scan-status--@(IsTest ? "test" : ModeKey)">
+        <span class="scan-status__label">@(IsTest ? "Testmodus" : (_mode == ScanMode.CheckIn ? "Einchecken" : "Auschecken"))</span>
+        <span class="scan-status__who">@Operator</span>
     </div>
 
-    @if (_occupancy is { } occ)
+    @if (!IsTest && _occupancy is { } occ)
     {
         <div class="scan-cap @(occ.Full ? "scan-cap--full" : "")">
             @if (occ.Quota is null)
@@ -36,58 +35,77 @@
 
     <div id="qr-reader" class="qr-reader"></div>
 
-    <div class="scan-manual">
-        <input class="scan-manual__input" placeholder="Ticket-Nr. (8 Zeichen)" maxlength="8"
-               @bind="_manualCode" @bind:event="oninput" @onkeydown="OnManualKey" />
-        <button type="button" class="scan-manual__btn" @onclick="SubmitManualAsync" disabled="@_busy">Prüfen</button>
-    </div>
-    <p class="scan-manual__hint">Falls der QR-Code nicht lesbar ist: Ticket-Nr. eintippen.</p>
-
-    @if (_mode == ScanMode.CheckIn)
+    @if (IsTest)
     {
-        <div class="scan-free">
-            <button type="button" class="scan-free__btn scan-free__btn--in"
-                    @onclick="() => _confirmFreeGrant = true" disabled="@(_busy || _occupancy?.Full == true)">
-                + Freier Einlass
-            </button>
-            <button type="button" class="scan-free__btn scan-free__btn--out"
-                    @onclick="() => _confirmFreeGrant = false" disabled="@(_busy || FreeInside == 0)">
-                − Frei zurücknehmen
-            </button>
-        </div>
-        <p class="scan-free__count">@FreeInside @(FreeInside == 1 ? "freier Einlass" : "freie Einlässe") drinnen</p>
+        <p class="scan-test-hint">Testmodus: gültige Tickets werden geprüft, ohne ein- oder auszuchecken.</p>
+        <button type="button" class="scan-action scan-action--extra scan-action--full" @onclick="OpenExtras">Ticket-Nr. eingeben</button>
     }
-
-    <button type="button" class="scan-switch scan-switch--@(_mode == ScanMode.CheckIn ? "toout" : "toin")"
-            @onclick="ToggleMode">
-        @(_mode == ScanMode.CheckIn ? "Zum Auschecken wechseln →" : "← Zurück zum Einchecken")
-    </button>
+    else
+    {
+        <div class="scan-actions">
+            <button type="button" class="scan-action scan-action--mode scan-action--@ModeKey" @onclick="ToggleMode">
+                @(_mode == ScanMode.CheckIn ? "Auschecken" : "Einchecken")
+            </button>
+            <button type="button" class="scan-action scan-action--extra" @onclick="OpenExtras">Zusatzfunktionen</button>
+        </div>
+    }
 
     @if (_error is not null)
     {
         <p class="scan-view__hint scan-view__hint--error">@_error</p>
     }
-    else if (_last is null)
-    {
-        <p class="scan-view__hint">Richte die Kamera auf einen QR-Code.</p>
-    }
 
-    @if (_confirmFreeGrant is { } grant)
+    @if (_showExtras)
     {
-        <div class="scan-confirm" @onclick="() => _confirmFreeGrant = null">
-            <div class="scan-confirm__box" @onclick:stopPropagation="true">
-                <p class="scan-confirm__question">
-                    @(grant ? "Freien Einlass gewähren als:" : "Freien Einlass zurücknehmen von:")
-                </p>
-                <div class="scan-confirm__actions scan-confirm__actions--stack">
-                    @foreach (var type in OfferedFreeEntryTypes)
-                    {
-                        var t = type;
-                        <button type="button" class="scan-confirm__btn scan-confirm__btn--yes"
-                                @onclick="() => ConfirmFreeAsync(t)">@t.DisplayName()</button>
-                    }
-                    <button type="button" class="scan-confirm__btn" @onclick="() => _confirmFreeGrant = null">Abbrechen</button>
+        <div class="scan-extras" @onclick="CloseExtras">
+            <div class="scan-extras__box" @onclick:stopPropagation="true">
+                <div class="scan-extras__head">
+                    <h2 class="scan-extras__title">Zusatzfunktionen</h2>
+                    <button type="button" class="scan-extras__close" @onclick="CloseExtras" aria-label="Schliessen">✕</button>
                 </div>
+
+                <div class="scan-extras__section">
+                    <span class="scan-extras__label">Ticket-Nr. von Hand eingeben</span>
+                    <div class="scan-manual">
+                        <input class="scan-manual__input" placeholder="8 Zeichen" maxlength="8"
+                               @bind="_manualCode" @bind:event="oninput" @onkeydown="OnManualKey" />
+                        <button type="button" class="scan-manual__btn" @onclick="SubmitManualAsync" disabled="@_busy">Prüfen</button>
+                    </div>
+                </div>
+
+                @if (!IsTest)
+                {
+                    <div class="scan-extras__section">
+                        <span class="scan-extras__label">Freien Einlass gewähren</span>
+                        <div class="scan-free-grid">
+                            @foreach (var type in OfferedFreeEntryTypes)
+                            {
+                                var t = type;
+                                <button type="button" class="scan-free-tile scan-free-tile--in"
+                                        @onclick="() => GrantFreeAsync(t)" disabled="@(_busy || _occupancy?.Full == true)">
+                                    @t.DisplayName()
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    @if (FreeInside > 0)
+                    {
+                        <div class="scan-extras__section">
+                            <span class="scan-extras__label">Freien Einlass zurücknehmen (@FreeInside drinnen)</span>
+                            <div class="scan-free-grid">
+                                @foreach (var type in OfferedFreeEntryTypes)
+                                {
+                                    var t = type;
+                                    <button type="button" class="scan-free-tile scan-free-tile--out"
+                                            @onclick="() => RevokeFreeAsync(t)" disabled="@_busy">
+                                        @t.DisplayName()
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
             </div>
         </div>
     }
@@ -137,17 +155,20 @@
     .scan-view { position: relative; }
     .scan-view--in { --scan-accent: #1a7f37; }
     .scan-view--out { --scan-accent: #1f5fbf; }
+    .scan-view--test { --scan-accent: #0d9488; }
 
-    .scan-mode {
-        display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0 0.35rem;
-        padding: 0.4rem 0.8rem; border-radius: 10px; color: #fff; background: var(--scan-accent);
+    .scan-status {
+        display: flex; align-items: baseline; gap: 0.5rem; margin: 0.35rem 0 0.4rem;
+        padding: 0 0.15rem 0.35rem; border-bottom: 3px solid var(--scan-accent);
     }
-    .scan-mode__icon { font-size: 1.15rem; line-height: 1; }
-    .scan-mode__label { font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
-    .scan-mode__who { margin-left: auto; font-size: 0.75rem; opacity: 0.9; }
+    .scan-status__label {
+        font-size: 1.2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--scan-accent);
+    }
+    .scan-status__who { margin-left: auto; font-size: 0.8rem; color: #777; }
 
-    .qr-reader { border: 3px solid var(--scan-accent); border-radius: 12px; overflow: hidden; max-height: 34vh; }
-    .qr-reader video { max-height: calc(34vh - 6px); object-fit: cover; }
+    .qr-reader { border: 3px solid var(--scan-accent); border-radius: 12px; overflow: hidden; max-height: 42vh; }
+    .qr-reader video { max-height: calc(42vh - 6px); object-fit: cover; }
 
     .scan-cap {
         display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 0.5rem;
@@ -158,52 +179,57 @@
     .scan-cap__free { font-size: 1.1rem; font-weight: 800; line-height: 1; }
     .scan-cap__sub { font-size: 0.75rem; opacity: 0.85; }
 
-    .scan-manual { display: flex; gap: 0.4rem; margin: 0.45rem 0 0; }
+    .scan-test-hint { margin: 0.5rem 0 0.2rem; font-size: 0.85rem; color: #0d7d72; text-align: center; }
+
+    .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.6rem 0 0; }
+    .scan-action {
+        min-height: 3.4rem; padding: 0.7rem; border-radius: 12px; border: none;
+        font-size: 1.15rem; font-weight: 800; cursor: pointer; color: #fff;
+    }
+    .scan-action:disabled { opacity: 0.5; cursor: default; }
+    .scan-action--mode.scan-action--in { background: #1f5fbf; }
+    .scan-action--mode.scan-action--out { background: #1a7f37; }
+    .scan-action--extra { background: #444; }
+    .scan-action--full { width: 100%; margin-top: 0.6rem; }
+
+    .scan-extras {
+        position: fixed; inset: 0; z-index: 1150; background: rgba(0,0,0,0.55);
+        display: flex; align-items: flex-end; justify-content: center;
+    }
+    .scan-extras__box {
+        background: #fff; border-radius: 18px 18px 0 0; width: 100%; max-width: 560px;
+        max-height: 92vh; overflow-y: auto; padding: 1.1rem 1.1rem 1.6rem;
+        box-shadow: 0 -8px 40px rgba(0,0,0,0.3);
+    }
+    .scan-extras__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+    .scan-extras__title { margin: 0; font-size: 1.35rem; font-weight: 800; }
+    .scan-extras__close {
+        border: none; background: #eee; color: #333; width: 2.4rem; height: 2.4rem;
+        border-radius: 50%; font-size: 1.1rem; cursor: pointer;
+    }
+    .scan-extras__section { margin-top: 1rem; }
+    .scan-extras__label { display: block; margin-bottom: 0.4rem; font-size: 0.9rem; font-weight: 700; color: #555; }
+
+    .scan-manual { display: flex; gap: 0.5rem; }
     .scan-manual__input {
-        flex: 1 1 auto; padding: 0.45rem 0.7rem; font-size: 1rem; letter-spacing: 0.12em;
+        flex: 1 1 auto; padding: 0.85rem 0.8rem; font-size: 1.3rem; letter-spacing: 0.14em;
         text-transform: uppercase; font-family: ui-monospace, Consolas, monospace;
-        border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; min-width: 0;
+        border: 2px solid #ccc; border-radius: 12px; box-sizing: border-box; min-width: 0;
     }
     .scan-manual__btn {
-        flex: 0 0 auto; padding: 0.45rem 1rem; border-radius: 8px; border: none;
-        background: var(--scan-accent); color: #fff; font-weight: 700; font-size: 0.9rem; cursor: pointer;
+        flex: 0 0 auto; padding: 0 1.4rem; border-radius: 12px; border: none;
+        background: var(--scan-accent, #1a7f37); color: #fff; font-weight: 800; font-size: 1.1rem; cursor: pointer;
     }
     .scan-manual__btn:disabled { opacity: 0.5; cursor: default; }
-    .scan-manual__hint { margin: 0.15rem 0 0; font-size: 0.72rem; color: #888; text-align: center; }
 
-    .scan-free { display: flex; gap: 0.4rem; margin: 0.45rem 0 0.1rem; }
-    .scan-free__btn {
-        flex: 1 1 0; padding: 0.5rem 0.4rem; border-radius: 8px; border: 1px solid transparent;
-        font-weight: 700; font-size: 0.88rem; cursor: pointer;
+    .scan-free-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+    .scan-free-tile {
+        min-height: 5rem; padding: 0.8rem 0.6rem; border-radius: 14px; border: 2px solid transparent;
+        font-size: 1.2rem; font-weight: 800; cursor: pointer; line-height: 1.15;
     }
-    .scan-free__btn:disabled { opacity: 0.5; cursor: default; }
-    .scan-free__btn--in { background: #1a7f37; color: #fff; }
-    .scan-free__btn--out { background: #fff; color: #555; border-color: #ccc; }
-    .scan-free__count { margin: 0 0 0.2rem; font-size: 0.75rem; color: #666; text-align: center; }
-
-    .scan-switch {
-        width: 100%; margin: 0.45rem 0 0; padding: 0.55rem; border-radius: 10px; border: 2px solid;
-        font-size: 0.92rem; font-weight: 800; cursor: pointer; background: #fff;
-    }
-    .scan-switch--toout { color: #1f5fbf; border-color: #1f5fbf; }
-    .scan-switch--toin { color: #1a7f37; border-color: #1a7f37; }
-
-    .scan-confirm {
-        position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,0.5);
-        display: flex; align-items: center; justify-content: center; padding: 1.5rem;
-    }
-    .scan-confirm__box {
-        background: #fff; border-radius: 14px; padding: 1.4rem 1.5rem; width: 100%; max-width: 340px;
-        text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-    }
-    .scan-confirm__question { margin: 0 0 1.1rem; font-size: 1.1rem; font-weight: 700; color: #222; }
-    .scan-confirm__actions { display: flex; gap: 0.6rem; }
-    .scan-confirm__actions--stack { flex-direction: column; }
-    .scan-confirm__btn {
-        flex: 1 1 0; padding: 0.75rem; border-radius: 8px; border: 1px solid #ccc;
-        background: #fff; color: #555; font-weight: 700; font-size: 0.95rem; cursor: pointer;
-    }
-    .scan-confirm__btn--yes { background: #1a7f37; color: #fff; border-color: #1a7f37; }
+    .scan-free-tile:disabled { opacity: 0.45; cursor: default; }
+    .scan-free-tile--in { background: #1a7f37; color: #fff; }
+    .scan-free-tile--out { background: #fff; color: #1f5fbf; border-color: #1f5fbf; }
 
     .scan-result {
         position: fixed; inset: 0; z-index: 1200; display: flex; flex-direction: column;
@@ -239,13 +265,14 @@
     [Parameter, EditorRequired] public int EventId { get; set; }
     [Parameter, EditorRequired] public string EventName { get; set; } = "";
     [Parameter, EditorRequired] public string Operator { get; set; } = "";
+    [Parameter] public bool IsTest { get; set; }
     [Parameter] public EventCallback OnBack { get; set; }
 
     private DotNetObjectReference<ScanView>? _ref;
     private Occupancy? _occupancy;
     private ScanOutcome? _last;
     private ScanMode _mode = ScanMode.CheckIn;
-    private bool? _confirmFreeGrant;
+    private bool _showExtras;
     private string _manualCode = "";
     private bool _cameraStarted;
     private bool _cameraPaused;
@@ -264,7 +291,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _occupancy = await Admission.GetOccupancyAsync(EventId);
+        if (!IsTest) _occupancy = await Admission.GetOccupancyAsync(EventId);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -289,8 +316,8 @@
         _cameraPaused = true;
         if (Tickets.TryVerify(ExtractToken(code), out var data))
         {
-            _last = await Admission.ScanTicketAsync(EventId, data.Type, data.Uuid, data.ScopeId, _mode, Operator);
-            _occupancy = _last.Occupancy;
+            _last = await Admission.ScanTicketAsync(EventId, data.Type, data.Uuid, data.ScopeId, _mode, Operator, IsTest);
+            if (!IsTest) _occupancy = _last.Occupancy;
         }
         else
         {
@@ -300,6 +327,9 @@
         StateHasChanged();
         await Beep(_last.Ok);
     }
+
+    private void OpenExtras() { _showExtras = true; _manualCode = ""; }
+    private void CloseExtras() { if (!_busy) _showExtras = false; }
 
     private void OnManualKey(KeyboardEventArgs e)
     {
@@ -313,25 +343,38 @@
         _busy = true;
         try
         {
-            _last = await Admission.ScanCodeAsync(EventId, code, _mode, Operator);
-            _occupancy = _last.Occupancy;
+            _last = await Admission.ScanCodeAsync(EventId, code, _mode, Operator, IsTest);
+            if (!IsTest) _occupancy = _last.Occupancy;
             if (_last.Ok) _manualCode = "";
+            _showExtras = false;
             await Beep(_last.Ok);
         }
         finally { _busy = false; }
     }
 
-    private async Task ConfirmFreeAsync(FreeEntryType type)
+    private async Task GrantFreeAsync(FreeEntryType type)
     {
-        if (_confirmFreeGrant is not { } grant || _busy) return;
-        _confirmFreeGrant = null;
+        if (_busy) return;
         _busy = true;
         try
         {
-            _last = grant
-                ? await Admission.GrantFreeEntryAsync(EventId, type, Operator)
-                : await Admission.RevokeFreeEntryAsync(EventId, type, Operator);
+            _last = await Admission.GrantFreeEntryAsync(EventId, type, Operator);
             _occupancy = _last.Occupancy;
+            _showExtras = false;
+            await Beep(_last.Ok);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task RevokeFreeAsync(FreeEntryType type)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            _last = await Admission.RevokeFreeEntryAsync(EventId, type, Operator);
+            _occupancy = _last.Occupancy;
+            _showExtras = false;
             await Beep(_last.Ok);
         }
         finally { _busy = false; }
@@ -394,7 +437,7 @@
     {
         AdmissionOutcome.CheckedIn => "Eingecheckt",
         AdmissionOutcome.CheckedOut => "Ausgecheckt",
-        AdmissionOutcome.Test => "Test erfolgreich",
+        AdmissionOutcome.Test => "Gültiges Ticket",
         _ => "Abgelehnt"
     };
 
