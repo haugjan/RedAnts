@@ -332,8 +332,6 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             if (status == PayrexxStatus.Confirmed)
             {
                 await FulfillAsync(found.Id);
-                cart.Clear();
-                HttpContext.Session.Remove(FormKey);
                 found = await orders.GetByIdAsync(orderId) ?? found;
             }
             else if (status is PayrexxStatus.Cancelled or PayrexxStatus.Declined)
@@ -343,6 +341,11 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         }
 
         var paid = found.Status == OrderStatus.Paid;
+        if (paid)
+        {
+            cart.Clear();
+            HttpContext.Session.Remove(FormKey);
+        }
         return View("~/Views/Checkout/Processing.cshtml", new CheckoutProcessingView
         {
             OrderId = found.Id,
