@@ -60,36 +60,38 @@
                                 @foreach (var cat in cats)
                                 {
                                     <li class="pass-offer-cat">
-                                        <div class="pass-offer-cat-info">
-                                            <span class="pass-offer-cat-name">@(string.IsNullOrWhiteSpace(cat.ShortName) ? cat.Name : cat.ShortName)</span>
-                                            @if (!string.IsNullOrWhiteSpace(cat.ActionText))
-                                            {
-                                                <span class="pass-offer-action">@cat.ActionText</span>
-                                            }
-                                            <span class="pass-offer-price">
-                                                @if (cat.OriginalPrice is { } orig)
+                                        @if (!string.IsNullOrWhiteSpace(cat.ActionText))
+                                        {
+                                            <span class="pass-offer-action">@cat.ActionText</span>
+                                        }
+                                        <div class="pass-offer-cat-row">
+                                            <div class="pass-offer-cat-info">
+                                                <span class="pass-offer-cat-name">@(string.IsNullOrWhiteSpace(cat.ShortName) ? cat.Name : cat.ShortName)</span>
+                                                <span class="pass-offer-price">
+                                                    @if (cat.OriginalPrice is { } orig)
+                                                    {
+                                                        <span class="pass-offer-price-orig">CHF @MoneyFormat.Amount(orig)</span>
+                                                    }
+                                                    <span class="pass-offer-price-now @(cat.OriginalPrice is not null ? "is-promo" : "")">CHF @MoneyFormat.Amount(cat.Price)</span>
+                                                </span>
+                                                @if (cat.Remaining is { } rem)
                                                 {
-                                                    <span class="pass-offer-price-orig">CHF @MoneyFormat.Amount(orig)</span>
+                                                    <span class="pass-offer-stock @(rem <= 10 ? "is-low" : "")">@(rem <= 10 ? $"Nur noch {rem} verfügbar" : $"Noch {rem} verfügbar")</span>
                                                 }
-                                                <span class="pass-offer-price-now @(cat.OriginalPrice is not null ? "is-promo" : "")">CHF @MoneyFormat.Amount(cat.Price)</span>
-                                            </span>
-                                            @if (cat.Remaining is { } rem)
-                                            {
-                                                <span class="pass-offer-stock @(rem <= 10 ? "is-low" : "")">@(rem <= 10 ? $"Nur noch {rem} verfügbar" : $"Noch {rem} verfügbar")</span>
-                                            }
-                                            @if (cat.AvailableUntil is { } until)
-                                            {
-                                                <span class="pass-offer-note">verfügbar bis @until.ToString("dd.MM.yyyy")</span>
-                                            }
+                                                @if (cat.AvailableUntil is { } until)
+                                                {
+                                                    <span class="pass-offer-note">bis @until.ToString("dd.MM.yyyy")</span>
+                                                }
+                                            </div>
+                                            <form method="post" action="/cart/add-season-pass" class="pass-add-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="seasonId" value="@seasonId" />
+                                                <input type="hidden" name="tierId" value="@cat.TierId" />
+                                                <input type="hidden" name="returnUrl" value="/seasons/" />
+                                                <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
+                                                <button type="submit" class="pass-add-btn">In den Warenkorb</button>
+                                            </form>
                                         </div>
-                                        <form method="post" action="/cart/add-season-pass" class="pass-add-form">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="seasonId" value="@seasonId" />
-                                            <input type="hidden" name="tierId" value="@cat.TierId" />
-                                            <input type="hidden" name="returnUrl" value="/seasons/" />
-                                            <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
-                                            <button type="submit" class="pass-add-btn">In den Warenkorb</button>
-                                        </form>
                                     </li>
                                 }
                             </ul>
@@ -123,12 +125,17 @@
     .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.3rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; }
     .pass-offer-cats { list-style: none; margin: 0; padding: 0; }
     .pass-offer-cat {
+        display: flex; flex-direction: column; gap: .35rem;
+        padding: 12px 0; border-top: 1px solid #f3f3f3; font-size: .92rem;
+    }
+    .pass-offer-cat-row {
         display: flex; align-items: center; justify-content: space-between;
-        gap: 1rem; padding: 12px 0; border-top: 1px solid #f3f3f3; flex-wrap: wrap; font-size: .92rem;
+        gap: 1rem; flex-wrap: wrap;
     }
     .pass-offer-cat-info { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .9rem; flex: 1 1 auto; min-width: 0; }
     .pass-offer-cat-name { font-weight: 700; }
     .pass-offer-action {
+        align-self: flex-start;
         font-family: var(--display, inherit); text-transform: uppercase; letter-spacing: .03em;
         font-size: .72rem; font-weight: 700; color: #fff; background: #C8102E;
         padding: .1rem .5rem; border-radius: 999px;
