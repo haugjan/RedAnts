@@ -49,13 +49,17 @@
             }
             else
             {
-                <ul class="pass-offer-list">
+                <div class="pass-panel">
+                    <h2 class="pass-title">Saisonkarten</h2>
                     @foreach (var (seasonId, seasonName, cats) in passOffers)
                     {
-                        <li class="pass-offer">
-                            <div class="pass-offer-head">
-                                <span class="pass-offer-season">@seasonName</span>
-                            </div>
+                        <div class="pass-offer">
+                            @if (passOffers.Count > 1)
+                            {
+                                <div class="pass-offer-head">
+                                    <span class="pass-offer-season">@seasonName</span>
+                                </div>
+                            }
                             <ul class="pass-offer-cats">
                                 @foreach (var cat in cats)
                                 {
@@ -95,9 +99,9 @@
                                     </li>
                                 }
                             </ul>
-                        </li>
+                        </div>
                     }
-                </ul>
+                </div>
             }
         </div>
     </section>
@@ -119,14 +123,14 @@
     .promo-text h2, .promo-text h3 { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
     .promo-empty { color: #666; }
 
-    .pass-offer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-    .pass-offer { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px 18px; }
-    .pass-offer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 6px; }
-    .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.3rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; }
+    .pass-panel { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 22px 26px 10px; }
+    .pass-title { font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 1.9rem; letter-spacing: .03em; margin: 0 0 .4rem; color: #101010; }
+    .pass-offer-head { margin: 16px 0 2px; }
+    .pass-offer-season { font-family: 'Oswald', sans-serif; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .04em; color: #555; }
     .pass-offer-cats { list-style: none; margin: 0; padding: 0; }
     .pass-offer-cat {
         display: flex; flex-direction: column; gap: .35rem;
-        padding: 12px 0; border-top: 1px solid #f3f3f3; font-size: .92rem;
+        padding: 12px 0; border-bottom: 1px solid #eee; font-size: .92rem;
     }
     .pass-offer-cat-row {
         display: flex; align-items: center; justify-content: space-between;
