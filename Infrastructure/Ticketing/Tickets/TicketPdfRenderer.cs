@@ -47,7 +47,7 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
                     .Background(Colors.White)
                     .Column(col =>
                 {
-                    col.Item().Background(Red).Padding(8).Column(head =>
+                    col.Item().Background(Red).Padding(7).Column(head =>
                     {
                         head.Item().Row(row =>
                         {
@@ -57,16 +57,16 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
                             else
                                 row.AutoItem().AlignRight().Text("RED ANTS").FontColor(Colors.White).Bold().FontSize(6.5f);
                         });
-                        head.Item().PaddingTop(1).Text(m.TypeLabel.ToUpperInvariant()).FontColor(Colors.White).Bold().FontSize(14);
+                        head.Item().PaddingTop(1).Text(m.TypeLabel.ToUpperInvariant()).FontColor(Colors.White).Bold().FontSize(13);
                     });
 
-                    col.Item().PaddingTop(8).AlignCenter().Width(28, Unit.Millimetre).Image(m.QrPng);
+                    col.Item().PaddingTop(6).AlignCenter().Width(26, Unit.Millimetre).Image(m.QrPng);
                     col.Item().PaddingTop(2).AlignCenter().Text("Am Eingang scannen lassen").FontColor(Muted).FontSize(6.5f);
 
-                    col.Item().PaddingVertical(5).Svg(SeamSvg);
+                    col.Item().PaddingVertical(3).Svg(SeamSvg);
 
-                    col.Item().PaddingHorizontal(14).Text(m.ScopeName).Bold().FontSize(10).FontColor(Ink);
-                    col.Item().PaddingHorizontal(14).PaddingTop(2).PaddingBottom(4).Column(meta =>
+                    col.Item().PaddingHorizontal(13).Text(m.ScopeName).Bold().FontSize(9.5f).FontColor(Ink);
+                    col.Item().PaddingHorizontal(13).PaddingTop(2).PaddingBottom(2).Column(meta =>
                     {
                         if (m.DateText is not null) MetaRow(meta, "Datum", m.DateText, RedDk);
                         if (m.CategoryLabel is not null) MetaRow(meta, "Kategorie", m.CategoryLabel, Ink);
@@ -78,9 +78,9 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
         }).GeneratePdf();
 
     private static void MetaRow(ColumnDescriptor col, string label, string value, string valueColor) =>
-        col.Item().BorderTop(1).BorderColor("#EEF0F2").PaddingVertical(2).Row(row =>
+        col.Item().BorderTop(1).BorderColor("#EEF0F2").PaddingVertical(1.5f).Row(row =>
         {
-            row.RelativeItem().Text(label).FontColor(Muted).FontSize(7.5f);
+            row.ConstantItem(50).Text(label).FontColor(Muted).FontSize(7.5f);
             row.RelativeItem().AlignRight().Text(value).Bold().FontSize(7.5f).FontColor(valueColor);
         });
 }
