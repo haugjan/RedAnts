@@ -74,7 +74,7 @@ public sealed class OrderMailer(
         if (infos is null || infos.Count == 0) return "";
         var items = string.Concat(infos.Select(info =>
             $"<p style=\"margin:0 0 10px;\">{WebUtility.HtmlEncode(info).Replace("\n", "<br>")}</p>"));
-        return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:400px;margin:0 auto 32px;background:#f5f5f5;border-left:4px solid #C8102E;border-radius:4px;\">" +
+        return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:0 0 32px;background:#f5f5f5;border-left:4px solid #C8102E;border-radius:4px;\">" +
             "<tr><td style=\"padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:14px;line-height:1.6;\">" +
                 "<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#101010;font-size:14px;margin:0 0 8px;\">Zu deinen Zusatzoptionen</div>" +
                 items +
@@ -136,11 +136,11 @@ public sealed class OrderMailer(
             InfoRow("Ticket-Nr.", reference, "#14171A");
 
         var counter = total > 1
-            ? $"<div style=\"max-width:340px;margin:0 auto 6px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#888888;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;\">Ticket {index} von {total}</div>"
+            ? $"<div style=\"margin:0 0 6px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#888888;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;\">Ticket {index} von {total}</div>"
             : "";
 
         return counter +
-            "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:340px;margin:0 auto 40px;background:#ffffff;border:1px solid #e6e8ec;border-radius:16px;overflow:hidden;page-break-inside:avoid;\">" +
+            "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:0 0 40px;background:#ffffff;border:1px solid #e6e8ec;border-radius:16px;overflow:hidden;page-break-inside:avoid;\">" +
                 $"<tr><td style=\"background:{red};padding:14px 18px 15px;\">" +
                     "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr>" +
                         "<td style=\"vertical-align:top;\">" +
@@ -150,7 +150,7 @@ public sealed class OrderMailer(
                         $"<td align=\"right\" style=\"vertical-align:top;\"><img src=\"{badgeCid}\" alt=\"Red Ants\" width=\"52\" height=\"52\" style=\"display:block;width:52px;height:52px;border-radius:50%;\"></td>" +
                     "</tr></table>" +
                 "</td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrCid}\" alt=\"Ticket QR\" width=\"200\" height=\"200\" style=\"display:block;margin:0 auto;\"></td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrCid}\" alt=\"Ticket QR\" width=\"260\" height=\"260\" style=\"display:block;margin:0 auto;max-width:100%;height:auto;\"></td></tr>" +
                 "<tr><td align=\"center\" style=\"padding:0 16px 12px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:12px;\">Am Eingang scannen lassen</td></tr>" +
                 "<tr><td style=\"padding:0 12px;\"><div style=\"border-top:2px dashed #d6dade;font-size:0;line-height:0;\">&nbsp;</div></td></tr>" +
                 $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:17px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scopeName}</div></td></tr>" +
