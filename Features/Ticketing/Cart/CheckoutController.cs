@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -11,10 +12,21 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, IEvents events, ISeasons seasons, ILogger<CheckoutController> logger) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, IEvents events, ISeasons seasons, IDataProtectionProvider dataProtection, ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
+
+    private readonly IDataProtector _orderProtector = dataProtection.CreateProtector("RedAnts.CheckoutOrder.v1");
+
+    private string ProtectOrder(int orderId) => _orderProtector.Protect(orderId.ToString());
+
+    private int? UnprotectOrder(string? token)
+    {
+        if (string.IsNullOrEmpty(token)) return null;
+        try { return int.Parse(_orderProtector.Unprotect(token)); }
+        catch { return null; }
+    }
 
     private const decimal VatRate = 0m;
 
@@ -150,7 +162,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 Currency: saved.Currency,
                 Purpose: $"Red Ants Ticketing {saved.OrderNumber}",
                 ReferenceId: saved.OrderNumber,
-                SuccessUrl: $"{baseUrl}/checkout/success?order={saved.Id}",
+                SuccessUrl: $"{baseUrl}/checkout/success?t={Uri.EscapeDataString(ProtectOrder(saved.Id))}",
                 FailedUrl: $"{baseUrl}/checkout",
                 CancelUrl: $"{baseUrl}/checkout/cancel",
                 Email: billing.Email,
@@ -164,6 +176,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 return View("~/Views/Checkout/Payrexx.cshtml", new CheckoutPayrexxView
                 {
                     OrderId = saved.Id,
+                    Token = ProtectOrder(saved.Id),
                     GatewayLink = gateway.Link,
                     OrderNumber = saved.OrderNumber,
                     Total = saved.TotalGross,
@@ -304,9 +317,10 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     }
 
     [HttpGet("/checkout/success")]
-    public async Task<IActionResult> Processing(int order)
+    public async Task<IActionResult> Processing(string t)
     {
-        var found = await orders.GetByIdAsync(order);
+        if (UnprotectOrder(t) is not { } orderId) return Redirect("/");
+        var found = await orders.GetByIdAsync(orderId);
         if (found is null) return Redirect("/");
 
         if (found.Status == OrderStatus.Draft && payrexx.Enabled && !string.IsNullOrEmpty(found.PayrexxGatewayId))
@@ -317,7 +331,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 await FulfillAsync(found.Id);
                 cart.Clear();
                 HttpContext.Session.Remove(FormKey);
-                found = await orders.GetByIdAsync(order) ?? found;
+                found = await orders.GetByIdAsync(orderId) ?? found;
             }
             else if (status is PayrexxStatus.Cancelled or PayrexxStatus.Declined)
             {
@@ -329,6 +343,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return View("~/Views/Checkout/Processing.cshtml", new CheckoutProcessingView
         {
             OrderId = found.Id,
+            Token = ProtectOrder(found.Id),
             OrderNumber = found.OrderNumber,
             Email = found.BillingAddress.Email,
             AlreadyPaid = paid,
@@ -392,9 +407,10 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     }
 
     [HttpGet("/checkout/status")]
-    public async Task<IActionResult> Status(int order)
+    public async Task<IActionResult> Status(string t)
     {
-        var found = await orders.GetByIdAsync(order);
+        if (UnprotectOrder(t) is not { } orderId) return NotFound();
+        var found = await orders.GetByIdAsync(orderId);
         if (found is null) return NotFound();
         return Json(new
         {

@@ -59,12 +59,12 @@
 <script>
 (function () {
     if (@(Model.AlreadyPaid ? "true" : "false")) return;
-    var orderId = @Model.OrderId;
+    var token = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Token));
     var tries = 0;
     function schedule() { if (tries < 120) setTimeout(poll, 2500); }
     function poll() {
         tries++;
-        fetch('/checkout/status?order=' + orderId, { headers: { 'Accept': 'application/json' } })
+        fetch('/checkout/status?t=' + encodeURIComponent(token), { headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (s) {
                 if (!s) { schedule(); return; }

@@ -39,7 +39,7 @@
 <script>
 (function () {
     var link = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.GatewayLink));
-    var orderId = @Model.OrderId;
+    var token = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Token));
     var overlay = document.getElementById('pay-overlay');
     var frame = document.getElementById('pay-frame');
 
@@ -61,10 +61,10 @@
     var tries = 0;
     function poll() {
         tries++;
-        fetch('/checkout/status?order=' + orderId, { headers: { 'Accept': 'application/json' } })
+        fetch('/checkout/status?t=' + encodeURIComponent(token), { headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (s) {
-                if (s && s.paid) { window.location.href = '/checkout/success?order=' + orderId; return; }
+                if (s && s.paid) { window.location.href = '/checkout/success?t=' + encodeURIComponent(token); return; }
                 if (s && s.cancelled) { window.location.href = '/checkout/cancel'; return; }
                 if (tries < 240) setTimeout(poll, 2500);
             })

@@ -49,6 +49,7 @@ public sealed class CheckoutExpressView
 public sealed class CheckoutProcessingView
 {
     public int OrderId { get; init; }
+    public string Token { get; init; } = "";
     public string OrderNumber { get; init; } = "";
     public string Email { get; init; } = "";
     public bool AlreadyPaid { get; init; }
@@ -72,6 +73,7 @@ public sealed record ConfirmationTicket(Guid Uuid, string EventName, string Cate
 public sealed class CheckoutPayrexxView
 {
     public int OrderId { get; init; }
+    public string Token { get; init; } = "";
     public string GatewayLink { get; init; } = "";
     public string OrderNumber { get; init; } = "";
     public decimal Total { get; init; }
