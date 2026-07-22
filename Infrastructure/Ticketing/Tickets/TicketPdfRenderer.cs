@@ -27,7 +27,7 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
     {
         try
         {
-            var path = Path.Combine(env.WebRootPath ?? "wwwroot", "img", "logo-ant.png");
+            var path = Path.Combine(env.WebRootPath ?? "wwwroot", "img", "logo-badge.png");
             return File.Exists(path) ? File.ReadAllBytes(path) : null;
         }
         catch { return null; }
@@ -54,9 +54,7 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
                             row.RelativeItem().AlignMiddle().Text(m.Kicker.ToUpperInvariant()).FontColor(Colors.White).FontSize(6.5f);
                             if (_logo is { } logo)
                                 row.AutoItem().AlignMiddle()
-                                    .Width(8, Unit.Millimetre).Height(8, Unit.Millimetre)
-                                    .Background(Colors.White).CornerRadius(4, Unit.Millimetre)
-                                    .Padding(2f, Unit.Millimetre)
+                                    .Width(10, Unit.Millimetre).Height(10, Unit.Millimetre)
                                     .Image(logo).FitArea();
                             else
                                 row.AutoItem().AlignRight().Text("RED ANTS").FontColor(Colors.White).Bold().FontSize(6.5f);
