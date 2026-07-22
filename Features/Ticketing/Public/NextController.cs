@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using RedAnts.Features.Ticketing.Cart;
 using RedAnts.Features.Ticketing.Ports;
 
 namespace RedAnts.Features.Ticketing.Public;
 
-public sealed class NextController(IEvents events, IVenues venues, IEventPricing pricing, IContentUrls contentUrls) : Controller
+public sealed class NextController(IEvents events, IVenues venues, IEventPricing pricing, ICaptchaVerifier captcha, IContentUrls contentUrls) : Controller
 {
     [HttpGet("/next")]
     public async Task<IActionResult> Next()
@@ -13,8 +14,14 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
             .OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList();
 
         var target = upcoming.FirstOrDefault(e => e.Date == today) ?? upcoming.FirstOrDefault();
+        var error = TempData["QuickError"] as string;
+        var email = TempData["QuickEmail"] as string ?? "";
+        var name = TempData["QuickName"] as string ?? "";
+        var siteKey = captcha.Enabled ? captcha.SiteKey : null;
+
         if (target is null)
-            return View("~/Views/NextQuickBuy.cshtml", NextQuickBuyModel.None);
+            return View("~/Views/NextQuickBuy.cshtml",
+                NextQuickBuyModel.None with { Error = error, Email = email, Name = name, TurnstileSiteKey = siteKey });
 
         var cats = await pricing.GetAvailableAsync(target.Id);
         var venue = await venues.FindByIdAsync(target.VenueId);
@@ -22,7 +29,7 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
             target.Id, target.Name, target.ImageUrl,
             target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,
             target.Date, target.StartTime, target.TimeUnknown,
-            venue?.Name, cats);
+            venue?.Name, cats, error, email, name, siteKey);
         return View("~/Views/NextQuickBuy.cshtml", model);
     }
 
@@ -63,7 +70,8 @@ public sealed record NextQuickBuyModel(
     int EventId, string Title, string? ImageUrl,
     string? HomeLogoUrl, string? AwayLogoUrl,
     DateOnly Date, TimeOnly StartTime, bool TimeUnknown,
-    string? VenueName, IReadOnlyList<AvailableTicketCategory> Categories)
+    string? VenueName, IReadOnlyList<AvailableTicketCategory> Categories,
+    string? Error = null, string Email = "", string Name = "", string? TurnstileSiteKey = null)
 {
     public static readonly NextQuickBuyModel None =
         new(0, "", null, null, null, default, default, false, null, []);

@@ -127,6 +127,47 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, acceptNewsletter, "Express");
     }
 
+    [HttpPost("/next/buy")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickBuy(int eventId, int tierId, string email, string? name, bool acceptNewsletter, bool acceptPrivacy)
+    {
+        IActionResult Back(string error)
+        {
+            TempData["QuickError"] = error;
+            TempData["QuickEmail"] = email ?? "";
+            TempData["QuickName"] = name ?? "";
+            return Redirect("/next");
+        }
+
+        email = (email ?? "").Trim();
+        if (email.Length < 5 || !email.Contains('@') || !email.Contains('.'))
+            return Back("Bitte eine gültige E-Mail-Adresse angeben.");
+
+        if (!acceptPrivacy)
+            return Back("Bitte akzeptiere die AGB und die Datenschutzerklärung.");
+
+        var captchaToken = Request.Form["cf-turnstile-response"].ToString();
+        if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
+            return Back("Bitte bestätige, dass du kein Roboter bist.");
+
+        var available = await pricing.FindAvailableByTierAsync(eventId, tierId);
+        var evt = await events.FindByIdAsync(eventId);
+        if (available is not { Available: true } || evt is null)
+            return Back("Dieses Ticket ist nicht mehr verfügbar.");
+
+        cart.Add(eventId, evt.Name, available.TierId, available.Name, available.Price, 1);
+        var current = cart.Get();
+
+        var trimmed = (name ?? "").Trim();
+        var space = trimmed.IndexOf(' ');
+        var firstName = space > 0 ? trimmed[..space] : trimmed;
+        var lastName = space > 0 ? trimmed[(space + 1)..] : "";
+        var billing = BillingAddress.FromPersistence((int)BuyerType.Private, firstName, lastName, null,
+            "", null, "", "", "Schweiz", email, null);
+
+        return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, acceptNewsletter, "Express");
+    }
+
     private async Task<IActionResult> FinalizeOrderAsync(Cart current, BillingAddress billing, PaymentMethod paymentMethod, bool subscribeNewsletter, string newsletterSource)
     {
         var demand = current.Items

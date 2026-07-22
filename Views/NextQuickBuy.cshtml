@@ -17,13 +17,11 @@
         .nq-logos { display: flex; align-items: center; gap: 1.25rem; margin: 0 0 1.75rem; }
         .nq-logos img { height: 64px; width: auto; }
         .nq-logos .vs { font-family: 'Oswald', sans-serif; font-size: 1.4rem; font-weight: 700; text-transform: uppercase; color: #68676b; }
-        .nq-lead { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #68676b; margin: 0 0 0.75rem; }
+        .nq-section-title { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.03em; font-size: 1.4rem; margin: 1.75rem 0 0.75rem; }
         .nq-cat { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
         .nq-cat__name { font-weight: 700; }
         .nq-cat__price { color: #68676b; margin-left: 0.5rem; font-weight: 400; }
         .nq-cat__action { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ra-red); text-transform: uppercase; }
-        .nq-form { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
-        .nq-qty { width: 4.5rem; padding: 0.45rem; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
         .nq-soldout { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 0.95rem; color: #68676b; }
         .nq-empty { color: #68676b; }
     </style>
@@ -68,47 +66,85 @@ else
         </div>
     }
 
-    <p class="nq-lead">Direktkauf – Ticket wählen und sofort zur Kasse</p>
-
-    @if (Model.Categories.Count == 0)
+    @if (!string.IsNullOrEmpty(Model.Error))
     {
-        <p class="nq-empty">Für diesen Anlass sind aktuell keine Tickets verfügbar.</p>
+        <div class="alert alert-danger">@Model.Error</div>
     }
-    else
-    {
-        foreach (var cat in Model.Categories)
+
+    <form method="post" action="/next/buy" class="card p-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="eventId" value="@Model.EventId" />
+
+        <div class="mb-3">
+            <label class="form-label fw-bold" for="nqEmail">E-Mail *</label>
+            <input class="form-control" type="email" id="nqEmail" name="email" required
+                   autocomplete="email" inputmode="email" placeholder="für die Ticket-Zustellung" value="@Model.Email" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="nqName">Name <span class="text-muted">(optional)</span></label>
+            <input class="form-control" type="text" id="nqName" name="name" autocomplete="name" value="@Model.Name" />
+        </div>
+
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="acceptPrivacy" value="true" id="nqPrivacy" required />
+            <label class="form-check-label" for="nqPrivacy">
+                Ich akzeptiere die <a href="/agb" target="_blank" rel="noopener">AGB</a> und die <a href="/datenschutz" target="_blank" rel="noopener">Datenschutzerklärung</a>. *
+            </label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="acceptNewsletter" value="true" id="nqNewsletter" />
+            <label class="form-check-label" for="nqNewsletter">
+                Ich möchte den Newsletter der Red Ants abonnieren.
+            </label>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
         {
-            <div class="nq-cat">
-                <div>
-                    <span class="nq-cat__name">@cat.Name</span>
-                    @if (cat.OriginalPrice is { } orig)
+            <div class="cf-turnstile mt-3" data-sitekey="@Model.TurnstileSiteKey"></div>
+        }
+
+        <h2 class="nq-section-title">Tickets</h2>
+        @if (Model.Categories.Count == 0)
+        {
+            <p class="nq-empty">Für diesen Anlass sind aktuell keine Tickets verfügbar.</p>
+        }
+        else
+        {
+            foreach (var cat in Model.Categories)
+            {
+                <div class="nq-cat">
+                    <div>
+                        <span class="nq-cat__name">@cat.Name</span>
+                        @if (cat.OriginalPrice is { } orig)
+                        {
+                            <span class="nq-cat__price"><s style="opacity:.6">CHF @MoneyFormat.Chf(orig)</s> CHF @MoneyFormat.Chf(cat.Price)</span>
+                        }
+                        else
+                        {
+                            <span class="nq-cat__price">CHF @MoneyFormat.Chf(cat.Price)</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(cat.ActionText))
+                        {
+                            <span class="nq-cat__action">@cat.ActionText</span>
+                        }
+                    </div>
+                    @if (cat.Available)
                     {
-                        <span class="nq-cat__price"><s style="opacity:.6">CHF @MoneyFormat.Chf(orig)</s> CHF @MoneyFormat.Chf(cat.Price)</span>
+                        <button type="submit" name="tierId" value="@cat.TierId" class="btn btn-danger">Kaufen</button>
                     }
                     else
                     {
-                        <span class="nq-cat__price">CHF @MoneyFormat.Chf(cat.Price)</span>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(cat.ActionText))
-                    {
-                        <span class="nq-cat__action">@cat.ActionText</span>
+                        <span class="nq-soldout">Ausverkauft</span>
                     }
                 </div>
-                @if (cat.Available)
-                {
-                    <form method="post" action="/cart/direct" class="nq-form">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="eventId" value="@Model.EventId" />
-                        <input type="hidden" name="tierId" value="@cat.TierId" />
-                        <input type="number" name="quantity" value="1" min="1" class="nq-qty" aria-label="Menge" />
-                        <button type="submit" class="btn btn-danger">Direkt kaufen</button>
-                    </form>
-                }
-                else
-                {
-                    <span class="nq-soldout">Ausverkauft</span>
-                }
-            </div>
+            }
         }
-    }
+
+        <p class="text-muted small mt-3 mb-0">Alle Preise verstehen sich ohne MwSt. Der Verein ist nicht mehrwertsteuerpflichtig.</p>
+    </form>
+}
+
+@if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 }
