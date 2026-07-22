@@ -30,6 +30,7 @@ public sealed class BrevoUmbracoEmailSender(
 
         foreach (var to in recipients)
         {
+            if (string.IsNullOrWhiteSpace(to)) continue;
             var (address, name) = ParseRecipient(to);
             var result = await sender.SendAsync(address, name, message.Subject ?? "", body);
             if (!result.Success)

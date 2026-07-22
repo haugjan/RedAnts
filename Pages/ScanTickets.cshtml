@@ -14,7 +14,7 @@
     <base href="/" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png" />
-    <link rel="stylesheet" href="/css/ticket-scanner.css" />
+    <link rel="stylesheet" href="/css/ticket-scanner.css" asp-append-version="true" />
 
     <!-- PWA: installable web app -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -32,8 +32,8 @@
 
     <button id="pwaInstall" class="pwa-install" hidden>App installieren</button>
 
-    <script src="/js/jsQR.js"></script>
-    <script src="/js/ticket-scanner.js?v=10"></script>
+    <script src="/js/jsQR.js" asp-append-version="true"></script>
+    <script src="/js/ticket-scanner.js" asp-append-version="true"></script>
     <script src="_framework/blazor.server.js"></script>
 
     <script>

@@ -16,7 +16,7 @@ public sealed class MemberCardEditorAdapter(IScopeProvider scopeProvider) : IMem
         await scope.Database.ExecuteAsync(
             "UPDATE MembershipCards SET FirstName = @0, LastName = @1, Birthday = @2, " +
             "Category = @3, Status = @4, Reference = @5 WHERE Uuid = @6",
-            new object?[]
+            (object[])new object?[]
             {
                 string.IsNullOrWhiteSpace(firstName) ? null : firstName.Trim(),
                 string.IsNullOrWhiteSpace(lastName) ? null : lastName.Trim(),
