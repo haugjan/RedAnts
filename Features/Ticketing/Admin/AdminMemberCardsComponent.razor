@@ -96,6 +96,10 @@
                                 </td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(c)">✎</button>
+                                    @if (Identity.IsAdmin)
+                                    {
+                                        <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = c">🗑</button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -306,6 +310,14 @@
     <VisitsOverlay Uuid="_visitsCard.Uuid" Title="@(_visitsCard.HasName ? _visitsCard.HolderName : AdminFormat.TicketNo(_visitsCard.Uuid))" OnClose="CloseVisits" />
 }
 
+@if (_deleteTarget is not null)
+{
+    <ConfirmDialog Title="Mitgliederkarte löschen"
+                   Message="@($"Mitgliederkarte {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
+                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
@@ -314,7 +326,29 @@
     [Inject] private IMemberCardAdminReport Report { get; set; } = default!;
     [Inject] private IMemberCards Members { get; set; } = default!;
     [Inject] private IMemberCardEditor MemberEditor { get; set; } = default!;
+    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private MemberCardListItem? _deleteTarget;
+    private bool _deleteBusy;
+    private string? _deleteError;
+
+    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_deleteTarget is null) return;
+        _deleteBusy = true;
+        _deleteError = null;
+        try
+        {
+            await Deletion.DeleteMemberCardAsync(_deleteTarget.Uuid);
+            _deleteTarget = null;
+            await ReloadCardsAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleteBusy = false; }
+    }
 
     private static readonly MemberCategory[] Categories = Enum.GetValues<MemberCategory>();
 

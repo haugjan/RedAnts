@@ -172,6 +172,10 @@
                                 </td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(t)">✎</button>
+                                    @if (Identity?.IsAdmin == true)
+                                    {
+                                        <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = t">🗑</button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -309,6 +313,14 @@
                    OnClose="() => _visitsFor = null" />
 }
 
+@if (_deleteTarget is not null)
+{
+    <ConfirmDialog Title="Ticket löschen"
+                   Message="@($"Ticket {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
+                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+}
+
 @if (_showCreateBundle)
 {
     <div class="ta-overlay" @onmousedown="CloseCreateBundle">
@@ -401,7 +413,29 @@
     [Inject] private IVisitLogReader Visits { get; set; } = default!;
     [Inject] private IAdmissionService Admission { get; set; } = default!;
     [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
+    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private EventTicket? _deleteTarget;
+    private bool _deleteBusy;
+    private string? _deleteError;
+
+    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_deleteTarget is null) return;
+        _deleteBusy = true;
+        _deleteError = null;
+        try
+        {
+            await Deletion.DeleteEventTicketAsync(_deleteTarget.Uuid);
+            _deleteTarget = null;
+            await ReloadTicketsAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleteBusy = false; }
+    }
 
     private static readonly TicketCategory[] AllCategories = Enum.GetValues<TicketCategory>();
     private static readonly TicketStatus[] AllStatuses = [TicketStatus.Valid, TicketStatus.Cancelled];

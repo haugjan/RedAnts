@@ -116,6 +116,10 @@
                                 <td>@(p.OrderNumber ?? "–")</td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(p)">✎</button>
+                                    @if (Identity.IsAdmin)
+                                    {
+                                        <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = p">🗑</button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -276,6 +280,14 @@
     <VisitsOverlay Uuid="_visitsPass.Uuid" Title="@(_visitsPass.BuyerName ?? AdminFormat.TicketNo(_visitsPass.Uuid))" OnClose="CloseVisits" />
 }
 
+@if (_deleteTarget is not null)
+{
+    <ConfirmDialog Title="Saisonkarte löschen"
+                   Message="@($"Saisonkarte {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
+                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+}
+
 @if (_showImport)
 {
     <div class="ta-overlay" @onmousedown="CloseImport">
@@ -353,6 +365,28 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
+
+    private SeasonPassListItem? _deleteTarget;
+    private bool _deleteBusy;
+    private string? _deleteError;
+
+    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_deleteTarget is null) return;
+        _deleteBusy = true;
+        _deleteError = null;
+        try
+        {
+            await Deletion.DeleteSeasonPassAsync(_deleteTarget.Uuid);
+            _deleteTarget = null;
+            await ReloadPassesAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleteBusy = false; }
+    }
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];

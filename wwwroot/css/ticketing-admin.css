@@ -104,6 +104,7 @@
     transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 .ta-icon-btn:hover { background: #eef6fc; border-color: var(--ta-accent); color: var(--ta-accent); }
+.ta-icon-btn-danger:hover { background: #f6e2e4; border-color: #a3283a; color: #a3283a; }
 .ta-link-btn {
     appearance: none; background: none; border: 1px solid transparent; cursor: pointer;
     font-size: 0.9rem; line-height: 1; padding: 0.15rem 0.25rem; border-radius: 3px;

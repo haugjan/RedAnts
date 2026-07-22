@@ -107,10 +107,11 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "admin";
     [Parameter] public string? AdminEmail { get; set; }
+    [Parameter] public bool AdminIsAdmin { get; set; }
 
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
-    private AdminIdentity Identity => new(AdminUser, AdminEmail);
+    private AdminIdentity Identity => new(AdminUser, AdminEmail, AdminIsAdmin);
 
     private string _tab = "seasons";
     private bool _ready;

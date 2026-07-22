@@ -29,7 +29,8 @@
     <component type="typeof(RedAnts.Features.Ticketing.Admin.TicketingAdminComponent)"
                render-mode="Server"
                param-AdminUser="@Model.Name"
-               param-AdminEmail="@Model.Email" />
+               param-AdminEmail="@Model.Email"
+               param-AdminIsAdmin="@Model.IsAdmin" />
     <script src="/_framework/blazor.server.js"></script>
     <script>
         document.addEventListener('keydown', function (e) {
