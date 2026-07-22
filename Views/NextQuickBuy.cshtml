@@ -24,6 +24,8 @@
         .nq-cat__action { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ra-red); text-transform: uppercase; }
         .nq-soldout { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 0.95rem; color: #68676b; }
         .nq-empty { color: #68676b; }
+        .nq-more { display: inline-block; margin-top: 1.25rem; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; font-size: 0.95rem; color: var(--ra-red); text-decoration: none; }
+        .nq-more:hover { text-decoration: underline; }
     </style>
 }
 
@@ -138,6 +140,11 @@ else
                     }
                 </div>
             }
+        }
+
+        @if (!string.IsNullOrEmpty(Model.EventUrl))
+        {
+            <a href="@Model.EventUrl" class="nq-more">Mehrere Tickets kaufen? Zur normalen Ticketseite &rarr;</a>
         }
 
         <p class="text-muted small mt-3 mb-0">Alle Preise verstehen sich ohne MwSt. Der Verein ist nicht mehrwertsteuerpflichtig.</p>

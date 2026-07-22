@@ -25,11 +25,12 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
 
         var cats = await pricing.GetAvailableAsync(target.Id);
         var venue = await venues.FindByIdAsync(target.VenueId);
+        var eventUrl = contentUrls.GetUrl(target.Id);
         var model = new NextQuickBuyModel(
             target.Id, target.Name, target.ImageUrl,
             target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,
             target.Date, target.StartTime, target.TimeUnknown,
-            venue?.Name, cats, error, email, name, siteKey);
+            venue?.Name, cats, error, email, name, siteKey, eventUrl);
         return View("~/Views/NextQuickBuy.cshtml", model);
     }
 
@@ -71,7 +72,8 @@ public sealed record NextQuickBuyModel(
     string? HomeLogoUrl, string? AwayLogoUrl,
     DateOnly Date, TimeOnly StartTime, bool TimeUnknown,
     string? VenueName, IReadOnlyList<AvailableTicketCategory> Categories,
-    string? Error = null, string Email = "", string Name = "", string? TurnstileSiteKey = null)
+    string? Error = null, string Email = "", string Name = "", string? TurnstileSiteKey = null,
+    string? EventUrl = null)
 {
     public static readonly NextQuickBuyModel None =
         new(0, "", null, null, null, default, default, false, null, []);

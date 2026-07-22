@@ -155,8 +155,22 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (available is not { Available: true } || evt is null)
             return Back("Dieses Ticket ist nicht mehr verfügbar.");
 
-        cart.Add(eventId, evt.Name, available.TierId, available.Name, available.Price, 1);
-        var current = cart.Get();
+        var oneTicket = new Cart
+        {
+            Items =
+            {
+                new CartItem
+                {
+                    Kind = CartItemKind.EventTicket,
+                    EventId = eventId,
+                    EventName = evt.Name,
+                    TierId = available.TierId,
+                    CategoryName = available.Name,
+                    UnitPrice = available.Price,
+                    Quantity = 1
+                }
+            }
+        };
 
         var trimmed = (name ?? "").Trim();
         var space = trimmed.IndexOf(' ');
@@ -165,7 +179,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         var billing = BillingAddress.FromPersistence((int)BuyerType.Private, firstName, lastName, null,
             "", null, "", "", "Schweiz", email, null);
 
-        return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, acceptNewsletter, "Express");
+        return await FinalizeOrderAsync(oneTicket, billing, PaymentMethod.Payrexx, acceptNewsletter, "QuickBuy");
     }
 
     private async Task<IActionResult> FinalizeOrderAsync(Cart current, BillingAddress billing, PaymentMethod paymentMethod, bool subscribeNewsletter, string newsletterSource)
@@ -223,7 +237,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             {
                 logger.LogError(ex, "Payrexx gateway creation failed for order {Order}.", saved.OrderNumber);
                 TempData["CheckoutError"] = "Die Zahlung konnte nicht gestartet werden. Bitte versuche es erneut.";
-                return Redirect(newsletterSource == "Express" ? "/checkout/express" : "/checkout");
+                return Redirect(newsletterSource switch { "Express" => "/checkout/express", "QuickBuy" => "/next", _ => "/checkout" });
             }
         }
 
@@ -374,7 +388,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         }
 
         var paid = found.Status == OrderStatus.Paid;
-        if (paid)
+        if (paid && !IsQuickBuyOrder(found))
         {
             cart.Clear();
             HttpContext.Session.Remove(FormKey);
@@ -389,6 +403,10 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             Tickets = paid ? await BuildOrderTicketsAsync(found) : []
         });
     }
+
+    private static bool IsQuickBuyOrder(Order order) =>
+        !string.IsNullOrEmpty(order.FulfillmentPayload)
+        && JsonSerializer.Deserialize<FulfillmentSnapshot>(order.FulfillmentPayload) is { NewsletterSource: "QuickBuy" };
 
     private async Task<List<ConfirmationTicket>> BuildOrderTicketsAsync(Order order)
     {
