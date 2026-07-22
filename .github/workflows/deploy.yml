@@ -102,6 +102,19 @@ jobs:
             --settings Umbraco__CMS__Imaging__HMACSecretKey="$IMAGING_HMAC_KEY" \
             --output none
           echo "Imaging HMAC applied to $WEBAPP."
+      - name: Configure SMTP (dev)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASSWORD" ]; then
+            echo "SMTP secrets not set; skipping."; exit 0
+          fi
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Smtp__User="$SMTP_USER" Smtp__Password="$SMTP_PASSWORD" \
+            --output none
+          echo "SMTP settings applied to $WEBAPP."
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -173,6 +186,19 @@ jobs:
             --settings Umbraco__CMS__Imaging__HMACSecretKey="$IMAGING_HMAC_KEY" \
             --output none
           echo "Imaging HMAC applied to $WEBAPP."
+      - name: Configure SMTP (prod)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASSWORD" ]; then
+            echo "SMTP secrets not set; skipping."; exit 0
+          fi
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Smtp__User="$SMTP_USER" Smtp__Password="$SMTP_PASSWORD" \
+            --output none
+          echo "SMTP settings applied to $WEBAPP."
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}

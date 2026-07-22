@@ -5,13 +5,14 @@ using Umbraco.Cms.Core.Models.Email;
 
 namespace RedAnts.Infrastructure.Ticketing.Email;
 
-public sealed class BrevoUmbracoEmailSender(
+public sealed class UmbracoEmailSenderAdapter(
     IServiceScopeFactory scopeFactory,
     IConfiguration config) : Umbraco.Cms.Core.Mail.IEmailSender
 {
     public bool CanSendRequiredEmail() =>
-        !string.IsNullOrWhiteSpace(config["Brevo:ApiKey"])
-        && !string.IsNullOrWhiteSpace(config["Brevo:SenderEmail"]);
+        !string.IsNullOrWhiteSpace(config["Smtp:Host"])
+        && !string.IsNullOrWhiteSpace(config["Smtp:User"])
+        && !string.IsNullOrWhiteSpace(config["Smtp:Password"]);
 
     public Task SendAsync(EmailMessage message, string emailType) =>
         SendAsync(message, emailType, false);
