@@ -26,10 +26,11 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
     public async Task<EventTicket> SaveAsync(EventTicket ticket)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var uuid = ticket.Id == 0 ? await TicketCode.AllocateAsync(scope.Database, ticket.Uuid) : ticket.Uuid;
         var row = new EventTicketRecord
         {
             Id = ticket.Id,
-            Uuid = ticket.Uuid.ToString(),
+            Uuid = uuid.ToString(),
             EventId = ticket.EventId,
             Category = (int)ticket.Category,
             TierId = ticket.TierId,

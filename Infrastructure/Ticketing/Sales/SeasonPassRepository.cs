@@ -61,10 +61,11 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
     public async Task<SeasonPass> SaveAsync(SeasonPass pass)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var uuid = pass.Id == 0 ? await TicketCode.AllocateAsync(scope.Database, pass.Uuid) : pass.Uuid;
         var row = new SeasonPassRecord
         {
             Id = pass.Id,
-            Uuid = pass.Uuid.ToString(),
+            Uuid = uuid.ToString(),
             SeasonId = pass.SeasonId,
             Category = (int)pass.Category,
             TierId = pass.TierId,

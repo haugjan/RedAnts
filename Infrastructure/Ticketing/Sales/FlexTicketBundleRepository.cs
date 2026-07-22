@@ -105,9 +105,10 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         for (var i = 0; i < quantity; i++)
         {
             var ticket = SeasonSingleTicket.CreateForBundle(seasonId, category, 0m, record.Id, orderId: orderId);
+            var uuid = await TicketCode.AllocateAsync(db, ticket.Uuid);
             await db.InsertAsync(new SeasonSingleTicketRecord
             {
-                Uuid = ticket.Uuid.ToString(),
+                Uuid = uuid.ToString(),
                 SeasonId = ticket.SeasonId,
                 Category = (int)ticket.Category,
                 Price = ticket.Price,

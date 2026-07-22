@@ -66,9 +66,10 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
         for (var i = 0; i < quantity; i++)
         {
             var ticket = EventTicket.CreateForBundle(eventId, category, record.Id, bundle.CreatedByName, bundle.CreatedByEmail, orderId: orderId);
+            var uuid = await TicketCode.AllocateAsync(db, ticket.Uuid);
             await db.InsertAsync(new EventTicketRecord
             {
-                Uuid = ticket.Uuid.ToString(),
+                Uuid = uuid.ToString(),
                 EventId = ticket.EventId,
                 Category = (int)ticket.Category,
                 Price = ticket.Price,

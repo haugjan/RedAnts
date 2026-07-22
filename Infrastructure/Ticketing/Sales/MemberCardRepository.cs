@@ -21,7 +21,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         {
             var card = MemberCard.Create(seasonId, row.Category, row.FirstName, row.LastName, row.Birthday,
                 reference, createdByName: createdByName, createdByEmail: createdByEmail);
-            await scope.Database.InsertAsync(ToRecord(card));
+            await InsertAsync(scope.Database, card);
             created++;
         }
         return created;
@@ -40,7 +40,14 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
             createdByName: createdByName, createdByEmail: createdByEmail);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        await scope.Database.InsertAsync(ToRecord(card));
+        await InsertAsync(scope.Database, card);
+    }
+
+    private static async Task InsertAsync(IDatabase db, MemberCard card)
+    {
+        var record = ToRecord(card);
+        record.Uuid = (await TicketCode.AllocateAsync(db, card.Uuid)).ToString();
+        await db.InsertAsync(record);
     }
 
     public async Task<bool> ReferenceExistsAsync(int seasonId, string reference)
