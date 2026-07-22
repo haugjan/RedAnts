@@ -102,10 +102,10 @@
 
     @if (_selected is null && !_testMode)
     {
-        <p class="scan-app__version">
-            <a class="scan-app__test" href="/scanner-test" target="_blank" rel="noopener">Scanner testen</a>
-            · Scanner v@(Version)
-        </p>
+        <a class="scan-app__testlink" href="/scanner-test" target="_blank" rel="noopener">
+            <span class="scan-app__testlink-icon" aria-hidden="true">&#9636;</span> Test QR-Code
+        </a>
+        <p class="scan-app__version">Scanner v@(Version)</p>
     }
 </div>
 
@@ -127,10 +127,18 @@
         font-size: 1.05rem; font-weight: 800; cursor: pointer;
     }
     .scan-app__version {
-        text-align: center; margin: 1.5rem 0 0.5rem; color: #b0b0b0;
+        text-align: center; margin: 0.6rem 0 0.5rem; color: #b0b0b0;
         font-size: 0.75rem; letter-spacing: 0.04em;
     }
-    .scan-app__test { color: #888; text-decoration: underline; }
+    .scan-app__testlink {
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        margin: 1.2rem 0 0; padding: 0.75rem 1rem; border-radius: 12px;
+        border: 2px solid #0d9488; background: #f0fbfa; color: #0d9488;
+        font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+        font-size: 0.98rem; text-decoration: none;
+    }
+    .scan-app__testlink:hover { background: #0d9488; color: #fff; }
+    .scan-app__testlink-icon { font-size: 1.2rem; line-height: 1; }
 
     .event-card--today { border-color: #1a7f37; border-width: 2px; box-shadow: 0 4px 16px rgba(26, 127, 55, 0.18); }
     .event-card__badge--today { background: #1a7f37; }
@@ -157,7 +165,7 @@
 </style>
 
 @code {
-    private const string Version = "11";
+    private const string Version = "12";
 
     [Parameter] public string HelperName { get; set; } = "";
     [Parameter] public bool AllEvents { get; set; } = true;
