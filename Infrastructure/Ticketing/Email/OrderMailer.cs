@@ -23,7 +23,7 @@ public sealed class OrderMailer(
             var subject = $"Deine Tickets – Bestellung {model.OrderNumber}";
             var greeting = string.IsNullOrWhiteSpace(model.ToName) ? "Hallo," : $"Hallo {model.ToName},";
             var body = await BuildBodyAsync(model);
-            var details = $"Bestellung {model.OrderNumber}\nTotal: CHF {model.Total:N2}";
+            var details = $"Bestellung {model.OrderNumber}\nTotal: CHF {RedAnts.Features.Ticketing.MoneyFormat.Chf(model.Total)}";
             var note = "Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt. Fragen? Antworte einfach auf diese E-Mail.";
             var html = EmailLayout.Render(subject, body, greeting, details, note);
 
