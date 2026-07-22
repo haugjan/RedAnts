@@ -14,6 +14,7 @@ public sealed class TicketingAdminController : Controller
     {
         var name = User.Identity?.Name ?? "admin";
         var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
-        return View("~/Features/Ticketing/Admin/Views/Admin.cshtml", new AdminIdentity(name, email));
+        var isAdmin = User.IsInRole(Constants.Security.AdminGroupAlias);
+        return View("~/Features/Ticketing/Admin/Views/Admin.cshtml", new AdminIdentity(name, email, isAdmin));
     }
 }

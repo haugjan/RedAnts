@@ -78,6 +78,7 @@
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
                             <th>Event&shy;besuche</th>
+                            <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -129,6 +130,12 @@
                                 </td>
                                 <td>
                                     <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuche</button>
+                                </td>
+                                <td class="ta-col-actions">
+                                    @if (Identity?.IsAdmin == true)
+                                    {
+                                        <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = t">🗑</button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -276,6 +283,14 @@
                    OnClose="() => _visitsFor = null" />
 }
 
+@if (_deleteTarget is not null)
+{
+    <ConfirmDialog Title="Flexticket löschen"
+                   Message="@($"Flexticket {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
+                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
@@ -286,7 +301,29 @@
     [Inject] private IFlexBundleEditor BundleEditor { get; set; } = default!;
     [Inject] private IAdmissionService Admission { get; set; } = default!;
     [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
+    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private FlexTicketView? _deleteTarget;
+    private bool _deleteBusy;
+    private string? _deleteError;
+
+    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_deleteTarget is null) return;
+        _deleteBusy = true;
+        _deleteError = null;
+        try
+        {
+            await Deletion.DeleteFlexTicketAsync(_deleteTarget.Uuid);
+            _deleteTarget = null;
+            await ReloadTicketsAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleteBusy = false; }
+    }
 
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
 
