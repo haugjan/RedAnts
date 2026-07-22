@@ -89,19 +89,7 @@
                                     <input type="checkbox" checked="@h.Active" @onchange="@(e => ToggleActiveAsync(h, e.Value is true))" />
                                 </td>
                                 <td class="ta-col-actions">
-                                    @if (HasScans(h))
-                                    {
-                                        <span class="ta-muted" title="Helfer mit erfassten Scans können nicht gelöscht werden">🔒</span>
-                                    }
-                                    else if (_confirmDelete == h.Id)
-                                    {
-                                        <button type="button" class="ta-btn ta-btn-ghost ta-btn-sm" @onclick="() => _confirmDelete = null">Abbrechen</button>
-                                        <button type="button" class="ta-btn ta-btn-danger ta-btn-sm" @onclick="() => DeleteAsync(h)">Löschen</button>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="ta-icon-btn" title="Helfer löschen" @onclick="() => _confirmDelete = h.Id">🗑</button>
-                                    }
+                                    <button type="button" class="ta-icon-btn" title="Helfer löschen" @onclick="() => OpenDelete(h)">🗑</button>
                                 </td>
                             </tr>
                         }
@@ -280,8 +268,38 @@
     </div>
 }
 
+@if (_deleteFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseDelete">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Helfer löschen</h2>
+            <p class="ta-modal-sub">@_deleteFor.FullName</p>
+
+            <p>Diesen Helfer wirklich löschen? Zugangslink und Passwort werden dauerhaft entfernt.</p>
+            @if (_deleteHasScans)
+            {
+                <div class="ta-modal-warn">
+                    Dieser Helfer hat bereits Scans erfasst. Die gescannten Einlässe und Auslässe bleiben in den Auswertungen erhalten, sind danach aber keinem Helfer mehr zugeordnet.
+                </div>
+            }
+            @if (_deleteError is not null)
+            {
+                <div class="ta-modal-error">@_deleteError</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseDelete" disabled="@_deleting">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-danger" @onclick="ConfirmDeleteAsync" disabled="@_deleting">
+                    @(_deleting ? "Wird gelöscht …" : "Löschen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
     .ta-warn { color: #b42318; font-weight: 700; }
+    .ta-modal-warn { background: #fff4e5; border: 1px solid #f0c37a; color: #7a4b06; border-radius: 6px; padding: .6rem .8rem; margin: 0 0 1rem; font-size: .9rem; }
     .ta-btn-sm { padding: .25rem .6rem; font-size: .8rem; }
     .ta-table tfoot td { font-weight: 700; border-top: 2px solid var(--ta-border); }
     .ta-assign-all { display: flex; align-items: center; gap: .5rem; font-weight: 700; margin: 0 0 .8rem; }
@@ -317,8 +335,12 @@
     private string _newEmail = "";
     private bool _adding;
     private string? _addError;
-    private int? _confirmDelete;
     private bool _copied;
+
+    private Helper? _deleteFor;
+    private bool _deleteHasScans;
+    private bool _deleting;
+    private string? _deleteError;
 
     private Helper? _assignFor;
     private bool _assignAll;
@@ -352,7 +374,6 @@
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
-        _confirmDelete = null;
         if (SelectedSeasonId <= 0)
         {
             _helpers = [];
@@ -489,12 +510,28 @@
         await ReloadAsync();
     }
 
-    private async Task DeleteAsync(Helper h)
+    private void OpenDelete(Helper h)
     {
-        if (HasScans(h)) { _confirmDelete = null; return; }
-        await Helpers.DeleteAsync(h.Id);
-        _confirmDelete = null;
-        await ReloadAsync();
+        _deleteFor = h;
+        _deleteHasScans = HasScans(h);
+        _deleteError = null;
+    }
+
+    private void CloseDelete() { if (!_deleting) { _deleteFor = null; _deleteError = null; } }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_deleteFor is null) return;
+        _deleting = true;
+        _deleteError = null;
+        try
+        {
+            await Helpers.DeleteAsync(_deleteFor.Id);
+            _deleteFor = null;
+            await ReloadAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleting = false; }
     }
 
     private string LoginLink(Helper h)
