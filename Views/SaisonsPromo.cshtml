@@ -50,7 +50,7 @@
             else
             {
                 <div class="pass-panel">
-                    <h2 class="pass-title">Saisonkarten</h2>
+                    <h2 class="pass-title">@(passOffers.Count == 1 ? $"Saisonkarten {passOffers[0].SeasonName}" : "Saisonkarten")</h2>
                     @foreach (var (seasonId, seasonName, cats) in passOffers)
                     {
                         <div class="pass-offer">
