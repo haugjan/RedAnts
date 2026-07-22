@@ -1,5 +1,4 @@
-const style = document.createElement('style');
-style.textContent = `
+const ROOT_CSS = `
   :root {
     --uui-color-interactive: #a01828;
     --uui-color-interactive-emphasis: #7e1220;
@@ -23,20 +22,9 @@ style.textContent = `
     --uui-color-header-surface-contrast: rgba(255,255,255,0.75);
   }
 
-  uui-button,
-  uui-tab,
-  uui-menu-item,
-  uui-checkbox,
-  uui-toggle,
-  uui-radio,
-  uui-select,
-  uui-input,
-  uui-textarea,
-  uui-range-slider,
-  uui-pagination,
-  uui-ref-node,
-  uui-combobox,
-  uui-badge {
+  uui-button, uui-tab, uui-menu-item, uui-checkbox, uui-toggle,
+  uui-radio, uui-select, uui-input, uui-textarea, uui-range-slider,
+  uui-pagination, uui-ref-node, uui-combobox, uui-badge {
     --uui-color-interactive: #a01828;
     --uui-color-interactive-emphasis: #7e1220;
     --uui-color-interactive-standalone: #c44050;
@@ -51,12 +39,8 @@ style.textContent = `
     --uui-color-default-contrast: #ffffff;
   }
 
-  uui-sidebar,
-  uui-sidebar-tabs,
-  umb-backoffice-sidebar,
-  umb-section-sidebar,
-  umb-sidebar,
-  umb-sidebar-context {
+  uui-sidebar, uui-sidebar-tabs, umb-backoffice-sidebar,
+  umb-section-sidebar, umb-sidebar, umb-sidebar-context {
     --uui-color-header: #4a1018;
     --uui-color-header-contrast: #ffffff;
     --uui-color-header-surface: #3d0e16;
@@ -68,4 +52,51 @@ style.textContent = `
     --uui-color-selected: rgba(255,255,255,0.12);
   }
 `;
-document.head.appendChild(style);
+
+const SHADOW_CSS = `
+  :host {
+    --uui-color-interactive: #a01828 !important;
+    --uui-color-interactive-emphasis: #7e1220 !important;
+    --uui-color-interactive-contrast: #ffffff !important;
+    --uui-color-default: #a01828 !important;
+    --uui-color-default-emphasis: #7e1220 !important;
+    --uui-color-default-contrast: #ffffff !important;
+    --uui-color-focus: #a01828 !important;
+    --uui-color-current: #a01828 !important;
+  }
+`;
+
+const rootStyle = document.createElement('style');
+rootStyle.textContent = ROOT_CSS;
+document.head.appendChild(rootStyle);
+
+function brandShadowRoot(root) {
+  if (root._ra) return;
+  root._ra = true;
+  const s = document.createElement('style');
+  s.textContent = SHADOW_CSS;
+  root.appendChild(s);
+  root.querySelectorAll('*').forEach(el => {
+    if (el.shadowRoot) brandShadowRoot(el.shadowRoot);
+  });
+}
+
+new MutationObserver(records => {
+  records.forEach(r => r.addedNodes.forEach(n => {
+    if (n.nodeType !== 1) return;
+    if (n.shadowRoot) brandShadowRoot(n.shadowRoot);
+    n.querySelectorAll('*').forEach(el => {
+      if (el.shadowRoot) brandShadowRoot(el.shadowRoot);
+    });
+  }));
+}).observe(document.documentElement, { childList: true, subtree: true });
+
+document.querySelectorAll('*').forEach(el => {
+  if (el.shadowRoot) brandShadowRoot(el.shadowRoot);
+});
+
+document.querySelectorAll('link[rel*="icon"]').forEach(el => el.remove());
+const favicon = document.createElement('link');
+favicon.rel = 'icon';
+favicon.href = '/favicons/favicon.ico';
+document.head.appendChild(favicon);
