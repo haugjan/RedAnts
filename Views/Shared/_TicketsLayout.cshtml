@@ -45,7 +45,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/site.css?v=8" />
+    <link rel="stylesheet" href="/css/site.css?v=9" />
     <style>
         :root { --ra-red: #C8102E; --ra-red-dark: #A50D26; }
 
@@ -135,6 +135,7 @@
   </div>
 </nav>
 
+<div class="site-content">
 @if (showBand)
 {
     <section class="page-header @(string.IsNullOrEmpty(headerImage) ? "page-header--plain" : "")"
@@ -152,6 +153,7 @@
 <main class="tk-main">
     @RenderBody()
 </main>
+</div>
 
 <footer class="site-footer">
   <div class="site-footer-inner">
