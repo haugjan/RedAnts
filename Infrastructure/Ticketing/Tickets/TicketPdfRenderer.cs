@@ -12,6 +12,14 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
     private const string RedDk = "#B0242E";
     private const string Ink = "#14171A";
     private const string Muted = "#6B7178";
+    private const string PageBg = "#F4F4F5";
+
+    private const string SeamSvg =
+        "<svg viewBox='0 0 240 14' xmlns='http://www.w3.org/2000/svg'>" +
+        "<circle cx='0' cy='7' r='7' fill='#F4F4F5'/>" +
+        "<circle cx='240' cy='7' r='7' fill='#F4F4F5'/>" +
+        "<line x1='16' y1='7' x2='224' y2='7' stroke='#D6DADE' stroke-width='1.2' stroke-dasharray='6 4'/>" +
+        "</svg>";
 
     private readonly byte[]? _logo = LoadLogo(env);
 
@@ -19,7 +27,7 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
     {
         try
         {
-            var path = Path.Combine(env.WebRootPath ?? "wwwroot", "img", "logo-redants.png");
+            var path = Path.Combine(env.WebRootPath ?? "wwwroot", "img", "logo-redants-white.png");
             return File.Exists(path) ? File.ReadAllBytes(path) : null;
         }
         catch { return null; }
@@ -31,9 +39,13 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
             doc.Page(page =>
             {
                 page.Size(54, 85.6f, Unit.Millimetre);
-                page.Margin(0);
+                page.Margin(2.4f, Unit.Millimetre);
+                page.PageColor(PageBg);
                 page.DefaultTextStyle(t => t.FontSize(8).FontColor(Ink));
-                page.Content().Column(col =>
+                page.Content()
+                    .CornerRadius(4, Unit.Millimetre)
+                    .Background(Colors.White)
+                    .Column(col =>
                 {
                     col.Item().Background(Red).Padding(8).Column(head =>
                     {
@@ -51,10 +63,10 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
                     col.Item().PaddingTop(8).AlignCenter().Width(28, Unit.Millimetre).Image(m.QrPng);
                     col.Item().PaddingTop(2).AlignCenter().Text("Am Eingang scannen lassen").FontColor(Muted).FontSize(6.5f);
 
-                    col.Item().PaddingHorizontal(12).PaddingVertical(6).LineHorizontal(1).LineColor("#D6DADE");
+                    col.Item().PaddingVertical(5).Svg(SeamSvg);
 
                     col.Item().PaddingHorizontal(14).Text(m.ScopeName).Bold().FontSize(10).FontColor(Ink);
-                    col.Item().PaddingHorizontal(14).PaddingTop(2).Column(meta =>
+                    col.Item().PaddingHorizontal(14).PaddingTop(2).PaddingBottom(4).Column(meta =>
                     {
                         if (m.DateText is not null) MetaRow(meta, "Datum", m.DateText, RedDk);
                         if (m.CategoryLabel is not null) MetaRow(meta, "Kategorie", m.CategoryLabel, Ink);
