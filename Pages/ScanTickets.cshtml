@@ -36,6 +36,17 @@
     <script src="/js/ticket-scanner.js?v=10"></script>
     <script src="_framework/blazor.server.js"></script>
 
+    <script>
+        (function () {
+            // Keep the hardware/browser back button inside the scanner. An accidental
+            // back must not drop the operator to the login - trap it by re-pushing state
+            // so the scanner stays open and the next ticket can be scanned.
+            function guard() { try { history.pushState(null, '', location.href); } catch (e) {} }
+            guard();
+            window.addEventListener('popstate', guard);
+        })();
+    </script>
+
     <!-- PWA install prompt + service worker registration -->
     <script>
         (function () {
