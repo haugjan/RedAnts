@@ -2,7 +2,11 @@ namespace RedAnts.Features.Ticketing.Email;
 
 public sealed record EmailSendResult(bool Success, string? Error);
 
-public sealed record EmailAttachment(string FileName, string Base64Content);
+public sealed record EmailAttachment(
+    string FileName,
+    string Base64Content,
+    string ContentType = "application/octet-stream",
+    string? ContentId = null);
 
 public interface IEmailSender
 {

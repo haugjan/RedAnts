@@ -42,13 +42,27 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
         {
             foreach (var attachment in attachments)
             {
+                byte[] bytes;
                 try
                 {
-                    builder.Attachments.Add(attachment.FileName, Convert.FromBase64String(attachment.Base64Content));
+                    bytes = Convert.FromBase64String(attachment.Base64Content);
                 }
                 catch (FormatException)
                 {
                     logger.LogWarning("Skipped attachment {File}: invalid base64.", attachment.FileName);
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(attachment.ContentId))
+                {
+                    builder.Attachments.Add(attachment.FileName, bytes);
+                }
+                else
+                {
+                    var inline = builder.LinkedResources.Add(
+                        attachment.FileName, bytes, ContentType.Parse(attachment.ContentType));
+                    inline.ContentId = attachment.ContentId;
+                    inline.ContentDisposition = new ContentDisposition(ContentDisposition.Inline);
                 }
             }
         }
