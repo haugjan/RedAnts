@@ -90,6 +90,14 @@ jobs:
             --settings Orders__NumberPrefix=DEV- \
             --output none
           echo "Order-number prefix DEV- applied to $WEBAPP."
+      - name: Configure runtime mode (dev)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Umbraco__CMS__Runtime__Mode=BackofficeDevelopment \
+            --output none
+          echo "Runtime mode BackofficeDevelopment applied to $WEBAPP."
       - name: Configure Imaging HMAC (dev)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -174,6 +182,14 @@ jobs:
             --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
             --output none
           echo "Payrexx settings applied to $WEBAPP."
+      - name: Configure runtime mode (prod)
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+            --settings Umbraco__CMS__Runtime__Mode=BackofficeDevelopment \
+            --output none
+          echo "Runtime mode BackofficeDevelopment applied to $WEBAPP."
       - name: Configure Imaging HMAC (prod)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
