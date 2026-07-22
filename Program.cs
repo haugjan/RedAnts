@@ -220,7 +220,6 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/agb")
         || path.StartsWithSegments("/scanner-test")
         || path.StartsWithSegments("/scan")
-        || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/payrexx/webhook")
         || path.StartsWithSegments("/warmup")
         || path == "/favicon.ico"

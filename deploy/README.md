@@ -7,14 +7,13 @@ publish password. SCM basic-auth publishing stays disabled on the app.
 
 ## Database
 
-- **Development:** SQLite (`appsettings.Development.json`, file under `umbraco/Data/`). Unchanged.
-- **Production:** Azure SQL. `appsettings.json` sets `ConnectionStrings:umbracoDbDSN_ProviderName`
-  to `Microsoft.Data.SqlClient` with an empty DSN; the real connection string is injected at
-  runtime as an App Service app setting `ConnectionStrings__umbracoDbDSN`.
+- **Every environment (dev + prod):** Azure SQL. `appsettings.json` sets
+  `ConnectionStrings:umbracoDbDSN_ProviderName` to `Microsoft.Data.SqlClient` with an empty DSN.
+  Production injects the real connection string as the App Service app setting
+  `ConnectionStrings__umbracoDbDSN`; local dev points at the shared DEV Azure SQL via user secrets.
+  SQLite has been removed entirely.
 
 The SQL Server persistence provider ships transitively with `Umbraco.Cms` (no extra package).
-`Program.cs` only runs its SQLite/WAL bootstrap when the provider is `Microsoft.Data.Sqlite`,
-so production (SqlClient) skips it automatically.
 
 ## One-time provisioning
 

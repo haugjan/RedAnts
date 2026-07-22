@@ -33,6 +33,7 @@ public sealed class TicketingContentTypeSeeder(
     IConfigurationEditorJsonSerializer serializer,
     IPublishedUrlProvider urlProvider,
     IUmbracoContextFactory umbracoContextFactory,
+    IKeyValueService keyValueService,
     ILogger<TicketingContentTypeSeeder> logger) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
     private const int SuperUser = Constants.Security.SuperUserId;
@@ -58,8 +59,12 @@ public sealed class TicketingContentTypeSeeder(
         return Task.CompletedTask;
     }
 
+    private const string AccessLinksStateKey = "RedAnts.Ticketing.AccessLinksInitialized";
+
     private void RefreshAccessLinks()
     {
+        if (!string.IsNullOrEmpty(keyValueService.GetValue(AccessLinksStateKey))) return;
+
         using var ctxRef = umbracoContextFactory.EnsureUmbracoContext();
         foreach (var typeAlias in new[] { A.EventType, A.SeasonType })
         {
@@ -74,6 +79,8 @@ public sealed class TicketingContentTypeSeeder(
                     item.Name, item.GetValue<string>(A.PublicLink));
             }
         }
+
+        keyValueService.SetValue(AccessLinksStateKey, "1");
     }
 
     private void EnsureContentTypes()

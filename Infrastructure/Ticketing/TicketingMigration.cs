@@ -45,13 +45,7 @@ public class AddSeasonAddOnPromoOnly(IMigrationContext context) : AsyncMigration
     protected override Task MigrateAsync()
     {
         if (!ColumnExists("SeasonAddOns", "PromoOnly"))
-        {
-            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonAddOns ADD COLUMN PromoOnly BIT NOT NULL DEFAULT 0").Do();
-            else
-                Alter.Table("SeasonAddOns").AddColumn("PromoOnly").AsBoolean().NotNullable().WithDefaultValue(false).Do();
-        }
+            Alter.Table("SeasonAddOns").AddColumn("PromoOnly").AsBoolean().NotNullable().WithDefaultValue(false).Do();
         return Task.CompletedTask;
     }
 }
@@ -72,11 +66,7 @@ public class AddFreeEntryFixedCounts(IMigrationContext context) : AsyncMigration
     private void AddInt(string column)
     {
         if (ColumnExists("TicketEventFreeEntryQuotas", column)) return;
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-        if (isSqlite)
-            Execute.Sql($"ALTER TABLE TicketEventFreeEntryQuotas ADD COLUMN {column} INTEGER NULL").Do();
-        else
-            Alter.Table("TicketEventFreeEntryQuotas").AddColumn(column).AsInt32().Nullable().Do();
+        Alter.Table("TicketEventFreeEntryQuotas").AddColumn(column).AsInt32().Nullable().Do();
     }
 }
 
@@ -85,13 +75,7 @@ public class AddOrderPaymentSource(IMigrationContext context) : AsyncMigrationBa
     protected override Task MigrateAsync()
     {
         if (!ColumnExists("Orders", "PaymentSource"))
-        {
-            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE Orders ADD COLUMN PaymentSource INTEGER NULL").Do();
-            else
-                Alter.Table("Orders").AddColumn("PaymentSource").AsInt32().Nullable().Do();
-        }
+            Alter.Table("Orders").AddColumn("PaymentSource").AsInt32().Nullable().Do();
         return Task.CompletedTask;
     }
 }
@@ -108,16 +92,9 @@ public class AddArticleGuids(IMigrationContext context) : AsyncMigrationBase(con
 
     private void AddGuid(string table)
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
         if (!ColumnExists(table, "ArticleGuid"))
-        {
-            if (isSqlite)
-                Execute.Sql($"ALTER TABLE {table} ADD COLUMN ArticleGuid TEXT NULL").Do();
-            else
-                Alter.Table(table).AddColumn("ArticleGuid").AsGuid().Nullable().Do();
-        }
-        if (!isSqlite)
-            Execute.Sql($"UPDATE {table} SET ArticleGuid = NEWID() WHERE ArticleGuid IS NULL").Do();
+            Alter.Table(table).AddColumn("ArticleGuid").AsGuid().Nullable().Do();
+        Execute.Sql($"UPDATE {table} SET ArticleGuid = NEWID() WHERE ArticleGuid IS NULL").Do();
     }
 }
 
@@ -125,7 +102,6 @@ public class AddSeasonAddOnInfoTexts(IMigrationContext context) : AsyncMigration
 {
     protected override Task MigrateAsync()
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
         AddText("InfoBeforePurchase");
         AddText("InfoAfterPurchase");
         return Task.CompletedTask;
@@ -133,10 +109,7 @@ public class AddSeasonAddOnInfoTexts(IMigrationContext context) : AsyncMigration
         void AddText(string column)
         {
             if (ColumnExists("SeasonAddOns", column)) return;
-            if (isSqlite)
-                Execute.Sql($"ALTER TABLE SeasonAddOns ADD COLUMN {column} NVARCHAR(2000) NULL").Do();
-            else
-                Alter.Table("SeasonAddOns").AddColumn(column).AsString(2000).Nullable().Do();
+            Alter.Table("SeasonAddOns").AddColumn(column).AsString(2000).Nullable().Do();
         }
     }
 }
@@ -145,7 +118,6 @@ public class AddSeasonAddOnTitleAndTiers(IMigrationContext context) : AsyncMigra
 {
     protected override Task MigrateAsync()
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
         AddText("LongTitle");
         AddText("AllowedTierIds");
         return Task.CompletedTask;
@@ -153,10 +125,7 @@ public class AddSeasonAddOnTitleAndTiers(IMigrationContext context) : AsyncMigra
         void AddText(string column)
         {
             if (ColumnExists("SeasonAddOns", column)) return;
-            if (isSqlite)
-                Execute.Sql($"ALTER TABLE SeasonAddOns ADD COLUMN {column} NVARCHAR(500) NULL").Do();
-            else
-                Alter.Table("SeasonAddOns").AddColumn(column).AsString(500).Nullable().Do();
+            Alter.Table("SeasonAddOns").AddColumn(column).AsString(500).Nullable().Do();
         }
     }
 }
@@ -166,13 +135,7 @@ public class AddSeasonPriceDefaultTicketSalesQuota(IMigrationContext context) : 
     protected override Task MigrateAsync()
     {
         if (!ColumnExists("SeasonPrices", "DefaultTicketSalesQuota"))
-        {
-            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonPrices ADD COLUMN DefaultTicketSalesQuota INTEGER NULL").Do();
-            else
-                Alter.Table("SeasonPrices").AddColumn("DefaultTicketSalesQuota").AsInt32().Nullable().Do();
-        }
+            Alter.Table("SeasonPrices").AddColumn("DefaultTicketSalesQuota").AsInt32().Nullable().Do();
         return Task.CompletedTask;
     }
 }
@@ -192,11 +155,7 @@ public class AddFreeEntryTypeQuotas(IMigrationContext context) : AsyncMigrationB
     private void AddInt(string column)
     {
         if (ColumnExists("TicketEventFreeEntryQuotas", column)) return;
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-        if (isSqlite)
-            Execute.Sql($"ALTER TABLE TicketEventFreeEntryQuotas ADD COLUMN {column} INTEGER NULL").Do();
-        else
-            Alter.Table("TicketEventFreeEntryQuotas").AddColumn(column).AsInt32().Nullable().Do();
+        Alter.Table("TicketEventFreeEntryQuotas").AddColumn(column).AsInt32().Nullable().Do();
     }
 }
 
@@ -222,11 +181,7 @@ public class AddPriceTiers(IMigrationContext context) : AsyncMigrationBase(conte
     private void AddInt(string table, string column)
     {
         if (ColumnExists(table, column)) return;
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-        if (isSqlite)
-            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} INTEGER NULL").Do();
-        else
-            Alter.Table(table).AddColumn(column).AsInt32().Nullable().Do();
+        Alter.Table(table).AddColumn(column).AsInt32().Nullable().Do();
     }
 }
 
@@ -234,23 +189,11 @@ public class AddOrderPaymentColumns(IMigrationContext context) : AsyncMigrationB
 {
     protected override Task MigrateAsync()
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-
         if (!ColumnExists("Orders", "PayrexxGatewayId"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE Orders ADD COLUMN PayrexxGatewayId NVARCHAR(100) NULL").Do();
-            else
-                Alter.Table("Orders").AddColumn("PayrexxGatewayId").AsString(100).Nullable().Do();
-        }
+            Alter.Table("Orders").AddColumn("PayrexxGatewayId").AsString(100).Nullable().Do();
 
         if (!ColumnExists("Orders", "FulfillmentPayload"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE Orders ADD COLUMN FulfillmentPayload TEXT NULL").Do();
-            else
-                Execute.Sql("ALTER TABLE Orders ADD FulfillmentPayload NVARCHAR(MAX) NULL").Do();
-        }
+            Execute.Sql("ALTER TABLE Orders ADD FulfillmentPayload NVARCHAR(MAX) NULL").Do();
 
         return Task.CompletedTask;
     }
@@ -260,16 +203,8 @@ public class AddSeasonAddOnScope(IMigrationContext context) : AsyncMigrationBase
 {
     protected override Task MigrateAsync()
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-
         if (!ColumnExists("SeasonAddOns", "Scope"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonAddOns ADD COLUMN Scope INT NOT NULL DEFAULT 0").Do();
-            else
-                Alter.Table("SeasonAddOns").AddColumn("Scope").AsInt32().NotNullable().WithDefaultValue(0).Do();
-        }
-
+            Alter.Table("SeasonAddOns").AddColumn("Scope").AsInt32().NotNullable().WithDefaultValue(0).Do();
         return Task.CompletedTask;
     }
 }
@@ -288,12 +223,6 @@ public class AddSalesFilterIndexes(IMigrationContext context) : AsyncMigrationBa
 
     private void EnsureIndex(string table, string indexName, string columns)
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-        if (isSqlite)
-        {
-            Execute.Sql($"CREATE INDEX IF NOT EXISTS {indexName} ON {table} ({columns})").Do();
-            return;
-        }
         Execute.Sql(
             $"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{indexName}' AND object_id = OBJECT_ID('{table}')) " +
             $"CREATE NONCLUSTERED INDEX {indexName} ON {table} ({columns})").Do();
@@ -308,13 +237,7 @@ public class AddEventTicketBundles(IMigrationContext context) : AsyncMigrationBa
             Create.Table<EventTicketBundleRecord>().Do();
 
         if (!ColumnExists("EventTickets", "BundleId"))
-        {
-            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE EventTickets ADD COLUMN BundleId INTEGER NULL").Do();
-            else
-                Alter.Table("EventTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
-        }
+            Alter.Table("EventTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
 
         return Task.CompletedTask;
     }
@@ -333,11 +256,7 @@ public class AddCategoryTimeWindows(IMigrationContext context) : AsyncMigrationB
     private void AddDate(string table, string column)
     {
         if (ColumnExists(table, column)) return;
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-        if (isSqlite)
-            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} DATETIME NULL").Do();
-        else
-            Alter.Table(table).AddColumn(column).AsDateTime().Nullable().Do();
+        Alter.Table(table).AddColumn(column).AsDateTime().Nullable().Do();
     }
 }
 
@@ -346,13 +265,7 @@ public class AddSeasonPassReference(IMigrationContext context) : AsyncMigrationB
     protected override Task MigrateAsync()
     {
         if (!ColumnExists("SeasonPasses", "Reference"))
-        {
-            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonPasses ADD COLUMN Reference NVARCHAR(100) NULL").Do();
-            else
-                Alter.Table("SeasonPasses").AddColumn("Reference").AsString(100).Nullable().Do();
-        }
+            Alter.Table("SeasonPasses").AddColumn("Reference").AsString(100).Nullable().Do();
         return Task.CompletedTask;
     }
 }
@@ -402,13 +315,7 @@ public class AddFlexTicketBundles(IMigrationContext context) : AsyncMigrationBas
             Create.Table<FlexTicketBundleRecord>().Do();
 
         if (!ColumnExists("SeasonSingleTickets", "BundleId"))
-        {
-            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonSingleTickets ADD COLUMN BundleId INTEGER NULL").Do();
-            else
-                Alter.Table("SeasonSingleTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
-        }
+            Alter.Table("SeasonSingleTickets").AddColumn("BundleId").AsInt32().Nullable().Do();
 
         return Task.CompletedTask;
     }
@@ -418,23 +325,11 @@ public class AdjustMemberCardColumns(IMigrationContext context) : AsyncMigration
 {
     protected override Task MigrateAsync()
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-
         if (!ColumnExists("MembershipCards", "Reference"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE MembershipCards ADD COLUMN Reference NVARCHAR(100) NULL").Do();
-            else
-                Alter.Table("MembershipCards").AddColumn("Reference").AsString(100).Nullable().Do();
-        }
+            Alter.Table("MembershipCards").AddColumn("Reference").AsString(100).Nullable().Do();
 
         if (ColumnExists("MembershipCards", "Price"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE MembershipCards DROP COLUMN Price").Do();
-            else
-                Delete.Column("Price").FromTable("MembershipCards").Do();
-        }
+            Delete.Column("Price").FromTable("MembershipCards").Do();
 
         return Task.CompletedTask;
     }
@@ -445,13 +340,7 @@ public class AddSeasonPriceTotalQuota(IMigrationContext context) : AsyncMigratio
     protected override Task MigrateAsync()
     {
         if (!ColumnExists("SeasonPrices", "TotalSalesQuota"))
-        {
-            var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonPrices ADD COLUMN TotalSalesQuota INTEGER NULL").Do();
-            else
-                Alter.Table("SeasonPrices").AddColumn("TotalSalesQuota").AsInt32().Nullable().Do();
-        }
+            Alter.Table("SeasonPrices").AddColumn("TotalSalesQuota").AsInt32().Nullable().Do();
 
         return Task.CompletedTask;
     }
@@ -484,25 +373,16 @@ public class AddBuyerAndCreatorColumns(IMigrationContext context) : AsyncMigrati
         return Task.CompletedTask;
     }
 
-    private bool IsSqlite =>
-        Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-
     private void AddInt(string table, string column)
     {
         if (ColumnExists(table, column)) return;
-        if (IsSqlite)
-            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} INTEGER NULL").Do();
-        else
-            Alter.Table(table).AddColumn(column).AsInt32().Nullable().Do();
+        Alter.Table(table).AddColumn(column).AsInt32().Nullable().Do();
     }
 
     private void AddString(string table, string column, int length)
     {
         if (ColumnExists(table, column)) return;
-        if (IsSqlite)
-            Execute.Sql($"ALTER TABLE {table} ADD COLUMN {column} NVARCHAR({length}) NULL").Do();
-        else
-            Alter.Table(table).AddColumn(column).AsString(length).Nullable().Do();
+        Alter.Table(table).AddColumn(column).AsString(length).Nullable().Do();
     }
 }
 
@@ -520,11 +400,7 @@ public class AddCreatedByEmailColumns(IMigrationContext context) : AsyncMigratio
     private void AddEmail(string table)
     {
         if (ColumnExists(table, "CreatedByEmail")) return;
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-        if (isSqlite)
-            Execute.Sql($"ALTER TABLE {table} ADD COLUMN CreatedByEmail NVARCHAR(200) NULL").Do();
-        else
-            Alter.Table(table).AddColumn("CreatedByEmail").AsString(200).Nullable().Do();
+        Alter.Table(table).AddColumn("CreatedByEmail").AsString(200).Nullable().Do();
     }
 }
 
@@ -533,11 +409,7 @@ public class AddFreeEntryUuid(IMigrationContext context) : AsyncMigrationBase(co
     protected override Task MigrateAsync()
     {
         if (ColumnExists("TicketEventVisits", "Uuid")) return Task.CompletedTask;
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-        if (isSqlite)
-            Execute.Sql("ALTER TABLE TicketEventVisits ADD COLUMN Uuid NVARCHAR(36) NULL").Do();
-        else
-            Alter.Table("TicketEventVisits").AddColumn("Uuid").AsString(36).Nullable().Do();
+        Alter.Table("TicketEventVisits").AddColumn("Uuid").AsString(36).Nullable().Do();
         return Task.CompletedTask;
     }
 }
@@ -546,23 +418,11 @@ public class AddSeasonPriceDualPricing(IMigrationContext context) : AsyncMigrati
 {
     protected override Task MigrateAsync()
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-
         if (!ColumnExists("SeasonPriceCategories", "TicketPrice"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonPriceCategories ADD COLUMN TicketPrice DECIMAL(20,2) NULL").Do();
-            else
-                Alter.Table("SeasonPriceCategories").AddColumn("TicketPrice").AsDecimal(20, 2).Nullable().Do();
-        }
+            Alter.Table("SeasonPriceCategories").AddColumn("TicketPrice").AsDecimal(20, 2).Nullable().Do();
 
         if (!ColumnExists("SeasonPriceCategories", "Offered"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonPriceCategories ADD COLUMN Offered INTEGER NULL").Do();
-            else
-                Alter.Table("SeasonPriceCategories").AddColumn("Offered").AsBoolean().Nullable().Do();
-        }
+            Alter.Table("SeasonPriceCategories").AddColumn("Offered").AsBoolean().Nullable().Do();
 
         return Task.CompletedTask;
     }
@@ -572,24 +432,14 @@ public class AddSeasonTicketDefaultColumns(IMigrationContext context) : AsyncMig
 {
     protected override Task MigrateAsync()
     {
-        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
-
         if (!ColumnExists("SeasonPriceCategories", "TicketOffered"))
         {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonPriceCategories ADD COLUMN TicketOffered INTEGER NULL").Do();
-            else
-                Alter.Table("SeasonPriceCategories").AddColumn("TicketOffered").AsBoolean().Nullable().Do();
+            Alter.Table("SeasonPriceCategories").AddColumn("TicketOffered").AsBoolean().Nullable().Do();
             Execute.Sql("UPDATE SeasonPriceCategories SET TicketOffered = Offered WHERE TicketOffered IS NULL").Do();
         }
 
         if (!ColumnExists("SeasonPriceCategories", "TicketQuota"))
-        {
-            if (isSqlite)
-                Execute.Sql("ALTER TABLE SeasonPriceCategories ADD COLUMN TicketQuota INTEGER NULL").Do();
-            else
-                Alter.Table("SeasonPriceCategories").AddColumn("TicketQuota").AsInt32().Nullable().Do();
-        }
+            Alter.Table("SeasonPriceCategories").AddColumn("TicketQuota").AsInt32().Nullable().Do();
 
         return Task.CompletedTask;
     }
@@ -606,9 +456,6 @@ public class TicketingMigrationComponent(
         if (runtimeState.Level < RuntimeLevel.Run) return;
 
         var upgrader = new Upgrader(new TicketingMigrationPlan());
-
-        keyValueService.SetValue(upgrader.StateValueKey, string.Empty);
-
         await upgrader.ExecuteAsync(migrationPlanExecutor, scopeProvider, keyValueService);
     }
 

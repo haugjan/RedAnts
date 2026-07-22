@@ -40,7 +40,8 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
                 TierId = c.TierId,
                 SalePrice = c.SalePrice,
                 Quota = c.Quota,
-                AvailableUntil = c.AvailableUntil?.ToDateTime(TimeOnly.MinValue)
+                AvailableUntil = c.AvailableUntil?.ToDateTime(TimeOnly.MinValue),
+                ArticleGuid = Guid.NewGuid()
             });
 
         var cats = await scope.Database.FetchAsync<EventPriceCategoryRecord>(
@@ -96,7 +97,8 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
                 TicketOffered = c.TicketOffered,
                 TicketQuota = c.TicketQuota,
                 PassAvailableUntil = c.PassAvailableUntil?.ToDateTime(TimeOnly.MinValue),
-                TicketAvailableUntil = c.TicketAvailableUntil?.ToDateTime(TimeOnly.MinValue)
+                TicketAvailableUntil = c.TicketAvailableUntil?.ToDateTime(TimeOnly.MinValue),
+                ArticleGuid = Guid.NewGuid()
             });
 
         var cats = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
@@ -437,7 +439,8 @@ public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeaso
                 InfoAfterPurchase = o.InfoAfterPurchase,
                 LongTitle = o.LongTitle,
                 AllowedTierIds = o.AllowedTierIds.Count == 0 ? null : string.Join(',', o.AllowedTierIds),
-                PromoOnly = o.PromoOnly
+                PromoOnly = o.PromoOnly,
+                ArticleGuid = Guid.NewGuid()
             });
     }
 
