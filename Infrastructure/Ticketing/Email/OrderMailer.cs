@@ -20,11 +20,14 @@ public sealed class OrderMailer(
     ILogger<OrderMailer> logger) : IOrderMailer
 {
     private string? _logoDataUri;
-    private string LogoDataUri => _logoDataUri ??= BuildLogoDataUri();
+    private string LogoDataUri => _logoDataUri ??= ImageDataUri("logo-badge-mail.png");
 
-    private string BuildLogoDataUri()
+    private string? _headerLogoDataUri;
+    private string HeaderLogoDataUri => _headerLogoDataUri ??= ImageDataUri("mail-header-logo.png");
+
+    private string ImageDataUri(string fileName)
     {
-        var path = Path.Combine(environment.WebRootPath, "img", "logo-badge-mail.png");
+        var path = Path.Combine(environment.WebRootPath, "img", fileName);
         return File.Exists(path)
             ? "data:image/png;base64," + Convert.ToBase64String(File.ReadAllBytes(path))
             : "";
@@ -55,7 +58,7 @@ public sealed class OrderMailer(
         var body = await BuildBodyAsync(model);
         var details = $"Bestellung {model.OrderNumber}\nTotal: CHF {RedAnts.Features.Ticketing.MoneyFormat.Chf(model.Total)}";
         var note = "Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt. Fragen? Antworte einfach auf diese E-Mail.";
-        return EmailLayout.Render(subject, body, greeting, details, note);
+        return EmailLayout.Render(subject, body, greeting, details, note, HeaderLogoDataUri);
     }
 
     private async Task<string> BuildBodyAsync(OrderMailModel model)
