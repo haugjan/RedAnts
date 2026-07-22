@@ -186,7 +186,7 @@ else
                         <div class="evt-cat">
                             <div>
                                 <span class="evt-cat__name">@cat.Name</span>
-                                <span class="evt-cat__price">CHF @cat.Price.ToString("N2")</span>
+                                <span class="evt-cat__price">CHF @MoneyFormat.Chf(cat.Price)</span>
                                 @if (cat.AvailableUntil is { } until)
                                 {
                                     <span class="evt-cat__note">verfügbar bis @until.ToString("dd.MM.yyyy")</span>

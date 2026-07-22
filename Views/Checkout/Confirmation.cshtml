@@ -22,7 +22,7 @@
         <span class="text-muted">Zahlungsart</span><span>@Model.PaymentLabel</span>
     </div>
     <div class="d-flex justify-content-between">
-        <span class="text-muted">Total</span><strong>CHF @Model.Total.ToString("N2")</strong>
+        <span class="text-muted">Total</span><strong>CHF @MoneyFormat.Chf(Model.Total)</strong>
     </div>
     <hr />
     <p class="mb-3">Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>. Du kannst die QR-Codes auch direkt hier am Eingang scannen lassen:</p>

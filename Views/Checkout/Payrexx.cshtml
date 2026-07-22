@@ -6,7 +6,7 @@
 
 <div class="card p-4 text-center">
     <p class="text-muted mb-1">Bestellung @Model.OrderNumber</p>
-    <p class="mb-3"><strong>Total: CHF @Model.Total.ToString("N2")</strong></p>
+    <p class="mb-3"><strong>Total: CHF @MoneyFormat.Chf(Model.Total)</strong></p>
 
     <p id="pay-hint" class="mb-3">Die Zahlung öffnet sich als Overlay …</p>
 
