@@ -10,7 +10,8 @@ public sealed record AvailableTicketCategory(
     int? Remaining,
     DateOnly? AvailableUntil = null,
     string? ShortName = null,
-    string? ActionText = null);
+    string? ActionText = null,
+    decimal? OriginalPrice = null);
 
 public interface IPriceTiers
 {

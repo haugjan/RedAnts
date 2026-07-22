@@ -1,0 +1,131 @@
+@model RedAnts.Features.Ticketing.Public.NextQuickBuyModel
+@using RedAnts.Features.Ticketing
+@using RedAnts.Features.Ticketing.Public
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["PlainLayout"] = true;
+    ViewData["Title"] = Model.HasEvent ? Model.Title : "Direktkauf";
+    var culture = DisplayCulture.From(Context.Request);
+}
+
+@section Head {
+    <style>
+        .nq-header { position: relative; background-size: cover; background-position: center; min-height: 240px; display: flex; align-items: flex-end; border-radius: 16px; overflow: hidden; margin-bottom: 1.5rem; }
+        .nq-header--plain { background: #101010; }
+        .nq-header-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16,16,16,.15) 0%, rgba(16,16,16,.78) 100%); }
+        .nq-header-inner { position: relative; z-index: 1; width: 100%; padding: 0 24px 26px; }
+        .nq-header-title { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-size: clamp(1.8rem, 5vw, 3.2rem); line-height: 1; margin: 0; }
+        .nq-header-title::after { content: ""; display: block; width: 56px; height: 5px; background: var(--ra-red); margin-top: 12px; }
+        .nq-facts { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0 0 1.5rem; padding: 1rem 1.25rem; background: #f7f7f7; border-left: 4px solid var(--ra-red); }
+        .nq-fact { display: flex; flex-direction: column; gap: 2px; }
+        .nq-fact__label { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: #68676b; }
+        .nq-fact__value { font-weight: 700; font-size: 1.08rem; }
+        .nq-logos { display: flex; align-items: center; gap: 1.25rem; margin: 0 0 1.75rem; }
+        .nq-logos img { height: 64px; width: auto; }
+        .nq-logos .vs { font-family: 'Oswald', sans-serif; font-size: 1.4rem; font-weight: 700; text-transform: uppercase; color: #68676b; }
+        .nq-lead { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #68676b; margin: 0 0 0.75rem; }
+        .nq-cat { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
+        .nq-cat__name { font-weight: 700; }
+        .nq-cat__price { color: #68676b; margin-left: 0.5rem; font-weight: 400; }
+        .nq-cat__action { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ra-red); text-transform: uppercase; }
+        .nq-form { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+        .nq-qty { width: 4.5rem; padding: 0.45rem; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+        .nq-soldout { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 0.95rem; color: #68676b; }
+        .nq-empty { color: #68676b; }
+    </style>
+}
+
+@if (!Model.HasEvent)
+{
+    <a href="/ticketing/" class="tk-back">&larr; Zur Übersicht</a>
+    <p class="nq-empty">Aktuell steht kein Anlass zum Direktkauf bereit.</p>
+}
+else
+{
+    <a href="/ticketing/" class="tk-back">&larr; Zur Übersicht</a>
+
+    <div class="nq-header @(string.IsNullOrEmpty(Model.ImageUrl) ? "nq-header--plain" : "")"
+         style="@(string.IsNullOrEmpty(Model.ImageUrl) ? "" : $"background-image:url('{Model.ImageUrl}');")">
+        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+        {
+            <div class="nq-header-overlay"></div>
+        }
+        <div class="nq-header-inner">
+            <h1 class="nq-header-title">@Model.Title</h1>
+        </div>
+    </div>
+
+    <div class="nq-facts">
+        <div class="nq-fact">
+            <span class="nq-fact__label">Datum</span>
+            <span class="nq-fact__value">@Model.Date.ToDateTime(TimeOnly.MinValue).ToString("dddd, dd.MM.yyyy", culture)</span>
+        </div>
+        @if (!Model.TimeUnknown)
+        {
+            <div class="nq-fact">
+                <span class="nq-fact__label">Zeit</span>
+                <span class="nq-fact__value">@Model.StartTime.ToString("HH:mm") Uhr</span>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.VenueName))
+        {
+            <div class="nq-fact">
+                <span class="nq-fact__label">Ort</span>
+                <span class="nq-fact__value">@Model.VenueName</span>
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.HomeLogoUrl) || !string.IsNullOrEmpty(Model.AwayLogoUrl))
+    {
+        <div class="nq-logos">
+            @if (!string.IsNullOrEmpty(Model.HomeLogoUrl)) { <img src="@Model.HomeLogoUrl" alt="Heimteam" /> }
+            <span class="vs">vs</span>
+            @if (!string.IsNullOrEmpty(Model.AwayLogoUrl)) { <img src="@Model.AwayLogoUrl" alt="Auswärtsteam" /> }
+        </div>
+    }
+
+    <p class="nq-lead">Direktkauf – Ticket wählen und sofort zur Kasse</p>
+
+    @if (Model.Categories.Count == 0)
+    {
+        <p class="nq-empty">Für diesen Anlass sind aktuell keine Tickets verfügbar.</p>
+    }
+    else
+    {
+        foreach (var cat in Model.Categories)
+        {
+            <div class="nq-cat">
+                <div>
+                    <span class="nq-cat__name">@cat.Name</span>
+                    @if (cat.OriginalPrice is { } orig)
+                    {
+                        <span class="nq-cat__price"><s style="opacity:.6">CHF @MoneyFormat.Chf(orig)</s> CHF @MoneyFormat.Chf(cat.Price)</span>
+                    }
+                    else
+                    {
+                        <span class="nq-cat__price">CHF @MoneyFormat.Chf(cat.Price)</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(cat.ActionText))
+                    {
+                        <span class="nq-cat__action">@cat.ActionText</span>
+                    }
+                </div>
+                @if (cat.Available)
+                {
+                    <form method="post" action="/cart/direct" class="nq-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="eventId" value="@Model.EventId" />
+                        <input type="hidden" name="tierId" value="@cat.TierId" />
+                        <input type="number" name="quantity" value="1" min="1" class="nq-qty" aria-label="Menge" />
+                        <button type="submit" class="btn btn-danger">Direkt kaufen</button>
+                    </form>
+                }
+                else
+                {
+                    <span class="nq-soldout">Ausverkauft</span>
+                }
+            </div>
+        }
+    }
+}

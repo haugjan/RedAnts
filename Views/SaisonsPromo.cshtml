@@ -72,7 +72,14 @@
                                     <li class="pass-offer-cat">
                                         <div class="pass-offer-cat-top">
                                             <span class="pass-offer-cat-name">@cat.Name</span>
-                                            <span class="pass-offer-price">CHF @MoneyFormat.Amount(cat.Price)</span>
+                                            @if (cat.OriginalPrice is { } orig)
+                                            {
+                                                <span class="pass-offer-price"><s style="opacity:.6;font-weight:400">CHF @MoneyFormat.Amount(orig)</s> CHF @MoneyFormat.Amount(cat.Price)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="pass-offer-price">CHF @MoneyFormat.Amount(cat.Price)</span>
+                                            }
                                         </div>
                                         @if (cat.AvailableUntil is { } until || cat.Remaining is not null)
                                         {

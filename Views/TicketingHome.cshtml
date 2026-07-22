@@ -75,7 +75,14 @@
                                             <span class="event-item-date">@cat.ActionText</span>
                                         }
                                         <span class="event-item-name">@(string.IsNullOrWhiteSpace(cat.ShortName) ? cat.Name : cat.ShortName)</span>
-                                        <span class="event-item-venue pass-cat-price">CHF @MoneyFormat.Amount(cat.Price)</span>
+                                        @if (cat.OriginalPrice is { } orig)
+                                        {
+                                            <span class="event-item-venue pass-cat-price"><s style="opacity:.6;font-weight:400">CHF @MoneyFormat.Amount(orig)</s> CHF @MoneyFormat.Amount(cat.Price)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="event-item-venue pass-cat-price">CHF @MoneyFormat.Amount(cat.Price)</span>
+                                        }
                                     </span>
                                     <span class="event-item-cta">Saisonkarten kaufen →</span>
                                 </a>

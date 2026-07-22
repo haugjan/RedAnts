@@ -186,7 +186,14 @@ else
                         <div class="evt-cat">
                             <div>
                                 <span class="evt-cat__name">@cat.Name</span>
-                                <span class="evt-cat__price">CHF @MoneyFormat.Chf(cat.Price)</span>
+                                @if (cat.OriginalPrice is { } orig)
+                                {
+                                    <span class="evt-cat__price"><s style="opacity:.6">CHF @MoneyFormat.Chf(orig)</s> CHF @MoneyFormat.Chf(cat.Price)</span>
+                                }
+                                else
+                                {
+                                    <span class="evt-cat__price">CHF @MoneyFormat.Chf(cat.Price)</span>
+                                }
                                 @if (cat.AvailableUntil is { } until)
                                 {
                                     <span class="evt-cat__note">verfügbar bis @until.ToString("dd.MM.yyyy")</span>
@@ -205,7 +212,6 @@ else
                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                     <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
                                     <button type="submit" class="evt-addbtn">In den Warenkorb</button>
-                                    <button type="submit" class="evt-addbtn evt-addbtn--express" formaction="/cart/direct">Direkt kaufen</button>
                                 </form>
                             }
                             else
