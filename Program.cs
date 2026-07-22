@@ -275,6 +275,9 @@ if (!string.IsNullOrEmpty(gatePassword))
         || path.StartsWithSegments("/scanner-test")
         || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/payrexx/webhook")
+        || path.StartsWithSegments("/checkout/success")
+        || path.StartsWithSegments("/checkout/cancel")
+        || path.StartsWithSegments("/checkout/status")
         || path.StartsWithSegments("/warmup")
         || path == "/favicon.ico"
         || path == "/scanner-sw.js"
