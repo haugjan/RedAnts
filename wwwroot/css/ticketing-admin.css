@@ -145,6 +145,7 @@
 .ta-btn-link { text-decoration: none; display: inline-flex; align-items: center; }
 
 .ta-summary { margin: 0.8rem 0 0; font-size: 0.85rem; color: var(--ta-muted); }
+.ta-flash { margin: 0 0 1rem; padding: 0.7rem 1rem; border-radius: 4px; background: #e4f4ea; border: 1px solid #b6e0c4; color: #1c7c43; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
 
 .ta-overlay, .ta-modal-backdrop {
     position: fixed; inset: 0; z-index: 1000; background: rgba(27, 38, 79, 0.45);

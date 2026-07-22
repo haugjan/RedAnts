@@ -4,6 +4,11 @@
 <section class="ta-page">
     <h1 class="ta-page-title">Bestellungen</h1>
 
+    @if (_flash is not null)
+    {
+        <div class="ta-flash" @onclick="() => _flash = null" title="Ausblenden">@_flash</div>
+    }
+
     @if (_loading)
     {
         <p class="ta-muted-text">Wird geladen …</p>
@@ -189,6 +194,19 @@
     private string? _actionError;
     private bool _refundOnlineAvailable;
     private bool _refundViaPayrexx;
+    private string? _flash;
+
+    private static string? FlashFor(OrderAction action, string orderNumber, int deactivated)
+    {
+        var tickets = deactivated > 0 ? $" {deactivated} Ticket(s) wurden deaktiviert." : "";
+        return action switch
+        {
+            OrderAction.Cancel => $"Bestellung {orderNumber} storniert.{tickets}",
+            OrderAction.Refund => $"Bestellung {orderNumber} zurückerstattet.{tickets}",
+            OrderAction.MarkPaid => $"Bestellung {orderNumber} als bezahlt markiert.",
+            _ => null
+        };
+    }
 
     private static OrderAction[] ActionsFor(OrderStatus status) => status switch
     {
@@ -220,13 +238,16 @@
         _actionError = null;
         try
         {
+            var order = _actionOrder;
+            var deactivated = 0;
             switch (_action)
             {
-                case OrderAction.MarkPaid: await StatusEditor.SetStatusAsync(_actionOrder.OrderId, OrderStatus.Paid, Identity.Name); break;
-                case OrderAction.Cancel: await StatusEditor.SetStatusAsync(_actionOrder.OrderId, OrderStatus.Cancelled, Identity.Name); break;
-                case OrderAction.Refund: await StatusEditor.RefundAsync(_actionOrder.OrderId, _refundViaPayrexx, Identity.Name); break;
+                case OrderAction.MarkPaid: await StatusEditor.SetStatusAsync(order.OrderId, OrderStatus.Paid, Identity.Name); break;
+                case OrderAction.Cancel: deactivated = await StatusEditor.SetStatusAsync(order.OrderId, OrderStatus.Cancelled, Identity.Name); break;
+                case OrderAction.Refund: deactivated = await StatusEditor.RefundAsync(order.OrderId, _refundViaPayrexx, Identity.Name); break;
             }
             _actionOrder = null;
+            _flash = FlashFor(_action, order.OrderNumber, deactivated);
             await ReloadOrdersAsync();
         }
         catch (Exception ex)

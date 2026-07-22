@@ -8,13 +8,13 @@ using Umbraco.Cms.Core.DependencyInjection;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPayrexxGateway payrexx) : IOrderStatusEditor
+public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPayrexxGateway payrexx, IOrderTickets orderTickets) : IOrderStatusEditor
 {
-    public async Task SetStatusAsync(int orderId, OrderStatus target, string? changedBy)
+    public async Task<int> SetStatusAsync(int orderId, OrderStatus target, string? changedBy)
     {
         var order = await orders.GetByIdAsync(orderId)
             ?? throw new DomainException("Bestellung wurde nicht gefunden.");
-        if (order.Status == target) return;
+        if (order.Status == target) return 0;
 
         switch (target)
         {
@@ -26,14 +26,19 @@ public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPay
         }
 
         await orders.SaveAsync(order);
-        await log.AppendAsync(orderId, target, changedBy, "Admin-Änderung");
+
+        var deactivated = target is OrderStatus.Cancelled or OrderStatus.Refunded
+            ? await orderTickets.DeactivateByOrderAsync(orderId)
+            : 0;
+        await log.AppendAsync(orderId, target, changedBy, NoteWithTickets("Admin-Änderung", deactivated));
+        return deactivated;
     }
 
-    public async Task RefundAsync(int orderId, bool viaPayrexx, string? changedBy)
+    public async Task<int> RefundAsync(int orderId, bool viaPayrexx, string? changedBy)
     {
         var order = await orders.GetByIdAsync(orderId)
             ?? throw new DomainException("Bestellung wurde nicht gefunden.");
-        if (order.Status == OrderStatus.Refunded) return;
+        if (order.Status == OrderStatus.Refunded) return 0;
         if (order.Status != OrderStatus.Paid)
             throw new DomainException("Nur bezahlte Bestellungen können zurückerstattet werden.");
 
@@ -56,8 +61,14 @@ public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPay
 
         order.Refund();
         await orders.SaveAsync(order);
-        await log.AppendAsync(orderId, OrderStatus.Refunded, changedBy, note);
+
+        var deactivated = await orderTickets.DeactivateByOrderAsync(orderId);
+        await log.AppendAsync(orderId, OrderStatus.Refunded, changedBy, NoteWithTickets(note, deactivated));
+        return deactivated;
     }
+
+    private static string NoteWithTickets(string note, int deactivated) =>
+        deactivated > 0 ? $"{note} · {deactivated} Ticket(s) deaktiviert" : note;
 }
 
 public sealed class OrderStatusEditorComposer : IComposer
