@@ -479,17 +479,12 @@
             .Where(c => c.TierId is not null)
             .ToDictionary(c => c.TierId!.Value);
         var tiers = await PriceTiers.GetBySeasonAsync(SelectedSeasonId);
-        var nameById = tiers.ToDictionary(t => t.Id, t => t.Name);
         _priceRows = tiers
-            .OrderBy(t => t.SortOrder).ThenBy(t => t.PromoOfTierId ?? 0).ThenBy(t => t.Id)
-            .Select(t =>
-            {
-                var name = t.PromoOfTierId is { } parent && nameById.TryGetValue(parent, out var pn)
-                    ? $"{t.Name} (Aktion zu {pn})" : t.Name;
-                return byTier.TryGetValue(t.Id, out var existing)
-                    ? new CategoryRow { TierId = t.Id, Name = name, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota, AvailableUntil = existing.AvailableUntil }
-                    : new CategoryRow { TierId = t.Id, Name = name, Enabled = false, Price = 0m, Quota = null };
-            })
+            .Where(t => t.PromoOfTierId is null)
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
+            .Select(t => byTier.TryGetValue(t.Id, out var existing)
+                ? new CategoryRow { TierId = t.Id, Name = t.Name, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota, AvailableUntil = existing.AvailableUntil }
+                : new CategoryRow { TierId = t.Id, Name = t.Name, Enabled = false, Price = 0m, Quota = null })
             .ToList();
     }
 
