@@ -418,11 +418,26 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (UnprotectOrder(t) is not { } orderId) return NotFound();
         var found = await orders.GetByIdAsync(orderId);
         if (found is null) return NotFound();
-        return Json(new
+
+        var paid = found.Status == OrderStatus.Paid;
+        var cancelled = found.Status is OrderStatus.Cancelled or OrderStatus.Refunded;
+
+        if (!paid && !cancelled && found.Status == OrderStatus.Draft
+            && payrexx.Enabled && !string.IsNullOrEmpty(found.PayrexxGatewayId))
         {
-            paid = found.Status == OrderStatus.Paid,
-            cancelled = found.Status is OrderStatus.Cancelled or OrderStatus.Refunded
-        });
+            try
+            {
+                var status = await payrexx.GetGatewayStatusAsync(found.PayrexxGatewayId);
+                if (status == PayrexxStatus.Confirmed) paid = true;
+                else if (status is PayrexxStatus.Cancelled or PayrexxStatus.Declined) cancelled = true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Payrexx status check failed for order {Order}.", found.OrderNumber);
+            }
+        }
+
+        return Json(new { paid, cancelled });
     }
 
     [HttpGet("/checkout/cancel")]
