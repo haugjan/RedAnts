@@ -42,9 +42,11 @@ public sealed class UmbracoOrderStatusEditor(IOrders orders, IOrderLog log, IPay
         {
             if (string.IsNullOrWhiteSpace(order.PayrexxGatewayId) || !payrexx.Enabled)
                 throw new DomainException("Diese Bestellung wurde nicht online über Payrexx bezahlt und kann nicht über Payrexx zurückerstattet werden.");
-            var refunded = await payrexx.RefundGatewayAsync(order.PayrexxGatewayId!);
-            if (!refunded)
-                throw new DomainException("Payrexx-Rückerstattung fehlgeschlagen. Bitte im Payrexx-Portal prüfen.");
+            var result = await payrexx.RefundGatewayAsync(order.PayrexxGatewayId!);
+            if (!result.Success)
+                throw new DomainException(string.IsNullOrWhiteSpace(result.Error)
+                    ? "Payrexx-Rückerstattung fehlgeschlagen. Bitte im Payrexx-Portal prüfen."
+                    : $"Payrexx-Rückerstattung fehlgeschlagen: {result.Error}");
             note = "Rückerstattung über Payrexx";
         }
         else

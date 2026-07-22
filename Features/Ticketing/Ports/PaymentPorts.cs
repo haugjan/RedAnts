@@ -22,6 +22,8 @@ public sealed record PayrexxCreateRequest(
 
 public sealed record PayrexxGatewayResult(string GatewayId, string Link);
 
+public sealed record PayrexxRefundResult(bool Success, string? Error);
+
 public interface IPayrexxGateway
 {
     bool Enabled { get; }
@@ -30,5 +32,5 @@ public interface IPayrexxGateway
 
     Task<PayrexxStatus> GetGatewayStatusAsync(string gatewayId, CancellationToken cancellationToken = default);
 
-    Task<bool> RefundGatewayAsync(string gatewayId, CancellationToken cancellationToken = default);
+    Task<PayrexxRefundResult> RefundGatewayAsync(string gatewayId, CancellationToken cancellationToken = default);
 }

@@ -84,15 +84,15 @@ public sealed class PayrexxGateway(
         return MapStatus(status);
     }
 
-    public async Task<bool> RefundGatewayAsync(string gatewayId, CancellationToken cancellationToken = default)
+    public async Task<PayrexxRefundResult> RefundGatewayAsync(string gatewayId, CancellationToken cancellationToken = default)
     {
-        if (!Enabled) return false;
+        if (!Enabled) return new PayrexxRefundResult(false, "Payrexx ist nicht konfiguriert.");
 
         var (transactionId, amountInCents) = await GetConfirmedTransactionAsync(gatewayId, cancellationToken);
         if (transactionId is null)
         {
             logger.LogError("Payrexx refund: no confirmed transaction for gateway {GatewayId}", gatewayId);
-            return false;
+            return new PayrexxRefundResult(false, "Keine bestätigte Payrexx-Transaktion zu dieser Bestellung gefunden.");
         }
 
         var fields = new List<KeyValuePair<string, string>>
@@ -109,12 +109,39 @@ public sealed class PayrexxGateway(
         if (!response.IsSuccessStatusCode)
         {
             logger.LogError("Payrexx refund failed: {Status} {Body}", response.StatusCode, json);
-            return false;
+            return new PayrexxRefundResult(false, ExtractMessage(json) ?? $"Payrexx-Fehler (HTTP {(int)response.StatusCode}).");
         }
 
         using var doc = JsonDocument.Parse(json);
         var status = doc.RootElement.TryGetProperty("status", out var st) ? st.GetString() : null;
-        return string.Equals(status, "success", StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(status, "success", StringComparison.OrdinalIgnoreCase))
+            return new PayrexxRefundResult(true, null);
+
+        logger.LogError("Payrexx refund declined: {Body}", json);
+        return new PayrexxRefundResult(false, ExtractMessage(json) ?? "Payrexx hat die Rückerstattung abgelehnt.");
+    }
+
+    private static string? ExtractMessage(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
+            {
+                var msg = m.GetString();
+                if (!string.IsNullOrWhiteSpace(msg)) return msg;
+            }
+            if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                foreach (var item in data.EnumerateArray())
+                    if (item.TryGetProperty("message", out var dm) && dm.ValueKind == JsonValueKind.String)
+                    {
+                        var msg = dm.GetString();
+                        if (!string.IsNullOrWhiteSpace(msg)) return msg;
+                    }
+        }
+        catch (JsonException) { }
+        return null;
     }
 
     private async Task<(string? TransactionId, int AmountInCents)> GetConfirmedTransactionAsync(string gatewayId, CancellationToken cancellationToken)
