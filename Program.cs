@@ -66,6 +66,60 @@ WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
 
+const string devBadge =
+    "<div style=\"position:fixed;left:0;right:0;bottom:0;z-index:2147483647;" +
+    "background:#C8102E;color:#ffffff;text-align:center;" +
+    "font:600 12px/26px Verdana,Geneva,Tahoma,sans-serif;letter-spacing:1.5px;" +
+    "text-transform:uppercase;pointer-events:none;box-shadow:0 -1px 8px rgba(0,0,0,.3);\">" +
+    "Dev-Umgebung &ndash; Testdaten</div>";
+
+app.Use(async (context, next) =>
+{
+    var host = context.Request.Host.Host;
+    var isDev = app.Environment.IsDevelopment()
+        || host.Contains("-dev.", StringComparison.OrdinalIgnoreCase)
+        || host.StartsWith("app-redants-dev", StringComparison.OrdinalIgnoreCase);
+    if (!isDev
+        || context.WebSockets.IsWebSocketRequest
+        || context.Request.Path.StartsWithSegments("/_blazor")
+        || context.Request.Path.StartsWithSegments("/_framework"))
+    {
+        await next();
+        return;
+    }
+
+    var original = context.Response.Body;
+    await using var buffer = new MemoryStream();
+    context.Response.Body = buffer;
+    try
+    {
+        await next();
+        context.Response.Body = original;
+        var contentType = context.Response.ContentType ?? "";
+        var compressed = context.Response.Headers.ContentEncoding.Count > 0;
+        buffer.Seek(0, SeekOrigin.Begin);
+        if (!context.Response.HasStarted && !compressed
+            && contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
+        {
+            using var reader = new StreamReader(buffer, leaveOpen: true);
+            var body = await reader.ReadToEndAsync();
+            var idx = body.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+            var patched = idx >= 0 ? body.Insert(idx, devBadge) : body + devBadge;
+            var bytes = System.Text.Encoding.UTF8.GetBytes(patched);
+            context.Response.ContentLength = bytes.Length;
+            await original.WriteAsync(bytes);
+        }
+        else
+        {
+            await buffer.CopyToAsync(original);
+        }
+    }
+    finally
+    {
+        context.Response.Body = original;
+    }
+});
+
 const string publicCsp =
     "default-src 'self'; base-uri 'self'; object-src 'none'; " +
     "img-src 'self' data: https:; " +
