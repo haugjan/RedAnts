@@ -2,9 +2,6 @@ using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Features.Ticketing.Ports;
-using Umbraco.Cms.Core.Models.PublishedContent;
-using Umbraco.Cms.Core.Routing;
-using Umbraco.Cms.Core.Web;
 
 namespace RedAnts.Features.Ticketing.Public;
 
@@ -13,8 +10,7 @@ public sealed class WarmupController(
     IConfiguration configuration,
     IDataProtectionProvider dataProtection,
     ISeasons seasons,
-    IPublishedUrlProvider urlProvider,
-    IUmbracoContextFactory contextFactory) : Controller
+    IContentUrls contentUrls) : Controller
 {
     private static readonly string[] CorePaths =
         ["/", "/ticketing/", "/seasons/", "/next", "/next/embed", "/umbraco"];
@@ -61,9 +57,6 @@ public sealed class WarmupController(
     private async Task<string?> FirstSeasonUrlAsync()
     {
         var season = (await seasons.GetPublicOpenAsync()).FirstOrDefault();
-        if (season is null) return null;
-        using var _ = contextFactory.EnsureUmbracoContext();
-        var url = urlProvider.GetUrl(season.Id, UrlMode.Relative);
-        return !string.IsNullOrEmpty(url) && url != "#" ? url : null;
+        return season is null ? null : contentUrls.GetUrl(season.Id);
     }
 }

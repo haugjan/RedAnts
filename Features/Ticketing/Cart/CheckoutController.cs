@@ -159,7 +159,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         if (payrexx.Enabled && saved.TotalGross > 0m)
         {
-            var baseUrl = publicUrl.Resolve(Request);
+            var baseUrl = publicUrl.Resolve();
             var request = new PayrexxCreateRequest(
                 AmountInCents: (int)Math.Round(saved.TotalGross * 100m, MidpointRounding.AwayFromZero),
                 Currency: saved.Currency,
@@ -274,7 +274,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         await mailer.SendTicketsAsync(new OrderMailModel(
             order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
-            publicUrl.Resolve(Request), mailTickets, addOnInfos));
+            publicUrl.Resolve(), mailTickets, addOnInfos));
 
         try
         {

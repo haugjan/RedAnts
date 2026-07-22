@@ -25,7 +25,7 @@ public sealed class EmailTestController(
         if (!environment.IsDevelopment()) return NotFound();
         var model = new OrderMailModel(
             "2026-000123", to ?? "max.muster@example.com", "Max Muster", 45m,
-            publicUrl.Resolve(Request),
+            publicUrl.Resolve(),
             [
                 new(TicketType.EventTicket, Guid.Empty, 0, "Red Ants vs. UHC Beispielgegner", "Erwachsen"),
                 new(TicketType.SeasonPass, Guid.Empty, 0, "Saison 2026/27", "Erwachsen")
@@ -50,7 +50,7 @@ public sealed class EmailTestController(
         if (uuid is Guid ticketId && await tickets.FindAsync(ticketId) is { } issued)
         {
             var token = tokens.Create(issued.Type, issued.Uuid, issued.ScopeId);
-            var url = $"{publicUrl.Resolve(Request)}/ticket/{token}";
+            var url = $"{publicUrl.Resolve()}/ticket/{token}";
             var qrPng = qr.RenderPngDataUri(url);
             var scopeName = issued.Type == TicketType.EventTicket
                 ? (await events.FindByIdAsync(issued.ScopeId))?.Name ?? "Anlass"

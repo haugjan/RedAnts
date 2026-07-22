@@ -13,4 +13,8 @@ public interface IMemberCards
         DateOnly? birthday, string reference, string? createdByName = null, string? createdByEmail = null);
 
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
+
+    Task<IReadOnlyList<string>> GetReferencesAsync();
+
+    Task<IReadOnlyList<MemberCard>> GetByReferenceAsync(string reference);
 }

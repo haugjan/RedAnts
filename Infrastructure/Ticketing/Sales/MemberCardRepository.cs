@@ -54,6 +54,40 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         return count > 0;
     }
 
+    public async Task<IReadOnlyList<string>> GetReferencesAsync()
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        return await scope.Database.FetchAsync<string>(
+            "SELECT DISTINCT Reference FROM MembershipCards " +
+            "WHERE Reference IS NOT NULL AND Reference <> '' ORDER BY Reference");
+    }
+
+    public async Task<IReadOnlyList<MemberCard>> GetByReferenceAsync(string reference)
+    {
+        var reff = (reference ?? "").Trim();
+        if (reff.Length == 0) return [];
+
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var records = await scope.Database.FetchAsync<MemberCardRecord>(
+            "SELECT * FROM MembershipCards WHERE Reference = @0 ORDER BY LastName, FirstName", reff);
+        return records.Select(Map).ToList();
+    }
+
+    private static MemberCard Map(MemberCardRecord r) => MemberCard.FromPersistence(
+        r.Id,
+        Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
+        r.SeasonId,
+        (MemberCategory)r.Category,
+        r.OrderId,
+        (TicketStatus)r.Status,
+        r.CreatedAt,
+        r.FirstName,
+        r.LastName,
+        r.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
+        r.Reference,
+        r.CreatedByName,
+        r.CreatedByEmail);
+
     private static MemberCardRecord ToRecord(MemberCard card) => new()
     {
         Uuid = card.Uuid.ToString(),

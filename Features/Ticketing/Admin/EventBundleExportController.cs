@@ -22,7 +22,7 @@ public sealed class EventBundleExportController(
         sb.Append("Referenz;Kurzkennung;Link\r\n");
         foreach (var t in tickets)
         {
-            var link = $"{publicUrl.Resolve(Request)}/ticket/{tokens.Create(TicketType.EventTicket, t.Uuid, t.EventId)}";
+            var link = $"{publicUrl.Resolve()}/ticket/{tokens.Create(TicketType.EventTicket, t.Uuid, t.EventId)}";
             sb.Append(CsvField(t.Reference)).Append(';')
               .Append(ShortCode(t.Uuid)).Append(';')
               .Append(link).Append("\r\n");

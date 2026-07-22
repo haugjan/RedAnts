@@ -13,7 +13,7 @@ public sealed class ScannerTestController(
     [HttpGet("/scanner-test")]
     public IActionResult Index()
     {
-        var baseUrl = publicUrl.Resolve(Request);
+        var baseUrl = publicUrl.Resolve();
         var cards = ExampleTypes.Select(type =>
         {
             var token = tokens.Create(type, Guid.Empty, 0);

@@ -25,7 +25,7 @@ public sealed class WebTicketController(
         var issued = await tickets.FindAsync(data.Uuid);
         var (scopeName, dateText, venueName, homeLogo, awayLogo) = await ResolveContextAsync(data);
 
-        var absoluteUrl = $"{publicUrl.Resolve(Request)}/ticket/{token}";
+        var absoluteUrl = $"{publicUrl.Resolve()}/ticket/{token}";
         var svg = qr.RenderSvg(absoluteUrl);
 
         var model = new WebTicketViewModel(
@@ -52,7 +52,7 @@ public sealed class WebTicketController(
     public IActionResult QrPng(string token)
     {
         if (!tokens.TryVerify(token, out _)) return NotFound();
-        var url = $"{publicUrl.Resolve(Request)}/ticket/{token}";
+        var url = $"{publicUrl.Resolve()}/ticket/{token}";
         return File(qr.RenderPng(url, 8), "image/png");
     }
 
@@ -62,7 +62,7 @@ public sealed class WebTicketController(
         if (!tokens.TryVerify(token, out var data)) return NotFound();
         var issued = await tickets.FindAsync(data.Uuid);
         var (scopeName, dateText, _, _, _) = await ResolveContextAsync(data);
-        var absoluteUrl = $"{publicUrl.Resolve(Request)}/ticket/{token}";
+        var absoluteUrl = $"{publicUrl.Resolve()}/ticket/{token}";
 
         var bytes = pdf.Render(new TicketPdfModel(
             Kicker: TicketDisplay.Kicker(data.Type),

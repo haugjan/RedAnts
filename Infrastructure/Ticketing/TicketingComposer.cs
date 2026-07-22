@@ -16,6 +16,7 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<ISeasons, UmbracoSeasons>();
         builder.Services.AddScoped<IVenues, UmbracoVenues>();
         builder.Services.AddScoped<IEvents, UmbracoEvents>();
+        builder.Services.AddScoped<IContentUrls, UmbracoContentUrls>();
 
         builder.Services.AddScoped<IEventPrices, EventPriceRepository>();
         builder.Services.AddScoped<ISeasonPrices, SeasonPriceRepository>();

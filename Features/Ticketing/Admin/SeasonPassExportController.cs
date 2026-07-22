@@ -24,7 +24,7 @@ public sealed class SeasonPassExportController(
         sb.Append("Karten-Nr;Bundle;Käufer;Kategorie;Link\r\n");
         foreach (var p in passes)
         {
-            var link = $"{publicUrl.Resolve(Request)}/ticket/{tokens.Create(TicketType.SeasonPass, p.Uuid, seasonId)}";
+            var link = $"{publicUrl.Resolve()}/ticket/{tokens.Create(TicketType.SeasonPass, p.Uuid, seasonId)}";
             sb.Append(ShortCode(p.Uuid)).Append(';')
               .Append(CsvField(p.Reference ?? "")).Append(';')
               .Append(CsvField(p.BuyerName ?? "")).Append(';')

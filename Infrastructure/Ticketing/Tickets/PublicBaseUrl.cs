@@ -7,19 +7,23 @@ using Umbraco.Cms.Core.DependencyInjection;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class PublicBaseUrl(IConfiguration config) : IPublicBaseUrl
+public sealed class PublicBaseUrl(IConfiguration config, IHttpContextAccessor httpContextAccessor) : IPublicBaseUrl
 {
-    public string Resolve(HttpRequest request)
+    public string Resolve()
     {
         var configured = config["Tickets:PublicBaseUrl"];
-        return !string.IsNullOrWhiteSpace(configured)
-            ? configured.TrimEnd('/')
-            : $"{request.Scheme}://{request.Host}";
+        if (!string.IsNullOrWhiteSpace(configured)) return configured.TrimEnd('/');
+
+        var request = httpContextAccessor.HttpContext?.Request;
+        return request is not null ? $"{request.Scheme}://{request.Host}" : "";
     }
 }
 
 public sealed class PublicBaseUrlComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IPublicBaseUrl, PublicBaseUrl>();
+    {
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<IPublicBaseUrl, PublicBaseUrl>();
+    }
 }

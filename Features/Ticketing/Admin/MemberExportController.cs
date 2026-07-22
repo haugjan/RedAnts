@@ -1,27 +1,20 @@
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NPoco;
 using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Features.Ticketing.Tickets;
 using Umbraco.Cms.Core;
-using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Features.Ticketing.Admin;
 
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 [ApiExplorerSettings(IgnoreApi = true)]
-public sealed class MemberExportController(IScopeProvider scopeProvider, ITicketTokens tokens, IPublicBaseUrl publicUrl) : Controller
+public sealed class MemberExportController(IMemberCards memberCards, ITicketTokens tokens, IPublicBaseUrl publicUrl) : Controller
 {
     [HttpGet("/admin/members/references")]
     public async Task<IActionResult> References()
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<RefRow>(
-            "SELECT DISTINCT Reference FROM MembershipCards " +
-            "WHERE Reference IS NOT NULL AND Reference <> '' ORDER BY Reference");
-        return Json(rows.Select(r => r.Reference).ToList());
-    }
+        => Json(await memberCards.GetReferencesAsync());
 
     [HttpGet("/admin/members/export.csv")]
     public async Task<IActionResult> ExportCsv([FromQuery] string? referenz)
@@ -29,23 +22,20 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
         if (string.IsNullOrWhiteSpace(referenz))
             return BadRequest("Referenz fehlt.");
 
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<Row>(
-            "SELECT Uuid, SeasonId, FirstName, LastName, Birthday FROM MembershipCards " +
-            "WHERE Reference = @0 ORDER BY LastName, FirstName", referenz);
+        var cards = await memberCards.GetByReferenceAsync(referenz);
 
-        var baseUrl = publicUrl.Resolve(Request);
+        var baseUrl = publicUrl.Resolve();
         var sb = new StringBuilder();
         sb.Append("Name;Vorname;Geburtsdatum;Link\r\n");
-        foreach (var r in rows)
+        foreach (var card in cards)
         {
-            var birthday = r.Birthday?.ToString("dd.MM.yyyy") ?? "";
-            var url = Guid.TryParse(r.Uuid, out var uuid)
-                ? $"{baseUrl}/ticket/{tokens.Create(TicketType.MemberCard, uuid, r.SeasonId)}"
+            var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
+            var url = card.Uuid != Guid.Empty
+                ? $"{baseUrl}/ticket/{tokens.Create(TicketType.MemberCard, card.Uuid, card.SeasonId)}"
                 : "";
 
-            sb.Append(Csv(r.LastName)).Append(';')
-              .Append(Csv(r.FirstName)).Append(';')
+            sb.Append(Csv(card.LastName)).Append(';')
+              .Append(Csv(card.FirstName)).Append(';')
               .Append(Csv(birthday)).Append(';')
               .Append(Csv(url)).Append("\r\n");
         }
@@ -67,18 +57,4 @@ public sealed class MemberExportController(IScopeProvider scopeProvider, ITicket
         value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
             ? "'" + value
             : value;
-
-    private sealed class RefRow
-    {
-        public string Reference { get; set; } = "";
-    }
-
-    private sealed class Row
-    {
-        public string Uuid { get; set; } = "";
-        public int SeasonId { get; set; }
-        public string? FirstName { get; set; }
-        public string? LastName { get; set; }
-        public DateTime? Birthday { get; set; }
-    }
 }
