@@ -13,7 +13,7 @@ public sealed class WarmupController(
     IContentUrls contentUrls) : Controller
 {
     private static readonly string[] CorePaths =
-        ["/", "/ticketing/", "/seasons/", "/next", "/next/embed", "/umbraco"];
+        ["/", "/ticketing/", "/seasons/", "/next", "/next/embed", "/scanner-test", "/umbraco"];
 
     [HttpGet("/warmup")]
     public async Task<IActionResult> Warmup()
