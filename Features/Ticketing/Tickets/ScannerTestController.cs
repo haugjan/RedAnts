@@ -28,16 +28,16 @@ public sealed class ScannerTestController(
         TicketType.EventTicket => new TicketCardModel(
             TicketDisplay.Kicker(type), TicketDisplay.TypeLabel(type),
             ScopeName: "Red Ants vs. UHC Beispielgegner", DateText: "15.11.2026, 18:00 Uhr",
-            CategoryLabel: "Erwachsen", HolderName: "Max Muster", Serial: "BEISPIEL",
+            CategoryLabel: "Erwachsen", HolderName: null, Serial: "BEISPIEL",
             QrMarkup: qrMarkup, VenueName: "Sporthalle, Winterthur"),
         TicketType.SeasonSingle => new TicketCardModel(
             TicketDisplay.Kicker(type), TicketDisplay.TypeLabel(type),
             ScopeName: "Saison 2026/27", DateText: null,
-            CategoryLabel: "Erwachsen", HolderName: "Max Muster", Serial: "BEISPIEL", QrMarkup: qrMarkup),
+            CategoryLabel: "Erwachsen", HolderName: null, Serial: "BEISPIEL", QrMarkup: qrMarkup),
         TicketType.SeasonPass => new TicketCardModel(
             TicketDisplay.Kicker(type), TicketDisplay.TypeLabel(type),
             ScopeName: "Saison 2026/27", DateText: "13.09.2026 – 22.03.2027",
-            CategoryLabel: "Erwachsen", HolderName: "Max Muster", Serial: "BEISPIEL", QrMarkup: qrMarkup),
+            CategoryLabel: "Erwachsen", HolderName: null, Serial: "BEISPIEL", QrMarkup: qrMarkup),
         TicketType.MemberCard => new TicketCardModel(
             TicketDisplay.Kicker(type), TicketDisplay.TypeLabel(type),
             ScopeName: "Saison 2026/27", DateText: null,
