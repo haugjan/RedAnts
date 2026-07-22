@@ -40,7 +40,8 @@
                 CategoryLabel: t.CategoryName,
                 HolderName: null,
                 Serial: t.Uuid.ToString("N")[..8].ToUpperInvariant(),
-                QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />");
+                QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />",
+                VenueName: t.VenueName);
             <div class="ra-ticket-cell">
                 <partial name="~/Views/Partials/_TicketCard.cshtml" model="card" />
                 <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>

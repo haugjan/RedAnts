@@ -12,7 +12,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, IEvents events, ISeasons seasons, IDataProtectionProvider dataProtection, ILogger<CheckoutController> logger) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, IEvents events, ISeasons seasons, IVenues venues, IDataProtectionProvider dataProtection, ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -247,7 +247,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 var ticket = await tickets.SaveAsync(
                     EventTicket.Create(item.EventId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
                 var token = tokens.Create(TicketType.EventTicket, ticket.Uuid, item.EventId);
-                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName, token, (int)TicketType.EventTicket, await EventDateTextAsync(item.EventId)));
+                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, item.CategoryName, token, (int)TicketType.EventTicket, await EventDateTextAsync(item.EventId), await EventVenueNameAsync(item.EventId)));
                 mailTickets.Add(new OrderMailTicket(
                     TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, item.CategoryName));
             }
@@ -367,13 +367,13 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         {
             names.TryGetValue(((int)CartItemKind.EventTicket, t.EventId, t.TierId ?? 0), out var n);
             var token = tokens.Create(TicketType.EventTicket, t.Uuid, t.EventId);
-            result.Add(new ConfirmationTicket(t.Uuid, n.EventName ?? "", n.CategoryName ?? "", token));
+            result.Add(new ConfirmationTicket(t.Uuid, n.EventName ?? "", n.CategoryName ?? "", token, (int)TicketType.EventTicket, await EventDateTextAsync(t.EventId), await EventVenueNameAsync(t.EventId)));
         }
         foreach (var p in await passes.GetByOrderAsync(order.Id))
         {
             names.TryGetValue(((int)CartItemKind.SeasonPass, p.SeasonId, p.TierId ?? 0), out var n);
             var token = tokens.Create(TicketType.SeasonPass, p.Uuid, p.SeasonId);
-            result.Add(new ConfirmationTicket(p.Uuid, n.EventName ?? "", n.CategoryName ?? "", token));
+            result.Add(new ConfirmationTicket(p.Uuid, n.EventName ?? "", n.CategoryName ?? "", token, (int)TicketType.SeasonPass, await SeasonDateTextAsync(p.SeasonId)));
         }
         return result;
     }
@@ -464,6 +464,11 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     private async Task<string?> EventDateTextAsync(int eventId) =>
         await events.FindByIdAsync(eventId) is { } ev
             ? ev.TimeUnknown ? $"{ev.Date:dd.MM.yyyy}" : $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr"
+            : null;
+
+    private async Task<string?> EventVenueNameAsync(int eventId) =>
+        await events.FindByIdAsync(eventId) is { VenueId: > 0 } ev
+            ? (await venues.FindByIdAsync(ev.VenueId))?.Name
             : null;
 
     private async Task<string?> SeasonDateTextAsync(int seasonId) =>

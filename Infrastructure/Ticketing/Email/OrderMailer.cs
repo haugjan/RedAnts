@@ -15,6 +15,7 @@ public sealed class OrderMailer(
     IQrCodeRenderer qr,
     IEvents events,
     ISeasons seasons,
+    IVenues venues,
     IWebHostEnvironment environment,
     ILogger<OrderMailer> logger) : IOrderMailer
 {
@@ -64,9 +65,10 @@ public sealed class OrderMailer(
     {
         var intro = "<p style=\"margin:0 0 20px;\">Vielen Dank für deinen Kauf. Deine Tickets sind unten bereit, jedes mit eigenem QR-Code für den Einlass.</p>";
         var dates = await ResolveDatesAsync(model.Tickets);
+        var venueNames = await ResolveVenuesAsync(model.Tickets);
         var total = model.Tickets.Count;
         var blocks = string.Concat(model.Tickets.Select((t, i) =>
-            TicketCard(model.BaseUrl, t, dates.GetValueOrDefault((t.Type, t.ScopeId)), i + 1, total)));
+            TicketCard(model.BaseUrl, t, dates.GetValueOrDefault((t.Type, t.ScopeId)), venueNames.GetValueOrDefault((t.Type, t.ScopeId)), i + 1, total)));
         return intro + blocks + AddOnInfoBlock(model.AddOnInfoTexts);
     }
 
@@ -100,7 +102,23 @@ public sealed class OrderMailer(
         return dates;
     }
 
-    private string TicketCard(string baseUrl, OrderMailTicket ticket, string? dateText, int index, int total)
+    private async Task<Dictionary<(TicketType, int), string?>> ResolveVenuesAsync(IReadOnlyList<OrderMailTicket> tickets)
+    {
+        var venueNames = new Dictionary<(TicketType, int), string?>();
+        foreach (var ticket in tickets)
+        {
+            var key = (ticket.Type, ticket.ScopeId);
+            if (venueNames.ContainsKey(key)) continue;
+            if (ticket.Type == TicketType.EventTicket
+                && await events.FindByIdAsync(ticket.ScopeId) is { VenueId: > 0 } ev)
+                venueNames[key] = (await venues.FindByIdAsync(ev.VenueId))?.Name;
+            else
+                venueNames[key] = null;
+        }
+        return venueNames;
+    }
+
+    private string TicketCard(string baseUrl, OrderMailTicket ticket, string? dateText, string? venueText, int index, int total)
     {
         const string red = "#D02D38";
         const string redDk = "#B0242E";
@@ -115,6 +133,7 @@ public sealed class OrderMailer(
 
         var rows =
             (dateText is null ? "" : InfoRow("Datum", WebUtility.HtmlEncode(dateText), redDk)) +
+            (venueText is null ? "" : InfoRow("Ort", WebUtility.HtmlEncode(venueText), "#14171A")) +
             InfoRow("Kategorie", category, "#14171A") +
             InfoRow("Ticket-Nr.", reference, "#14171A");
 

@@ -71,8 +71,9 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
                     col.Item().PaddingHorizontal(13).PaddingTop(2).PaddingBottom(2).Column(meta =>
                     {
                         if (m.DateText is not null) MetaRow(meta, "Datum", m.DateText, RedDk);
+                        if (m.VenueName is not null) MetaRow(meta, "Ort", m.VenueName, Ink);
                         if (m.CategoryLabel is not null) MetaRow(meta, "Kategorie", m.CategoryLabel, Ink);
-                        if (m.HolderName is not null) MetaRow(meta, "Name", m.HolderName, Ink);
+                        if (m.HolderName is not null) MetaRow(meta, "Inhaber:in", m.HolderName, Ink);
                         MetaRow(meta, "Ticket-Nr.", m.TicketRef, Ink);
                     });
                 });

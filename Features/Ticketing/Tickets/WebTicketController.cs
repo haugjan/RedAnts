@@ -61,7 +61,7 @@ public sealed class WebTicketController(
     {
         if (!tokens.TryVerify(token, out var data)) return NotFound();
         var issued = await tickets.FindAsync(data.Uuid);
-        var (scopeName, dateText, _, _, _) = await ResolveContextAsync(data);
+        var (scopeName, dateText, venueName, _, _) = await ResolveContextAsync(data);
         var absoluteUrl = $"{publicUrl.Resolve()}/ticket/{token}";
 
         var bytes = pdf.Render(new TicketPdfModel(
@@ -73,7 +73,8 @@ public sealed class WebTicketController(
             HolderName: issued?.HolderName,
             TicketRef: TicketRef(data.Uuid),
             AccentHex: TypeAccentHex(data.Type),
-            QrPng: qr.RenderPng(absoluteUrl, 10)));
+            QrPng: qr.RenderPng(absoluteUrl, 10),
+            VenueName: venueName));
 
         return File(bytes, "application/pdf", $"redants-ticket-{TicketRef(data.Uuid)}.pdf");
     }
