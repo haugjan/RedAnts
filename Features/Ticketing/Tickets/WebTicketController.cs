@@ -12,6 +12,7 @@ public sealed class WebTicketController(
     IIssuedTicketReader tickets,
     IEvents events,
     ISeasons seasons,
+    IVenues venues,
     IPublicBaseUrl publicUrl,
     ITicketPdf pdf,
     IWalletPass wallet) : Controller
@@ -23,7 +24,7 @@ public sealed class WebTicketController(
             return View("~/Views/WebTicket.cshtml", WebTicketViewModel.Invalid());
 
         var issued = await tickets.FindAsync(data.Uuid);
-        var (scopeName, dateText, homeLogo, awayLogo) = await ResolveContextAsync(data);
+        var (scopeName, dateText, venueName, homeLogo, awayLogo) = await ResolveContextAsync(data);
 
         var absoluteUrl = $"{publicUrl.Resolve(Request)}/ticket/{token}";
         var svg = qr.RenderSvg(absoluteUrl);
@@ -43,7 +44,8 @@ public sealed class WebTicketController(
             AwayLogo: awayLogo,
             TypeKey: TypeKey(data.Type, issued?.MemberCategory),
             Token: token,
-            WalletEnabled: wallet.Enabled);
+            WalletEnabled: wallet.Enabled,
+            VenueName: venueName);
 
         return View("~/Views/WebTicket.cshtml", model);
     }
@@ -61,7 +63,7 @@ public sealed class WebTicketController(
     {
         if (!tokens.TryVerify(token, out var data)) return NotFound();
         var issued = await tickets.FindAsync(data.Uuid);
-        var (scopeName, dateText, _, _) = await ResolveContextAsync(data);
+        var (scopeName, dateText, _, _, _) = await ResolveContextAsync(data);
         var absoluteUrl = $"{publicUrl.Resolve(Request)}/ticket/{token}";
 
         var bytes = pdf.Render(new TicketPdfModel(
@@ -84,7 +86,7 @@ public sealed class WebTicketController(
         if (!wallet.Enabled) return NotFound();
         if (!tokens.TryVerify(token, out var data)) return NotFound();
         var issued = await tickets.FindAsync(data.Uuid);
-        var (scopeName, dateText, _, _) = await ResolveContextAsync(data);
+        var (scopeName, dateText, _, _, _) = await ResolveContextAsync(data);
         var origin = publicUrl.Resolve(Request);
 
         var url = wallet.SaveUrl(new WalletTicketModel(
@@ -111,20 +113,21 @@ public sealed class WebTicketController(
         return RedirectToAction(nameof(Show), new { token });
     }
 
-    private async Task<(string ScopeName, string? DateText, string? HomeLogo, string? AwayLogo)> ResolveContextAsync(TicketTokenData data)
+    private async Task<(string ScopeName, string? DateText, string? VenueName, string? HomeLogo, string? AwayLogo)> ResolveContextAsync(TicketTokenData data)
     {
         if (data.Type == TicketType.EventTicket)
         {
             var ev = await events.FindByIdAsync(data.ScopeId);
-            if (ev is null) return ("Anlass", null, null, null);
+            if (ev is null) return ("Anlass", null, null, null, null);
             var dateText = ev.TimeUnknown ? $"{ev.Date:dd.MM.yyyy}" : $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr";
-            return (ev.Name, dateText, ev.HomeTeamLogoUrl, ev.AwayTeamLogoUrl);
+            var venueName = ev.VenueId > 0 ? (await venues.FindByIdAsync(ev.VenueId))?.Name : null;
+            return (ev.Name, dateText, venueName, ev.HomeTeamLogoUrl, ev.AwayTeamLogoUrl);
         }
 
         var season = await seasons.FindByIdAsync(data.ScopeId);
         return season is null
-            ? ("Saison", null, null, null)
-            : (season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}", null, null);
+            ? ("Saison", null, null, null, null)
+            : (season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}", null, null, null);
     }
 
     private static string? CategoryLabel(IssuedTicket? issued) =>
@@ -183,7 +186,8 @@ public sealed record WebTicketViewModel(
     string? AwayLogo = null,
     string TypeKey = "spiel",
     string Token = "",
-    bool WalletEnabled = false)
+    bool WalletEnabled = false,
+    string? VenueName = null)
 {
     public static WebTicketViewModel Invalid() =>
         new(false, false, "", "Ticket", "", null, null, null, "", "");

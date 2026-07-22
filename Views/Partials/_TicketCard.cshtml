@@ -18,6 +18,10 @@
         {
             <div class="rtk-row"><span class="rtk-k">Datum</span><span class="rtk-v rtk-v--date">@Model.DateText</span></div>
         }
+        @if (!string.IsNullOrEmpty(Model.VenueName))
+        {
+            <div class="rtk-row"><span class="rtk-k">Ort</span><span class="rtk-v">@Model.VenueName</span></div>
+        }
         @if (!string.IsNullOrEmpty(Model.CategoryLabel))
         {
             <div class="rtk-row"><span class="rtk-k">Kategorie</span><span class="rtk-v">@Model.CategoryLabel</span></div>
