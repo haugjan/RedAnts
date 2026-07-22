@@ -84,35 +84,32 @@
                 @if (!IsTest)
                 {
                     <div class="scan-extras__section">
-                        <span class="scan-extras__label">Freien Einlass gewähren</span>
-                        <div class="scan-free-grid">
+                        <div class="scan-free-head">
+                            <span class="scan-extras__label">Freie Einlässe</span>
+                            <span class="scan-free-count">@FreeInside drin</span>
+                        </div>
+                        <div class="scan-free-list">
                             @foreach (var type in OfferedFreeEntryTypes)
                             {
                                 var t = type;
-                                <button type="button" class="scan-free-tile scan-free-tile--in"
-                                        @onclick="() => GrantFreeAsync(t)" disabled="@(_busy || _occupancy?.Full == true)">
-                                    @t.DisplayName()
-                                </button>
+                                <div class="scan-free-row">
+                                    <span class="scan-free-row__name">@t.DisplayName()</span>
+                                    <button type="button" class="scan-free-btn scan-free-btn--out"
+                                            @onclick="() => RevokeFreeAsync(t)" disabled="@(_busy || FreeInside == 0)">
+                                        <span class="scan-free-btn__sign">&minus;</span>Raus
+                                    </button>
+                                    <button type="button" class="scan-free-btn scan-free-btn--in"
+                                            @onclick="() => GrantFreeAsync(t)" disabled="@(_busy || _occupancy?.Full == true)">
+                                        <span class="scan-free-btn__sign">+</span>Rein
+                                    </button>
+                                </div>
                             }
                         </div>
+                        <p class="scan-free-legend">
+                            <span class="scan-free-legend__in">Rein</span> = Einlass ·
+                            <span class="scan-free-legend__out">Raus</span> = Auslass
+                        </p>
                     </div>
-
-                    @if (FreeInside > 0)
-                    {
-                        <div class="scan-extras__section">
-                            <span class="scan-extras__label">Freien Einlass zurücknehmen (@FreeInside drinnen)</span>
-                            <div class="scan-free-grid">
-                                @foreach (var type in OfferedFreeEntryTypes)
-                                {
-                                    var t = type;
-                                    <button type="button" class="scan-free-tile scan-free-tile--out"
-                                            @onclick="() => RevokeFreeAsync(t)" disabled="@_busy">
-                                        @t.DisplayName()
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                    }
                 }
             </div>
         </div>
@@ -250,14 +247,26 @@
     }
     .scan-manual__btn:disabled { opacity: 0.5; cursor: default; }
 
-    .scan-free-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
-    .scan-free-tile {
-        min-height: 5rem; padding: 0.8rem 0.6rem; border-radius: 14px; border: 2px solid transparent;
-        font-size: 1.2rem; font-weight: 800; cursor: pointer; line-height: 1.15;
+    .scan-free-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.55rem; }
+    .scan-free-count {
+        font-size: 0.85rem; font-weight: 800; color: #1a7f37;
+        background: #e7f6ec; border-radius: 999px; padding: 0.15rem 0.7rem;
     }
-    .scan-free-tile:disabled { opacity: 0.45; cursor: default; }
-    .scan-free-tile--in { background: #1a7f37; color: #fff; }
-    .scan-free-tile--out { background: #fff; color: #1f5fbf; border-color: #1f5fbf; }
+    .scan-free-list { display: flex; flex-direction: column; gap: 0.55rem; }
+    .scan-free-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.5rem; }
+    .scan-free-row__name { font-size: 1.05rem; font-weight: 700; color: #14171A; line-height: 1.15; min-width: 0; }
+    .scan-free-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.28rem;
+        min-width: 5.4rem; min-height: 3.1rem; padding: 0.5rem 0.7rem; border-radius: 12px;
+        font-size: 1.05rem; font-weight: 800; cursor: pointer; border: 2px solid transparent;
+    }
+    .scan-free-btn:disabled { opacity: 0.4; cursor: default; }
+    .scan-free-btn__sign { font-size: 1.4rem; line-height: 1; font-weight: 900; }
+    .scan-free-btn--in { background: #1a7f37; color: #fff; }
+    .scan-free-btn--out { background: #fff; color: #1f5fbf; border-color: #1f5fbf; }
+    .scan-free-legend { margin: 0.7rem 0 0; font-size: 0.85rem; color: #667; text-align: center; }
+    .scan-free-legend__in { color: #1a7f37; font-weight: 800; }
+    .scan-free-legend__out { color: #1f5fbf; font-weight: 800; }
 
     .scan-result {
         position: fixed; inset: 0; z-index: 1200; display: flex; flex-direction: column;
