@@ -16,8 +16,28 @@ public sealed class EmailTestController(
     IQrCodeRenderer qr,
     IEvents events,
     ISeasons seasons,
-    IPublicBaseUrl publicUrl) : Controller
+    IPublicBaseUrl publicUrl,
+    IOrderMailer orderMailer) : Controller
 {
+    [HttpGet("/dev/ticket-mail-preview")]
+    public async Task<IActionResult> TicketMailPreview(string? to = null)
+    {
+        if (!environment.IsDevelopment()) return NotFound();
+        var model = new OrderMailModel(
+            "2026-000123", to ?? "max.muster@example.com", "Max Muster", 45m,
+            publicUrl.Resolve(Request),
+            [
+                new(TicketType.EventTicket, Guid.Empty, 0, "Red Ants vs. UHC Beispielgegner", "Erwachsen"),
+                new(TicketType.SeasonPass, Guid.Empty, 0, "Saison 2026/27", "Erwachsen")
+            ]);
+        if (!string.IsNullOrWhiteSpace(to))
+        {
+            var ok = await orderMailer.SendTicketsAsync(model);
+            return Content(ok ? $"Testmail an {to} gesendet." : "Versand fehlgeschlagen (siehe Logs).");
+        }
+        return Content(await orderMailer.RenderAsync(model), "text/html");
+    }
+
     [HttpGet("/dev/test-mail")]
     public async Task<IActionResult> Send(string? to, Guid? uuid)
     {

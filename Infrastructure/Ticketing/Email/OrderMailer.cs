@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Email;
@@ -11,22 +12,30 @@ namespace RedAnts.Infrastructure.Ticketing.Email;
 public sealed class OrderMailer(
     IEmailSender email,
     ITicketTokens tokens,
+    IQrCodeRenderer qr,
     IEvents events,
     ISeasons seasons,
     IWalletPass wallet,
+    IWebHostEnvironment environment,
     ILogger<OrderMailer> logger) : IOrderMailer
 {
+    private string? _logoDataUri;
+    private string LogoDataUri => _logoDataUri ??= BuildLogoDataUri();
+
+    private string BuildLogoDataUri()
+    {
+        var path = Path.Combine(environment.WebRootPath, "img", "logo-badge-mail.png");
+        return File.Exists(path)
+            ? "data:image/png;base64," + Convert.ToBase64String(File.ReadAllBytes(path))
+            : "";
+    }
+
     public async Task<bool> SendTicketsAsync(OrderMailModel model, CancellationToken cancellationToken = default)
     {
         try
         {
             var subject = $"Deine Tickets – Bestellung {model.OrderNumber}";
-            var greeting = string.IsNullOrWhiteSpace(model.ToName) ? "Hallo," : $"Hallo {model.ToName},";
-            var body = await BuildBodyAsync(model);
-            var details = $"Bestellung {model.OrderNumber}\nTotal: CHF {RedAnts.Features.Ticketing.MoneyFormat.Chf(model.Total)}";
-            var note = "Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt. Fragen? Antworte einfach auf diese E-Mail.";
-            var html = EmailLayout.Render(subject, body, greeting, details, note);
-
+            var html = await RenderAsync(model);
             var result = await email.SendAsync(model.ToEmail, model.ToName, subject, html, cancellationToken);
             if (!result.Success)
                 logger.LogWarning("Ticket e-mail to {Recipient} failed: {Error}", model.ToEmail, result.Error);
@@ -37,6 +46,16 @@ public sealed class OrderMailer(
             logger.LogError(ex, "Ticket e-mail to {Recipient} threw.", model.ToEmail);
             return false;
         }
+    }
+
+    public async Task<string> RenderAsync(OrderMailModel model)
+    {
+        var subject = $"Deine Tickets – Bestellung {model.OrderNumber}";
+        var greeting = string.IsNullOrWhiteSpace(model.ToName) ? "Hallo," : $"Hallo {model.ToName},";
+        var body = await BuildBodyAsync(model);
+        var details = $"Bestellung {model.OrderNumber}\nTotal: CHF {RedAnts.Features.Ticketing.MoneyFormat.Chf(model.Total)}";
+        var note = "Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt. Fragen? Antworte einfach auf diese E-Mail.";
+        return EmailLayout.Render(subject, body, greeting, details, note);
     }
 
     private async Task<string> BuildBodyAsync(OrderMailModel model)
@@ -85,7 +104,7 @@ public sealed class OrderMailer(
         const string redDk = "#B0242E";
         var token = tokens.Create(ticket.Type, ticket.Uuid, ticket.ScopeId);
         var url = $"{baseUrl}/ticket/{token}";
-        var qrUrl = $"{url}/qr.png";
+        var qrDataUri = qr.RenderPngDataUri(url, 8);
         var reference = ticket.Uuid.ToString("N")[..8].ToUpperInvariant();
         var scopeName = WebUtility.HtmlEncode(ticket.EventName);
         var category = WebUtility.HtmlEncode(ticket.CategoryName);
@@ -109,10 +128,10 @@ public sealed class OrderMailer(
                             $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.4px;opacity:.92;\">{kicker}</div>" +
                             $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:24px;font-weight:700;text-transform:uppercase;line-height:1;padding-top:2px;\">{typeLabel}</div>" +
                         "</td>" +
-                        $"<td align=\"right\" style=\"vertical-align:top;\"><img src=\"{baseUrl}/img/logo-badge.png\" alt=\"Red Ants\" width=\"52\" height=\"52\" style=\"display:block;width:52px;height:52px;border-radius:50%;\"></td>" +
+                        $"<td align=\"right\" style=\"vertical-align:top;\"><img src=\"{LogoDataUri}\" alt=\"Red Ants\" width=\"52\" height=\"52\" style=\"display:block;width:52px;height:52px;border-radius:50%;\"></td>" +
                     "</tr></table>" +
                 "</td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrUrl}\" alt=\"Ticket QR\" width=\"200\" height=\"200\" style=\"display:block;\"></td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrDataUri}\" alt=\"Ticket QR\" width=\"200\" height=\"200\" style=\"display:block;margin:0 auto;\"></td></tr>" +
                 "<tr><td align=\"center\" style=\"padding:0 16px 12px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:12px;\">Am Eingang scannen lassen</td></tr>" +
                 "<tr><td style=\"padding:0 12px;\"><div style=\"border-top:2px dashed #d6dade;font-size:0;line-height:0;\">&nbsp;</div></td></tr>" +
                 $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:17px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scopeName}</div></td></tr>" +

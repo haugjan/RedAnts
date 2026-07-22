@@ -16,4 +16,5 @@ public sealed record OrderMailModel(
 public interface IOrderMailer
 {
     Task<bool> SendTicketsAsync(OrderMailModel model, CancellationToken cancellationToken = default);
+    Task<string> RenderAsync(OrderMailModel model);
 }
