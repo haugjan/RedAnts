@@ -14,12 +14,21 @@ applyFavicon();
 
 new MutationObserver(records => {
   let needsUpdate = false;
-  records.forEach(r => r.addedNodes.forEach(n => {
-    if (n.nodeName === 'LINK' && n.rel?.includes?.('icon') &&
-        !n.getAttribute('href')?.includes('/favicons/favicon.ico')) {
-      n.remove();
-      needsUpdate = true;
+  records.forEach(r => {
+    if (r.type === 'childList') {
+      r.addedNodes.forEach(n => {
+        if (n.nodeName === 'LINK' && n.rel?.includes?.('icon') &&
+            !n.getAttribute('href')?.includes('/favicons/favicon.ico')) {
+          needsUpdate = true;
+        }
+      });
+    } else if (r.type === 'attributes') {
+      const n = r.target;
+      if (n.nodeName === 'LINK' && n.rel?.includes?.('icon') &&
+          !n.getAttribute('href')?.includes('/favicons/favicon.ico')) {
+        needsUpdate = true;
+      }
     }
-  }));
+  });
   if (needsUpdate) applyFavicon();
-}).observe(document.head, { childList: true });
+}).observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'rel'] });
