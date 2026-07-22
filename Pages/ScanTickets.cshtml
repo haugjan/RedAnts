@@ -38,12 +38,17 @@
 
     <script>
         (function () {
-            // Keep the hardware/browser back button inside the scanner. An accidental
-            // back must not drop the operator to the login - trap it by re-pushing state
-            // so the scanner stays open and the next ticket can be scanned.
-            function guard() { try { history.pushState(null, '', location.href); } catch (e) {} }
-            guard();
-            window.addEventListener('popstate', guard);
+            // Keep the hardware/browser back button inside the scanner. Back must not
+            // drop the operator to the login: while scanning it returns to the event
+            // selection, on the event list it stays put. The page is trapped by
+            // re-pushing state on every popstate; the scanner component decides the view.
+            window.raScannerBack = { _ref: null, register: function (ref) { this._ref = ref; } };
+            try { history.pushState(null, '', location.href); } catch (e) {}
+            window.addEventListener('popstate', function () {
+                try { history.pushState(null, '', location.href); } catch (e) {}
+                var r = window.raScannerBack && window.raScannerBack._ref;
+                if (r) { r.invokeMethodAsync('HandleBack'); }
+            });
         })();
     </script>
 

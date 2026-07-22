@@ -1,7 +1,9 @@
 @using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
 @inject IEvents Events
 @inject IVenues Venues
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <div class="scan-app">
     @if (string.IsNullOrEmpty(_operator))
@@ -154,7 +156,27 @@
 </style>
 
 @code {
-    private const string Version = "13";
+    private const string Version = "14";
+
+    private DotNetObjectReference<TicketScanner>? _selfRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("raScannerBack.register", _selfRef);
+        }
+    }
+
+    [JSInvokable]
+    public void HandleBack()
+    {
+        if (_pendingEvent is not null) { _pendingEvent = null; StateHasChanged(); return; }
+        if (_selected is not null || _testMode) { BackToList(); StateHasChanged(); }
+    }
+
+    public void Dispose() => _selfRef?.Dispose();
 
     [Parameter] public string HelperName { get; set; } = "";
     [Parameter] public bool AllEvents { get; set; } = true;
