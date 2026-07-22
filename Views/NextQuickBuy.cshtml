@@ -23,6 +23,9 @@
         .nq-cat__name { font-weight: 700; }
         .nq-cat__price { color: #68676b; margin-left: 0.5rem; font-weight: 400; }
         .nq-cat__action { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ra-red); text-transform: uppercase; }
+        .nq-cat__note { display: block; font-size: 0.8rem; color: #68676b; margin-top: 0.15rem; }
+        .nq-cat__stock { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; color: #3f8f5c; vertical-align: middle; }
+        .nq-cat__stock.is-low { padding: 0.15rem 0.6rem; border-radius: 999px; background: #fdecea; color: #c0392b; font-weight: 700; }
         .nq-soldout { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 0.95rem; color: #68676b; }
         .nq-empty { color: #68676b; }
         .nq-more { display: inline-block; margin-top: 1.25rem; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; font-size: 0.95rem; color: var(--ra-red); text-decoration: none; }
@@ -129,6 +132,14 @@ else
                         @if (!string.IsNullOrWhiteSpace(cat.ActionText))
                         {
                             <span class="nq-cat__action">@cat.ActionText</span>
+                        }
+                        @if (cat.AvailableUntil is { } until)
+                        {
+                            <span class="nq-cat__note">verfügbar bis @until.ToString("dd.MM.yyyy")</span>
+                        }
+                        @if (cat.Remaining is { } rem)
+                        {
+                            <span class="nq-cat__stock @(rem <= 10 ? "is-low" : "")">@(rem <= 10 ? $"Nur noch {rem} verfügbar" : $"Noch {rem} verfügbar")</span>
                         }
                     </div>
                     @if (cat.Available)
