@@ -71,7 +71,7 @@ else
         <div class="alert alert-danger">@Model.Error</div>
     }
 
-    <form method="post" action="/next/buy" class="card p-4">
+    <form method="post" action="/next/buy">
         @Html.AntiForgeryToken()
         <input type="hidden" name="eventId" value="@Model.EventId" />
 
