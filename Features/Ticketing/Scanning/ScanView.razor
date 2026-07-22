@@ -158,17 +158,16 @@
     .scan-view--test { --scan-accent: #0d9488; }
 
     .scan-status {
-        display: flex; align-items: baseline; gap: 0.5rem; margin: 0.35rem 0 0.4rem;
-        padding: 0 0.15rem 0.35rem; border-bottom: 3px solid var(--scan-accent);
+        display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0 0.5rem;
+        padding: 0.65rem 0.95rem; border-radius: 12px; background: var(--scan-accent); color: #fff;
     }
     .scan-status__label {
-        font-size: 1.2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
-        color: var(--scan-accent);
+        font-size: 1.45rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #fff;
     }
-    .scan-status__who { margin-left: auto; font-size: 0.8rem; color: #777; }
+    .scan-status__who { margin-left: auto; font-size: 0.85rem; color: rgba(255,255,255,0.9); }
 
-    .qr-reader { border: 3px solid var(--scan-accent); border-radius: 12px; overflow: hidden; max-height: 42vh; }
-    .qr-reader video { max-height: calc(42vh - 6px); object-fit: cover; }
+    .qr-reader { border: 3px solid var(--scan-accent); border-radius: 12px; overflow: hidden; max-height: 54vh; }
+    .qr-reader video { max-height: calc(54vh - 6px); object-fit: cover; }
 
     .scan-cap {
         display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 0.5rem;
@@ -181,10 +180,10 @@
 
     .scan-test-hint { margin: 0.5rem 0 0.2rem; font-size: 0.85rem; color: #0d7d72; text-align: center; }
 
-    .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.6rem 0 0; }
+    .scan-actions { display: grid; grid-template-columns: 1fr; gap: 0.7rem; margin: 0.7rem 0 0; }
     .scan-action {
-        min-height: 3.4rem; padding: 0.7rem; border-radius: 12px; border: none;
-        font-size: 1.15rem; font-weight: 800; cursor: pointer; color: #fff;
+        min-height: 4.4rem; padding: 0.9rem; border-radius: 14px; border: none;
+        font-size: 1.3rem; font-weight: 800; cursor: pointer; color: #fff;
     }
     .scan-action:disabled { opacity: 0.5; cursor: default; }
     .scan-action--mode.scan-action--in { background: #1f5fbf; }
