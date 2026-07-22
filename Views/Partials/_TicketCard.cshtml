@@ -1,17 +1,20 @@
 @model RedAnts.Features.Ticketing.Tickets.TicketCardModel
 <div class="rtk-card">
-    <div class="rtk-strip">
-        <div class="rtk-tt">
-            <div class="rtk-kick">@Model.Kicker</div>
-            <div class="rtk-type">@Model.TypeLabel</div>
+    <div class="rtk-top">
+        <div class="rtk-strip">
+            <div class="rtk-tt">
+                <div class="rtk-kick">@Model.Kicker</div>
+                <div class="rtk-type">@Model.TypeLabel</div>
+            </div>
+            <img class="rtk-logo" src="/img/logo-badge.png" alt="Red Ants" />
         </div>
-        <img class="rtk-logo" src="/img/logo-badge.png" alt="Red Ants" />
+        <div class="rtk-qrwrap">
+            <div class="rtk-qr">@Html.Raw(Model.QrMarkup)</div>
+            <div class="rtk-scan @(Model.Invalid ? "rtk-scan--invalid" : "")">@(Model.ScanText ?? (Model.Invalid ? "Ticket ungültig" : "Am Eingang scannen lassen"))</div>
+        </div>
     </div>
-    <div class="rtk-qrwrap">
-        <div class="rtk-qr">@Html.Raw(Model.QrMarkup)</div>
-        <div class="rtk-scan @(Model.Invalid ? "rtk-scan--invalid" : "")">@(Model.ScanText ?? (Model.Invalid ? "Ticket ungültig" : "Am Eingang scannen lassen"))</div>
-    </div>
-    <div class="rtk-seam"><div class="rtk-dash"></div></div>
+    <div class="rtk-tear"><div class="rtk-dash"></div></div>
+    <div class="rtk-bottom">
     <div class="rtk-info">
         <div class="rtk-scope">@Model.ScopeName</div>
         @if (!string.IsNullOrEmpty(Model.DateText))
@@ -31,5 +34,6 @@
             <div class="rtk-row"><span class="rtk-k">Inhaber:in</span><span class="rtk-v">@Model.HolderName</span></div>
         }
         <div class="rtk-row"><span class="rtk-k">Ticket-Nr.</span><span class="rtk-v rtk-v--serial">@Model.Serial</span></div>
+    </div>
     </div>
 </div>
