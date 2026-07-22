@@ -5,7 +5,11 @@ body {
   background: #fff;
   color: rgb(16, 16, 16);
   -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
+.site-content { flex: 1 0 auto; }
 
 :root {
   --red:      #C8102E;
@@ -190,6 +194,7 @@ body {
 }
 
 .site-footer {
+  flex-shrink: 0;
   padding: 2rem 0;
   border-top: 1px solid #ececec;
   background: #fafafa;
