@@ -72,6 +72,14 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
         return affected > 0;
     }
 
+    public async Task<IReadOnlyList<string>> GetPendingPayrexxOrderNumbersAsync()
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        return await scope.Database.FetchAsync<string>(
+            "SELECT OrderNumber FROM Orders WHERE Status = @0 AND PayrexxGatewayId IS NOT NULL AND PayrexxGatewayId <> '' AND CreatedAt < @1 AND CreatedAt > @2",
+            (int)OrderStatus.Draft, DateTime.UtcNow.AddSeconds(-20), DateTime.UtcNow.AddHours(-24));
+    }
+
     public async Task<string> NextOrderNumberAsync()
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

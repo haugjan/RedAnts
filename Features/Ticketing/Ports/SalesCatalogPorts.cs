@@ -89,6 +89,7 @@ public interface IOrders
     Task<Order?> GetByIdAsync(int id);
     Task<Order?> GetByNumberAsync(string orderNumber);
     Task<bool> TryMarkPaidAsync(int orderId);
+    Task<IReadOnlyList<string>> GetPendingPayrexxOrderNumbersAsync();
 }
 
 public interface ISeasonAddOns
