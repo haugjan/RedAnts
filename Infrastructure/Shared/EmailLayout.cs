@@ -9,9 +9,9 @@ public static class EmailLayout
         "<style>@media only screen and (max-width:620px){" +
         ".ra-card{width:100%!important;max-width:100%!important;border-radius:0!important;border-left:0!important;border-right:0!important;}" +
         ".ra-pad{padding-left:22px!important;padding-right:22px!important;}" +
-        ".ra-body{font-size:19px!important;line-height:1.6!important;}" +
-        ".ra-greet{font-size:20px!important;}" +
-        ".ra-h1{font-size:31px!important;}" +
+        ".ra-body{font-size:17px!important;line-height:1.6!important;}" +
+        ".ra-greet{font-size:18px!important;}" +
+        ".ra-h1{font-size:28px!important;}" +
         "}</style>";
 
     private static readonly string LogoDataUri = LoadHeaderLogo();
@@ -45,7 +45,7 @@ public static class EmailLayout
 
         var greetingBlock = string.IsNullOrWhiteSpace(greeting)
             ? ""
-            : $"<p class=\"ra-greet\" style=\"margin:0 0 14px;font-size:18px;color:#101010;\">{greeting}</p>";
+            : $"<p class=\"ra-greet\" style=\"margin:0 0 14px;font-size:17px;color:#101010;\">{greeting}</p>";
 
         var detailsBlock = detailsHtml is null
             ? ""
@@ -81,10 +81,10 @@ public static class EmailLayout
                       : $"<img src=\"{logo}\" alt=\"Red Ants Winterthur\" width=\"46\" height=\"41\" style=\"width:46px;height:41px;max-width:46px;display:block;border:0;margin:0 auto;\">")}
                 </td></tr>
                 <tr><td class="ra-pad" style="padding:14px 40px 0;">
-                  <h1 class="ra-h1" style="margin:0;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:28px;line-height:1.15;">{title}</h1>
+                  <h1 class="ra-h1" style="margin:0;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:26px;line-height:1.15;">{title}</h1>
                   <div style="height:3px;width:48px;background:{Accent};margin-top:14px;"></div>
                 </td></tr>
-                <tr><td class="ra-pad ra-body" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:18px;line-height:1.65;">
+                <tr><td class="ra-pad ra-body" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:17px;line-height:1.65;">
                   {greetingBlock}
                   <div>{bodyHtml}</div>
                 </td></tr>

@@ -97,8 +97,11 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
 
     private static string HtmlToPlainText(string html)
     {
-        var text = System.Text.RegularExpressions.Regex.Replace(html, "<(br|BR)\\s*/?>", "\n");
-        text = System.Text.RegularExpressions.Regex.Replace(text, "</(p|P|tr|TR|div|DIV|h1|h2|h3)>", "\n");
+        const System.Text.RegularExpressions.RegexOptions opts =
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline;
+        var text = System.Text.RegularExpressions.Regex.Replace(html, "<(head|style|script)[^>]*>.*?</\\1>", "", opts);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "<br\\s*/?>", "\n", opts);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "</(p|tr|div|h1|h2|h3)>", "\n", opts);
         text = System.Text.RegularExpressions.Regex.Replace(text, "<[^>]+>", "");
         text = System.Net.WebUtility.HtmlDecode(text);
         text = System.Text.RegularExpressions.Regex.Replace(text, "[ \\t]+", " ");

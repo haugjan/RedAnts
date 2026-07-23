@@ -45,6 +45,7 @@ public sealed class OrderMailer(
         return InlinePreviewImages(html, images);
     }
 
+
     private async Task<(string Subject, string Html, List<EmailAttachment> Images)> BuildAsync(OrderMailModel model)
     {
         var images = new List<EmailAttachment>();
