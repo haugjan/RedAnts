@@ -24,6 +24,29 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
             return new EmailSendResult(false, "SMTP is not configured (Smtp:Host/User/Password).");
 
         var port = int.TryParse(config["Smtp:Port"], out var parsedPort) ? parsedPort : 587;
+        var message = BuildMessage(toEmail, toName, subject, htmlBody, attachments);
+
+        try
+        {
+            using var client = new SmtpClient();
+            await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cancellationToken);
+            await client.AuthenticateAsync(user, password, cancellationToken);
+            await client.SendAsync(message, cancellationToken);
+            await client.DisconnectAsync(true, cancellationToken);
+            logger.LogInformation("SMTP e-mail sent to {Recipient} (subject: {Subject}).", toEmail, subject);
+            return new EmailSendResult(true, null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "SMTP e-mail to {Recipient} failed.", toEmail);
+            return new EmailSendResult(false, ex.Message);
+        }
+    }
+
+    public MimeMessage BuildMessage(
+        string toEmail, string? toName, string subject, string htmlBody,
+        IReadOnlyList<EmailAttachment>? attachments)
+    {
         var fromEmail = config["Smtp:From"] ?? "tickets@redants.ch";
         var fromName = config["Smtp:FromName"] ?? "Red Ants Ticketing";
 
@@ -37,7 +60,7 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
 
         message.Subject = subject;
 
-        var builder = new BodyBuilder { HtmlBody = htmlBody };
+        var builder = new BodyBuilder { HtmlBody = htmlBody, TextBody = HtmlToPlainText(htmlBody) };
         if (attachments is { Count: > 0 })
         {
             foreach (var attachment in attachments)
@@ -62,26 +85,24 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
                     var inline = builder.LinkedResources.Add(
                         attachment.FileName, bytes, ContentType.Parse(attachment.ContentType));
                     inline.ContentId = attachment.ContentId;
-                    inline.ContentDisposition = new ContentDisposition(ContentDisposition.Inline);
+                    inline.ContentType.Name = null;
+                    inline.ContentDisposition = new ContentDisposition(ContentDisposition.Inline) { FileName = null };
+                    if (inline is MimePart part) part.ContentTransferEncoding = ContentEncoding.Base64;
                 }
             }
         }
         message.Body = builder.ToMessageBody();
+        return message;
+    }
 
-        try
-        {
-            using var client = new SmtpClient();
-            await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cancellationToken);
-            await client.AuthenticateAsync(user, password, cancellationToken);
-            await client.SendAsync(message, cancellationToken);
-            await client.DisconnectAsync(true, cancellationToken);
-            logger.LogInformation("SMTP e-mail sent to {Recipient} (subject: {Subject}).", toEmail, subject);
-            return new EmailSendResult(true, null);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "SMTP e-mail to {Recipient} failed.", toEmail);
-            return new EmailSendResult(false, ex.Message);
-        }
+    private static string HtmlToPlainText(string html)
+    {
+        var text = System.Text.RegularExpressions.Regex.Replace(html, "<(br|BR)\\s*/?>", "\n");
+        text = System.Text.RegularExpressions.Regex.Replace(text, "</(p|P|tr|TR|div|DIV|h1|h2|h3)>", "\n");
+        text = System.Text.RegularExpressions.Regex.Replace(text, "<[^>]+>", "");
+        text = System.Net.WebUtility.HtmlDecode(text);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "[ \\t]+", " ");
+        text = System.Text.RegularExpressions.Regex.Replace(text, "\\n{3,}", "\n\n");
+        return text.Trim();
     }
 }

@@ -166,20 +166,24 @@ public sealed class OrderMailer(
             $"<td align=\"right\" style=\"border-top:1px solid #eef0f2;padding:7px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:{valueColor};font-size:15px;font-weight:700;\">{value}</td>" +
         "</tr>";
 
+    private static string ContentIdFor(string fileName) => $"{Path.GetFileNameWithoutExtension(fileName)}@redants.ch";
+
     private string AddImageFile(List<EmailAttachment> images, string fileName)
     {
-        if (images.Any(i => i.ContentId == fileName)) return $"cid:{fileName}";
+        var cid = ContentIdFor(fileName);
+        if (images.Any(i => i.ContentId == cid)) return $"cid:{cid}";
         var path = Path.Combine(environment.WebRootPath, "img", fileName);
         if (!File.Exists(path)) return "";
-        images.Add(new EmailAttachment(fileName, Convert.ToBase64String(File.ReadAllBytes(path)), "image/png", fileName));
-        return $"cid:{fileName}";
+        images.Add(new EmailAttachment(fileName, Convert.ToBase64String(File.ReadAllBytes(path)), "image/png", cid));
+        return $"cid:{cid}";
     }
 
     private string AddQrImage(List<EmailAttachment> images, int index, string url)
     {
         var fileName = $"qr-{index}.png";
-        images.Add(new EmailAttachment(fileName, Convert.ToBase64String(qr.RenderPng(url, 10)), "image/png", fileName));
-        return $"cid:{fileName}";
+        var cid = ContentIdFor(fileName);
+        images.Add(new EmailAttachment(fileName, Convert.ToBase64String(qr.RenderPng(url, 10)), "image/png", cid));
+        return $"cid:{cid}";
     }
 
     private static string InlinePreviewImages(string html, IReadOnlyList<EmailAttachment> images)
