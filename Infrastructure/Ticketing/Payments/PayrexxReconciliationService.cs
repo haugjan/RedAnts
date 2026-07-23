@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,6 +13,7 @@ namespace RedAnts.Infrastructure.Ticketing.Payments;
 public sealed class PayrexxReconciliationService(
     IServiceScopeFactory scopeFactory,
     IHttpClientFactory httpClientFactory,
+    IServer server,
     IConfiguration config,
     ILogger<PayrexxReconciliationService> logger) : BackgroundService
 {
@@ -36,8 +39,8 @@ public sealed class PayrexxReconciliationService(
         if (string.IsNullOrWhiteSpace(config["Payrexx:Instance"]) || string.IsNullOrWhiteSpace(config["Payrexx:ApiSecret"]))
             return;
 
-        var baseUrl = config["Tickets:PublicBaseUrl"]?.TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(baseUrl)) return;
+        var webhookUrl = ResolveLoopbackWebhookUrl();
+        if (webhookUrl is null) return;
 
         IReadOnlyList<string> pending;
         using (var scope = scopeFactory.CreateScope())
@@ -55,13 +58,22 @@ public sealed class PayrexxReconciliationService(
             {
                 using var content = new FormUrlEncodedContent(
                     [new KeyValuePair<string, string>("transaction[referenceId]", orderNumber)]);
-                using var response = await client.PostAsync($"{baseUrl}/payrexx/webhook", content, cancellationToken);
+                using var response = await client.PostAsync(webhookUrl, content, cancellationToken);
             }
             catch (Exception ex)
             {
                 logger.LogDebug(ex, "Payrexx reconciliation for {Order} failed.", orderNumber);
             }
         }
+    }
+
+    private string? ResolveLoopbackWebhookUrl()
+    {
+        var address = server.Features.Get<IServerAddressesFeature>()?.Addresses.FirstOrDefault();
+        if (string.IsNullOrEmpty(address)) return null;
+        var lastColon = address.LastIndexOf(':');
+        if (lastColon < 0 || !int.TryParse(address[(lastColon + 1)..].TrimEnd('/'), out var port)) return null;
+        return $"http://127.0.0.1:{port}/payrexx/webhook";
     }
 }
 
