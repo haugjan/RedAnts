@@ -117,12 +117,12 @@
                                                         <label class="pass-addon">
                                                             <input type="checkbox" name="addOns" value="@a.Id" checked="@(a.Price == 0m)" />
                                                             <span class="pass-addon-label">@(string.IsNullOrWhiteSpace(a.LongTitle) ? a.Label : a.LongTitle)@(a.Scope == AddOnScope.PerOrder ? " (einmalig pro Bestellung)" : "")</span>
+                                                            <span class="pass-addon-price">+CHF @MoneyFormat.Amount(a.Price)</span>
                                                             @if (!string.IsNullOrWhiteSpace(a.InfoBeforePurchase))
                                                             {
                                                                 <span class="pass-addon-info" title="@a.InfoBeforePurchase" role="img" aria-label="@a.InfoBeforePurchase"
                                                                       onclick="event.preventDefault();event.stopPropagation();">&#9432;</span>
                                                             }
-                                                            <span class="pass-addon-price">+CHF @MoneyFormat.Amount(a.Price)</span>
                                                         </label>
                                                     }
                                                 </div>
@@ -195,9 +195,9 @@
         width: 4.5rem; padding: .45rem; border: 1px solid #ccc; border-radius: 4px; font: inherit;
     }
     .pass-addons { display: flex; flex-direction: column; margin: .45rem 0 .1rem; }
-    .pass-addon { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; font-size: .95rem; cursor: pointer; }
+    .pass-addon { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .7rem; padding: .3rem 0; font-size: .95rem; cursor: pointer; }
     .pass-addon input[type=checkbox] { flex: 0 0 auto; width: 1rem; height: 1rem; accent-color: #C8102E; cursor: pointer; }
-    .pass-addon-label { flex: 1 1 auto; color: #333; min-width: 0; }
+    .pass-addon-label { color: #333; }
     .pass-addon-info { flex: 0 0 auto; color: #C8102E; cursor: help; font-size: .95rem; line-height: 1; }
     .pass-addon-price { flex: 0 0 auto; font-weight: 600; color: #555; white-space: nowrap; }
     .pass-add-btn { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: 1rem; background: #C8102E; color: #fff; border: none; padding: .5rem 1.15rem; cursor: pointer; transition: background .15s; text-align: center; white-space: nowrap; }
