@@ -60,39 +60,69 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
 
         message.Subject = subject;
 
-        var builder = new BodyBuilder { HtmlBody = htmlBody, TextBody = HtmlToPlainText(htmlBody) };
+        var alternative = new MultipartAlternative
+        {
+            new TextPart("plain") { Text = HtmlToPlainText(htmlBody) },
+            new TextPart("html") { Text = htmlBody }
+        };
+
+        var inlineImages = new List<MimePart>();
+        var fileAttachments = new List<MimePart>();
         if (attachments is { Count: > 0 })
         {
             foreach (var attachment in attachments)
             {
-                byte[] bytes;
-                try
-                {
-                    bytes = Convert.FromBase64String(attachment.Base64Content);
-                }
-                catch (FormatException)
-                {
-                    logger.LogWarning("Skipped attachment {File}: invalid base64.", attachment.FileName);
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(attachment.ContentId))
-                {
-                    builder.Attachments.Add(attachment.FileName, bytes);
-                }
-                else
-                {
-                    var inline = builder.LinkedResources.Add(
-                        attachment.FileName, bytes, ContentType.Parse(attachment.ContentType));
-                    inline.ContentId = attachment.ContentId;
-                    inline.ContentType.Name = null;
-                    inline.ContentDisposition = new ContentDisposition(ContentDisposition.Inline) { FileName = null };
-                    if (inline is MimePart part) part.ContentTransferEncoding = ContentEncoding.Base64;
-                }
+                var part = BuildPart(attachment);
+                if (part is null) continue;
+                if (string.IsNullOrEmpty(attachment.ContentId)) fileAttachments.Add(part);
+                else inlineImages.Add(part);
             }
         }
-        message.Body = builder.ToMessageBody();
+
+        MimeEntity body = alternative;
+        if (inlineImages.Count > 0)
+        {
+            var related = new MultipartRelated { alternative };
+            foreach (var image in inlineImages) related.Add(image);
+            related.Root = alternative;
+            body = related;
+        }
+        if (fileAttachments.Count > 0)
+        {
+            var mixed = new Multipart("mixed") { body };
+            foreach (var file in fileAttachments) mixed.Add(file);
+            body = mixed;
+        }
+
+        message.Body = body;
         return message;
+    }
+
+    private MimePart? BuildPart(EmailAttachment attachment)
+    {
+        byte[] bytes;
+        try
+        {
+            bytes = Convert.FromBase64String(attachment.Base64Content);
+        }
+        catch (FormatException)
+        {
+            logger.LogWarning("Skipped attachment {File}: invalid base64.", attachment.FileName);
+            return null;
+        }
+
+        var isInline = !string.IsNullOrEmpty(attachment.ContentId);
+        var part = new MimePart(ContentType.Parse(attachment.ContentType))
+        {
+            Content = new MimeContent(new MemoryStream(bytes)),
+            ContentTransferEncoding = ContentEncoding.Base64,
+            ContentDisposition = new ContentDisposition(isInline ? ContentDisposition.Inline : ContentDisposition.Attachment)
+        };
+        if (isInline)
+            part.ContentId = attachment.ContentId;
+        else
+            part.FileName = attachment.FileName;
+        return part;
     }
 
     private static string HtmlToPlainText(string html)
