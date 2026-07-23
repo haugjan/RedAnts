@@ -219,7 +219,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 AmountInCents: (int)Math.Round(saved.TotalGross * 100m, MidpointRounding.AwayFromZero),
                 Currency: saved.Currency,
                 Purpose: $"Red Ants Ticketing {saved.OrderNumber}",
-                ReferenceId: saved.OrderNumber,
+                ReferenceId: $"{saved.OrderNumber}~{Guid.NewGuid().ToString("N")[..8]}",
                 SuccessUrl: $"{baseUrl}/checkout/success?t={Uri.EscapeDataString(ProtectOrder(saved.Id))}",
                 FailedUrl: $"{baseUrl}/checkout/cancel",
                 CancelUrl: $"{baseUrl}/checkout/cancel",
@@ -446,7 +446,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (string.IsNullOrWhiteSpace(reference)) reference = Request.Form["referenceId"].ToString();
         if (string.IsNullOrWhiteSpace(reference)) return Ok();
 
-        var order = await orders.GetByNumberAsync(reference.Trim());
+        var order = await orders.GetByNumberAsync(reference.Split('~', 2)[0].Trim());
         if (order is null || order.Status != OrderStatus.Draft || string.IsNullOrEmpty(order.PayrexxGatewayId))
             return Ok();
 
