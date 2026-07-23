@@ -36,21 +36,21 @@ public static class EmailLayout
 
         var greetingBlock = string.IsNullOrWhiteSpace(greeting)
             ? ""
-            : $"<p style=\"margin:0 0 14px;font-size:16px;color:#101010;\">{greeting}</p>";
+            : $"<p style=\"margin:0 0 14px;font-size:18px;color:#101010;\">{greeting}</p>";
 
         var detailsBlock = detailsHtml is null
             ? ""
             : $"""
               <tr><td style="padding:22px 40px 0;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;border-left:4px solid {Accent};border-radius:4px;">
-                  <tr><td style="padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:14px;line-height:1.6;">{detailsHtml}</td></tr>
+                  <tr><td style="padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:16px;line-height:1.6;">{detailsHtml}</td></tr>
                 </table>
               </td></tr>
               """;
 
         var noteBlock = string.IsNullOrWhiteSpace(note)
             ? ""
-            : $"""<tr><td style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#666666;font-size:13px;line-height:1.6;">{note}</td></tr>""";
+            : $"""<tr><td style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#666666;font-size:15px;line-height:1.6;">{note}</td></tr>""";
 
         return $"""
         <!DOCTYPE html>
@@ -74,7 +74,7 @@ public static class EmailLayout
                   <h1 style="margin:0;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:26px;line-height:1.15;">{title}</h1>
                   <div style="height:3px;width:48px;background:{Accent};margin-top:14px;"></div>
                 </td></tr>
-                <tr><td style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:15px;line-height:1.65;">
+                <tr><td style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:17px;line-height:1.65;">
                   {greetingBlock}
                   <div>{bodyHtml}</div>
                 </td></tr>

@@ -75,8 +75,8 @@ public sealed class OrderMailer(
         var items = string.Concat(infos.Select(info =>
             $"<p style=\"margin:0 0 10px;\">{WebUtility.HtmlEncode(info).Replace("\n", "<br>")}</p>"));
         return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:0 0 32px;background:#f5f5f5;border-left:4px solid #C8102E;border-radius:4px;\">" +
-            "<tr><td style=\"padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:14px;line-height:1.6;\">" +
-                "<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#101010;font-size:14px;margin:0 0 8px;\">Zu deinen Zusatzoptionen</div>" +
+            "<tr><td style=\"padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:16px;line-height:1.6;\">" +
+                "<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#101010;font-size:15px;margin:0 0 8px;\">Zu deinen Zusatzoptionen</div>" +
                 items +
             "</td></tr></table>";
     }
@@ -136,7 +136,7 @@ public sealed class OrderMailer(
             InfoRow("Ticket-Nr.", reference, "#14171A");
 
         var counter = total > 1
-            ? $"<div style=\"margin:0 0 6px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#888888;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;\">Ticket {index} von {total}</div>"
+            ? $"<div style=\"margin:0 0 6px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#888888;font-size:13px;text-transform:uppercase;letter-spacing:0.05em;\">Ticket {index} von {total}</div>"
             : "";
 
         return counter +
@@ -144,26 +144,26 @@ public sealed class OrderMailer(
                 $"<tr><td style=\"background:{red};padding:14px 18px 15px;\">" +
                     "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr>" +
                         "<td style=\"vertical-align:top;\">" +
-                            $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.4px;opacity:.92;\">{kicker}</div>" +
-                            $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:24px;font-weight:700;text-transform:uppercase;line-height:1;padding-top:2px;\">{typeLabel}</div>" +
+                            $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:1.4px;opacity:.92;\">{kicker}</div>" +
+                            $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:28px;font-weight:700;text-transform:uppercase;line-height:1;padding-top:2px;\">{typeLabel}</div>" +
                         "</td>" +
                         $"<td align=\"right\" style=\"vertical-align:top;\"><img src=\"{badgeCid}\" alt=\"Red Ants\" width=\"52\" height=\"52\" style=\"display:block;width:52px;height:52px;border-radius:50%;\"></td>" +
                     "</tr></table>" +
                 "</td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrCid}\" alt=\"Ticket QR\" width=\"260\" height=\"260\" style=\"display:block;margin:0 auto;max-width:100%;height:auto;\"></td></tr>" +
-                "<tr><td align=\"center\" style=\"padding:0 16px 12px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:12px;\">Am Eingang scannen lassen</td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrCid}\" alt=\"Ticket QR\" width=\"300\" height=\"300\" style=\"display:block;margin:0 auto;max-width:100%;height:auto;\"></td></tr>" +
+                "<tr><td align=\"center\" style=\"padding:0 16px 12px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:14px;\">Am Eingang scannen lassen</td></tr>" +
                 "<tr><td style=\"padding:0 12px;\"><div style=\"border-top:2px dashed #d6dade;font-size:0;line-height:0;\">&nbsp;</div></td></tr>" +
-                $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:17px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scopeName}</div></td></tr>" +
+                $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:19px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scopeName}</div></td></tr>" +
                 $"<tr><td style=\"padding:0 20px 8px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">{rows}</table></td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:6px 16px 6px;\"><a href=\"{url}\" style=\"display:inline-block;background:{red};color:#ffffff;text-decoration:none;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;font-size:14px;padding:11px 22px;border-radius:8px;\">Online-Ticket öffnen</a></td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:0 16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;font-size:12px;\"><a href=\"{url}/pdf\" style=\"color:#666666;text-decoration:underline;\">Als PDF</a></td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:6px 16px 6px;\"><a href=\"{url}\" style=\"display:inline-block;background:{red};color:#ffffff;text-decoration:none;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;font-size:15px;padding:11px 22px;border-radius:8px;\">Online-Ticket öffnen</a></td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:0 16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;font-size:13px;\"><a href=\"{url}/pdf\" style=\"color:#666666;text-decoration:underline;\">Als PDF</a></td></tr>" +
             "</table>";
     }
 
     private static string InfoRow(string key, string value, string valueColor) =>
         "<tr>" +
-            $"<td style=\"border-top:1px solid #eef0f2;padding:6px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:13px;\">{key}</td>" +
-            $"<td align=\"right\" style=\"border-top:1px solid #eef0f2;padding:6px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:{valueColor};font-size:13px;font-weight:700;\">{value}</td>" +
+            $"<td style=\"border-top:1px solid #eef0f2;padding:7px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:15px;\">{key}</td>" +
+            $"<td align=\"right\" style=\"border-top:1px solid #eef0f2;padding:7px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:{valueColor};font-size:15px;font-weight:700;\">{value}</td>" +
         "</tr>";
 
     private string AddImageFile(List<EmailAttachment> images, string fileName)
@@ -178,7 +178,7 @@ public sealed class OrderMailer(
     private string AddQrImage(List<EmailAttachment> images, int index, string url)
     {
         var fileName = $"qr-{index}.png";
-        images.Add(new EmailAttachment(fileName, Convert.ToBase64String(qr.RenderPng(url, 8)), "image/png", fileName));
+        images.Add(new EmailAttachment(fileName, Convert.ToBase64String(qr.RenderPng(url, 10)), "image/png", fileName));
         return $"cid:{fileName}";
     }
 
