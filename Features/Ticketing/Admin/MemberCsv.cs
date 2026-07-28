@@ -60,7 +60,7 @@ public static class MemberCsv
                   "Red Ants;Muster;Anna;14.05.1990\n" +
                   "Block 4;Beispiel;Ben;02.11.2009\n" +
                   "Red Ants;Nurnachname;;\n";
-        return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(csv);
+        return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
     }
 
     private static string? Cell(string[] cells, int i) =>

@@ -66,7 +66,7 @@ public static class SeasonPassCsv
                   "Sponsoren 2026;Erwachsen;;Anna;Muster;Musterweg 1;8400;Winterthur;Schweiz;anna@example.ch;079 000 00 00\n" +
                   "Sponsoren 2026;Erwachsen;Beispiel AG;;;Bahnhofstrasse 5;8400;Winterthur;Schweiz;info@beispiel.ch;\n" +
                   "Gönner;Jugend;;Ben;Beispiel;;;;;;\n";
-        return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(csv);
+        return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
     }
 
     private static string? Cell(string[] cells, int i) =>
