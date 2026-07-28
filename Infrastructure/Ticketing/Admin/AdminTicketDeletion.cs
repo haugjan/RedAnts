@@ -14,6 +14,18 @@ public sealed class AdminTicketDeletion(IScopeProvider scopeProvider) : IAdminTi
     public Task DeleteSeasonPassAsync(Guid uuid) => DeleteAsync("SeasonPasses", uuid);
     public Task DeleteMemberCardAsync(Guid uuid) => DeleteAsync("MembershipCards", uuid);
 
+    public async Task DeleteFreeEntryAsync(Guid uuid)
+    {
+        var key = uuid.ToString();
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        await db.ExecuteAsync(
+            "DELETE FROM TicketEventVisitsLogs WHERE VisitId IN (SELECT Id FROM TicketEventVisits WHERE Uuid = @0)", key);
+        await db.ExecuteAsync(
+            "DELETE FROM TicketEventFreeEntries WHERE VisitId IN (SELECT Id FROM TicketEventVisits WHERE Uuid = @0)", key);
+        await db.ExecuteAsync("DELETE FROM TicketEventVisits WHERE Uuid = @0", key);
+    }
+
     private async Task DeleteAsync(string table, Guid uuid)
     {
         var key = uuid.ToString();

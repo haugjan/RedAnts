@@ -64,6 +64,7 @@
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("inside")'>Anwesend <span class="ta-sort-ind">@Ind("inside")</span></th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -85,6 +86,12 @@
                                         <span class="ta-badge ta-badge-draft">Draussen</span>
                                     }
                                 </td>
+                                <td>
+                                    @if (Identity?.IsAdmin == true)
+                                    {
+                                        <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = entry">🗑</button>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -97,18 +104,37 @@
     }
 </section>
 
+@if (_deleteTarget is not null)
+{
+    <ConfirmDialog Title="Freien Einlass löschen"
+                   Message="@($"Freien Einlass {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+                   ConfirmLabel="Löschen"
+                   Danger="true"
+                   Busy="@_deleteBusy"
+                   Error="@_deleteError"
+                   OnConfirm="DeleteConfirmedAsync"
+                   OnCancel="CancelDelete" />
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
+
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IFreeEntryAdminReport Report { get; set; } = default!;
+    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<Event> _events = [];
     private IReadOnlyList<FreeEntryListItem> _entries = [];
+
+    private FreeEntryListItem? _deleteTarget;
+    private string? _deleteError;
+    private bool _deleteBusy;
 
     public int SelectedSeasonId { get; set; }
     public int SelectedEventId { get; set; }
@@ -159,6 +185,26 @@
             _ => _entries.OrderBy(e => e.CreatedAt),
         };
         return _sortAsc ? q : q.Reverse();
+    }
+
+    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_deleteTarget is null) return;
+        _deleteBusy = true;
+        _deleteError = null;
+        try
+        {
+            await Deletion.DeleteFreeEntryAsync(_deleteTarget.Uuid);
+            _deleteTarget = null;
+            await ReloadEntriesAsync();
+        }
+        catch
+        {
+            _deleteError = "Löschen fehlgeschlagen. Bitte erneut versuchen.";
+        }
+        finally { _deleteBusy = false; }
     }
 
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
