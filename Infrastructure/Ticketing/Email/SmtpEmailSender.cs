@@ -59,6 +59,8 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
             message.Bcc.Add(bcc);
 
         message.Subject = subject;
+        message.Headers.Add("X-Mailin-Track-Open", "0");
+        message.Headers.Add("X-Mailin-Track-Click", "0");
 
         var builder = new BodyBuilder { HtmlBody = htmlBody, TextBody = HtmlToPlainText(htmlBody) };
         if (attachments is { Count: > 0 })
