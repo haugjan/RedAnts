@@ -256,7 +256,6 @@
     protected override async Task OnInitializedAsync()
     {
         _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
-        _counts = await AdmissionReport.GetCountsByEventAsync();
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
@@ -304,6 +303,7 @@
         if (SelectedSeasonId > 0)
         {
             _events = await Events.GetBySeasonAsync(SelectedSeasonId);
+            _counts = await AdmissionReport.GetCountsByEventAsync();
             _quotas = await QuotaEditor.GetAllAsync();
             _salesQuotas = await SalesQuotaEditor.GetAllAsync();
             _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);
