@@ -82,7 +82,7 @@
                                 <td>@o.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                                 <td>
                                     <span class="ta-badge @StatusClass(o.Status)">@StatusLabel(o.Status)</span>
-                                    @{ var actions = ActionsFor(o.Status); }
+                                    @{ var actions = ActionsFor(o); }
                                     @if (actions.Length > 0)
                                     {
                                         <div class="ta-status-actions">
@@ -208,10 +208,11 @@
         };
     }
 
-    private static OrderAction[] ActionsFor(OrderStatus status) => status switch
+    private static OrderAction[] ActionsFor(OrderListItem o) => o.Status switch
     {
         OrderStatus.Draft => [OrderAction.MarkPaid, OrderAction.Cancel],
-        OrderStatus.Paid => [OrderAction.Cancel, OrderAction.Refund],
+        OrderStatus.Paid when o.TotalGross > 0m => [OrderAction.Cancel, OrderAction.Refund],
+        OrderStatus.Paid => [OrderAction.Cancel],
         _ => []
     };
 
