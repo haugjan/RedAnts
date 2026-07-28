@@ -6,4 +6,5 @@ public interface IAdminTicketDeletion
     Task DeleteFlexTicketAsync(Guid uuid);
     Task DeleteSeasonPassAsync(Guid uuid);
     Task DeleteMemberCardAsync(Guid uuid);
+    Task DeleteFreeEntryAsync(Guid uuid);
 }
