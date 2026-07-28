@@ -9,7 +9,7 @@ public static class EmailLayout
         "<style>@media only screen and (max-width:620px){" +
         ".ra-card{width:100%!important;max-width:100%!important;border-radius:0!important;border-left:0!important;border-right:0!important;}" +
         ".ra-pad{padding-left:22px!important;padding-right:22px!important;}" +
-        ".ra-body{font-size:17px!important;line-height:1.6!important;}" +
+        ".ra-body{font-size:16px!important;line-height:1.6!important;}" +
         ".ra-greet{font-size:17px!important;}" +
         ".ra-h1{font-size:27px!important;}" +
         "}</style>";
@@ -45,7 +45,7 @@ public static class EmailLayout
 
         var greetingBlock = string.IsNullOrWhiteSpace(greeting)
             ? ""
-            : $"<p class=\"ra-greet\" style=\"margin:0 0 14px;font-size:17px;color:#101010;\">{greeting}</p>";
+            : $"<p class=\"ra-greet\" style=\"margin:0 0 14px;font-size:16px;color:#101010;\">{greeting}</p>";
 
         var detailsBlock = detailsHtml is null
             ? ""
@@ -87,7 +87,7 @@ public static class EmailLayout
                   <h1 class="ra-h1" style="margin:0;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:25px;line-height:1.15;">{title}</h1>
                   <div style="height:3px;width:48px;background:{Accent};margin-top:14px;"></div>
                 </td></tr>
-                <tr><td class="ra-pad ra-body" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:17px;line-height:1.65;">
+                <tr><td class="ra-pad ra-body" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:16px;line-height:1.65;">
                   {greetingBlock}
                   <div>{bodyHtml}</div>
                 </td></tr>
