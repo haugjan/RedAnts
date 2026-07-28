@@ -9,9 +9,8 @@ public static class EmailLayout
         "<style>@media only screen and (max-width:620px){" +
         ".ra-card{width:100%!important;max-width:100%!important;border-radius:0!important;border-left:0!important;border-right:0!important;}" +
         ".ra-pad{padding-left:22px!important;padding-right:22px!important;}" +
-        ".ra-body{font-size:16px!important;line-height:1.6!important;}" +
-        ".ra-greet{font-size:17px!important;}" +
-        ".ra-h1{font-size:27px!important;}" +
+        ".ra-body{line-height:1.6!important;}" +
+        ".ra-h1{font-size:1.7em!important;}" +
         "}</style>";
 
     private static readonly string LogoDataUri = LoadHeaderLogo();
@@ -45,21 +44,21 @@ public static class EmailLayout
 
         var greetingBlock = string.IsNullOrWhiteSpace(greeting)
             ? ""
-            : $"<p class=\"ra-greet\" style=\"margin:0 0 14px;font-size:16px;color:#101010;\">{greeting}</p>";
+            : $"<p class=\"ra-greet\" style=\"margin:0 0 14px;font-size:0.95em;color:#101010;\">{greeting}</p>";
 
         var detailsBlock = detailsHtml is null
             ? ""
             : $"""
               <tr><td class="ra-pad" style="padding:22px 40px 0;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;border-left:4px solid {Accent};border-radius:4px;">
-                  <tr><td style="padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:16px;line-height:1.6;">{detailsHtml}</td></tr>
+                  <tr><td style="padding:16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:0.95em;line-height:1.6;">{detailsHtml}</td></tr>
                 </table>
               </td></tr>
               """;
 
         var noteBlock = string.IsNullOrWhiteSpace(note)
             ? ""
-            : $"""<tr><td class="ra-pad" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#666666;font-size:15px;line-height:1.6;">{note}</td></tr>""";
+            : $"""<tr><td class="ra-pad" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#666666;font-size:0.88em;line-height:1.6;">{note}</td></tr>""";
 
         return $"""
         <!DOCTYPE html>
@@ -71,7 +70,7 @@ public static class EmailLayout
           <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
           {MobileStyle}
         </head>
-        <body style="margin:0;padding:0;background:#f4f4f4;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+        <body style="margin:0;padding:0;background:#f4f4f4;font-size:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
           <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{title}</div>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f4;">
             <tr><td align="center" style="padding:32px 12px;">
@@ -84,10 +83,10 @@ public static class EmailLayout
                       : $"<img src=\"{logo}\" alt=\"Red Ants Winterthur\" width=\"46\" height=\"41\" style=\"width:46px;height:41px;max-width:46px;display:block;border:0;margin:0 auto;\">")}
                 </td></tr>
                 <tr><td class="ra-pad" style="padding:14px 40px 0;">
-                  <h1 class="ra-h1" style="margin:0;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:25px;line-height:1.15;">{title}</h1>
+                  <h1 class="ra-h1" style="margin:0;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:1.55em;line-height:1.15;">{title}</h1>
                   <div style="height:3px;width:48px;background:{Accent};margin-top:14px;"></div>
                 </td></tr>
-                <tr><td class="ra-pad ra-body" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:16px;line-height:1.65;">
+                <tr><td class="ra-pad ra-body" style="padding:18px 40px 0;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#323232;font-size:0.95em;line-height:1.65;">
                   {greetingBlock}
                   <div>{bodyHtml}</div>
                 </td></tr>
