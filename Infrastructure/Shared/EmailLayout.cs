@@ -67,13 +67,16 @@ public static class EmailLayout
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width,initial-scale=1">
+          <meta name="x-apple-disable-message-reformatting">
+          <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
           {MobileStyle}
         </head>
-        <body style="margin:0;padding:0;background:#f4f4f4;">
+        <body style="margin:0;padding:0;background:#f4f4f4;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
           <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{title}</div>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f4;">
             <tr><td align="center" style="padding:32px 12px;">
-              <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="ra-card" style="width:600px;max-width:600px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+              <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="ra-card" style="width:100%;max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
                 <tr><td style="height:6px;line-height:6px;font-size:6px;background:{Accent};">&nbsp;</td></tr>
                 <tr><td align="center" class="ra-pad" style="padding:22px 40px 6px;">
                   {(string.IsNullOrEmpty(logo)
@@ -96,6 +99,7 @@ public static class EmailLayout
                   <span style="font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:15px;">{Brand}</span>
                 </td></tr>
               </table>
+              <!--[if mso]></td></tr></table><![endif]-->
             </td></tr>
           </table>
         </body>
