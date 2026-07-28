@@ -16,6 +16,7 @@ internal static class TicketingAliases
     public const string VenueGoogleGeoId = "googleGeoId";
     public const string VenueImage = "image";
     public const string VenueDescription = "description";
+    public const string VenueArrival = "arrival";
 
     public const string AccessSecret = "accessSecret";
     public const string PublicLink = "publicLink";

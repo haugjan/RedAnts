@@ -41,6 +41,14 @@
         .evt-fact__value { font-weight: 700; font-size: 1.12rem; }
         .evt-fact__value a { color: var(--red); text-decoration: none; border-bottom: 1px solid currentColor; }
         .evt-fact__value a:hover { color: var(--red-dark); }
+        .evt-arrival { margin-top: 1.75rem; }
+        .evt-arrival__title {
+            font-family: var(--display); text-transform: uppercase;
+            font-size: 1.4rem; letter-spacing: 0.03em; margin-bottom: 0.6rem;
+        }
+        .evt-arrival__body { line-height: 1.7; font-size: 1.02rem; }
+        .evt-arrival__body p { margin-bottom: 1rem; }
+        .evt-arrival__body ul, .evt-arrival__body ol { margin: 0 0 1rem 1.25rem; }
         .evt-map { margin-top: 1.5rem; }
         .evt-map iframe { display: block; width: 100%; height: 300px; border: 0; border-radius: 6px; }
         .evt-route { display: inline-block; margin-top: 0.75rem; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 0.95rem; color: var(--red); text-decoration: none; }
@@ -234,6 +242,14 @@ else
 
             @if (venue is not null)
             {
+                var arrival = venue.Value<string>("arrival");
+                if (!string.IsNullOrWhiteSpace(arrival))
+                {
+                    <div class="evt-arrival">
+                        <h2 class="evt-arrival__title">Anreise</h2>
+                        <div class="evt-arrival__body">@Html.Raw(arrival)</div>
+                    </div>
+                }
                 var geoId = venue.Value<string>("googleGeoId")?.Trim();
                 var hasGeo = !string.IsNullOrEmpty(geoId);
                 var mapsKey = Configuration["Google:MapsEmbedApiKey"];

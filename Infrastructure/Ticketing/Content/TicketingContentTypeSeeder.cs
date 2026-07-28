@@ -51,6 +51,7 @@ public sealed class TicketingContentTypeSeeder(
             EnsureContentTypes();
             EnsurePublicPageTypes();
             EnsureEventExtraProperties();
+            EnsureVenueArrivalProperty();
             EnsureContentStructure();
             ConsolidateSaisonsNode();
             EnsureVenuePicker();
@@ -115,6 +116,7 @@ public sealed class TicketingContentTypeSeeder(
         venue.AddPropertyType(Prop(textBox, A.VenueGoogleGeoId, "Google Geo ID"), Group, GroupName);
         venue.AddPropertyType(Prop(mediaPicker, A.VenueImage, "Bild"), Group, GroupName);
         venue.AddPropertyType(Prop(richText, A.VenueDescription, "Beschreibung"), Group, GroupName);
+        venue.AddPropertyType(Prop(richText, A.VenueArrival, "Anreise"), Group, GroupName);
         AssignTemplate(venue, venueTpl);
         contentTypeService.Save(venue, SuperUser);
 
@@ -261,6 +263,19 @@ public sealed class TicketingContentTypeSeeder(
         evt.AddPropertyType(PropWithHint(boolean, A.EventTimeUnknown, "Zeit noch unbekannt", "Wenn aktiviert, wird überall nur das Datum angezeigt."), Group, GroupName);
         contentTypeService.Save(evt, SuperUser);
         logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the event type.", A.EventTimeUnknown);
+    }
+
+    private void EnsureVenueArrivalProperty()
+    {
+        var venue = contentTypeService.Get(A.VenueType);
+        if (venue is null || venue.PropertyTypeExists(A.VenueArrival)) return;
+
+        var all = dataTypeService.GetAll().ToList();
+        var textBox = all.First(d => d.EditorAlias == "Umbraco.TextBox");
+        var richText = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.RichText") ?? textBox;
+        venue.AddPropertyType(Prop(richText, A.VenueArrival, "Anreise"), Group, GroupName);
+        contentTypeService.Save(venue, SuperUser);
+        logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the venue type.", A.VenueArrival);
     }
 
     private const string ObsoleteSaisonsPromoType = "saisonsPromo";
