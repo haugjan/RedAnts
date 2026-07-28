@@ -11,6 +11,8 @@ public static class EmailLayout
         ".ra-pad{padding-left:22px!important;padding-right:22px!important;}" +
         ".ra-body{line-height:1.6!important;}" +
         ".ra-h1{font-size:1.7em!important;}" +
+        ".ra-ticket{max-width:100%!important;}" +
+        ".ra-qr{width:100%!important;max-width:340px!important;}" +
         "}</style>";
 
     private static readonly string LogoDataUri = LoadHeaderLogo();
