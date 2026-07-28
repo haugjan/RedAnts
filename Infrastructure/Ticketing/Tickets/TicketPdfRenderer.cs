@@ -38,7 +38,7 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
         {
             doc.Page(page =>
             {
-                page.Size(54, 85.6f, Unit.Millimetre);
+                page.ContinuousSize(54, Unit.Millimetre);
                 page.Margin(2.4f, Unit.Millimetre);
                 page.PageColor(PageBg);
                 page.DefaultTextStyle(t => t.FontSize(8).FontColor(Ink));
