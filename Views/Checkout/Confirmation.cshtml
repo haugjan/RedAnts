@@ -28,6 +28,15 @@
     <p class="mb-2">Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>. Du kannst die QR-Codes auch direkt hier am Eingang scannen lassen:</p>
     <p class="text-muted small mb-3">Die Bestätigungsmail kann ein paar Minuten dauern. Falls sie nicht ankommt, schau bitte auch im Spam-Ordner.</p>
 
+    @if (Model.AddOnInfoTexts.Count > 0)
+    {
+        <h2 class="h5 mb-2">Zu deinen Zusatzoptionen</h2>
+        @foreach (var info in Model.AddOnInfoTexts)
+        {
+            <div class="ra-addon-note small mb-2">@info</div>
+        }
+    }
+
     <h2 class="h5 mb-3">Deine Tickets</h2>
     <div class="ra-ticket-grid">
         @foreach (var t in Model.Tickets)
@@ -48,15 +57,6 @@
             </div>
         }
     </div>
-    @if (Model.AddOnInfoTexts.Count > 0)
-    {
-        <hr />
-        <h2 class="h5 mb-2">Zu deinen Zusatzoptionen</h2>
-        @foreach (var info in Model.AddOnInfoTexts)
-        {
-            <div class="alert alert-info small mb-2" style="white-space:pre-line;">@info</div>
-        }
-    }
 </div>
 
 <div class="mt-4">
@@ -67,4 +67,5 @@
     .ra-ticket-grid { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; background: #f4f4f5; border-radius: 14px; padding: 24px 18px; }
     .ra-ticket-cell { display: flex; flex-direction: column; align-items: center; width: 300px; max-width: 100%; }
     .ra-ticket-cell .rtk-card { --rtk-notch: #f4f4f5; }
+    .ra-addon-note { white-space: pre-line; background: #f4f4f5; border-left: 4px solid #C8102E; border-radius: 4px; padding: 12px 14px; color: #323232; }
 </style>
