@@ -152,7 +152,7 @@ public sealed class OrderMailer(
                         $"<td align=\"right\" style=\"vertical-align:top;\"><img src=\"{badgeCid}\" alt=\"Red Ants\" width=\"52\" height=\"52\" style=\"display:block;width:52px;height:52px;border-radius:50%;\"></td>" +
                     "</tr></table>" +
                 "</td></tr>" +
-                $"<tr><td align=\"center\" style=\"padding:18px 16px 4px;\"><img src=\"{qrCid}\" alt=\"Ticket QR\" width=\"300\" height=\"300\" style=\"display:block;margin:0 auto;max-width:100%;height:auto;\"></td></tr>" +
+                $"<tr><td align=\"center\" style=\"padding:18px 10px 4px;\"><img src=\"{qrCid}\" alt=\"Ticket QR\" width=\"360\" height=\"360\" style=\"display:block;margin:0 auto;width:100%;max-width:360px;height:auto;\"></td></tr>" +
                 "<tr><td align=\"center\" style=\"padding:0 16px 12px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:13px;\">Am Eingang scannen lassen</td></tr>" +
                 "<tr><td style=\"padding:0 12px;\"><div style=\"border-top:2px dashed #d6dade;font-size:0;line-height:0;\">&nbsp;</div></td></tr>" +
                 $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:18px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scopeName}</div></td></tr>" +
