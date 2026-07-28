@@ -317,15 +317,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email, addOnLines);
         }
 
-        var addOnInfos = new List<string>();
-        foreach (var group in snapshot.AddOns.GroupBy(a => a.SeasonId))
-        {
-            var byId = (await seasonAddOns.GetBySeasonAsync(group.Key)).ToDictionary(a => a.Id);
-            foreach (var a in group)
-                if (byId.TryGetValue(a.Id, out var entity) && !string.IsNullOrWhiteSpace(entity.InfoAfterPurchase))
-                    addOnInfos.Add(entity.InfoAfterPurchase!);
-        }
-        addOnInfos = addOnInfos.Distinct().ToList();
+        var addOnInfos = await BuildAddOnInfosAsync(snapshot);
 
         await mailer.SendTicketsAsync(new OrderMailModel(
             order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
@@ -400,7 +392,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             OrderNumber = found.OrderNumber,
             Email = found.BillingAddress.Email,
             AlreadyPaid = paid,
-            Tickets = paid ? await BuildOrderTicketsAsync(found) : []
+            Tickets = paid ? await BuildOrderTicketsAsync(found) : [],
+            AddOnInfoTexts = paid ? await AddOnInfosForOrderAsync(found) : []
         });
     }
 
@@ -435,6 +428,25 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             result.Add(new ConfirmationTicket(p.Uuid, n.EventName ?? "", n.CategoryName ?? "", token, (int)TicketType.SeasonPass, await SeasonDateTextAsync(p.SeasonId)));
         }
         return result;
+    }
+
+    private async Task<IReadOnlyList<string>> AddOnInfosForOrderAsync(Order order) =>
+        !string.IsNullOrEmpty(order.FulfillmentPayload)
+        && JsonSerializer.Deserialize<FulfillmentSnapshot>(order.FulfillmentPayload) is { } snapshot
+            ? await BuildAddOnInfosAsync(snapshot)
+            : [];
+
+    private async Task<List<string>> BuildAddOnInfosAsync(FulfillmentSnapshot snapshot)
+    {
+        var infos = new List<string>();
+        foreach (var group in snapshot.AddOns.GroupBy(a => a.SeasonId))
+        {
+            var byId = (await seasonAddOns.GetBySeasonAsync(group.Key)).ToDictionary(a => a.Id);
+            foreach (var a in group)
+                if (byId.TryGetValue(a.Id, out var entity) && !string.IsNullOrWhiteSpace(entity.InfoAfterPurchase))
+                    infos.Add(entity.InfoAfterPurchase!);
+        }
+        return infos.Distinct().ToList();
     }
 
     [HttpPost("/payrexx/webhook")]
