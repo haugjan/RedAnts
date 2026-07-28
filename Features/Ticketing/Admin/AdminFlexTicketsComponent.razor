@@ -280,6 +280,8 @@
 {
     <VisitsOverlay Uuid="@_visitsFor.Uuid"
                    Title="@($"Flexticket {AdminFormat.TicketNo(_visitsFor.Uuid)}")"
+                   Heading="Eventbesuch"
+                   EmptyText="Noch kein Eventbesuch."
                    OnClose="() => _visitsFor = null" />
 }
 
