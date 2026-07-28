@@ -138,8 +138,8 @@ public static class FreeEntryTypeExtensions
     {
         FreeEntryType.Player => "Spieler:in",
         FreeEntryType.Staff => "Staff",
-        FreeEntryType.Official => "Funktionär",
-        FreeEntryType.SwissUnihockeyFreeCard => "SU-Freieintritt",
+        FreeEntryType.Official => "Swissunihockey Funktionär",
+        FreeEntryType.SwissUnihockeyFreeCard => "Swissunihockey Freieintritt",
         FreeEntryType.Child => "Kind (gratis)",
         FreeEntryType.Helper => "Helfer",
         _ => type.ToString()
