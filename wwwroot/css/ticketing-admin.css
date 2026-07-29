@@ -209,10 +209,15 @@
 .ta-tier-chip:hover { border-color: var(--ta-accent); color: var(--ta-accent); }
 .ta-tier-chip.is-on { background: var(--ta-accent); border-color: var(--ta-accent); color: #fff; }
 .ta-tier-chip--promo.is-on { background: #fff3d6; border-color: #e0a92a; color: #8a5a00; }
-.ta-addon-settings-row td { border-top: 0; padding-top: 0; padding-bottom: 0.6rem; }
-.ta-addon-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; padding-left: 0.4rem; }
+.ta-subtable tr.ta-addon-main-row td { border-top: 1px solid #cfd4d9; padding-top: 0.7rem; }
+.ta-addon-settings-row td { border-top: 0; padding-top: 0; padding-bottom: 0.7rem; }
+.ta-addon-settings {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.55rem;
+    padding: 0.4rem 0.65rem;
+    background: #f4f6f8; border-left: 3px solid var(--ta-accent); border-radius: 0 5px 5px 0;
+}
 .ta-addon-settings-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ta-muted); font-weight: 700; }
-.ta-addon-settings-sep { width: 1px; align-self: stretch; min-height: 1.15rem; background: var(--ta-border); margin: 0 0.3rem; }
+.ta-addon-settings-sep { width: 1px; align-self: stretch; min-height: 1.15rem; background: #ccd2d8; margin: 0 0.3rem; }
 
 .ta-cell-address { white-space: normal; min-width: 190px; line-height: 1.4; }
 .ta-cell-address .ta-addr-name { font-weight: 600; }
