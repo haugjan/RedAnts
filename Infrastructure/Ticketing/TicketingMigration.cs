@@ -41,6 +41,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddOrderNumberSequence>("order-number-sequence");
         To<AddOutboxEmails>("outbox-emails");
         To<AddSeasonAddOnRequireMobile>("seasonaddons-require-mobile");
+        To<AddOrderAddOnDelivered>("orderaddons-delivered");
+    }
+}
+
+public class AddOrderAddOnDelivered(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("OrderAddOns", "Delivered"))
+            Alter.Table("OrderAddOns").AddColumn("Delivered").AsBoolean().NotNullable().WithDefaultValue(false).Do();
+        return Task.CompletedTask;
     }
 }
 

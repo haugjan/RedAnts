@@ -1,0 +1,201 @@
+@using RedAnts.Domain.Ticketing.Sales
+@inject IOrderAddOnAdminReport Report
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Zusatzoptionen</h1>
+
+    @if (_flash is not null)
+    {
+        <div class="ta-flash" @onclick="() => _flash = null" title="Ausblenden">@_flash</div>
+    }
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field">
+                    <label class="ta-label" for="addonSeasonSelect">Saison</label>
+                    <select id="addonSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field ta-field--grow">
+                    <label class="ta-label" for="addonSearch">Suche</label>
+                    <input id="addonSearch" type="search" class="ta-input ta-addons-search"
+                           placeholder="Besteller, E-Mail, Bestell-Nr., Zusatzoption …"
+                           @bind="_search" @bind:event="oninput" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="addonOnlyOpen">Anzeige</label>
+                    <label class="ta-check-inline">
+                        <input id="addonOnlyOpen" type="checkbox" @bind="_onlyOpen" />
+                        <span>Nur offene</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        @if (_items.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison wurden keine Zusatzoptionen bestellt.</div>
+        }
+        else
+        {
+            var shown = Filtered().ToList();
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Bestell-Nr.</th>
+                            <th>Besteller</th>
+                            <th>Kaufdatum</th>
+                            <th>Bezahlt</th>
+                            <th>Zusatzoption</th>
+                            <th>Kategorie</th>
+                            <th class="ta-num">Anzahl</th>
+                            <th class="ta-addon-delivered">Geliefert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var it in shown)
+                        {
+                            <tr class="@(it.Delivered ? "ta-row-done" : "")">
+                                <td><code class="ta-uuid">@it.OrderNumber</code></td>
+                                <td class="ta-cell-address">
+                                    <div class="ta-addr-name">@it.BuyerName</div>
+                                    <div class="ta-addr-sub">@it.Email</div>
+                                </td>
+                                <td>@it.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td><span class="ta-badge @StatusClass(it.OrderStatus)">@StatusLabel(it.OrderStatus)</span></td>
+                                <td>@it.Label</td>
+                                <td>@it.CategoryName</td>
+                                <td class="ta-num">@it.Quantity</td>
+                                <td class="ta-addon-delivered">
+                                    <label class="ta-check-inline">
+                                        <input type="checkbox" @bind="it.Delivered" @bind:after="() => PersistAsync(it)" />
+                                        <span>@(it.Delivered ? "geliefert" : "offen")</span>
+                                    </label>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (shown.Count == 0)
+            {
+                <div class="ta-placeholder">Keine Zusatzoption passt zum Filter.</div>
+            }
+            <p class="ta-summary">
+                @_items.Count(i => i.Delivered) von @_items.Count geliefert ·
+                @_items.Sum(i => i.Quantity) Stück gesamt
+            </p>
+        }
+    }
+</section>
+
+<style>
+    .ta-field--grow { flex: 1 1 18rem; }
+    .ta-addons-search { width: 100%; min-width: 14rem; }
+    .ta-check-inline { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; white-space: nowrap; }
+    .ta-row-done { opacity: 0.62; }
+    .ta-addon-delivered { white-space: nowrap; }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private List<AddOnDeliveryItem> _items = [];
+    private string _search = "";
+    private bool _onlyOpen;
+    private string? _flash;
+
+    public int SelectedSeasonId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await ReloadAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        _items = SelectedSeasonId <= 0 ? [] : (await Report.GetBySeasonAsync(SelectedSeasonId)).ToList();
+    }
+
+    private async Task PersistAsync(AddOnDeliveryItem item)
+    {
+        try
+        {
+            await Report.SetDeliveredAsync(item.Id, item.Delivered);
+            _flash = item.Delivered
+                ? $"„{item.Label}“ für {item.BuyerName} als geliefert markiert."
+                : $"„{item.Label}“ für {item.BuyerName} als offen markiert.";
+        }
+        catch (Exception ex)
+        {
+            item.Delivered = !item.Delivered;
+            _flash = "Konnte nicht gespeichert werden: " + ex.Message;
+        }
+    }
+
+    private IEnumerable<AddOnDeliveryItem> Filtered()
+    {
+        IEnumerable<AddOnDeliveryItem> q = _items;
+        if (_onlyOpen) q = q.Where(i => !i.Delivered);
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (terms.Length > 0)
+            q = q.Where(i => terms.All(t => Haystack(i).Contains(t, StringComparison.OrdinalIgnoreCase)));
+        return q;
+    }
+
+    private static string Haystack(AddOnDeliveryItem i) => string.Join(' ', new[]
+    {
+        i.OrderNumber, i.BuyerName, i.Email, i.Label, i.CategoryName, StatusLabel(i.OrderStatus)
+    });
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static string StatusLabel(OrderStatus status) => status switch
+    {
+        OrderStatus.Paid => "Bezahlt",
+        OrderStatus.Draft => "Unbezahlt",
+        OrderStatus.Cancelled => "Storniert",
+        OrderStatus.Refunded => "Erstattet",
+        _ => status.ToString()
+    };
+
+    private static string StatusClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Paid => "ta-badge-valid",
+        OrderStatus.Draft => "ta-badge-draft",
+        OrderStatus.Cancelled => "ta-badge-cancelled",
+        OrderStatus.Refunded => "ta-badge-intern",
+        _ => "ta-badge-draft"
+    };
+}

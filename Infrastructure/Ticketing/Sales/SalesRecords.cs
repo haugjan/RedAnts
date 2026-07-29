@@ -232,6 +232,7 @@ public class OrderAddOnRecord
     [Column("Label")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string Label { get; set; } = "";
     [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
     [Column("Quantity")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Quantity { get; set; }
+    [Column("Delivered")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Delivered { get; set; }
 }
 
 [TableName("OrderItems")]
