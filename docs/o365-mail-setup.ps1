@@ -1,43 +1,34 @@
 #requires -Version 7
 # ============================================================================
-#  Red Ants: Shared Mailbox tickets@ + Dienstkonto service-user-web + SMTP AUTH
+#  Red Ants: Shared Mailbox tickets@ + SMTP-AUTH-Freigabe fuer service-user-web
+#  Nur Exchange Online (kein Microsoft.Graph, um SDK-Assembly-Konflikte zu
+#  vermeiden). Das Dienstkonto wird im M365 Admin Center angelegt (Schritt 4).
 #  Einmalig als M365-Admin ausfuehren. Interaktive Anmeldung (Browser/MFA).
-#  Prueft den Zustand mit docs/o365-mail-check.ps1 gegen.
 # ============================================================================
 
 # ---------------------------- KONFIG ----------------------------------------
-$AdminUpn      = 'jan.haug@redants.ch'              # dein Admin-Login
-$SharedSmtp    = 'tickets@redants.ch'               # Shared Mailbox = Absender
-$SharedName    = 'Red Ants Ticketing'
-$SharedAlias   = 'tickets'
-$GrantUser     = 'jan.haug@redants.ch'              # bekommt Vollzugriff + SendAs
-$SvcUpn        = 'service-user-web@redants.ch'      # Dienstkonto (App-Login)
-$SvcDisplay    = 'Red Ants Web App (Service)'
-$SvcAlias      = 'service-user-web'
-$UsageLocation = 'CH'
-$LicensePref   = @('EXCHANGESTANDARD','O365_BUSINESS_ESSENTIALS','STANDARDPACK','SPB','SPE_E3')  # Wunsch-Reihenfolge
-$BackupCsv     = "$HOME\tickets-verteiler-mitglieder.csv"
+$AdminUpn   = 'jan.haug@redants.ch'                 # dein Admin-Login
+$SharedSmtp = 'tickets@redants.ch'                  # Shared Mailbox = Absender
+$SharedName = 'Red Ants Ticketing'
+$SharedAlias= 'tickets'
+$GrantUser  = 'jan.haug@redants.ch'                 # bekommt Vollzugriff + SendAs
+$SvcUpn     = 'service-user-web@redants.ch'         # Dienstkonto (App-Login)
+$BackupCsv  = "$HOME\tickets-verteiler-mitglieder.csv"
 # ----------------------------------------------------------------------------
 
 $ErrorActionPreference = 'Stop'
 
-# 0) Module + Verbindungen ----------------------------------------------------
-function Install-IfMissing([string]$Name) {
-    if (Get-Module $Name -ListAvailable) { return }
-    if (Get-Command Install-PSResource -ErrorAction SilentlyContinue) { Install-PSResource -Name $Name -Scope CurrentUser -TrustRepository }
-    else { Install-Module $Name -Scope CurrentUser -Force -AllowClobber }
+# 0) Modul + Verbindung -------------------------------------------------------
+if (-not (Get-Module ExchangeOnlineManagement -ListAvailable)) {
+    if (Get-Command Install-PSResource -ErrorAction SilentlyContinue) { Install-PSResource ExchangeOnlineManagement -Scope CurrentUser -TrustRepository }
+    else { Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber }
 }
-foreach ($m in 'ExchangeOnlineManagement','Microsoft.Graph.Users','Microsoft.Graph.Identity.DirectoryManagement') { Install-IfMissing $m }
 Import-Module ExchangeOnlineManagement
 Connect-ExchangeOnline -UserPrincipalName $AdminUpn -ShowBanner:$false
-Connect-MgGraph -Scopes 'User.ReadWrite.All','Organization.Read.All','Directory.ReadWrite.All','Policy.Read.All' -NoWelcome
 
-# Sicherheits-Check: blockieren Security Defaults legacy SMTP AUTH?
-$secDefaults = (Get-MgPolicyIdentitySecurityDefaultEnforcementPolicy).IsEnabled
-if ($secDefaults) {
-    Write-Warning "Security Defaults sind AKTIV. Damit blockiert der Tenant SMTP AUTH (Legacy-Auth)."
-    Write-Warning "Das Dienstkonto braucht danach eine Conditional-Access-Ausnahme ODER Security Defaults muessen aus."
-}
+Write-Warning "SMTP AUTH funktioniert nur, wenn 'Security Defaults' im Entra-Portal AUS sind (oder das"
+Write-Warning "Dienstkonto eine Conditional-Access-Ausnahme hat). Bitte im Entra-Admin unter"
+Write-Warning "'Identitaet > Uebersicht > Eigenschaften > Sicherheitsstandards verwalten' pruefen."
 
 # 1) Verteiler pruefen + Mitglieder sichern ----------------------------------
 $dl = Get-DistributionGroup -Identity $SharedSmtp -ErrorAction SilentlyContinue
@@ -69,44 +60,24 @@ if (-not (Get-Mailbox -Identity $SharedSmtp -ErrorAction SilentlyContinue)) {
 Add-MailboxPermission  -Identity $SharedSmtp -User $GrantUser -AccessRights FullAccess -InheritanceType All -AutoMapping $true -ErrorAction SilentlyContinue | Out-Null
 Add-RecipientPermission -Identity $SharedSmtp -Trustee $GrantUser -AccessRights SendAs -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
 Write-Host "$GrantUser hat jetzt Vollzugriff + SendAs auf $SharedSmtp." -ForegroundColor Green
-# Frueher Verteiler-Mitglieder bei Bedarf hier ebenso nachtragen:
-#   Import-Csv $BackupCsv | ForEach-Object { Add-MailboxPermission -Identity $SharedSmtp -User $_.PrimarySmtpAddress -AccessRights FullAccess -AutoMapping $true }
+# Frueher Verteiler-Mitglieder bei Bedarf ebenso nachtragen (siehe o365-mail-forwarding.ps1
+# fuer die saubere Variante ueber eine Gruppe).
 
-# 4) Dienstkonto anlegen (idempotent) + Passwort generieren ------------------
-$existing = Get-MgUser -Filter "userPrincipalName eq '$SvcUpn'" -ErrorAction SilentlyContinue
-if (-not $existing) {
-    $bytes = [byte[]]::new(18); [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-    $Password = ([Convert]::ToBase64String($bytes) -replace '[+/=]','') + 'A9!'
-    $pwProfile = @{ Password = $Password; ForceChangePasswordNextSignIn = $false }
-    New-MgUser -DisplayName $SvcDisplay -UserPrincipalName $SvcUpn -MailNickname $SvcAlias `
-               -AccountEnabled -PasswordProfile $pwProfile -UsageLocation $UsageLocation | Out-Null
-    Write-Host "Dienstkonto angelegt." -ForegroundColor Green
-    Write-Host "==================================================================" -ForegroundColor Magenta
-    Write-Host " PASSWORT fuer $SvcUpn (JETZT sicher notieren):" -ForegroundColor Magenta
-    Write-Host "   $Password" -ForegroundColor Magenta
-    Write-Host "==================================================================" -ForegroundColor Magenta
-} else {
-    Write-Host "Dienstkonto existiert bereits, Passwort unveraendert." -ForegroundColor Yellow
-    Update-MgUser -UserId $SvcUpn -UsageLocation $UsageLocation
+# 4) Dienstkonto im Admin Center anlegen (manuell, kein Graph) ---------------
+Write-Host "`n=================================================================" -ForegroundColor Magenta
+Write-Host " Jetzt im M365 Admin Center anlegen: $SvcUpn" -ForegroundColor Magenta
+Write-Host "   - Benutzer > Aktiver Benutzer > hinzufuegen"                     -ForegroundColor Magenta
+Write-Host "   - Exchange-Online-Lizenz (Plan 1 genuegt), Nutzungsort Schweiz"  -ForegroundColor Magenta
+Write-Host "   - starkes Passwort, 'Passwort bei erster Anmeldung aendern' AUS" -ForegroundColor Magenta
+Write-Host "=================================================================" -ForegroundColor Magenta
+Read-Host "Wenn $SvcUpn angelegt UND lizenziert ist, Enter druecken (Skript wartet aufs Postfach)"
+for ($i=0; $i -lt 60 -and -not (Get-Mailbox -Identity $SvcUpn -ErrorAction SilentlyContinue); $i++) {
+    Start-Sleep 10; Write-Host "  warte auf Postfach $SvcUpn (Bereitstellung dauert oft ein paar Minuten)..." -ForegroundColor DarkGray
 }
 
-# 5) Lizenz zuweisen (erste passende mit freier Kapazitaet) ------------------
-$mbEnabled = Get-MgUserLicenseDetail -UserId $SvcUpn -ErrorAction SilentlyContinue
-if (-not $mbEnabled) {
-    $skus = Get-MgSubscribedSku -All
-    Write-Host "Verfuegbare Lizenzen:" -ForegroundColor Cyan
-    $skus | Select-Object SkuPartNumber, @{n='Frei';e={$_.PrepaidUnits.Enabled - $_.ConsumedUnits}} | Format-Table -Auto
-    $sku = foreach ($p in $LicensePref) { $skus | Where-Object { $_.SkuPartNumber -eq $p -and ($_.PrepaidUnits.Enabled - $_.ConsumedUnits) -gt 0 } | Select-Object -First 1 }
-    $sku = $sku | Select-Object -First 1
-    if (-not $sku) { throw "Keine passende Lizenz mit freier Kapazitaet gefunden. Lizenz im Admin Center zuweisen und ab Schritt 6 weiter." }
-    Set-MgUserLicense -UserId $SvcUpn -AddLicenses @{ SkuId = $sku.SkuId } -RemoveLicenses @() | Out-Null
-    Write-Host "Lizenz $($sku.SkuPartNumber) zugewiesen. Warte auf Postfach-Bereitstellung (kann Minuten dauern)..." -ForegroundColor Cyan
-    for ($i=0; $i -lt 60 -and -not (Get-Mailbox -Identity $SvcUpn -ErrorAction SilentlyContinue); $i++) { Start-Sleep 10 }
-}
-
-# 6) Dienstkonto darf als tickets@ senden + SMTP AUTH aktivieren -------------
+# 5) Dienstkonto darf als tickets@ senden + SMTP AUTH aktivieren -------------
 if (-not (Get-Mailbox -Identity $SvcUpn -ErrorAction SilentlyContinue)) {
-    Write-Warning "Postfach fuer $SvcUpn noch nicht bereit. Schritt 6 spaeter erneut ausfuehren:"
+    Write-Warning "Postfach fuer $SvcUpn noch nicht bereit. Spaeter diese zwei Zeilen ausfuehren:"
     Write-Warning "  Add-RecipientPermission -Identity $SharedSmtp -Trustee $SvcUpn -AccessRights SendAs -Confirm:`$false"
     Write-Warning "  Set-CASMailbox -Identity $SvcUpn -SmtpClientAuthenticationDisabled `$false"
 } else {
@@ -115,7 +86,7 @@ if (-not (Get-Mailbox -Identity $SvcUpn -ErrorAction SilentlyContinue)) {
     Write-Host "SendAs auf $SharedSmtp + SMTP AUTH fuer $SvcUpn gesetzt." -ForegroundColor Green
 }
 
-# 7) Optional: DKIM-Signierung fuer die Domain aktivieren (DNS-CNAMEs sind da)
+# 6) Optional: DKIM-Signierung fuer die Domain aktivieren (DNS-CNAMEs sind da)
 try {
     $dkim = Get-DkimSigningConfig -Identity redants.ch -ErrorAction SilentlyContinue
     if (-not $dkim) { New-DkimSigningConfig -DomainName redants.ch -Enabled $true | Out-Null }
@@ -123,7 +94,7 @@ try {
     Write-Host "DKIM fuer redants.ch aktiv." -ForegroundColor Green
 } catch { Write-Warning "DKIM konnte nicht automatisch aktiviert werden: $($_.Exception.Message)" }
 
-# 8) Kontrolle ----------------------------------------------------------------
+# 7) Kontrolle ----------------------------------------------------------------
 Write-Host "`n--- Kontrolle ---" -ForegroundColor Cyan
 Get-Mailbox $SharedSmtp | Select-Object DisplayName,PrimarySmtpAddress,RecipientTypeDetails | Format-List
 Get-RecipientPermission $SharedSmtp | Where-Object {$_.AccessRights -contains 'SendAs'} | Select-Object Trustee,AccessRights | Format-Table -Auto

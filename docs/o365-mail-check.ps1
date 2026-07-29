@@ -1,8 +1,8 @@
 #requires -Version 7
 # ============================================================================
 #  Red Ants: Read-only Pruefung des O365-Mailversands (Shared Mailbox + SMTP).
-#  Aendert NICHTS. Zeigt pro Punkt [ OK ] / [FEHLT] / [WARN].
-#  Als M365-Admin ausfuehren (Browser/MFA fuer die Read-only-Anmeldung).
+#  Nur Exchange Online + DNS, kein Microsoft.Graph. Aendert NICHTS.
+#  Zeigt pro Punkt [ OK ] / [FEHLT] / [WARN].
 # ============================================================================
 
 # ---------------------------- KONFIG (wie im Setup) -------------------------
@@ -16,16 +16,10 @@ $SvcUpn     = 'service-user-web@redants.ch'
 $script:pass = 0; $script:fail = 0; $script:warn = 0
 function Check {
     param([string]$Label, [bool]$Ok, [string]$Detail = '', [ValidateSet('fail','warn')][string]$OnFail = 'fail')
-    if ($Ok)                 { Write-Host ("[ OK ] {0}" -f $Label) -ForegroundColor Green; $script:pass++ }
+    if ($Ok)                    { Write-Host ("[ OK ] {0}" -f $Label) -ForegroundColor Green; $script:pass++ }
     elseif ($OnFail -eq 'warn') { Write-Host ("[WARN] {0}" -f $Label) -ForegroundColor Yellow; $script:warn++ }
-    else                     { Write-Host ("[FEHLT] {0}" -f $Label) -ForegroundColor Red; $script:fail++ }
+    else                        { Write-Host ("[FEHLT] {0}" -f $Label) -ForegroundColor Red; $script:fail++ }
     if ($Detail) { Write-Host ("       {0}" -f $Detail) -ForegroundColor DarkGray }
-}
-
-# 0) Module -------------------------------------------------------------------
-Write-Host "`n== Module ==" -ForegroundColor Cyan
-foreach ($m in 'ExchangeOnlineManagement','Microsoft.Graph.Users','Microsoft.Graph.Identity.DirectoryManagement') {
-    Check "Modul $m installiert" ([bool](Get-Module $m -ListAvailable)) 'Install-Module ... -Scope CurrentUser'
 }
 
 # 1) DNS (braucht keine Anmeldung) -------------------------------------------
@@ -51,18 +45,16 @@ try {
     Check "DMARC-Record vorhanden" ([bool]($dmarc -like 'v=DMARC1*')) $dmarc 'warn'
 } catch { Check "DMARC-Record vorhanden" $false '' 'warn' }
 
-# 2) Verbindungen -------------------------------------------------------------
-Write-Host "`n== Verbindungen ==" -ForegroundColor Cyan
+# 2) Exchange-Verbindung ------------------------------------------------------
+Write-Host "`n== Exchange Online ==" -ForegroundColor Cyan
 if (-not (Get-Module ExchangeOnlineManagement -ListAvailable)) {
-    Check "Exchange Online / Graph pruefbar" $false 'Module fehlen, restliche Pruefungen uebersprungen.'
+    Check "ExchangeOnlineManagement installiert" $false 'Install-PSResource ExchangeOnlineManagement'
     Write-Host "`nErgebnis: $script:pass OK, $script:warn WARN, $script:fail FEHLT" -ForegroundColor Cyan
     return
 }
 Import-Module ExchangeOnlineManagement
 try { $null = Get-ConnectionInformation -ErrorAction Stop } catch { Connect-ExchangeOnline -UserPrincipalName $AdminUpn -ShowBanner:$false }
-if (-not (Get-MgContext)) { Connect-MgGraph -Scopes 'User.Read.All','Organization.Read.All','Policy.Read.All' -NoWelcome }
 Check "Exchange Online verbunden" ([bool](Get-ConnectionInformation))
-Check "Microsoft Graph verbunden"  ([bool](Get-MgContext))
 
 # 3) Verteiler weg? -----------------------------------------------------------
 Write-Host "`n== tickets@ Objekt ==" -ForegroundColor Cyan
@@ -83,33 +75,24 @@ if ($mb) {
     Check "$GrantUser hat SendAs"     ([bool]$saU)
 }
 
-# 6) Dienstkonto --------------------------------------------------------------
+# 6) Dienstkonto (via Exchange, kein Graph) ----------------------------------
 Write-Host "`n== Dienstkonto $SvcUpn ==" -ForegroundColor Cyan
-$svc = Get-MgUser -Filter "userPrincipalName eq '$SvcUpn'" -Property Id,DisplayName,AccountEnabled,UsageLocation -ErrorAction SilentlyContinue
-Check "Konto existiert" ([bool]$svc)
-if ($svc) {
-    Check "Konto aktiviert"            ([bool]$svc.AccountEnabled)
-    Check "Nutzungsort gesetzt"        ([bool]$svc.UsageLocation) $svc.UsageLocation 'warn'
-    $lic = Get-MgUserLicenseDetail -UserId $SvcUpn -ErrorAction SilentlyContinue
-    Check "Lizenz zugewiesen"          ([bool]$lic) (($lic.SkuPartNumber) -join ', ')
-    $svcMb = Get-Mailbox -Identity $SvcUpn -ErrorAction SilentlyContinue
-    Check "Postfach bereitgestellt"    ([bool]$svcMb) $(if (-not $svcMb) { 'Kann nach Lizenzierung einige Minuten dauern.' } else { '' })
-    if ($svcMb) {
-        $saS = Get-RecipientPermission -Identity $SharedSmtp | Where-Object { $_.Trustee -like "*$SvcUpn*" -and $_.AccessRights -contains 'SendAs' }
-        Check "Dienstkonto darf als $SharedSmtp senden (SendAs)" ([bool]$saS)
-        $cas = Get-CASMailbox -Identity $SvcUpn
-        Check "SMTP AUTH fuer Dienstkonto aktiviert" ($cas.SmtpClientAuthenticationDisabled -eq $false) "SmtpClientAuthenticationDisabled=$($cas.SmtpClientAuthenticationDisabled)"
-    }
+$svcUser = Get-User -Identity $SvcUpn -ErrorAction SilentlyContinue
+Check "Konto existiert" ([bool]$svcUser)
+$svcMb = Get-Mailbox -Identity $SvcUpn -ErrorAction SilentlyContinue
+Check "Postfach bereitgestellt (= lizenziert)" ([bool]$svcMb) $(if (-not $svcMb) { 'Konto im Admin Center anlegen + Exchange-Lizenz zuweisen (kann Minuten dauern).' } else { '' })
+if ($svcMb) {
+    $saS = Get-RecipientPermission -Identity $SharedSmtp | Where-Object { $_.Trustee -like "*$SvcUpn*" -and $_.AccessRights -contains 'SendAs' }
+    Check "Dienstkonto darf als $SharedSmtp senden (SendAs)" ([bool]$saS)
+    $cas = Get-CASMailbox -Identity $SvcUpn
+    Check "SMTP AUTH fuer Dienstkonto aktiviert" ($cas.SmtpClientAuthenticationDisabled -eq $false) "SmtpClientAuthenticationDisabled=$($cas.SmtpClientAuthenticationDisabled)"
 }
 
 # 7) Tenant-Rahmen ------------------------------------------------------------
 Write-Host "`n== Tenant / Sicherheit ==" -ForegroundColor Cyan
 $tc = Get-TransportConfig
 Check "Tenant blockiert SMTP AUTH nicht global" ($tc.SmtpClientAuthenticationDisabled -ne $true) "TransportConfig.SmtpClientAuthenticationDisabled=$($tc.SmtpClientAuthenticationDisabled) (per-Postfach ueberschreibt)" 'warn'
-try {
-    $sd = (Get-MgPolicyIdentitySecurityDefaultEnforcementPolicy).IsEnabled
-    Check "Security Defaults erlauben SMTP AUTH" (-not $sd) $(if ($sd) { 'Security Defaults AKTIV: Dienstkonto braucht Conditional-Access-Ausnahme.' } else { '' }) 'warn'
-} catch { }
+Check "Security Defaults manuell pruefen" $false "Im Entra-Portal 'Sicherheitsstandards' pruefen: bei AKTIV braucht das Dienstkonto eine Conditional-Access-Ausnahme fuer SMTP AUTH." 'warn'
 try {
     $dkim = Get-DkimSigningConfig -Identity $Domain -ErrorAction SilentlyContinue
     Check "DKIM-Signierung fuer $Domain aktiv" ([bool]($dkim.Enabled)) '' 'warn'
