@@ -36,6 +36,8 @@
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
                     Import CSV
                 </button>
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenBulk" disabled="@(_cards.Count == 0)"
+                        title="Alle Karten eines Bundles per E-Mail versenden">Karten versenden</button>
                 <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate" disabled="@(SelectedSeasonId <= 0)">
                     Mitgliederkarte erstellen
                 </button>
@@ -317,6 +319,75 @@
                     @(_savingEdit ? "Speichert …" : "Speichern")
                 </button>
             </div>
+        </div>
+    </div>
+}
+
+@if (_showBulk)
+{
+    <div class="ta-overlay" @onmousedown="CloseBulk">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Karten versenden</h2>
+
+            @if (_bulkResult is not null)
+            {
+                <div class="ta-flash">@_bulkResult.Enqueued Karte@(_bulkResult.Enqueued == 1 ? "" : "n") eingereiht@(_bulkResult.Failed > 0 ? $", {_bulkResult.Failed} fehlgeschlagen" : "").</div>
+                @if (_bulkResult.NoEmail.Count > 0)
+                {
+                    <p class="ta-hint">@_bulkResult.NoEmail.Count Karte@(_bulkResult.NoEmail.Count == 1 ? "" : "n") ohne E-Mail übersprungen:</p>
+                    <ul class="ta-warnings">
+                        @foreach (var c in _bulkResult.NoEmail)
+                        {
+                            <li>@(c.HasName ? c.HolderName : "(ohne Name)") · @AdminFormat.TicketNo(c.Uuid)</li>
+                        }
+                    </ul>
+                }
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
+                </div>
+            }
+            else if (_references.Count == 0)
+            {
+                <p class="ta-muted-text">Für diese Saison sind keine Referenzen (Bundles) vorhanden.</p>
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk">Schliessen</button>
+                </div>
+            }
+            else
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkReference">Referenz (Bundle)</label>
+                    <select id="bulkReference" class="ta-select" @bind="_bulkReference">
+                        @foreach (var r in _references)
+                        {
+                            <option value="@r">@r</option>
+                        }
+                    </select>
+                </div>
+                <p class="ta-hint">@BundleWithEmail Karte@(BundleWithEmail == 1 ? "" : "n") mit E-Mail werden versendet · @BundleWithoutEmail ohne E-Mail werden übersprungen.</p>
+
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkSubject">Betreff</label>
+                    <input id="bulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkBody">Text</label>
+                    <textarea id="bulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
+                    <p class="ta-hint">Platzhalter: {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt. QR-Code, Online-Karte und PDF-Link werden je Karte angehängt.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_bulkError))
+                {
+                    <div class="ta-modal-error">@_bulkError</div>
+                }
+
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk" disabled="@_bulkSending">Abbrechen</button>
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendBulk" disabled="@(_bulkSending || BundleWithEmail == 0)">
+                        @(_bulkSending ? "Sendet …" : $"{BundleWithEmail} Karten senden")
+                    </button>
+                </div>
+            }
         </div>
     </div>
 }
@@ -662,6 +733,68 @@
     private MemberCard ToDomain(MemberCardListItem c) => MemberCard.FromPersistence(
         0, c.Uuid, SelectedSeasonId, c.Category, null, c.Status, c.CreatedAt,
         c.FirstName, c.LastName, c.Birthday, c.Email, c.Reference);
+
+    private bool _showBulk;
+    private string _bulkReference = "";
+    private string _bulkSubject = "";
+    private string _bulkBody = "";
+    private bool _bulkSending;
+    private string? _bulkError;
+    private BulkResult? _bulkResult;
+
+    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<MemberCardListItem> NoEmail);
+
+    private List<MemberCardListItem> BundleCards() =>
+        _cards.Where(c => !c.IsCancelled && c.Reference == _bulkReference).ToList();
+
+    private int BundleWithEmail => BundleCards().Count(c => c.HasEmail);
+    private int BundleWithoutEmail => BundleCards().Count(c => !c.HasEmail);
+
+    private void OpenBulk()
+    {
+        _references = _cards
+            .Where(c => !string.IsNullOrWhiteSpace(c.Reference))
+            .Select(c => c.Reference!)
+            .Distinct()
+            .OrderBy(r => r)
+            .ToList();
+        _bulkReference = _references.FirstOrDefault() ?? "";
+        _bulkSubject = Mailer.DefaultSubject;
+        _bulkBody = Mailer.DefaultBody;
+        _bulkResult = null;
+        _bulkError = null;
+        _showBulk = true;
+    }
+
+    private void CloseBulk() { if (!_bulkSending) { _showBulk = false; _bulkError = null; _bulkResult = null; } }
+
+    private async Task SendBulk()
+    {
+        if (_bulkSending || string.IsNullOrWhiteSpace(_bulkReference)) return;
+        _bulkSending = true;
+        _bulkError = null;
+        _bulkResult = null;
+        try
+        {
+            var targets = BundleCards();
+            var noEmail = targets.Where(c => !c.HasEmail).ToList();
+            var enqueued = 0;
+            var failed = 0;
+            foreach (var c in targets.Where(c => c.HasEmail))
+            {
+                try
+                {
+                    var result = await Mailer.SendAsync(ToDomain(c), _bulkSubject, _bulkBody);
+                    if (result.Success) enqueued++;
+                    else failed++;
+                }
+                catch { failed++; }
+            }
+            _bulkResult = new BulkResult(enqueued, failed, noEmail);
+        }
+        catch (Exception ex) { _bulkError = ex.Message; }
+        finally { _bulkSending = false; }
+    }
 
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
