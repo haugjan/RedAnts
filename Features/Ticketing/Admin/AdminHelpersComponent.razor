@@ -217,8 +217,8 @@
 
             <div class="ta-modal-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseMail" disabled="@_mailSending">Schliessen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@_mailSending">
-                    @(_mailSending ? "Wird gesendet …" : "Senden")
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@(_mailSending || _mailSent)">
+                    @(_mailSent ? "Gesendet ✓" : _mailSending ? "Wird gesendet …" : "Senden")
                 </button>
             </div>
         </div>
@@ -498,15 +498,24 @@
 
     private async Task SendMail()
     {
-        if (_mailFor is null) return;
+        if (_mailFor is null || _mailSending || _mailSent) return;
         _mailSending = true;
         _mailError = null;
         _mailSent = false;
         try
         {
             var result = await InviteMailer.SendAsync(_mailFor, _mailSubject, _mailBody, LoginLink(_mailFor));
-            if (result.Success) _mailSent = true;
-            else _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
+            if (!result.Success)
+            {
+                _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
+                return;
+            }
+            _mailSent = true;
+            _mailSending = false;
+            StateHasChanged();
+            await Task.Delay(1400);
+            _mailFor = null;
+            _mailSent = false;
         }
         catch (Exception ex) { _mailError = ex.Message; }
         finally { _mailSending = false; }
