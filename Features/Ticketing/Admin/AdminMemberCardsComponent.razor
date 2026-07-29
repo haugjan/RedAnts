@@ -335,7 +335,7 @@
             <div class="ta-field">
                 <label class="ta-label" for="mcMailBody">Text</label>
                 <textarea id="mcMailBody" class="ta-input ta-textarea" @bind="_mailBody"></textarea>
-                <p class="ta-hint">Platzhalter: {Vorname}, {Nachname}, {Saison}. QR-Code, Online-Karte und PDF-Link werden automatisch angehängt.</p>
+                <p class="ta-hint">Platzhalter: {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt (**fett**, Listen mit -, [Links](https://…)). QR-Code, Online-Karte und PDF-Link werden automatisch angehängt.</p>
             </div>
 
             @if (_mailSent)

@@ -41,8 +41,7 @@ public sealed class MemberCardMailer(
         {
             var season = await seasons.FindByIdAsync(card.SeasonId);
             var resolvedSubject = Fill(subject, card, season?.Name);
-            var bodyText = WebUtility.HtmlEncode(Fill(body, card, season?.Name)).Replace("\r\n", "\n");
-            var intro = $"<p style=\"margin:0 0 20px;\">{bodyText}</p>";
+            var intro = MailMarkdown.ToHtml(Fill(body, card, season?.Name));
 
             var images = new List<EmailAttachment>();
             var html = EmailLayout.Render(resolvedSubject, intro + BuildCard(card, season, images), greeting: null,

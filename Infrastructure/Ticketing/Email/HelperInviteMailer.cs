@@ -29,7 +29,7 @@ public sealed class HelperInviteMailer(
         Helper helper, string subject, string body, string loginLink, CancellationToken cancellationToken = default)
     {
         var resolvedSubject = Fill(subject, helper, loginLink);
-        var bodyHtml = WebUtility.HtmlEncode(Fill(body, helper, loginLink)).Replace("\r\n", "\n");
+        var bodyHtml = MailMarkdown.ToHtml(Fill(body, helper, loginLink));
 
         var access =
             $"<strong>Dein Zugang</strong><br>" +

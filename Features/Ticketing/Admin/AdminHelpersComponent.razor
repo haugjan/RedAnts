@@ -203,7 +203,7 @@
             <div class="ta-field">
                 <label class="ta-label" for="mailBody">Text</label>
                 <textarea id="mailBody" class="ta-input" rows="9" @bind="_mailBody"></textarea>
-                <p class="ta-field-hint">Platzhalter: {Vorname}, {Nachname}, {Passwort}, {Link}. Zugangslink, Passwort und die PDF-Anleitung werden automatisch mitgeschickt.</p>
+                <p class="ta-field-hint">Platzhalter: {Vorname}, {Nachname}, {Passwort}, {Link}. Markdown wird unterstützt (**fett**, Listen mit -, [Links](https://…)). Zugangslink, Passwort und die PDF-Anleitung werden automatisch mitgeschickt.</p>
             </div>
 
             @if (_mailError is not null)
