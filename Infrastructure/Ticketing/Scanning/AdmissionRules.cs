@@ -1,0 +1,87 @@
+using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.Scanning;
+
+namespace RedAnts.Infrastructure.Ticketing.Scanning;
+
+public enum AdmissionVerdict { TestEmpty, TestTicket, Admit, Reject }
+
+public sealed record ScannedTicketFacts(TicketType Type, int ScopeId, TicketStatus Status);
+
+public sealed record AdmissionEvaluation(AdmissionVerdict Verdict, string? Reason = null);
+
+public static class AdmissionRules
+{
+    public const string UnknownTicket = "Unbekanntes Ticket.";
+    public const string RecordMismatch = "Ticket stimmt nicht mit dem Datensatz überein.";
+    public const string Blocked = "Ticket ist gesperrt.";
+    public const string Cancelled = "Ticket ist storniert.";
+    public const string WrongEvent = "Ticket gilt für einen anderen Anlass.";
+    public const string UnknownEvent = "Anlass unbekannt.";
+    public const string WrongSeason = "Ticket gilt für eine andere Saison.";
+    public const string FlexRedeemedElsewhere = "Flexticket wurde bereits an einem anderen Anlass eingelöst.";
+    public const string AlreadyCheckedIn = "Bereits eingecheckt.";
+    public const string NotCheckedIn = "Noch nicht eingecheckt.";
+
+    public static bool CarriesHolder(string? reason) =>
+        reason is AlreadyCheckedIn or NotCheckedIn;
+
+    public static AdmissionEvaluation Evaluate(
+        int eventId,
+        TicketType requestedType,
+        int requestedScopeId,
+        ScanMode mode,
+        bool test,
+        bool isEmptyUuid,
+        ScannedTicketFacts? ticket,
+        int? eventSeasonId,
+        int? redeemedEventId,
+        bool visitExists,
+        bool visitInside)
+    {
+        if (isEmptyUuid)
+            return new AdmissionEvaluation(AdmissionVerdict.TestEmpty);
+
+        if (ticket is null)
+            return Reject(UnknownTicket);
+
+        if (ticket.Type != requestedType || ticket.ScopeId != requestedScopeId)
+            return Reject(RecordMismatch);
+
+        if (ticket.Status != TicketStatus.Valid)
+            return Reject(ticket.Status == TicketStatus.Blocked ? Blocked : Cancelled);
+
+        if (test)
+            return new AdmissionEvaluation(AdmissionVerdict.TestTicket);
+
+        if (requestedType == TicketType.EventTicket)
+        {
+            if (requestedScopeId != eventId)
+                return Reject(WrongEvent);
+        }
+        else
+        {
+            if (eventSeasonId is null)
+                return Reject(UnknownEvent);
+            if (requestedScopeId != eventSeasonId)
+                return Reject(WrongSeason);
+        }
+
+        if (requestedType == TicketType.SeasonSingle && redeemedEventId is { } bound && bound != eventId)
+            return Reject(FlexRedeemedElsewhere);
+
+        if (mode == ScanMode.CheckIn)
+        {
+            if (visitExists && visitInside)
+                return Reject(AlreadyCheckedIn);
+            return new AdmissionEvaluation(AdmissionVerdict.Admit);
+        }
+
+        if (!visitExists || !visitInside)
+            return Reject(NotCheckedIn);
+
+        return new AdmissionEvaluation(AdmissionVerdict.Admit);
+    }
+
+    private static AdmissionEvaluation Reject(string reason) =>
+        new(AdmissionVerdict.Reject, reason);
+}

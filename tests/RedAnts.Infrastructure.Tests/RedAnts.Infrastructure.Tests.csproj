@@ -17,5 +17,8 @@
 
   <ItemGroup>
     <Compile Include="..\..\Infrastructure\Shared\LoginThemeManifest.cs" />
+    <Compile Include="..\..\Domain\Ticketing\Sales\SalesEnums.cs" />
+    <Compile Include="..\..\Features\Ticketing\Scanning\IAdmissionService.cs" />
+    <Compile Include="..\..\Infrastructure\Ticketing\Scanning\AdmissionRules.cs" />
   </ItemGroup>
 </Project>

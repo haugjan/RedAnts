@@ -28,60 +28,56 @@ public sealed class AdmissionService(
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
         var key = uuid.ToString();
+        var isEmpty = uuid == Guid.Empty;
 
-        async Task<ScanOutcome> Reject(string reason) =>
-            new(AdmissionOutcome.Rejected, type, Ref(uuid), reason, await OccAsync(db, eventId));
+        var issued = isEmpty ? null : await tickets.FindAsync(uuid);
+        var evaluable = issued is { Status: TicketStatus.Valid } && !test;
 
-        if (uuid == Guid.Empty)
-            return new ScanOutcome(AdmissionOutcome.Test, type, "TEST", null,
-                await OccAsync(db, eventId), CategoryLabel: "Scanner-Test");
+        int? eventSeasonId = null;
+        if (evaluable && type != TicketType.EventTicket)
+            eventSeasonId = (await events.FindByIdAsync(eventId))?.SeasonId;
 
-        var issued = await tickets.FindAsync(uuid);
-        if (issued is null) return await Reject("Unbekanntes Ticket.");
-        if (issued.Type != type || issued.ScopeId != scopeId)
-            return await Reject("Ticket stimmt nicht mit dem Datensatz überein.");
-        if (issued.Status != TicketStatus.Valid)
-            return await Reject(issued.Status == TicketStatus.Blocked ? "Ticket ist gesperrt." : "Ticket ist storniert.");
-
-        if (test)
-            return new ScanOutcome(AdmissionOutcome.Test, type, Ref(uuid), null,
-                await OccAsync(db, eventId), issued.CategoryName ?? issued.Category?.DisplayName(), HolderLabel(issued));
-
-        if (type == TicketType.EventTicket)
-        {
-            if (scopeId != eventId) return await Reject("Ticket gilt für einen anderen Anlass.");
-        }
-        else
-        {
-            var ev = await events.FindByIdAsync(eventId);
-            if (ev is null) return await Reject("Anlass unbekannt.");
-            if (scopeId != ev.SeasonId) return await Reject("Ticket gilt für eine andere Saison.");
-        }
-
-        if (type == TicketType.SeasonSingle)
-        {
-            var bound = await db.ExecuteScalarAsync<int?>(
+        int? redeemedEventId = null;
+        if (evaluable && type == TicketType.SeasonSingle)
+            redeemedEventId = await db.ExecuteScalarAsync<int?>(
                 "SELECT RedeemedEventId FROM SeasonSingleTickets WHERE Uuid = @0", key);
-            if (bound is { } b && b != eventId)
-                return await Reject("Flexticket wurde bereits an einem anderen Anlass eingelöst.");
+
+        var visit = evaluable
+            ? await db.FirstOrDefaultAsync<EventVisitRecord>("WHERE EventId = @0 AND TicketUuid = @1", eventId, key)
+            : null;
+
+        var facts = issued is null ? null : new ScannedTicketFacts(issued.Type, issued.ScopeId, issued.Status);
+        var evaluation = AdmissionRules.Evaluate(
+            eventId, type, scopeId, mode, test, isEmpty, facts,
+            eventSeasonId, redeemedEventId, visit is not null, visit is { IsInside: true });
+
+        var categoryLabel = issued is null ? null : issued.CategoryName ?? issued.Category?.DisplayName();
+        var holder = issued is null ? null : HolderLabel(issued);
+
+        switch (evaluation.Verdict)
+        {
+            case AdmissionVerdict.TestEmpty:
+                return new ScanOutcome(AdmissionOutcome.Test, type, "TEST", null,
+                    await OccAsync(db, eventId), CategoryLabel: "Scanner-Test");
+
+            case AdmissionVerdict.TestTicket:
+                return new ScanOutcome(AdmissionOutcome.Test, type, Ref(uuid), null,
+                    await OccAsync(db, eventId), categoryLabel, holder);
+
+            case AdmissionVerdict.Reject when evaluation.Reason == AdmissionRules.AlreadyCheckedIn && visit is not null:
+                var prior = await db.FirstOrDefaultAsync<EventVisitLogRecord>(
+                    "WHERE VisitId = @0 AND Type = @1 ORDER BY Id DESC", visit.Id, (int)VisitLogType.CheckIn);
+                return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), evaluation.Reason,
+                    await OccAsync(db, eventId), categoryLabel, holder, prior?.OccurredAt, prior?.ScannedBy);
+
+            case AdmissionVerdict.Reject:
+                var carries = AdmissionRules.CarriesHolder(evaluation.Reason);
+                return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), evaluation.Reason,
+                    await OccAsync(db, eventId), carries ? categoryLabel : null, carries ? holder : null);
         }
-
-        var categoryLabel = issued.CategoryName ?? issued.Category?.DisplayName();
-        var holder = HolderLabel(issued);
-
-        var visit = await db.FirstOrDefaultAsync<EventVisitRecord>(
-            "WHERE EventId = @0 AND TicketUuid = @1", eventId, key);
 
         if (mode == ScanMode.CheckIn)
         {
-            if (visit is { IsInside: true })
-            {
-                var prior = await db.FirstOrDefaultAsync<EventVisitLogRecord>(
-                    "WHERE VisitId = @0 AND Type = @1 ORDER BY Id DESC", visit.Id, (int)VisitLogType.CheckIn);
-                return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), "Bereits eingecheckt.",
-                    await OccAsync(db, eventId), categoryLabel, holder, prior?.OccurredAt, prior?.ScannedBy);
-            }
-
             long visitId;
             if (visit is null)
             {
@@ -113,11 +109,7 @@ public sealed class AdmissionService(
                 await OccAsync(db, eventId), categoryLabel, holder);
         }
 
-        if (visit is null || !visit.IsInside)
-            return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), "Noch nicht eingecheckt.",
-                await OccAsync(db, eventId), categoryLabel, holder);
-
-        visit.IsInside = false;
+        visit!.IsInside = false;
         await db.UpdateAsync(visit);
         await LogAsync(db, visit.Id, AdmissionOutcome.CheckedOut, scannedBy);
 
