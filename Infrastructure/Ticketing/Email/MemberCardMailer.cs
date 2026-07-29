@@ -25,9 +25,12 @@ public sealed class MemberCardMailer(
 
     public string DefaultBody =>
         "Hallo {Vorname}\n\n" +
-        "Hier ist deine persönliche Mitgliederkarte der Red Ants Winterthur. " +
-        "Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt.\n\n" +
-        "Vielen Dank für deine Unterstützung. Bis bald in der Halle!";
+        "Auch in der {Saison} profitierst du mit deiner Mitgliederkarte von exklusiven Vorteilen:\n\n" +
+        "- Freier Eintritt: Du hast kostenlosen Zutritt zu allen Heimspielen der Red Ants Rychenberg Winterthur. Zeige dazu einfach deine Mitgliederkarte an der Abendkasse.\n" +
+        "- Schutzbrille für 5 CHF: Bei Eisen Optik kannst du pro Saison eine Schutzbrille für nur 5 CHF beziehen.\n" +
+        "- 30% Rabatt bei Ochsner Sport: Du erhältst 30% Rabatt auf das gesamte Fatpipe-Sortiment.\n\n" +
+        "Wir freuen uns auf die kommende Saison mit dir.\n\n" +
+        "Sportliche Grüsse";
 
     public async Task<EmailSendResult> SendAsync(MemberCard card, string subject, string body, CancellationToken cancellationToken = default)
     {
@@ -36,11 +39,11 @@ public sealed class MemberCardMailer(
 
         try
         {
-            var resolvedSubject = Fill(subject, card);
-            var bodyText = WebUtility.HtmlEncode(Fill(body, card)).Replace("\r\n", "\n");
+            var season = await seasons.FindByIdAsync(card.SeasonId);
+            var resolvedSubject = Fill(subject, card, season?.Name);
+            var bodyText = WebUtility.HtmlEncode(Fill(body, card, season?.Name)).Replace("\r\n", "\n");
             var intro = $"<p style=\"margin:0 0 20px;\">{bodyText}</p>";
 
-            var season = await seasons.FindByIdAsync(card.SeasonId);
             var images = new List<EmailAttachment>();
             var html = EmailLayout.Render(resolvedSubject, intro + BuildCard(card, season, images), greeting: null,
                 note: "Fragen? Antworte einfach auf diese E-Mail.");
@@ -128,9 +131,10 @@ public sealed class MemberCardMailer(
         return $"cid:{cid}";
     }
 
-    private static string Fill(string text, MemberCard card) =>
+    private static string Fill(string text, MemberCard card, string? seasonName) =>
         (text ?? "")
             .Replace("{Vorname}", card.FirstName ?? "")
             .Replace("{Nachname}", card.LastName ?? "")
-            .Replace("{Name}", card.HolderName);
+            .Replace("{Name}", card.HolderName)
+            .Replace("{Saison}", seasonName ?? "");
 }
