@@ -26,9 +26,15 @@ public sealed class MemberCardMailer(
     public string DefaultBody =>
         "Hallo {Vorname}\n\n" +
         "Auch in der {Saison} profitierst du mit deiner Mitgliederkarte von exklusiven Vorteilen:\n\n" +
-        "- Freier Eintritt: Du hast kostenlosen Zutritt zu allen Heimspielen der Red Ants Rychenberg Winterthur. Zeige dazu einfach deine Mitgliederkarte an der Abendkasse.\n" +
-        "- Schutzbrille für 5 CHF: Bei Eisen Optik kannst du pro Saison eine Schutzbrille für nur 5 CHF beziehen.\n" +
-        "- 30% Rabatt bei Ochsner Sport: Du erhältst 30% Rabatt auf das gesamte Fatpipe-Sortiment.\n\n" +
+        "**Ochsner Sport Archhöfe, Winterthur**\n\n" +
+        "- 20% auf Hallenschuhe\n" +
+        "- 30% auf Fat Pipe und Blindsave Unihockey-Artikel unseres Goldsponsors Fat Pipe (Sportagon), oder mit dem Rabattcode 6y76z2fq bei sau.ch\n\n" +
+        "**Eisen Optikergeschäft AG**\n\n" +
+        "- Eine Schutzbrille pro Saison für CHF 10.-, gegen Vorweisen des Mitgliederausweises oder Angabe des Namens. Der Sehtest ist für alle im gleichen Haushalt lebenden Personen gratis.\n\n" +
+        "**Restaurant La Pergola**\n\n" +
+        "- Jeweils am Samstagmittag ein Pastamenü mit Salat und 5dl-Getränk für CHF 20.-, gegen Vorweisen des Mitgliederausweises.\n\n" +
+        "Diese Saison gibt es bei jedem L-UPL-Heimspiel beim Pausen-Gewinnspiel wieder einen Gutschein der Pizzeria La Pergola zu gewinnen. Kauf dir eine Nummer und beweise deine Treffsicherheit!\n\n" +
+        "NEU: Hast du unsere L-UPL-Matchvorschauen auf Radio Top schon gehört? Komm in die Halle und unterstütze unsere Teams an ihren Heimspielen.\n\n" +
         "Wir freuen uns auf die kommende Saison mit dir.\n\n" +
         "Sportliche Grüsse";
 
