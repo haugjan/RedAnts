@@ -42,13 +42,18 @@ if ($dl) {
     Write-Host "Keine Verteilergruppe auf $SharedSmtp gefunden, ueberspringe." -ForegroundColor Yellow
 }
 
-# 2) Shared Mailbox anlegen (idempotent) -------------------------------------
-if (-not (Get-Mailbox -Identity $SharedSmtp -ErrorAction SilentlyContinue)) {
+# 2) Shared Mailbox anlegen (idempotent, mit Kollisionspruefung) -------------
+$existingMb = Get-Mailbox -Identity $SharedSmtp -ErrorAction SilentlyContinue
+if ($existingMb -and $existingMb.RecipientTypeDetails -eq 'SharedMailbox' -and "$($existingMb.PrimarySmtpAddress)" -ieq $SharedSmtp) {
+    Write-Host "Shared Mailbox existiert bereits." -ForegroundColor Yellow
+} elseif ($existingMb) {
+    throw ("$SharedSmtp ist bereits als Adresse bei '$($existingMb.PrimarySmtpAddress)' ($($existingMb.RecipientTypeDetails)) belegt. " +
+           "Zuerst dort entfernen: Set-Mailbox '$($existingMb.PrimarySmtpAddress)' -EmailAddresses @{remove='$SharedSmtp'} " +
+           "und dieses Skript erneut ausfuehren.")
+} else {
     New-Mailbox -Shared -Name $SharedName -DisplayName $SharedName -Alias $SharedAlias -PrimarySmtpAddress $SharedSmtp | Out-Null
     Write-Host "Shared Mailbox angelegt, warte auf Bereitstellung..." -ForegroundColor Cyan
     for ($i=0; $i -lt 30 -and -not (Get-Mailbox -Identity $SharedSmtp -ErrorAction SilentlyContinue); $i++) { Start-Sleep 5 }
-} else {
-    Write-Host "Shared Mailbox existiert bereits." -ForegroundColor Yellow
 }
 
 # 3) jan.haug berechtigen (Vollzugriff + Senden als) -------------------------
