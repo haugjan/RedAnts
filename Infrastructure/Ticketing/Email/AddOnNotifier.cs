@@ -30,6 +30,7 @@ public sealed class AddOnNotifier(IEmailSender email, IConfiguration config) : I
             note: "Diese Meldung dient der manuellen Weiterverarbeitung, zum Beispiel dem Freischalten eines Livestream-Zugangs.");
 
         await email.SendAsync(recipient, "Red Ants Ticketing",
-            $"Zusatzoption bestellt – {orderNumber}", html, cancellationToken);
+            $"Zusatzoption bestellt – {orderNumber}", html, null, cancellationToken,
+            source: "Zusatzoption", reference: orderNumber);
     }
 }

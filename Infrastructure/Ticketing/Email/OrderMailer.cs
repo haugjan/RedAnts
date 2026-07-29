@@ -27,7 +27,8 @@ public sealed class OrderMailer(
         try
         {
             var (subject, html, images) = await BuildAsync(model);
-            var result = await email.SendAsync(model.ToEmail, model.ToName, subject, html, images, cancellationToken);
+            var result = await email.SendAsync(model.ToEmail, model.ToName, subject, html, images, cancellationToken,
+                source: "Bestellung", reference: model.OrderNumber);
             if (!result.Success)
                 logger.LogWarning("Ticket e-mail to {Recipient} failed: {Error}", model.ToEmail, result.Error);
             return result.Success;

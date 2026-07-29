@@ -6,6 +6,7 @@ using Umbraco.Cms.Infrastructure.Migrations;
 using Umbraco.Cms.Infrastructure.Migrations.Upgrade;
 using Umbraco.Cms.Core.Composing;
 using RedAnts.Infrastructure.Ticketing.Sales;
+using RedAnts.Infrastructure.Ticketing.Email;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
@@ -38,6 +39,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddFreeEntryFixedCounts>("freeentry-fixed-counts");
         To<AddSeasonAddOnPromoOnly>("seasonaddons-promo-only");
         To<AddOrderNumberSequence>("order-number-sequence");
+        To<AddOutboxEmails>("outbox-emails");
+    }
+}
+
+public class AddOutboxEmails(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("OutboxEmails"))
+            Create.Table<OutboxEmailRecord>().Do();
+        return Task.CompletedTask;
     }
 }
 

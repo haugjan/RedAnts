@@ -7,23 +7,21 @@ using RedAnts.Features.Ticketing.Email;
 
 namespace RedAnts.Infrastructure.Ticketing.Email;
 
-public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSender> logger) : IEmailSender
+public sealed class Office365Transport(IConfiguration config, ILogger<Office365Transport> logger) : IEmailTransport
 {
-    public Task<EmailSendResult> SendAsync(
-        string toEmail, string? toName, string subject, string htmlBody, CancellationToken cancellationToken = default)
-        => SendAsync(toEmail, toName, subject, htmlBody, null, cancellationToken);
+    public string Name => "Office365";
 
     public async Task<EmailSendResult> SendAsync(
         string toEmail, string? toName, string subject, string htmlBody,
         IReadOnlyList<EmailAttachment>? attachments, CancellationToken cancellationToken = default)
     {
-        var host = config["Smtp:Host"];
-        var user = config["Smtp:User"];
-        var password = config["Smtp:Password"];
-        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
-            return new EmailSendResult(false, "SMTP is not configured (Smtp:Host/User/Password).");
+        var host = config["Office365:Host"] ?? "smtp.office365.com";
+        var user = config["Office365:User"];
+        var password = config["Office365:Password"];
+        if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
+            return new EmailSendResult(false, "Office365 is not configured (Office365:User/Password).");
 
-        var port = int.TryParse(config["Smtp:Port"], out var parsedPort) ? parsedPort : 587;
+        var port = int.TryParse(config["Office365:Port"], out var parsedPort) ? parsedPort : 587;
         var message = BuildMessage(toEmail, toName, subject, htmlBody, attachments);
 
         try
@@ -33,28 +31,28 @@ public sealed class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSend
             await client.AuthenticateAsync(user, password, cancellationToken);
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
-            logger.LogInformation("SMTP e-mail sent to {Recipient} (subject: {Subject}).", toEmail, subject);
+            logger.LogInformation("Office365 e-mail sent to {Recipient} (subject: {Subject}).", toEmail, subject);
             return new EmailSendResult(true, null);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "SMTP e-mail to {Recipient} failed.", toEmail);
+            logger.LogWarning(ex, "Office365 e-mail to {Recipient} failed.", toEmail);
             return new EmailSendResult(false, ex.Message);
         }
     }
 
-    public MimeMessage BuildMessage(
+    private MimeMessage BuildMessage(
         string toEmail, string? toName, string subject, string htmlBody,
         IReadOnlyList<EmailAttachment>? attachments)
     {
-        var fromEmail = config["Smtp:From"] ?? "tickets@redants.ch";
-        var fromName = config["Smtp:FromName"] ?? "Red Ants Ticketing";
+        var fromEmail = config["Office365:From"] ?? config["Office365:User"] ?? "tickets@redants.ch";
+        var fromName = config["Office365:FromName"] ?? "Red Ants Ticketing";
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, fromEmail));
         message.To.Add(new MailboxAddress(toName ?? toEmail, toEmail));
 
-        var adminBcc = config["Smtp:AdminBcc"];
+        var adminBcc = config["Office365:AdminBcc"];
         if (!string.IsNullOrWhiteSpace(adminBcc) && MailboxAddress.TryParse(adminBcc, out var bcc))
             message.Bcc.Add(bcc);
 

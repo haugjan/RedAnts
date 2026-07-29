@@ -10,7 +10,18 @@ public sealed class EmailComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
-        builder.Services.AddScoped<IEmailSender, BrevoEmailSender>();
+        builder.Services.AddSingleton<OutboxSignal>();
+        builder.Services.AddScoped<IEmailSender, OutboxEnqueuer>();
+
+        builder.Services.AddScoped<OutboxRepository>();
+        builder.Services.AddScoped<IEmailOutbox>(sp => sp.GetRequiredService<OutboxRepository>());
+        builder.Services.AddScoped<IOutboxAdminReport>(sp => sp.GetRequiredService<OutboxRepository>());
+
+        builder.Services.AddScoped<IEmailTransport, BrevoEmailSender>();
+        builder.Services.AddScoped<IEmailTransport, Office365Transport>();
+        builder.Services.AddScoped<EmailTransportSelector>();
+        builder.Services.AddHostedService<OutboxDispatcher>();
+
         builder.Services.AddScoped<IHelperInviteMailer, HelperInviteMailer>();
         builder.Services.AddUnique<Umbraco.Cms.Core.Mail.IEmailSender, UmbracoEmailSenderAdapter>();
     }

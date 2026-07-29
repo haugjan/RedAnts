@@ -11,15 +11,12 @@ namespace RedAnts.Infrastructure.Ticketing.Email;
 public sealed class BrevoEmailSender(
     IConfiguration config,
     IHttpClientFactory httpClientFactory,
-    ILogger<BrevoEmailSender> logger) : IEmailSender
+    ILogger<BrevoEmailSender> logger) : IEmailTransport
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
         { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
-    public Task<EmailSendResult> SendAsync(
-        string toEmail, string? toName, string subject, string htmlBody,
-        CancellationToken cancellationToken = default)
-        => SendAsync(toEmail, toName, subject, htmlBody, null, cancellationToken);
+    public string Name => "Brevo";
 
     public async Task<EmailSendResult> SendAsync(
         string toEmail, string? toName, string subject, string htmlBody,
