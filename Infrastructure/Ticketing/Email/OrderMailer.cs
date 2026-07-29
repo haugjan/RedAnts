@@ -150,7 +150,7 @@ public sealed class OrderMailer(
                             $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:1.4px;opacity:.92;\">{kicker}</div>" +
                             $"<div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#ffffff;font-size:26px;font-weight:700;text-transform:uppercase;line-height:1;padding-top:2px;\">{typeLabel}</div>" +
                         "</td>" +
-                        $"<td align=\"right\" style=\"vertical-align:top;\"><img src=\"{badgeCid}\" alt=\"Red Ants\" width=\"52\" height=\"52\" style=\"display:block;width:52px;height:52px;border-radius:50%;\"></td>" +
+                        $"<td align=\"right\" width=\"64\" style=\"width:64px;padding-left:12px;vertical-align:top;\"><img src=\"{badgeCid}\" alt=\"Red Ants\" width=\"52\" height=\"52\" style=\"display:block;width:52px;height:52px;max-width:52px;border-radius:50%;\"></td>" +
                     "</tr></table>" +
                 "</td></tr>" +
                 $"<tr><td align=\"center\" style=\"padding:18px 10px 4px;\"><img src=\"{qrCid}\" alt=\"Ticket QR\" width=\"300\" height=\"300\" class=\"ra-qr\" style=\"display:block;margin:0 auto;width:300px;max-width:100%;height:auto;\"></td></tr>" +

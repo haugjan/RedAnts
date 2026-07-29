@@ -28,7 +28,8 @@ public sealed class EmailTestController(
             publicUrl.Resolve(),
             [
                 new(TicketType.EventTicket, Guid.Empty, 0, "Red Ants vs. UHC Beispielgegner", "Erwachsen"),
-                new(TicketType.SeasonPass, Guid.Empty, 0, "Saison 2026/27", "Erwachsen")
+                new(TicketType.SeasonPass, Guid.Empty, 0, "Saison 2026/27", "Erwachsen"),
+                new(TicketType.MemberCard, Guid.Empty, 0, "Saison 2026/27", "Block 4")
             ]);
         if (!string.IsNullOrWhiteSpace(to))
         {
