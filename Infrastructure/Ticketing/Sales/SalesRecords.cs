@@ -111,6 +111,7 @@ public class SeasonPassRecord
     [Column("CreatedByName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByName { get; set; }
     [Column("CreatedByEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByEmail { get; set; }
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
+    [Column("BuyerEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerEmail { get; set; }
 }
 
 [TableName("MembershipCards")]

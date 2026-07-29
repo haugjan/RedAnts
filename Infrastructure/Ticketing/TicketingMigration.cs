@@ -43,6 +43,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonAddOnRequireMobile>("seasonaddons-require-mobile");
         To<AddOrderAddOnDelivered>("orderaddons-delivered");
         To<AddMemberCardEmail>("membercard-email");
+        To<AddSeasonPassBuyerEmail>("seasonpass-buyer-email");
     }
 }
 
@@ -52,6 +53,16 @@ public class AddMemberCardEmail(IMigrationContext context) : AsyncMigrationBase(
     {
         if (!ColumnExists("MembershipCards", "Email"))
             Alter.Table("MembershipCards").AddColumn("Email").AsString(200).Nullable().Do();
+        return Task.CompletedTask;
+    }
+}
+
+public class AddSeasonPassBuyerEmail(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonPasses", "BuyerEmail"))
+            Alter.Table("SeasonPasses").AddColumn("BuyerEmail").AsString(200).Nullable().Do();
         return Task.CompletedTask;
     }
 }

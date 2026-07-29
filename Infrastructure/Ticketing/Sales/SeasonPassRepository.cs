@@ -35,7 +35,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             }
 
             var pass = SeasonPass.Create(seasonId, row.Category, 0m, orderId, row.Buyer,
-                createdByName, createdByEmail, row.Reference);
+                createdByName, createdByEmail, row.Reference, email: row.Address.Email);
             await SaveAsync(pass);
             created++;
         }
@@ -79,7 +79,8 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             BuyerCompany = pass.Buyer?.Company,
             CreatedByName = pass.CreatedByName,
             CreatedByEmail = pass.CreatedByEmail,
-            Reference = pass.Reference
+            Reference = pass.Reference,
+            BuyerEmail = pass.Email
         };
         if (row.Id == 0) await scope.Database.InsertAsync(row);
         else await scope.Database.UpdateAsync(row);
@@ -100,5 +101,6 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             r.CreatedByName,
             r.CreatedByEmail,
             r.Reference,
-            r.TierId);
+            r.TierId,
+            r.BuyerEmail);
 }

@@ -15,7 +15,11 @@ public sealed record SeasonPassListItem(
     string? PaymentState,
     BuyerType? BuyerType = null,
     string? CreatedByName = null,
-    string? Reference = null);
+    string? Reference = null,
+    string? Email = null)
+{
+    public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
+}
 
 public interface ISeasonPassAdminReport
 {

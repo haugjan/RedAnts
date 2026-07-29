@@ -1,10 +1,12 @@
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
 @using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Email
 @using RedAnts.Features.Ticketing.Ports
 @inject ISeasonPassAdminReport Report
 @inject ISeasonPasses Passes
 @inject IAdminOrderFactory OrderFactory
+@inject ISeasonPassMailer Mailer
 
 <section class="ta-page">
     <h1 class="ta-page-title">Saisonkarten</h1>
@@ -38,6 +40,8 @@
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenImport">
                     Import CSV
                 </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenBulk"
+                        title="Alle Karten eines Bundles per E-Mail versenden">Karten versenden</button>
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
                     Saisonkarte erstellen
                 </button>
@@ -84,6 +88,14 @@
                                         @if (p.BuyerType is { } bt) { <span class="ta-badge ta-badge-buyer">@bt.DisplayName()</span> }
                                     }
                                     else { <span class="ta-muted">—</span> }
+                                    @if (p.HasEmail)
+                                    {
+                                        <div class="ta-addr-sub">@p.Email</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-noemail" title="Keine E-Mail hinterlegt">ohne E-Mail</span>
+                                    }
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
                                 <td>@(string.IsNullOrEmpty(p.Reference) ? "–" : p.Reference)</td>
@@ -115,6 +127,7 @@
                                 <td>@(p.PaymentState ?? "–")</td>
                                 <td>@(p.OrderNumber ?? "–")</td>
                                 <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="@(p.HasEmail ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!p.HasEmail)" @onclick="() => OpenMail(p)">✉</button>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(p)">✎</button>
                                     @if (Identity.IsAdmin)
                                     {
@@ -130,6 +143,11 @@
         }
     }
 </section>
+
+<style>
+    .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .ta-textarea { min-height: 9rem; resize: vertical; font-family: inherit; line-height: 1.5; }
+</style>
 
 @if (_showCreate)
 {
@@ -185,6 +203,10 @@
                         <option value="@ps">@ps.DisplayName()</option>
                     }
                 </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newSpEmail">E-Mail (optional)</label>
+                <input id="newSpEmail" class="ta-input" type="email" maxlength="200" placeholder="für den Kartenversand" @bind="_newEmail" />
             </div>
 
             @if (_createError is not null)
@@ -258,6 +280,11 @@
                         <option value="@st">@StatusLabel(st)</option>
                     }
                 </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="editEmail">E-Mail</label>
+                <input id="editEmail" class="ta-input" type="email" maxlength="200" @bind="_editEmail" />
             </div>
 
             @if (_editError is not null)
@@ -354,6 +381,111 @@
             <div class="ta-modal-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Abbrechen</button>
                 <a class="ta-btn ta-btn-primary" href="@ExportUrl" target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showBulk)
+{
+    <div class="ta-overlay" @onmousedown="CloseBulk">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Karten versenden</h2>
+
+            @if (_bulkResult is not null)
+            {
+                <div class="ta-flash">@_bulkResult.Enqueued Karte@(_bulkResult.Enqueued == 1 ? "" : "n") eingereiht@(_bulkResult.Failed > 0 ? $", {_bulkResult.Failed} fehlgeschlagen" : "").</div>
+                @if (_bulkResult.NoEmail.Count > 0)
+                {
+                    <p class="ta-hint">@_bulkResult.NoEmail.Count Karte@(_bulkResult.NoEmail.Count == 1 ? "" : "n") ohne E-Mail übersprungen:</p>
+                    <ul class="ta-warnings">
+                        @foreach (var p in _bulkResult.NoEmail)
+                        {
+                            <li>@(p.BuyerName ?? "(ohne Name)") · @AdminFormat.TicketNo(p.Uuid)</li>
+                        }
+                    </ul>
+                }
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
+                </div>
+            }
+            else if (!Bundles().Any())
+            {
+                <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk">Schliessen</button>
+                </div>
+            }
+            else
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkBundle">Bundle</label>
+                    <select id="bulkBundle" class="ta-select" @bind="_bulkBundle">
+                        @foreach (var b in Bundles())
+                        {
+                            <option value="@b">@b</option>
+                        }
+                    </select>
+                </div>
+                <p class="ta-hint">@BundleWithEmail Karte@(BundleWithEmail == 1 ? "" : "n") mit E-Mail werden versendet · @BundleWithoutEmail ohne E-Mail werden übersprungen.</p>
+
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkSubject">Betreff</label>
+                    <input id="bulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkBody">Text</label>
+                    <textarea id="bulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
+                    <p class="ta-hint">Platzhalter: {Name}, {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt. QR-Code, Online-Karte und PDF-Link werden je Karte angehängt.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_bulkError))
+                {
+                    <div class="ta-modal-error">@_bulkError</div>
+                }
+
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk" disabled="@_bulkSending">Abbrechen</button>
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendBulk" disabled="@(_bulkSending || BundleWithEmail == 0)">
+                        @(_bulkSending ? "Sendet …" : $"{BundleWithEmail} Karten senden")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (_mailFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseMail">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarte senden</h2>
+            <p class="ta-modal-sub">@(_mailFor.BuyerName ?? AdminFormat.TicketNo(_mailFor.Uuid)) · @_mailFor.Email</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="spMailSubject">Betreff</label>
+                <input id="spMailSubject" class="ta-input" type="text" maxlength="200" @bind="_mailSubject" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="spMailBody">Text</label>
+                <textarea id="spMailBody" class="ta-input ta-textarea" @bind="_mailBody"></textarea>
+                <p class="ta-hint">Platzhalter: {Name}, {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt (**fett**, Listen mit -, [Links](https://…)). QR-Code, Online-Karte und PDF-Link werden automatisch angehängt.</p>
+            </div>
+
+            @if (_mailSent)
+            {
+                <div class="ta-flash">E-Mail wurde in den Versand gegeben.</div>
+            }
+            @if (!string.IsNullOrEmpty(_mailError))
+            {
+                <div class="ta-modal-error">@_mailError</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseMail" disabled="@_mailSending">Schliessen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@(_mailSending || _mailSent)">
+                    @(_mailSent ? "Gesendet ✓" : _mailSending ? "Sendet …" : "Senden")
+                </button>
             </div>
         </div>
     </div>
@@ -549,6 +681,7 @@
     private string _newFirstName = "";
     private string _newLastName = "";
     private string _newCompany = "";
+    private string _newEmail = "";
     private string? _createError;
 
     private void OnNewPriceChanged()
@@ -570,7 +703,7 @@
         _newPrice = 0m;
         _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
         _newBuyerType = BuyerType.Private;
-        _newFirstName = _newLastName = _newCompany = "";
+        _newFirstName = _newLastName = _newCompany = _newEmail = "";
         _createError = null;
         _showCreate = true;
     }
@@ -591,7 +724,8 @@
                 [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
                 Identity.Name, paymentSource);
             await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, order.Id,
-                buyer, Identity.Name, Identity.Email));
+                buyer, Identity.Name, Identity.Email,
+                email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim()));
             _showCreate = false;
             await ReloadPassesAsync();
         }
@@ -607,6 +741,7 @@
     private string _editFirstName = "";
     private string _editLastName = "";
     private string _editCompany = "";
+    private string _editEmail = "";
     private bool _saving;
     private string? _editError;
 
@@ -617,6 +752,7 @@
         _editPrice = decimal.Round(pass.Price, 2);
         _editStatus = pass.Status;
         _editFirstName = _editLastName = _editCompany = "";
+        _editEmail = pass.Email ?? "";
         _editBuyerType = BuyerType.Private;
 
         var current = await Passes.GetByUuidAsync(pass.Uuid);
@@ -644,6 +780,7 @@
 
             pass.Edit(_editCategory, _editPrice, _editStatus);
             pass.SetBuyer(Buyer.Create(_editBuyerType, _editFirstName, _editLastName, _editCompany));
+            pass.SetEmail(_editEmail);
             await Passes.SaveAsync(pass);
 
             _editing = null;
@@ -651,5 +788,112 @@
         }
         catch (DomainException ex) { _editError = ex.Message; }
         finally { _saving = false; }
+    }
+
+    private SeasonPassListItem? _mailFor;
+    private string _mailSubject = "";
+    private string _mailBody = "";
+    private bool _mailSending;
+    private bool _mailSent;
+    private string? _mailError;
+
+    private void OpenMail(SeasonPassListItem p)
+    {
+        _mailFor = p;
+        _mailSubject = Mailer.DefaultSubject;
+        _mailBody = Mailer.DefaultBody;
+        _mailSent = false;
+        _mailError = null;
+    }
+
+    private void CloseMail() { if (!_mailSending) { _mailFor = null; _mailError = null; _mailSent = false; } }
+
+    private async Task SendMail()
+    {
+        if (_mailFor is null || _mailSending || _mailSent) return;
+        _mailSending = true;
+        _mailError = null;
+        _mailSent = false;
+        try
+        {
+            var result = await SendToAsync(_mailFor, _mailSubject, _mailBody);
+            if (!result.Success)
+            {
+                _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
+                return;
+            }
+            _mailSent = true;
+            _mailSending = false;
+            StateHasChanged();
+            await Task.Delay(1400);
+            _mailFor = null;
+            _mailSent = false;
+        }
+        catch (Exception ex) { _mailError = ex.Message; }
+        finally { _mailSending = false; }
+    }
+
+    private async Task<EmailSendResult> SendToAsync(SeasonPassListItem item, string subject, string body)
+    {
+        var pass = await Passes.GetByUuidAsync(item.Uuid);
+        if (pass is null) return new EmailSendResult(false, "Diese Saisonkarte wurde nicht gefunden.");
+        if (string.IsNullOrWhiteSpace(pass.Email)) pass.SetEmail(item.Email);
+        return await Mailer.SendAsync(pass, item.CategoryName, subject, body);
+    }
+
+    private bool _showBulk;
+    private string _bulkBundle = "";
+    private string _bulkSubject = "";
+    private string _bulkBody = "";
+    private bool _bulkSending;
+    private string? _bulkError;
+    private BulkResult? _bulkResult;
+
+    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<SeasonPassListItem> NoEmail);
+
+    private List<SeasonPassListItem> BundleCards() =>
+        _passes.Where(p => p.Status != TicketStatus.Cancelled && p.Reference == _bulkBundle).ToList();
+
+    private int BundleWithEmail => BundleCards().Count(p => p.HasEmail);
+    private int BundleWithoutEmail => BundleCards().Count(p => !p.HasEmail);
+
+    private void OpenBulk()
+    {
+        _bulkBundle = Bundles().FirstOrDefault() ?? "";
+        _bulkSubject = Mailer.DefaultSubject;
+        _bulkBody = Mailer.DefaultBody;
+        _bulkResult = null;
+        _bulkError = null;
+        _showBulk = true;
+    }
+
+    private void CloseBulk() { if (!_bulkSending) { _showBulk = false; _bulkError = null; _bulkResult = null; } }
+
+    private async Task SendBulk()
+    {
+        if (_bulkSending || string.IsNullOrWhiteSpace(_bulkBundle)) return;
+        _bulkSending = true;
+        _bulkError = null;
+        _bulkResult = null;
+        try
+        {
+            var targets = BundleCards();
+            var noEmail = targets.Where(p => !p.HasEmail).ToList();
+            var enqueued = 0;
+            var failed = 0;
+            foreach (var p in targets.Where(p => p.HasEmail))
+            {
+                try
+                {
+                    var result = await SendToAsync(p, _bulkSubject, _bulkBody);
+                    if (result.Success) enqueued++;
+                    else failed++;
+                }
+                catch { failed++; }
+            }
+            _bulkResult = new BulkResult(enqueued, failed, noEmail);
+        }
+        catch (Exception ex) { _bulkError = ex.Message; }
+        finally { _bulkSending = false; }
     }
 }
