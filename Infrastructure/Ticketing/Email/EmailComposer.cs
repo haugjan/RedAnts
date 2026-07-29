@@ -17,7 +17,6 @@ public sealed class EmailComposer : IComposer
         builder.Services.AddScoped<IEmailOutbox>(sp => sp.GetRequiredService<OutboxRepository>());
         builder.Services.AddScoped<IOutboxAdminReport>(sp => sp.GetRequiredService<OutboxRepository>());
 
-        builder.Services.AddScoped<IEmailTransport, Office365Transport>();
         builder.Services.AddScoped<IEmailTransport, GraphEmailTransport>();
         builder.Services.AddScoped<EmailTransportSelector>();
         builder.Services.AddHostedService<OutboxDispatcher>();

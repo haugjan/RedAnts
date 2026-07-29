@@ -30,14 +30,14 @@ public sealed class GraphEmailTransport(
         var tenantId = config["Graph:TenantId"];
         var clientId = config["Graph:ClientId"];
         var clientSecret = config["Graph:ClientSecret"];
-        var sender = config["Graph:Sender"] ?? config["Office365:From"] ?? "tickets@redants.ch";
+        var sender = config["Graph:Sender"] ?? "tickets@redants.ch";
         var saveToSent = string.Equals(config["Graph:SaveToSentItems"], "true", StringComparison.OrdinalIgnoreCase);
 
         if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
             return new EmailSendResult(false, "Graph is not configured (Graph:TenantId/ClientId/ClientSecret).");
 
         var token = await GetTokenAsync(tenantId, clientId, clientSecret, cancellationToken);
-        if (token is null) return new EmailSendResult(false, "Graph token acquisition failed.");
+        if (token is null) return new EmailSendResult(false, "Graph token acquisition failed (Client-Secret abgelaufen oder ungültig? In Entra erneuern).");
 
         var payload = BuildPayload(toEmail, toName, subject, htmlBody, attachments, saveToSent);
 

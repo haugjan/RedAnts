@@ -1,8 +1,15 @@
 @using RedAnts.Features.Ticketing.Email
+@using System.Globalization
 @inject IOutboxAdminReport Report
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 
 <section class="ta-page">
     <h1 class="ta-page-title">E-Mails</h1>
+
+    @if (_secretWarning is not null)
+    {
+        <div class="ta-secret-warning @(_secretExpired ? "ta-secret-warning--expired" : "")">@_secretWarning</div>
+    }
 
     @if (_flash is not null)
     {
@@ -106,6 +113,8 @@
 <style>
     .ta-checkbox-label { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; color: var(--ta-ink); cursor: pointer; }
     .ta-checkbox-label input { width: 1rem; height: 1rem; }
+    .ta-secret-warning { margin: 0 0 1rem; padding: 0.7rem 1rem; border-radius: 4px; border: 1px solid #e0b400; background: #fff8e1; color: #7a5c00; font-size: 0.9rem; }
+    .ta-secret-warning--expired { border-color: #d02d38; background: #fdecee; color: #a11722; font-weight: 600; }
 </style>
 
 @code {
@@ -114,6 +123,8 @@
     private bool _loading = true;
     private bool _includeSent;
     private string? _flash;
+    private string? _secretWarning;
+    private bool _secretExpired;
     private IReadOnlyList<OutboxEntry> _entries = [];
 
     private int OpenCount => _entries.Count(e => e.Status is OutboxStatus.Pending or OutboxStatus.Sending);
@@ -122,8 +133,29 @@
 
     protected override async Task OnInitializedAsync()
     {
+        ComputeSecretWarning();
         await ReloadAsync();
         _loading = false;
+    }
+
+    private void ComputeSecretWarning()
+    {
+        var raw = Config["Graph:ClientSecretExpires"];
+        if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)) return;
+
+        var days = (int)Math.Floor((expires.Date - DateTime.UtcNow.Date).TotalDays);
+        if (days < 0)
+        {
+            _secretExpired = true;
+            _secretWarning = $"Das Graph Client-Secret ist am {expires:dd.MM.yyyy} abgelaufen. Der E-Mail-Versand ist gestört. " +
+                             "Bitte in Entra ein neues Secret für die App 'Red Ants Web App' erstellen, in den App-Settings hinterlegen und Graph:ClientSecretExpires aktualisieren.";
+        }
+        else if (days <= 30)
+        {
+            _secretWarning = $"Das Graph Client-Secret läuft am {expires:dd.MM.yyyy} ab (in {days} Tagen). " +
+                             "Bitte rechtzeitig in Entra erneuern und Graph:ClientSecretExpires aktualisieren.";
+        }
     }
 
     private async Task ReloadAsync()

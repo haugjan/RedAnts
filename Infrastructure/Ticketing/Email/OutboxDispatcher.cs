@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,6 +22,8 @@ public sealed class OutboxDispatcher(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        LogSecretExpiryIfNear();
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -110,6 +113,19 @@ public sealed class OutboxDispatcher(
         {
             logger.LogWarning(ex, "Outbox purge failed.");
         }
+    }
+
+    private void LogSecretExpiryIfNear()
+    {
+        var raw = config["Graph:ClientSecretExpires"];
+        if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)) return;
+
+        var days = (int)Math.Floor((expires.Date - DateTime.UtcNow.Date).TotalDays);
+        if (days < 0)
+            logger.LogError("Graph client secret expired on {Date:yyyy-MM-dd}. E-mail sending fails until it is renewed.", expires);
+        else if (days <= 30)
+            logger.LogWarning("Graph client secret expires on {Date:yyyy-MM-dd} (in {Days} days). Renew it in Entra.", expires, days);
     }
 
     private static HashSet<string> SplitSentVia(string? sentVia) =>
