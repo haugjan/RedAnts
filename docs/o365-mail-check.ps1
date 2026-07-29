@@ -6,7 +6,7 @@
 # ============================================================================
 
 # ---------------------------- KONFIG (wie im Setup) -------------------------
-$AdminUpn   = 'DEIN-ADMIN@redants.ch'
+$AdminUpn   = 'jan.haug@redants.ch'
 $Domain     = 'redants.ch'
 $SharedSmtp = 'tickets@redants.ch'
 $GrantUser  = 'jan.haug@redants.ch'

@@ -6,7 +6,7 @@
 # ============================================================================
 
 # ---------------------------- KONFIG ----------------------------------------
-$AdminUpn      = 'DEIN-ADMIN@redants.ch'            # dein Admin-Login
+$AdminUpn      = 'jan.haug@redants.ch'              # dein Admin-Login
 $SharedSmtp    = 'tickets@redants.ch'               # Shared Mailbox = Absender
 $SharedName    = 'Red Ants Ticketing'
 $SharedAlias   = 'tickets'
