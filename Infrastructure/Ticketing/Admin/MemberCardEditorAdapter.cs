@@ -10,12 +10,12 @@ namespace RedAnts.Infrastructure.Ticketing.Admin;
 public sealed class MemberCardEditorAdapter(IScopeProvider scopeProvider) : IMemberCardEditor
 {
     public async Task SetDetailsAsync(Guid uuid, string? firstName, string? lastName, DateOnly? birthday,
-        MemberCategory category, TicketStatus status, string? reference)
+        MemberCategory category, TicketStatus status, string? reference, string? email = null)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await scope.Database.ExecuteAsync(
             "UPDATE MembershipCards SET FirstName = @0, LastName = @1, Birthday = @2, " +
-            "Category = @3, Status = @4, Reference = @5 WHERE Uuid = @6",
+            "Category = @3, Status = @4, Reference = @5, Email = @6 WHERE Uuid = @7",
             (object[])new object?[]
             {
                 string.IsNullOrWhiteSpace(firstName) ? null : firstName.Trim(),
@@ -24,6 +24,7 @@ public sealed class MemberCardEditorAdapter(IScopeProvider scopeProvider) : IMem
                 (int)category,
                 (int)status,
                 string.IsNullOrWhiteSpace(reference) ? null : reference.Trim(),
+                string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
                 uuid.ToString()
             });
     }

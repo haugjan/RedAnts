@@ -2,7 +2,7 @@ using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Features.Ticketing.Ports;
 
-public sealed record MemberImportRow(MemberCategory Category, string? LastName, string? FirstName, DateOnly? Birthday);
+public sealed record MemberImportRow(MemberCategory Category, string? LastName, string? FirstName, DateOnly? Birthday, string? Email = null);
 
 public interface IMemberCards
 {
@@ -10,7 +10,7 @@ public interface IMemberCards
         string? createdByName = null, string? createdByEmail = null);
 
     Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,
-        DateOnly? birthday, string reference, string? createdByName = null, string? createdByEmail = null);
+        DateOnly? birthday, string reference, string? email = null, string? createdByName = null, string? createdByEmail = null);
 
     Task<bool> ReferenceExistsAsync(int seasonId, string reference);
 

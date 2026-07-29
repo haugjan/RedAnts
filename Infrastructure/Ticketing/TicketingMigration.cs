@@ -42,6 +42,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddOutboxEmails>("outbox-emails");
         To<AddSeasonAddOnRequireMobile>("seasonaddons-require-mobile");
         To<AddOrderAddOnDelivered>("orderaddons-delivered");
+        To<AddMemberCardEmail>("membercard-email");
+    }
+}
+
+public class AddMemberCardEmail(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("MembershipCards", "Email"))
+            Alter.Table("MembershipCards").AddColumn("Email").AsString(200).Nullable().Do();
+        return Task.CompletedTask;
     }
 }
 

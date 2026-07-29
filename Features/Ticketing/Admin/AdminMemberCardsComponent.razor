@@ -75,6 +75,7 @@
                                     @if (c.HasName) { @c.HolderName }
                                     else { <span class="ta-muted">(ohne Name)</span> }
                                     @if (c.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
+                                    @if (!c.HasEmail) { <span class="ta-noemail" title="Keine E-Mail hinterlegt">ohne E-Mail</span> }
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(c.CreatedAt, c.CreatedByName, null, null)">@AdminFormat.CreatedShort(c.CreatedAt, c.CreatedByName, null)</td>
                                 <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
@@ -111,6 +112,10 @@
     }
 </section>
 
+<style>
+    .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+</style>
+
 @if (_showCreate)
 {
     <div class="ta-overlay" @onmousedown="CloseCreate">
@@ -142,6 +147,10 @@
             <div class="ta-field">
                 <label class="ta-label" for="newMcReference">Referenz</label>
                 <input id="newMcReference" class="ta-input" type="text" maxlength="100" placeholder="Eindeutig pro Saison" @bind="_newReference" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcEmail">E-Mail (optional)</label>
+                <input id="newMcEmail" class="ta-input" type="email" maxlength="200" placeholder="für den Kartenversand" @bind="_newEmail" />
             </div>
 
             @if (!string.IsNullOrEmpty(_createError))
@@ -214,7 +223,7 @@
                 <label class="ta-label">CSV-Datei</label>
                 <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
                 <p class="ta-hint">
-                    Spalten: Kategorie (Red Ants / Block 4), Name, Vorname, Geburtsdatum (dd.MM.yyyy). Fehlende Angaben ausser der Referenz sind erlaubt.
+                    Spalten: Kategorie (Red Ants / Block 4), Name, Vorname, Geburtsdatum (dd.MM.yyyy), E-Mail. Fehlende Angaben ausser der Referenz sind erlaubt.
                     <a href="/admin/members/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
             </div>
@@ -281,6 +290,10 @@
             <div class="ta-field">
                 <label class="ta-label" for="editReference">Referenz</label>
                 <input id="editReference" class="ta-input" type="text" maxlength="100" @bind="_editReference" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editEmail">E-Mail</label>
+                <input id="editEmail" class="ta-input" type="email" maxlength="200" @bind="_editEmail" />
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="editStatus">Status</label>
@@ -402,12 +415,13 @@
     private string _newLastName = "";
     private DateOnly? _newBirthday;
     private string _newReference = "";
+    private string _newEmail = "";
     private string? _createError;
 
     private void OpenCreate()
     {
         _newCategory = MemberCategory.RedAnts;
-        _newFirstName = _newLastName = _newReference = "";
+        _newFirstName = _newLastName = _newReference = _newEmail = "";
         _newBirthday = null;
         _createError = null;
         _showCreate = true;
@@ -426,7 +440,9 @@
             var first = string.IsNullOrWhiteSpace(_newFirstName) ? null : _newFirstName;
             var last = string.IsNullOrWhiteSpace(_newLastName) ? null : _newLastName;
             await Members.CreateAsync(SelectedSeasonId, _newCategory, first, last,
-                _newBirthday, _newReference.Trim(), Identity.Name, Identity.Email);
+                _newBirthday, _newReference.Trim(),
+                email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim(),
+                createdByName: Identity.Name, createdByEmail: Identity.Email);
             _showCreate = false;
             await ReloadCardsAsync();
         }
@@ -520,6 +536,7 @@
     private DateOnly? _editBirthday;
     private MemberCategory _editCategory;
     private string _editReference = "";
+    private string _editEmail = "";
     private TicketStatus _editStatus;
     private bool _savingEdit;
     private string? _editError;
@@ -532,6 +549,7 @@
         _editBirthday = c.Birthday;
         _editCategory = c.Category;
         _editReference = c.Reference ?? "";
+        _editEmail = c.Email ?? "";
         _editStatus = c.Status;
         _editError = null;
     }
@@ -546,7 +564,7 @@
         try
         {
             await MemberEditor.SetDetailsAsync(_editing.Uuid, _editFirstName, _editLastName, _editBirthday,
-                _editCategory, _editStatus, _editReference);
+                _editCategory, _editStatus, _editReference, _editEmail);
             _editing = null;
             await ReloadCardsAsync();
         }

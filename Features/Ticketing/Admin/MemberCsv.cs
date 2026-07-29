@@ -29,6 +29,7 @@ public static class MemberCsv
             var last = Cell(cells, 1);
             var first = Cell(cells, 2);
             var birthdayCell = Cell(cells, 3);
+            var email = Cell(cells, 4);
 
             if (lineNo == 1 && IsHeader(categoryCell, last, first, birthdayCell)) continue;
 
@@ -49,17 +50,17 @@ public static class MemberCsv
                     warnings.Add($"Zeile {lineNo}: Geburtsdatum „{birthdayCell}“ nicht erkannt, wird leer übernommen.");
             }
 
-            rows.Add(new MemberImportRow(category.Value, last, first, birthday));
+            rows.Add(new MemberImportRow(category.Value, last, first, birthday, email));
         }
         return new MemberCsvResult(rows, warnings);
     }
 
     public static byte[] SampleBytes()
     {
-        var csv = "Kategorie;Name;Vorname;Geburtsdatum\n" +
-                  "Red Ants;Muster;Anna;14.05.1990\n" +
-                  "Block 4;Beispiel;Ben;02.11.2009\n" +
-                  "Red Ants;Nurnachname;;\n";
+        var csv = "Kategorie;Name;Vorname;Geburtsdatum;E-Mail\n" +
+                  "Red Ants;Muster;Anna;14.05.1990;anna.muster@example.com\n" +
+                  "Block 4;Beispiel;Ben;02.11.2009;ben.beispiel@example.com\n" +
+                  "Red Ants;Nurnachname;;;\n";
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
     }
 

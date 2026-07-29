@@ -20,7 +20,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         foreach (var row in rows)
         {
             var card = MemberCard.Create(seasonId, row.Category, row.FirstName, row.LastName, row.Birthday,
-                reference, createdByName: createdByName, createdByEmail: createdByEmail);
+                email: row.Email, reference: reference, createdByName: createdByName, createdByEmail: createdByEmail);
             await InsertAsync(scope.Database, card);
             created++;
         }
@@ -28,7 +28,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
     }
 
     public async Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,
-        DateOnly? birthday, string reference, string? createdByName = null, string? createdByEmail = null)
+        DateOnly? birthday, string reference, string? email = null, string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         var reff = (reference ?? "").Trim();
@@ -36,8 +36,8 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         if (await ReferenceExistsAsync(seasonId, reff))
             throw new DomainException($"Die Referenz „{reff}“ ist in dieser Saison bereits vergeben.");
 
-        var card = MemberCard.Create(seasonId, category, firstName, lastName, birthday, reff,
-            createdByName: createdByName, createdByEmail: createdByEmail);
+        var card = MemberCard.Create(seasonId, category, firstName, lastName, birthday,
+            email: email, reference: reff, createdByName: createdByName, createdByEmail: createdByEmail);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await InsertAsync(scope.Database, card);
@@ -91,6 +91,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         r.FirstName,
         r.LastName,
         r.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
+        r.Email,
         r.Reference,
         r.CreatedByName,
         r.CreatedByEmail);
@@ -106,6 +107,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         FirstName = card.FirstName,
         LastName = card.LastName,
         Birthday = card.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : null,
+        Email = card.Email,
         Reference = card.Reference,
         CreatedByName = card.CreatedByName,
         CreatedByEmail = card.CreatedByEmail

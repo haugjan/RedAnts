@@ -33,6 +33,7 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             c.CreatedAt,
             visits.GetValueOrDefault(c.Uuid ?? ""),
             c.Reference,
+            c.Email,
             c.CreatedByName)).ToList();
     }
 

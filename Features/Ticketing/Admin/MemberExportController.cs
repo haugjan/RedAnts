@@ -26,7 +26,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
 
         var baseUrl = publicUrl.Resolve();
         var sb = new StringBuilder();
-        sb.Append("Name;Vorname;Geburtsdatum;Link\r\n");
+        sb.Append("Name;Vorname;Geburtsdatum;E-Mail;Link\r\n");
         foreach (var card in cards)
         {
             var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
@@ -37,6 +37,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
             sb.Append(Csv(card.LastName)).Append(';')
               .Append(Csv(card.FirstName)).Append(';')
               .Append(Csv(birthday)).Append(';')
+              .Append(Csv(card.Email)).Append(';')
               .Append(Csv(url)).Append("\r\n");
         }
 

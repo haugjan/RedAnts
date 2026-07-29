@@ -12,10 +12,12 @@ public sealed record MemberCardListItem(
     DateTime CreatedAt,
     int EventVisits,
     string? Reference,
+    string? Email = null,
     string? CreatedByName = null)
 {
     public string HolderName => $"{FirstName} {LastName}".Trim();
     public bool HasName => !string.IsNullOrWhiteSpace(FirstName) || !string.IsNullOrWhiteSpace(LastName);
+    public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
     public string CategoryLabel => Category.DisplayName();
     public bool IsCancelled => Status == TicketStatus.Cancelled;
 }
