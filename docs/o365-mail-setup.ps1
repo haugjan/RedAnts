@@ -22,9 +22,12 @@ $BackupCsv     = "$HOME\tickets-verteiler-mitglieder.csv"
 $ErrorActionPreference = 'Stop'
 
 # 0) Module + Verbindungen ----------------------------------------------------
-foreach ($m in 'ExchangeOnlineManagement','Microsoft.Graph.Users','Microsoft.Graph.Identity.DirectoryManagement') {
-    if (-not (Get-Module $m -ListAvailable)) { Install-Module $m -Scope CurrentUser -Force }
+function Install-IfMissing([string]$Name) {
+    if (Get-Module $Name -ListAvailable) { return }
+    if (Get-Command Install-PSResource -ErrorAction SilentlyContinue) { Install-PSResource -Name $Name -Scope CurrentUser -TrustRepository }
+    else { Install-Module $Name -Scope CurrentUser -Force -AllowClobber }
 }
+foreach ($m in 'ExchangeOnlineManagement','Microsoft.Graph.Users','Microsoft.Graph.Identity.DirectoryManagement') { Install-IfMissing $m }
 Import-Module ExchangeOnlineManagement
 Connect-ExchangeOnline -UserPrincipalName $AdminUpn -ShowBanner:$false
 Connect-MgGraph -Scopes 'User.ReadWrite.All','Organization.Read.All','Directory.ReadWrite.All','Policy.Read.All' -NoWelcome

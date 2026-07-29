@@ -19,7 +19,10 @@ $BackupCsv  = "$HOME\tickets-verteiler-mitglieder.csv"       # vom Setup-Skript 
 
 $ErrorActionPreference = 'Stop'
 
-if (-not (Get-Module ExchangeOnlineManagement -ListAvailable)) { Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force }
+if (-not (Get-Module ExchangeOnlineManagement -ListAvailable)) {
+    if (Get-Command Install-PSResource -ErrorAction SilentlyContinue) { Install-PSResource ExchangeOnlineManagement -Scope CurrentUser -TrustRepository }
+    else { Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber }
+}
 Import-Module ExchangeOnlineManagement
 try { $null = Get-ConnectionInformation -ErrorAction Stop } catch { Connect-ExchangeOnline -UserPrincipalName $AdminUpn -ShowBanner:$false }
 
