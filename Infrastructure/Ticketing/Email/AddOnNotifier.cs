@@ -13,7 +13,7 @@ public sealed class AddOnNotifier(IEmailSender email, IConfiguration config) : I
         if (lines.Count == 0) return;
 
         var recipient = config["Ticketing:AdminEmail"]
-            ?? config["Brevo:SenderEmail"]
+            ?? config["Graph:Sender"]
             ?? "tickets@redants.ch";
 
         var rows = string.Join("\n", lines.Select(l =>

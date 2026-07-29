@@ -7,7 +7,7 @@ public sealed class EmailTransportSelector(IEnumerable<IEmailTransport> transpor
 {
     public IReadOnlyList<IEmailTransport> Active()
     {
-        var configured = (config["Email:Transports"] ?? "Brevo")
+        var configured = (config["Email:Transports"] ?? "Graph")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var active = new List<IEmailTransport>();
@@ -20,7 +20,7 @@ public sealed class EmailTransportSelector(IEnumerable<IEmailTransport> transpor
 
         if (active.Count == 0)
         {
-            var fallback = transports.FirstOrDefault(t => t.Name == "Brevo");
+            var fallback = transports.FirstOrDefault(t => t.Name == "Graph");
             if (fallback is not null) active.Add(fallback);
         }
 

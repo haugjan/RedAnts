@@ -66,9 +66,9 @@ public sealed class EmailTestController(
         }
         else
         {
-            subject = "Brevo-Testmail – Red Ants";
+            subject = "Testmail – Red Ants";
             html = EmailLayout.Render(subject,
-                "Diese Testmail bestätigt, dass der Brevo-Versand aus RedAnts funktioniert.",
+                "Diese Testmail bestätigt, dass der Mailversand aus RedAnts funktioniert.",
                 greeting: "Hallo,", note: "Testmail aus der RedAnts-Entwicklungsumgebung.");
         }
 
