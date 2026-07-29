@@ -40,9 +40,9 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonAddOnPromoOnly>("seasonaddons-promo-only");
         To<AddOrderNumberSequence>("order-number-sequence");
         To<AddOutboxEmails>("outbox-emails");
+        To<AddMemberCardEmail>("membercard-email");
         To<AddSeasonAddOnRequireMobile>("seasonaddons-require-mobile");
         To<AddOrderAddOnDelivered>("orderaddons-delivered");
-        To<AddMemberCardEmail>("membercard-email");
         To<AddSeasonPassBuyerEmail>("seasonpass-buyer-email");
     }
 }
