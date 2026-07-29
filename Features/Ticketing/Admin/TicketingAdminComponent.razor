@@ -46,6 +46,9 @@
                 case "helper":
                     <AdminHelpersComponent AdminUser="@AdminUser" />
                     break;
+                case "outbox":
+                    <AdminOutboxComponent AdminUser="@AdminUser" />
+                    break;
                 default:
                     <AdminEventsComponent AdminUser="@AdminUser" />
                     break;
@@ -175,6 +178,7 @@
         ("membercards", TicketType.MemberCard.DisplayName()),
         ("orders", "Bestellungen"),
         ("newsletter", "Newsletter"),
-        ("helper", "Helfer")
+        ("helper", "Helfer"),
+        ("outbox", "E-Mails")
     ];
 }

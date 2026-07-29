@@ -1,0 +1,159 @@
+@using RedAnts.Features.Ticketing.Email
+@inject IOutboxAdminReport Report
+
+<section class="ta-page">
+    <h1 class="ta-page-title">E-Mails</h1>
+
+    @if (_flash is not null)
+    {
+        <div class="ta-flash" @onclick="() => _flash = null" title="Ausblenden">@_flash</div>
+    }
+
+    <div class="ta-toolbar">
+        <div class="ta-toolbar-filters">
+            <label class="ta-checkbox-label">
+                <input type="checkbox" @bind="_includeSent" @bind:after="ReloadAsync" />
+                Gesendete der letzten 30 Tage anzeigen
+            </label>
+        </div>
+        <div class="ta-toolbar-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="ReloadAsync">Aktualisieren</button>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_entries.Count == 0)
+    {
+        <div class="ta-placeholder">
+            @(_includeSent ? "Keine E-Mails in den letzten 30 Tagen." : "Keine offenen E-Mails. Alles versendet.")
+        </div>
+    }
+    else
+    {
+        <div class="ta-table-wrap">
+            <table class="ta-table">
+                <thead>
+                    <tr>
+                        <th>Zeitpunkt</th>
+                        <th>Empfänger</th>
+                        <th>Betreff</th>
+                        <th>Quelle</th>
+                        <th>Status</th>
+                        <th>Versand</th>
+                        <th class="ta-num">Versuche</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in _entries)
+                    {
+                        <tr>
+                            <td>
+                                @m.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                @if (m.Status == OutboxStatus.Sent && m.SentAt is { } sent)
+                                {
+                                    <div class="ta-addr-sub">gesendet @sent.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                                }
+                                else if (m.Status != OutboxStatus.Sent && m.NextAttemptAt > DateTime.UtcNow)
+                                {
+                                    <div class="ta-addr-sub">nächster Versuch @m.NextAttemptAt.ToLocalTime().ToString("HH:mm")</div>
+                                }
+                            </td>
+                            <td>
+                                @(string.IsNullOrWhiteSpace(m.ToName) ? m.ToEmail : m.ToName)
+                                @if (!string.IsNullOrWhiteSpace(m.ToName))
+                                {
+                                    <div class="ta-addr-sub">@m.ToEmail</div>
+                                }
+                            </td>
+                            <td>@m.Subject</td>
+                            <td>
+                                @(string.IsNullOrWhiteSpace(m.Source) ? "—" : m.Source)
+                                @if (!string.IsNullOrWhiteSpace(m.Reference))
+                                {
+                                    <div class="ta-addr-sub">@m.Reference</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="ta-badge @StatusClass(m.Status)">@StatusLabel(m.Status)</span>
+                                @if (m.Status == OutboxStatus.Failed && !string.IsNullOrWhiteSpace(m.LastError))
+                                {
+                                    <div class="ta-addr-sub" title="@m.LastError">@Truncate(m.LastError, 80)</div>
+                                }
+                            </td>
+                            <td>@(string.IsNullOrWhiteSpace(m.SentVia) ? "—" : m.SentVia)</td>
+                            <td class="ta-num">@m.Attempts</td>
+                            <td class="ta-col-actions">
+                                @if (m.Status is OutboxStatus.Failed or OutboxStatus.Pending)
+                                {
+                                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => RequeueAsync(m.Id)">Erneut senden</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="ta-summary">
+            @OpenCount offen · @FailedCount fehlgeschlagen@(_includeSent ? $" · {SentCount} gesendet" : "")
+        </p>
+    }
+</section>
+
+<style>
+    .ta-checkbox-label { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; color: var(--ta-ink); cursor: pointer; }
+    .ta-checkbox-label input { width: 1rem; height: 1rem; }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    private bool _loading = true;
+    private bool _includeSent;
+    private string? _flash;
+    private IReadOnlyList<OutboxEntry> _entries = [];
+
+    private int OpenCount => _entries.Count(e => e.Status is OutboxStatus.Pending or OutboxStatus.Sending);
+    private int FailedCount => _entries.Count(e => e.Status == OutboxStatus.Failed);
+    private int SentCount => _entries.Count(e => e.Status == OutboxStatus.Sent);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadAsync()
+    {
+        _entries = await Report.ListAsync(_includeSent, DateTime.UtcNow.AddDays(-30));
+    }
+
+    private async Task RequeueAsync(int id)
+    {
+        _flash = await Report.RequeueAsync(id)
+            ? "E-Mail wurde erneut in die Warteschlange gestellt."
+            : "E-Mail konnte nicht erneut gesendet werden.";
+        await ReloadAsync();
+    }
+
+    private static string StatusLabel(OutboxStatus status) => status switch
+    {
+        OutboxStatus.Pending => "Offen",
+        OutboxStatus.Sending => "Wird gesendet",
+        OutboxStatus.Sent => "Gesendet",
+        OutboxStatus.Failed => "Fehlgeschlagen",
+        _ => status.ToString()
+    };
+
+    private static string StatusClass(OutboxStatus status) => status switch
+    {
+        OutboxStatus.Sent => "ta-badge-valid",
+        OutboxStatus.Failed => "ta-badge-cancelled",
+        _ => "ta-badge-draft"
+    };
+
+    private static string Truncate(string value, int max) => value.Length > max ? value[..max] + "…" : value;
+}
