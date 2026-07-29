@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using RedAnts.Domain.Ticketing
 @using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Email
 @using RedAnts.Features.Ticketing.Ports
 
 <section class="ta-page">
@@ -96,6 +97,7 @@
                                     }
                                 </td>
                                 <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="@(c.HasEmail ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!c.HasEmail)" @onclick="() => OpenMail(c)">✉</button>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(c)">✎</button>
                                     @if (Identity.IsAdmin)
                                     {
@@ -114,6 +116,7 @@
 
 <style>
     .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .ta-textarea { min-height: 9rem; resize: vertical; font-family: inherit; line-height: 1.5; }
 </style>
 
 @if (_showCreate)
@@ -318,6 +321,42 @@
     </div>
 }
 
+@if (_mailFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseMail">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Mitgliederkarte senden</h2>
+            <p class="ta-modal-sub">@(_mailFor.HasName ? _mailFor.HolderName : AdminFormat.TicketNo(_mailFor.Uuid)) · @_mailFor.Email</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="mcMailSubject">Betreff</label>
+                <input id="mcMailSubject" class="ta-input" type="text" maxlength="200" @bind="_mailSubject" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="mcMailBody">Text</label>
+                <textarea id="mcMailBody" class="ta-input ta-textarea" @bind="_mailBody"></textarea>
+                <p class="ta-hint">Platzhalter: {Vorname}, {Nachname}. QR-Code, Online-Karte und PDF-Link werden automatisch angehängt.</p>
+            </div>
+
+            @if (_mailSent)
+            {
+                <div class="ta-flash">E-Mail wurde in den Versand gegeben.</div>
+            }
+            @if (!string.IsNullOrEmpty(_mailError))
+            {
+                <div class="ta-modal-error">@_mailError</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseMail" disabled="@_mailSending">Schliessen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@_mailSending">
+                    @(_mailSending ? "Sendet …" : "Senden")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_visitsCard is not null)
 {
     <VisitsOverlay Uuid="_visitsCard.Uuid" Title="@(_visitsCard.HasName ? _visitsCard.HolderName : AdminFormat.TicketNo(_visitsCard.Uuid))" OnClose="CloseVisits" />
@@ -339,6 +378,7 @@
     [Inject] private IMemberCardAdminReport Report { get; set; } = default!;
     [Inject] private IMemberCards Members { get; set; } = default!;
     [Inject] private IMemberCardEditor MemberEditor { get; set; } = default!;
+    [Inject] private IMemberCardMailer Mailer { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
@@ -575,6 +615,44 @@
     private MemberCardListItem? _visitsCard;
     private void OpenVisits(MemberCardListItem c) => _visitsCard = c;
     private void CloseVisits() => _visitsCard = null;
+
+    private MemberCardListItem? _mailFor;
+    private string _mailSubject = "";
+    private string _mailBody = "";
+    private bool _mailSending;
+    private bool _mailSent;
+    private string? _mailError;
+
+    private void OpenMail(MemberCardListItem c)
+    {
+        _mailFor = c;
+        _mailSubject = Mailer.DefaultSubject;
+        _mailBody = Mailer.DefaultBody;
+        _mailSent = false;
+        _mailError = null;
+    }
+
+    private void CloseMail() { if (!_mailSending) { _mailFor = null; _mailError = null; _mailSent = false; } }
+
+    private async Task SendMail()
+    {
+        if (_mailFor is null) return;
+        _mailSending = true;
+        _mailError = null;
+        _mailSent = false;
+        try
+        {
+            var result = await Mailer.SendAsync(ToDomain(_mailFor), _mailSubject, _mailBody);
+            if (result.Success) _mailSent = true;
+            else _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
+        }
+        catch (Exception ex) { _mailError = ex.Message; }
+        finally { _mailSending = false; }
+    }
+
+    private MemberCard ToDomain(MemberCardListItem c) => MemberCard.FromPersistence(
+        0, c.Uuid, SelectedSeasonId, c.Category, null, c.Status, c.CreatedAt,
+        c.FirstName, c.LastName, c.Birthday, c.Email, c.Reference);
 
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {

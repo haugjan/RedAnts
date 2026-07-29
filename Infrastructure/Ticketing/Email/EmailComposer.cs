@@ -22,6 +22,7 @@ public sealed class EmailComposer : IComposer
         builder.Services.AddHostedService<OutboxDispatcher>();
 
         builder.Services.AddScoped<IHelperInviteMailer, HelperInviteMailer>();
+        builder.Services.AddScoped<IMemberCardMailer, MemberCardMailer>();
         builder.Services.AddUnique<Umbraco.Cms.Core.Mail.IEmailSender, UmbracoEmailSenderAdapter>();
     }
 }
