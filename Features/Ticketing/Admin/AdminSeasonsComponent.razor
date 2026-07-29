@@ -217,7 +217,6 @@
                             <th>Stufen</th>
                             <th>Vorabinfo</th>
                             <th>Nachkauf-Info</th>
-                            <th class="ta-group-col" title="Bei dieser Option ist die Mobilnummer an der Kasse Pflicht">Mobilnr.</th>
                             <th class="ta-group-col">Aktiv</th>
                             <th></th>
                         </tr>
@@ -250,25 +249,26 @@
                                             }
                                             <button type="button" class="ta-tier-chip ta-tier-chip--promo @(r.PromoOnly ? "is-on" : "")"
                                                     title="Nur anbieten, wenn für die Stufe gerade eine Sonderaktion aktiv ist" @onclick="() => r.PromoOnly = !r.PromoOnly">Nur Aktion</button>
+                                            <button type="button" class="ta-tier-chip @(r.RequireMobileNumber ? "is-on" : "")"
+                                                    title="Mobilnummer an der Kasse zwingend, wenn diese Option gewählt wird" @onclick="() => r.RequireMobileNumber = !r.RequireMobileNumber">Mobil-Nr.</button>
                                         </div>
                                     }
                                 </td>
                                 <td><textarea rows="2" maxlength="2000" class="ta-input ta-addon-info" placeholder="Hinweis vor dem Kauf (Info-Tooltip)" @bind="r.InfoBefore"></textarea></td>
                                 <td><textarea rows="2" maxlength="2000" class="ta-input ta-addon-info" placeholder="Hinweis nach dem Kauf (Bestätigung + Mail)" @bind="r.InfoAfter"></textarea></td>
-                                <td class="ta-group-col"><input type="checkbox" title="Mobilnummer an der Kasse zwingend, wenn diese Option gewählt wird" @bind="r.RequireMobileNumber" /></td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="r.Active" /></td>
                                 <td class="ta-num"><button type="button" class="ta-icon-btn" title="Entfernen" @onclick="() => RemoveAddOnRow(r)">×</button></td>
                             </tr>
                         }
                         @if (_addOnRows.Count == 0)
                         {
-                            <tr><td colspan="10" class="ta-muted">Noch keine Zusatzoptionen erfasst.</td></tr>
+                            <tr><td colspan="9" class="ta-muted">Noch keine Zusatzoptionen erfasst.</td></tr>
                         }
                     </tbody>
                 </table>
                 </div>
                 <button type="button" class="ta-btn ta-btn-ghost ta-addon-add" @onclick="AddAddOnRow">+ Option hinzufügen</button>
-                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. Der Kurztitel erscheint auf Beleg und Ticket-Mail, der Langtitel bewirbt die Option auf der öffentlichen Saisonseite (fehlt er, wird der Kurztitel angezeigt). Die Stufen entsprechen den Preisstufen dieser Saison. „Alle" gilt für sämtliche Stufen (auch künftig neue), sonst nur für die gewählten. „Nur Aktion" bietet die Option nur an, wenn für die Stufe gerade eine Sonderaktion läuft. Optionen zu 0 CHF sind auf der Kaufseite standardmässig angehakt. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Ist „Mobilnr." gesetzt, muss der Käufer an der Kasse zwingend eine Mobilnummer angeben, sobald er diese Option wählt. Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
+                <p class="ta-field-hint">Aktive Optionen können beim Kauf einer Saisonkarte dieser Saison zusätzlich gewählt werden. Der Kurztitel erscheint auf Beleg und Ticket-Mail, der Langtitel bewirbt die Option auf der öffentlichen Saisonseite (fehlt er, wird der Kurztitel angezeigt). Die Stufen entsprechen den Preisstufen dieser Saison. „Alle" gilt für sämtliche Stufen (auch künftig neue), sonst nur für die gewählten. „Nur Aktion" bietet die Option nur an, wenn für die Stufe gerade eine Sonderaktion läuft. „Mobil-Nr." macht die Angabe der Mobilnummer an der Kasse zwingend, sobald der Käufer diese Option wählt. Optionen zu 0 CHF sind auf der Kaufseite standardmässig angehakt. „Pro Saisonkarte" wird je Karte berechnet (z. B. physische Karte), „einmalig pro Bestellung" nur einmal je Bestellung, unabhängig von der Kartenanzahl (z. B. Livestream-Abo). Bei jeder gewählten Option wird tickets@("@")redants.ch benachrichtigt.</p>
             </div>
 
             @if (_addOnError is not null)
