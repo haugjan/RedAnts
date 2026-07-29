@@ -25,17 +25,12 @@ public sealed class MemberCardMailer(
 
     public string DefaultBody =>
         "Hallo {Vorname}\n\n" +
-        "Auch in der {Saison} profitierst du mit deiner Mitgliederkarte von exklusiven Vorteilen:\n\n" +
-        "**Ochsner Sport Archhöfe, Winterthur**\n\n" +
-        "- 20% auf Hallenschuhe\n" +
-        "- 30% auf Fat Pipe und Blindsave Unihockey-Artikel unseres Goldsponsors Fat Pipe (Sportagon), oder mit dem Rabattcode 6y76z2fq bei sau.ch\n\n" +
-        "**Eisen Optikergeschäft AG**\n\n" +
-        "- Eine Schutzbrille pro Saison für CHF 10.-, gegen Vorweisen des Mitgliederausweises oder Angabe des Namens. Der Sehtest ist für alle im gleichen Haushalt lebenden Personen gratis.\n\n" +
-        "**Restaurant La Pergola**\n\n" +
-        "- Jeweils am Samstagmittag ein Pastamenü mit Salat und 5dl-Getränk für CHF 20.-, gegen Vorweisen des Mitgliederausweises.\n\n" +
-        "Diese Saison gibt es bei jedem L-UPL-Heimspiel beim Pausen-Gewinnspiel wieder einen Gutschein der Pizzeria La Pergola zu gewinnen. Kauf dir eine Nummer und beweise deine Treffsicherheit!\n\n" +
-        "NEU: Hast du unsere L-UPL-Matchvorschauen auf Radio Top schon gehört? Komm in die Halle und unterstütze unsere Teams an ihren Heimspielen.\n\n" +
-        "Wir freuen uns auf die kommende Saison mit dir.\n\n" +
+        "Hier ist deine persönliche Mitgliederkarte der Red Ants Rychenberg Winterthur für die {Saison}. Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt.\n\n" +
+        "Mit deiner Mitgliederkarte profitierst du ausserdem von diesen Vorteilen:\n\n" +
+        "- Ochsner Sport Archhöfe, Winterthur: 20% auf Hallenschuhe und 30% auf Fat Pipe und Blindsave Unihockey-Artikel unseres Goldsponsors Fat Pipe (Sportagon), oder mit dem Rabattcode 6y76z2fq bei sau.ch.\n" +
+        "- Eisen Optikergeschäft AG: eine Schutzbrille pro Saison für CHF 10.-, gegen Vorweisen des Mitgliederausweises oder Angabe des Namens. Der Sehtest ist für alle im gleichen Haushalt lebenden Personen gratis.\n" +
+        "- Restaurant La Pergola: jeweils am Samstagmittag ein Pastamenü mit Salat und 5dl-Getränk für CHF 20.-, gegen Vorweisen des Mitgliederausweises.\n\n" +
+        "Vielen Dank für deine Unterstützung. Bis bald in der Halle!\n\n" +
         "Sportliche Grüsse";
 
     public async Task<EmailSendResult> SendAsync(MemberCard card, string subject, string body, CancellationToken cancellationToken = default)
