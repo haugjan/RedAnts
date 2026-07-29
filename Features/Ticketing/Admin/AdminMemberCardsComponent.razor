@@ -78,7 +78,14 @@
                                     @if (c.HasName) { @c.HolderName }
                                     else { <span class="ta-muted">(ohne Name)</span> }
                                     @if (c.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
-                                    @if (!c.HasEmail) { <span class="ta-noemail" title="Keine E-Mail hinterlegt">ohne E-Mail</span> }
+                                    @if (c.HasEmail)
+                                    {
+                                        <div class="ta-addr-sub">@c.Email</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-noemail" title="Keine E-Mail hinterlegt">ohne E-Mail</span>
+                                    }
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(c.CreatedAt, c.CreatedByName, null, null)">@AdminFormat.CreatedShort(c.CreatedAt, c.CreatedByName, null)</td>
                                 <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
