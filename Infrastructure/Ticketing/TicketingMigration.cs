@@ -520,6 +520,7 @@ public class TicketingMigrationComponent(
         if (runtimeState.Level < RuntimeLevel.Run) return;
 
         var upgrader = new Upgrader(new TicketingMigrationPlan());
+        keyValueService.SetValue(upgrader.StateValueKey, string.Empty);
         await upgrader.ExecuteAsync(migrationPlanExecutor, scopeProvider, keyValueService);
     }
 
