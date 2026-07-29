@@ -1,7 +1,7 @@
 #requires -Version 7
 # ============================================================================
-#  Red Ants: Read-only Pruefung des O365-Mailversands (Shared Mailbox + SMTP).
-#  Nur Exchange Online + DNS, kein Microsoft.Graph. Aendert NICHTS.
+#  Red Ants: Read-only Pruefung des Graph-app-only Mailversands.
+#  Nur Exchange Online + DNS, kein Microsoft.Graph-SDK. Aendert NICHTS.
 #  Zeigt pro Punkt [ OK ] / [FEHLT] / [WARN].
 # ============================================================================
 
@@ -10,7 +10,8 @@ $AdminUpn   = 'jan.haug@redants.ch'
 $Domain     = 'redants.ch'
 $SharedSmtp = 'tickets@redants.ch'
 $GrantUser  = 'jan.haug@redants.ch'
-$SvcUpn     = 'service-user-web@redants.ch'
+$GroupAlias = 'graph-mail-senders'
+$GroupSmtp  = 'graph-mail-senders@redants.ch'
 # ----------------------------------------------------------------------------
 
 $script:pass = 0; $script:fail = 0; $script:warn = 0
@@ -56,17 +57,15 @@ Import-Module ExchangeOnlineManagement
 try { $null = Get-ConnectionInformation -ErrorAction Stop } catch { Connect-ExchangeOnline -UserPrincipalName $AdminUpn -ShowBanner:$false }
 Check "Exchange Online verbunden" ([bool](Get-ConnectionInformation))
 
-# 3) Verteiler weg? -----------------------------------------------------------
-Write-Host "`n== tickets@ Objekt ==" -ForegroundColor Cyan
+# 3) tickets@ ist eine Shared Mailbox ----------------------------------------
+Write-Host "`n== tickets@ ==" -ForegroundColor Cyan
 $dl = Get-DistributionGroup -Identity $SharedSmtp -ErrorAction SilentlyContinue
-Check "Alte Verteilergruppe auf $SharedSmtp entfernt" (-not $dl) $(if ($dl) { 'Verteiler existiert noch, blockiert die Shared-Mailbox-Adresse.' } else { '' })
-
-# 4) Shared Mailbox -----------------------------------------------------------
+Check "Alte Verteilergruppe auf $SharedSmtp entfernt" (-not $dl) $(if ($dl) { 'Verteiler blockiert die Shared-Mailbox-Adresse.' } else { '' })
 $mb = Get-Mailbox -Identity $SharedSmtp -ErrorAction SilentlyContinue
-Check "Shared Mailbox $SharedSmtp existiert" ([bool]$mb) ''
+Check "Shared Mailbox $SharedSmtp existiert" ([bool]$mb)
 if ($mb) { Check "Typ ist SharedMailbox" ($mb.RecipientTypeDetails -eq 'SharedMailbox') $mb.RecipientTypeDetails }
 
-# 5) Rechte von jan.haug ------------------------------------------------------
+# 4) Rechte von jan.haug ------------------------------------------------------
 Write-Host "`n== Berechtigungen ==" -ForegroundColor Cyan
 if ($mb) {
     $full = Get-MailboxPermission  -Identity $SharedSmtp | Where-Object { $_.User -like "*$GrantUser*" -and $_.AccessRights -contains 'FullAccess' }
@@ -75,24 +74,19 @@ if ($mb) {
     Check "$GrantUser hat SendAs"     ([bool]$saU)
 }
 
-# 6) Dienstkonto (via Exchange, kein Graph) ----------------------------------
-Write-Host "`n== Dienstkonto $SvcUpn ==" -ForegroundColor Cyan
-$svcUser = Get-User -Identity $SvcUpn -ErrorAction SilentlyContinue
-Check "Konto existiert" ([bool]$svcUser)
-$svcMb = Get-Mailbox -Identity $SvcUpn -ErrorAction SilentlyContinue
-Check "Postfach bereitgestellt (= lizenziert)" ([bool]$svcMb) $(if (-not $svcMb) { 'Konto im Admin Center anlegen + Exchange-Lizenz zuweisen (kann Minuten dauern).' } else { '' })
-if ($svcMb) {
-    $saS = Get-RecipientPermission -Identity $SharedSmtp | Where-Object { $_.Trustee -like "*$SvcUpn*" -and $_.AccessRights -contains 'SendAs' }
-    Check "Dienstkonto darf als $SharedSmtp senden (SendAs)" ([bool]$saS)
-    $cas = Get-CASMailbox -Identity $SvcUpn
-    Check "SMTP AUTH fuer Dienstkonto aktiviert" ($cas.SmtpClientAuthenticationDisabled -eq $false) "SmtpClientAuthenticationDisabled=$($cas.SmtpClientAuthenticationDisabled)"
+# 5) Graph-Versand-Rahmen -----------------------------------------------------
+Write-Host "`n== Graph app-only ==" -ForegroundColor Cyan
+$grp = Get-DistributionGroup -Identity $GroupSmtp -ErrorAction SilentlyContinue
+Check "Security-Gruppe $GroupSmtp existiert" ([bool]$grp) 'Wird von o365-graph-appreg.ps1 angelegt.'
+if ($grp) {
+    $gm = @(Get-DistributionGroupMember -Identity $GroupSmtp -ErrorAction SilentlyContinue | ForEach-Object { $_.PrimarySmtpAddress.ToString().ToLower() })
+    Check "$SharedSmtp ist in der Gruppe" ($gm -contains $SharedSmtp.ToLower())
 }
+$pol = Get-ApplicationAccessPolicy -ErrorAction SilentlyContinue | Where-Object { $_.AccessRight -eq 'RestrictAccess' -and ("$($_.ScopeName)$($_.ScopeIdentity)" -like "*$GroupAlias*") }
+Check "Application Access Policy (RestrictAccess) gesetzt" ([bool]$pol) $(if ($pol) { "AppId $($pol.AppId -join ', ')" } else { 'Wird von o365-graph-appreg.ps1 angelegt.' })
 
-# 7) Tenant-Rahmen ------------------------------------------------------------
-Write-Host "`n== Tenant / Sicherheit ==" -ForegroundColor Cyan
-$tc = Get-TransportConfig
-Check "Tenant blockiert SMTP AUTH nicht global" ($tc.SmtpClientAuthenticationDisabled -ne $true) "TransportConfig.SmtpClientAuthenticationDisabled=$($tc.SmtpClientAuthenticationDisabled) (per-Postfach ueberschreibt)" 'warn'
-Check "Security Defaults manuell pruefen" $false "Im Entra-Portal 'Sicherheitsstandards' pruefen: bei AKTIV braucht das Dienstkonto eine Conditional-Access-Ausnahme fuer SMTP AUTH." 'warn'
+# 6) DKIM ---------------------------------------------------------------------
+Write-Host "`n== DKIM ==" -ForegroundColor Cyan
 try {
     $dkim = Get-DkimSigningConfig -Identity $Domain -ErrorAction SilentlyContinue
     Check "DKIM-Signierung fuer $Domain aktiv" ([bool]($dkim.Enabled)) '' 'warn'
@@ -100,5 +94,5 @@ try {
 
 # Zusammenfassung -------------------------------------------------------------
 Write-Host ("`nErgebnis: {0} OK, {1} WARN, {2} FEHLT" -f $script:pass, $script:warn, $script:fail) -ForegroundColor Cyan
-if ($script:fail -eq 0) { Write-Host "Alles Notwendige vorhanden. WARN-Punkte pruefen (v.a. Security Defaults)." -ForegroundColor Green }
-else { Write-Host "Es fehlt noch etwas (siehe [FEHLT]). Setup-Skript o365-mail-setup.ps1 ausfuehren." -ForegroundColor Yellow }
+if ($script:fail -eq 0) { Write-Host "Alles Notwendige vorhanden. Client-Secret in user-secrets nicht vergessen." -ForegroundColor Green }
+else { Write-Host "Es fehlt noch etwas (siehe [FEHLT]). Setup + o365-graph-appreg.ps1 ausfuehren." -ForegroundColor Yellow }
