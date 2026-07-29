@@ -12,8 +12,8 @@ $SharedSmtp = 'tickets@redants.ch'
 $GroupName  = 'Tickets Team'
 $GroupAlias = 'tickets-team'
 $GroupSmtp  = 'tickets-team@redants.ch'
-$Members    = @('jan.haug@redants.ch')                       # Basis-Empfaenger
-$ImportCsv  = $true                                          # alte Verteiler-Mitglieder uebernehmen?
+$Members    = @('jan.haug@redants.ch','janine.zollinger@redants.ch')  # Kopie-Empfaenger
+$ImportCsv  = $false                                         # kein alter Verteiler vorhanden
 $BackupCsv  = "$HOME\tickets-verteiler-mitglieder.csv"       # vom Setup-Skript erzeugt
 # ----------------------------------------------------------------------------
 
