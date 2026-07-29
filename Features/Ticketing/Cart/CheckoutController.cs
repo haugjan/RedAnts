@@ -33,13 +33,13 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     private const string PaymentLabelText = "Online-Zahlung (Payrexx)";
 
     [HttpGet("/checkout")]
-    public IActionResult Address(string? payment = null)
+    public async Task<IActionResult> Address(string? payment = null)
     {
         if (cart.Get().IsEmpty) return Redirect("/cart");
         var error = payment == "aborted"
             ? "Die Zahlung wurde abgebrochen oder ist fehlgeschlagen. Bitte versuche es erneut."
             : TempData["CheckoutError"] as string;
-        return CheckoutView(LoadForm() ?? new CheckoutForm(), error);
+        return await CheckoutView(LoadForm() ?? new CheckoutForm(), error);
     }
 
     [HttpPost("/checkout")]
@@ -53,14 +53,17 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
         BillingAddress billing;
         try { billing = ToBillingAddress(form); }
-        catch (DomainException ex) { return CheckoutView(form, ex.Message); }
+        catch (DomainException ex) { return await CheckoutView(form, ex.Message); }
 
         if (!acceptPrivacy)
-            return CheckoutView(form, "Bitte akzeptiere die AGB und die Datenschutzerklärung.");
+            return await CheckoutView(form, "Bitte akzeptiere die AGB und die Datenschutzerklärung.");
+
+        if (string.IsNullOrWhiteSpace(form.Phone) && await CartRequiresMobileAsync(current))
+            return await CheckoutView(form, "Für die gewählte Zusatzoption ist deine Mobilnummer zwingend. Bitte gib sie an.");
 
         var captchaToken = Request.Form["cf-turnstile-response"].ToString();
         if (!await captcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString()))
-            return CheckoutView(form, "Bitte bestätige, dass du kein Roboter bist.");
+            return await CheckoutView(form, "Bitte bestätige, dass du kein Roboter bist.");
 
         return await FinalizeOrderAsync(current, billing, PaymentMethod.Payrexx, form.AcceptNewsletter, "Kasse");
     }
@@ -68,15 +71,39 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     [HttpGet("/checkout/payment")]
     public IActionResult Payment() => Redirect("/checkout");
 
-    private IActionResult CheckoutView(CheckoutForm form, string? error) =>
-        View("~/Views/Checkout/Address.cshtml", new CheckoutAddressView
+    private async Task<IActionResult> CheckoutView(CheckoutForm form, string? error)
+    {
+        var current = cart.Get();
+        return View("~/Views/Checkout/Address.cshtml", new CheckoutAddressView
         {
             Form = form,
-            Cart = cart.Get(),
+            Cart = current,
             PayrexxEnabled = payrexx.Enabled,
             TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
-            Error = error
+            Error = error,
+            MobileRequired = await CartRequiresMobileAsync(current)
         });
+    }
+
+    private async Task<bool> CartRequiresMobileAsync(Cart current)
+    {
+        var idsBySeason = new Dictionary<int, HashSet<int>>();
+        void Track(int seasonId, int addOnId)
+        {
+            if (!idsBySeason.TryGetValue(seasonId, out var set)) idsBySeason[seasonId] = set = new();
+            set.Add(addOnId);
+        }
+        foreach (var item in current.Items.Where(i => i.Kind == CartItemKind.SeasonPass))
+            foreach (var a in item.AddOns) Track(item.SeasonId, a.Id);
+        foreach (var a in current.OrderAddOns) Track(a.SeasonId, a.Id);
+
+        foreach (var (seasonId, ids) in idsBySeason)
+        {
+            var defs = await seasonAddOns.GetBySeasonAsync(seasonId);
+            if (defs.Any(d => ids.Contains(d.Id) && d.RequireMobileNumber)) return true;
+        }
+        return false;
+    }
 
     [HttpGet("/checkout/express")]
     public IActionResult Express()

@@ -40,6 +40,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonAddOnPromoOnly>("seasonaddons-promo-only");
         To<AddOrderNumberSequence>("order-number-sequence");
         To<AddOutboxEmails>("outbox-emails");
+        To<AddSeasonAddOnRequireMobile>("seasonaddons-require-mobile");
     }
 }
 
@@ -49,6 +50,16 @@ public class AddOutboxEmails(IMigrationContext context) : AsyncMigrationBase(con
     {
         if (!TableExists("OutboxEmails"))
             Create.Table<OutboxEmailRecord>().Do();
+        return Task.CompletedTask;
+    }
+}
+
+public class AddSeasonAddOnRequireMobile(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonAddOns", "RequireMobileNumber"))
+            Alter.Table("SeasonAddOns").AddColumn("RequireMobileNumber").AsBoolean().NotNullable().WithDefaultValue(false).Do();
         return Task.CompletedTask;
     }
 }

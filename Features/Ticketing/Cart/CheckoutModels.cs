@@ -25,6 +25,7 @@ public sealed class CheckoutAddressView
     public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
+    public bool MobileRequired { get; init; }
 }
 
 public sealed class CheckoutPaymentView

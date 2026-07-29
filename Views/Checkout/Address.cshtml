@@ -75,8 +75,12 @@
                     <input type="email" name="Email" value="@f.Email" class="form-control" required />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Telefon</label>
-                    <input name="Phone" value="@f.Phone" class="form-control" />
+                    <label class="form-label">Mobilnummer@(Model.MobileRequired ? " *" : "")</label>
+                    <input type="tel" name="Phone" value="@f.Phone" class="form-control" @(Model.MobileRequired ? "required" : "") />
+                    @if (Model.MobileRequired)
+                    {
+                        <div class="form-text">Für eine gewählte Zusatzoption benötigen wir deine Mobilnummer.</div>
+                    }
                 </div>
             </div>
 
