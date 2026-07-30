@@ -26,6 +26,7 @@ public sealed class CartItem
     public string EventName { get; set; } = "";
     public int TierId { get; set; }
     public string CategoryName { get; set; } = "";
+    public string StandardCategoryName { get; set; } = "";
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public List<CartAddOn> AddOns { get; set; } = [];
@@ -60,8 +61,8 @@ public static class ExpressCheckout
 public interface ICartService
 {
     Cart Get();
-    void Add(int eventId, string eventName, int tierId, string categoryName, decimal unitPrice, int quantity);
-    void AddSeasonPass(int seasonId, string seasonName, int tierId, string categoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns);
+    void Add(int eventId, string eventName, int tierId, string categoryName, string standardCategoryName, decimal unitPrice, int quantity);
+    void AddSeasonPass(int seasonId, string seasonName, int tierId, string categoryName, string standardCategoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns);
     void AddOrderAddOns(IReadOnlyList<CartAddOn> addOns);
     void RemoveOrderAddOn(int addOnId);
     void SetQuantity(string key, int quantity);

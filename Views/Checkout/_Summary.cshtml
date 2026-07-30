@@ -5,13 +5,26 @@
         @foreach (var item in Model.Items)
         {
             <li class="list-group-item d-flex justify-content-between px-0">
-                <span>@item.Quantity × @item.EventName <span class="text-muted">@item.CategoryName</span></span>
-                <span class="text-nowrap">CHF @MoneyFormat.Chf(item.LineTotal)</span>
+                <span>@item.Quantity × @item.EventName <span class="text-muted">@(string.IsNullOrWhiteSpace(item.StandardCategoryName) ? item.CategoryName : item.StandardCategoryName)</span></span>
+                <span class="text-nowrap">CHF @MoneyFormat.Chf(item.UnitPrice * item.Quantity)</span>
+            </li>
+            @foreach (var addOn in item.AddOns)
+            {
+                <li class="list-group-item d-flex justify-content-between px-0 ps-3 small text-muted">
+                    <span>+ @item.Quantity × @addOn.Label</span>
+                    <span class="text-nowrap">CHF @MoneyFormat.Chf(addOn.Price * item.Quantity)</span>
+                </li>
+            }
+        }
+        @foreach (var addOn in Model.OrderAddOns)
+        {
+            <li class="list-group-item d-flex justify-content-between px-0">
+                <span>@addOn.Label <span class="text-muted">@addOn.SeasonName</span></span>
+                <span class="text-nowrap">CHF @MoneyFormat.Chf(addOn.Price)</span>
             </li>
         }
     </ul>
     <div class="d-flex justify-content-between fw-bold">
         <span>Gesamt</span><span>CHF @MoneyFormat.Chf(Model.TotalAmount)</span>
     </div>
-    <p class="text-muted small mb-0 mt-2">Sportveranstaltung, in der Regel von der MwSt befreit.</p>
 </div>

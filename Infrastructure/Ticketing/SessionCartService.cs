@@ -21,7 +21,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         return JsonSerializer.Deserialize<Cart>(json) ?? new Cart();
     }
 
-    public void Add(int eventId, string eventName, int tierId, string categoryName, decimal unitPrice, int quantity)
+    public void Add(int eventId, string eventName, int tierId, string categoryName, string standardCategoryName, decimal unitPrice, int quantity)
     {
         if (quantity <= 0) return;
         var cart = Get();
@@ -33,6 +33,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
             existing.UnitPrice = unitPrice;
             existing.EventName = eventName;
             existing.CategoryName = categoryName;
+            existing.StandardCategoryName = standardCategoryName;
         }
         else
         {
@@ -43,6 +44,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 EventName = eventName,
                 TierId = tierId,
                 CategoryName = categoryName,
+                StandardCategoryName = standardCategoryName,
                 UnitPrice = unitPrice,
                 Quantity = Math.Min(quantity, MaxQuantityPerItem)
             });
@@ -50,7 +52,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         Save(cart);
     }
 
-    public void AddSeasonPass(int seasonId, string seasonName, int tierId, string categoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns)
+    public void AddSeasonPass(int seasonId, string seasonName, int tierId, string categoryName, string standardCategoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns)
     {
         if (quantity <= 0) return;
         var cart = Get();
@@ -66,6 +68,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
             existing.UnitPrice = unitPrice;
             existing.EventName = seasonName;
             existing.CategoryName = categoryName;
+            existing.StandardCategoryName = standardCategoryName;
             existing.AddOns = addOnList;
         }
         else
@@ -77,6 +80,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 EventName = seasonName,
                 TierId = tierId,
                 CategoryName = categoryName,
+                StandardCategoryName = standardCategoryName,
                 UnitPrice = unitPrice,
                 Quantity = Math.Min(quantity, MaxQuantityPerItem),
                 AddOns = addOnList
