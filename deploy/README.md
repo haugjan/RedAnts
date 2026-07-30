@@ -61,9 +61,18 @@ credential (issuer `token.actions.githubusercontent.com`, subject
 
 ## Deploy
 
-Push to `main` (or run the **Deploy to Azure** workflow manually). The workflow builds,
-publishes, zips, logs in to Azure via OIDC, deploys the zip with `az webapp deploy` over ARM,
-and warms up `/`.
+The workflow builds, publishes, zips, logs in to Azure via OIDC, deploys the zip with
+`az webapp deploy` over ARM, configures per-environment app settings (Payrexx instance/secret,
+Microsoft Graph / SMTP, Imaging HMAC, `Orders__NumberPrefix`, runtime mode) and warms up `/`.
+
+Two environments, one pipeline:
+
+- A push to a **`feature/**` branch** deploys **DEV only** (`app-redants-dev`).
+- A push to **`main`** deploys **DEV and then PROD** (`app-redants-prod`); the `deploy-prod` job is
+  gated to `main`.
+
+The distributed SQL session cache table (`AppSessionCache`) and the ticketing schema are created
+idempotently by the app on boot, so no migration step runs in the pipeline.
 
 On first deploy the Azure SQL database is empty, so Umbraco serves its one-time installer. Open
 `https://<app>.azurewebsites.net/umbraco`, complete the install (this creates your backoffice

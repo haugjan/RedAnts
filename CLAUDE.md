@@ -20,7 +20,7 @@ Layered / ports-and-adapters, split into three top-level folders:
 
 Two independent content slices coexist and must stay decoupled:
 
-1. **Ticketing** (`Infrastructure/Ticketing/`, `Features/Ticketing/`): events, seasons, event/season tickets, season passes, member cards, a guest cart, per-event/season pricing with quotas, admission scanning, Payrexx payment, Brevo email, Turnstile captcha.
+1. **Ticketing** (`Infrastructure/Ticketing/`, `Features/Ticketing/`): events, seasons, event/season tickets, season passes, member cards, ticket bundles, season add-ons, a guest cart, per-season price tiers and per-event/season pricing with quotas, admission scanning, PDF/QR ticket delivery, Payrexx payment, Microsoft Graph email (drained from a SQL outbox), Turnstile captcha.
 2. **Website** (`Infrastructure/Website/`, `Views/`): the public marketing site (FlexPage + block elements, adaptive navigation).
 
 ## Ticketing data model
@@ -75,14 +75,14 @@ Underlying App Services: `app-redants-prod` / `app-redants-dev`. **Only `tickets
 
 ## Public URLs
 
-Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqid}`), not Umbraco content-node URLs. Reordering or demoting root content nodes therefore does not break ticketing links. All routes are English: public `/cart`, `/checkout` (+ `/express`, `/success`, `/cancel`, `/confirmation`), `/seasons`, `/scan`; admin `/admin/members`, `/admin/season-passes`, `/admin/event-tickets`, `/admin/flex-tickets` (the earlier German routes were removed, no redirects). The website homepage is the first `flexPage` root node (the seeder sorts it to first so it serves at `/`).
+Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqid}`), not Umbraco content-node URLs. Reordering or demoting root content nodes therefore does not break ticketing links. All routes are English: public `/cart`, `/checkout` (+ `/express`, `/success`, `/cancel`, `/status`, `/confirmation`), `/seasons`, `/next` (+ `/embed` for the cross-site widget), `/scan`, `/ticket/{token}` (+ `/pdf`), plus `/payrexx/webhook`; admin `/admin/ticketing` (the Blazor dashboard) plus the CSV routes `/admin/members`, `/admin/season-passes`, `/admin/event-tickets`, `/admin/flex-tickets` (the earlier German routes were removed, no redirects). The website homepage is the first `flexPage` root node (the seeder sorts it to first so it serves at `/`).
 
 ## Conventions
 
 - **No comments in code.** The code speaks for itself: prefer clear names and small well-named methods over explanatory comments. This covers line, block, XML-doc (`///`), Razor (`@* *@`), and embedded CSS/JS comments. Non-obvious "why" (design decisions, Swiss compliance, gotchas) goes in `ARCHITECTURE.md` under "Design rationale and gotchas", not inline.
 - Keep the two slices decoupled: no direct references from Website code into Ticketing internals (go through ports if a genuine dependency arises).
 - New website block elements: element type + alias in `WebsiteAliases`, register the block in the "Website Content Blocks" Block List, add a partial under `Views/Partials/Blocks/{alias}.cshtml`, add styles to `wwwroot/css/site.css`.
-- Secrets (Payrexx, Brevo, Turnstile) come from configuration / user secrets, never hardcoded.
+- Secrets (Payrexx, Microsoft Graph, Turnstile) come from configuration / user secrets, never hardcoded.
 
 ## Session workflow: preview & deploy
 

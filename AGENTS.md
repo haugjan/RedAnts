@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository. This mirrors `CLAUDE.m
 
 ## What this is
 
-Umbraco 17 / .NET 10 app with a public website and a ticketing system, backed by SQLite. Run with `dotnet run` (see `README.md`).
+Umbraco 17 / .NET 10 app with a public website and a ticketing system, backed by **Azure SQL in every environment** (local dev points at the shared dev database via user secrets; SQLite has been removed). Run with `dotnet run` (see `README.md`).
 
 ## Non-negotiable rules
 
@@ -13,7 +13,7 @@ Umbraco 17 / .NET 10 app with a public website and a ticketing system, backed by
 - **Razor is runtime-compiled** (`RazorCompileOnBuild=false`). `dotnet build` does not catch `.cshtml` errors; validate views by running the app. Never name a `foreach` variable `page` (it collides with the `@page` directive and breaks compilation); use `item`.
 - **Content types are code-first and idempotent.** Add or change them in the seeder (`*ContentTypeSeeder`) via check-then-create/reconcile, not by hand in the backoffice.
 - **Keep the two slices decoupled.** Website code must not reach into ticketing internals; go through ports or the published-content API.
-- **Secrets** (Payrexx, Brevo, Turnstile) come from configuration / user secrets. Never hardcode them.
+- **Secrets** (Payrexx, Microsoft Graph, Turnstile) come from configuration / user secrets. Never hardcode them.
 
 ## Common tasks
 
