@@ -229,7 +229,6 @@ app.Use(async (context, next) =>
 });
 
 var gatePassword = app.Configuration["BasicAuth:Password"];
-if (!string.IsNullOrEmpty(gatePassword))
 {
     const string gateCookie = "RedAnts.Gate";
     const string gatePath = "/__gate";
@@ -426,6 +425,7 @@ if (!string.IsNullOrEmpty(gatePassword))
         await next();
     });
 
+    if (!string.IsNullOrEmpty(gatePassword))
     app.Use(async (context, next) =>
     {
         if (context.Request.Path.StartsWithSegments(gatePath))
