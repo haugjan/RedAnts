@@ -53,6 +53,13 @@
                 <p>Dieser Ticket-Link ist ungültig oder abgelaufen. Bitte den Link aus deiner Bestellbestätigung verwenden.</p>
             </div>
         }
+        else if (!Model.Valid)
+        {
+            <div class="wt-empty">
+                <h1>Storniert</h1>
+                <p>Diese Karte wurde storniert und ist nicht mehr abrufbar.</p>
+            </div>
+        }
         else
         {
             <partial name="~/Views/Partials/_TicketCard.cshtml" model="card!" />

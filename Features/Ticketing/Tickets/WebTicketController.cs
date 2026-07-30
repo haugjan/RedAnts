@@ -49,9 +49,11 @@ public sealed class WebTicketController(
     }
 
     [HttpGet("/ticket/{token}/qr.png")]
-    public IActionResult QrPng(string token)
+    public async Task<IActionResult> QrPng(string token)
     {
-        if (!tokens.TryVerify(token, out _)) return NotFound();
+        if (!tokens.TryVerify(token, out var data)) return NotFound();
+        var issued = await tickets.FindAsync(data.Uuid);
+        if (issued is not { Status: TicketStatus.Valid }) return NotFound();
         var url = $"{publicUrl.Resolve()}/ticket/{token}";
         return File(qr.RenderPng(url, 8), "image/png");
     }
@@ -61,6 +63,7 @@ public sealed class WebTicketController(
     {
         if (!tokens.TryVerify(token, out var data)) return NotFound();
         var issued = await tickets.FindAsync(data.Uuid);
+        if (issued is not { Status: TicketStatus.Valid }) return NotFound();
         var (scopeName, dateText, venueName, _, _) = await ResolveContextAsync(data);
         var absoluteUrl = $"{publicUrl.Resolve()}/ticket/{token}";
 
