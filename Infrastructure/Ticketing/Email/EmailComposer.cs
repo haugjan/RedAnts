@@ -21,6 +21,7 @@ public sealed class EmailComposer : IComposer
         builder.Services.AddScoped<EmailTransportSelector>();
         builder.Services.AddHostedService<OutboxDispatcher>();
 
+        builder.Services.AddScoped<ITicketingMailSettings, RedAnts.Infrastructure.Ticketing.Content.TicketingMailSettings>();
         builder.Services.AddScoped<IHelperInviteMailer, HelperInviteMailer>();
         builder.Services.AddScoped<IMemberCardMailer, MemberCardMailer>();
         builder.Services.AddScoped<ISeasonPassMailer, SeasonPassMailer>();

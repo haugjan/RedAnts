@@ -16,19 +16,24 @@ public sealed class SeasonPassMailer(
     IQrCodeRenderer qr,
     ISeasons seasons,
     IPublicBaseUrl publicUrl,
+    ITicketingMailSettings settings,
     IWebHostEnvironment environment,
     ILogger<SeasonPassMailer> logger) : ISeasonPassMailer
 {
     private const string BadgeLogoFile = "logo-badge-mail.png";
 
-    public string DefaultSubject => "Deine Red Ants Saisonkarte";
+    private const string FallbackSubject = "Deine Red Ants Saisonkarte";
 
-    public string DefaultBody =>
+    private const string FallbackBody =
         "Hallo {Name}\n\n" +
         "Hier ist deine persönliche Saisonkarte der Red Ants Rychenberg Winterthur für die {Saison}. Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt.\n\n" +
         "Damit hast du an allen Heimspielen der Saison freien Eintritt.\n\n" +
         "Vielen Dank für deine Unterstützung. Bis bald in der Halle!\n\n" +
         "Sportliche Grüsse";
+
+    public string DefaultSubject => settings.Subject(TicketingMailKind.SeasonPass, FallbackSubject);
+
+    public string DefaultBody => settings.Body(TicketingMailKind.SeasonPass, FallbackBody);
 
     public async Task<EmailSendResult> SendAsync(SeasonPass pass, string categoryLabel, string subject, string body,
         CancellationToken cancellationToken = default)

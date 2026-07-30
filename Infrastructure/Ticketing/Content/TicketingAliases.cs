@@ -35,4 +35,13 @@ internal static class TicketingAliases
     public const string EventImage = "eventImage";
     public const string EventHomeTeamLogo = "homeTeamLogo";
     public const string EventAwayTeamLogo = "awayTeamLogo";
+
+    public const string MailTextsType = "mailTexts";
+
+    public const string HelperInviteMailSubject = "helperInviteSubject";
+    public const string HelperInviteMailBody = "helperInviteBody";
+    public const string MemberCardMailSubject = "memberCardSubject";
+    public const string MemberCardMailBody = "memberCardBody";
+    public const string SeasonPassMailSubject = "seasonPassSubject";
+    public const string SeasonPassMailBody = "seasonPassBody";
 }

@@ -11,12 +11,13 @@ namespace RedAnts.Infrastructure.Ticketing.Email;
 public sealed class HelperInviteMailer(
     IEmailSender email,
     IConfiguration config,
+    ITicketingMailSettings settings,
     IWebHostEnvironment hostEnvironment,
     ILogger<HelperInviteMailer> logger) : IHelperInviteMailer
 {
-    public string DefaultSubject => "Dein Zugang zum Red Ants Scan-Tool";
+    private const string FallbackSubject = "Dein Zugang zum Red Ants Scan-Tool";
 
-    public string DefaultBody =>
+    private const string FallbackBody =
         "Hallo {Vorname}\n\n" +
         "Vielen Dank, dass du beim Einlass der Red Ants mithilfst! Mit deinem persönlichen Zugang " +
         "kannst du am Anlass die Tickets scannen.\n\n" +
@@ -24,6 +25,10 @@ public sealed class HelperInviteMailer(
         "Deinen Login-Link und dein Passwort findest du unten. Eine kurze Anleitung zum Scan-Tool " +
         "liegt dieser E-Mail als PDF bei.\n\n" +
         "Bei Fragen antworte einfach auf diese E-Mail. Bis bald in der Halle!";
+
+    public string DefaultSubject => settings.Subject(TicketingMailKind.HelperInvite, FallbackSubject);
+
+    public string DefaultBody => settings.Body(TicketingMailKind.HelperInvite, FallbackBody);
 
     public async Task<EmailSendResult> SendAsync(
         Helper helper, string subject, string body, string loginLink, CancellationToken cancellationToken = default)

@@ -16,14 +16,15 @@ public sealed class MemberCardMailer(
     IQrCodeRenderer qr,
     ISeasons seasons,
     IPublicBaseUrl publicUrl,
+    ITicketingMailSettings settings,
     IWebHostEnvironment environment,
     ILogger<MemberCardMailer> logger) : IMemberCardMailer
 {
     private const string BadgeLogoFile = "logo-badge-mail.png";
 
-    public string DefaultSubject => "Deine Red Ants Mitgliederkarte";
+    private const string FallbackSubject = "Deine Red Ants Mitgliederkarte";
 
-    public string DefaultBody =>
+    private const string FallbackBody =
         "Hallo {Vorname}\n\n" +
         "Hier ist deine persönliche Mitgliederkarte der Red Ants Rychenberg Winterthur für die {Saison}. Zeige den QR-Code am Eingang, auf dem Handy oder ausgedruckt.\n\n" +
         "Mit deiner Mitgliederkarte profitierst du ausserdem von diesen Vorteilen:\n\n" +
@@ -32,6 +33,10 @@ public sealed class MemberCardMailer(
         "- Restaurant La Pergola: jeweils am Samstagmittag ein Pastamenü mit Salat und 5dl-Getränk für CHF 20.-, gegen Vorweisen des Mitgliederausweises.\n\n" +
         "Vielen Dank für deine Unterstützung. Bis bald in der Halle!\n\n" +
         "Sportliche Grüsse";
+
+    public string DefaultSubject => settings.Subject(TicketingMailKind.MemberCard, FallbackSubject);
+
+    public string DefaultBody => settings.Body(TicketingMailKind.MemberCard, FallbackBody);
 
     public async Task<EmailSendResult> SendAsync(MemberCard card, string subject, string body, CancellationToken cancellationToken = default)
     {

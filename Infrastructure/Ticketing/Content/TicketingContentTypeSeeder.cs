@@ -53,6 +53,7 @@ public sealed class TicketingContentTypeSeeder(
             EnsureEventExtraProperties();
             EnsureVenueArrivalProperty();
             EnsureContentStructure();
+            EnsureMailSettings();
             ConsolidateSaisonsNode();
             EnsureVenuePicker();
             RefreshAccessLinks();
@@ -276,6 +277,76 @@ public sealed class TicketingContentTypeSeeder(
         venue.AddPropertyType(Prop(richText, A.VenueArrival, "Anreise"), Group, GroupName);
         contentTypeService.Save(venue, SuperUser);
         logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the venue type.", A.VenueArrival);
+    }
+
+    private void EnsureMailSettings()
+    {
+        var all = dataTypeService.GetAll().ToList();
+        var textBox = all.First(d => d.EditorAlias == "Umbraco.TextBox");
+        var textArea = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TextArea") ?? textBox;
+
+        var settingsType = contentTypeService.Get(A.MailTextsType);
+        if (settingsType is null)
+        {
+            settingsType = new ContentType(shortStringHelper, Constants.System.Root)
+            {
+                Alias = A.MailTextsType, Name = "E-Mail-Texte", Icon = "icon-message"
+            };
+            EnsureMailProperties(settingsType, textBox, textArea);
+            contentTypeService.Save(settingsType, SuperUser);
+            logger.LogInformation("TicketingContentTypeSeeder: created the mail-texts document type.");
+        }
+        else if (EnsureMailProperties(settingsType, textBox, textArea))
+        {
+            contentTypeService.Save(settingsType, SuperUser);
+        }
+
+        var root = contentTypeService.Get(A.RootType);
+        if (root is not null)
+        {
+            var allowed = root.AllowedContentTypes?.ToList() ?? new List<ContentTypeSort>();
+            if (allowed.All(s => s.Alias != A.MailTextsType))
+            {
+                allowed.Add(new ContentTypeSort(settingsType.Key, allowed.Count, settingsType.Alias));
+                root.AllowedContentTypes = allowed;
+                contentTypeService.Save(root, SuperUser);
+            }
+        }
+
+        var rootNode = contentService.GetRootContent().FirstOrDefault(c => c.ContentType.Alias == A.RootType);
+        if (rootNode is null) return;
+
+        var node = contentService.GetPagedChildren(rootNode.Id, 0, 100, out _)
+            .FirstOrDefault(c => c.ContentType.Alias == A.MailTextsType);
+        if (node is null)
+        {
+            node = contentService.Create("E-Mail-Texte", rootNode.Id, A.MailTextsType);
+            Publish(node);
+            logger.LogInformation("TicketingContentTypeSeeder: created the mail-texts settings node.");
+        }
+    }
+
+    private bool EnsureMailProperties(IContentType type, IDataType textBox, IDataType textArea)
+    {
+        var changed = false;
+        changed |= AddMailProp(type, textBox, A.HelperInviteMailSubject, "Helfereinladung (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.HelperInviteMailBody, "Helfereinladung (Text)",
+            "Platzhalter: {Vorname}, {Nachname}, {Passwort}, {Link}");
+        changed |= AddMailProp(type, textBox, A.MemberCardMailSubject, "Mitgliederkarte (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.MemberCardMailBody, "Mitgliederkarte (Text)",
+            "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}");
+        changed |= AddMailProp(type, textBox, A.SeasonPassMailSubject, "Saisonkarte (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.SeasonPassMailBody, "Saisonkarte (Text)",
+            "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}");
+        return changed;
+    }
+
+    private bool AddMailProp(IContentType type, IDataType dataType, string alias, string name, string? hint)
+    {
+        if (type.PropertyTypeExists(alias)) return false;
+        var prop = hint is null ? Prop(dataType, alias, name) : PropWithHint(dataType, alias, name, hint);
+        type.AddPropertyType(prop, Group, GroupName);
+        return true;
     }
 
     private const string ObsoleteSaisonsPromoType = "saisonsPromo";
