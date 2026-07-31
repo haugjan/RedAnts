@@ -90,6 +90,7 @@ public class SeasonPriceCategoryRecord
     [Column("Offered")] [NullSetting(NullSetting = NullSettings.Null)] public bool? Offered { get; set; }
     [Column("TicketOffered")] [NullSetting(NullSetting = NullSettings.Null)] public bool? TicketOffered { get; set; }
     [Column("TicketQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? TicketQuota { get; set; }
+    [Column("PassAvailableFrom")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? PassAvailableFrom { get; set; }
     [Column("PassAvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? PassAvailableUntil { get; set; }
     [Column("TicketAvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? TicketAvailableUntil { get; set; }
     [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }

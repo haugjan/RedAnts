@@ -44,6 +44,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonAddOnRequireMobile>("seasonaddons-require-mobile");
         To<AddOrderAddOnDelivered>("orderaddons-delivered");
         To<AddSeasonPassBuyerEmail>("seasonpass-buyer-email");
+        To<AddSeasonPassSaleStart>("seasonprices-pass-sale-start");
+    }
+}
+
+public class AddSeasonPassSaleStart(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonPriceCategories", "PassAvailableFrom"))
+            Alter.Table("SeasonPriceCategories").AddColumn("PassAvailableFrom").AsDateTime().Nullable().Do();
+        return Task.CompletedTask;
     }
 }
 

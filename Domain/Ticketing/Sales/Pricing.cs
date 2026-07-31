@@ -67,6 +67,7 @@ public sealed class SeasonCategoryPrice
     public decimal PassPrice { get; private set; }
     public bool PassOffered { get; private set; }
     public int? PassQuota { get; private set; }
+    public DateOnly? PassAvailableFrom { get; private set; }
     public DateOnly? PassAvailableUntil { get; private set; }
     public decimal TicketPrice { get; private set; }
     public bool TicketOffered { get; private set; }
@@ -74,13 +75,14 @@ public sealed class SeasonCategoryPrice
     public DateOnly? TicketAvailableUntil { get; private set; }
 
     private SeasonCategoryPrice(TicketCategory category, int? tierId, decimal passPrice, bool passOffered, int? passQuota,
-        DateOnly? passAvailableUntil, decimal ticketPrice, bool ticketOffered, int? ticketQuota, DateOnly? ticketAvailableUntil)
+        DateOnly? passAvailableFrom, DateOnly? passAvailableUntil, decimal ticketPrice, bool ticketOffered, int? ticketQuota, DateOnly? ticketAvailableUntil)
     {
         Category = category;
         TierId = tierId;
         PassPrice = passPrice;
         PassOffered = passOffered;
         PassQuota = passQuota;
+        PassAvailableFrom = passAvailableFrom;
         PassAvailableUntil = passAvailableUntil;
         TicketPrice = ticketPrice;
         TicketOffered = ticketOffered;
@@ -90,19 +92,21 @@ public sealed class SeasonCategoryPrice
 
     public static SeasonCategoryPrice Create(TicketCategory category, decimal passPrice, bool passOffered, int? passQuota,
         decimal ticketPrice, bool ticketOffered, int? ticketQuota,
-        DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null, int? tierId = null)
+        DateOnly? passAvailableFrom = null, DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null, int? tierId = null)
     {
         if (passPrice < 0) throw new DomainException("Saisonkarten-Preis darf nicht negativ sein.");
         if (ticketPrice < 0) throw new DomainException("Ticketpreis darf nicht negativ sein.");
         if (passQuota is < 0 || ticketQuota is < 0) throw new DomainException("Kontingent darf nicht negativ sein.");
-        return new SeasonCategoryPrice(category, tierId, decimal.Round(passPrice, 2), passOffered, passQuota, passAvailableUntil,
+        if (passAvailableFrom is { } f && passAvailableUntil is { } u && f > u)
+            throw new DomainException("Verkauf von darf nicht nach Verkauf bis liegen.");
+        return new SeasonCategoryPrice(category, tierId, decimal.Round(passPrice, 2), passOffered, passQuota, passAvailableFrom, passAvailableUntil,
             decimal.Round(ticketPrice, 2), ticketOffered, ticketQuota, ticketAvailableUntil);
     }
 
     public static SeasonCategoryPrice FromPersistence(TicketCategory category, decimal passPrice, bool passOffered,
         int? passQuota, decimal ticketPrice, bool ticketOffered, int? ticketQuota,
-        DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null, int? tierId = null) =>
-        new(category, tierId, passPrice, passOffered, passQuota, passAvailableUntil,
+        DateOnly? passAvailableFrom = null, DateOnly? passAvailableUntil = null, DateOnly? ticketAvailableUntil = null, int? tierId = null) =>
+        new(category, tierId, passPrice, passOffered, passQuota, passAvailableFrom, passAvailableUntil,
             ticketPrice, ticketOffered, ticketQuota, ticketAvailableUntil);
 }
 

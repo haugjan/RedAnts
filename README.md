@@ -258,6 +258,7 @@ erDiagram
         bool Offered "null; pass offered"
         bool TicketOffered "null; single ticket offered"
         int TicketQuota "null"
+        datetime PassAvailableFrom "null; pass sale start"
         datetime PassAvailableUntil "null"
         datetime TicketAvailableUntil "null"
         guid ArticleGuid "null"

@@ -118,7 +118,7 @@
                         <tr>
                             <th rowspan="2">Stufe</th>
                             <th rowspan="2" class="ta-num">Alter bis</th>
-                            <th colspan="5" class="ta-subgroup">Saisonkarten</th>
+                            <th colspan="6" class="ta-subgroup">Saisonkarten</th>
                             <th colspan="4" class="ta-subgroup ta-subgroup-alt">Tickets (Standard für neue Anlässe)</th>
                             <th rowspan="2"></th>
                         </tr>
@@ -126,6 +126,7 @@
                             <th class="ta-group-col">Angeboten</th>
                             <th class="ta-num">Preis (CHF)</th>
                             <th class="ta-num">Kontingent</th>
+                            <th class="ta-num">Verkauf von</th>
                             <th class="ta-num">Verkauf bis</th>
                             <th class="ta-num">Verbraucht</th>
                             <th class="ta-group-col">Angeboten</th>
@@ -143,6 +144,7 @@
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.PassOffered" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPrice" @bind:after="() => c.PassPrice = decimal.Round(c.PassPrice, 2)" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassOffered)" @bind="c.PassQuota" /></td>
+                                <td class="ta-num"><DateBox @bind-Value="c.PassAvailableFrom" Disabled="@(!c.PassOffered)" /></td>
                                 <td class="ta-num"><DateBox @bind-Value="c.PassAvailableUntil" Disabled="@(!c.PassOffered)" /></td>
                                 <td class="ta-num">@c.Sold@(c.PassQuota is { } q ? $" / {q}" : "")</td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.TicketOffered" /></td>
@@ -162,6 +164,7 @@
                                     <td class="ta-group-col" title="Sonderaktion für Saisonkarten aktiv"><input type="checkbox" @bind="c.PassPromoOffered" /></td>
                                     <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassPromoOffered)" @bind="c.PassPromoPrice" @bind:after="() => c.PassPromoPrice = decimal.Round(c.PassPromoPrice, 2)" /></td>
                                     <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassPromoOffered)" @bind="c.PassPromoQuota" /></td>
+                                    <td class="ta-num"><DateBox @bind-Value="c.PassPromoAvailableFrom" Disabled="@(!c.PassPromoOffered)" /></td>
                                     <td class="ta-num"><DateBox @bind-Value="c.PassPromoAvailableUntil" Disabled="@(!c.PassPromoOffered)" /></td>
                                     <td class="ta-num">@c.PromoSold@(c.PassPromoQuota is { } pq ? $" / {pq}" : "")</td>
                                     <td class="ta-group-col" title="Sonderaktion für Tickets aktiv"><input type="checkbox" @bind="c.TicketPromoOffered" /></td>
@@ -174,13 +177,13 @@
                         }
                         @if (_editTiers.Count == 0)
                         {
-                            <tr><td colspan="12" class="ta-muted">Noch keine Preisstufen erfasst.</td></tr>
+                            <tr><td colspan="13" class="ta-muted">Noch keine Preisstufen erfasst.</td></tr>
                         }
                     </tbody>
                 </table>
                 </div>
                 <button type="button" class="ta-btn ta-btn-ghost ta-addon-add" @onclick="AddTier">+ Stufe hinzufügen</button>
-                <p class="ta-field-hint">Jede Stufe hat einen Namen und optional eine Altersgrenze (nur Anzeige). Links: Saisonkarten-Verkauf dieser Saison. Rechts: Standardwerte, die jeder NEUE Anlass beim Erstellen übernimmt (bestehende Anlässe bleiben unverändert). Mit ☆ fügst du einer Stufe eine benannte Aktion hinzu: Solange deren Kontingent und Datum nicht erreicht sind, gilt der Aktionspreis, danach der Normalpreis. „Verkauf bis" leer = kein Enddatum; sonst endet der Verkauf nach dem Datum oder sobald das Kontingent erreicht ist. Stufen lassen sich nur löschen, solange noch keine Karten verkauft wurden.</p>
+                <p class="ta-field-hint">Jede Stufe hat einen Namen und optional eine Altersgrenze (nur Anzeige). Links: Saisonkarten-Verkauf dieser Saison. Rechts: Standardwerte, die jeder NEUE Anlass beim Erstellen übernimmt (bestehende Anlässe bleiben unverändert). Mit ☆ fügst du einer Stufe eine benannte Aktion hinzu: Solange deren Kontingent und Datum nicht erreicht sind, gilt der Aktionspreis, danach der Normalpreis. „Verkauf von" leer = ab sofort; sonst startet der Verkauf am angegebenen Tag. „Verkauf bis" leer = kein Enddatum; sonst endet der Verkauf nach dem Datum (Tag inklusive) oder sobald das Kontingent erreicht ist. Stufen lassen sich nur löschen, solange noch keine Karten verkauft wurden.</p>
             </div>
 
             @if (_editError is not null)
@@ -480,6 +483,7 @@
                 if (priceByTier.TryGetValue(t.Id, out var cp))
                 {
                     row.PassOffered = cp.PassOffered; row.PassPrice = decimal.Round(cp.PassPrice, 2); row.PassQuota = cp.PassQuota;
+                    row.PassAvailableFrom = cp.PassAvailableFrom;
                     row.PassAvailableUntil = cp.PassAvailableUntil;
                     row.TicketOffered = cp.TicketOffered; row.TicketPrice = decimal.Round(cp.TicketPrice, 2); row.TicketQuota = cp.TicketQuota;
                     row.TicketAvailableUntil = cp.TicketAvailableUntil;
@@ -492,6 +496,7 @@
                     {
                         row.PassPromoOffered = pp.PassOffered; row.TicketPromoOffered = pp.TicketOffered;
                         row.PassPromoPrice = decimal.Round(pp.PassPrice, 2); row.PassPromoQuota = pp.PassQuota;
+                        row.PassPromoAvailableFrom = pp.PassAvailableFrom;
                         row.PassPromoAvailableUntil = pp.PassAvailableUntil;
                         row.TicketPromoPrice = decimal.Round(pp.TicketPrice, 2); row.TicketPromoQuota = pp.TicketQuota;
                         row.TicketPromoAvailableUntil = pp.TicketAvailableUntil;
@@ -553,13 +558,13 @@
                 cats.Add(SeasonCategoryPrice.Create(default,
                     decimal.Round(t.PassPrice, 2), t.PassOffered, t.PassQuota,
                     decimal.Round(t.TicketPrice, 2), t.TicketOffered, t.TicketQuota,
-                    t.PassAvailableUntil, t.TicketAvailableUntil, normal.Id));
+                    t.PassAvailableFrom, t.PassAvailableUntil, t.TicketAvailableUntil, normal.Id));
 
                 if (savedPromoByParent.GetValueOrDefault(normal.Id) is { } promo)
                     cats.Add(SeasonCategoryPrice.Create(default,
                         decimal.Round(t.PassPromoPrice, 2), t.PassPromoOffered, t.PassPromoQuota,
                         decimal.Round(t.TicketPromoPrice, 2), t.TicketPromoOffered, t.TicketPromoQuota,
-                        t.PassPromoAvailableUntil, t.TicketPromoAvailableUntil, promo.Id));
+                        t.PassPromoAvailableFrom, t.PassPromoAvailableUntil, t.TicketPromoAvailableUntil, promo.Id));
             }
 
             var existing = Price(_editing.Id);
@@ -584,6 +589,7 @@
         public bool PassOffered { get; set; }
         public decimal PassPrice { get; set; }
         public int? PassQuota { get; set; }
+        public DateOnly? PassAvailableFrom { get; set; }
         public DateOnly? PassAvailableUntil { get; set; }
         public bool TicketOffered { get; set; }
         public decimal TicketPrice { get; set; }
@@ -597,6 +603,7 @@
         public bool TicketPromoOffered { get; set; }
         public decimal PassPromoPrice { get; set; }
         public int? PassPromoQuota { get; set; }
+        public DateOnly? PassPromoAvailableFrom { get; set; }
         public DateOnly? PassPromoAvailableUntil { get; set; }
         public decimal TicketPromoPrice { get; set; }
         public int? TicketPromoQuota { get; set; }

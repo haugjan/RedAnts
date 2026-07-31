@@ -96,6 +96,7 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
                 Offered = c.PassOffered,
                 TicketOffered = c.TicketOffered,
                 TicketQuota = c.TicketQuota,
+                PassAvailableFrom = c.PassAvailableFrom?.ToDateTime(TimeOnly.MinValue),
                 PassAvailableUntil = c.PassAvailableUntil?.ToDateTime(TimeOnly.MinValue),
                 TicketAvailableUntil = c.TicketAvailableUntil?.ToDateTime(TimeOnly.MinValue),
                 ArticleGuid = Guid.NewGuid()
@@ -118,7 +119,7 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
             cats.Select(c => SeasonCategoryPrice.FromPersistence(
                 (TicketCategory)c.Category, c.SalePrice, c.Offered ?? true, c.Quota,
                 c.TicketPrice ?? 0m, c.TicketOffered ?? c.Offered ?? true, c.TicketQuota,
-                ToDateOnly(c.PassAvailableUntil), ToDateOnly(c.TicketAvailableUntil), c.TierId)).ToList(),
+                ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), ToDateOnly(c.TicketAvailableUntil), c.TierId)).ToList(),
             p.DefaultTicketSalesQuota);
 
     private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
@@ -202,7 +203,7 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
 
 internal sealed record TierRow(
     int TierId, string Name, int? PromoOfTierId, int SortOrder,
-    bool Offered, decimal Price, int? Quota, DateOnly? AvailableUntil, int Sold);
+    bool Offered, decimal Price, int? Quota, DateOnly? AvailableFrom, DateOnly? AvailableUntil, int Sold);
 
 internal static class TierOffer
 {
@@ -239,7 +240,7 @@ internal static class TierOffer
     {
         int? categoryRemaining = r.Quota is { } q ? Math.Max(0, q - r.Sold) : null;
         var remaining = Least(categoryRemaining, totalRemaining);
-        var available = (remaining is null || remaining > 0) && NotExpired(r.AvailableUntil);
+        var available = (remaining is null || remaining > 0) && InSaleWindow(r.AvailableFrom, r.AvailableUntil);
         return new AvailableTicketCategory(r.TierId, r.Name, r.Price, available, remaining, r.AvailableUntil);
     }
 
@@ -252,7 +253,11 @@ internal static class TierOffer
             var (x, y) => Math.Min(x!.Value, y!.Value)
         };
 
-    private static bool NotExpired(DateOnly? until) => until is null || DateOnly.FromDateTime(DateTime.Today) <= until.Value;
+    private static bool InSaleWindow(DateOnly? from, DateOnly? until)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return (from is null || today >= from.Value) && (until is null || today <= until.Value);
+    }
 }
 
 public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPricing
@@ -280,7 +285,7 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
         {
             if (c.TierId is not { } tid || !tierById.TryGetValue(tid, out var t)) continue;
             rows.Add(new TierRow(tid, t.Name, t.PromoOfTierId, t.SortOrder, true,
-                c.SalePrice, c.Quota, ToDateOnly(c.AvailableUntil), soldByTier.GetValueOrDefault(tid)));
+                c.SalePrice, c.Quota, null, ToDateOnly(c.AvailableUntil), soldByTier.GetValueOrDefault(tid)));
         }
         return TierOffer.Resolve(rows, totalRemaining);
     }
@@ -356,7 +361,7 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
         {
             if (c.TierId is not { } tid || !tierById.TryGetValue(tid, out var t)) continue;
             rows.Add(new TierRow(tid, t.Name, t.PromoOfTierId, t.SortOrder, c.Offered ?? true,
-                c.SalePrice, c.Quota, ToDateOnly(c.PassAvailableUntil), soldByTier.GetValueOrDefault(tid)));
+                c.SalePrice, c.Quota, ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), soldByTier.GetValueOrDefault(tid)));
         }
         return TierOffer.Resolve(rows, totalRemaining);
     }
