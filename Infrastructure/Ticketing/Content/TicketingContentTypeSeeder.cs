@@ -98,6 +98,7 @@ public sealed class TicketingContentTypeSeeder(
         IDataType ByEditor(string alias) => all.First(d => d.EditorAlias == alias);
 
         var textBox = ByEditor("Umbraco.TextBox");
+        var textArea = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TextArea") ?? textBox;
         var richText = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.RichText") ?? textBox;
         var mediaPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.MediaPicker3") ?? textBox;
         var contentPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.ContentPicker") ?? textBox;
@@ -115,7 +116,7 @@ public sealed class TicketingContentTypeSeeder(
         {
             Alias = A.VenueType, Name = "Ort", Icon = "icon-map-location"
         };
-        venue.AddPropertyType(Prop(textBox, A.VenueAddress, "Adresse"), Group, GroupName);
+        venue.AddPropertyType(Prop(textArea, A.VenueAddress, "Adresse"), Group, GroupName);
         venue.AddPropertyType(Prop(textBox, A.VenueGoogleGeoId, "Google Geo ID"), Group, GroupName);
         venue.AddPropertyType(Prop(mediaPicker, A.VenueImage, "Bild"), Group, GroupName);
         venue.AddPropertyType(Prop(richText, A.VenueDescription, "Beschreibung"), Group, GroupName);
@@ -284,12 +285,25 @@ public sealed class TicketingContentTypeSeeder(
     private void EnsureVenueAddressProperty()
     {
         var venue = contentTypeService.Get(A.VenueType);
-        if (venue is null || venue.PropertyTypeExists(A.VenueAddress)) return;
+        if (venue is null) return;
 
-        var textBox = dataTypeService.GetAll().First(d => d.EditorAlias == "Umbraco.TextBox");
-        venue.AddPropertyType(Prop(textBox, A.VenueAddress, "Adresse"), Group, GroupName);
-        contentTypeService.Save(venue, SuperUser);
-        logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the venue type.", A.VenueAddress);
+        var textArea = dataTypeService.GetAll().FirstOrDefault(d => d.EditorAlias == "Umbraco.TextArea");
+        if (textArea is null) return;
+
+        var existing = venue.PropertyTypes.FirstOrDefault(p => p.Alias == A.VenueAddress);
+        if (existing is null)
+        {
+            venue.AddPropertyType(Prop(textArea, A.VenueAddress, "Adresse"), Group, GroupName);
+            contentTypeService.Save(venue, SuperUser);
+            logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the venue type.", A.VenueAddress);
+        }
+        else if (existing.DataTypeKey != textArea.Key)
+        {
+            existing.DataTypeId = textArea.Id;
+            existing.DataTypeKey = textArea.Key;
+            contentTypeService.Save(venue, SuperUser);
+            logger.LogInformation("TicketingContentTypeSeeder: switched '{Alias}' to a multi-line field.", A.VenueAddress);
+        }
     }
 
     private void EnsureMailSettings()
