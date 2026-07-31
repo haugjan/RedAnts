@@ -32,7 +32,8 @@ internal static class CatalogContentMapper
             node.Name,
             node.Value<string>(A.VenueGoogleGeoId),
             MediaUrl(node, A.VenueImage),
-            node.Value<string>(A.VenueDescription));
+            node.Value<string>(A.VenueDescription),
+            node.Value<string>(A.VenueAddress));
 
     private static string? MediaUrl(IPublishedContent node, string alias) =>
         node.Value<IPublishedContent>(alias)?.Url();

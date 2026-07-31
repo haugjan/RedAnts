@@ -52,6 +52,7 @@ public sealed class TicketingContentTypeSeeder(
             EnsurePublicPageTypes();
             EnsureEventExtraProperties();
             EnsureVenueArrivalProperty();
+            EnsureVenueAddressProperty();
             EnsureContentStructure();
             EnsureMailSettings();
             ConsolidateSaisonsNode();
@@ -114,6 +115,7 @@ public sealed class TicketingContentTypeSeeder(
         {
             Alias = A.VenueType, Name = "Ort", Icon = "icon-map-location"
         };
+        venue.AddPropertyType(Prop(textBox, A.VenueAddress, "Adresse"), Group, GroupName);
         venue.AddPropertyType(Prop(textBox, A.VenueGoogleGeoId, "Google Geo ID"), Group, GroupName);
         venue.AddPropertyType(Prop(mediaPicker, A.VenueImage, "Bild"), Group, GroupName);
         venue.AddPropertyType(Prop(richText, A.VenueDescription, "Beschreibung"), Group, GroupName);
@@ -277,6 +279,17 @@ public sealed class TicketingContentTypeSeeder(
         venue.AddPropertyType(Prop(richText, A.VenueArrival, "Anreise"), Group, GroupName);
         contentTypeService.Save(venue, SuperUser);
         logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the venue type.", A.VenueArrival);
+    }
+
+    private void EnsureVenueAddressProperty()
+    {
+        var venue = contentTypeService.Get(A.VenueType);
+        if (venue is null || venue.PropertyTypeExists(A.VenueAddress)) return;
+
+        var textBox = dataTypeService.GetAll().First(d => d.EditorAlias == "Umbraco.TextBox");
+        venue.AddPropertyType(Prop(textBox, A.VenueAddress, "Adresse"), Group, GroupName);
+        contentTypeService.Save(venue, SuperUser);
+        logger.LogInformation("TicketingContentTypeSeeder: added '{Alias}' to the venue type.", A.VenueAddress);
     }
 
     private void EnsureMailSettings()
