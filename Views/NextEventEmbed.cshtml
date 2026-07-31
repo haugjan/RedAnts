@@ -21,14 +21,14 @@
         * { box-sizing: border-box; }
         html, body { margin: 0; height: 100%; }
         body { font-family: Verdana, Geneva, Tahoma, sans-serif; color: var(--ink); background: transparent; min-height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .ne { max-width: 520px; width: 100%; margin: 0 auto; padding: clamp(0.5rem, 3vh, 1.25rem); text-align: center; display: flex; flex-direction: column; align-items: center; gap: clamp(0.5rem, 3vh, 1.35rem); }
-        .ne-title { font-family: var(--display); text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; font-size: clamp(1.3rem, 4.5vw, 2rem); line-height: 1.05; margin: 0; }
+        .ne { max-width: 620px; width: 100%; margin: 0 auto; padding: clamp(0.5rem, 3vh, 1.4rem) clamp(0.4rem, 2vw, 0.9rem); text-align: center; display: flex; flex-direction: column; align-items: center; gap: clamp(0.5rem, 3vh, 1.4rem); }
+        .ne-title { font-family: var(--display); text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; font-size: clamp(1.3rem, 6.5vw, 2.5rem); line-height: 1.05; margin: 0; }
         .ne-title::after { content: ""; display: block; width: 56px; height: 4px; background: var(--red); margin: clamp(0.35rem, 1.5vh, 0.6rem) auto 0; }
-        .ne-date { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; color: #555; font-size: clamp(0.8rem, 2.5vh, 0.95rem); margin: 0; }
-        .ne-logos { display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin: 0; }
-        .ne-logos img { height: clamp(44px, 13vh, 64px); width: auto; object-fit: contain; }
-        .ne-vs { font-family: var(--display); font-weight: 700; text-transform: uppercase; font-size: clamp(1.1rem, 4vh, 1.5rem); color: #999; }
-        .ne-cta { display: inline-block; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; font-size: clamp(0.9rem, 3vh, 1.05rem); background: var(--red); color: #fff; text-decoration: none; padding: clamp(0.5rem, 2vh, 0.7rem) 1.6rem; margin: 0; transition: background 0.15s; }
+        .ne-date { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; color: #555; font-size: clamp(0.8rem, 3vw, 1.1rem); margin: 0; }
+        .ne-logos { display: flex; align-items: center; justify-content: center; gap: clamp(0.9rem, 4vw, 1.75rem); margin: 0; }
+        .ne-logos img { height: clamp(44px, min(15vh, 18vw), 96px); width: auto; object-fit: contain; }
+        .ne-vs { font-family: var(--display); font-weight: 700; text-transform: uppercase; font-size: clamp(1.1rem, 4.5vw, 1.85rem); color: #999; }
+        .ne-cta { display: inline-block; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; font-size: clamp(0.9rem, 3.6vw, 1.35rem); background: var(--red); color: #fff; text-decoration: none; padding: clamp(0.5rem, 2vh, 0.85rem) clamp(1.2rem, 6vw, 2.4rem); margin: 0; transition: background 0.15s; }
         .ne-cta:hover { background: var(--red-dark); color: #fff; }
         .ne-empty { font-family: var(--display); text-transform: uppercase; color: #777; letter-spacing: 0.05em; padding: 1.5rem; }
     </style>
