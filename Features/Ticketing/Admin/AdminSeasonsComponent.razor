@@ -118,7 +118,7 @@
                         <tr>
                             <th rowspan="2">Stufe</th>
                             <th rowspan="2" class="ta-num">Alter bis</th>
-                            <th colspan="6" class="ta-subgroup">Saisonkarten</th>
+                            <th colspan="5" class="ta-subgroup">Saisonkarten</th>
                             <th colspan="4" class="ta-subgroup ta-subgroup-alt">Tickets (Standard für neue Anlässe)</th>
                             <th rowspan="2"></th>
                         </tr>
@@ -126,8 +126,7 @@
                             <th class="ta-group-col">Angeboten</th>
                             <th class="ta-num">Preis (CHF)</th>
                             <th class="ta-num">Kontingent</th>
-                            <th class="ta-num">Verkauf von</th>
-                            <th class="ta-num">Verkauf bis</th>
+                            <th class="ta-num">Verkauf von / bis</th>
                             <th class="ta-num">Verbraucht</th>
                             <th class="ta-group-col">Angeboten</th>
                             <th class="ta-num">Preis (CHF)</th>
@@ -144,8 +143,10 @@
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.PassOffered" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPrice" @bind:after="() => c.PassPrice = decimal.Round(c.PassPrice, 2)" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassOffered)" @bind="c.PassQuota" /></td>
-                                <td class="ta-num"><DateBox @bind-Value="c.PassAvailableFrom" Disabled="@(!c.PassOffered)" /></td>
-                                <td class="ta-num"><DateBox @bind-Value="c.PassAvailableUntil" Disabled="@(!c.PassOffered)" /></td>
+                                <td class="ta-num ta-sale-window">
+                                    <span class="ta-sale-row"><span class="ta-sale-lbl">von</span><DateBox @bind-Value="c.PassAvailableFrom" Disabled="@(!c.PassOffered)" /></span>
+                                    <span class="ta-sale-row"><span class="ta-sale-lbl">bis</span><DateBox @bind-Value="c.PassAvailableUntil" Disabled="@(!c.PassOffered)" /></span>
+                                </td>
                                 <td class="ta-num">@c.Sold@(c.PassQuota is { } q ? $" / {q}" : "")</td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.TicketOffered" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.TicketOffered)" @bind="c.TicketPrice" @bind:after="() => c.TicketPrice = decimal.Round(c.TicketPrice, 2)" /></td>
@@ -164,8 +165,10 @@
                                     <td class="ta-group-col" title="Sonderaktion für Saisonkarten aktiv"><input type="checkbox" @bind="c.PassPromoOffered" /></td>
                                     <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassPromoOffered)" @bind="c.PassPromoPrice" @bind:after="() => c.PassPromoPrice = decimal.Round(c.PassPromoPrice, 2)" /></td>
                                     <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassPromoOffered)" @bind="c.PassPromoQuota" /></td>
-                                    <td class="ta-num"><DateBox @bind-Value="c.PassPromoAvailableFrom" Disabled="@(!c.PassPromoOffered)" /></td>
-                                    <td class="ta-num"><DateBox @bind-Value="c.PassPromoAvailableUntil" Disabled="@(!c.PassPromoOffered)" /></td>
+                                    <td class="ta-num ta-sale-window">
+                                        <span class="ta-sale-row"><span class="ta-sale-lbl">von</span><DateBox @bind-Value="c.PassPromoAvailableFrom" Disabled="@(!c.PassPromoOffered)" /></span>
+                                        <span class="ta-sale-row"><span class="ta-sale-lbl">bis</span><DateBox @bind-Value="c.PassPromoAvailableUntil" Disabled="@(!c.PassPromoOffered)" /></span>
+                                    </td>
                                     <td class="ta-num">@c.PromoSold@(c.PassPromoQuota is { } pq ? $" / {pq}" : "")</td>
                                     <td class="ta-group-col" title="Sonderaktion für Tickets aktiv"><input type="checkbox" @bind="c.TicketPromoOffered" /></td>
                                     <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.TicketPromoOffered)" @bind="c.TicketPromoPrice" @bind:after="() => c.TicketPromoPrice = decimal.Round(c.TicketPromoPrice, 2)" /></td>
@@ -177,7 +180,7 @@
                         }
                         @if (_editTiers.Count == 0)
                         {
-                            <tr><td colspan="13" class="ta-muted">Noch keine Preisstufen erfasst.</td></tr>
+                            <tr><td colspan="12" class="ta-muted">Noch keine Preisstufen erfasst.</td></tr>
                         }
                     </tbody>
                 </table>
