@@ -11,7 +11,18 @@ public sealed record AvailableTicketCategory(
     DateOnly? AvailableUntil = null,
     string? ShortName = null,
     string? ActionText = null,
-    decimal? OriginalPrice = null);
+    decimal? OriginalPrice = null,
+    int? MinAge = null,
+    int? MaxAge = null)
+{
+    public string? AgeText => (MinAge, MaxAge) switch
+    {
+        ({ } lo, { } hi) => $"{lo} bis {hi} Jahre",
+        ({ } lo, null) => $"ab {lo} Jahren",
+        (null, { } hi) => $"bis {hi} Jahre",
+        _ => null
+    };
+}
 
 public interface IPriceTiers
 {
@@ -20,7 +31,7 @@ public interface IPriceTiers
     Task<int> GetSoldCountAsync(int tierId);
 }
 
-public sealed record PriceTierInput(int Id, string Name, int? MaxAge, int SortOrder, PriceTierPromoInput? Promo);
+public sealed record PriceTierInput(int Id, string Name, int? MinAge, int? MaxAge, int SortOrder, PriceTierPromoInput? Promo);
 
 public sealed record PriceTierPromoInput(int Id, string Name);
 

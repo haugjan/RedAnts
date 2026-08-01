@@ -89,6 +89,7 @@
             gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid #eee; flex-wrap: wrap;
         }
         .evt-cat__name { font-weight: 700; }
+        .evt-cat__age { font-weight: 400; font-size: .85rem; color: #666; }
         .evt-cat__price { color: var(--ink-light); margin-left: 0.5rem; font-weight: 400; }
         .evt-cat__note { display: block; font-size: 0.8rem; color: var(--ink-light); margin-top: 0.15rem; }
         .evt-cat form { display: flex; align-items: center; gap: 0.5rem; }
@@ -206,7 +207,8 @@ else
                     {
                         <div class="evt-cat">
                             <div>
-                                <span class="evt-cat__name">@cat.Name</span>
+                                <span class="evt-cat__name">@cat.Name@if (cat.AgeText is { } ageText)
+                                {<span class="evt-cat__age"> (@ageText)</span>}</span>
                                 @if (cat.OriginalPrice is { } orig)
                                 {
                                     <span class="evt-cat__price"><s style="opacity:.6">CHF @MoneyFormat.Chf(orig)</s> CHF @MoneyFormat.Chf(cat.Price)</span>

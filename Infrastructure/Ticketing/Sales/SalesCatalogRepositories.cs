@@ -159,9 +159,9 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
 
         foreach (var t in tiers)
         {
-            var normal = await UpsertAsync(db, seasonId, t.Id, t.Name, t.MaxAge, null, t.SortOrder);
+            var normal = await UpsertAsync(db, seasonId, t.Id, t.Name, t.MinAge, t.MaxAge, null, t.SortOrder);
             if (t.Promo is { } p)
-                await UpsertAsync(db, seasonId, p.Id, p.Name, null, normal.Id, t.SortOrder);
+                await UpsertAsync(db, seasonId, p.Id, p.Name, null, null, normal.Id, t.SortOrder);
         }
 
         var saved = await db.FetchAsync<SeasonPriceTierRecord>("WHERE SeasonId = @0 ORDER BY SortOrder, Id", seasonId);
@@ -175,14 +175,15 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
     }
 
     private static async Task<SeasonPriceTierRecord> UpsertAsync(IDatabase db, int seasonId, int id, string name,
-        int? maxAge, int? promoOfTierId, int sortOrder)
+        int? minAge, int? maxAge, int? promoOfTierId, int sortOrder)
     {
-        var tier = PriceTier.Create(seasonId, name, maxAge, promoOfTierId, sortOrder);
+        var tier = PriceTier.Create(seasonId, name, minAge, maxAge, promoOfTierId, sortOrder);
         var rec = new SeasonPriceTierRecord
         {
             Id = id,
             SeasonId = seasonId,
             Name = tier.Name,
+            MinAge = tier.MinAge,
             MaxAge = tier.MaxAge,
             PromoOfTierId = tier.PromoOfTierId,
             SortOrder = tier.SortOrder
@@ -198,12 +199,13 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
         + await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM SeasonPasses WHERE TierId = @0", tierId);
 
     private static PriceTier Map(SeasonPriceTierRecord r) =>
-        PriceTier.FromPersistence(r.Id, r.SeasonId, r.Name, r.MaxAge, r.PromoOfTierId, r.SortOrder);
+        PriceTier.FromPersistence(r.Id, r.SeasonId, r.Name, r.MinAge, r.MaxAge, r.PromoOfTierId, r.SortOrder);
 }
 
 internal sealed record TierRow(
     int TierId, string Name, int? PromoOfTierId, int SortOrder,
-    bool Offered, decimal Price, int? Quota, DateOnly? AvailableFrom, DateOnly? AvailableUntil, int Sold);
+    bool Offered, decimal Price, int? Quota, DateOnly? AvailableFrom, DateOnly? AvailableUntil, int Sold,
+    int? MinAge = null, int? MaxAge = null);
 
 internal static class TierOffer
 {
@@ -227,7 +229,9 @@ internal static class TierOffer
                 {
                     ShortName = normal.Name,
                     ActionText = string.IsNullOrWhiteSpace(action) ? null : action,
-                    OriginalPrice = pick.Price < normal.Price ? normal.Price : null
+                    OriginalPrice = pick.Price < normal.Price ? normal.Price : null,
+                    MinAge = normal.MinAge,
+                    MaxAge = normal.MaxAge
                 });
                 continue;
             }
@@ -241,7 +245,11 @@ internal static class TierOffer
         int? categoryRemaining = r.Quota is { } q ? Math.Max(0, q - r.Sold) : null;
         var remaining = Least(categoryRemaining, totalRemaining);
         var available = (remaining is null || remaining > 0) && InSaleWindow(r.AvailableFrom, r.AvailableUntil);
-        return new AvailableTicketCategory(r.TierId, r.Name, r.Price, available, remaining, r.AvailableUntil);
+        return new AvailableTicketCategory(r.TierId, r.Name, r.Price, available, remaining, r.AvailableUntil)
+        {
+            MinAge = r.MinAge,
+            MaxAge = r.MaxAge
+        };
     }
 
     private static int? Least(int? a, int? b) =>
@@ -285,7 +293,8 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
         {
             if (c.TierId is not { } tid || !tierById.TryGetValue(tid, out var t)) continue;
             rows.Add(new TierRow(tid, t.Name, t.PromoOfTierId, t.SortOrder, true,
-                c.SalePrice, c.Quota, null, ToDateOnly(c.AvailableUntil), soldByTier.GetValueOrDefault(tid)));
+                c.SalePrice, c.Quota, null, ToDateOnly(c.AvailableUntil), soldByTier.GetValueOrDefault(tid),
+                t.MinAge, t.MaxAge));
         }
         return TierOffer.Resolve(rows, totalRemaining);
     }
@@ -361,7 +370,8 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
         {
             if (c.TierId is not { } tid || !tierById.TryGetValue(tid, out var t)) continue;
             rows.Add(new TierRow(tid, t.Name, t.PromoOfTierId, t.SortOrder, c.Offered ?? true,
-                c.SalePrice, c.Quota, ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), soldByTier.GetValueOrDefault(tid)));
+                c.SalePrice, c.Quota, ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), soldByTier.GetValueOrDefault(tid),
+                t.MinAge, t.MaxAge));
         }
         return TierOffer.Resolve(rows, totalRemaining);
     }

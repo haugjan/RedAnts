@@ -69,6 +69,7 @@ public class SeasonPriceTierRecord
     [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
     [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int SeasonId { get; set; }
     [Column("Name")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string Name { get; set; } = "";
+    [Column("MinAge")] [NullSetting(NullSetting = NullSettings.Null)] public int? MinAge { get; set; }
     [Column("MaxAge")] [NullSetting(NullSetting = NullSettings.Null)] public int? MaxAge { get; set; }
     [Column("PromoOfTierId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? PromoOfTierId { get; set; }
     [Column("SortOrder")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SortOrder { get; set; }

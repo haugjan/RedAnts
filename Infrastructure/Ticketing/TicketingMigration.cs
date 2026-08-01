@@ -46,6 +46,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonPassBuyerEmail>("seasonpass-buyer-email");
         To<AddSeasonPassSaleStart>("seasonprices-pass-sale-start");
         To<AddRefundsAndJournal>("refunds-and-journal");
+        To<AddPriceTierMinAge>("price-tier-min-age");
+    }
+}
+
+public class AddPriceTierMinAge(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonPriceTiers", "MinAge"))
+            Alter.Table("SeasonPriceTiers").AddColumn("MinAge").AsInt32().Nullable().Do();
+        return Task.CompletedTask;
     }
 }
 
