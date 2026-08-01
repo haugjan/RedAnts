@@ -179,7 +179,6 @@ app.Use(async (context, next) =>
         && !request.Path.StartsWithSegments("/_blazor")
         && !request.Path.StartsWithSegments("/_framework")
         && !request.Path.StartsWithSegments("/api")
-        && !request.Path.StartsWithSegments("/ticket")
         && !request.Path.StartsWithSegments("/warmup");
 
     if (!handle404)
