@@ -64,6 +64,7 @@
         OrderStatus.Draft => "Unbezahlt",
         OrderStatus.Cancelled => "Storniert",
         OrderStatus.Refunded => "Erstattet",
+        OrderStatus.PartiallyRefunded => "Teilerstattet",
         _ => status.ToString()
     };
 
@@ -73,6 +74,7 @@
         OrderStatus.Draft => "ta-badge-draft",
         OrderStatus.Cancelled => "ta-badge-cancelled",
         OrderStatus.Refunded => "ta-badge-intern",
+        OrderStatus.PartiallyRefunded => "ta-badge-redeemed",
         _ => "ta-badge-draft"
     };
 }

@@ -49,7 +49,7 @@
                         <div class="ta-refund-amount">
                             <input id="refAmount" type="number" step="0.05" min="0" max="@_summary.Remaining"
                                    class="ta-input" @bind="_amount" />
-                            <button type="button" class="ta-link-btn" @onclick="() => _amount = _summary.Remaining">
+                            <button type="button" class="ta-link-btn" @onclick="() => _amount = decimal.Round(_summary.Remaining, 2)">
                                 Vollständig (@_summary.Remaining.ToString("N2"))
                             </button>
                         </div>
@@ -160,7 +160,7 @@
     {
         _summary = await Refunds.GetSummaryAsync(OrderId);
         _refunds = await Refunds.GetByOrderAsync(OrderId);
-        _amount = _summary.Remaining;
+        _amount = decimal.Round(_summary.Remaining, 2);
         _method = OnlineAvailable ? RefundMethod.Payrexx : RefundMethod.Cash;
         _deactivate = _summary.RefundedConfirmed == 0m && _amount >= _summary.TotalGross;
     }
