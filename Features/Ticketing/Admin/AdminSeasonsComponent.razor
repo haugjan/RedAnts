@@ -117,8 +117,7 @@
                     <thead>
                         <tr>
                             <th rowspan="2">Stufe</th>
-                            <th rowspan="2" class="ta-num">Alter von</th>
-                            <th rowspan="2" class="ta-num">Alter bis</th>
+                            <th rowspan="2" class="ta-num">Alter (Jahre)</th>
                             <th colspan="5" class="ta-subgroup">Saisonkarten</th>
                             <th colspan="4" class="ta-subgroup ta-subgroup-alt">Tickets (Standard für neue Anlässe)</th>
                             <th rowspan="2"></th>
@@ -140,8 +139,10 @@
                         {
                             <tr class="@(c.PassOffered || c.TicketOffered ? "" : "ta-row-off")">
                                 <td><input type="text" maxlength="200" class="ta-input ta-tier-name" placeholder="z. B. Erwachsen" @bind="c.Name" /></td>
-                                <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-age" placeholder="–" @bind="c.MinAge" /></td>
-                                <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-age" placeholder="–" @bind="c.MaxAge" /></td>
+                                <td class="ta-num ta-sale-window">
+                                    <span class="ta-sale-row"><span class="ta-sale-lbl">von</span><input type="number" min="0" step="1" class="ta-input ta-input-age" placeholder="–" @bind="c.MinAge" /></span>
+                                    <span class="ta-sale-row"><span class="ta-sale-lbl">bis</span><input type="number" min="0" step="1" class="ta-input ta-input-age" placeholder="–" @bind="c.MaxAge" /></span>
+                                </td>
                                 <td class="ta-group-col"><input type="checkbox" @bind="c.PassOffered" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="0.01" class="ta-input ta-input-sm" disabled="@(!c.PassOffered)" @bind="c.PassPrice" @bind:after="() => c.PassPrice = decimal.Round(c.PassPrice, 2)" /></td>
                                 <td class="ta-num"><input type="number" min="0" step="1" class="ta-input ta-input-sm" placeholder="∞" disabled="@(!c.PassOffered)" @bind="c.PassQuota" /></td>

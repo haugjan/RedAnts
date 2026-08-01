@@ -21,6 +21,7 @@
         .nq-section-title { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.03em; font-size: 1.4rem; margin: 1.75rem 0 0.75rem; }
         .nq-cat { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
         .nq-cat__name { font-weight: 700; }
+        .nq-cat__age { font-weight: 400; font-size: .85rem; color: #666; }
         .nq-cat__price { color: #68676b; margin-left: 0.5rem; font-weight: 400; }
         .nq-cat__action { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ra-red); text-transform: uppercase; }
         .nq-cat__note { display: block; font-size: 0.8rem; color: #68676b; margin-top: 0.15rem; }
@@ -120,7 +121,8 @@ else
             {
                 <div class="nq-cat">
                     <div>
-                        <span class="nq-cat__name">@cat.Name</span>
+                        <span class="nq-cat__name">@cat.Name@if (cat.AgeText is { } ageText)
+                            {<span class="nq-cat__age"> (@ageText)</span>}</span>
                         @if (cat.OriginalPrice is { } orig)
                         {
                             <span class="nq-cat__price"><s style="opacity:.6">CHF @MoneyFormat.Chf(orig)</s> CHF @MoneyFormat.Chf(cat.Price)</span>

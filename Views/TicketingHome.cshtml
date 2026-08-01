@@ -74,7 +74,8 @@
                                         {
                                             <span class="pass-teaser-action">@cat.ActionText</span>
                                         }
-                                        <span class="event-item-name">@(string.IsNullOrWhiteSpace(cat.ShortName) ? cat.Name : cat.ShortName)</span>
+                                        <span class="event-item-name">@(string.IsNullOrWhiteSpace(cat.ShortName) ? cat.Name : cat.ShortName)@if (cat.AgeText is { } ageText)
+                                            {<span class="pass-teaser-age"> (@ageText)</span>}</span>
                                         @if (cat.OriginalPrice is { } orig)
                                         {
                                             <span class="event-item-venue pass-cat-price"><s style="opacity:.6;font-weight:400">CHF @MoneyFormat.Amount(orig)</s> CHF @MoneyFormat.Amount(cat.Price)</span>
@@ -166,6 +167,7 @@
     .event-item-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
     .event-item-date { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #C8102E; }
     .event-item-name { font-family: 'Oswald', sans-serif; font-size: 1.5rem; line-height: 1.1; color: #101010; letter-spacing: .5px; }
+    .pass-teaser-age { font-family: 'Oswald', sans-serif; font-size: 1rem; color: #666; letter-spacing: .3px; }
     .event-item-venue { font-size: .9rem; color: #666; }
     .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
     @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
