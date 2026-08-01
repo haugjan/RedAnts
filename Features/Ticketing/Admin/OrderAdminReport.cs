@@ -22,7 +22,8 @@ public sealed record OrderListItem(
     string SeasonPassSummary,
     int FlexTicketCount,
     string FlexTicketSummary,
-    PaymentSource? PaymentSource);
+    PaymentSource? PaymentSource,
+    decimal RefundedAmount);
 
 public interface IOrderAdminReport
 {

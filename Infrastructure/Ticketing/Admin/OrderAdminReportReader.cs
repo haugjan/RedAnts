@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NPoco;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Admin;
 using Umbraco.Cms.Core.Composing;
@@ -29,6 +30,11 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
 
         var tierNames = (await scope.Database.FetchAsync<TierNameRow>("SELECT Id, Name FROM SeasonPriceTiers"))
             .ToDictionary(t => t.Id, t => t.Name);
+
+        var refundsByOrder = (await scope.Database.FetchAsync<RefundSumRow>(
+                "SELECT OrderId, SUM(Amount) AS Amount FROM OrderRefunds WHERE Status = @0 GROUP BY OrderId",
+                (int)RefundStatus.Confirmed))
+            .ToDictionary(r => r.OrderId, r => r.Amount);
 
         var eventIdSet = new HashSet<int>(eventIds);
 
@@ -75,7 +81,8 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
                 Summarize(passes, tierNames),
                 flex.Count,
                 Summarize(flex, tierNames),
-                ResolvePaymentSource(o)));
+                ResolvePaymentSource(o),
+                refundsByOrder.GetValueOrDefault(o.Id)));
         }
         return result;
     }
@@ -137,6 +144,12 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
     {
         public int Id { get; set; }
         public string Name { get; set; } = "";
+    }
+
+    public sealed class RefundSumRow
+    {
+        public int OrderId { get; set; }
+        public decimal Amount { get; set; }
     }
 }
 

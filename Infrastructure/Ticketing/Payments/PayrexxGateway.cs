@@ -84,20 +84,21 @@ public sealed class PayrexxGateway(
         return MapStatus(status);
     }
 
-    public async Task<PayrexxRefundResult> RefundGatewayAsync(string gatewayId, CancellationToken cancellationToken = default)
+    public async Task<PayrexxRefundResult> RefundGatewayAsync(string gatewayId, int amountInCents, CancellationToken cancellationToken = default)
     {
         if (!Enabled) return new PayrexxRefundResult(false, "Payrexx ist nicht konfiguriert.");
 
-        var (transactionId, amountInCents) = await GetConfirmedTransactionAsync(gatewayId, cancellationToken);
+        var (transactionId, confirmedCents) = await GetConfirmedTransactionAsync(gatewayId, cancellationToken);
         if (transactionId is null)
         {
             logger.LogError("Payrexx refund: no confirmed transaction for gateway {GatewayId}", gatewayId);
             return new PayrexxRefundResult(false, "Keine bestätigte Payrexx-Transaktion zu dieser Bestellung gefunden.");
         }
 
+        var refundCents = amountInCents > 0 && amountInCents < confirmedCents ? amountInCents : confirmedCents;
         var fields = new List<KeyValuePair<string, string>>
         {
-            new("amount", amountInCents.ToString(CultureInfo.InvariantCulture))
+            new("amount", refundCents.ToString(CultureInfo.InvariantCulture))
         };
         var body = SignedBody(fields);
         var url = $"{BaseUrl}Transaction/{Uri.EscapeDataString(transactionId)}/refund/?instance={Uri.EscapeDataString(Instance!)}";
@@ -115,10 +116,21 @@ public sealed class PayrexxGateway(
         using var doc = JsonDocument.Parse(json);
         var status = doc.RootElement.TryGetProperty("status", out var st) ? st.GetString() : null;
         if (string.Equals(status, "success", StringComparison.OrdinalIgnoreCase))
-            return new PayrexxRefundResult(true, null);
+            return new PayrexxRefundResult(true, null, ExtractRefundId(doc.RootElement));
 
         logger.LogError("Payrexx refund declined: {Body}", json);
         return new PayrexxRefundResult(false, ExtractMessage(json) ?? "Payrexx hat die Rückerstattung abgelehnt.");
+    }
+
+    private static string? ExtractRefundId(JsonElement root)
+    {
+        if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            foreach (var item in data.EnumerateArray())
+                if (item.TryGetProperty("id", out var idEl))
+                    return idEl.ValueKind == JsonValueKind.Number
+                        ? idEl.GetInt64().ToString(CultureInfo.InvariantCulture)
+                        : idEl.GetString();
+        return null;
     }
 
     private static string? ExtractMessage(string json)

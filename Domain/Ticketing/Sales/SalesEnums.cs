@@ -33,7 +33,29 @@ public enum OrderStatus
     Draft,
     Paid,
     Cancelled,
-    Refunded
+    Refunded,
+    PartiallyRefunded
+}
+
+public enum RefundMethod
+{
+    Payrexx,
+    Cash,
+    Bank,
+    Manual
+}
+
+public enum RefundStatus
+{
+    Pending,
+    Confirmed,
+    Failed
+}
+
+public enum JournalEntryType
+{
+    Sale,
+    Refund
 }
 
 public enum TicketStatus
@@ -143,6 +165,31 @@ public static class FreeEntryTypeExtensions
         FreeEntryType.Child => "Kind (gratis)",
         FreeEntryType.Helper => "Helfer",
         _ => type.ToString()
+    };
+}
+
+public static class RefundMethodExtensions
+{
+    public static string DisplayName(this RefundMethod method) => method switch
+    {
+        RefundMethod.Payrexx => "Payrexx",
+        RefundMethod.Cash => "Bar",
+        RefundMethod.Bank => "Bank/TWINT",
+        RefundMethod.Manual => "Manuell vermerkt",
+        _ => method.ToString()
+    };
+}
+
+public static class OrderStatusExtensions
+{
+    public static string DisplayName(this OrderStatus status) => status switch
+    {
+        OrderStatus.Paid => "Bezahlt",
+        OrderStatus.Draft => "Unbezahlt",
+        OrderStatus.Cancelled => "Storniert",
+        OrderStatus.Refunded => "Erstattet",
+        OrderStatus.PartiallyRefunded => "Teilerstattet",
+        _ => status.ToString()
     };
 }
 

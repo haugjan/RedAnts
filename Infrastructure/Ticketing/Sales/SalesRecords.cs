@@ -237,6 +237,48 @@ public class OrderAddOnRecord
     [Column("Delivered")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Delivered { get; set; }
 }
 
+[TableName("OrderRefunds")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderRefundRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("RefundNumber")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(40)] [Index(IndexTypes.UniqueNonClustered)] public string RefundNumber { get; set; } = "";
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("Amount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Amount { get; set; }
+    [Column("VatRate")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatRate { get; set; }
+    [Column("VatAmount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatAmount { get; set; }
+    [Column("Currency")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(3)] public string Currency { get; set; } = "CHF";
+    [Column("Method")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Method { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("PayrexxRefundId")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? PayrexxRefundId { get; set; }
+    [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Reference { get; set; }
+    [Column("Reason")] [NullSetting(NullSetting = NullSettings.Null)] [Length(500)] public string? Reason { get; set; }
+    [Column("CreatedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedBy { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+}
+
+[TableName("AccountingJournal")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class AccountingJournalRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
+    [Column("EntryNumber")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public long EntryNumber { get; set; }
+    [Column("EntryType")] [NullSetting(NullSetting = NullSettings.NotNull)] public int EntryType { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("RefundId")] [NullSetting(NullSetting = NullSettings.Null)] public int? RefundId { get; set; }
+    [Column("Amount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Amount { get; set; }
+    [Column("VatRate")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatRate { get; set; }
+    [Column("VatAmount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatAmount { get; set; }
+    [Column("Currency")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(3)] public string Currency { get; set; } = "CHF";
+    [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Reference { get; set; }
+    [Column("Description")] [NullSetting(NullSetting = NullSettings.Null)] [Length(500)] public string? Description { get; set; }
+    [Column("CreatedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedBy { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime OccurredAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+}
+
 [TableName("OrderItems")]
 [PrimaryKey("Id", AutoIncrement = true)]
 [ExplicitColumns]

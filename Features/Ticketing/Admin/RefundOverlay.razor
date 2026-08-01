@@ -1,0 +1,211 @@
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal ta-modal-visits" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Rückerstattung</h2>
+        <p class="ta-modal-sub">@Title</p>
+
+        @if (_loading)
+        {
+            <p class="ta-muted-text">Wird geladen …</p>
+        }
+        else
+        {
+            <div class="ta-refund-kpis">
+                <div><span>Bestellbetrag</span><b>CHF @_summary.TotalGross.ToString("N2")</b></div>
+                <div><span>Bereits erstattet</span><b>CHF @_summary.RefundedConfirmed.ToString("N2")</b></div>
+                <div><span>Noch erstattbar</span><b class="ta-refund-remaining">CHF @_summary.Remaining.ToString("N2")</b></div>
+            </div>
+
+            @if (_refunds.Count > 0)
+            {
+                <table class="ta-subtable">
+                    <thead>
+                        <tr><th>Nr.</th><th>Datum</th><th class="ta-num">Betrag</th><th>Methode</th><th>Status</th><th>Von</th><th>Referenz</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _refunds)
+                        {
+                            <tr>
+                                <td><code class="ta-uuid">@r.RefundNumber</code></td>
+                                <td>@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td class="ta-num">CHF @r.Amount.ToString("N2")</td>
+                                <td>@r.Method.DisplayName()</td>
+                                <td><span class="ta-badge @RefundClass(r.Status)">@RefundLabel(r.Status)</span></td>
+                                <td>@(string.IsNullOrEmpty(r.CreatedBy) ? "—" : r.CreatedBy)</td>
+                                <td>@(string.IsNullOrEmpty(r.Reference) ? "—" : r.Reference)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            @if (_summary.Remaining > 0m)
+            {
+                <div class="ta-refund-form">
+                    <div class="ta-field">
+                        <label class="ta-label" for="refAmount">Betrag (CHF)</label>
+                        <div class="ta-refund-amount">
+                            <input id="refAmount" type="number" step="0.05" min="0" max="@_summary.Remaining"
+                                   class="ta-input" @bind="_amount" />
+                            <button type="button" class="ta-link-btn" @onclick="() => _amount = _summary.Remaining">
+                                Vollständig (@_summary.Remaining.ToString("N2"))
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="ta-field">
+                        <label class="ta-label">Methode</label>
+                        <div class="ta-refund-choice">
+                            @if (OnlineAvailable)
+                            {
+                                <label class="ta-radio">
+                                    <input type="radio" name="refundMethod" checked="@(_method == RefundMethod.Payrexx)" @onchange="() => _method = RefundMethod.Payrexx" />
+                                    <span>Payrexx (online)</span>
+                                </label>
+                            }
+                            <label class="ta-radio">
+                                <input type="radio" name="refundMethod" checked="@(_method == RefundMethod.Cash)" @onchange="() => _method = RefundMethod.Cash" />
+                                <span>Bar</span>
+                            </label>
+                            <label class="ta-radio">
+                                <input type="radio" name="refundMethod" checked="@(_method == RefundMethod.Bank)" @onchange="() => _method = RefundMethod.Bank" />
+                                <span>Bank/TWINT</span>
+                            </label>
+                            <label class="ta-radio">
+                                <input type="radio" name="refundMethod" checked="@(_method == RefundMethod.Manual)" @onchange="() => _method = RefundMethod.Manual" />
+                                <span>Nur vermerken</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="ta-field">
+                        <label class="ta-label" for="refRef">Referenz / Quittungsnr. (optional)</label>
+                        <input id="refRef" type="text" class="ta-input" @bind="_reference" maxlength="200" />
+                    </div>
+                    <div class="ta-field">
+                        <label class="ta-label" for="refReason">Grund / Notiz (optional)</label>
+                        <input id="refReason" type="text" class="ta-input" @bind="_reason" maxlength="500" />
+                    </div>
+
+                    <label class="ta-check">
+                        <input type="checkbox" @bind="_deactivate" />
+                        <span>Zugehörige Tickets deaktivieren</span>
+                    </label>
+
+                    @if (_error is not null)
+                    {
+                        <p class="ta-modal-error">@_error</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="ta-modal-note">Diese Bestellung ist vollständig zurückerstattet.</p>
+            }
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
+            @if (!_loading && _summary.Remaining > 0m)
+            {
+                <button type="button" class="ta-btn ta-btn-danger" disabled="@_busy" @onclick="SubmitAsync">
+                    @(_busy ? "Wird gebucht …" : "Rückzahlung buchen")
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .ta-refund-kpis { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0.5rem 0 1rem; }
+    .ta-refund-kpis div { display: flex; flex-direction: column; font-size: 0.8rem; color: #666; }
+    .ta-refund-kpis b { font-size: 1.2rem; color: #1a1a1a; }
+    .ta-refund-remaining { color: #a3283a !important; }
+    .ta-refund-form { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.7rem; }
+    .ta-refund-amount { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .ta-refund-amount .ta-input { max-width: 10rem; }
+    .ta-check { display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; }
+</style>
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public bool OnlineAvailable { get; set; }
+    [Parameter] public string? ChangedBy { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnRefunded { get; set; }
+
+    [Inject] private IOrderRefundService Refunds { get; set; } = default!;
+
+    private bool _loading = true;
+    private bool _busy;
+    private bool _deactivate;
+    private RefundSummary _summary = new(0, 0m, 0m, 0m, 0m);
+    private IReadOnlyList<OrderRefund> _refunds = [];
+    private decimal _amount;
+    private RefundMethod _method;
+    private string? _reference;
+    private string? _reason;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _loading = false;
+    }
+
+    private async Task LoadAsync()
+    {
+        _summary = await Refunds.GetSummaryAsync(OrderId);
+        _refunds = await Refunds.GetByOrderAsync(OrderId);
+        _amount = _summary.Remaining;
+        _method = OnlineAvailable ? RefundMethod.Payrexx : RefundMethod.Cash;
+        _deactivate = _summary.RefundedConfirmed == 0m && _amount >= _summary.TotalGross;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (_amount <= 0m) throw new InvalidOperationException("Betrag muss grösser als 0 sein.");
+            if (_amount > _summary.Remaining)
+                throw new InvalidOperationException($"Betrag übersteigt den erstattbaren Restbetrag (CHF {_summary.Remaining:N2}).");
+
+            var input = new RefundInput(OrderId, _amount, _method, _method == RefundMethod.Payrexx,
+                _reference, _reason, _deactivate, ChangedBy);
+            var outcome = await Refunds.RefundAsync(input);
+            await LoadAsync();
+            await OnRefunded.InvokeAsync(outcome.RefundNumber);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+
+    private static string RefundLabel(RefundStatus status) => status switch
+    {
+        RefundStatus.Confirmed => "Bestätigt",
+        RefundStatus.Pending => "Ausstehend",
+        RefundStatus.Failed => "Fehlgeschlagen",
+        _ => status.ToString()
+    };
+
+    private static string RefundClass(RefundStatus status) => status switch
+    {
+        RefundStatus.Confirmed => "ta-badge-valid",
+        RefundStatus.Pending => "ta-badge-draft",
+        RefundStatus.Failed => "ta-badge-cancelled",
+        _ => "ta-badge-draft"
+    };
+}

@@ -89,4 +89,12 @@ public sealed class Order
 
     public void Cancel() => Status = OrderStatus.Cancelled;
     public void Refund() => Status = OrderStatus.Refunded;
+
+    public void ApplyRefundTotal(decimal confirmedRefundTotal)
+    {
+        if (Status is OrderStatus.Cancelled or OrderStatus.Draft)
+            throw new DomainException("Nur bezahlte Bestellungen können zurückerstattet werden.");
+        if (confirmedRefundTotal <= 0) { Status = OrderStatus.Paid; return; }
+        Status = confirmedRefundTotal >= TotalGross ? OrderStatus.Refunded : OrderStatus.PartiallyRefunded;
+    }
 }

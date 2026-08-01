@@ -82,6 +82,10 @@
                                 <td>@o.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                                 <td>
                                     <span class="ta-badge @StatusClass(o.Status)">@StatusLabel(o.Status)</span>
+                                    @if (o.Status == OrderStatus.PartiallyRefunded)
+                                    {
+                                        <div class="ta-addr-sub">CHF @o.RefundedAmount.ToString("N2") von @o.TotalGross.ToString("N2") erstattet</div>
+                                    }
                                     @{ var actions = ActionsFor(o); }
                                     @if (actions.Length > 0)
                                     {
@@ -89,7 +93,7 @@
                                             @foreach (var a in actions)
                                             {
                                                 <button type="button" class="ta-link-btn @(a == OrderAction.Refund ? "ta-link-danger" : "")"
-                                                        @onclick="() => Ask(o, a)">@ActionLabel(a)</button>
+                                                        @onclick="() => OnAction(o, a)">@ActionLabel(a)</button>
                                             }
                                         </div>
                                     }
@@ -121,9 +125,9 @@
                 {
                     <text>@_orders.Count Bestellung@(_orders.Count == 1 ? "" : "en") · </text>
                 }
-                @shown.Count(o => o.Status == OrderStatus.Paid) bezahlt ·
-                @shown.Count(o => o.Status != OrderStatus.Paid) offen ·
-                Total bezahlt CHF @shown.Where(o => o.Status == OrderStatus.Paid).Sum(o => o.TotalGross).ToString("N2")
+                @shown.Count(o => o.Status is OrderStatus.Paid or OrderStatus.PartiallyRefunded) bezahlt ·
+                @shown.Count(o => o.Status == OrderStatus.Draft) offen ·
+                Total netto CHF @shown.Sum(o => o.Status is OrderStatus.Paid or OrderStatus.PartiallyRefunded or OrderStatus.Refunded ? o.TotalGross - o.RefundedAmount : 0m).ToString("N2")
             </p>
         }
     }
@@ -148,28 +152,17 @@
                    Busy="_actionBusy"
                    Error="@_actionError"
                    OnConfirm="ConfirmActionAsync"
-                   OnCancel="CancelAction">
-        @if (_action == OrderAction.Refund)
-        {
-            @if (_refundOnlineAvailable)
-            {
-                <div class="ta-refund-choice">
-                    <label class="ta-radio">
-                        <input type="radio" name="refundMethod" checked="@_refundViaPayrexx" @onchange="() => _refundViaPayrexx = true" />
-                        <span>Direkt über Payrexx zurückerstatten</span>
-                    </label>
-                    <label class="ta-radio">
-                        <input type="radio" name="refundMethod" checked="@(!_refundViaPayrexx)" @onchange="() => _refundViaPayrexx = false" />
-                        <span>Auf anderem Weg erledigt (nur vermerken)</span>
-                    </label>
-                </div>
-            }
-            else
-            {
-                <p class="ta-modal-note">Diese Bestellung wurde nicht online über Payrexx bezahlt. Die Rückerstattung wird nur als erledigt vermerkt.</p>
-            }
-        }
-    </ConfirmDialog>
+                   OnCancel="CancelAction" />
+}
+
+@if (_refundOrder is not null)
+{
+    <RefundOverlay OrderId="_refundOrder.OrderId"
+                   Title="@_refundOrder.OrderNumber"
+                   OnlineAvailable="@(_refundOrder.PaymentSource == PaymentSource.Online && _refundOrder.TotalGross > 0m)"
+                   ChangedBy="@Identity.Name"
+                   OnClose="CloseRefund"
+                   OnRefunded="OnRefunded" />
 }
 
 <style>
@@ -192,9 +185,9 @@
     private OrderAction _action;
     private bool _actionBusy;
     private string? _actionError;
-    private bool _refundOnlineAvailable;
-    private bool _refundViaPayrexx;
     private string? _flash;
+
+    private OrderListItem? _refundOrder;
 
     private static string? FlashFor(OrderAction action, string orderNumber, int deactivated)
     {
@@ -202,7 +195,6 @@
         return action switch
         {
             OrderAction.Cancel => $"Bestellung {orderNumber} storniert.{tickets}",
-            OrderAction.Refund => $"Bestellung {orderNumber} zurückerstattet.{tickets}",
             OrderAction.MarkPaid => $"Bestellung {orderNumber} als bezahlt markiert.",
             _ => null
         };
@@ -213,8 +205,15 @@
         OrderStatus.Draft => [OrderAction.MarkPaid, OrderAction.Cancel],
         OrderStatus.Paid when o.TotalGross > 0m => [OrderAction.Cancel, OrderAction.Refund],
         OrderStatus.Paid => [OrderAction.Cancel],
+        OrderStatus.PartiallyRefunded => [OrderAction.Cancel, OrderAction.Refund],
         _ => []
     };
+
+    private void OnAction(OrderListItem o, OrderAction action)
+    {
+        if (action == OrderAction.Refund) { _refundOrder = o; return; }
+        Ask(o, action);
+    }
 
     private void Ask(OrderListItem o, OrderAction action)
     {
@@ -222,8 +221,18 @@
         _action = action;
         _actionError = null;
         _actionBusy = false;
-        _refundOnlineAvailable = o.PaymentSource == PaymentSource.Online && o.TotalGross > 0m;
-        _refundViaPayrexx = _refundOnlineAvailable;
+    }
+
+    private void CloseRefund() => _refundOrder = null;
+
+    private async Task OnRefunded(string refundNumber)
+    {
+        var order = _refundOrder;
+        _refundOrder = null;
+        _flash = order is null
+            ? $"Rückzahlung {refundNumber} gebucht."
+            : $"Bestellung {order.OrderNumber}: Rückzahlung {refundNumber} gebucht.";
+        await ReloadOrdersAsync();
     }
 
     private void CancelAction()
@@ -245,7 +254,6 @@
             {
                 case OrderAction.MarkPaid: await StatusEditor.SetStatusAsync(order.OrderId, OrderStatus.Paid, Identity.Name); break;
                 case OrderAction.Cancel: deactivated = await StatusEditor.SetStatusAsync(order.OrderId, OrderStatus.Cancelled, Identity.Name); break;
-                case OrderAction.Refund: deactivated = await StatusEditor.RefundAsync(order.OrderId, _refundViaPayrexx, Identity.Name); break;
             }
             _actionOrder = null;
             _flash = FlashFor(_action, order.OrderNumber, deactivated);
@@ -273,7 +281,6 @@
     {
         OrderAction.MarkPaid => "Als bezahlt markieren",
         OrderAction.Cancel => "Bestellung stornieren",
-        OrderAction.Refund => "Bestellung zurückerstatten",
         _ => "Bestätigen"
     };
 
@@ -281,7 +288,6 @@
     {
         OrderAction.MarkPaid => $"Bestellung {o.OrderNumber} als bezahlt markieren?",
         OrderAction.Cancel => $"Bestellung {o.OrderNumber} stornieren? Dies kann nicht rückgängig gemacht werden.",
-        OrderAction.Refund => $"Bestellung {o.OrderNumber} über CHF {o.TotalGross:N2} zurückerstatten? Dies kann nicht rückgängig gemacht werden.",
         _ => ""
     };
 
@@ -369,6 +375,7 @@
         OrderStatus.Draft => "Unbezahlt",
         OrderStatus.Cancelled => "Storniert",
         OrderStatus.Refunded => "Erstattet",
+        OrderStatus.PartiallyRefunded => "Teilerstattet",
         _ => status.ToString()
     };
 
@@ -378,6 +385,7 @@
         OrderStatus.Draft => "ta-badge-draft",
         OrderStatus.Cancelled => "ta-badge-cancelled",
         OrderStatus.Refunded => "ta-badge-intern",
+        OrderStatus.PartiallyRefunded => "ta-badge-redeemed",
         _ => "ta-badge-draft"
     };
 }

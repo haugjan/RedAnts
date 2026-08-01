@@ -45,6 +45,30 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddOrderAddOnDelivered>("orderaddons-delivered");
         To<AddSeasonPassBuyerEmail>("seasonpass-buyer-email");
         To<AddSeasonPassSaleStart>("seasonprices-pass-sale-start");
+        To<AddRefundsAndJournal>("refunds-and-journal");
+    }
+}
+
+public class AddRefundsAndJournal(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("OrderRefunds")) Create.Table<OrderRefundRecord>().Do();
+        if (!TableExists("AccountingJournal")) Create.Table<AccountingJournalRecord>().Do();
+
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite) return Task.CompletedTask;
+
+        EnsureSequence("RefundNumberSeq");
+        EnsureSequence("JournalSeq");
+        return Task.CompletedTask;
+    }
+
+    private void EnsureSequence(string name)
+    {
+        var exists = Database.ExecuteScalar<int>("SELECT COUNT(*) FROM sys.sequences WHERE name = @0", name);
+        if (exists > 0) return;
+        Execute.Sql($"CREATE SEQUENCE {name} AS bigint START WITH 1 INCREMENT BY 1").Do();
     }
 }
 
@@ -373,6 +397,8 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<NewsletterSignupRecord>("NewsletterSignups");
         EnsureTable<OrderAddOnRecord>("OrderAddOns");
         EnsureTable<OrderItemRecord>("OrderItems");
+        EnsureTable<OrderRefundRecord>("OrderRefunds");
+        EnsureTable<AccountingJournalRecord>("AccountingJournal");
 
         EnsureTable<FlexTicketBundleRecord>("FlexTicketBundles");
         EnsureTable<EventTicketBundleRecord>("EventTicketBundles");
