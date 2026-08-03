@@ -1,6 +1,8 @@
 namespace RedAnts.Features.Ticketing.Admin;
 
-public sealed record VisitorDay(DateOnly Day, int Views, int Visitors);
+public enum StatBucket { Day, Month }
+
+public sealed record VisitorBucket(DateOnly Start, int Views, int Visitors);
 
 public sealed record VisitorPage(string Path, int Views, int Visitors);
 
@@ -8,12 +10,13 @@ public sealed record VisitorOverview(
     int TotalViews,
     int TotalVisitors,
     int BotViews,
-    IReadOnlyList<VisitorDay> Days,
+    StatBucket Bucket,
+    IReadOnlyList<VisitorBucket> Series,
     IReadOnlyList<VisitorPage> TopPages);
 
 public interface IVisitorStatsReport
 {
-    Task<VisitorOverview> GetAsync(int days);
+    Task<VisitorOverview> GetAsync(DateTime fromUtc, DateTime toExclusiveUtc);
 }
 
 public sealed class SalesStats

@@ -15,10 +15,19 @@
             <div class="ta-stat-head">
                 <h2 class="ta-stat-title">Besucher &amp; Seitenaufrufe</h2>
                 <div class="ta-field">
-                    <select class="ta-select" @bind="VisitorDays" @bind:after="ReloadVisitorsAsync">
-                        <option value="7">Letzte 7 Tage</option>
-                        <option value="30">Letzte 30 Tage</option>
-                        <option value="90">Letzte 90 Tage</option>
+                    <select class="ta-select" @bind="VisitorRange" @bind:after="ReloadVisitorsAsync">
+                        <option value="d7">Letzte 7 Tage</option>
+                        <option value="d30">Letzte 30 Tage</option>
+                        <option value="d90">Letzte 90 Tage</option>
+                        @if (_seasons.Count > 0)
+                        {
+                            <optgroup label="Ganze Saison">
+                                @foreach (var s in _seasons)
+                                {
+                                    <option value="s@(s.Id)">@s.Name</option>
+                                }
+                            </optgroup>
+                        }
                     </select>
                 </div>
             </div>
@@ -50,19 +59,20 @@
                 }
                 else
                 {
-                    var maxViews = _visitors.Days.Count == 0 ? 0 : _visitors.Days.Max(d => d.Views);
-                    <div class="ta-chart" role="img" aria-label="Seitenaufrufe pro Tag">
-                        @foreach (var d in _visitors.Days)
+                    var maxViews = _visitors.Series.Count == 0 ? 0 : _visitors.Series.Max(d => d.Views);
+                    <div class="ta-chart" role="img" aria-label="Seitenaufrufe im Zeitverlauf">
+                        @foreach (var d in _visitors.Series)
                         {
                             var pct = maxViews == 0 ? 0 : (int)Math.Round(d.Views * 100.0 / maxViews);
-                            <div class="ta-chart-col" title="@d.Day.ToString("dd.MM.yyyy"): @d.Views Aufrufe, @d.Visitors Besucher">
+                            <div class="ta-chart-col" title="@BarTitle(d)">
                                 <div class="ta-chart-bar" style="height:@(Math.Max(pct, d.Views > 0 ? 3 : 0))%"></div>
                             </div>
                         }
                     </div>
                     <div class="ta-chart-axis">
-                        <span>@_visitors.Days.First().Day.ToString("dd.MM.")</span>
-                        <span>@_visitors.Days.Last().Day.ToString("dd.MM.")</span>
+                        <span>@AxisLabel(_visitors.Series.First().Start)</span>
+                        <span>@(_visitors.Bucket == StatBucket.Month ? "pro Monat" : "pro Tag")</span>
+                        <span>@AxisLabel(_visitors.Series.Last().Start)</span>
                     </div>
 
                     @if (_visitors.TopPages.Count > 0)
@@ -235,7 +245,7 @@
     private IReadOnlyDictionary<int, AdmissionCounts> _admission = new Dictionary<int, AdmissionCounts>();
     private int _totalVisits;
 
-    public int VisitorDays { get; set; } = 30;
+    public string VisitorRange { get; set; } = "d30";
     public int SelectedSeasonId { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -250,7 +260,36 @@
         _loading = false;
     }
 
-    private async Task ReloadVisitorsAsync() => _visitors = await VisitorReport.GetAsync(VisitorDays);
+    private async Task ReloadVisitorsAsync()
+    {
+        var (fromUtc, toExclusiveUtc) = ResolveVisitorRange();
+        _visitors = await VisitorReport.GetAsync(fromUtc, toExclusiveUtc);
+    }
+
+    private (DateTime FromUtc, DateTime ToExclusiveUtc) ResolveVisitorRange()
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+        var range = VisitorRange ?? "d30";
+
+        if (range.StartsWith('s') && int.TryParse(range[1..], out var seasonId))
+        {
+            var season = _seasons.FirstOrDefault(s => s.Id == seasonId);
+            if (season is not null)
+                return (season.StartDate.ToDateTime(TimeOnly.MinValue),
+                        season.EndDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        }
+
+        var days = range.StartsWith('d') && int.TryParse(range[1..], out var d) ? Math.Clamp(d, 1, 365) : 30;
+        return (todayUtc.AddDays(-(days - 1)), todayUtc.AddDays(1));
+    }
+
+    private string BarTitle(VisitorBucket b) => _visitors?.Bucket == StatBucket.Month
+        ? $"{b.Start:MMMM yyyy}: {b.Views} Aufrufe, {b.Visitors} Besucher"
+        : $"{b.Start:dd.MM.yyyy}: {b.Views} Aufrufe, {b.Visitors} Besucher";
+
+    private string AxisLabel(DateOnly d) => _visitors?.Bucket == StatBucket.Month
+        ? d.ToString("MMM yy")
+        : d.ToString("dd.MM.");
 
     private async Task ReloadSeasonAsync()
     {

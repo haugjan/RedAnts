@@ -10,10 +10,13 @@ namespace RedAnts.Infrastructure.Ticketing.Admin;
 
 public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorStatsReport
 {
-    public async Task<VisitorOverview> GetAsync(int days)
+    public async Task<VisitorOverview> GetAsync(DateTime fromUtc, DateTime toExclusiveUtc)
     {
-        var span = Math.Clamp(days, 1, 365);
-        var cutoff = DateTime.UtcNow.Date.AddDays(-(span - 1));
+        if (toExclusiveUtc <= fromUtc) toExclusiveUtc = fromUtc.AddDays(1);
+        var bucket = (toExclusiveUtc - fromUtc).TotalDays <= 92 ? StatBucket.Day : StatBucket.Month;
+        var keyExpr = bucket == StatBucket.Day
+            ? "CAST(OccurredAt AS date)"
+            : "DATEFROMPARTS(YEAR(OccurredAt), MONTH(OccurredAt), 1)";
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
@@ -22,36 +25,46 @@ public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorS
                 SUM(CASE WHEN IsBot = 0 THEN 1 ELSE 0 END) AS Views,
                 COUNT(DISTINCT CASE WHEN IsBot = 0 THEN VisitorHash END) AS Visitors,
                 SUM(CASE WHEN IsBot = 1 THEN 1 ELSE 0 END) AS Bots
-            FROM PageViews WHERE OccurredAt >= @0", cutoff)).FirstOrDefault() ?? new TotalsRow();
+            FROM PageViews WHERE OccurredAt >= @0 AND OccurredAt < @1", fromUtc, toExclusiveUtc))
+            .FirstOrDefault() ?? new TotalsRow();
 
-        var dayRows = await scope.Database.FetchAsync<DayRow>(@"
-            SELECT CAST(OccurredAt AS date) AS Day, COUNT(*) AS Views, COUNT(DISTINCT VisitorHash) AS Visitors
+        var bucketRows = await scope.Database.FetchAsync<DayRow>($@"
+            SELECT {keyExpr} AS Day, COUNT(*) AS Views, COUNT(DISTINCT VisitorHash) AS Visitors
             FROM PageViews
-            WHERE IsBot = 0 AND OccurredAt >= @0
-            GROUP BY CAST(OccurredAt AS date)", cutoff);
+            WHERE IsBot = 0 AND OccurredAt >= @0 AND OccurredAt < @1
+            GROUP BY {keyExpr}", fromUtc, toExclusiveUtc);
 
-        var byDay = dayRows.ToDictionary(r => DateOnly.FromDateTime(r.Day), r => r);
+        var byKey = bucketRows.ToDictionary(r => DateOnly.FromDateTime(r.Day), r => r);
 
-        var series = new List<VisitorDay>(span);
-        var start = DateOnly.FromDateTime(cutoff);
-        for (var i = 0; i < span; i++)
+        var series = new List<VisitorBucket>();
+        var lastDay = DateOnly.FromDateTime(toExclusiveUtc.AddDays(-1).Date);
+        if (bucket == StatBucket.Day)
         {
-            var d = start.AddDays(i);
-            series.Add(byDay.TryGetValue(d, out var row)
-                ? new VisitorDay(d, row.Views, row.Visitors)
-                : new VisitorDay(d, 0, 0));
+            for (var d = DateOnly.FromDateTime(fromUtc.Date); d <= lastDay; d = d.AddDays(1))
+                series.Add(byKey.TryGetValue(d, out var row)
+                    ? new VisitorBucket(d, row.Views, row.Visitors)
+                    : new VisitorBucket(d, 0, 0));
+        }
+        else
+        {
+            var m = new DateOnly(fromUtc.Year, fromUtc.Month, 1);
+            var lastMonth = new DateOnly(lastDay.Year, lastDay.Month, 1);
+            for (; m <= lastMonth; m = m.AddMonths(1))
+                series.Add(byKey.TryGetValue(m, out var row)
+                    ? new VisitorBucket(m, row.Views, row.Visitors)
+                    : new VisitorBucket(m, 0, 0));
         }
 
         var pages = (await scope.Database.FetchAsync<PageRow>(@"
             SELECT TOP 15 Path, COUNT(*) AS Views, COUNT(DISTINCT VisitorHash) AS Visitors
             FROM PageViews
-            WHERE IsBot = 0 AND OccurredAt >= @0
+            WHERE IsBot = 0 AND OccurredAt >= @0 AND OccurredAt < @1
             GROUP BY Path
-            ORDER BY Views DESC", cutoff))
+            ORDER BY Views DESC", fromUtc, toExclusiveUtc))
             .Select(p => new VisitorPage(p.Path, p.Views, p.Visitors))
             .ToList();
 
-        return new VisitorOverview(totals.Views, totals.Visitors, totals.Bots, series, pages);
+        return new VisitorOverview(totals.Views, totals.Visitors, totals.Bots, bucket, series, pages);
     }
 
     public sealed class TotalsRow { public int Views { get; set; } public int Visitors { get; set; } public int Bots { get; set; } }
