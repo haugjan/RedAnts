@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Features.Ticketing.Cart;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Infrastructure.Ticketing;
+using RedAnts.Infrastructure.Ticketing.Analytics;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
 var swissCulture = new CultureInfo("de-CH");
@@ -226,6 +227,66 @@ app.Use(async (context, next) =>
     }
     await next();
 });
+
+var pageViewTracker = app.Services.GetRequiredService<IPageViewTracker>();
+var pageViewSalt = app.Configuration["Analytics:Salt"] ?? "redants-analytics-v1";
+
+app.Use(async (context, next) =>
+{
+    await next();
+
+    var request = context.Request;
+    if (!HttpMethods.IsGet(request.Method)) return;
+    if (context.Response.StatusCode != StatusCodes.Status200OK) return;
+    if (!(context.Response.ContentType ?? "").Contains("text/html", StringComparison.OrdinalIgnoreCase)) return;
+
+    var host = request.Host.Host;
+    if (host.Contains("-dev.", StringComparison.OrdinalIgnoreCase)
+        || host.StartsWith("scan", StringComparison.OrdinalIgnoreCase)
+        || host.StartsWith("admin", StringComparison.OrdinalIgnoreCase)
+        || host.StartsWith("localhost", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("azurewebsites.net", StringComparison.OrdinalIgnoreCase)) return;
+
+    var path = request.Path;
+    if (!path.HasValue
+        || Path.HasExtension(path.Value)
+        || path.StartsWithSegments("/umbraco")
+        || path.StartsWithSegments("/App_Plugins")
+        || path.StartsWithSegments("/_blazor")
+        || path.StartsWithSegments("/_framework")
+        || path.StartsWithSegments("/api")
+        || path.StartsWithSegments("/scan")
+        || path.StartsWithSegments("/admin")
+        || path.StartsWithSegments("/ticket")
+        || path.StartsWithSegments("/warmup")
+        || path.StartsWithSegments("/__gate")) return;
+
+    var ua = request.Headers.UserAgent.ToString();
+    var ip = context.Connection.RemoteIpAddress?.ToString() ?? "";
+    var now = DateTime.UtcNow;
+    var seed = $"{ip}|{ua}|{now:yyyyMMdd}|{pageViewSalt}";
+    var visitorHash = Convert.ToHexString(
+        System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(seed)));
+
+    var value = path.Value!;
+    if (value.Length > 400) value = value[..400];
+
+    pageViewTracker.Track(new PageView(now, value, visitorHash, LooksLikeBot(ua)));
+});
+
+static bool LooksLikeBot(string userAgent)
+{
+    if (string.IsNullOrEmpty(userAgent)) return true;
+    var ua = userAgent.ToLowerInvariant();
+    string[] tokens =
+    [
+        "bot", "crawl", "spider", "slurp", "bingpreview", "facebookexternalhit", "embedly", "quora",
+        "pinterest", "semrush", "ahrefs", "mj12", "dotbot", "petalbot", "bytespider", "google-read-aloud",
+        "headlesschrome", "monitor", "uptime", "curl", "wget", "python-requests", "go-http", "scrapy",
+        "whatsapp", "telegrambot", "discordbot", "linkedinbot", "applebot", "yandex", "duckduckbot"
+    ];
+    return tokens.Any(t => ua.Contains(t));
+}
 
 var gatePassword = app.Configuration["BasicAuth:Password"];
 {

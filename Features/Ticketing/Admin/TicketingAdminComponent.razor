@@ -43,6 +43,9 @@
                 case "addons":
                     <AdminAddOnsComponent AdminUser="@AdminUser" />
                     break;
+                case "stats":
+                    <AdminStatsComponent AdminUser="@AdminUser" />
+                    break;
                 case "newsletter":
                     <AdminNewsletterComponent AdminUser="@AdminUser" />
                     break;
@@ -181,6 +184,7 @@
         ("membercards", TicketType.MemberCard.DisplayName()),
         ("orders", "Bestellungen"),
         ("addons", "Zusatzoptionen"),
+        ("stats", "Statistik"),
         ("newsletter", "Newsletter"),
         ("helper", "Helfer"),
         ("outbox", "E-Mails")

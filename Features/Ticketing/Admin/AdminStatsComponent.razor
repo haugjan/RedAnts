@@ -1,0 +1,297 @@
+@inject IVisitorStatsReport VisitorReport
+@inject ISalesStatsReport SalesReport
+@inject IAdmissionStatsReport AdmissionReport
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Statistik</h1>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else
+    {
+        <div class="ta-stat-block">
+            <div class="ta-stat-head">
+                <h2 class="ta-stat-title">Besucher &amp; Seitenaufrufe</h2>
+                <div class="ta-field">
+                    <select class="ta-select" @bind="VisitorDays" @bind:after="ReloadVisitorsAsync">
+                        <option value="7">Letzte 7 Tage</option>
+                        <option value="30">Letzte 30 Tage</option>
+                        <option value="90">Letzte 90 Tage</option>
+                    </select>
+                </div>
+            </div>
+
+            @if (_visitors is null)
+            {
+                <div class="ta-placeholder">Noch keine Besucherdaten erfasst.</div>
+            }
+            else
+            {
+                <div class="ta-stat-tiles">
+                    <div class="ta-stat-tile">
+                        <div class="ta-stat-num">@_visitors.TotalViews.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Seitenaufrufe</div>
+                    </div>
+                    <div class="ta-stat-tile">
+                        <div class="ta-stat-num">@_visitors.TotalVisitors.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Besucher (geschätzt)</div>
+                    </div>
+                    <div class="ta-stat-tile ta-stat-tile--muted">
+                        <div class="ta-stat-num">@_visitors.BotViews.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Bot-Aufrufe (ausgefiltert)</div>
+                    </div>
+                </div>
+
+                @if (_visitors.TotalViews == 0)
+                {
+                    <div class="ta-placeholder">Im gewählten Zeitraum wurden noch keine Aufrufe erfasst.</div>
+                }
+                else
+                {
+                    var maxViews = _visitors.Days.Count == 0 ? 0 : _visitors.Days.Max(d => d.Views);
+                    <div class="ta-chart" role="img" aria-label="Seitenaufrufe pro Tag">
+                        @foreach (var d in _visitors.Days)
+                        {
+                            var pct = maxViews == 0 ? 0 : (int)Math.Round(d.Views * 100.0 / maxViews);
+                            <div class="ta-chart-col" title="@d.Day.ToString("dd.MM.yyyy"): @d.Views Aufrufe, @d.Visitors Besucher">
+                                <div class="ta-chart-bar" style="height:@(Math.Max(pct, d.Views > 0 ? 3 : 0))%"></div>
+                            </div>
+                        }
+                    </div>
+                    <div class="ta-chart-axis">
+                        <span>@_visitors.Days.First().Day.ToString("dd.MM.")</span>
+                        <span>@_visitors.Days.Last().Day.ToString("dd.MM.")</span>
+                    </div>
+
+                    @if (_visitors.TopPages.Count > 0)
+                    {
+                        <h3 class="ta-stat-subtitle">Meistbesuchte Seiten</h3>
+                        <div class="ta-table-wrap">
+                            <table class="ta-table">
+                                <thead>
+                                    <tr><th>Seite</th><th class="ta-num">Aufrufe</th><th class="ta-num">Besucher</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in _visitors.TopPages)
+                                    {
+                                        <tr>
+                                            <td><code class="ta-uuid">@p.Path</code></td>
+                                            <td class="ta-num">@p.Views.ToString("N0")</td>
+                                            <td class="ta-num">@p.Visitors.ToString("N0")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                }
+            }
+        </div>
+
+        @if (_seasons.Count == 0)
+        {
+            <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+        }
+        else
+        {
+            <div class="ta-stat-block">
+                <div class="ta-stat-head">
+                    <h2 class="ta-stat-title">Verkäufe &amp; Einlass</h2>
+                    <div class="ta-field">
+                        <select class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadSeasonAsync">
+                            @foreach (var s in _seasons)
+                            {
+                                <option value="@s.Id">@s.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                @if (_sales is not null)
+                {
+                    <div class="ta-stat-tiles">
+                        <div class="ta-stat-tile ta-stat-tile--accent">
+                            <div class="ta-stat-num">CHF @_sales.TotalRevenue.ToString("N2")</div>
+                            <div class="ta-stat-lbl">Umsatz (bezahlt)</div>
+                        </div>
+                        <div class="ta-stat-tile">
+                            <div class="ta-stat-num">@_sales.TotalItems.ToString("N0")</div>
+                            <div class="ta-stat-lbl">Verkaufte Artikel</div>
+                        </div>
+                        <div class="ta-stat-tile">
+                            <div class="ta-stat-num">@_totalVisits.ToString("N0")</div>
+                            <div class="ta-stat-lbl">Einlässe erfasst</div>
+                        </div>
+                    </div>
+
+                    <h3 class="ta-stat-subtitle">Nach Produkt</h3>
+                    <div class="ta-table-wrap">
+                        <table class="ta-table">
+                            <thead>
+                                <tr><th>Produkt</th><th class="ta-num">Anzahl</th><th class="ta-num">Umsatz</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Spieltickets</td>
+                                    <td class="ta-num">@_sales.EventTicketCount</td>
+                                    <td class="ta-num">CHF @_sales.EventTicketRevenue.ToString("N2")</td>
+                                </tr>
+                                <tr>
+                                    <td>Saison-Einzeltickets</td>
+                                    <td class="ta-num">@_sales.FlexCount</td>
+                                    <td class="ta-num">CHF @_sales.FlexRevenue.ToString("N2")</td>
+                                </tr>
+                                <tr>
+                                    <td>Saisonkarten</td>
+                                    <td class="ta-num">@_sales.PassCount</td>
+                                    <td class="ta-num">CHF @_sales.PassRevenue.ToString("N2")</td>
+                                </tr>
+                                <tr>
+                                    <td>Mitgliederkarten</td>
+                                    <td class="ta-num">@_sales.MemberCardCount</td>
+                                    <td class="ta-num">—</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 class="ta-stat-subtitle">Nach Anlass</h3>
+                    @if (_events.Count == 0)
+                    {
+                        <div class="ta-placeholder">Für diese Saison sind keine Anlässe erfasst.</div>
+                    }
+                    else
+                    {
+                        <div class="ta-table-wrap">
+                            <table class="ta-table">
+                                <thead>
+                                    <tr>
+                                        <th>Anlass</th>
+                                        <th>Datum</th>
+                                        <th class="ta-num">Spieltickets</th>
+                                        <th class="ta-num">Umsatz</th>
+                                        <th class="ta-num">Einlässe</th>
+                                        <th class="ta-num">Aktuell drin</th>
+                                        <th class="ta-num">Freikarten</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var e in _events)
+                                    {
+                                        var sale = _sales.PerEvent.GetValueOrDefault(e.Id);
+                                        var adm = _admission.GetValueOrDefault(e.Id);
+                                        <tr>
+                                            <td>@e.Name</td>
+                                            <td>@e.Date.ToString("dd.MM.yyyy")</td>
+                                            <td class="ta-num">@(sale?.TicketsSold ?? 0)</td>
+                                            <td class="ta-num">CHF @((sale?.Revenue ?? 0m).ToString("N2"))</td>
+                                            <td class="ta-num">@(adm?.Visits ?? 0)</td>
+                                            <td class="ta-num">@(adm?.Inside ?? 0)</td>
+                                            <td class="ta-num">@(adm?.FreeEntries ?? 0)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    }
+</section>
+
+<style>
+    .ta-stat-block { background: #fff; border: 1px solid var(--ta-border); border-radius: 4px; padding: 1.25rem 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+    .ta-stat-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .ta-stat-title { font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--ta-ink); }
+    .ta-stat-subtitle { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.6rem; color: var(--ta-ink); }
+    .ta-stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.75rem; }
+    .ta-stat-tile { background: #f6f7fb; border: 1px solid var(--ta-border); border-radius: 4px; padding: 0.9rem 1rem; }
+    .ta-stat-tile--accent { background: #1b264f; border-color: #1b264f; }
+    .ta-stat-tile--accent .ta-stat-num, .ta-stat-tile--accent .ta-stat-lbl { color: #fff; }
+    .ta-stat-tile--muted { opacity: 0.75; }
+    .ta-stat-num { font-size: 1.5rem; font-weight: 700; color: var(--ta-ink); line-height: 1.1; }
+    .ta-stat-lbl { font-size: 0.78rem; color: var(--ta-muted); margin-top: 0.25rem; }
+    .ta-chart { display: flex; align-items: flex-end; gap: 2px; height: 140px; margin-top: 1.25rem; padding: 0 2px; border-bottom: 1px solid var(--ta-border); }
+    .ta-chart-col { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; }
+    .ta-chart-bar { width: 100%; background: var(--ta-accent); border-radius: 2px 2px 0 0; min-height: 0; transition: height 0.2s; }
+    .ta-chart-axis { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--ta-muted); margin-top: 0.35rem; }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private List<Event> _events = [];
+    private VisitorOverview? _visitors;
+    private SalesTotals? _sales;
+    private IReadOnlyDictionary<int, AdmissionCounts> _admission = new Dictionary<int, AdmissionCounts>();
+    private int _totalVisits;
+
+    public int VisitorDays { get; set; } = 30;
+    public int SelectedSeasonId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+
+        await ReloadVisitorsAsync();
+        if (SelectedSeasonId > 0) await ReloadSeasonAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadVisitorsAsync() => _visitors = await VisitorReport.GetAsync(VisitorDays);
+
+    private async Task ReloadSeasonAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        if (SelectedSeasonId <= 0)
+        {
+            _events = [];
+            _sales = null;
+            _admission = new Dictionary<int, AdmissionCounts>();
+            _totalVisits = 0;
+            return;
+        }
+
+        _events = (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ToList();
+        var ids = _events.Select(e => e.Id).ToList();
+
+        var stats = await SalesReport.GetSeasonAsync(SelectedSeasonId, ids);
+        _admission = await AdmissionReport.GetByEventsAsync(ids);
+        _totalVisits = _admission.Values.Sum(a => a.Visits);
+
+        _sales = new SalesTotals(stats,
+            stats.EventTicketRevenue + stats.FlexRevenue + stats.PassRevenue,
+            stats.EventTicketCount + stats.FlexCount + stats.PassCount + stats.MemberCardCount);
+    }
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private sealed record SalesTotals(SalesStats Stats, decimal TotalRevenue, int TotalItems)
+    {
+        public int EventTicketCount => Stats.EventTicketCount;
+        public decimal EventTicketRevenue => Stats.EventTicketRevenue;
+        public int FlexCount => Stats.FlexCount;
+        public decimal FlexRevenue => Stats.FlexRevenue;
+        public int PassCount => Stats.PassCount;
+        public decimal PassRevenue => Stats.PassRevenue;
+        public int MemberCardCount => Stats.MemberCardCount;
+        public IReadOnlyDictionary<int, SalesEventCounts> PerEvent => Stats.PerEvent;
+    }
+}

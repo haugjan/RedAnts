@@ -7,6 +7,7 @@ using Umbraco.Cms.Infrastructure.Migrations.Upgrade;
 using Umbraco.Cms.Core.Composing;
 using RedAnts.Infrastructure.Ticketing.Sales;
 using RedAnts.Infrastructure.Ticketing.Email;
+using RedAnts.Infrastructure.Ticketing.Analytics;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
@@ -47,6 +48,16 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSeasonPassSaleStart>("seasonprices-pass-sale-start");
         To<AddRefundsAndJournal>("refunds-and-journal");
         To<AddPriceTierMinAge>("price-tier-min-age");
+        To<AddPageViews>("pageviews");
+    }
+}
+
+public class AddPageViews(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("PageViews")) Create.Table<PageViewRecord>().Do();
+        return Task.CompletedTask;
     }
 }
 
@@ -410,6 +421,7 @@ public class CreateTicketingSchema(IMigrationContext context) : AsyncMigrationBa
         EnsureTable<OrderItemRecord>("OrderItems");
         EnsureTable<OrderRefundRecord>("OrderRefunds");
         EnsureTable<AccountingJournalRecord>("AccountingJournal");
+        EnsureTable<PageViewRecord>("PageViews");
 
         EnsureTable<FlexTicketBundleRecord>("FlexTicketBundles");
         EnsureTable<EventTicketBundleRecord>("EventTicketBundles");
