@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using NPoco;
+using RedAnts.Domain;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
@@ -143,7 +144,7 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
     private static async Task<string> NextRefundNumberAsync(IDatabase db)
     {
         var seq = await db.ExecuteScalarAsync<long>("SELECT NEXT VALUE FOR RefundNumberSeq");
-        return $"{DateTime.UtcNow.Year}-R{seq.ToString("000000", CultureInfo.InvariantCulture)}";
+        return $"{SwissTime.Now.Year}-R{seq.ToString("000000", CultureInfo.InvariantCulture)}";
     }
 
     private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];

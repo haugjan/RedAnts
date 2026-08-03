@@ -182,7 +182,7 @@
     [Parameter] public bool AllEvents { get; set; } = true;
     [Parameter] public string AllowedEventIds { get; set; } = "";
 
-    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
+    private readonly DateOnly _today = SwissTime.Today;
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
     private Event? _selected;

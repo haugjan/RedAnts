@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NPoco;
+using RedAnts.Domain;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Features.Ticketing.Scanning;
@@ -130,7 +131,7 @@ public sealed class AdmissionService(
     private static int? Age(DateOnly? birthday)
     {
         if (birthday is not { } b) return null;
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = SwissTime.Today;
         var age = today.Year - b.Year;
         if (b > today.AddYears(-age)) age--;
         return age is < 0 or > 120 ? null : age;

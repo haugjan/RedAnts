@@ -1,4 +1,5 @@
 using NPoco;
+using RedAnts.Domain;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
@@ -263,7 +264,7 @@ internal static class TierOffer
 
     private static bool InSaleWindow(DateOnly? from, DateOnly? until)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = SwissTime.Today;
         return (from is null || today >= from.Value) && (until is null || today <= until.Value);
     }
 }

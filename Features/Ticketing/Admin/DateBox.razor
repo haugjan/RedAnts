@@ -76,7 +76,7 @@
     {
         if (idx == 2)
         {
-            var y = int.TryParse(_year, out var yy) ? yy : DateTime.Today.Year;
+            var y = int.TryParse(_year, out var yy) ? yy : SwissTime.Now.Year;
             _year = Math.Clamp(y + delta, 1, 9999).ToString("0000");
             return;
         }

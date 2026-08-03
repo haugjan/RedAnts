@@ -21,7 +21,7 @@
         .SelectMany(s => s.Children() ?? Enumerable.Empty<IPublishedContent>())
         .Where(c => c.ContentType.Alias == "event"
             && c.Value<string>("status") == "Open"
-            && c.Value<DateTime>("start") >= DateTime.Today)
+            && c.Value<DateTime>("start") >= SwissTime.Now.Date)
         .OrderBy(c => c.Value<DateTime>("start"))
         .ToList();
 

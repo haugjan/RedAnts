@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using NPoco;
+using RedAnts.Domain;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
@@ -77,7 +78,7 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var seq = await scope.Database.ExecuteScalarAsync<long>("SELECT NEXT VALUE FOR OrderNumberSeq");
         var prefix = config["Orders:NumberPrefix"] ?? "";
-        var year = DateTime.UtcNow.Year;
+        var year = SwissTime.Now.Year;
         return $"{prefix}{year}-{seq:000000}";
     }
 

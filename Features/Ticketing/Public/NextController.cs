@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using RedAnts.Domain;
 using RedAnts.Features.Ticketing.Cart;
 using RedAnts.Features.Ticketing.Ports;
 
@@ -9,7 +10,7 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
     [HttpGet("/next")]
     public async Task<IActionResult> Next()
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = SwissTime.Today;
         var upcoming = (await events.GetPublicOpenAsync())
             .OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList();
 
@@ -39,7 +40,7 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
     {
         Response.Headers["Content-Security-Policy"] = "frame-ancestors *";
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = SwissTime.Today;
         var upcoming = (await events.GetPublicOpenAsync())
             .OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList();
 

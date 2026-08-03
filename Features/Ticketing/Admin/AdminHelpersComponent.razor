@@ -576,7 +576,7 @@
 
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = SwissTime.Today;
         return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
