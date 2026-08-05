@@ -16,6 +16,7 @@ public sealed class OrderMailer(
     IEvents events,
     ISeasons seasons,
     IVenues venues,
+    IPublicBaseUrl publicUrl,
     IWebHostEnvironment environment,
     ILogger<OrderMailer> logger) : IOrderMailer
 {
@@ -68,7 +69,7 @@ public sealed class OrderMailer(
         var venueNames = await ResolveVenuesAsync(model.Tickets);
         var total = model.Tickets.Count;
         var blocks = string.Concat(model.Tickets.Select((t, i) =>
-            TicketCard(model.BaseUrl, t, dates.GetValueOrDefault((t.Type, t.ScopeId)), venueNames.GetValueOrDefault((t.Type, t.ScopeId)), i + 1, total, images)));
+            TicketCard(t, dates.GetValueOrDefault((t.Type, t.ScopeId)), venueNames.GetValueOrDefault((t.Type, t.ScopeId)), i + 1, total, images)));
         return intro + blocks + AddOnInfoBlock(model.AddOnInfoTexts);
     }
 
@@ -118,11 +119,11 @@ public sealed class OrderMailer(
         return venueNames;
     }
 
-    private string TicketCard(string baseUrl, OrderMailTicket ticket, string? dateText, string? venueText, int index, int total, List<EmailAttachment> images)
+    private string TicketCard(OrderMailTicket ticket, string? dateText, string? venueText, int index, int total, List<EmailAttachment> images)
     {
         const string red = "#D02D38";
         const string redDk = "#B0242E";
-        var url = $"{baseUrl}/ticket/{tokens.CreateShort(ticket.Uuid)}";
+        var url = publicUrl.TicketUrl(tokens.CreateShort(ticket.Uuid));
         var badgeCid = AddImageFile(images, BadgeLogoFile);
         var qrCid = AddQrImage(images, index, url);
         var reference = ticket.Uuid.ToString("N")[..8].ToUpperInvariant();

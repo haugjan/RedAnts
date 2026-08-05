@@ -459,11 +459,10 @@
     private static string ExtractToken(string code)
     {
         var s = (code ?? "").Trim();
-        const string marker = "/ticket/";
-        var idx = s.LastIndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (idx >= 0) s = s[(idx + marker.Length)..];
         var cut = s.IndexOfAny(['?', '#']);
-        return cut >= 0 ? s[..cut] : s;
+        if (cut >= 0) s = s[..cut];
+        var slash = s.LastIndexOf('/');
+        return slash >= 0 ? s[(slash + 1)..] : s;
     }
 
     private static string ResultClass(ScanOutcome o) => o.Outcome switch

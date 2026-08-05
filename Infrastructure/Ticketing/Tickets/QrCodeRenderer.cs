@@ -8,7 +8,7 @@ public sealed class QrCodeRenderer : IQrCodeRenderer
     public string RenderSvg(string content, int pixelsPerModule = 6)
     {
         using var generator = new QRCodeGenerator();
-        using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
+        using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.M);
         return new SvgQRCode(data).GetGraphic(pixelsPerModule);
     }
 
@@ -18,7 +18,7 @@ public sealed class QrCodeRenderer : IQrCodeRenderer
     public byte[] RenderPng(string content, int pixelsPerModule = 6)
     {
         using var generator = new QRCodeGenerator();
-        using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
+        using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.M);
         return new PngByteQRCode(data).GetGraphic(pixelsPerModule);
     }
 }

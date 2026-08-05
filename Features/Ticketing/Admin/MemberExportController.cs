@@ -24,14 +24,13 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
 
         var cards = await memberCards.GetByReferenceAsync(referenz);
 
-        var baseUrl = publicUrl.Resolve();
         var sb = new StringBuilder();
         sb.Append("Karten-Nr;Bundle;Name;Vorname;Geburtsdatum;E-Mail;Link\r\n");
         foreach (var card in cards)
         {
             var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
             var url = card.Uuid != Guid.Empty
-                ? $"{baseUrl}/ticket/{tokens.CreateShort(card.Uuid)}"
+                ? publicUrl.TicketUrl(tokens.CreateShort(card.Uuid))
                 : "";
             var cardNo = card.Uuid != Guid.Empty ? card.Uuid.ToString("N")[..8].ToUpperInvariant() : "";
 

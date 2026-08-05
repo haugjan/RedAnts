@@ -51,7 +51,7 @@ public sealed class EmailTestController(
         if (uuid is Guid ticketId && await tickets.FindAsync(ticketId) is { } issued)
         {
             var token = tokens.CreateShort(issued.Uuid);
-            var url = $"{publicUrl.Resolve()}/ticket/{token}";
+            var url = publicUrl.TicketUrl(token);
             var qrPng = qr.RenderPngDataUri(url);
             var scopeName = issued.Type == TicketType.EventTicket
                 ? (await events.FindByIdAsync(issued.ScopeId))?.Name ?? "Anlass"

@@ -213,6 +213,24 @@ app.Use(async (context, next) =>
     }
 });
 
+var shortBaseUrl = app.Configuration["Tickets:ShortBaseUrl"];
+var shortHost = Uri.TryCreate(shortBaseUrl, UriKind.Absolute, out var shortUri) ? shortUri.Host : null;
+var ticketMainBase = (app.Configuration["Tickets:PublicBaseUrl"] ?? "").TrimEnd('/');
+
+app.Use(async (context, next) =>
+{
+    if (shortHost is not null && context.Request.Host.Host.Equals(shortHost, StringComparison.OrdinalIgnoreCase))
+    {
+        var path = context.Request.Path.Value ?? "/";
+        var location = path == "/"
+            ? $"{ticketMainBase}/ticketing/"
+            : $"{ticketMainBase}/ticket{path}{context.Request.QueryString}";
+        context.Response.Redirect(location);
+        return;
+    }
+    await next();
+});
+
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/")

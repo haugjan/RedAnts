@@ -104,7 +104,7 @@ public sealed class WebTicketController(
         return null;
     }
 
-    private string QrUrl(Guid uuid) => $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(uuid)}";
+    private string QrUrl(Guid uuid) => publicUrl.TicketUrl(tokens.CreateShort(uuid));
 
     private async Task<(string ScopeName, string? DateText, string? VenueName, string? HomeLogo, string? AwayLogo)> ResolveContextAsync(TicketTokenData data)
     {

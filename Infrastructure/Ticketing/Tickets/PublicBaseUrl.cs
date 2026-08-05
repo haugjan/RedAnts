@@ -17,6 +17,14 @@ public sealed class PublicBaseUrl(IConfiguration config, IHttpContextAccessor ht
         var request = httpContextAccessor.HttpContext?.Request;
         return request is not null ? $"{request.Scheme}://{request.Host}" : "";
     }
+
+    public string TicketUrl(string token)
+    {
+        var shortBase = config["Tickets:ShortBaseUrl"];
+        return string.IsNullOrWhiteSpace(shortBase)
+            ? $"{Resolve()}/ticket/{token}"
+            : $"{shortBase.TrimEnd('/')}/{token}";
+    }
 }
 
 public sealed class PublicBaseUrlComposer : IComposer

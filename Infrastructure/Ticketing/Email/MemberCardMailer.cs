@@ -74,7 +74,7 @@ public sealed class MemberCardMailer(
     private string BuildCard(MemberCard card, Season? season, List<EmailAttachment> images)
     {
         const string red = "#D02D38";
-        var url = $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(card.Uuid)}";
+        var url = publicUrl.TicketUrl(tokens.CreateShort(card.Uuid));
         var badgeCid = AddImageFile(images, BadgeLogoFile);
         var qrCid = AddQrImage(images, url);
         var reference = card.Uuid.ToString("N")[..8].ToUpperInvariant();
