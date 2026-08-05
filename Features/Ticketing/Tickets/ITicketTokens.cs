@@ -9,6 +9,10 @@ public interface ITicketTokens
     string Create(TicketType type, Guid uuid, int scopeId);
 
     bool TryVerify(string token, out TicketTokenData data);
+
+    string CreateShort(Guid uuid);
+
+    bool TryVerifyShort(string token, out string code);
 }
 
 public interface IQrCodeRenderer
@@ -36,4 +40,6 @@ public sealed record IssuedTicket(
 public interface IIssuedTicketReader
 {
     Task<IssuedTicket?> FindAsync(Guid uuid);
+
+    Task<IssuedTicket?> FindByCodeAsync(string codePrefix);
 }

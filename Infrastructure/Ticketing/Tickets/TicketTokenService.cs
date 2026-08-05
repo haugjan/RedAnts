@@ -12,6 +12,10 @@ public sealed class TicketTokenService : ITicketTokens
 {
     private const string Scheme = "RA1";
     private const int SignatureBytes = 16;
+    private const string ShortScheme = "RA2";
+    private const byte ShortVersion = 2;
+    private const int ShortCodeBytes = 4;
+    private const int ShortSignatureBytes = 5;
     private readonly byte[] _key;
 
     public TicketTokenService(IConfiguration config, IHostEnvironment environment, ILogger<TicketTokenService> logger)
@@ -42,6 +46,39 @@ public sealed class TicketTokenService : ITicketTokens
         var payloadB64 = Base64Url(Encoding.UTF8.GetBytes(payload));
         var sig = Base64Url(Sign(Scheme + "." + payloadB64).AsSpan(0, SignatureBytes).ToArray());
         return $"{Scheme}.{payloadB64}.{sig}";
+    }
+
+    public string CreateShort(Guid uuid)
+    {
+        var code = uuid.ToString("N")[..8];
+        var codeBytes = Convert.FromHexString(code);
+        var sig = Sign(ShortScheme + "." + code).AsSpan(0, ShortSignatureBytes).ToArray();
+        var blob = new byte[1 + ShortCodeBytes + ShortSignatureBytes];
+        blob[0] = ShortVersion;
+        codeBytes.CopyTo(blob, 1);
+        sig.CopyTo(blob, 1 + ShortCodeBytes);
+        return Base64Url(blob);
+    }
+
+    public bool TryVerifyShort(string token, out string code)
+    {
+        code = "";
+        if (string.IsNullOrWhiteSpace(token)) return false;
+
+        byte[] blob;
+        try { blob = FromBase64Url(token); }
+        catch (FormatException) { return false; }
+
+        if (blob.Length != 1 + ShortCodeBytes + ShortSignatureBytes || blob[0] != ShortVersion) return false;
+
+        var codeHex = Convert.ToHexString(blob, 1, ShortCodeBytes).ToLowerInvariant();
+        var expected = Sign(ShortScheme + "." + codeHex).AsSpan(0, ShortSignatureBytes).ToArray();
+        if (!CryptographicOperations.FixedTimeEquals(
+                blob.AsSpan(1 + ShortCodeBytes, ShortSignatureBytes).ToArray(), expected))
+            return false;
+
+        code = codeHex;
+        return true;
     }
 
     public bool TryVerify(string token, out TicketTokenData data)

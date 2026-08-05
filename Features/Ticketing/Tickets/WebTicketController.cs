@@ -19,14 +19,14 @@ public sealed class WebTicketController(
     [HttpGet("/ticket/{token}")]
     public async Task<IActionResult> Show(string token)
     {
-        if (!tokens.TryVerify(token, out var data))
+        var data = await ResolveAsync(token);
+        if (data is null)
             return View("~/Views/WebTicket.cshtml", WebTicketViewModel.Invalid());
 
         var issued = await tickets.FindAsync(data.Uuid);
         var (scopeName, dateText, venueName, homeLogo, awayLogo) = await ResolveContextAsync(data);
 
-        var absoluteUrl = $"{publicUrl.Resolve()}/ticket/{token}";
-        var svg = qr.RenderSvg(absoluteUrl);
+        var svg = qr.RenderSvg(QrUrl(data.Uuid));
 
         var model = new WebTicketViewModel(
             Found: issued is not null,
@@ -51,21 +51,21 @@ public sealed class WebTicketController(
     [HttpGet("/ticket/{token}/qr.png")]
     public async Task<IActionResult> QrPng(string token)
     {
-        if (!tokens.TryVerify(token, out var data)) return NotFound();
+        var data = await ResolveAsync(token);
+        if (data is null) return NotFound();
         var issued = await tickets.FindAsync(data.Uuid);
         if (issued is not { Status: TicketStatus.Valid }) return NotFound();
-        var url = $"{publicUrl.Resolve()}/ticket/{token}";
-        return File(qr.RenderPng(url, 8), "image/png");
+        return File(qr.RenderPng(QrUrl(data.Uuid), 8), "image/png");
     }
 
     [HttpGet("/ticket/{token}/pdf")]
     public async Task<IActionResult> Pdf(string token)
     {
-        if (!tokens.TryVerify(token, out var data)) return NotFound();
+        var data = await ResolveAsync(token);
+        if (data is null) return NotFound();
         var issued = await tickets.FindAsync(data.Uuid);
         if (issued is not { Status: TicketStatus.Valid }) return NotFound();
         var (scopeName, dateText, venueName, _, _) = await ResolveContextAsync(data);
-        var absoluteUrl = $"{publicUrl.Resolve()}/ticket/{token}";
 
         var bytes = pdf.Render(new TicketPdfModel(
             Kicker: TicketDisplay.Kicker(data.Type),
@@ -76,7 +76,7 @@ public sealed class WebTicketController(
             HolderName: issued?.HolderName,
             TicketRef: TicketRef(data.Uuid),
             AccentHex: TypeAccentHex(data.Type),
-            QrPng: qr.RenderPng(absoluteUrl, 10),
+            QrPng: qr.RenderPng(QrUrl(data.Uuid), 10),
             VenueName: venueName));
 
         return File(bytes, "application/pdf", $"redants-ticket-{TicketRef(data.Uuid)}.pdf");
@@ -91,6 +91,20 @@ public sealed class WebTicketController(
         var token = tokens.Create(issued.Type, issued.Uuid, issued.ScopeId);
         return RedirectToAction(nameof(Show), new { token });
     }
+
+    private async Task<TicketTokenData?> ResolveAsync(string token)
+    {
+        if (tokens.TryVerify(token, out var data)) return data;
+        if (tokens.TryVerifyShort(token, out var code))
+        {
+            var issued = await tickets.FindByCodeAsync(code);
+            if (issued is not null)
+                return new TicketTokenData(issued.Type, issued.Uuid, issued.ScopeId, default);
+        }
+        return null;
+    }
+
+    private string QrUrl(Guid uuid) => $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(uuid)}";
 
     private async Task<(string ScopeName, string? DateText, string? VenueName, string? HomeLogo, string? AwayLogo)> ResolveContextAsync(TicketTokenData data)
     {

@@ -363,16 +363,16 @@
     public async Task OnCodeScanned(string code)
     {
         _cameraPaused = true;
-        if (Tickets.TryVerify(ExtractToken(code), out var data))
-        {
+        var scanned = ExtractToken(code);
+        if (Tickets.TryVerify(scanned, out var data))
             _last = await Admission.ScanTicketAsync(EventId, data.Type, data.Uuid, data.ScopeId, _mode, Operator, IsTest);
-            if (!IsTest) _occupancy = _last.Occupancy;
-        }
+        else if (Tickets.TryVerifyShort(scanned, out var shortCode))
+            _last = await Admission.ScanCodeAsync(EventId, shortCode, _mode, Operator, IsTest);
         else
-        {
             _last = new ScanOutcome(AdmissionOutcome.Rejected, null, Shorten(code),
                 "Ungültiger oder gefälschter Code.", _occupancy ?? new Occupancy(0, null));
-        }
+
+        if (!IsTest) _occupancy = _last.Occupancy;
         StateHasChanged();
         await Beep(_last.Ok);
     }

@@ -20,5 +20,8 @@
     <Compile Include="..\..\Domain\Ticketing\Sales\SalesEnums.cs" />
     <Compile Include="..\..\Features\Ticketing\Scanning\IAdmissionService.cs" />
     <Compile Include="..\..\Infrastructure\Ticketing\Scanning\AdmissionRules.cs" />
+    <Compile Include="..\..\Domain\Ticketing\Sales\MemberCategory.cs" />
+    <Compile Include="..\..\Features\Ticketing\Tickets\ITicketTokens.cs" />
+    <Compile Include="..\..\Infrastructure\Ticketing\Tickets\TicketTokenService.cs" />
   </ItemGroup>
 </Project>

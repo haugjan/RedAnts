@@ -49,6 +49,23 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
         return null;
     }
 
+    public async Task<IssuedTicket?> FindByCodeAsync(string codePrefix)
+    {
+        var code = (codePrefix ?? "").Trim().ToLowerInvariant();
+        if (code.Length != 8 || !code.All(Uri.IsHexDigit)) return null;
+
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var pattern = code + "%";
+        var uuid = await scope.Database.ExecuteScalarAsync<string?>(
+            "SELECT TOP 1 Uuid FROM (" +
+            "SELECT Uuid FROM EventTickets WHERE Uuid LIKE @0 " +
+            "UNION ALL SELECT Uuid FROM SeasonSingleTickets WHERE Uuid LIKE @0 " +
+            "UNION ALL SELECT Uuid FROM SeasonPasses WHERE Uuid LIKE @0 " +
+            "UNION ALL SELECT Uuid FROM MembershipCards WHERE Uuid LIKE @0) t", pattern);
+
+        return Guid.TryParse(uuid, out var parsed) ? await FindAsync(parsed) : null;
+    }
+
     private static async Task<string?> CategoryLabel(IDatabase db, int? tierId, int category)
     {
         if (tierId is { } id)
