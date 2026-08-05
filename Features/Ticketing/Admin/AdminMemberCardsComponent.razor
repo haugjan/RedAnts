@@ -287,7 +287,7 @@
             @if (_fileName is not null)
             {
                 <div class="ta-parse">
-                    <strong>@_fileName</strong>: @_parsedRows.Count Zeile@(_parsedRows.Count == 1 ? "" : "n") erkannt.
+                    <strong>@_fileName</strong>: @_parsedRows.Count gültige Zeile@(_parsedRows.Count == 1 ? "" : "n") erkannt.
                     @if (_parseWarnings.Count > 0)
                     {
                         <ul class="ta-warnings">
@@ -298,6 +298,18 @@
                         </ul>
                     }
                 </div>
+                @if (_parseErrors.Count > 0)
+                {
+                    <div class="ta-error">
+                        @_parseErrors.Count Fehler, bitte in der Datei korrigieren, dann erneut wählen:
+                        <ul class="ta-warnings">
+                            @foreach (var er in _parseErrors)
+                            {
+                                <li>@er</li>
+                            }
+                        </ul>
+                    </div>
+                }
             }
 
             @if (!string.IsNullOrEmpty(_importError))
@@ -307,8 +319,8 @@
 
             <div class="ta-modal-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="ImportAsync" disabled="@(_saving || _parsedRows.Count == 0)">
-                    @(_saving ? "Wird importiert …" : $"{_parsedRows.Count} Mitglieder importieren")
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="ImportAsync" disabled="@(_saving || _parsedRows.Count == 0 || _parseErrors.Count > 0)">
+                    @(_saving ? "Wird importiert …" : _parseErrors.Count > 0 ? "Bitte Fehler beheben" : $"{_parsedRows.Count} Mitglieder importieren")
                 </button>
             </div>
         </div>
@@ -687,6 +699,7 @@
     private string? _fileName;
     private IReadOnlyList<MemberImportRow> _parsedRows = [];
     private IReadOnlyList<string> _parseWarnings = [];
+    private IReadOnlyList<string> _parseErrors = [];
 
     private void OpenImport()
     {
@@ -695,6 +708,7 @@
         _fileName = null;
         _parsedRows = [];
         _parseWarnings = [];
+        _parseErrors = [];
         _showImport = true;
     }
 
@@ -714,6 +728,7 @@
             _fileName = file.Name;
             _parsedRows = result.Rows;
             _parseWarnings = result.Warnings;
+            _parseErrors = result.Errors;
         }
         catch (Exception ex)
         {
@@ -729,6 +744,7 @@
         _importError = null;
         if (SelectedSeasonId <= 0) { _importError = "Bitte zuerst eine Saison wählen."; return; }
         if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte eine Referenz angeben."; return; }
+        if (_parseErrors.Count > 0) { _importError = "Bitte zuerst die Fehler in der Datei beheben."; return; }
         if (_parsedRows.Count == 0) { _importError = "Bitte eine CSV-Datei mit mindestens einer Zeile wählen."; return; }
 
         _saving = true;

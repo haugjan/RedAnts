@@ -18,7 +18,8 @@ public static class MemberCsv
     {
         var rows = new List<MemberImportRow>();
         var warnings = new List<string>();
-        if (string.IsNullOrWhiteSpace(content)) return new MemberCsvResult(rows, warnings);
+        var errors = new List<string>();
+        if (string.IsNullOrWhiteSpace(content)) return new MemberCsvResult(rows, warnings, errors);
 
         var lines = content.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
         var delimiter = content.Contains(';') ? ';' : ',';
@@ -48,7 +49,10 @@ public static class MemberCsv
             if (category is null)
             {
                 if (!string.IsNullOrEmpty(categoryCell))
-                    warnings.Add($"Zeile {lineNo}: Kategorie „{categoryCell}“ nicht erkannt (erlaubt: Red Ants, Block 4); Red Ants verwendet.");
+                {
+                    errors.Add($"Zeile {lineNo}: Kategorie „{categoryCell}“ ist ungültig (erlaubt: Red Ants, Block 4).");
+                    continue;
+                }
                 category = MemberCategory.RedAnts;
             }
 
@@ -72,7 +76,7 @@ public static class MemberCsv
             rows.Add(new MemberImportRow(category.Value, Get("lastname"), Get("firstname"), birthday,
                 email, Get("cardno"), address.IsEmpty ? null : address));
         }
-        return new MemberCsvResult(rows, warnings);
+        return new MemberCsvResult(rows, warnings, errors);
     }
 
     public static byte[] SampleBytes()
@@ -142,4 +146,5 @@ public static class MemberCsv
     }
 }
 
-public sealed record MemberCsvResult(IReadOnlyList<MemberImportRow> Rows, IReadOnlyList<string> Warnings);
+public sealed record MemberCsvResult(IReadOnlyList<MemberImportRow> Rows, IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> Errors);
