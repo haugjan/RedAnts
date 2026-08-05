@@ -16,12 +16,14 @@ public sealed class MemberCard
     public string? Reference { get; private set; }
     public string? CreatedByName { get; private set; }
     public string? CreatedByEmail { get; private set; }
+    public MemberAddress Address { get; private set; }
 
     public string HolderName => $"{FirstName} {LastName}".Trim();
 
     private MemberCard(int id, Guid uuid, int seasonId, MemberCategory category,
         int? orderId, TicketStatus status, DateTime createdAt, string? firstName, string? lastName,
-        DateOnly? birthday, string? email, string? reference, string? createdByName, string? createdByEmail)
+        DateOnly? birthday, string? email, string? reference, string? createdByName, string? createdByEmail,
+        MemberAddress address)
     {
         Id = id;
         Uuid = uuid;
@@ -37,23 +39,27 @@ public sealed class MemberCard
         Reference = reference;
         CreatedByName = createdByName;
         CreatedByEmail = createdByEmail;
+        Address = address;
     }
 
     public static MemberCard Create(int seasonId, MemberCategory category, string? firstName, string? lastName,
         DateOnly? birthday, string? email = null, string? reference = null, int? orderId = null,
-        string? createdByName = null, string? createdByEmail = null)
+        string? createdByName = null, string? createdByEmail = null, MemberAddress? address = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         return new MemberCard(0, Guid.NewGuid(), seasonId, category,
             orderId, TicketStatus.Valid, DateTime.UtcNow, Clean(firstName), Clean(lastName), birthday,
-            Clean(email), Clean(reference), Clean(createdByName), Clean(createdByEmail));
+            Clean(email), Clean(reference), Clean(createdByName), Clean(createdByEmail),
+            address ?? MemberAddress.Empty);
     }
 
     public static MemberCard FromPersistence(int id, Guid uuid, int seasonId, MemberCategory category,
         int? orderId, TicketStatus status, DateTime createdAt, string? firstName, string? lastName,
-        DateOnly? birthday, string? email, string? reference, string? createdByName = null, string? createdByEmail = null) =>
+        DateOnly? birthday, string? email, string? reference, string? createdByName = null,
+        string? createdByEmail = null, MemberAddress? address = null) =>
         new(id, uuid, seasonId, category, orderId, status, createdAt, firstName, lastName, birthday,
-            Clean(email), Clean(reference), Clean(createdByName), Clean(createdByEmail));
+            Clean(email), Clean(reference), Clean(createdByName), Clean(createdByEmail),
+            address ?? MemberAddress.Empty);
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -49,6 +49,29 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddRefundsAndJournal>("refunds-and-journal");
         To<AddPriceTierMinAge>("price-tier-min-age");
         To<AddPageViews>("pageviews");
+        To<AddMemberCardAddress>("membercard-address");
+    }
+}
+
+public class AddMemberCardAddress(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddString("Salutation", 50);
+        AddString("Company", 200);
+        AddString("Street", 200);
+        AddString("AddressLine2", 200);
+        AddString("PostalCode", 20);
+        AddString("City", 100);
+        AddString("Country", 100);
+        AddString("Phone", 50);
+        return Task.CompletedTask;
+    }
+
+    private void AddString(string column, int length)
+    {
+        if (ColumnExists("MembershipCards", column)) return;
+        Alter.Table("MembershipCards").AddColumn(column).AsString(length).Nullable().Do();
     }
 }
 

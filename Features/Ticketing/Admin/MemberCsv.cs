@@ -9,6 +9,11 @@ public static class MemberCsv
 {
     private static readonly string[] DateFormats = ["dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd"];
 
+    private static readonly Dictionary<string, int> LegacyMap = new()
+    {
+        ["category"] = 0, ["lastname"] = 1, ["firstname"] = 2, ["birthday"] = 3, ["email"] = 4
+    };
+
     public static MemberCsvResult Parse(string content)
     {
         var rows = new List<MemberImportRow>();
@@ -18,21 +23,27 @@ public static class MemberCsv
         var lines = content.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
         var delimiter = content.Contains(';') ? ';' : ',';
 
-        var lineNo = 0;
-        foreach (var raw in lines)
+        var map = LegacyMap;
+        var start = 0;
+        for (var i = 0; i < lines.Length; i++)
         {
-            lineNo++;
+            if (lines[i].Trim().Length == 0) continue;
+            var header = MapHeader(lines[i].Split(delimiter));
+            if (header is not null) { map = header; start = i + 1; }
+            else start = i;
+            break;
+        }
+
+        for (var i = start; i < lines.Length; i++)
+        {
+            var raw = lines[i];
             if (raw.Trim().Length == 0) continue;
-
+            var lineNo = i + 1;
             var cells = raw.Split(delimiter);
-            var categoryCell = Cell(cells, 0);
-            var last = Cell(cells, 1);
-            var first = Cell(cells, 2);
-            var birthdayCell = Cell(cells, 3);
-            var email = Cell(cells, 4);
 
-            if (lineNo == 1 && IsHeader(categoryCell, last, first, birthdayCell)) continue;
+            string? Get(string key) => map.TryGetValue(key, out var idx) ? Cell(cells, idx) : null;
 
+            var categoryCell = Get("category");
             var category = ParseCategory(categoryCell);
             if (category is null)
             {
@@ -42,6 +53,7 @@ public static class MemberCsv
             }
 
             DateOnly? birthday = null;
+            var birthdayCell = Get("birthday");
             if (!string.IsNullOrEmpty(birthdayCell))
             {
                 if (DateOnly.TryParseExact(birthdayCell, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
@@ -50,18 +62,58 @@ public static class MemberCsv
                     warnings.Add($"Zeile {lineNo}: Geburtsdatum „{birthdayCell}“ nicht erkannt, wird leer übernommen.");
             }
 
-            rows.Add(new MemberImportRow(category.Value, last, first, birthday, email));
+            var address = MemberAddress.Create(Get("salutation"), Get("company"), Get("street"), Get("addressline2"),
+                Get("postalcode"), Get("city"), Get("country"), Get("phone"));
+
+            rows.Add(new MemberImportRow(category.Value, Get("lastname"), Get("firstname"), birthday,
+                Get("email"), Get("cardno"), address.IsEmpty ? null : address));
         }
         return new MemberCsvResult(rows, warnings);
     }
 
     public static byte[] SampleBytes()
     {
-        var csv = "Kategorie;Name;Vorname;Geburtsdatum;E-Mail\n" +
-                  "Red Ants;Muster;Anna;14.05.1990;anna.muster@example.com\n" +
-                  "Block 4;Beispiel;Ben;02.11.2009;ben.beispiel@example.com\n" +
-                  "Red Ants;Nurnachname;;;\n";
+        var csv = "Karten-Nr;Kategorie;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum\n" +
+                  ";Red Ants;;Frau;Muster;Anna;Musterweg 1;;8400;Winterthur;Schweiz;anna.muster@example.com;079 000 00 00;14.05.1990\n" +
+                  ";Block 4;;Herr;Beispiel;Ben;;;;;;ben.beispiel@example.com;;02.11.2009\n" +
+                  ";Red Ants;;;Nurnachname;;;;;;;;;\n";
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
+    }
+
+    private static Dictionary<string, int>? MapHeader(string[] cells)
+    {
+        var map = new Dictionary<string, int>();
+        for (var i = 0; i < cells.Length; i++)
+        {
+            var key = HeaderKey(cells[i]);
+            if (key is not null && !map.ContainsKey(key)) map[key] = i;
+        }
+        var recognisable = map.ContainsKey("category") || map.ContainsKey("lastname")
+            || map.ContainsKey("firstname") || map.ContainsKey("cardno");
+        return recognisable ? map : null;
+    }
+
+    private static string? HeaderKey(string cell)
+    {
+        var norm = new string((cell ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+        return norm switch
+        {
+            "kartennr" or "kartennummer" or "karte" => "cardno",
+            "kategorie" => "category",
+            "anrede" => "salutation",
+            "firma" or "firmenname" => "company",
+            "name" or "nachname" => "lastname",
+            "vorname" => "firstname",
+            "strasse" or "str" => "street",
+            "adresszusatz" or "zusatz" => "addressline2",
+            "plz" => "postalcode",
+            "ort" => "city",
+            "land" => "country",
+            "email" or "mail" => "email",
+            "telefon" or "tel" or "telefonnummer" => "phone",
+            "geburtsdatum" or "geburtstag" or "geburt" => "birthday",
+            _ => null
+        };
     }
 
     private static string? Cell(string[] cells, int i) =>
@@ -76,13 +128,6 @@ public static class MemberCsv
             "block4" => MemberCategory.Block4,
             _ => null
         };
-    }
-
-    private static bool IsHeader(string? category, string? last, string? first, string? birthday)
-    {
-        var joined = $"{category} {last} {first} {birthday}".ToLowerInvariant();
-        return joined.Contains("kategorie") || joined.Contains("vorname") || joined.Contains("geburt")
-            || string.Equals(last, "name", StringComparison.OrdinalIgnoreCase);
     }
 }
 

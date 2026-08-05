@@ -34,7 +34,9 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             visits.GetValueOrDefault(c.Uuid ?? ""),
             c.Reference,
             c.Email,
-            c.CreatedByName)).ToList();
+            c.CreatedByName,
+            MemberAddress.Create(c.Salutation, c.Company, c.Street, c.AddressLine2,
+                c.PostalCode, c.City, c.Country, c.Phone))).ToList();
     }
 
     public sealed class UuidCountRow

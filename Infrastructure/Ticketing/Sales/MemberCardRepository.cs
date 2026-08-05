@@ -16,19 +16,52 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         if (rows.Count == 0) return 0;
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var created = 0;
+        var affected = 0;
         foreach (var row in rows)
         {
+            if (!string.IsNullOrWhiteSpace(row.CardNo)
+                && await TryUpdateByCodeAsync(scope.Database, seasonId, row))
+            {
+                affected++;
+                continue;
+            }
+
             var card = MemberCard.Create(seasonId, row.Category, row.FirstName, row.LastName, row.Birthday,
-                email: row.Email, reference: reference, createdByName: createdByName, createdByEmail: createdByEmail);
+                email: row.Email, reference: reference, createdByName: createdByName, createdByEmail: createdByEmail,
+                address: row.Address);
             await InsertAsync(scope.Database, card);
-            created++;
+            affected++;
         }
-        return created;
+        return affected;
     }
 
+    private static async Task<bool> TryUpdateByCodeAsync(IDatabase db, int seasonId, MemberImportRow row)
+    {
+        var code = (row.CardNo ?? "").Trim().ToLowerInvariant();
+        if (code.Length != 8 || !code.All(Uri.IsHexDigit)) return false;
+
+        var addr = row.Address ?? MemberAddress.Empty;
+        var affected = await db.ExecuteAsync(
+            "UPDATE MembershipCards SET FirstName=@0, LastName=@1, Birthday=@2, Category=@3, Email=@4, " +
+            "Salutation=@5, Company=@6, Street=@7, AddressLine2=@8, PostalCode=@9, City=@10, Country=@11, Phone=@12 " +
+            "WHERE SeasonId=@13 AND Uuid LIKE @14",
+            (object[])new object?[]
+            {
+                Clean(row.FirstName), Clean(row.LastName),
+                row.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+                (int)row.Category, Clean(row.Email),
+                addr.Salutation, addr.Company, addr.Street, addr.AddressLine2,
+                addr.PostalCode, addr.City, addr.Country, addr.Phone,
+                seasonId, code + "%"
+            });
+        return affected > 0;
+    }
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     public async Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,
-        DateOnly? birthday, string reference, string? email = null, string? createdByName = null, string? createdByEmail = null)
+        DateOnly? birthday, string reference, string? email = null, string? createdByName = null,
+        string? createdByEmail = null, MemberAddress? address = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         var reff = (reference ?? "").Trim();
@@ -37,7 +70,8 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
             throw new DomainException($"Die Referenz „{reff}“ ist in dieser Saison bereits vergeben.");
 
         var card = MemberCard.Create(seasonId, category, firstName, lastName, birthday,
-            email: email, reference: reff, createdByName: createdByName, createdByEmail: createdByEmail);
+            email: email, reference: reff, createdByName: createdByName, createdByEmail: createdByEmail,
+            address: address);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await InsertAsync(scope.Database, card);
@@ -94,7 +128,9 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         r.Email,
         r.Reference,
         r.CreatedByName,
-        r.CreatedByEmail);
+        r.CreatedByEmail,
+        MemberAddress.Create(r.Salutation, r.Company, r.Street, r.AddressLine2,
+            r.PostalCode, r.City, r.Country, r.Phone));
 
     private static MemberCardRecord ToRecord(MemberCard card) => new()
     {
@@ -110,6 +146,14 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         Email = card.Email,
         Reference = card.Reference,
         CreatedByName = card.CreatedByName,
-        CreatedByEmail = card.CreatedByEmail
+        CreatedByEmail = card.CreatedByEmail,
+        Salutation = card.Address.Salutation,
+        Company = card.Address.Company,
+        Street = card.Address.Street,
+        AddressLine2 = card.Address.AddressLine2,
+        PostalCode = card.Address.PostalCode,
+        City = card.Address.City,
+        Country = card.Address.Country,
+        Phone = card.Address.Phone
     };
 }

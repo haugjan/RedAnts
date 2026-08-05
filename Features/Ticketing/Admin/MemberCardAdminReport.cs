@@ -13,7 +13,8 @@ public sealed record MemberCardListItem(
     int EventVisits,
     string? Reference,
     string? Email = null,
-    string? CreatedByName = null)
+    string? CreatedByName = null,
+    MemberAddress? Address = null)
 {
     public string HolderName => $"{FirstName} {LastName}".Trim();
     public bool HasName => !string.IsNullOrWhiteSpace(FirstName) || !string.IsNullOrWhiteSpace(LastName);

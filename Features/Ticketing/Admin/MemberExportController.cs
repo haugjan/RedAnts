@@ -25,7 +25,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
         var cards = await memberCards.GetByReferenceAsync(referenz);
 
         var sb = new StringBuilder();
-        sb.Append("Karten-Nr;Bundle;Name;Vorname;Geburtsdatum;E-Mail;Link\r\n");
+        sb.Append("Karten-Nr;Kategorie;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum;Bundle;Link\r\n");
         foreach (var card in cards)
         {
             var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
@@ -33,13 +33,23 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
                 ? publicUrl.TicketUrl(tokens.CreateShort(card.Uuid))
                 : "";
             var cardNo = card.Uuid != Guid.Empty ? card.Uuid.ToString("N")[..8].ToUpperInvariant() : "";
+            var a = card.Address;
 
             sb.Append(Csv(cardNo)).Append(';')
-              .Append(Csv(referenz)).Append(';')
+              .Append(Csv(card.Category.DisplayName())).Append(';')
+              .Append(Csv(a.Company)).Append(';')
+              .Append(Csv(a.Salutation)).Append(';')
               .Append(Csv(card.LastName)).Append(';')
               .Append(Csv(card.FirstName)).Append(';')
-              .Append(Csv(birthday)).Append(';')
+              .Append(Csv(a.Street)).Append(';')
+              .Append(Csv(a.AddressLine2)).Append(';')
+              .Append(Csv(a.PostalCode)).Append(';')
+              .Append(Csv(a.City)).Append(';')
+              .Append(Csv(a.Country)).Append(';')
               .Append(Csv(card.Email)).Append(';')
+              .Append(Csv(a.Phone)).Append(';')
+              .Append(Csv(birthday)).Append(';')
+              .Append(Csv(referenz)).Append(';')
               .Append(Csv(url)).Append("\r\n");
         }
 

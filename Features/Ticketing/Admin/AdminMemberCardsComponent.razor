@@ -128,6 +128,7 @@
 <style>
     .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
     .ta-textarea { min-height: 9rem; resize: vertical; font-family: inherit; line-height: 1.5; }
+    .ta-modal-section { margin: 1.1rem 0 0.4rem; font-weight: 700; font-size: 0.85rem; color: var(--ta-muted); border-top: 1px solid var(--ta-border); padding-top: 0.9rem; }
 </style>
 
 @if (_showCreate)
@@ -165,6 +166,40 @@
             <div class="ta-field">
                 <label class="ta-label" for="newMcEmail">E-Mail (optional)</label>
                 <input id="newMcEmail" class="ta-input" type="email" maxlength="200" placeholder="für den Kartenversand" @bind="_newEmail" />
+            </div>
+
+            <p class="ta-modal-section">Adresse (optional, z. B. für Serienbriefe)</p>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcCompany">Firma (optional)</label>
+                <input id="newMcCompany" class="ta-input" type="text" maxlength="200" @bind="_newCompany" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcSalutation">Anrede (optional)</label>
+                <input id="newMcSalutation" class="ta-input" type="text" maxlength="50" placeholder="z. B. Frau / Herr" @bind="_newSalutation" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcStreet">Strasse (optional)</label>
+                <input id="newMcStreet" class="ta-input" type="text" maxlength="200" @bind="_newStreet" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcAddressLine2">Adresszusatz (optional)</label>
+                <input id="newMcAddressLine2" class="ta-input" type="text" maxlength="200" @bind="_newAddressLine2" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcPostalCode">PLZ (optional)</label>
+                <input id="newMcPostalCode" class="ta-input" type="text" maxlength="20" @bind="_newPostalCode" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcCity">Ort (optional)</label>
+                <input id="newMcCity" class="ta-input" type="text" maxlength="100" @bind="_newCity" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcCountry">Land (optional)</label>
+                <input id="newMcCountry" class="ta-input" type="text" maxlength="100" placeholder="Schweiz" @bind="_newCountry" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcPhone">Telefon (optional)</label>
+                <input id="newMcPhone" class="ta-input" type="text" maxlength="50" @bind="_newPhone" />
             </div>
 
             @if (!string.IsNullOrEmpty(_createError))
@@ -237,7 +272,8 @@
                 <label class="ta-label">CSV-Datei</label>
                 <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
                 <p class="ta-hint">
-                    Spalten: Kategorie (Red Ants / Block 4), Name, Vorname, Geburtsdatum (dd.MM.yyyy), E-Mail. Fehlende Angaben ausser der Referenz sind erlaubt.
+                    Spalten (alle ausser Kategorie optional): Karten-Nr, Kategorie (Red Ants / Block 4), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
+                    Zeilen mit einer bestehenden Karten-Nr werden aktualisiert, Zeilen ohne neu angelegt. So kannst du exportieren, Adressen ergänzen und wieder importieren.
                     <a href="/admin/members/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
             </div>
@@ -309,6 +345,41 @@
                 <label class="ta-label" for="editEmail">E-Mail</label>
                 <input id="editEmail" class="ta-input" type="email" maxlength="200" @bind="_editEmail" />
             </div>
+
+            <p class="ta-modal-section">Adresse (optional)</p>
+            <div class="ta-field">
+                <label class="ta-label" for="editCompany">Firma</label>
+                <input id="editCompany" class="ta-input" type="text" maxlength="200" @bind="_editCompany" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editSalutation">Anrede</label>
+                <input id="editSalutation" class="ta-input" type="text" maxlength="50" placeholder="z. B. Frau / Herr" @bind="_editSalutation" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editStreet">Strasse</label>
+                <input id="editStreet" class="ta-input" type="text" maxlength="200" @bind="_editStreet" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editAddressLine2">Adresszusatz</label>
+                <input id="editAddressLine2" class="ta-input" type="text" maxlength="200" @bind="_editAddressLine2" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editPostalCode">PLZ</label>
+                <input id="editPostalCode" class="ta-input" type="text" maxlength="20" @bind="_editPostalCode" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editCity">Ort</label>
+                <input id="editCity" class="ta-input" type="text" maxlength="100" @bind="_editCity" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editCountry">Land</label>
+                <input id="editCountry" class="ta-input" type="text" maxlength="100" placeholder="Schweiz" @bind="_editCountry" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editPhone">Telefon</label>
+                <input id="editPhone" class="ta-input" type="text" maxlength="50" @bind="_editPhone" />
+            </div>
+
             <div class="ta-field">
                 <label class="ta-label" for="editStatus">Status</label>
                 <select id="editStatus" class="ta-select" @bind="_editStatus">
@@ -536,12 +607,22 @@
     private DateOnly? _newBirthday;
     private string _newReference = "";
     private string _newEmail = "";
+    private string _newSalutation = "";
+    private string _newCompany = "";
+    private string _newStreet = "";
+    private string _newAddressLine2 = "";
+    private string _newPostalCode = "";
+    private string _newCity = "";
+    private string _newCountry = "";
+    private string _newPhone = "";
     private string? _createError;
 
     private void OpenCreate()
     {
         _newCategory = MemberCategory.RedAnts;
         _newFirstName = _newLastName = _newReference = _newEmail = "";
+        _newSalutation = _newCompany = _newStreet = _newAddressLine2 = "";
+        _newPostalCode = _newCity = _newCountry = _newPhone = "";
         _newBirthday = null;
         _createError = null;
         _showCreate = true;
@@ -559,10 +640,12 @@
         {
             var first = string.IsNullOrWhiteSpace(_newFirstName) ? null : _newFirstName;
             var last = string.IsNullOrWhiteSpace(_newLastName) ? null : _newLastName;
+            var address = MemberAddress.Create(_newSalutation, _newCompany, _newStreet, _newAddressLine2,
+                _newPostalCode, _newCity, _newCountry, _newPhone);
             await Members.CreateAsync(SelectedSeasonId, _newCategory, first, last,
                 _newBirthday, _newReference.Trim(),
                 email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim(),
-                createdByName: Identity.Name, createdByEmail: Identity.Email);
+                createdByName: Identity.Name, createdByEmail: Identity.Email, address: address);
             _showCreate = false;
             await ReloadCardsAsync();
         }
@@ -657,6 +740,14 @@
     private MemberCategory _editCategory;
     private string _editReference = "";
     private string _editEmail = "";
+    private string _editSalutation = "";
+    private string _editCompany = "";
+    private string _editStreet = "";
+    private string _editAddressLine2 = "";
+    private string _editPostalCode = "";
+    private string _editCity = "";
+    private string _editCountry = "";
+    private string _editPhone = "";
     private TicketStatus _editStatus;
     private bool _savingEdit;
     private string? _editError;
@@ -670,6 +761,15 @@
         _editCategory = c.Category;
         _editReference = c.Reference ?? "";
         _editEmail = c.Email ?? "";
+        var a = c.Address ?? MemberAddress.Empty;
+        _editSalutation = a.Salutation ?? "";
+        _editCompany = a.Company ?? "";
+        _editStreet = a.Street ?? "";
+        _editAddressLine2 = a.AddressLine2 ?? "";
+        _editPostalCode = a.PostalCode ?? "";
+        _editCity = a.City ?? "";
+        _editCountry = a.Country ?? "";
+        _editPhone = a.Phone ?? "";
         _editStatus = c.Status;
         _editError = null;
     }
@@ -683,8 +783,10 @@
         _editError = null;
         try
         {
+            var address = MemberAddress.Create(_editSalutation, _editCompany, _editStreet, _editAddressLine2,
+                _editPostalCode, _editCity, _editCountry, _editPhone);
             await MemberEditor.SetDetailsAsync(_editing.Uuid, _editFirstName, _editLastName, _editBirthday,
-                _editCategory, _editStatus, _editReference, _editEmail);
+                _editCategory, _editStatus, _editReference, _editEmail, address);
             _editing = null;
             await ReloadCardsAsync();
         }
