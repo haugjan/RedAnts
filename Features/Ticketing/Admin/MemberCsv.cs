@@ -62,11 +62,15 @@ public static class MemberCsv
                     warnings.Add($"Zeile {lineNo}: Geburtsdatum „{birthdayCell}“ nicht erkannt, wird leer übernommen.");
             }
 
+            var email = Get("email");
+            if (email is not null && !LooksLikeEmail(email))
+                warnings.Add($"Zeile {lineNo}: E-Mail „{email}“ sieht ungültig aus, wird trotzdem übernommen.");
+
             var address = MemberAddress.Create(Get("salutation"), Get("company"), Get("street"), Get("addressline2"),
                 Get("postalcode"), Get("city"), Get("country"), Get("phone"));
 
             rows.Add(new MemberImportRow(category.Value, Get("lastname"), Get("firstname"), birthday,
-                Get("email"), Get("cardno"), address.IsEmpty ? null : address));
+                email, Get("cardno"), address.IsEmpty ? null : address));
         }
         return new MemberCsvResult(rows, warnings);
     }
@@ -114,6 +118,13 @@ public static class MemberCsv
             "geburtsdatum" or "geburtstag" or "geburt" => "birthday",
             _ => null
         };
+    }
+
+    private static bool LooksLikeEmail(string value)
+    {
+        var e = value.Trim();
+        var at = e.IndexOf('@');
+        return at > 0 && at < e.Length - 1 && e[(at + 1)..].Contains('.') && !e.EndsWith('.');
     }
 
     private static string? Cell(string[] cells, int i) =>

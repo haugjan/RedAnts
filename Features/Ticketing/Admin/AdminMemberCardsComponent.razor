@@ -129,15 +129,20 @@
     .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
     .ta-textarea { min-height: 9rem; resize: vertical; font-family: inherit; line-height: 1.5; }
     .ta-modal-section { margin: 1.1rem 0 0.4rem; font-weight: 700; font-size: 0.85rem; color: var(--ta-muted); border-top: 1px solid var(--ta-border); padding-top: 0.9rem; }
+    .ta-modal--members { width: min(94vw, 680px); max-width: 680px; }
+    .ta-mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.25rem; }
+    .ta-mc-grid > .ta-modal-section { grid-column: 1 / -1; margin-top: 0.6rem; }
+    @@media (max-width: 560px) { .ta-mc-grid { grid-template-columns: 1fr; } }
 </style>
 
 @if (_showCreate)
 {
     <div class="ta-overlay" @onmousedown="CloseCreate">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <div class="ta-modal ta-modal--members" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Mitgliederkarte erstellen</h2>
             <p class="ta-modal-sub">@_selectedSeasonName</p>
 
+            <div class="ta-mc-grid">
             <div class="ta-field">
                 <label class="ta-label" for="newMcCategory">Kategorie</label>
                 <select id="newMcCategory" class="ta-select" @bind="_newCategory">
@@ -200,6 +205,7 @@
             <div class="ta-field">
                 <label class="ta-label" for="newMcPhone">Telefon (optional)</label>
                 <input id="newMcPhone" class="ta-input" type="text" maxlength="50" @bind="_newPhone" />
+            </div>
             </div>
 
             @if (!string.IsNullOrEmpty(_createError))
@@ -312,10 +318,11 @@
 @if (_editing is not null)
 {
     <div class="ta-overlay" @onmousedown="CancelEdit">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <div class="ta-modal ta-modal--members" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Mitglied bearbeiten</h2>
             <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
 
+            <div class="ta-mc-grid">
             <div class="ta-field">
                 <label class="ta-label" for="editLastName">Name</label>
                 <input id="editLastName" class="ta-input" type="text" maxlength="100" @bind="_editLastName" />
@@ -386,6 +393,7 @@
                     <option value="@TicketStatus.Valid">Gültig</option>
                     <option value="@TicketStatus.Cancelled">Storniert</option>
                 </select>
+            </div>
             </div>
 
             @if (!string.IsNullOrEmpty(_editError))
@@ -634,6 +642,8 @@
         if (_creating) return;
         if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
         if (string.IsNullOrWhiteSpace(_newReference)) { _createError = "Bitte eine Referenz angeben."; return; }
+        var contactError = ValidateContact(_newEmail, _newBirthday);
+        if (contactError is not null) { _createError = contactError; return; }
         _creating = true;
         _createError = null;
         try
@@ -779,6 +789,8 @@
     private async Task SaveEditAsync()
     {
         if (_editing is null) return;
+        var contactError = ValidateContact(_editEmail, _editBirthday);
+        if (contactError is not null) { _editError = contactError; return; }
         _savingEdit = true;
         _editError = null;
         try
@@ -912,6 +924,23 @@
         var today = SwissTime.Today;
         return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static string? ValidateContact(string? email, DateOnly? birthday)
+    {
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var e = email.Trim();
+            var at = e.IndexOf('@');
+            if (at <= 0 || at == e.Length - 1 || !e[(at + 1)..].Contains('.') || e.EndsWith('.'))
+                return "Bitte eine gültige E-Mail-Adresse angeben (oder das Feld leer lassen).";
+        }
+        if (birthday is { } b)
+        {
+            if (b > SwissTime.Today) return "Das Geburtsdatum darf nicht in der Zukunft liegen.";
+            if (b.Year < 1900) return "Bitte ein gültiges Geburtsdatum angeben.";
+        }
+        return null;
     }
 
     private static string CategoryBadgeClass(MemberCategory category) => category switch
