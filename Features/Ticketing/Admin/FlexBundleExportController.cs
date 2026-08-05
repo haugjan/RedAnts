@@ -19,12 +19,12 @@ public sealed class FlexBundleExportController(
         var tickets = await bundleTickets.GetByBundleAsync(bundleId);
 
         var sb = new StringBuilder();
-        sb.Append("Referenz;Kurzkennung;Link\r\n");
+        sb.Append("Karten-Nr;Bundle;Link\r\n");
         foreach (var t in tickets)
         {
             var link = $"{publicUrl.Resolve()}/ticket/{tokens.Create(TicketType.SeasonSingle, t.Uuid, t.SeasonId)}";
-            sb.Append(CsvField(t.Reference)).Append(';')
-              .Append(ShortCode(t.Uuid)).Append(';')
+            sb.Append(ShortCode(t.Uuid)).Append(';')
+              .Append(CsvField(t.Reference)).Append(';')
               .Append(link).Append("\r\n");
         }
 

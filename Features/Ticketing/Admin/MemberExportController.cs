@@ -26,15 +26,18 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
 
         var baseUrl = publicUrl.Resolve();
         var sb = new StringBuilder();
-        sb.Append("Name;Vorname;Geburtsdatum;E-Mail;Link\r\n");
+        sb.Append("Karten-Nr;Bundle;Name;Vorname;Geburtsdatum;E-Mail;Link\r\n");
         foreach (var card in cards)
         {
             var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
             var url = card.Uuid != Guid.Empty
                 ? $"{baseUrl}/ticket/{tokens.Create(TicketType.MemberCard, card.Uuid, card.SeasonId)}"
                 : "";
+            var cardNo = card.Uuid != Guid.Empty ? card.Uuid.ToString("N")[..8].ToUpperInvariant() : "";
 
-            sb.Append(Csv(card.LastName)).Append(';')
+            sb.Append(Csv(cardNo)).Append(';')
+              .Append(Csv(referenz)).Append(';')
+              .Append(Csv(card.LastName)).Append(';')
               .Append(Csv(card.FirstName)).Append(';')
               .Append(Csv(birthday)).Append(';')
               .Append(Csv(card.Email)).Append(';')

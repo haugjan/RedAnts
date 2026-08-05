@@ -19,12 +19,12 @@ public sealed class EventBundleExportController(
         var tickets = await bundleTickets.GetByBundleAsync(bundleId);
 
         var sb = new StringBuilder();
-        sb.Append("Referenz;Kurzkennung;Link\r\n");
+        sb.Append("Karten-Nr;Bundle;Link\r\n");
         foreach (var t in tickets)
         {
             var link = $"{publicUrl.Resolve()}/ticket/{tokens.Create(TicketType.EventTicket, t.Uuid, t.EventId)}";
-            sb.Append(CsvField(t.Reference)).Append(';')
-              .Append(ShortCode(t.Uuid)).Append(';')
+            sb.Append(ShortCode(t.Uuid)).Append(';')
+              .Append(CsvField(t.Reference)).Append(';')
               .Append(link).Append("\r\n");
         }
 
