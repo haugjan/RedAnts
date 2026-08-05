@@ -4,6 +4,8 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Email
 @using RedAnts.Features.Ticketing.Ports
+@inject IPublicBaseUrl PublicUrl
+@inject ITicketTokens Tokens
 
 <section class="ta-page">
     <h1 class="ta-page-title">Mitglieder</h1>
@@ -70,7 +72,7 @@
                             <tr>
                                 <td>
                                     <span class="ta-ticketno">@AdminFormat.TicketNo(c.Uuid)</span>
-                                    <a class="ta-qr-link" href="/ticket/for/@c.Uuid" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                    <a class="ta-qr-link" href="@PublicUrl.TicketUrl(Tokens.CreateShort(c.Uuid))" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
                                     </a>
                                 </td>
