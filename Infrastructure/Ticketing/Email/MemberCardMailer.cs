@@ -74,11 +74,9 @@ public sealed class MemberCardMailer(
     private string BuildCard(MemberCard card, Season? season, List<EmailAttachment> images)
     {
         const string red = "#D02D38";
-        var token = tokens.Create(TicketType.MemberCard, card.Uuid, card.SeasonId);
-        var url = $"{publicUrl.Resolve()}/ticket/{token}";
-        var qrUrl = $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(card.Uuid)}";
+        var url = $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(card.Uuid)}";
         var badgeCid = AddImageFile(images, BadgeLogoFile);
-        var qrCid = AddQrImage(images, qrUrl);
+        var qrCid = AddQrImage(images, url);
         var reference = card.Uuid.ToString("N")[..8].ToUpperInvariant();
         var holder = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(card.HolderName) ? "Mitgliederkarte" : card.HolderName);
         var category = WebUtility.HtmlEncode(card.Category.DisplayName());

@@ -72,11 +72,9 @@ public sealed class SeasonPassMailer(
     private string BuildCard(SeasonPass pass, Season? season, string categoryLabel, List<EmailAttachment> images)
     {
         const string red = "#D02D38";
-        var token = tokens.Create(TicketType.SeasonPass, pass.Uuid, pass.SeasonId);
-        var url = $"{publicUrl.Resolve()}/ticket/{token}";
-        var qrUrl = $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(pass.Uuid)}";
+        var url = $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(pass.Uuid)}";
         var badgeCid = AddImageFile(images, BadgeLogoFile);
-        var qrCid = AddQrImage(images, qrUrl);
+        var qrCid = AddQrImage(images, url);
         var reference = pass.Uuid.ToString("N")[..8].ToUpperInvariant();
         var holderName = pass.Buyer?.DisplayName is { Length: > 0 } n ? n : "Saisonkarte";
         var holder = WebUtility.HtmlEncode(holderName);

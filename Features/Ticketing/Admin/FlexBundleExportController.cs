@@ -22,7 +22,7 @@ public sealed class FlexBundleExportController(
         sb.Append("Karten-Nr;Bundle;Link\r\n");
         foreach (var t in tickets)
         {
-            var link = $"{publicUrl.Resolve()}/ticket/{tokens.Create(TicketType.SeasonSingle, t.Uuid, t.SeasonId)}";
+            var link = $"{publicUrl.Resolve()}/ticket/{tokens.CreateShort(t.Uuid)}";
             sb.Append(ShortCode(t.Uuid)).Append(';')
               .Append(CsvField(t.Reference)).Append(';')
               .Append(link).Append("\r\n");

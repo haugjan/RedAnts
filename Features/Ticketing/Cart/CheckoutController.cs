@@ -319,7 +319,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 {
                     var pass = await passes.SaveAsync(
                         SeasonPass.Create(item.SeasonId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
-                    var passToken = tokens.Create(TicketType.SeasonPass, pass.Uuid, item.SeasonId);
+                    var passToken = tokens.CreateShort(pass.Uuid);
                     var passCategory = await TicketCategoryNameAsync(pass.Uuid, item.CategoryName);
                     issued.Add(new ConfirmationTicket(pass.Uuid, item.EventName, passCategory, passToken, (int)TicketType.SeasonPass, await SeasonDateTextAsync(item.SeasonId)));
                     mailTickets.Add(new OrderMailTicket(
@@ -329,7 +329,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
 
                 var ticket = await tickets.SaveAsync(
                     EventTicket.Create(item.EventId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
-                var token = tokens.Create(TicketType.EventTicket, ticket.Uuid, item.EventId);
+                var token = tokens.CreateShort(ticket.Uuid);
                 var ticketCategory = await TicketCategoryNameAsync(ticket.Uuid, item.CategoryName);
                 issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, ticketCategory, token, (int)TicketType.EventTicket, await EventDateTextAsync(item.EventId), await EventVenueNameAsync(item.EventId)));
                 mailTickets.Add(new OrderMailTicket(
@@ -453,13 +453,13 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         foreach (var t in await tickets.GetByOrderAsync(order.Id))
         {
             names.TryGetValue(((int)CartItemKind.EventTicket, t.EventId, t.TierId ?? 0), out var n);
-            var token = tokens.Create(TicketType.EventTicket, t.Uuid, t.EventId);
+            var token = tokens.CreateShort(t.Uuid);
             result.Add(new ConfirmationTicket(t.Uuid, n.EventName ?? "", await TicketCategoryNameAsync(t.Uuid, n.CategoryName ?? ""), token, (int)TicketType.EventTicket, await EventDateTextAsync(t.EventId), await EventVenueNameAsync(t.EventId)));
         }
         foreach (var p in await passes.GetByOrderAsync(order.Id))
         {
             names.TryGetValue(((int)CartItemKind.SeasonPass, p.SeasonId, p.TierId ?? 0), out var n);
-            var token = tokens.Create(TicketType.SeasonPass, p.Uuid, p.SeasonId);
+            var token = tokens.CreateShort(p.Uuid);
             result.Add(new ConfirmationTicket(p.Uuid, n.EventName ?? "", await TicketCategoryNameAsync(p.Uuid, n.CategoryName ?? ""), token, (int)TicketType.SeasonPass, await SeasonDateTextAsync(p.SeasonId)));
         }
         return result;

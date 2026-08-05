@@ -31,7 +31,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
         {
             var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
             var url = card.Uuid != Guid.Empty
-                ? $"{baseUrl}/ticket/{tokens.Create(TicketType.MemberCard, card.Uuid, card.SeasonId)}"
+                ? $"{baseUrl}/ticket/{tokens.CreateShort(card.Uuid)}"
                 : "";
             var cardNo = card.Uuid != Guid.Empty ? card.Uuid.ToString("N")[..8].ToUpperInvariant() : "";
 

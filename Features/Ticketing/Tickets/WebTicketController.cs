@@ -88,7 +88,7 @@ public sealed class WebTicketController(
     {
         var issued = await tickets.FindAsync(uuid);
         if (issued is null) return NotFound();
-        var token = tokens.Create(issued.Type, issued.Uuid, issued.ScopeId);
+        var token = tokens.CreateShort(issued.Uuid);
         return RedirectToAction(nameof(Show), new { token });
     }
 

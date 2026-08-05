@@ -122,11 +122,9 @@ public sealed class OrderMailer(
     {
         const string red = "#D02D38";
         const string redDk = "#B0242E";
-        var token = tokens.Create(ticket.Type, ticket.Uuid, ticket.ScopeId);
-        var url = $"{baseUrl}/ticket/{token}";
-        var qrUrl = $"{baseUrl}/ticket/{tokens.CreateShort(ticket.Uuid)}";
+        var url = $"{baseUrl}/ticket/{tokens.CreateShort(ticket.Uuid)}";
         var badgeCid = AddImageFile(images, BadgeLogoFile);
-        var qrCid = AddQrImage(images, index, qrUrl);
+        var qrCid = AddQrImage(images, index, url);
         var reference = ticket.Uuid.ToString("N")[..8].ToUpperInvariant();
         var scopeName = WebUtility.HtmlEncode(ticket.EventName);
         var category = WebUtility.HtmlEncode(ticket.CategoryName);
