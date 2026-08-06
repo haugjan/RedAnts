@@ -1,3 +1,4 @@
+@using RedAnts.Domain
 @using RedAnts.Features.Ticketing.Email
 @using System.Globalization
 @inject IOutboxAdminReport Report
@@ -59,14 +60,14 @@
                     {
                         <tr>
                             <td>
-                                @m.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                @SwissTime.ToSwiss(m.CreatedAt).ToString("dd.MM.yyyy HH:mm")
                                 @if (m.Status == OutboxStatus.Sent && m.SentAt is { } sent)
                                 {
-                                    <div class="ta-addr-sub">gesendet @sent.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                                    <div class="ta-addr-sub">gesendet @SwissTime.ToSwiss(sent).ToString("dd.MM.yyyy HH:mm")</div>
                                 }
                                 else if (m.Status != OutboxStatus.Sent && m.NextAttemptAt > DateTime.UtcNow)
                                 {
-                                    <div class="ta-addr-sub">nächster Versuch @m.NextAttemptAt.ToLocalTime().ToString("HH:mm")</div>
+                                    <div class="ta-addr-sub">nächster Versuch @SwissTime.ToSwiss(m.NextAttemptAt).ToString("HH:mm")</div>
                                 }
                             </td>
                             <td>
