@@ -51,9 +51,15 @@
                 Serial: t.Uuid.ToString("N")[..8].ToUpperInvariant(),
                 QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />",
                 VenueName: t.VenueName);
+            var shareUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/ticket/{t.Token}";
+            var waHref = "https://wa.me/?text=" + Uri.EscapeDataString($"{TicketDisplay.TypeLabel((TicketType)t.Type)} – {t.EventName}\n{shareUrl}");
             <div class="ra-ticket-cell">
                 <partial name="~/Views/Partials/_TicketCard.cshtml" model="card" />
-                <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
+                <div class="rc-actions">
+                    <a class="rc-btn rc-btn--open" href="/ticket/@t.Token" target="_blank" rel="noopener">Online-Karte öffnen</a>
+                    <a class="rc-btn rc-btn--pdf" href="/ticket/@t.Token/pdf">Als PDF herunterladen</a>
+                    <a class="rc-btn rc-btn--wa" href="@waHref" target="_blank" rel="noopener">Per WhatsApp teilen</a>
+                </div>
             </div>
         }
     </div>
@@ -67,5 +73,10 @@
     .ra-ticket-grid { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; background: #f4f4f5; border-radius: 14px; padding: 24px 18px; }
     .ra-ticket-cell { display: flex; flex-direction: column; align-items: center; width: 300px; max-width: 100%; }
     .ra-ticket-cell .rtk-card { --rtk-notch: #f4f4f5; }
+    .rc-actions { display: flex; flex-direction: column; gap: .5rem; width: 100%; margin-top: .75rem; }
+    .rc-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; font-size: .92rem; padding: .62rem 1rem; border-radius: 10px; color: #fff; }
+    .rc-btn--open { background: #D02D38; } .rc-btn--open:hover { background: #B0242E; color: #fff; }
+    .rc-btn--pdf { background: #14171A; } .rc-btn--pdf:hover { background: #2a2e33; color: #fff; }
+    .rc-btn--wa { background: #25D366; } .rc-btn--wa:hover { background: #1ebe5b; color: #fff; }
     .ra-addon-note { white-space: pre-line; background: #f4f4f5; border-left: 4px solid #C8102E; border-radius: 4px; padding: 12px 14px; color: #323232; }
 </style>

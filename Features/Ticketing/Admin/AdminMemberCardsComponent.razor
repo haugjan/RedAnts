@@ -938,7 +938,7 @@
 
     private MemberCard ToDomain(MemberCardListItem c) => MemberCard.FromPersistence(
         0, c.Uuid, SelectedSeasonId, c.Category, null, c.Status, c.CreatedAt,
-        c.FirstName, c.LastName, c.Birthday, c.Email, c.Reference);
+        c.FirstName, c.LastName, c.Birthday, c.Email, c.Reference, admissions: c.Admissions);
 
     private bool _showBulk;
     private string _bulkReference = "";
