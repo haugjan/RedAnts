@@ -2,7 +2,7 @@ using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Features.Ticketing.Email;
 
-public sealed record OrderMailTicket(TicketType Type, Guid Uuid, int ScopeId, string EventName, string CategoryName);
+public sealed record OrderMailTicket(TicketType Type, Guid Uuid, int ScopeId, string EventName, string CategoryName, string? HolderName = null);
 
 public sealed record OrderMailModel(
     string OrderNumber,

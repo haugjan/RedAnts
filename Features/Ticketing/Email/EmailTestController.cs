@@ -27,9 +27,9 @@ public sealed class EmailTestController(
             "2026-000123", to ?? "max.muster@example.com", "Max Muster", 45m,
             publicUrl.Resolve(),
             [
-                new(TicketType.EventTicket, Guid.Empty, 0, "Red Ants vs. UHC Beispielgegner", "Erwachsen"),
-                new(TicketType.SeasonPass, Guid.Empty, 0, "Saison 2026/27", "Erwachsen"),
-                new(TicketType.MemberCard, Guid.Empty, 0, "Saison 2026/27", "Block 4")
+                new(TicketType.EventTicket, Guid.Empty, 0, "Red Ants vs. UHC Beispielgegner", "Erwachsen", "Max Muster"),
+                new(TicketType.SeasonPass, Guid.Empty, 0, "Saison 2026/27", "Erwachsen", "Max Muster"),
+                new(TicketType.MemberCard, Guid.Empty, 0, "Saison 2026/27", "Block 4", "Max Muster")
             ]);
         if (!string.IsNullOrWhiteSpace(to))
         {

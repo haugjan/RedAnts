@@ -136,6 +136,7 @@ public sealed class OrderMailer(
             (dateText is null ? "" : InfoRow("Datum", WebUtility.HtmlEncode(dateText), redDk)) +
             (venueText is null ? "" : InfoRow("Ort", WebUtility.HtmlEncode(venueText), "#14171A")) +
             InfoRow("Kategorie", category, "#14171A") +
+            (string.IsNullOrWhiteSpace(ticket.HolderName) ? "" : InfoRow("Inhaber:in", WebUtility.HtmlEncode(ticket.HolderName), "#14171A")) +
             InfoRow("Ticket-Nr.", reference, "#14171A");
 
         var counter = total > 1
@@ -159,7 +160,7 @@ public sealed class OrderMailer(
                 $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:18px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scopeName}</div></td></tr>" +
                 $"<tr><td style=\"padding:0 20px 14px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">{rows}</table></td></tr>" +
             "</table>" +
-            MailTicketActions.Render(url, "Online-Ticket öffnen", $"{typeLabel} – {ticket.EventName}");
+            MailTicketActions.Render(url, "Online-Karte öffnen", $"{typeLabel} – {ticket.EventName}");
     }
 
     private static string InfoRow(string key, string value, string valueColor) =>

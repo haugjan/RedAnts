@@ -47,7 +47,7 @@
                 ScopeName: t.EventName,
                 DateText: t.DateText,
                 CategoryLabel: t.CategoryName,
-                HolderName: null,
+                HolderName: t.HolderName,
                 Serial: t.Uuid.ToString("N")[..8].ToUpperInvariant(),
                 QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />",
                 VenueName: t.VenueName);

@@ -308,6 +308,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
         if (snapshot is null) return ([], []);
         var billing = order.BillingAddress;
         var buyer = billing.ToBuyer();
+        var holderName = string.IsNullOrWhiteSpace(buyer.DisplayName) ? null : buyer.DisplayName;
 
         var issued = new List<ConfirmationTicket>();
         var mailTickets = new List<OrderMailTicket>();
@@ -321,9 +322,9 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                         SeasonPass.Create(item.SeasonId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
                     var passToken = tokens.CreateShort(pass.Uuid);
                     var passCategory = await TicketCategoryNameAsync(pass.Uuid, item.CategoryName);
-                    issued.Add(new ConfirmationTicket(pass.Uuid, item.EventName, passCategory, passToken, (int)TicketType.SeasonPass, await SeasonDateTextAsync(item.SeasonId)));
+                    issued.Add(new ConfirmationTicket(pass.Uuid, item.EventName, passCategory, passToken, (int)TicketType.SeasonPass, await SeasonDateTextAsync(item.SeasonId), HolderName: holderName));
                     mailTickets.Add(new OrderMailTicket(
-                        TicketType.SeasonPass, pass.Uuid, item.SeasonId, item.EventName, passCategory));
+                        TicketType.SeasonPass, pass.Uuid, item.SeasonId, item.EventName, passCategory, holderName));
                     continue;
                 }
 
@@ -331,9 +332,9 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                     EventTicket.Create(item.EventId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
                 var token = tokens.CreateShort(ticket.Uuid);
                 var ticketCategory = await TicketCategoryNameAsync(ticket.Uuid, item.CategoryName);
-                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, ticketCategory, token, (int)TicketType.EventTicket, await EventDateTextAsync(item.EventId), await EventVenueNameAsync(item.EventId)));
+                issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, ticketCategory, token, (int)TicketType.EventTicket, await EventDateTextAsync(item.EventId), await EventVenueNameAsync(item.EventId), holderName));
                 mailTickets.Add(new OrderMailTicket(
-                    TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, ticketCategory));
+                    TicketType.EventTicket, ticket.Uuid, item.EventId, item.EventName, ticketCategory, holderName));
             }
         }
 
@@ -449,18 +450,21 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             }
         }
 
+        var holderName = string.IsNullOrWhiteSpace(order.BillingAddress.ToBuyer().DisplayName)
+            ? null : order.BillingAddress.ToBuyer().DisplayName;
+
         var result = new List<ConfirmationTicket>();
         foreach (var t in await tickets.GetByOrderAsync(order.Id))
         {
             names.TryGetValue(((int)CartItemKind.EventTicket, t.EventId, t.TierId ?? 0), out var n);
             var token = tokens.CreateShort(t.Uuid);
-            result.Add(new ConfirmationTicket(t.Uuid, n.EventName ?? "", await TicketCategoryNameAsync(t.Uuid, n.CategoryName ?? ""), token, (int)TicketType.EventTicket, await EventDateTextAsync(t.EventId), await EventVenueNameAsync(t.EventId)));
+            result.Add(new ConfirmationTicket(t.Uuid, n.EventName ?? "", await TicketCategoryNameAsync(t.Uuid, n.CategoryName ?? ""), token, (int)TicketType.EventTicket, await EventDateTextAsync(t.EventId), await EventVenueNameAsync(t.EventId), holderName));
         }
         foreach (var p in await passes.GetByOrderAsync(order.Id))
         {
             names.TryGetValue(((int)CartItemKind.SeasonPass, p.SeasonId, p.TierId ?? 0), out var n);
             var token = tokens.CreateShort(p.Uuid);
-            result.Add(new ConfirmationTicket(p.Uuid, n.EventName ?? "", await TicketCategoryNameAsync(p.Uuid, n.CategoryName ?? ""), token, (int)TicketType.SeasonPass, await SeasonDateTextAsync(p.SeasonId)));
+            result.Add(new ConfirmationTicket(p.Uuid, n.EventName ?? "", await TicketCategoryNameAsync(p.Uuid, n.CategoryName ?? ""), token, (int)TicketType.SeasonPass, await SeasonDateTextAsync(p.SeasonId), HolderName: holderName));
         }
         return result;
     }
