@@ -43,7 +43,8 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
                 null, (TicketStatus)card.Status, card.CreatedAt,
                 string.IsNullOrWhiteSpace(holder) ? null : holder,
                 (MemberCategory)card.Category,
-                Birthday: card.Birthday is { } b ? DateOnly.FromDateTime(b) : null);
+                Birthday: card.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
+                Admissions: card.Admissions);
         }
 
         return null;

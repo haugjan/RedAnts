@@ -43,7 +43,8 @@ public sealed class WebTicketController(
             AwayLogo: awayLogo,
             TypeKey: TypeKey(data.Type, issued?.MemberCategory),
             Token: token,
-            VenueName: venueName);
+            VenueName: venueName,
+            Admissions: issued?.Admissions ?? 1);
 
         return View("~/Views/WebTicket.cshtml", model);
     }
@@ -77,7 +78,8 @@ public sealed class WebTicketController(
             TicketRef: TicketRef(data.Uuid),
             AccentHex: TypeAccentHex(data.Type),
             QrPng: qr.RenderPng(QrUrl(data.Uuid), 10),
-            VenueName: venueName));
+            VenueName: venueName,
+            Admissions: issued?.Admissions ?? 1));
 
         return File(bytes, "application/pdf", $"redants-ticket-{TicketRef(data.Uuid)}.pdf");
     }
@@ -179,7 +181,8 @@ public sealed record WebTicketViewModel(
     string? AwayLogo = null,
     string TypeKey = "spiel",
     string Token = "",
-    string? VenueName = null)
+    string? VenueName = null,
+    int Admissions = 1)
 {
     public static WebTicketViewModel Invalid() =>
         new(false, false, "", "Ticket", "", null, null, null, "", "");

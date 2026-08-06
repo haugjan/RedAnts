@@ -86,6 +86,7 @@ public sealed class MemberCardMailer(
         var rows =
             (dateText is null ? "" : InfoRow("Datum", WebUtility.HtmlEncode(dateText))) +
             (string.IsNullOrWhiteSpace(card.HolderName) ? "" : InfoRow("Inhaber:in", WebUtility.HtmlEncode(card.HolderName))) +
+            (card.Admissions > 1 ? InfoRow("Eintritte", card.Admissions.ToString()) : "") +
             InfoRow("Karten-Nr.", reference);
 
         return

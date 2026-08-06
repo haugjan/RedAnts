@@ -11,4 +11,5 @@ public sealed record TicketCardModel(
     string QrMarkup,
     bool Invalid = false,
     string? ScanText = null,
-    string? VenueName = null);
+    string? VenueName = null,
+    int Admissions = 1);

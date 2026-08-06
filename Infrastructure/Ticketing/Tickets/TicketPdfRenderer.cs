@@ -74,6 +74,7 @@ public sealed class TicketPdfRenderer(IWebHostEnvironment env) : ITicketPdf
                         if (m.VenueName is not null) MetaRow(meta, "Ort", m.VenueName, Ink);
                         if (m.CategoryLabel is not null) MetaRow(meta, "Kategorie", m.CategoryLabel, Ink);
                         if (m.HolderName is not null) MetaRow(meta, "Inhaber:in", m.HolderName, Ink);
+                        if (m.Admissions > 1) MetaRow(meta, "Eintritte", m.Admissions.ToString(), Ink);
                         MetaRow(meta, "Ticket-Nr.", m.TicketRef, Ink);
                     });
                 });

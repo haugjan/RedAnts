@@ -33,6 +33,10 @@
         {
             <div class="rtk-row"><span class="rtk-k">Inhaber:in</span><span class="rtk-v">@Model.HolderName</span></div>
         }
+        @if (Model.Admissions > 1)
+        {
+            <div class="rtk-row"><span class="rtk-k">Eintritte</span><span class="rtk-v">@Model.Admissions</span></div>
+        }
         <div class="rtk-row"><span class="rtk-k">Ticket-Nr.</span><span class="rtk-v rtk-v--serial">@Model.Serial</span></div>
     </div>
     </div>

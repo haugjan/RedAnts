@@ -10,7 +10,8 @@ public sealed record TicketPdfModel(
     string AccentHex,
     byte[] QrPng,
     string Kicker = "",
-    string? VenueName = null);
+    string? VenueName = null,
+    int Admissions = 1);
 
 public interface ITicketPdf
 {

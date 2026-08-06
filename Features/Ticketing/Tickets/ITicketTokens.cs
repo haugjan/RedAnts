@@ -35,7 +35,8 @@ public sealed record IssuedTicket(
     MemberCategory? MemberCategory = null,
     DateOnly? Birthday = null,
     string? BuyerName = null,
-    string? CategoryName = null);
+    string? CategoryName = null,
+    int Admissions = 1);
 
 public interface IIssuedTicketReader
 {
