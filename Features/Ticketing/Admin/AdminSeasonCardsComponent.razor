@@ -34,6 +34,12 @@
                         }
                     </select>
                 </div>
+                <div class="ta-field ta-field--grow">
+                    <label class="ta-label" for="spSearch">Suche</label>
+                    <input id="spSearch" type="search" class="ta-input ta-cards-search"
+                           placeholder="Name, Firma, E-Mail, Bundle, Kategorie, Bestell-Nr. …"
+                           @bind="_search" @bind:event="oninput" />
+                </div>
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenExport">
@@ -56,6 +62,7 @@
         }
         else
         {
+            var shown = Sorted().ToList();
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
@@ -74,7 +81,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var p in Sorted())
+                        @foreach (var p in shown)
                         {
                             <tr>
                                 <td>
@@ -141,7 +148,20 @@
                     </tbody>
                 </table>
             </div>
-            <p class="ta-summary">@_passes.Count Saisonkarte@(_passes.Count == 1 ? "" : "n") · Total CHF @_passes.Sum(p => p.Price).ToString("N2")</p>
+            @if (shown.Count == 0)
+            {
+                <div class="ta-placeholder">Keine Saisonkarte passt zur Suche „@_search".</div>
+            }
+            <p class="ta-summary">
+                @if (!string.IsNullOrWhiteSpace(_search))
+                {
+                    <text>@shown.Count von @_passes.Count Saisonkarten · Total CHF @shown.Sum(p => p.Price).ToString("N2")</text>
+                }
+                else
+                {
+                    <text>@_passes.Count Saisonkarte@(_passes.Count == 1 ? "" : "n") · Total CHF @_passes.Sum(p => p.Price).ToString("N2")</text>
+                }
+            </p>
         }
     }
 </section>
@@ -149,6 +169,8 @@
 <style>
     .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
     .ta-textarea { min-height: 9rem; resize: vertical; font-family: inherit; line-height: 1.5; }
+    .ta-field--grow { flex: 1 1 18rem; }
+    .ta-cards-search { width: 100%; min-width: 14rem; }
 </style>
 
 @if (_showCreate)
@@ -530,6 +552,7 @@
 
     private string _sortCol = "buyer";
     private bool _sortAsc = true;
+    private string _search = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -551,18 +574,34 @@
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<SeasonPassListItem> Sorted()
     {
+        var src = Filtered();
         IEnumerable<SeasonPassListItem> q = _sortCol switch
         {
-            "category" => _passes.OrderBy(p => p.Category),
-            "price" => _passes.OrderBy(p => p.Price),
-            "status" => _passes.OrderBy(p => p.Status),
-            "visits" => _passes.OrderBy(p => p.EventVisits),
-            "created" => _passes.OrderBy(p => p.CreatedAt),
-            "bundle" => _passes.OrderBy(p => p.Reference ?? "￿"),
-            _ => _passes.OrderBy(p => p.BuyerName ?? "￿"),
+            "category" => src.OrderBy(p => p.Category),
+            "price" => src.OrderBy(p => p.Price),
+            "status" => src.OrderBy(p => p.Status),
+            "visits" => src.OrderBy(p => p.EventVisits),
+            "created" => src.OrderBy(p => p.CreatedAt),
+            "bundle" => src.OrderBy(p => p.Reference ?? "￿"),
+            _ => src.OrderBy(p => p.BuyerName ?? "￿"),
         };
         return _sortAsc ? q : q.Reverse();
     }
+
+    private IEnumerable<SeasonPassListItem> Filtered()
+    {
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return terms.Length == 0
+            ? _passes
+            : _passes.Where(p => terms.All(t => Haystack(p).Contains(t, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static string Haystack(SeasonPassListItem p) => string.Join(' ', new[]
+    {
+        AdminFormat.TicketNo(p.Uuid), p.BuyerName ?? "", p.Email ?? "", p.Reference ?? "",
+        p.CategoryName, p.Category.DisplayName(), StatusLabel(p.Status), p.PaymentState ?? "",
+        p.OrderNumber ?? "", p.Price.ToString("N2")
+    });
 
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {

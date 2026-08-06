@@ -31,6 +31,12 @@
                         }
                     </select>
                 </div>
+                <div class="ta-field ta-field--grow">
+                    <label class="ta-label" for="mcSearch">Suche</label>
+                    <input id="mcSearch" type="search" class="ta-input ta-cards-search"
+                           placeholder="Name, Firma, E-Mail, Referenz, Kategorie …"
+                           @bind="_search" @bind:event="oninput" />
+                </div>
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_cards.Count == 0)"
@@ -52,6 +58,7 @@
         }
         else
         {
+            var shown = Sorted().ToList();
             <div class="ta-table-wrap">
                 <table class="ta-table">
                     <thead>
@@ -68,7 +75,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var c in Sorted())
+                        @foreach (var c in shown)
                         {
                             <tr>
                                 <td>
@@ -137,7 +144,20 @@
                     </tbody>
                 </table>
             </div>
-            <p class="ta-summary">@_cards.Count Mitgliederkarte@(_cards.Count == 1 ? "" : "n")</p>
+            @if (shown.Count == 0)
+            {
+                <div class="ta-placeholder">Keine Mitgliederkarte passt zur Suche „@_search".</div>
+            }
+            <p class="ta-summary">
+                @if (!string.IsNullOrWhiteSpace(_search))
+                {
+                    <text>@shown.Count von @_cards.Count Mitgliederkarten</text>
+                }
+                else
+                {
+                    <text>@_cards.Count Mitgliederkarte@(_cards.Count == 1 ? "" : "n")</text>
+                }
+            </p>
         }
     }
 </section>
@@ -145,6 +165,8 @@
 <style>
     .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
     .ta-textarea { min-height: 9rem; resize: vertical; font-family: inherit; line-height: 1.5; }
+    .ta-field--grow { flex: 1 1 18rem; }
+    .ta-cards-search { width: 100%; min-width: 14rem; }
     .ta-modal-section { margin: 1.1rem 0 0.4rem; font-weight: 700; font-size: 0.85rem; color: var(--ta-muted); border-top: 1px solid var(--ta-border); padding-top: 0.9rem; }
     .ta-modal--members { width: min(94vw, 680px); max-width: 680px; }
     .ta-mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.25rem; }
@@ -611,6 +633,7 @@
 
     private string _sortCol = "name";
     private bool _sortAsc = true;
+    private string _search = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -633,18 +656,33 @@
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private IEnumerable<MemberCardListItem> Sorted()
     {
+        var src = Filtered();
         IEnumerable<MemberCardListItem> q = _sortCol switch
         {
-            "category" => _cards.OrderBy(c => c.Category),
-            "admissions" => _cards.OrderBy(c => c.Admissions),
-            "reference" => _cards.OrderBy(c => c.Reference ?? "￿"),
-            "status" => _cards.OrderBy(c => c.Status),
-            "visits" => _cards.OrderBy(c => c.EventVisits),
-            "created" => _cards.OrderBy(c => c.CreatedAt),
-            _ => _cards.OrderBy(c => c.LastName ?? "￿").ThenBy(c => c.FirstName ?? "￿"),
+            "category" => src.OrderBy(c => c.Category),
+            "admissions" => src.OrderBy(c => c.Admissions),
+            "reference" => src.OrderBy(c => c.Reference ?? "￿"),
+            "status" => src.OrderBy(c => c.Status),
+            "visits" => src.OrderBy(c => c.EventVisits),
+            "created" => src.OrderBy(c => c.CreatedAt),
+            _ => src.OrderBy(c => c.LastName ?? "￿").ThenBy(c => c.FirstName ?? "￿"),
         };
         return _sortAsc ? q : q.Reverse();
     }
+
+    private IEnumerable<MemberCardListItem> Filtered()
+    {
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return terms.Length == 0
+            ? _cards
+            : _cards.Where(c => terms.All(t => Haystack(c).Contains(t, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static string Haystack(MemberCardListItem c) => string.Join(' ', new[]
+    {
+        AdminFormat.TicketNo(c.Uuid), c.FirstName ?? "", c.LastName ?? "", c.Address?.Company ?? "",
+        c.Email ?? "", c.Reference ?? "", c.CategoryLabel, c.IsCancelled ? "Storniert" : "Gültig"
+    });
 
     private bool _showCreate;
     private bool _creating;
