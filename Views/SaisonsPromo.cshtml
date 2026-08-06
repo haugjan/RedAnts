@@ -139,6 +139,7 @@
                             </ul>
                         </div>
                     }
+                    <a href="/cart" class="pass-continue" id="pass-continue">Weiter zum Warenkorb &rarr;</a>
                     <p class="pass-legal">Mit der Saisonkarte hast du freien Eintritt zu allen Heimspielen der Red Ants Rychenberg Winterthur, inklusive Cup- und Playoff-Spielen. Bei besonders gut besuchten Spielen kann vorgängig eine kostenlose Umwandlung in ein Ticket verlangt werden.</p>
                 </div>
             }
@@ -216,6 +217,9 @@
     .pass-add-btn.is-error { background: #6c757d; }
     @@keyframes passBadgeBump { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
     .nav-cart-badge.badge-bump { animation: passBadgeBump .35s ease; }
+    .pass-continue { display: none; margin-top: 1.75rem; font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: 1rem; background: #1c7c43; color: #fff; padding: .65rem 1.35rem; text-decoration: none; }
+    .pass-continue:hover { background: #166535; color: #fff; }
+    .pass-continue.is-visible { display: inline-block; }
 </style>
 
 @section Scripts {
@@ -262,6 +266,8 @@
                     btn.textContent = '✓ Hinzugefügt';
                     btn.classList.add('is-added');
                     bumpBadge(data.totalQuantity);
+                    var cont = document.getElementById('pass-continue');
+                    if (cont) cont.classList.add('is-visible');
                 } else {
                     btn.textContent = 'Nicht verfügbar';
                     btn.classList.add('is-error');
