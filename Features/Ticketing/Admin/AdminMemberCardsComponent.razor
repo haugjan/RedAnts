@@ -78,9 +78,15 @@
                                     </a>
                                 </td>
                                 <td class="ta-cell-name">
+                                    @{ var company = c.Address?.Company; }
                                     @if (c.HasName) { @c.HolderName }
+                                    else if (!string.IsNullOrWhiteSpace(company)) { @company }
                                     else { <span class="ta-muted">(ohne Name)</span> }
                                     @if (c.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
+                                    @if (c.HasName && !string.IsNullOrWhiteSpace(company))
+                                    {
+                                        <div class="ta-addr-sub">@company</div>
+                                    }
                                     @if (c.HasEmail)
                                     {
                                         <div class="ta-addr-sub">@c.Email</div>
@@ -169,6 +175,10 @@
                 <p class="ta-field-hint">Wie oft diese Karte pro Anlass eingelassen wird (z. B. Block 4 = mehrere Personen). Standard: 1.</p>
             </div>
             <div class="ta-field">
+                <label class="ta-label" for="newMcCompany">Firma (optional)</label>
+                <input id="newMcCompany" class="ta-input" type="text" maxlength="200" @bind="_newCompany" />
+            </div>
+            <div class="ta-field">
                 <label class="ta-label" for="newMcLastName">Name (optional)</label>
                 <input id="newMcLastName" class="ta-input" type="text" maxlength="100" @bind="_newLastName" />
             </div>
@@ -190,10 +200,6 @@
             </div>
 
             <p class="ta-modal-section">Adresse (optional, z. B. für Serienbriefe)</p>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcCompany">Firma (optional)</label>
-                <input id="newMcCompany" class="ta-input" type="text" maxlength="200" @bind="_newCompany" />
-            </div>
             <div class="ta-field">
                 <label class="ta-label" for="newMcSalutation">Anrede (optional)</label>
                 <input id="newMcSalutation" class="ta-input" type="text" maxlength="50" placeholder="z. B. Frau / Herr" @bind="_newSalutation" />
@@ -352,6 +358,10 @@
 
             <div class="ta-mc-grid">
             <div class="ta-field">
+                <label class="ta-label" for="editCompany">Firma (optional)</label>
+                <input id="editCompany" class="ta-input" type="text" maxlength="200" @bind="_editCompany" />
+            </div>
+            <div class="ta-field">
                 <label class="ta-label" for="editLastName">Name (optional)</label>
                 <input id="editLastName" class="ta-input" type="text" maxlength="100" @bind="_editLastName" />
             </div>
@@ -386,10 +396,6 @@
             </div>
 
             <p class="ta-modal-section">Adresse (optional)</p>
-            <div class="ta-field">
-                <label class="ta-label" for="editCompany">Firma</label>
-                <input id="editCompany" class="ta-input" type="text" maxlength="200" @bind="_editCompany" />
-            </div>
             <div class="ta-field">
                 <label class="ta-label" for="editSalutation">Anrede</label>
                 <input id="editSalutation" class="ta-input" type="text" maxlength="50" placeholder="z. B. Frau / Herr" @bind="_editSalutation" />
