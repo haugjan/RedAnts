@@ -38,6 +38,9 @@
         .wt-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; font-size: .92rem; padding: .62rem 1rem; border-radius: 10px; }
         .wt-btn--pdf { background: #14171A; color: #fff; }
         .wt-btn--pdf:hover { background: #2a2e33; }
+        .wt-btn--wa { background: #25D366; color: #fff; gap: .5rem; }
+        .wt-btn--wa:hover { background: #1ebe5b; }
+        .wt-btn--wa svg { width: 1.15rem; height: 1.15rem; }
         .wt-empty { background: #fff; border: 1px solid #e6e8ec; border-radius: 16px; text-align: center; padding: 2.5rem 1.4rem; }
         .wt-empty h1 { font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; font-size: 1.4rem; margin: 0 0 .5rem; }
         .wt-empty p { color: #6b7178; margin: 0; font-size: .95rem; line-height: 1.5; }
@@ -63,8 +66,14 @@
         else
         {
             <partial name="~/Views/Partials/_TicketCard.cshtml" model="card!" />
+            var shareUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/ticket/{Model.Token}";
+            var waHref = "https://wa.me/?text=" + Uri.EscapeDataString($"{Model.TypeLabel} – {Model.ScopeName}\n{shareUrl}");
             <div class="wt-actions">
                 <a class="wt-btn wt-btn--pdf" href="/ticket/@Model.Token/pdf">Als PDF herunterladen</a>
+                <a class="wt-btn wt-btn--wa" href="@waHref" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.29-.15-1.7-.84-1.96-.93-.26-.1-.45-.15-.64.14-.19.29-.74.93-.9 1.12-.17.19-.33.22-.62.07-.29-.14-1.22-.45-2.33-1.44-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.59.13-.13.29-.34.43-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.14-.64-1.55-.88-2.13-.23-.56-.47-.48-.64-.49-.17-.01-.36-.01-.55-.01-.19 0-.51.07-.77.36-.26.29-1.01.99-1.01 2.4 0 1.41 1.03 2.78 1.18 2.97.14.19 2.03 3.1 4.92 4.35.69.3 1.22.47 1.64.61.69.22 1.32.19 1.81.12.55-.08 1.7-.69 1.94-1.37.24-.67.24-1.25.17-1.37-.07-.12-.26-.19-.55-.34zM12.04 21.5h-.01c-1.75 0-3.46-.47-4.95-1.36l-.36-.21-3.68.97.98-3.59-.23-.37a9.44 9.44 0 0 1-1.44-5.01c0-5.22 4.25-9.47 9.48-9.47 2.53 0 4.91.99 6.7 2.78a9.4 9.4 0 0 1 2.77 6.7c-.01 5.22-4.26 9.46-9.48 9.46zm8.06-17.52A11.36 11.36 0 0 0 12.04.5C5.77.5.67 5.6.67 11.87c0 2.02.53 3.99 1.53 5.73L.57 23.5l6.05-1.59a11.34 11.34 0 0 0 5.42 1.38h.01c6.27 0 11.37-5.1 11.37-11.37 0-3.04-1.18-5.9-3.32-8.05z"/></svg>
+                    Per WhatsApp teilen
+                </a>
             </div>
         }
     </div>
