@@ -58,8 +58,14 @@ public class AdmissionRulesTests
 
         return AdmissionRules.Evaluate(
             eventId, type, scopeId, mode, test, empty, facts,
-            eventSeasonId, redeemedEventId, visitExists, visitInside);
+            eventSeasonId, redeemedEventId, visitExists && visitInside ? 1 : 0, 1);
     }
+
+    private static AdmissionEvaluation RunMember(ScanMode mode, int admissionsInside, int admissionCap) =>
+        AdmissionRules.Evaluate(
+            Event, TicketType.MemberCard, Season, mode, test: false, isEmptyUuid: false,
+            new ScannedTicketFacts(TicketType.MemberCard, Season, TicketStatus.Valid),
+            eventSeasonId: Season, redeemedEventId: null, admissionsInside, admissionCap);
 
     private static AdmissionEvaluation RunValid(
         TicketType type,
@@ -349,7 +355,35 @@ public class AdmissionRulesTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(4)]
+    public void MultiAdmission_CheckIn_IsAdmitted_WhileSlotsRemain(int used)
+    {
+        Assert.Equal(AdmissionVerdict.Admit, RunMember(ScanMode.CheckIn, admissionsInside: used, admissionCap: 5).Verdict);
+    }
+
+    [Fact]
+    public void MultiAdmission_CheckIn_WhenAllSlotsUsed_IsRejected()
+    {
+        AssertReject(RunMember(ScanMode.CheckIn, admissionsInside: 5, admissionCap: 5),
+            AdmissionRules.AllAdmissionsUsed);
+    }
+
+    [Fact]
+    public void MultiAdmission_CheckOut_WhileInside_IsAdmitted()
+    {
+        Assert.Equal(AdmissionVerdict.Admit, RunMember(ScanMode.CheckOut, admissionsInside: 3, admissionCap: 5).Verdict);
+    }
+
+    [Fact]
+    public void MultiAdmission_CheckOut_WhenNobodyInside_IsRejected()
+    {
+        AssertReject(RunMember(ScanMode.CheckOut, admissionsInside: 0, admissionCap: 5), AdmissionRules.NotCheckedIn);
+    }
+
+    [Theory]
     [InlineData(AdmissionRules.AlreadyCheckedIn, true)]
+    [InlineData(AdmissionRules.AllAdmissionsUsed, true)]
     [InlineData(AdmissionRules.NotCheckedIn, true)]
     [InlineData(AdmissionRules.UnknownTicket, false)]
     [InlineData(AdmissionRules.RecordMismatch, false)]
