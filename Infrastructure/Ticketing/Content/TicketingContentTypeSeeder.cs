@@ -359,13 +359,27 @@ public sealed class TicketingContentTypeSeeder(
         changed |= AddMailProp(type, textBox, A.HelperInviteMailSubject, "Helfereinladung (Betreff)", null);
         changed |= AddMailProp(type, textArea, A.HelperInviteMailBody, "Helfereinladung (Text)",
             "Platzhalter: {Vorname}, {Nachname}, {Passwort}, {Link}");
-        changed |= AddMailProp(type, textBox, A.MemberCardMailSubject, "Mitgliederkarte (Betreff)", null);
-        changed |= AddMailProp(type, textArea, A.MemberCardMailBody, "Mitgliederkarte (Text)",
-            "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}");
+        const string memberHint = "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}";
+        changed |= AddMailProp(type, textBox, A.MemberCardMailSubject, "Mitgliederkarte Red Ants (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.MemberCardMailBody, "Mitgliederkarte Red Ants (Text)", memberHint);
+        changed |= AddMailProp(type, textBox, A.MemberCardBlock4PrivateMailSubject, "Mitgliederkarte Block 4 Privat (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.MemberCardBlock4PrivateMailBody, "Mitgliederkarte Block 4 Privat (Text)", memberHint);
+        changed |= AddMailProp(type, textBox, A.MemberCardBlock4CompanyMailSubject, "Mitgliederkarte Block 4 Firma (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.MemberCardBlock4CompanyMailBody, "Mitgliederkarte Block 4 Firma (Text)", memberHint);
+        changed |= Relabel(type, A.MemberCardMailSubject, "Mitgliederkarte Red Ants (Betreff)");
+        changed |= Relabel(type, A.MemberCardMailBody, "Mitgliederkarte Red Ants (Text)");
         changed |= AddMailProp(type, textBox, A.SeasonPassMailSubject, "Saisonkarte (Betreff)", null);
         changed |= AddMailProp(type, textArea, A.SeasonPassMailBody, "Saisonkarte (Text)",
             "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}");
         return changed;
+    }
+
+    private static bool Relabel(IContentType type, string alias, string name)
+    {
+        var prop = type.PropertyTypes.FirstOrDefault(p => p.Alias == alias);
+        if (prop is null || prop.Name == name) return false;
+        prop.Name = name;
+        return true;
     }
 
     private bool AddMailProp(IContentType type, IDataType dataType, string alias, string name, string? hint)

@@ -43,6 +43,10 @@ internal static class TicketingAliases
     public const string HelperInviteMailBody = "helperInviteBody";
     public const string MemberCardMailSubject = "memberCardSubject";
     public const string MemberCardMailBody = "memberCardBody";
+    public const string MemberCardBlock4PrivateMailSubject = "memberCardBlock4PrivateSubject";
+    public const string MemberCardBlock4PrivateMailBody = "memberCardBlock4PrivateBody";
+    public const string MemberCardBlock4CompanyMailSubject = "memberCardBlock4CompanySubject";
+    public const string MemberCardBlock4CompanyMailBody = "memberCardBlock4CompanyBody";
     public const string SeasonPassMailSubject = "seasonPassSubject";
     public const string SeasonPassMailBody = "seasonPassBody";
 }

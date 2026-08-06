@@ -309,6 +309,16 @@
             </div>
 
             <div class="ta-field">
+                <label class="ta-label" for="impCategory">Kategorie (gilt für alle Zeilen)</label>
+                <select id="impCategory" class="ta-select" @bind="_importCategory">
+                    @foreach (var cat in Categories)
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
                 <label class="ta-label" for="impReference">Referenz</label>
                 <input id="impReference" class="ta-input" type="text" maxlength="100" placeholder="z. B. Mitglieder 2026" @bind="_importReference" />
             </div>
@@ -317,7 +327,8 @@
                 <label class="ta-label">CSV-Datei</label>
                 <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
                 <p class="ta-hint">
-                    Spalten (alle ausser Kategorie optional): Karten-Nr, Kategorie (Red Ants / Block 4), Anzahl (Einlässe pro Event, Standard 1), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
+                    Alle Zeilen werden als @(_importCategory.DisplayName())-Mitglieder importiert (Kategorie oben wählen, nicht in der Datei).
+                    Spalten (alle optional): Karten-Nr, Anzahl (Einlässe pro Event, Standard 1), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
                     Zeilen mit einer bestehenden Karten-Nr werden aktualisiert, Zeilen ohne neu angelegt. So kannst du exportieren, Adressen ergänzen und wieder importieren.
                     <a href="/admin/members/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
@@ -508,16 +519,7 @@
                     </select>
                 </div>
                 <p class="ta-hint">@BundleWithEmail Karte@(BundleWithEmail == 1 ? "" : "n") mit E-Mail werden versendet · @BundleWithoutEmail ohne E-Mail werden übersprungen.</p>
-
-                <div class="ta-field">
-                    <label class="ta-label" for="bulkSubject">Betreff</label>
-                    <input id="bulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
-                </div>
-                <div class="ta-field">
-                    <label class="ta-label" for="bulkBody">Text</label>
-                    <textarea id="bulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
-                    <p class="ta-hint">Platzhalter: {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt. QR-Code, Online-Karte und PDF-Link werden je Karte angehängt.</p>
-                </div>
+                <p class="ta-hint">Je Karte wird der hinterlegte Text der jeweiligen Mitgliedschaft verschickt (Red Ants, Block 4 Privat oder Block 4 Firma). Die Texte pflegst du unter „E-Mail-Texte" im Backoffice.</p>
 
                 @if (!string.IsNullOrEmpty(_bulkError))
                 {
@@ -760,6 +762,7 @@
     private bool _saving;
     private string? _importError;
     private string _importReference = "";
+    private MemberCategory _importCategory = MemberCategory.RedAnts;
     private string? _fileName;
     private IReadOnlyList<MemberImportRow> _parsedRows = [];
     private IReadOnlyList<string> _parseWarnings = [];
@@ -769,6 +772,7 @@
     {
         _importError = null;
         _importReference = "";
+        _importCategory = MemberCategory.RedAnts;
         _fileName = null;
         _parsedRows = [];
         _parseWarnings = [];
@@ -815,7 +819,7 @@
         try
         {
             var reference = _importReference.Trim();
-            await Members.ImportAsync(SelectedSeasonId, reference, _parsedRows, Identity.Name, Identity.Email);
+            await Members.ImportAsync(SelectedSeasonId, reference, _importCategory, _parsedRows, Identity.Name, Identity.Email);
             _showImport = false;
             await ReloadCardsAsync();
         }
@@ -903,8 +907,8 @@
     private void OpenMail(MemberCardListItem c)
     {
         _mailFor = c;
-        _mailSubject = Mailer.DefaultSubject;
-        _mailBody = Mailer.DefaultBody;
+        _mailSubject = Mailer.DefaultSubjectFor(c.Category, c.IsCompany);
+        _mailBody = Mailer.DefaultBodyFor(c.Category, c.IsCompany);
         _mailSent = false;
         _mailError = null;
     }
@@ -942,8 +946,6 @@
 
     private bool _showBulk;
     private string _bulkReference = "";
-    private string _bulkSubject = "";
-    private string _bulkBody = "";
     private bool _bulkSending;
     private string? _bulkError;
     private BulkResult? _bulkResult;
@@ -965,8 +967,6 @@
             .OrderBy(r => r)
             .ToList();
         _bulkReference = _references.FirstOrDefault() ?? "";
-        _bulkSubject = Mailer.DefaultSubject;
-        _bulkBody = Mailer.DefaultBody;
         _bulkResult = null;
         _bulkError = null;
         _showBulk = true;
@@ -990,7 +990,9 @@
             {
                 try
                 {
-                    var result = await Mailer.SendAsync(ToDomain(c), _bulkSubject, _bulkBody);
+                    var result = await Mailer.SendAsync(ToDomain(c),
+                        Mailer.DefaultSubjectFor(c.Category, c.IsCompany),
+                        Mailer.DefaultBodyFor(c.Category, c.IsCompany));
                     if (result.Success) enqueued++;
                     else failed++;
                 }

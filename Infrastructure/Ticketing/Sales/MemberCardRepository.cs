@@ -8,7 +8,7 @@ namespace RedAnts.Infrastructure.Ticketing.Sales;
 
 public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMemberCards
 {
-    public async Task<int> ImportAsync(int seasonId, string reference, IReadOnlyList<MemberImportRow> rows,
+    public async Task<int> ImportAsync(int seasonId, string reference, MemberCategory category, IReadOnlyList<MemberImportRow> rows,
         string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
@@ -20,13 +20,13 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         foreach (var row in rows)
         {
             if (!string.IsNullOrWhiteSpace(row.CardNo)
-                && await TryUpdateByCodeAsync(scope.Database, seasonId, row))
+                && await TryUpdateByCodeAsync(scope.Database, seasonId, category, row))
             {
                 affected++;
                 continue;
             }
 
-            var card = MemberCard.Create(seasonId, row.Category, row.FirstName, row.LastName, row.Birthday,
+            var card = MemberCard.Create(seasonId, category, row.FirstName, row.LastName, row.Birthday,
                 email: row.Email, reference: reference, createdByName: createdByName, createdByEmail: createdByEmail,
                 address: row.Address, admissions: row.Admissions);
             await InsertAsync(scope.Database, card);
@@ -35,7 +35,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         return affected;
     }
 
-    private static async Task<bool> TryUpdateByCodeAsync(IDatabase db, int seasonId, MemberImportRow row)
+    private static async Task<bool> TryUpdateByCodeAsync(IDatabase db, int seasonId, MemberCategory category, MemberImportRow row)
     {
         var code = (row.CardNo ?? "").Trim().ToLowerInvariant();
         if (code.Length != 8 || !code.All(Uri.IsHexDigit)) return false;
@@ -49,7 +49,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
             {
                 Clean(row.FirstName), Clean(row.LastName),
                 row.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
-                (int)row.Category, Clean(row.Email),
+                (int)category, Clean(row.Email),
                 addr.Salutation, addr.Company, addr.Street, addr.AddressLine2,
                 addr.PostalCode, addr.City, addr.Country, addr.Phone,
                 Math.Max(1, row.Admissions), seasonId, code + "%"

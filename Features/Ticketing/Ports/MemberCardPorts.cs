@@ -2,13 +2,13 @@ using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Features.Ticketing.Ports;
 
-public sealed record MemberImportRow(MemberCategory Category, string? LastName, string? FirstName,
+public sealed record MemberImportRow(string? LastName, string? FirstName,
     DateOnly? Birthday, string? Email = null, string? CardNo = null, MemberAddress? Address = null,
     int Admissions = 1);
 
 public interface IMemberCards
 {
-    Task<int> ImportAsync(int seasonId, string reference, IReadOnlyList<MemberImportRow> rows,
+    Task<int> ImportAsync(int seasonId, string reference, MemberCategory category, IReadOnlyList<MemberImportRow> rows,
         string? createdByName = null, string? createdByEmail = null);
 
     Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,

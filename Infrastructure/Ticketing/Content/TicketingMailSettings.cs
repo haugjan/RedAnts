@@ -24,14 +24,18 @@ public sealed class TicketingMailSettings(IPublishedContentQuery query, IUmbraco
 
     private static string SubjectAlias(TicketingMailKind kind) => kind switch
     {
-        TicketingMailKind.MemberCard => A.MemberCardMailSubject,
+        TicketingMailKind.MemberCardRedAnts => A.MemberCardMailSubject,
+        TicketingMailKind.MemberCardBlock4Private => A.MemberCardBlock4PrivateMailSubject,
+        TicketingMailKind.MemberCardBlock4Company => A.MemberCardBlock4CompanyMailSubject,
         TicketingMailKind.SeasonPass => A.SeasonPassMailSubject,
         _ => A.HelperInviteMailSubject
     };
 
     private static string BodyAlias(TicketingMailKind kind) => kind switch
     {
-        TicketingMailKind.MemberCard => A.MemberCardMailBody,
+        TicketingMailKind.MemberCardRedAnts => A.MemberCardMailBody,
+        TicketingMailKind.MemberCardBlock4Private => A.MemberCardBlock4PrivateMailBody,
+        TicketingMailKind.MemberCardBlock4Company => A.MemberCardBlock4CompanyMailBody,
         TicketingMailKind.SeasonPass => A.SeasonPassMailBody,
         _ => A.HelperInviteMailBody
     };

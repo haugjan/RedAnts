@@ -3,7 +3,9 @@ namespace RedAnts.Features.Ticketing.Email;
 public enum TicketingMailKind
 {
     HelperInvite,
-    MemberCard,
+    MemberCardRedAnts,
+    MemberCardBlock4Private,
+    MemberCardBlock4Company,
     SeasonPass
 }
 

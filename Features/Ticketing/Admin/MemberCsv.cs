@@ -11,7 +11,7 @@ public static class MemberCsv
 
     private static readonly Dictionary<string, int> LegacyMap = new()
     {
-        ["category"] = 0, ["lastname"] = 1, ["firstname"] = 2, ["birthday"] = 3, ["email"] = 4
+        ["lastname"] = 0, ["firstname"] = 1, ["birthday"] = 2, ["email"] = 3
     };
 
     public static MemberCsvResult Parse(string content)
@@ -44,18 +44,6 @@ public static class MemberCsv
 
             string? Get(string key) => map.TryGetValue(key, out var idx) ? Cell(cells, idx) : null;
 
-            var categoryCell = Get("category");
-            var category = ParseCategory(categoryCell);
-            if (category is null)
-            {
-                if (!string.IsNullOrEmpty(categoryCell))
-                {
-                    errors.Add($"Zeile {lineNo}: Kategorie „{categoryCell}“ ist ungültig (erlaubt: Red Ants, Block 4).");
-                    continue;
-                }
-                category = MemberCategory.RedAnts;
-            }
-
             DateOnly? birthday = null;
             var birthdayCell = Get("birthday");
             if (!string.IsNullOrEmpty(birthdayCell))
@@ -86,7 +74,7 @@ public static class MemberCsv
             var address = MemberAddress.Create(Get("salutation"), Get("company"), Get("street"), Get("addressline2"),
                 Get("postalcode"), Get("city"), Get("country"), Get("phone"));
 
-            rows.Add(new MemberImportRow(category.Value, Get("lastname"), Get("firstname"), birthday,
+            rows.Add(new MemberImportRow(Get("lastname"), Get("firstname"), birthday,
                 email, Get("cardno"), address.IsEmpty ? null : address, admissions));
         }
         return new MemberCsvResult(rows, warnings, errors);
@@ -94,10 +82,10 @@ public static class MemberCsv
 
     public static byte[] SampleBytes()
     {
-        var csv = "Karten-Nr;Kategorie;Anzahl;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum\n" +
-                  ";Red Ants;1;;Frau;Muster;Anna;Musterweg 1;;8400;Winterthur;Schweiz;anna.muster@example.com;079 000 00 00;14.05.1990\n" +
-                  ";Block 4;5;;Herr;Beispiel;Ben;;;;;;ben.beispiel@example.com;;02.11.2009\n" +
-                  ";Red Ants;1;;;Nurnachname;;;;;;;;;\n";
+        var csv = "Karten-Nr;Anzahl;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum\n" +
+                  ";1;;Frau;Muster;Anna;Musterweg 1;;8400;Winterthur;Schweiz;anna.muster@example.com;079 000 00 00;14.05.1990\n" +
+                  ";5;;Herr;Beispiel;Ben;;;;;;ben.beispiel@example.com;;02.11.2009\n" +
+                  ";1;;;Nurnachname;;;;;;;;;\n";
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
     }
 
@@ -109,7 +97,7 @@ public static class MemberCsv
             var key = HeaderKey(cells[i]);
             if (key is not null && !map.ContainsKey(key)) map[key] = i;
         }
-        var recognisable = map.ContainsKey("category") || map.ContainsKey("lastname")
+        var recognisable = map.ContainsKey("lastname")
             || map.ContainsKey("firstname") || map.ContainsKey("cardno");
         return recognisable ? map : null;
     }
@@ -120,7 +108,6 @@ public static class MemberCsv
         return norm switch
         {
             "kartennr" or "kartennummer" or "karte" => "cardno",
-            "kategorie" => "category",
             "anzahl" or "einlässe" or "einlaesse" or "anzahleinlässe" or "anzahleinlaesse" => "admissions",
             "anrede" => "salutation",
             "firma" or "firmenname" => "company",
@@ -147,17 +134,6 @@ public static class MemberCsv
 
     private static string? Cell(string[] cells, int i) =>
         i < cells.Length && !string.IsNullOrWhiteSpace(cells[i]) ? cells[i].Trim() : null;
-
-    private static MemberCategory? ParseCategory(string? cell)
-    {
-        var norm = new string((cell ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
-        return norm switch
-        {
-            "redants" => MemberCategory.RedAnts,
-            "block4" => MemberCategory.Block4,
-            _ => null
-        };
-    }
 }
 
 public sealed record MemberCsvResult(IReadOnlyList<MemberImportRow> Rows, IReadOnlyList<string> Warnings,
