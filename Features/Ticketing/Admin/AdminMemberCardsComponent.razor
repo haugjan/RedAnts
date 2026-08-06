@@ -85,15 +85,10 @@
                                     </a>
                                 </td>
                                 <td class="ta-cell-name">
-                                    @{ var company = c.Address?.Company; }
-                                    @if (c.HasName) { @c.HolderName }
-                                    else if (!string.IsNullOrWhiteSpace(company)) { @company }
+                                    @if (c.BuyerDisplay is { } name) { @name }
                                     else { <span class="ta-muted">(ohne Name)</span> }
+                                    <span class="ta-badge @(c.IsCompany ? "ta-badge-firma" : "ta-badge-privat")">@(c.IsCompany ? "Firma" : "Privat")</span>
                                     @if (c.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
-                                    @if (c.HasName && !string.IsNullOrWhiteSpace(company))
-                                    {
-                                        <div class="ta-addr-sub">@company</div>
-                                    }
                                     @if (c.HasEmail)
                                     {
                                         <div class="ta-addr-sub">@c.Email</div>
@@ -631,7 +626,7 @@
     public int SelectedSeasonId { get; set; }
     private string _selectedSeasonName = "";
 
-    private string _sortCol = "name";
+    private string _sortCol = "category";
     private bool _sortAsc = true;
     private string _search = "";
 
@@ -659,13 +654,13 @@
         var src = Filtered();
         IEnumerable<MemberCardListItem> q = _sortCol switch
         {
-            "category" => src.OrderBy(c => c.Category),
+            "category" => src.OrderBy(c => c.Category).ThenBy(c => c.SortKey),
             "admissions" => src.OrderBy(c => c.Admissions),
             "reference" => src.OrderBy(c => c.Reference ?? "￿"),
             "status" => src.OrderBy(c => c.Status),
             "visits" => src.OrderBy(c => c.EventVisits),
             "created" => src.OrderBy(c => c.CreatedAt),
-            _ => src.OrderBy(c => c.LastName ?? "￿").ThenBy(c => c.FirstName ?? "￿"),
+            _ => src.OrderBy(c => c.SortKey),
         };
         return _sortAsc ? q : q.Reverse();
     }

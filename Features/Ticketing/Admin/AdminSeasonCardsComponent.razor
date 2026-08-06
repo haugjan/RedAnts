@@ -91,10 +91,10 @@
                                     </a>
                                 </td>
                                 <td class="ta-cell-name">
-                                    @if (p.BuyerName is not null)
+                                    @if (p.BuyerDisplay is { } buyerName)
                                     {
-                                        @p.BuyerName
-                                        @if (p.BuyerType is { } bt) { <span class="ta-badge ta-badge-buyer">@bt.DisplayName()</span> }
+                                        @buyerName
+                                        @if (p.BuyerType is { } bt) { <span class="ta-badge @(bt == BuyerType.Company ? "ta-badge-firma" : "ta-badge-privat")">@bt.DisplayName()</span> }
                                     }
                                     else { <span class="ta-muted">—</span> }
                                     @if (p.HasEmail)
@@ -583,7 +583,7 @@
             "visits" => src.OrderBy(p => p.EventVisits),
             "created" => src.OrderBy(p => p.CreatedAt),
             "bundle" => src.OrderBy(p => p.Reference ?? "￿"),
-            _ => src.OrderBy(p => p.BuyerName ?? "￿"),
+            _ => src.OrderBy(p => p.BuyerSortKey),
         };
         return _sortAsc ? q : q.Reverse();
     }

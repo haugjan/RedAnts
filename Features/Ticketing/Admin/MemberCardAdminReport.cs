@@ -22,6 +22,9 @@ public sealed record MemberCardListItem(
     public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
     public string CategoryLabel => Category.DisplayName();
     public bool IsCancelled => Status == TicketStatus.Cancelled;
+    public bool IsCompany => !string.IsNullOrWhiteSpace(Address?.Company);
+    public string? BuyerDisplay => AdminName.Display(Address?.Company, FirstName, LastName);
+    public string SortKey => AdminName.SortKey(Address?.Company, FirstName, LastName);
 }
 
 public interface IMemberCardAdminReport

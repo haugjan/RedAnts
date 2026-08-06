@@ -54,7 +54,10 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
                 buyer?.Type,
                 p.CreatedByName,
                 p.Reference,
-                string.IsNullOrWhiteSpace(p.BuyerEmail) ? p.BillingEmail : p.BuyerEmail);
+                string.IsNullOrWhiteSpace(p.BuyerEmail) ? p.BillingEmail : p.BuyerEmail,
+                buyer?.FirstName ?? p.BillingFirstName,
+                buyer?.LastName ?? p.BillingLastName,
+                buyer?.Company);
         }).ToList();
     }
 

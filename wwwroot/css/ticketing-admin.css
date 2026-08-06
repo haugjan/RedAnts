@@ -130,6 +130,8 @@
 .ta-badge-blocked { background: #e6e8ef; color: #3f4a63; }
 .ta-badge-redants { background: #fdeaed; color: #b3122b; }
 .ta-badge-block4 { background: #111111; color: #ffd23f; }
+.ta-badge-firma { background: #e3f0fb; color: #1c5aa3; }
+.ta-badge-privat { background: #e7f6ec; color: #1a7f37; }
 
 .ta-btn {
     font-family: var(--ta-font); font-size: 0.82rem; font-weight: 700; line-height: 1;

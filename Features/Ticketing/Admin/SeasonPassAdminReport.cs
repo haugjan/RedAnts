@@ -16,9 +16,15 @@ public sealed record SeasonPassListItem(
     BuyerType? BuyerType = null,
     string? CreatedByName = null,
     string? Reference = null,
-    string? Email = null)
+    string? Email = null,
+    string? BuyerFirstName = null,
+    string? BuyerLastName = null,
+    string? BuyerCompany = null)
 {
     public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
+    public bool IsCompany => !string.IsNullOrWhiteSpace(BuyerCompany);
+    public string? BuyerDisplay => AdminName.Display(BuyerCompany, BuyerFirstName, BuyerLastName) ?? BuyerName;
+    public string BuyerSortKey => AdminName.SortKey(BuyerCompany, BuyerFirstName, BuyerLastName) is { Length: > 0 } k ? k : (BuyerName ?? "");
 }
 
 public interface ISeasonPassAdminReport
