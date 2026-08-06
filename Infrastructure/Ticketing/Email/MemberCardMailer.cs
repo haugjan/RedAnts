@@ -78,14 +78,14 @@ public sealed class MemberCardMailer(
         var badgeCid = AddImageFile(images, BadgeLogoFile);
         var qrCid = AddQrImage(images, url);
         var reference = card.Uuid.ToString("N")[..8].ToUpperInvariant();
-        var holder = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(card.HolderName) ? "Mitgliederkarte" : card.HolderName);
-        var category = WebUtility.HtmlEncode(card.Category.DisplayName());
-        var typeLabel = TicketDisplay.TypeLabel(TicketType.MemberCard);
+        var scope = WebUtility.HtmlEncode(season?.Name ?? "Mitgliederkarte");
+        var typeLabel = WebUtility.HtmlEncode(card.Category.DisplayName());
         var kicker = TicketDisplay.Kicker(TicketType.MemberCard);
+        var dateText = season is null ? null : $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}";
 
         var rows =
-            (season is null ? "" : InfoRow("Saison", WebUtility.HtmlEncode(season.Name))) +
-            InfoRow("Kategorie", category) +
+            (dateText is null ? "" : InfoRow("Datum", WebUtility.HtmlEncode(dateText))) +
+            (string.IsNullOrWhiteSpace(card.HolderName) ? "" : InfoRow("Inhaber:in", WebUtility.HtmlEncode(card.HolderName))) +
             InfoRow("Karten-Nr.", reference);
 
         return
@@ -102,7 +102,7 @@ public sealed class MemberCardMailer(
                 $"<tr><td align=\"center\" style=\"padding:18px 10px 4px;\"><img src=\"{qrCid}\" alt=\"Karten QR\" width=\"300\" height=\"300\" class=\"ra-qr\" style=\"display:block;margin:0 auto;width:300px;max-width:100%;height:auto;\"></td></tr>" +
                 "<tr><td align=\"center\" style=\"padding:0 16px 12px;font-family:Verdana,Geneva,Tahoma,sans-serif;color:#6b7178;font-size:13px;\">Am Eingang scannen lassen</td></tr>" +
                 "<tr><td style=\"padding:0 12px;\"><div style=\"border-top:2px dashed #d6dade;font-size:0;line-height:0;\">&nbsp;</div></td></tr>" +
-                $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:18px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{holder}</div></td></tr>" +
+                $"<tr><td style=\"padding:14px 20px 2px;\"><div style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;color:#14171A;font-size:18px;font-weight:600;text-transform:uppercase;line-height:1.1;\">{scope}</div></td></tr>" +
                 $"<tr><td style=\"padding:0 20px 8px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">{rows}</table></td></tr>" +
                 $"<tr><td align=\"center\" style=\"padding:6px 16px 6px;\"><a href=\"{url}\" style=\"display:inline-block;background:{red};color:#ffffff;text-decoration:none;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;font-size:14px;padding:11px 22px;border-radius:8px;\">Online-Karte öffnen</a></td></tr>" +
                 $"<tr><td align=\"center\" style=\"padding:0 16px 18px;font-family:Verdana,Geneva,Tahoma,sans-serif;font-size:12px;\"><a href=\"{url}/pdf\" style=\"color:#666666;text-decoration:underline;\">Als PDF</a></td></tr>" +
