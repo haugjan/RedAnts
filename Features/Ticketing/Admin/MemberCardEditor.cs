@@ -6,5 +6,5 @@ public interface IMemberCardEditor
 {
     Task SetDetailsAsync(Guid uuid, string? firstName, string? lastName, DateOnly? birthday,
         MemberCategory category, TicketStatus status, string? reference, string? email = null,
-        MemberAddress? address = null);
+        MemberAddress? address = null, int admissions = 1);
 }

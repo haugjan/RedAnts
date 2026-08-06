@@ -70,21 +70,34 @@ public static class MemberCsv
             if (email is not null && !LooksLikeEmail(email))
                 warnings.Add($"Zeile {lineNo}: E-Mail „{email}“ sieht ungültig aus, wird trotzdem übernommen.");
 
+            var admissions = 1;
+            var admissionsCell = Get("admissions");
+            if (!string.IsNullOrEmpty(admissionsCell))
+            {
+                if (int.TryParse(admissionsCell, out var n) && n >= 1)
+                    admissions = n;
+                else
+                {
+                    errors.Add($"Zeile {lineNo}: Anzahl „{admissionsCell}“ ist ungültig (ganze Zahl ab 1).");
+                    continue;
+                }
+            }
+
             var address = MemberAddress.Create(Get("salutation"), Get("company"), Get("street"), Get("addressline2"),
                 Get("postalcode"), Get("city"), Get("country"), Get("phone"));
 
             rows.Add(new MemberImportRow(category.Value, Get("lastname"), Get("firstname"), birthday,
-                email, Get("cardno"), address.IsEmpty ? null : address));
+                email, Get("cardno"), address.IsEmpty ? null : address, admissions));
         }
         return new MemberCsvResult(rows, warnings, errors);
     }
 
     public static byte[] SampleBytes()
     {
-        var csv = "Karten-Nr;Kategorie;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum\n" +
-                  ";Red Ants;;Frau;Muster;Anna;Musterweg 1;;8400;Winterthur;Schweiz;anna.muster@example.com;079 000 00 00;14.05.1990\n" +
-                  ";Block 4;;Herr;Beispiel;Ben;;;;;;ben.beispiel@example.com;;02.11.2009\n" +
-                  ";Red Ants;;;Nurnachname;;;;;;;;;\n";
+        var csv = "Karten-Nr;Kategorie;Anzahl;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum\n" +
+                  ";Red Ants;1;;Frau;Muster;Anna;Musterweg 1;;8400;Winterthur;Schweiz;anna.muster@example.com;079 000 00 00;14.05.1990\n" +
+                  ";Block 4;5;;Herr;Beispiel;Ben;;;;;;ben.beispiel@example.com;;02.11.2009\n" +
+                  ";Red Ants;1;;;Nurnachname;;;;;;;;;\n";
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
     }
 
@@ -108,6 +121,7 @@ public static class MemberCsv
         {
             "kartennr" or "kartennummer" or "karte" => "cardno",
             "kategorie" => "category",
+            "anzahl" or "einlässe" or "einlaesse" or "anzahleinlässe" or "anzahleinlaesse" => "admissions",
             "anrede" => "salutation",
             "firma" or "firmenname" => "company",
             "name" or "nachname" => "lastname",

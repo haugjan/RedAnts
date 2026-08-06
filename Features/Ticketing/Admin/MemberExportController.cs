@@ -25,7 +25,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
         var cards = await memberCards.GetByReferenceAsync(referenz);
 
         var sb = new StringBuilder();
-        sb.Append("Karten-Nr;Kategorie;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum;Bundle;Link\r\n");
+        sb.Append("Karten-Nr;Kategorie;Anzahl;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum;Bundle;Link\r\n");
         foreach (var card in cards)
         {
             var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
@@ -37,6 +37,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
 
             sb.Append(Csv(cardNo)).Append(';')
               .Append(Csv(card.Category.DisplayName())).Append(';')
+              .Append(Csv(card.Admissions.ToString())).Append(';')
               .Append(Csv(a.Company)).Append(';')
               .Append(Csv(a.Salutation)).Append(';')
               .Append(Csv(card.LastName)).Append(';')

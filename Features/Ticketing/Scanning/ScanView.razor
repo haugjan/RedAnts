@@ -138,6 +138,11 @@
                 <div class="scan-result__holder">@o.Holder</div>
             }
 
+            @if (o.Ok && o.AdmissionCap is { } acap && acap > 1 && o.AdmissionsUsed is { } aused)
+            {
+                <div class="scan-result__admissions">Einlass @aused von @acap</div>
+            }
+
             @if (o.Outcome == AdmissionOutcome.CheckedIn && o.Occupancy is { Quota: { } cap } co && co.Inside >= cap)
             {
                 <div class="scan-result__warn">⚠ Hallenkapazität @(co.Inside > cap ? "überschritten" : "erreicht") (@co.Inside / @cap)</div>
@@ -146,7 +151,17 @@
             @if (!o.Ok)
             {
                 <div class="scan-result__reason">@o.Reason</div>
-                @if (o.PriorAt is { } at)
+                @if (o.Priors is { Count: > 0 } priors)
+                {
+                    <div class="scan-result__admissions">@priors.Count von @(o.AdmissionCap ?? priors.Count) Einlässen gebraucht</div>
+                    <ul class="scan-result__priors">
+                        @foreach (var p in priors)
+                        {
+                            <li>@FmtTime(p.At)@(string.IsNullOrEmpty(p.By) ? "" : $" · {p.By}")</li>
+                        }
+                    </ul>
+                }
+                else if (o.PriorAt is { } at)
                 {
                     <div class="scan-result__prior">
                         Bereits am @FmtTime(at)@(string.IsNullOrEmpty(o.PriorBy) ? "" : $" durch {o.PriorBy}")
@@ -302,8 +317,17 @@
         margin-top: 1rem; padding: 0.5rem 1rem; border-radius: 10px;
         background: rgba(255,255,255,0.22); font-size: 1.15rem; font-weight: 800;
     }
+    .scan-result__admissions {
+        margin-top: 1rem; padding: 0.4rem 1.1rem; border-radius: 10px;
+        background: rgba(255,255,255,0.22); font-size: 1.5rem; font-weight: 900;
+    }
     .scan-result__reason { margin-top: 1rem; font-size: 1.25rem; font-weight: 700; }
     .scan-result__prior { margin-top: 0.5rem; font-size: 1rem; opacity: 0.95; }
+    .scan-result__priors {
+        margin: 0.6rem 0 0; padding: 0; list-style: none; max-height: 34vh; overflow-y: auto;
+        font-size: 1rem; font-weight: 600;
+    }
+    .scan-result__priors li { padding: 0.2rem 0; border-top: 1px solid rgba(255,255,255,0.25); }
     .scan-result__meta { margin-top: 1rem; font-size: 0.95rem; opacity: 0.9; }
     .scan-result__next {
         margin-top: 1.6rem; padding: 0.8rem 1.6rem; border: 2px solid #fff; border-radius: 10px;

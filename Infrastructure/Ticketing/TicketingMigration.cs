@@ -50,6 +50,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddPriceTierMinAge>("price-tier-min-age");
         To<AddPageViews>("pageviews");
         To<AddMemberCardAddress>("membercard-address");
+        To<AddMemberCardAdmissions>("membercard-admissions");
+    }
+}
+
+public class AddMemberCardAdmissions(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("MembershipCards", "Admissions"))
+            Alter.Table("MembershipCards").AddColumn("Admissions").AsInt32().NotNullable().WithDefaultValue(1).Do();
+        return Task.CompletedTask;
     }
 }
 

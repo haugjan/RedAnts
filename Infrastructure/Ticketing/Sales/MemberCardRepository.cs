@@ -28,7 +28,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
 
             var card = MemberCard.Create(seasonId, row.Category, row.FirstName, row.LastName, row.Birthday,
                 email: row.Email, reference: reference, createdByName: createdByName, createdByEmail: createdByEmail,
-                address: row.Address);
+                address: row.Address, admissions: row.Admissions);
             await InsertAsync(scope.Database, card);
             affected++;
         }
@@ -43,8 +43,8 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         var addr = row.Address ?? MemberAddress.Empty;
         var affected = await db.ExecuteAsync(
             "UPDATE MembershipCards SET FirstName=@0, LastName=@1, Birthday=@2, Category=@3, Email=@4, " +
-            "Salutation=@5, Company=@6, Street=@7, AddressLine2=@8, PostalCode=@9, City=@10, Country=@11, Phone=@12 " +
-            "WHERE SeasonId=@13 AND Uuid LIKE @14",
+            "Salutation=@5, Company=@6, Street=@7, AddressLine2=@8, PostalCode=@9, City=@10, Country=@11, Phone=@12, " +
+            "Admissions=@13 WHERE SeasonId=@14 AND Uuid LIKE @15",
             (object[])new object?[]
             {
                 Clean(row.FirstName), Clean(row.LastName),
@@ -52,7 +52,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
                 (int)row.Category, Clean(row.Email),
                 addr.Salutation, addr.Company, addr.Street, addr.AddressLine2,
                 addr.PostalCode, addr.City, addr.Country, addr.Phone,
-                seasonId, code + "%"
+                Math.Max(1, row.Admissions), seasonId, code + "%"
             });
         return affected > 0;
     }
@@ -61,7 +61,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
 
     public async Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,
         DateOnly? birthday, string reference, string? email = null, string? createdByName = null,
-        string? createdByEmail = null, MemberAddress? address = null)
+        string? createdByEmail = null, MemberAddress? address = null, int admissions = 1)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         var reff = (reference ?? "").Trim();
@@ -71,7 +71,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
 
         var card = MemberCard.Create(seasonId, category, firstName, lastName, birthday,
             email: email, reference: reff, createdByName: createdByName, createdByEmail: createdByEmail,
-            address: address);
+            address: address, admissions: admissions);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await InsertAsync(scope.Database, card);
@@ -130,7 +130,8 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         r.CreatedByName,
         r.CreatedByEmail,
         MemberAddress.Create(r.Salutation, r.Company, r.Street, r.AddressLine2,
-            r.PostalCode, r.City, r.Country, r.Phone));
+            r.PostalCode, r.City, r.Country, r.Phone),
+        r.Admissions);
 
     private static MemberCardRecord ToRecord(MemberCard card) => new()
     {
@@ -145,6 +146,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         Birthday = card.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : null,
         Email = card.Email,
         Reference = card.Reference,
+        Admissions = card.Admissions,
         CreatedByName = card.CreatedByName,
         CreatedByEmail = card.CreatedByEmail,
         Salutation = card.Address.Salutation,

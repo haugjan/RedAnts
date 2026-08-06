@@ -18,6 +18,8 @@ public sealed record Occupancy(int Inside, int? Quota, int FreeInside = 0, IRead
         Tallies.FirstOrDefault(t => t.Type == type) ?? new FreeEntryTally(type, 0, 0);
 }
 
+public sealed record PriorScan(DateTime At, string? By);
+
 public sealed record ScanOutcome(
     AdmissionOutcome Outcome,
     TicketType? Type,
@@ -27,7 +29,10 @@ public sealed record ScanOutcome(
     string? CategoryLabel = null,
     string? Holder = null,
     DateTime? PriorAt = null,
-    string? PriorBy = null)
+    string? PriorBy = null,
+    int? AdmissionsUsed = null,
+    int? AdmissionCap = null,
+    IReadOnlyList<PriorScan>? Priors = null)
 {
     public bool Ok => Outcome != AdmissionOutcome.Rejected;
 }

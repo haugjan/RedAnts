@@ -36,7 +36,8 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             c.Email,
             c.CreatedByName,
             MemberAddress.Create(c.Salutation, c.Company, c.Street, c.AddressLine2,
-                c.PostalCode, c.City, c.Country, c.Phone))).ToList();
+                c.PostalCode, c.City, c.Country, c.Phone),
+            c.Admissions)).ToList();
     }
 
     public sealed class UuidCountRow

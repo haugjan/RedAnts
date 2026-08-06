@@ -43,17 +43,31 @@ public sealed class AdmissionService(
             redeemedEventId = await db.ExecuteScalarAsync<int?>(
                 "SELECT RedeemedEventId FROM SeasonSingleTickets WHERE Uuid = @0", key);
 
-        var visit = evaluable
+        var isMember = type == TicketType.MemberCard;
+        var visit = evaluable && !isMember
             ? await db.FirstOrDefaultAsync<EventVisitRecord>("WHERE EventId = @0 AND TicketUuid = @1", eventId, key)
             : null;
+
+        var admissionCap = 1;
+        var admissionsInside = visit is { IsInside: true } ? 1 : 0;
+        if (evaluable && isMember)
+        {
+            admissionCap = Math.Max(1, await db.ExecuteScalarAsync<int?>(
+                "SELECT Admissions FROM MembershipCards WHERE Uuid = @0", key) ?? 1);
+            admissionsInside = await db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM TicketEventVisits WHERE EventId = @0 AND TicketUuid = @1 AND IsInside = 1",
+                eventId, key);
+        }
 
         var facts = issued is null ? null : new ScannedTicketFacts(issued.Type, issued.ScopeId, issued.Status);
         var evaluation = AdmissionRules.Evaluate(
             eventId, type, scopeId, mode, test, isEmpty, facts,
-            eventSeasonId, redeemedEventId, visit is not null, visit is { IsInside: true });
+            eventSeasonId, redeemedEventId, admissionsInside, admissionCap);
 
         var categoryLabel = issued is null ? null : issued.CategoryName ?? issued.Category?.DisplayName();
         var holder = issued is null ? null : HolderLabel(issued);
+        int? usedOut = isMember ? admissionsInside : null;
+        int? capOut = isMember ? admissionCap : null;
 
         switch (evaluation.Verdict)
         {
@@ -65,8 +79,15 @@ public sealed class AdmissionService(
                 return new ScanOutcome(AdmissionOutcome.Test, type, Ref(uuid), null,
                     await OccAsync(db, eventId), categoryLabel, holder);
 
-            case AdmissionVerdict.Reject when evaluation.Reason == AdmissionRules.AlreadyCheckedIn && visit is not null:
-                var prior = await db.FirstOrDefaultAsync<EventVisitLogRecord>(
+            case AdmissionVerdict.Reject when evaluation.Reason is AdmissionRules.AlreadyCheckedIn or AdmissionRules.AllAdmissionsUsed:
+                if (isMember)
+                {
+                    var priors = await MemberPriorsAsync(db, eventId, key);
+                    return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), evaluation.Reason,
+                        await OccAsync(db, eventId), categoryLabel, holder,
+                        priors.LastOrDefault()?.At, priors.LastOrDefault()?.By, usedOut, capOut, priors);
+                }
+                var prior = visit is null ? null : await db.FirstOrDefaultAsync<EventVisitLogRecord>(
                     "WHERE VisitId = @0 AND Type = @1 ORDER BY Id DESC", visit.Id, (int)VisitLogType.CheckIn);
                 return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), evaluation.Reason,
                     await OccAsync(db, eventId), categoryLabel, holder, prior?.OccurredAt, prior?.ScannedBy);
@@ -80,7 +101,7 @@ public sealed class AdmissionService(
         if (mode == ScanMode.CheckIn)
         {
             long visitId;
-            if (visit is null)
+            if (isMember || visit is null)
             {
                 var row = new EventVisitRecord
                 {
@@ -107,15 +128,31 @@ public sealed class AdmissionService(
                 await db.ExecuteAsync("UPDATE EventTickets SET Redeemed = 1 WHERE Uuid = @0", key);
 
             return new ScanOutcome(AdmissionOutcome.CheckedIn, type, Ref(uuid), null,
-                await OccAsync(db, eventId), categoryLabel, holder);
+                await OccAsync(db, eventId), categoryLabel, holder,
+                AdmissionsUsed: isMember ? admissionsInside + 1 : null, AdmissionCap: capOut);
         }
 
-        visit!.IsInside = false;
-        await db.UpdateAsync(visit);
-        await LogAsync(db, visit.Id, AdmissionOutcome.CheckedOut, scannedBy);
+        var checkOut = isMember
+            ? await db.FirstOrDefaultAsync<EventVisitRecord>(
+                "WHERE EventId = @0 AND TicketUuid = @1 AND IsInside = 1 ORDER BY Id DESC", eventId, key)
+            : visit;
+        checkOut!.IsInside = false;
+        await db.UpdateAsync(checkOut);
+        await LogAsync(db, checkOut.Id, AdmissionOutcome.CheckedOut, scannedBy);
 
         return new ScanOutcome(AdmissionOutcome.CheckedOut, type, Ref(uuid), null,
-            await OccAsync(db, eventId), categoryLabel, holder);
+            await OccAsync(db, eventId), categoryLabel, holder,
+            AdmissionsUsed: isMember ? Math.Max(0, admissionsInside - 1) : null, AdmissionCap: capOut);
+    }
+
+    private static async Task<IReadOnlyList<PriorScan>> MemberPriorsAsync(IUmbracoDatabase db, int eventId, string key)
+    {
+        var rows = await db.FetchAsync<EventVisitLogRecord>(
+            "SELECT l.* FROM TicketEventVisitsLogs l " +
+            "JOIN TicketEventVisits v ON v.Id = l.VisitId " +
+            "WHERE v.EventId = @0 AND v.TicketUuid = @1 AND l.Type = @2 ORDER BY l.OccurredAt",
+            eventId, key, (int)VisitLogType.CheckIn);
+        return rows.Select(r => new PriorScan(r.OccurredAt, r.ScannedBy)).ToList();
     }
 
     private static string? HolderLabel(IssuedTicket ticket)

@@ -61,6 +61,7 @@
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("admissions")' title="Einlässe pro Event">Anzahl <span class="ta-sort-ind">@Ind("admissions")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th class="ta-col-actions"></th>
@@ -92,6 +93,16 @@
                                 <td title="@AdminFormat.CreatedTooltip(c.CreatedAt, c.CreatedByName, null, null)">@AdminFormat.CreatedShort(c.CreatedAt, c.CreatedByName, null)</td>
                                 <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
                                 <td><span class="ta-badge @CategoryBadgeClass(c.Category)">@c.CategoryLabel</span></td>
+                                <td class="ta-num">
+                                    @if (c.Admissions > 1)
+                                    {
+                                        <span class="ta-badge ta-badge-block4" title="@c.Admissions Einlässe pro Event">@c.Admissions×</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">1</span>
+                                    }
+                                </td>
                                 <td>
                                     <span class="ta-badge @(c.IsCancelled ? "ta-badge-cancelled" : "ta-badge-valid")">
                                         @(c.IsCancelled ? "Storniert" : "Gültig")
@@ -151,6 +162,11 @@
                         <option value="@cat">@cat.DisplayName()</option>
                     }
                 </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newMcAdmissions">Anzahl Einlässe pro Event</label>
+                <input id="newMcAdmissions" class="ta-input" type="number" min="1" step="1" @bind="_newAdmissions" />
+                <p class="ta-field-hint">Wie oft diese Karte pro Anlass eingelassen wird (z. B. Block 4 = mehrere Personen). Standard: 1.</p>
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newMcLastName">Name (optional)</label>
@@ -278,7 +294,7 @@
                 <label class="ta-label">CSV-Datei</label>
                 <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
                 <p class="ta-hint">
-                    Spalten (alle ausser Kategorie optional): Karten-Nr, Kategorie (Red Ants / Block 4), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
+                    Spalten (alle ausser Kategorie optional): Karten-Nr, Kategorie (Red Ants / Block 4), Anzahl (Einlässe pro Event, Standard 1), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
                     Zeilen mit einer bestehenden Karten-Nr werden aktualisiert, Zeilen ohne neu angelegt. So kannst du exportieren, Adressen ergänzen und wieder importieren.
                     <a href="/admin/members/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
@@ -355,6 +371,10 @@
                         <option value="@cat">@cat.DisplayName()</option>
                     }
                 </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editAdmissions">Anzahl Einlässe pro Event</label>
+                <input id="editAdmissions" class="ta-input" type="number" min="1" step="1" @bind="_editAdmissions" />
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="editReference">Referenz</label>
@@ -610,6 +630,7 @@
         IEnumerable<MemberCardListItem> q = _sortCol switch
         {
             "category" => _cards.OrderBy(c => c.Category),
+            "admissions" => _cards.OrderBy(c => c.Admissions),
             "reference" => _cards.OrderBy(c => c.Reference ?? "￿"),
             "status" => _cards.OrderBy(c => c.Status),
             "visits" => _cards.OrderBy(c => c.EventVisits),
@@ -625,6 +646,7 @@
     private string _newFirstName = "";
     private string _newLastName = "";
     private DateOnly? _newBirthday;
+    private int _newAdmissions = 1;
     private string _newReference = "";
     private string _newEmail = "";
     private string _newSalutation = "";
@@ -644,6 +666,7 @@
         _newSalutation = _newCompany = _newStreet = _newAddressLine2 = "";
         _newPostalCode = _newCity = _newCountry = _newPhone = "";
         _newBirthday = null;
+        _newAdmissions = 1;
         _createError = null;
         _showCreate = true;
     }
@@ -654,6 +677,7 @@
         if (_creating) return;
         if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
         if (string.IsNullOrWhiteSpace(_newReference)) { _createError = "Bitte eine Referenz angeben."; return; }
+        if (_newAdmissions < 1) { _createError = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
         var contactError = ValidateContact(_newEmail, _newBirthday);
         if (contactError is not null) { _createError = contactError; return; }
         _creating = true;
@@ -667,7 +691,8 @@
             await Members.CreateAsync(SelectedSeasonId, _newCategory, first, last,
                 _newBirthday, _newReference.Trim(),
                 email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim(),
-                createdByName: Identity.Name, createdByEmail: Identity.Email, address: address);
+                createdByName: Identity.Name, createdByEmail: Identity.Email, address: address,
+                admissions: _newAdmissions);
             _showCreate = false;
             await ReloadCardsAsync();
         }
@@ -764,6 +789,7 @@
     private string _editLastName = "";
     private DateOnly? _editBirthday;
     private MemberCategory _editCategory;
+    private int _editAdmissions = 1;
     private string _editReference = "";
     private string _editEmail = "";
     private string _editSalutation = "";
@@ -785,6 +811,7 @@
         _editLastName = c.LastName ?? "";
         _editBirthday = c.Birthday;
         _editCategory = c.Category;
+        _editAdmissions = c.Admissions;
         _editReference = c.Reference ?? "";
         _editEmail = c.Email ?? "";
         var a = c.Address ?? MemberAddress.Empty;
@@ -805,6 +832,7 @@
     private async Task SaveEditAsync()
     {
         if (_editing is null) return;
+        if (_editAdmissions < 1) { _editError = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
         var contactError = ValidateContact(_editEmail, _editBirthday);
         if (contactError is not null) { _editError = contactError; return; }
         _savingEdit = true;
@@ -814,7 +842,7 @@
             var address = MemberAddress.Create(_editSalutation, _editCompany, _editStreet, _editAddressLine2,
                 _editPostalCode, _editCity, _editCountry, _editPhone);
             await MemberEditor.SetDetailsAsync(_editing.Uuid, _editFirstName, _editLastName, _editBirthday,
-                _editCategory, _editStatus, _editReference, _editEmail, address);
+                _editCategory, _editStatus, _editReference, _editEmail, address, _editAdmissions);
             _editing = null;
             await ReloadCardsAsync();
         }

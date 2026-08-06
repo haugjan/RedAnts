@@ -20,10 +20,11 @@ public static class AdmissionRules
     public const string WrongSeason = "Ticket gilt für eine andere Saison.";
     public const string FlexRedeemedElsewhere = "Flexticket wurde bereits an einem anderen Anlass eingelöst.";
     public const string AlreadyCheckedIn = "Bereits eingecheckt.";
+    public const string AllAdmissionsUsed = "Alle Einlässe dieser Karte bereits gebraucht.";
     public const string NotCheckedIn = "Noch nicht eingecheckt.";
 
     public static bool CarriesHolder(string? reason) =>
-        reason is AlreadyCheckedIn or NotCheckedIn;
+        reason is AlreadyCheckedIn or AllAdmissionsUsed or NotCheckedIn;
 
     public static AdmissionEvaluation Evaluate(
         int eventId,
@@ -35,8 +36,8 @@ public static class AdmissionRules
         ScannedTicketFacts? ticket,
         int? eventSeasonId,
         int? redeemedEventId,
-        bool visitExists,
-        bool visitInside)
+        int admissionsInside,
+        int admissionCap)
     {
         if (isEmptyUuid)
             return new AdmissionEvaluation(AdmissionVerdict.TestEmpty);
@@ -71,12 +72,12 @@ public static class AdmissionRules
 
         if (mode == ScanMode.CheckIn)
         {
-            if (visitExists && visitInside)
-                return Reject(AlreadyCheckedIn);
+            if (admissionsInside >= admissionCap)
+                return Reject(admissionCap > 1 ? AllAdmissionsUsed : AlreadyCheckedIn);
             return new AdmissionEvaluation(AdmissionVerdict.Admit);
         }
 
-        if (!visitExists || !visitInside)
+        if (admissionsInside <= 0)
             return Reject(NotCheckedIn);
 
         return new AdmissionEvaluation(AdmissionVerdict.Admit);
