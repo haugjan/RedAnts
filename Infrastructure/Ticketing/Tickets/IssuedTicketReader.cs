@@ -37,8 +37,10 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
         var card = await db.FirstOrDefaultAsync<MemberCardRecord>("WHERE Uuid = @0", key);
         if (card is not null)
         {
-            var holder = string.Join(' ', new[] { card.FirstName, card.LastName }
-                .Where(s => !string.IsNullOrWhiteSpace(s)));
+            var holder = string.IsNullOrWhiteSpace(card.Company)
+                ? string.Join(' ', new[] { card.FirstName, card.LastName }
+                    .Where(s => !string.IsNullOrWhiteSpace(s)))
+                : card.Company.Trim();
             return new IssuedTicket(TicketType.MemberCard, uuid, card.SeasonId,
                 null, (TicketStatus)card.Status, card.CreatedAt,
                 string.IsNullOrWhiteSpace(holder) ? null : holder,

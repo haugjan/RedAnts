@@ -63,7 +63,7 @@ public sealed class MemberCardMailer(
             var reference = string.IsNullOrWhiteSpace(card.Reference)
                 ? card.Uuid.ToString("N")[..8].ToUpperInvariant()
                 : card.Reference;
-            var toName = string.IsNullOrWhiteSpace(card.HolderName) ? null : card.HolderName;
+            var toName = string.IsNullOrWhiteSpace(card.HolderDisplay) ? null : card.HolderDisplay;
 
             var result = await email.SendAsync(card.Email, toName, resolvedSubject, html, images,
                 cancellationToken, source: "Mitgliederkarte", reference: reference);
@@ -92,7 +92,7 @@ public sealed class MemberCardMailer(
 
         var rows =
             (dateText is null ? "" : InfoRow("Datum", WebUtility.HtmlEncode(dateText))) +
-            (string.IsNullOrWhiteSpace(card.HolderName) ? "" : InfoRow("Inhaber:in", WebUtility.HtmlEncode(card.HolderName))) +
+            (string.IsNullOrWhiteSpace(card.HolderDisplay) ? "" : InfoRow("Inhaber:in", WebUtility.HtmlEncode(card.HolderDisplay))) +
             (card.Admissions > 1 ? InfoRow("Eintritte", card.Admissions.ToString()) : "") +
             InfoRow("Karten-Nr.", reference);
 
@@ -146,6 +146,7 @@ public sealed class MemberCardMailer(
         (text ?? "")
             .Replace("{Vorname}", card.FirstName ?? "")
             .Replace("{Nachname}", card.LastName ?? "")
-            .Replace("{Name}", card.HolderName)
-            .Replace("{Saison}", seasonName ?? "");
+            .Replace("{Name}", card.HolderDisplay)
+            .Replace("{Saison}", seasonName ?? "")
+            .Replace("{Anzahl}", card.Admissions.ToString());
 }

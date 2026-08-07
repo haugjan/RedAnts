@@ -359,15 +359,22 @@ public sealed class TicketingContentTypeSeeder(
         changed |= AddMailProp(type, textBox, A.HelperInviteMailSubject, "Helfereinladung (Betreff)", null);
         changed |= AddMailProp(type, textArea, A.HelperInviteMailBody, "Helfereinladung (Text)",
             "Platzhalter: {Vorname}, {Nachname}, {Passwort}, {Link}");
-        const string memberHint = "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}";
-        changed |= AddMailProp(type, textBox, A.MemberCardMailSubject, "Mitgliederkarte Red Ants (Betreff)", null);
+        const string memberHint = "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}, {Anzahl}";
+        changed |= AddMailProp(type, textBox, A.MemberCardMailSubject, "Mitgliederkarte Red Ants (Betreff)", memberHint);
         changed |= AddMailProp(type, textArea, A.MemberCardMailBody, "Mitgliederkarte Red Ants (Text)", memberHint);
-        changed |= AddMailProp(type, textBox, A.MemberCardBlock4PrivateMailSubject, "Mitgliederkarte Block 4 Privat (Betreff)", null);
+        changed |= AddMailProp(type, textBox, A.MemberCardBlock4PrivateMailSubject, "Mitgliederkarte Block 4 Privat (Betreff)", memberHint);
         changed |= AddMailProp(type, textArea, A.MemberCardBlock4PrivateMailBody, "Mitgliederkarte Block 4 Privat (Text)", memberHint);
-        changed |= AddMailProp(type, textBox, A.MemberCardBlock4CompanyMailSubject, "Mitgliederkarte Block 4 Firma (Betreff)", null);
+        changed |= AddMailProp(type, textBox, A.MemberCardBlock4CompanyMailSubject, "Mitgliederkarte Block 4 Firma (Betreff)", memberHint);
         changed |= AddMailProp(type, textArea, A.MemberCardBlock4CompanyMailBody, "Mitgliederkarte Block 4 Firma (Text)", memberHint);
         changed |= Relabel(type, A.MemberCardMailSubject, "Mitgliederkarte Red Ants (Betreff)");
         changed |= Relabel(type, A.MemberCardMailBody, "Mitgliederkarte Red Ants (Text)");
+        foreach (var alias in new[]
+                 {
+                     A.MemberCardMailSubject, A.MemberCardMailBody,
+                     A.MemberCardBlock4PrivateMailSubject, A.MemberCardBlock4PrivateMailBody,
+                     A.MemberCardBlock4CompanyMailSubject, A.MemberCardBlock4CompanyMailBody
+                 })
+            changed |= Redescribe(type, alias, memberHint);
         changed |= AddMailProp(type, textBox, A.SeasonPassMailSubject, "Saisonkarte (Betreff)", null);
         changed |= AddMailProp(type, textArea, A.SeasonPassMailBody, "Saisonkarte (Text)",
             "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}");
@@ -379,6 +386,14 @@ public sealed class TicketingContentTypeSeeder(
         var prop = type.PropertyTypes.FirstOrDefault(p => p.Alias == alias);
         if (prop is null || prop.Name == name) return false;
         prop.Name = name;
+        return true;
+    }
+
+    private static bool Redescribe(IContentType type, string alias, string description)
+    {
+        var prop = type.PropertyTypes.FirstOrDefault(p => p.Alias == alias);
+        if (prop is null || prop.Description == description) return false;
+        prop.Description = description;
         return true;
     }
 

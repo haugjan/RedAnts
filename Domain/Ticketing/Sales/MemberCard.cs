@@ -21,6 +21,10 @@ public sealed class MemberCard
 
     public string HolderName => $"{FirstName} {LastName}".Trim();
 
+    public bool IsCompany => !string.IsNullOrWhiteSpace(Address.Company);
+
+    public string HolderDisplay => IsCompany ? Address.Company!.Trim() : HolderName;
+
     private MemberCard(int id, Guid uuid, int seasonId, MemberCategory category,
         int? orderId, TicketStatus status, DateTime createdAt, string? firstName, string? lastName,
         DateOnly? birthday, string? email, string? reference, int admissions, string? createdByName,
