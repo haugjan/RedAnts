@@ -13,10 +13,17 @@ public sealed class FlexBundleExportController(
     ITicketTokens tokens,
     IPublicBaseUrl publicUrl) : Controller
 {
-    [HttpGet("/admin/flex-tickets/bundle/{bundleId:int}/tickets.csv")]
-    public async Task<IActionResult> Export(int bundleId)
+    [HttpGet("/admin/flex-tickets/bundles.csv")]
+    public async Task<IActionResult> Export([FromQuery] string? ids)
     {
-        var tickets = await bundleTickets.GetByBundleAsync(bundleId);
+        var bundleIds = (ids ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => int.TryParse(s, out var n) ? n : 0)
+            .Where(n => n > 0)
+            .Distinct()
+            .ToList();
+
+        var tickets = await bundleTickets.GetByBundlesAsync(bundleIds);
 
         var sb = new StringBuilder();
         sb.Append("Karten-Nr;Bundle;Link\r\n");
@@ -29,7 +36,8 @@ public sealed class FlexBundleExportController(
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
-        return File(bytes, "text/csv; charset=utf-8", $"flextickets-bundle-{bundleId}.csv");
+        var name = bundleIds.Count == 1 ? $"flextickets-bundle-{bundleIds[0]}.csv" : "flextickets-bundles.csv";
+        return File(bytes, "text/csv; charset=utf-8", name);
     }
 
     private static string ShortCode(Guid uuid) => uuid.ToString("N")[..8].ToUpperInvariant();
