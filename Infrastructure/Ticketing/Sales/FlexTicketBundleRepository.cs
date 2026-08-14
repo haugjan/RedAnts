@@ -169,6 +169,43 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             record.CreatedAt, quantity, 0, record.CreatedByName, record.CreatedByEmail);
     }
 
+    public async Task<FlexTicketBundleView> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
+        string? createdByName = null, string? createdByEmail = null)
+    {
+        var bundle = FlexTicketBundle.Create(seasonId, category, reference, createdByName, createdByEmail);
+
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+
+        if (await ReferenceExistsAsync(db, seasonId, bundle.Reference))
+            throw new DomainException($"Die Referenz „{bundle.Reference}“ ist in dieser Saison bereits vergeben.");
+
+        var record = new FlexTicketBundleRecord
+        {
+            SeasonId = bundle.SeasonId,
+            Category = (int)bundle.Category,
+            Reference = bundle.Reference,
+            CreatedAt = bundle.CreatedAt,
+            CreatedByName = bundle.CreatedByName,
+            CreatedByEmail = bundle.CreatedByEmail
+        };
+        await db.InsertAsync(record);
+
+        return new FlexTicketBundleView(record.Id, record.SeasonId, category, record.Reference,
+            record.CreatedAt, 0, 0, record.CreatedByName, record.CreatedByEmail);
+    }
+
+    public async Task<bool> DeleteEmptyAsync(int bundleId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        var count = await db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0", bundleId);
+        if (count > 0) return false;
+        await db.ExecuteAsync("DELETE FROM FlexTicketBundles WHERE Id = @0", bundleId);
+        return true;
+    }
+
     private static async Task<bool> ReferenceExistsAsync(IDatabase db, int seasonId, string reference)
     {
         var count = await db.ExecuteScalarAsync<int>(

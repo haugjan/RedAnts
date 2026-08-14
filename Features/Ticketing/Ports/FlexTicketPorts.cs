@@ -55,4 +55,9 @@ public interface IFlexTicketBundles
 
     Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null);
+
+    Task<FlexTicketBundleView> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
+        string? createdByName = null, string? createdByEmail = null);
+
+    Task<bool> DeleteEmptyAsync(int bundleId);
 }

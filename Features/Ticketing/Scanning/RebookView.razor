@@ -33,6 +33,36 @@
         </div>
     </div>
 
+    @if (SelectedSeasonId > 0)
+    {
+        <div class="rebook-create">
+            @if (!_showCreate)
+            {
+                <button type="button" class="rebook-newbtn" @onclick="OpenCreate">＋ Neues leeres Bundle</button>
+            }
+            else
+            {
+                <div class="rebook-newform">
+                    <input class="rebook-select" placeholder="Referenz / Name" maxlength="50" @bind="_newRef" @bind:event="oninput" />
+                    <select class="rebook-select" @bind="_newCategory">
+                        @foreach (var c in _categories)
+                        {
+                            <option value="@c">@c.DisplayName()</option>
+                        }
+                    </select>
+                    <div class="rebook-newactions">
+                        <button type="button" class="rebook-back" @onclick="CloseCreate" disabled="@_busy">Abbrechen</button>
+                        <button type="button" class="rebook-newbtn" @onclick="CreateBundleAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_newRef))">Erstellen</button>
+                    </div>
+                </div>
+            }
+            @if (_createError is not null)
+            {
+                <p class="rebook-hint rebook-hint--error">@_createError</p>
+            }
+        </div>
+    }
+
     @if (_seasons.Count == 0)
     {
         <p class="rebook-hint">Es sind keine Saisons erfasst.</p>
@@ -47,7 +77,13 @@
     }
     else
     {
-        <div class="rebook-target">Ziel: <strong>@TargetLabel</strong></div>
+        <div class="rebook-target">
+            <span>Ziel: <strong>@TargetLabel</strong></span>
+            @if (SelectedBundle is { TicketCount: 0 })
+            {
+                <button type="button" class="rebook-del" @onclick="DeleteSelectedBundleAsync" disabled="@_busy" title="Leeres Bundle löschen">🗑</button>
+            }
+        </div>
 
         <div class="qr-wrap">
             <div id="qr-rebook-reader" class="qr-reader"></div>
@@ -63,7 +99,7 @@
 
         @if (_last is { } r)
         {
-            <div class="rebook-result rebook-result--@ResultClass(r)">
+            <div class="rebook-result rebook-result--@ResultClass(r)" @key="_scanSeq">
                 <div class="rebook-result__head">
                     <span class="rebook-result__icon">@ResultIcon(r)</span>
                     <span class="rebook-result__title">@ResultTitle(r)</span>
@@ -121,10 +157,25 @@
     .rebook-hint--error { color: #b42318; font-weight: 700; }
 
     .rebook-target {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
         margin: 0.2rem 0 0.5rem; padding: 0.4rem 0.7rem; border-radius: 8px;
         background: #f7ecc6; color: #7a5c00; font-size: 0.95rem;
     }
     .rebook-target strong { color: #5c4600; }
+    .rebook-del {
+        flex: 0 0 auto; border: 1px solid #d9a0a0; background: #fff; color: #b42318;
+        border-radius: 8px; padding: 0.3rem 0.55rem; font-size: 1rem; cursor: pointer;
+    }
+    .rebook-del:disabled { opacity: 0.5; cursor: default; }
+
+    .rebook-create { margin: 0 0 0.6rem; }
+    .rebook-newbtn {
+        border: 2px dashed #b8860b; background: #fff; color: #7a5c00; border-radius: 10px;
+        padding: 0.55rem 0.9rem; font-size: 0.98rem; font-weight: 800; cursor: pointer;
+    }
+    .rebook-newbtn:disabled { opacity: 0.5; cursor: default; }
+    .rebook-newform { display: flex; flex-direction: column; gap: 0.5rem; }
+    .rebook-newactions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
     .qr-wrap { position: relative; }
     .qr-reader { border: 3px solid #b8860b; border-radius: 12px; overflow: hidden; max-height: 46vh; }
@@ -138,6 +189,12 @@
 
     .rebook-result {
         margin: 0.6rem 0 0; padding: 0.7rem 0.9rem; border-radius: 12px; color: #fff;
+        animation: rebook-pop 0.5s cubic-bezier(0.2, 0.85, 0.2, 1);
+    }
+    @@keyframes rebook-pop {
+        0% { transform: scale(0.9); filter: brightness(2); box-shadow: 0 0 0 6px rgba(255,255,255,0.6); }
+        35% { transform: scale(1.045); filter: brightness(1.35); box-shadow: 0 0 0 3px rgba(255,255,255,0.35); }
+        100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
     }
     .rebook-result--ok { background: #1a7f37; }
     .rebook-result--same { background: #6b7280; }
@@ -175,9 +232,19 @@
 
     private FlexRebookResult? _last;
     private int _movedCount;
+    private int _scanSeq;
     private readonly List<RecentEntry> _recent = [];
     private bool _cameraStarted;
     private string? _error;
+
+    private bool _showCreate;
+    private string _newRef = "";
+    private TicketCategory _newCategory = TicketCategory.Adult;
+    private string? _createError;
+    private bool _busy;
+    private static readonly TicketCategory[] _categories = Enum.GetValues<TicketCategory>();
+
+    private FlexTicketBundleView? SelectedBundle => _bundles.FirstOrDefault(b => b.Id == SelectedBundleId);
 
     private sealed record RecentEntry(string Ref, string Msg, string Cls);
 
@@ -220,6 +287,58 @@
         if (SelectedBundleId <= 0) await StopCameraAsync();
     }
 
+    private void OpenCreate()
+    {
+        _showCreate = true;
+        _createError = null;
+        _newRef = "";
+    }
+
+    private void CloseCreate()
+    {
+        if (_busy) return;
+        _showCreate = false;
+        _createError = null;
+    }
+
+    private async Task CreateBundleAsync()
+    {
+        if (SelectedSeasonId <= 0 || _busy || string.IsNullOrWhiteSpace(_newRef)) return;
+        _busy = true;
+        _createError = null;
+        try
+        {
+            var view = await Bundles.CreateEmptyAsync(SelectedSeasonId, _newCategory, _newRef, Operator);
+            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+            SelectedBundleId = view.Id;
+            _showCreate = false;
+            _newRef = "";
+            _last = null;
+        }
+        catch (Exception ex) { _createError = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteSelectedBundleAsync()
+    {
+        if (SelectedBundleId <= 0 || _busy) return;
+        _busy = true;
+        _createError = null;
+        try
+        {
+            if (!await Bundles.DeleteEmptyAsync(SelectedBundleId))
+            {
+                _createError = "Bundle ist nicht leer und wurde nicht gelöscht.";
+                return;
+            }
+            await StopCameraAsync();
+            SelectedBundleId = 0;
+            _last = null;
+            _bundles = SelectedSeasonId > 0 ? await Bundles.GetBySeasonAsync(SelectedSeasonId) : [];
+        }
+        finally { _busy = false; }
+    }
+
     [JSInvokable]
     public async Task OnCodeScanned(string code)
     {
@@ -234,6 +353,7 @@
             result = new FlexRebookResult(FlexRebookStatus.NotFound, Shorten(code));
 
         _last = result;
+        _scanSeq++;
         if (result.Status == FlexRebookStatus.Moved) _movedCount++;
         PushRecent(result);
         StateHasChanged();
