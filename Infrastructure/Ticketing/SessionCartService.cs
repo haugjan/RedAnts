@@ -115,6 +115,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         if (item is null) return;
         if (quantity <= 0) cart.Items.Remove(item);
         else item.Quantity = Math.Min(quantity, MaxQuantityPerItem);
+        PruneOrphanedOrderAddOns(cart);
         Save(cart);
     }
 
@@ -122,10 +123,21 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
     {
         var cart = Get();
         cart.Items.RemoveAll(i => i.Key == key);
+        PruneOrphanedOrderAddOns(cart);
         Save(cart);
     }
 
     public void Clear() => Session.Remove(SessionKey);
+
+    private static void PruneOrphanedOrderAddOns(Cart cart)
+    {
+        if (cart.OrderAddOns.Count == 0) return;
+        var seasonsWithPass = cart.Items
+            .Where(i => i.Kind == CartItemKind.SeasonPass)
+            .Select(i => i.SeasonId)
+            .ToHashSet();
+        cart.OrderAddOns.RemoveAll(a => !seasonsWithPass.Contains(a.SeasonId));
+    }
 
     private void Save(Cart cart) => Session.SetString(SessionKey, JsonSerializer.Serialize(cart));
 }
