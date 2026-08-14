@@ -22,6 +22,7 @@ public static class HelperAliases
     public const string LastName = "helperLastName";
     public const string AllEvents = "helperAllEvents";
     public const string EventIds = "helperEventIds";
+    public const string CanRebook = "helperCanRebook";
 }
 
 public sealed class HelperMemberTypeSeederComposer : IComposer
@@ -43,13 +44,22 @@ public sealed class HelperMemberTypeSeeder(
     {
         try
         {
-            if (memberTypeService.Get(HelperAliases.MemberType) is not null) return Task.CompletedTask;
-
             var all = dataTypeService.GetAll().ToList();
             IDataType ByEditor(string alias) => all.First(d => d.EditorAlias == alias);
             var textBox = ByEditor("Umbraco.TextBox");
             var integer = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.Integer") ?? textBox;
             var boolean = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TrueFalse") ?? textBox;
+
+            var existing = memberTypeService.Get(HelperAliases.MemberType);
+            if (existing is not null)
+            {
+                if (!existing.PropertyTypeExists(HelperAliases.CanRebook))
+                {
+                    existing.AddPropertyType(Prop(boolean, HelperAliases.CanRebook, "Darf Flextickets umbuchen"), Group, GroupName);
+                    memberTypeService.Save(existing);
+                }
+                return Task.CompletedTask;
+            }
 
             var type = new MemberType(shortStringHelper, Constants.System.Root)
             {
@@ -63,6 +73,7 @@ public sealed class HelperMemberTypeSeeder(
             type.AddPropertyType(Prop(integer, HelperAliases.SeasonId, "Saison-Id"), Group, GroupName);
             type.AddPropertyType(Prop(boolean, HelperAliases.AllEvents, "Alle Anlässe"), Group, GroupName);
             type.AddPropertyType(Prop(textBox, HelperAliases.EventIds, "Zugewiesene Anlässe"), Group, GroupName);
+            type.AddPropertyType(Prop(boolean, HelperAliases.CanRebook, "Darf Flextickets umbuchen"), Group, GroupName);
 
             memberTypeService.Save(type);
         }

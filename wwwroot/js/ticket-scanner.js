@@ -5,6 +5,7 @@ window.ticketScanner = (function () {
     let ctx = null;
     let dotNetRef = null;
     let paused = false;
+    let continuous = false;
     let rafId = null;
     let lastScan = 0;
     let heldCode = null;
@@ -83,7 +84,7 @@ window.ticketScanner = (function () {
             if (paused) return;
             heldCode = code.data;
             heldSeenAt = now;
-            paused = true;
+            if (!continuous) paused = true;
             if (dotNetRef) {
                 dotNetRef.invokeMethodAsync("OnCodeScanned", code.data);
             }
@@ -92,9 +93,10 @@ window.ticketScanner = (function () {
         }
     }
 
-    async function start(elementId, ref) {
+    async function start(elementId, ref, continuousMode) {
         dotNetRef = ref;
         paused = false;
+        continuous = !!continuousMode;
 
         if (typeof jsQR === "undefined") {
             throw new Error("QR-Dekoder wurde nicht geladen.");

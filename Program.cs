@@ -424,7 +424,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
             Domain = string.IsNullOrWhiteSpace(cookieDomain) ? null : cookieDomain,
         });
 
-    async Task<(string Name, bool AllEvents, string EventIds)?> HelperSessionAsync(HttpContext ctx)
+    async Task<(string Name, bool AllEvents, string EventIds, bool CanRebook)?> HelperSessionAsync(HttpContext ctx)
     {
         var value = ctx.Request.Cookies[helperCookie];
         if (string.IsNullOrEmpty(value)) return null;
@@ -432,7 +432,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         try { id = int.Parse(helperProtector.Unprotect(value)); } catch { return null; }
         var helper = await ctx.RequestServices.GetRequiredService<IHelpers>().FindByIdAsync(id);
         return helper is { Active: true }
-            ? (helper.FullName, helper.AllEvents, string.Join(",", helper.EventIds))
+            ? (helper.FullName, helper.AllEvents, string.Join(",", helper.EventIds), helper.CanRebook)
             : null;
     }
 
@@ -498,6 +498,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
             context.Items["HelperName"] = helper.Name;
             context.Items["HelperAllEvents"] = helper.AllEvents;
             context.Items["HelperEventIds"] = helper.EventIds;
+            context.Items["HelperCanRebook"] = helper.CanRebook;
         }
 
         await next();

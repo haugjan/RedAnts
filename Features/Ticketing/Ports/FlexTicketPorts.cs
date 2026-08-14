@@ -22,9 +22,26 @@ public sealed record FlexTicketView(
     TicketCategory Category = TicketCategory.Adult,
     bool? IsInside = null);
 
+public enum FlexRebookStatus { Moved, AlreadyInTarget, WrongSeason, NotFound }
+
+public sealed record FlexRebookResult(
+    FlexRebookStatus Status,
+    string? Reference = null,
+    string? Category = null,
+    string? FromBundle = null,
+    string? ToBundle = null,
+    int? TicketSeasonId = null)
+{
+    public bool Ok => Status is FlexRebookStatus.Moved or FlexRebookStatus.AlreadyInTarget;
+}
+
 public interface IFlexTicketBundles
 {
     Task<IReadOnlyList<FlexTicketBundleView>> GetBySeasonAsync(int seasonId);
+
+    Task<FlexRebookResult> RebookByUuidAsync(int targetBundleId, Guid uuid, string? operatorName);
+
+    Task<FlexRebookResult> RebookByCodeAsync(int targetBundleId, string codePrefix, string? operatorName);
 
     Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId);
 

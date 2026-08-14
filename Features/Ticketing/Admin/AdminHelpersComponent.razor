@@ -158,6 +158,11 @@
                 Alle Anlässe (auch künftig neu hinzukommende)
             </label>
 
+            <label class="ta-assign-all">
+                <input type="checkbox" checked="@_assignCanRebook" @onchange="@(e => _assignCanRebook = e.Value is true)" />
+                Flextickets umbuchen erlauben
+            </label>
+
             @if (!_assignAll)
             {
                 @if (_events.Count == 0)
@@ -352,6 +357,7 @@
 
     private Helper? _assignFor;
     private bool _assignAll;
+    private bool _assignCanRebook;
     private HashSet<int> _assignEventIds = new();
     private bool _assignSaving;
 
@@ -411,8 +417,11 @@
 
     private bool HasScans(Helper h) => _scanRows.Where(r => r.Person == h.FullName).Sum(r => r.Total) > 0;
 
-    private string AssignmentLabel(Helper h) =>
-        h.AllEvents ? "Alle Anlässe" : $"{h.EventIds.Count(id => _eventById.ContainsKey(id))} Anlässe";
+    private string AssignmentLabel(Helper h)
+    {
+        var events = h.AllEvents ? "Alle Anlässe" : $"{h.EventIds.Count(id => _eventById.ContainsKey(id))} Anlässe";
+        return h.CanRebook ? $"{events} · Umbuchen" : events;
+    }
 
     private void OpenCreate()
     {
@@ -447,6 +456,7 @@
     {
         _assignFor = h;
         _assignAll = h.AllEvents;
+        _assignCanRebook = h.CanRebook;
         _assignEventIds = h.EventIds.ToHashSet();
     }
 
@@ -465,7 +475,7 @@
         try
         {
             var ids = _assignEventIds.Where(id => _eventById.ContainsKey(id)).ToList();
-            await Helpers.SetAssignmentAsync(_assignFor.Id, _assignAll, ids);
+            await Helpers.SetAssignmentAsync(_assignFor.Id, _assignAll, ids, _assignCanRebook);
             _assignFor = null;
             await ReloadAsync();
         }

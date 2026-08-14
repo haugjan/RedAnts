@@ -12,13 +12,14 @@ public sealed class Helper
     public string Code { get; private set; }
     public bool AllEvents { get; private set; }
     public IReadOnlyList<int> EventIds { get; private set; }
+    public bool CanRebook { get; private set; }
     public bool Active { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     public string FullName => $"{FirstName} {LastName}".Trim();
 
     private Helper(int id, int seasonId, string firstName, string lastName, string email, string code,
-        bool allEvents, IReadOnlyList<int> eventIds, bool active, DateTime createdAt)
+        bool allEvents, IReadOnlyList<int> eventIds, bool canRebook, bool active, DateTime createdAt)
     {
         Id = id;
         SeasonId = seasonId;
@@ -28,6 +29,7 @@ public sealed class Helper
         Code = code;
         AllEvents = allEvents;
         EventIds = eventIds;
+        CanRebook = canRebook;
         Active = active;
         CreatedAt = createdAt;
     }
@@ -41,12 +43,12 @@ public sealed class Helper
         var mail = (email ?? "").Trim();
         if (!IsValidEmail(mail)) throw new DomainException("Eine gültige E-Mail-Adresse ist erforderlich.");
         if (string.IsNullOrWhiteSpace(code)) throw new DomainException("Ein Zugangscode ist erforderlich.");
-        return new Helper(0, seasonId, fn, ln, mail, code, true, [], true, DateTime.UtcNow);
+        return new Helper(0, seasonId, fn, ln, mail, code, true, [], false, true, DateTime.UtcNow);
     }
 
     public static Helper FromPersistence(int id, int seasonId, string firstName, string lastName, string email,
-        string code, bool allEvents, IReadOnlyList<int> eventIds, bool active, DateTime createdAt) =>
-        new(id, seasonId, firstName, lastName, email, code, allEvents, eventIds, active, createdAt);
+        string code, bool allEvents, IReadOnlyList<int> eventIds, bool canRebook, bool active, DateTime createdAt) =>
+        new(id, seasonId, firstName, lastName, email, code, allEvents, eventIds, canRebook, active, createdAt);
 
     public static bool IsValidEmail(string? email)
     {

@@ -48,6 +48,7 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
         member.SetValue(HelperAliases.SeasonId, seasonId);
         member.SetValue(HelperAliases.AllEvents, true);
         member.SetValue(HelperAliases.EventIds, "");
+        member.SetValue(HelperAliases.CanRebook, false);
         memberService.Save(member);
 
         return Task.FromResult(Map(member));
@@ -64,13 +65,14 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
         return Task.CompletedTask;
     }
 
-    public Task SetAssignmentAsync(int id, bool allEvents, IReadOnlyList<int> eventIds)
+    public Task SetAssignmentAsync(int id, bool allEvents, IReadOnlyList<int> eventIds, bool canRebook)
     {
         var member = memberService.GetById(id);
         if (member is not null && member.ContentType.Alias == HelperAliases.MemberType)
         {
             member.SetValue(HelperAliases.AllEvents, allEvents);
             member.SetValue(HelperAliases.EventIds, allEvents ? "" : string.Join(',', eventIds.Where(e => e > 0).Distinct()));
+            member.SetValue(HelperAliases.CanRebook, canRebook);
             memberService.Save(member);
         }
         return Task.CompletedTask;
@@ -105,6 +107,7 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
             string.IsNullOrWhiteSpace(m.GetValue<string>(HelperAliases.Code)) ? m.Username : m.GetValue<string>(HelperAliases.Code)!,
             m.GetValue<bool>(HelperAliases.AllEvents),
             ParseIds(m.GetValue<string>(HelperAliases.EventIds)),
+            m.GetValue<bool>(HelperAliases.CanRebook),
             m.IsApproved,
             m.CreateDate);
 

@@ -9,6 +9,6 @@ public interface IHelpers
     Task<Helper?> FindByPasswordAsync(string code);
     Task<Helper> AddAsync(int seasonId, string firstName, string lastName, string email);
     Task SetActiveAsync(int id, bool active);
-    Task SetAssignmentAsync(int id, bool allEvents, IReadOnlyList<int> eventIds);
+    Task SetAssignmentAsync(int id, bool allEvents, IReadOnlyList<int> eventIds, bool canRebook);
     Task DeleteAsync(int id);
 }

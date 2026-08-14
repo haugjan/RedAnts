@@ -4,6 +4,7 @@
     var helperName = HttpContext.Items["HelperName"] as string ?? "";
     var helperAllEvents = HttpContext.Items["HelperAllEvents"] as bool? ?? true;
     var helperEventIds = HttpContext.Items["HelperEventIds"] as string ?? "";
+    var helperCanRebook = HttpContext.Items["HelperCanRebook"] as bool? ?? false;
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -28,7 +29,8 @@
     <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="Server"
                param-HelperName="@helperName"
                param-AllEvents="@helperAllEvents"
-               param-AllowedEventIds="@helperEventIds" />
+               param-AllowedEventIds="@helperEventIds"
+               param-CanRebook="@helperCanRebook" />
 
     <button id="pwaInstall" class="pwa-install" hidden>App installieren</button>
 

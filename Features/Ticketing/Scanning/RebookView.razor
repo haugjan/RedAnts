@@ -1,0 +1,335 @@
+@using RedAnts.Domain.Ticketing.Sales
+@implements IAsyncDisposable
+@inject ISeasons Seasons
+@inject IFlexTicketBundles Bundles
+@inject ITicketTokens Tickets
+@inject IJSRuntime JS
+
+<div class="rebook">
+    <header class="rebook-header">
+        <button type="button" class="rebook-back" @onclick="OnBack">&larr; Zurück</button>
+        <span class="rebook-htitle">Flextickets umbuchen</span>
+    </header>
+
+    <div class="rebook-pick">
+        <div class="rebook-field">
+            <label class="rebook-label" for="rebookSeason">Saison</label>
+            <select id="rebookSeason" class="rebook-select" @bind="SelectedSeasonId" @bind:after="OnSeasonChanged">
+                @foreach (var s in _seasons)
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            </select>
+        </div>
+        <div class="rebook-field">
+            <label class="rebook-label" for="rebookBundle">Ziel-Bundle</label>
+            <select id="rebookBundle" class="rebook-select" @bind="SelectedBundleId" @bind:after="OnBundleChanged">
+                <option value="0">– Bundle wählen –</option>
+                @foreach (var b in _bundles)
+                {
+                    <option value="@b.Id">@b.Reference · @b.Category.DisplayName() (@b.TicketCount)</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (_seasons.Count == 0)
+    {
+        <p class="rebook-hint">Es sind keine Saisons erfasst.</p>
+    }
+    else if (_bundles.Count == 0)
+    {
+        <p class="rebook-hint">Diese Saison hat keine Bundles.</p>
+    }
+    else if (SelectedBundleId <= 0)
+    {
+        <p class="rebook-hint">Ziel-Bundle wählen, danach Flextickets scannen.</p>
+    }
+    else
+    {
+        <div class="rebook-target">Ziel: <strong>@TargetLabel</strong></div>
+
+        <div class="qr-wrap">
+            <div id="qr-rebook-reader" class="qr-reader"></div>
+            <div class="qr-overlay">
+                <span class="qr-overlay__badge">Umbuchen</span>
+            </div>
+        </div>
+
+        @if (_error is not null)
+        {
+            <p class="rebook-hint rebook-hint--error">@_error</p>
+        }
+
+        @if (_last is { } r)
+        {
+            <div class="rebook-result rebook-result--@ResultClass(r)">
+                <div class="rebook-result__head">
+                    <span class="rebook-result__icon">@ResultIcon(r)</span>
+                    <span class="rebook-result__title">@ResultTitle(r)</span>
+                </div>
+                @if (!string.IsNullOrEmpty(r.Category) || !string.IsNullOrEmpty(r.Reference))
+                {
+                    <div class="rebook-result__cat">@r.Category@(string.IsNullOrEmpty(r.Reference) ? "" : $" · {r.Reference}")</div>
+                }
+                @if (r.Status == FlexRebookStatus.Moved && !string.IsNullOrEmpty(r.FromBundle))
+                {
+                    <div class="rebook-result__sub">war: @r.FromBundle</div>
+                }
+                @if (r.Status == FlexRebookStatus.WrongSeason)
+                {
+                    <div class="rebook-result__sub">@WrongSeasonText(r)</div>
+                }
+            </div>
+        }
+
+        <div class="rebook-counter">@_movedCount umgebucht</div>
+
+        @if (_recent.Count > 0)
+        {
+            <ul class="rebook-recent">
+                @foreach (var e in _recent)
+                {
+                    <li class="rebook-recent__row rebook-recent__row--@e.Cls">
+                        <span class="rebook-recent__ref">@e.Ref</span>
+                        <span class="rebook-recent__msg">@e.Msg</span>
+                    </li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+<style>
+    .rebook { position: relative; border-radius: 14px; padding: 0.2rem 0.55rem 0.7rem; background: #fdf7e6; }
+    .rebook-header { display: flex; align-items: center; gap: 0.6rem; margin: 0.2rem 0 0.6rem; }
+    .rebook-back {
+        flex: 0 0 auto; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1px solid #d9c58a;
+        background: #fff; color: #7a5c00; font-size: 0.9rem; font-weight: 800; cursor: pointer;
+    }
+    .rebook-htitle { font-size: 1.05rem; font-weight: 800; color: #7a5c00; }
+
+    .rebook-pick { display: grid; grid-template-columns: 1fr; gap: 0.55rem; margin: 0 0 0.6rem; }
+    .rebook-field { display: flex; flex-direction: column; gap: 0.25rem; }
+    .rebook-label { font-size: 0.8rem; font-weight: 800; color: #7a5c00; text-transform: uppercase; letter-spacing: 0.04em; }
+    .rebook-select {
+        padding: 0.7rem 0.6rem; font-size: 1.05rem; border: 2px solid #d9c58a; border-radius: 10px;
+        background: #fff; color: #14171A; box-sizing: border-box;
+    }
+
+    .rebook-hint { margin: 0.6rem 0; font-size: 0.95rem; color: #7a5c00; text-align: center; }
+    .rebook-hint--error { color: #b42318; font-weight: 700; }
+
+    .rebook-target {
+        margin: 0.2rem 0 0.5rem; padding: 0.4rem 0.7rem; border-radius: 8px;
+        background: #f7ecc6; color: #7a5c00; font-size: 0.95rem;
+    }
+    .rebook-target strong { color: #5c4600; }
+
+    .qr-wrap { position: relative; }
+    .qr-reader { border: 3px solid #b8860b; border-radius: 12px; overflow: hidden; max-height: 46vh; }
+    .qr-reader video { max-height: calc(46vh - 6px); object-fit: cover; width: 100%; }
+    .qr-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: flex-start; justify-content: center; }
+    .qr-overlay__badge {
+        margin-top: 10px; padding: 0.32rem 1.1rem; border-radius: 999px; background: #b8860b; color: #fff;
+        font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.98rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+
+    .rebook-result {
+        margin: 0.6rem 0 0; padding: 0.7rem 0.9rem; border-radius: 12px; color: #fff;
+    }
+    .rebook-result--ok { background: #1a7f37; }
+    .rebook-result--same { background: #6b7280; }
+    .rebook-result--warn { background: #b42318; }
+    .rebook-result__head { display: flex; align-items: center; gap: 0.6rem; }
+    .rebook-result__icon { font-size: 2rem; line-height: 1; }
+    .rebook-result__title { font-size: 1.35rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; }
+    .rebook-result__cat { margin-top: 0.35rem; font-size: 1.15rem; font-weight: 800; }
+    .rebook-result__sub { margin-top: 0.25rem; font-size: 0.95rem; opacity: 0.95; }
+
+    .rebook-counter { margin: 0.6rem 0 0.3rem; text-align: center; font-size: 1.1rem; font-weight: 900; color: #7a5c00; }
+
+    .rebook-recent { list-style: none; margin: 0.2rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .rebook-recent__row {
+        display: flex; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.6rem; border-radius: 8px;
+        font-size: 0.9rem; background: #fff; border-left: 4px solid #d9c58a;
+    }
+    .rebook-recent__row--ok { border-left-color: #1a7f37; }
+    .rebook-recent__row--same { border-left-color: #6b7280; }
+    .rebook-recent__row--warn { border-left-color: #b42318; }
+    .rebook-recent__ref { font-family: ui-monospace, Consolas, monospace; font-weight: 800; color: #14171A; }
+    .rebook-recent__msg { color: #555; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public string Operator { get; set; } = "";
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private DotNetObjectReference<RebookView>? _ref;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<FlexTicketBundleView> _bundles = [];
+
+    public int SelectedSeasonId { get; set; }
+    public int SelectedBundleId { get; set; }
+
+    private FlexRebookResult? _last;
+    private int _movedCount;
+    private readonly List<RecentEntry> _recent = [];
+    private bool _cameraStarted;
+    private string? _error;
+
+    private sealed record RecentEntry(string Ref, string Msg, string Cls);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        if (SelectedSeasonId > 0) _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (SelectedBundleId > 0 && !_cameraStarted)
+        {
+            _cameraStarted = true;
+            _ref ??= DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("ticketScanner.start", "qr-rebook-reader", _ref, true);
+            }
+            catch (JSException ex)
+            {
+                _error = "Kamera konnte nicht gestartet werden: " + ex.Message;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OnSeasonChanged()
+    {
+        SelectedBundleId = 0;
+        _last = null;
+        await StopCameraAsync();
+        _bundles = SelectedSeasonId > 0 ? await Bundles.GetBySeasonAsync(SelectedSeasonId) : [];
+    }
+
+    private async Task OnBundleChanged()
+    {
+        _last = null;
+        if (SelectedBundleId <= 0) await StopCameraAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnCodeScanned(string code)
+    {
+        if (SelectedBundleId <= 0) return;
+        var scanned = ExtractToken(code);
+        FlexRebookResult result;
+        if (Tickets.TryVerify(scanned, out var data))
+            result = await Bundles.RebookByUuidAsync(SelectedBundleId, data.Uuid, Operator);
+        else if (Tickets.TryVerifyShort(scanned, out var shortCode))
+            result = await Bundles.RebookByCodeAsync(SelectedBundleId, shortCode, Operator);
+        else
+            result = new FlexRebookResult(FlexRebookStatus.NotFound, Shorten(code));
+
+        _last = result;
+        if (result.Status == FlexRebookStatus.Moved) _movedCount++;
+        PushRecent(result);
+        StateHasChanged();
+        await Beep(result.Ok);
+    }
+
+    private void PushRecent(FlexRebookResult r)
+    {
+        _recent.Insert(0, new RecentEntry(r.Reference ?? "?", RecentMsg(r), ResultClass(r)));
+        if (_recent.Count > 6) _recent.RemoveAt(_recent.Count - 1);
+    }
+
+    private async Task Beep(bool ok)
+    {
+        try { await JS.InvokeVoidAsync("ticketScanner.beep", ok); }
+        catch (JSException) { }
+    }
+
+    private async Task StopCameraAsync()
+    {
+        if (!_cameraStarted) return;
+        _cameraStarted = false;
+        try { await JS.InvokeVoidAsync("ticketScanner.stop"); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+    }
+
+    private string TargetLabel
+    {
+        get
+        {
+            var b = _bundles.FirstOrDefault(x => x.Id == SelectedBundleId);
+            return b is null ? "" : $"{b.Reference} · {b.Category.DisplayName()}";
+        }
+    }
+
+    private string WrongSeasonText(FlexRebookResult r)
+    {
+        var name = r.TicketSeasonId is { } sid ? _seasons.FirstOrDefault(s => s.Id == sid)?.Name : null;
+        return string.IsNullOrEmpty(name) ? "Ticket gehört zu einer anderen Saison." : $"Ticket gehört zu Saison „{name}“.";
+    }
+
+    private static string RecentMsg(FlexRebookResult r) => r.Status switch
+    {
+        FlexRebookStatus.Moved => string.IsNullOrEmpty(r.FromBundle) ? $"→ {r.ToBundle}" : $"{r.FromBundle} → {r.ToBundle}",
+        FlexRebookStatus.AlreadyInTarget => "bereits in diesem Bundle",
+        FlexRebookStatus.WrongSeason => "andere Saison",
+        _ => "nicht erkannt"
+    };
+
+    private static string ResultClass(FlexRebookResult r) => r.Status switch
+    {
+        FlexRebookStatus.Moved => "ok",
+        FlexRebookStatus.AlreadyInTarget => "same",
+        _ => "warn"
+    };
+
+    private static string ResultIcon(FlexRebookResult r) => r.Status switch
+    {
+        FlexRebookStatus.Moved => "✓",
+        FlexRebookStatus.AlreadyInTarget => "•",
+        _ => "✕"
+    };
+
+    private static string ResultTitle(FlexRebookResult r) => r.Status switch
+    {
+        FlexRebookStatus.Moved => "Umgebucht",
+        FlexRebookStatus.AlreadyInTarget => "Schon in diesem Bundle",
+        FlexRebookStatus.WrongSeason => "Andere Saison",
+        _ => "Kein Flexticket"
+    };
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = SwissTime.Today;
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static string ExtractToken(string code)
+    {
+        var s = (code ?? "").Trim();
+        var cut = s.IndexOfAny(['?', '#']);
+        if (cut >= 0) s = s[..cut];
+        var slash = s.LastIndexOf('/');
+        return slash >= 0 ? s[(slash + 1)..] : s;
+    }
+
+    private static string Shorten(string? s) =>
+        string.IsNullOrEmpty(s) ? "" : (s.Length <= 40 ? s : s[..40] + "…");
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("ticketScanner.stop"); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

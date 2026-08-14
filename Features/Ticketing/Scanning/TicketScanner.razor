@@ -21,6 +21,10 @@
     {
         <ScanView EventId="0" EventName="Testevent" Operator="@_operator" IsTest="true" OnBack="BackToList" />
     }
+    else if (_rebookMode)
+    {
+        <RebookView Operator="@_operator" OnBack="BackToList" />
+    }
     else if (_selected is null)
     {
         <header class="scan-app__header scan-app__header--events">
@@ -76,6 +80,15 @@
             <span class="event-card__name">Testevent</span>
             <span class="event-card__meta">Beliebiges gültiges Ticket prüfen – ohne ein- oder auszuchecken.</span>
         </button>
+
+        @if (CanRebook)
+        {
+            <button type="button" class="event-card event-card--rebook" @onclick="() => _rebookMode = true">
+                <span class="event-card__badge event-card__badge--rebook">Umbuchen</span>
+                <span class="event-card__name">Flextickets umbuchen</span>
+                <span class="event-card__meta">Flextickets scannen und einem Bundle der gleichen Saison zuordnen.</span>
+            </button>
+        }
     }
     else
     {
@@ -135,6 +148,8 @@
     .event-card__badge--today { background: #1a7f37; }
     .event-card--test { border: 2px dashed #0d9488; background: #f0fbfa; margin-top: 0.9rem; width: 100%; text-align: left; cursor: pointer; }
     .event-card__badge--test { background: #0d9488; }
+    .event-card--rebook { border: 2px dashed #b8860b; background: #fdf7e6; margin-top: 0.9rem; width: 100%; text-align: left; cursor: pointer; }
+    .event-card__badge--rebook { background: #b8860b; }
 
     .scan-confirm {
         position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,0.5);
@@ -173,7 +188,7 @@
     public void HandleBack()
     {
         if (_pendingEvent is not null) { _pendingEvent = null; StateHasChanged(); return; }
-        if (_selected is not null || _testMode) { BackToList(); StateHasChanged(); }
+        if (_selected is not null || _testMode || _rebookMode) { BackToList(); StateHasChanged(); }
     }
 
     public void Dispose() => _selfRef?.Dispose();
@@ -181,12 +196,14 @@
     [Parameter] public string HelperName { get; set; } = "";
     [Parameter] public bool AllEvents { get; set; } = true;
     [Parameter] public string AllowedEventIds { get; set; } = "";
+    [Parameter] public bool CanRebook { get; set; }
 
     private readonly DateOnly _today = SwissTime.Today;
     private IReadOnlyList<Event>? _events;
     private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
     private Event? _selected;
     private bool _testMode;
+    private bool _rebookMode;
     private Event? _pendingEvent;
     private string? _operator;
 
@@ -221,7 +238,7 @@
         _selected = evt;
     }
 
-    private void BackToList() { _selected = null; _testMode = false; }
+    private void BackToList() { _selected = null; _testMode = false; _rebookMode = false; }
 
     private string VenueName(int venueId) => _venues.TryGetValue(venueId, out var name) ? name : "";
 
