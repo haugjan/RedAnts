@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Features.Ticketing.Cart;
 using RedAnts.Features.Ticketing.Ports;
@@ -18,6 +19,13 @@ builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 builder.Services.Configure<HostOptions>(options =>
 {
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+});
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
 
 builder.Services.AddRazorPages();
@@ -66,6 +74,8 @@ umbracoBuilder.Build();
 WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
+
+app.UseForwardedHeaders();
 
 const string devBadge =
     "<div style=\"position:fixed;left:0;right:0;bottom:0;z-index:2147483647;" +
