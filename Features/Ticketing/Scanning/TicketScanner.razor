@@ -109,7 +109,7 @@
         </div>
     }
 
-    @if (_selected is null && !_testMode)
+    @if (_selected is null && !_testMode && !_rebookMode)
     {
         <a class="scan-app__testlink" href="/scanner-test">
             <span class="scan-app__testlink-icon" aria-hidden="true">&#9636;</span> Test QR-Code
