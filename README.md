@@ -37,6 +37,18 @@ dotnet run
 - Local development runs with test Turnstile keys and empty Payrexx credentials, so captcha and payment are effectively stubbed until real secrets are supplied via user secrets.
 - A soft **site access gate** (HTTP Basic, `BasicAuth:Password`) fronts the public site in every environment. To browse locally without it, start with an empty password (`BasicAuth__Password=`) or unlock via `/__gate` (or append `?key=<password>` to any URL).
 
+## Backoffice login (Microsoft / Entra ID)
+
+The Umbraco backoffice (`admin[-dev].redants.ch` → `/umbraco`) signs in through **Microsoft Entra ID** for `@redants.ch` accounts. Local password login is disabled (`DenyLocalLogin`), and only **existing** Umbraco users are linked by e-mail (no auto-provisioning of new users). Config keys (empty in `appsettings.json`, supplied per environment):
+
+```bash
+dotnet user-secrets set "BackOfficeAuth:TenantId" "<tenant id>"
+dotnet user-secrets set "BackOfficeAuth:ClientId" "<app registration client id>"
+dotnet user-secrets set "BackOfficeAuth:ClientSecret" "<client secret>"
+```
+
+For DEV/PROD the same keys come from App Service app settings (`BackOfficeAuth__TenantId` / `__ClientId` / `__ClientSecret`). The provider only activates when all three are set: leave them empty (e.g. a fresh local run) and the classic Umbraco login stays active, which doubles as the **break-glass** access. The Entra app registration (single tenant, redirect URIs `/umbraco-entra-signin` for each admin host plus `http://localhost:5601/...`) is created with `docs/backoffice-entra-appreg.ps1`. Existing backoffice users must have their `@redants.ch` address set as their Umbraco user e-mail, otherwise linking fails.
+
 ## Project layout
 
 | Path | Purpose |
