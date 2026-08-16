@@ -345,6 +345,8 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
 
     static bool IsExempt(PathString path) =>
         path.StartsWithSegments("/umbraco")
+        || path.StartsWithSegments("/umbraco-entra-signin")
+        || path.StartsWithSegments("/umbraco-entra-signout")
         || path.StartsWithSegments("/admin/ticketing")
         || path.StartsWithSegments("/App_Plugins")
         || path.StartsWithSegments("/_blazor")
