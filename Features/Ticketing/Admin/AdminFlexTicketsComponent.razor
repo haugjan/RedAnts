@@ -53,6 +53,13 @@
                     <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport"
                             title="Ein oder mehrere Bundles als Excel/CSV exportieren (Karten-Nr + Bundle + Ticketlink)">Export CSV</button>
                     <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => OpenEdit(SelectedBundle)">Referenz bearbeiten</button>
+                    @if (Identity?.IsAdmin == true)
+                    {
+                        <button type="button" class="ta-btn ta-btn-ghost ta-btn-danger"
+                                disabled="@(SelectedBundle.TicketCount > 0)"
+                                title="@(SelectedBundle.TicketCount > 0 ? "Nur leere Bundles können gelöscht werden – bitte zuerst die Flextickets entfernen" : "Bundle löschen")"
+                                @onclick="OpenDeleteBundle">Bundle löschen</button>
+                    }
                 }
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
                     Bundle erstellen
@@ -223,17 +230,21 @@
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
-                <input id="newQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_newQuantity" />
+                <input id="newQuantity" class="ta-input" type="number" min="0" max="1000" @bind="_newQuantity" />
+                <p class="ta-field-hint">0 = leeres Bundle (nur als Umbuchungsziel, ohne Tickets).</p>
             </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
-                <select id="newFlexPaymentSource" class="ta-select" @bind="_newPaymentSource">
-                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
-                    {
-                        <option value="@ps">@ps.DisplayName()</option>
-                    }
-                </select>
-            </div>
+            @if (_newQuantity > 0)
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
+                    <select id="newFlexPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                        @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                        {
+                            <option value="@ps">@ps.DisplayName()</option>
+                        }
+                    </select>
+                </div>
+            }
 
             @if (!string.IsNullOrEmpty(_createError))
             {
@@ -341,6 +352,14 @@
                    OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
 }
 
+@if (_deleteBundleTarget is not null)
+{
+    <ConfirmDialog Title="Bundle löschen"
+                   Message="@($"Bundle „{_deleteBundleTarget.Reference}“ endgültig löschen?")"
+                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBundleBusy" Error="@_deleteBundleError"
+                   OnConfirm="DeleteBundleConfirmedAsync" OnCancel="CancelDeleteBundle" />
+}
+
 <style>
     .ta-export-tools { display: flex; gap: 1rem; margin: 0 0 .5rem; }
     .ta-linkish { background: none; border: 0; padding: 0; color: var(--ta-accent); font-size: .85rem; cursor: pointer; text-decoration: underline; }
@@ -367,6 +386,39 @@
     private string? _deleteError;
 
     private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private FlexTicketBundleView? _deleteBundleTarget;
+    private bool _deleteBundleBusy;
+    private string? _deleteBundleError;
+
+    private void OpenDeleteBundle()
+    {
+        _deleteBundleTarget = SelectedBundle;
+        _deleteBundleError = null;
+    }
+
+    private void CancelDeleteBundle() { _deleteBundleTarget = null; _deleteBundleError = null; }
+
+    private async Task DeleteBundleConfirmedAsync()
+    {
+        if (_deleteBundleTarget is null) return;
+        _deleteBundleBusy = true;
+        _deleteBundleError = null;
+        try
+        {
+            if (!await Bundles.DeleteEmptyAsync(_deleteBundleTarget.Id))
+            {
+                _deleteBundleError = "Nur leere Bundles können gelöscht werden. Bitte zuerst die Flextickets entfernen.";
+                return;
+            }
+            _deleteBundleTarget = null;
+            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+            SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
+            await ReloadTicketsAsync();
+        }
+        catch (Exception ex) { _deleteBundleError = ex.Message; }
+        finally { _deleteBundleBusy = false; }
+    }
 
     private async Task DeleteConfirmedAsync()
     {
@@ -590,7 +642,7 @@
         if (reference.Length == 0) { _createError = "Bitte eine Referenz angeben."; return; }
         if (reference.Length > FlexTicketBundle.ReferenceMaxLength)
         { _createError = $"Die Referenz darf höchstens {FlexTicketBundle.ReferenceMaxLength} Zeichen lang sein."; return; }
-        if (_newQuantity < 1) { _createError = "Die Anzahl muss mindestens 1 sein."; return; }
+        if (_newQuantity < 0) { _createError = "Die Anzahl darf nicht negativ sein."; return; }
 
         _saving = true;
         try
@@ -600,11 +652,20 @@
                 _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
                 return;
             }
-            var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-                [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
-                Identity?.Name ?? AdminUser, _newPaymentSource);
-            var created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
-                Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
+            FlexTicketBundleView created;
+            if (_newQuantity == 0)
+            {
+                created = await Bundles.CreateEmptyAsync(SelectedSeasonId, _newCategory, reference,
+                    Identity?.Name ?? AdminUser, Identity?.Email);
+            }
+            else
+            {
+                var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                    [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
+                    Identity?.Name ?? AdminUser, _newPaymentSource);
+                created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
+                    Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
+            }
             _showCreate = false;
             _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
             SelectedBundleId = created.Id;
