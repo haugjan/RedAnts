@@ -26,7 +26,7 @@
     <meta name="apple-mobile-web-app-title" content="RA Scanner" />
 </head>
 <body>
-    <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="Server"
+    <component type="typeof(RedAnts.Features.Ticketing.Scanning.TicketScanner)" render-mode="ServerPrerendered"
                param-HelperName="@helperName"
                param-AllEvents="@helperAllEvents"
                param-AllowedEventIds="@helperEventIds"
@@ -36,7 +36,23 @@
 
     <script src="/js/jsQR.js" asp-append-version="true"></script>
     <script src="/js/ticket-scanner.js" asp-append-version="true"></script>
-    <script src="_framework/blazor.server.js"></script>
+    <script src="_framework/blazor.server.js" autostart="false"></script>
+
+    <script>
+        (function () {
+            var KEY = 'raScanBoot';
+            function retryOnce() {
+                var n = +(sessionStorage.getItem(KEY) || 0);
+                if (n < 5) {
+                    sessionStorage.setItem(KEY, n + 1);
+                    setTimeout(function () { location.reload(); }, 3000);
+                }
+            }
+            Blazor.start()
+                .then(function () { sessionStorage.removeItem(KEY); })
+                .catch(retryOnce);
+        })();
+    </script>
 
     <script>
         (function () {
