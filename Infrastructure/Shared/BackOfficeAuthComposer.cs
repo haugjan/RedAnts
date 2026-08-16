@@ -3,16 +3,18 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Umbraco.Cms.Api.Management.Security;
-using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
+using Umbraco.Cms.Core.Manifest;
 using Umbraco.Cms.Core.Security;
+using Umbraco.Cms.Infrastructure.Manifest;
 using Umbraco.Extensions;
 
 namespace RedAnts.Infrastructure.Shared;
 
 public sealed class BackOfficeAuthComposer : IComposer
 {
+    internal const string Scheme = "Umbraco.MicrosoftEntra";
     private const string EmailDomain = "@redants.ch";
 
     public void Compose(IUmbracoBuilder builder)
@@ -28,7 +30,9 @@ public sealed class BackOfficeAuthComposer : IComposer
             return;
         }
 
-        var scheme = Constants.Security.BackOfficeExternalAuthenticationTypePrefix + "MicrosoftEntra";
+        var scheme = Scheme;
+
+        builder.Services.AddSingleton<IPackageManifestReader, MicrosoftEntraAuthProviderManifestReader>();
 
         builder.AddBackOfficeExternalLogins(logins =>
             logins.AddBackOfficeLogin(
@@ -76,5 +80,43 @@ public sealed class BackOfficeAuthComposer : IComposer
                          ?? loginInfo.Principal.FindFirstValue("upn");
         return identifier is not null
                && identifier.Trim().EndsWith(EmailDomain, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+public sealed class MicrosoftEntraAuthProviderManifestReader : IPackageManifestReader
+{
+    public Task<IEnumerable<PackageManifest>> ReadPackageManifestsAsync()
+    {
+        var manifest = new PackageManifest
+        {
+            Name = "RedAnts.BackOfficeAuth",
+            AllowPublicAccess = true,
+            Extensions =
+            [
+                new
+                {
+                    type = "authProvider",
+                    alias = "RedAnts.AuthProviders.MicrosoftEntra",
+                    name = "Microsoft Entra login provider",
+                    forProviderName = BackOfficeAuthComposer.Scheme,
+                    meta = new
+                    {
+                        label = "Mit Microsoft anmelden",
+                        defaultView = new
+                        {
+                            icon = "icon-cloud",
+                            look = "primary",
+                            color = "default"
+                        },
+                        linking = new
+                        {
+                            allowManualLinking = false
+                        }
+                    }
+                }
+            ]
+        };
+
+        return Task.FromResult<IEnumerable<PackageManifest>>(new[] { manifest });
     }
 }
