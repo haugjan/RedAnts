@@ -30,10 +30,16 @@ public sealed class CartItem
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public List<CartAddOn> AddOns { get; set; } = [];
+    public int? OriginType { get; set; }
+    public string? OriginCardUuid { get; set; }
+    public string? OriginLabel { get; set; }
+    public int OriginCategory { get; set; }
 
+    [JsonIgnore] public bool IsConversion => OriginType is not null && !string.IsNullOrEmpty(OriginCardUuid);
     [JsonIgnore] public int RefId => Kind == CartItemKind.SeasonPass ? SeasonId : EventId;
     [JsonIgnore] public string AddOnKey => AddOns.Count == 0 ? "" : string.Join("-", AddOns.Select(a => a.Id).OrderBy(x => x));
-    [JsonIgnore] public string Key => $"{(int)Kind}:{RefId}:{TierId}:{AddOnKey}";
+    [JsonIgnore] public string Key => $"{(int)Kind}:{RefId}:{TierId}:{AddOnKey}"
+        + (string.IsNullOrEmpty(OriginCardUuid) ? "" : ":" + OriginCardUuid);
     [JsonIgnore] public decimal AddOnTotal => AddOns.Sum(a => a.Price);
     [JsonIgnore] public decimal LineTotal => (UnitPrice + AddOnTotal) * Quantity;
 }
@@ -63,6 +69,7 @@ public interface ICartService
     Cart Get();
     void Add(int eventId, string eventName, int tierId, string categoryName, string standardCategoryName, decimal unitPrice, int quantity);
     void AddSeasonPass(int seasonId, string seasonName, int tierId, string categoryName, string standardCategoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns);
+    int AddConversion(int eventId, string eventName, int seasonId, int tierId, string categoryName, int originCategory, decimal unitPrice, TicketType originType, Guid originCardUuid, string originLabel, int capTotal);
     void AddOrderAddOns(IReadOnlyList<CartAddOn> addOns);
     void RemoveOrderAddOn(int addOnId);
     void SetQuantity(string key, int quantity);

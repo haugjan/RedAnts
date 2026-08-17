@@ -89,6 +89,47 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         Save(cart);
     }
 
+    public int AddConversion(int eventId, string eventName, int seasonId, int tierId, string categoryName,
+        int originCategory, decimal unitPrice, TicketType originType, Guid originCardUuid, string originLabel, int capTotal)
+    {
+        var cardKey = originCardUuid.ToString();
+        var cart = Get();
+        var existing = cart.Items.FirstOrDefault(i =>
+            i.Kind == CartItemKind.EventTicket && i.EventId == eventId && i.OriginCardUuid == cardKey);
+        var inCart = existing?.Quantity ?? 0;
+        var allowed = Math.Min(capTotal, MaxQuantityPerItem);
+        if (inCart >= allowed) return 0;
+
+        if (existing is not null)
+        {
+            existing.Quantity = inCart + 1;
+            existing.UnitPrice = unitPrice;
+            existing.EventName = eventName;
+            existing.CategoryName = categoryName;
+        }
+        else
+        {
+            cart.Items.Add(new CartItem
+            {
+                Kind = CartItemKind.EventTicket,
+                EventId = eventId,
+                SeasonId = seasonId,
+                EventName = eventName,
+                TierId = tierId,
+                CategoryName = categoryName,
+                StandardCategoryName = categoryName,
+                UnitPrice = unitPrice,
+                Quantity = 1,
+                OriginType = (int)originType,
+                OriginCardUuid = cardKey,
+                OriginLabel = originLabel,
+                OriginCategory = originCategory
+            });
+        }
+        Save(cart);
+        return 1;
+    }
+
     public void AddOrderAddOns(IReadOnlyList<CartAddOn> addOns)
     {
         if (addOns is null || addOns.Count == 0) return;

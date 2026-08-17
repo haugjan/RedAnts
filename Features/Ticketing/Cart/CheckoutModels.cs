@@ -59,7 +59,8 @@ public sealed class CheckoutProcessingView
 }
 
 public sealed record FulfillmentItem(
-    int Kind, int EventId, int SeasonId, int TierId, decimal UnitPrice, int Quantity, string EventName, string CategoryName);
+    int Kind, int EventId, int SeasonId, int TierId, decimal UnitPrice, int Quantity, string EventName, string CategoryName,
+    int? OriginType = null, string? OriginCardUuid = null, int OriginCategory = 0);
 
 public sealed record FulfillmentAddOn(
     int Id, int SeasonId, string EventName, int TierId, string CategoryName, string Label, decimal Price, int Quantity);

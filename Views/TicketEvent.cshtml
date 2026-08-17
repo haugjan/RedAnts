@@ -1,5 +1,6 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @inject RedAnts.Features.Ticketing.Ports.IEventPricing Pricing
+@inject RedAnts.Features.Ticketing.Ports.IEventConversionRules ConversionRules
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Domain.Ticketing
@@ -23,6 +24,9 @@
     var awayLogo = Model.Value<IPublishedContent>("awayTeamLogo")?.Url();
     var text = Model.Value<string>("text");
     var backHref = "/ticketing/";
+    var conversionRules = blocked
+        ? (IReadOnlyList<RedAnts.Features.Ticketing.Ports.EventConversionRule>)Array.Empty<RedAnts.Features.Ticketing.Ports.EventConversionRule>()
+        : await ConversionRules.GetByEventAsync(Model.Id);
 }
 
 @section Head {
@@ -247,6 +251,32 @@ else
                 <a href="/cart" class="evt-continue" id="evt-continue">Weiter zum Warenkorb &rarr;</a>
             </div>
 
+            @if (conversionRules.Count > 0)
+            {
+                <div class="evt-convert">
+                    <h2 class="evt-convert__title">Karte umwandeln</h2>
+                    <p class="evt-convert__hint">Für diesen Anlass geben Saisonkarten, Mitglieder- und Flextickets nicht automatisch Eintritt. Gib deine Kartennummer ein, um dein Ticket für diesen Anlass zu lösen.</p>
+                    <form class="evt-convert-form" method="post" action="/cart/convert">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="eventId" value="@Model.Id" />
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <input type="text" name="cardNumber" placeholder="Kartennummer" aria-label="Kartennummer" autocomplete="off" autocapitalize="none" />
+                        <button type="submit" class="evt-addbtn">Ticket lösen</button>
+                    </form>
+                    <p class="evt-convert-msg" id="evt-convert-msg" role="status" hidden></p>
+                </div>
+                <style>
+                    .evt-convert { margin-top: 1.5rem; padding: 1.1rem 1.2rem; border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fafafa; }
+                    .evt-convert__title { margin: 0 0 .3rem; font-size: 1.1rem; }
+                    .evt-convert__hint { margin: 0 0 .8rem; font-size: .9rem; color: #555; }
+                    .evt-convert-form { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+                    .evt-convert-form input[type=text] { flex: 1 1 12rem; padding: .55rem .7rem; border: 1px solid #bbb; border-radius: 6px; font-size: 1rem; }
+                    .evt-convert-msg { margin: .7rem 0 0; font-size: .9rem; font-weight: 600; }
+                    .evt-convert-msg.is-ok { color: #1a7f37; }
+                    .evt-convert-msg.is-error { color: #c8102e; }
+                </style>
+            }
+
             @if (venue is not null)
             {
                 var arrival = venue.Value<string>("arrival");
@@ -353,6 +383,42 @@ else
             });
         });
     });
+
+    var convForm = document.querySelector('.evt-convert-form');
+    if (convForm) {
+        var convMsg = document.getElementById('evt-convert-msg');
+        var convBtn = convForm.querySelector('button');
+        var convLabel = convBtn ? convBtn.textContent : '';
+        convForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            convBtn.disabled = true;
+            if (convMsg) convMsg.hidden = true;
+            fetch('/cart/convert', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'fetch' },
+                body: new FormData(convForm)
+            })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function (data) {
+                if (convMsg) {
+                    convMsg.textContent = data.message || '';
+                    convMsg.classList.toggle('is-ok', !!data.ok);
+                    convMsg.classList.toggle('is-error', !data.ok);
+                    convMsg.hidden = false;
+                }
+                if (data.ok) {
+                    bumpBadge(data.totalQuantity);
+                    var cont = document.getElementById('evt-continue');
+                    if (cont) cont.classList.add('is-visible');
+                    convForm.reset();
+                }
+            })
+            .catch(function () {
+                if (convMsg) { convMsg.textContent = 'Umwandlung momentan nicht möglich.'; convMsg.classList.add('is-error'); convMsg.hidden = false; }
+            })
+            .finally(function () { convBtn.disabled = false; convBtn.textContent = convLabel; });
+        });
+    }
 }());
 </script>
 }

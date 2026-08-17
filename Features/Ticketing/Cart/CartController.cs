@@ -7,10 +7,49 @@ namespace RedAnts.Features.Ticketing.Cart;
 public sealed class CartController(
     ICartService cart, IEventPricing pricing, IEvents events,
     ISeasonPassPricing passPricing, ISeasons seasons, ISeasonAddOns seasonAddOns,
-    IPriceTiers priceTiers) : Controller
+    IPriceTiers priceTiers, IConvertibleCards convertibleCards) : Controller
 {
     [HttpGet("/cart")]
     public IActionResult Index() => View(cart.Get());
+
+    [HttpPost("/cart/convert")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Convert(int eventId, string? cardNumber, string? returnUrl)
+    {
+        var res = await convertibleCards.ResolveAsync(eventId, cardNumber ?? "");
+        var added = false;
+        string message;
+        if (!res.Ok || res.Offer is null)
+        {
+            message = res.Error ?? "Umwandlung nicht möglich.";
+        }
+        else
+        {
+            var o = res.Offer;
+            var n = cart.AddConversion(eventId, o.EventName, o.SeasonId, o.TierId, o.CardLabel,
+                o.OriginCategory, o.Price, o.CardType, o.CardUuid, o.CardLabel, o.RemainingCap);
+            added = n > 0;
+            message = added
+                ? (o.Price > 0m
+                    ? $"Umgewandeltes Ticket ({o.CardLabel}) für CHF {o.Price:0.00} im Warenkorb."
+                    : $"Umgewandeltes Ticket ({o.CardLabel}) im Warenkorb.")
+                : "Für diese Karte sind bereits alle Umwandlungen im Warenkorb.";
+        }
+
+        if (IsFetchRequest())
+        {
+            var current = cart.Get();
+            return Json(new
+            {
+                ok = added,
+                message,
+                totalQuantity = current.TotalQuantity,
+                totalAmount = current.TotalAmount
+            });
+        }
+
+        return RedirectBack(returnUrl);
+    }
 
     [HttpPost("/cart/direct")]
     [ValidateAntiForgeryToken]

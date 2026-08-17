@@ -12,7 +12,7 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Features.Ticketing.Cart;
 
-public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, IEvents events, ISeasons seasons, IVenues venues, IIssuedTicketReader issuedTickets, IDataProtectionProvider dataProtection, ILogger<CheckoutController> logger) : Controller
+public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, IEvents events, ISeasons seasons, IVenues venues, IIssuedTicketReader issuedTickets, IConvertibleCards convertibleCards, IDataProtectionProvider dataProtection, ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
     private const string ConfirmationKey = "RedAnts.Checkout.Confirmation";
@@ -286,7 +286,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     private static string BuildSnapshotJson(Cart cart, bool subscribeNewsletter, string newsletterSource)
     {
         var items = cart.Items
-            .Select(i => new FulfillmentItem((int)i.Kind, i.EventId, i.SeasonId, i.TierId, i.UnitPrice, i.Quantity, i.EventName, i.CategoryName))
+            .Select(i => new FulfillmentItem((int)i.Kind, i.EventId, i.SeasonId, i.TierId, i.UnitPrice, i.Quantity, i.EventName, i.CategoryName,
+                i.OriginType, i.OriginCardUuid, i.OriginCategory))
             .ToList();
         var addOns = cart.Items
             .Where(i => i.Kind == CartItemKind.SeasonPass && i.AddOns.Count > 0)
@@ -328,8 +329,13 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                     continue;
                 }
 
+                var originType = item.OriginType is { } ot ? (TicketType)ot : (TicketType?)null;
+                var originUuid = Guid.TryParse(item.OriginCardUuid, out var ou) ? ou : (Guid?)null;
                 var ticket = await tickets.SaveAsync(
-                    EventTicket.Create(item.EventId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
+                    EventTicket.Create(item.EventId, (TicketCategory)item.OriginCategory, item.UnitPrice, order.Id, buyer,
+                        "Online-Kauf", tierId: item.TierId, originType: originType, originCardUuid: originUuid));
+                if (originType == TicketType.SeasonSingle && originUuid is { } flexUuid)
+                    await convertibleCards.MarkFlexConvertedAsync(flexUuid, item.EventId);
                 var token = tokens.CreateShort(ticket.Uuid);
                 var ticketCategory = await TicketCategoryNameAsync(ticket.Uuid, item.CategoryName);
                 issued.Add(new ConfirmationTicket(ticket.Uuid, item.EventName, ticketCategory, token, (int)TicketType.EventTicket, await EventDateTextAsync(item.EventId), await EventVenueNameAsync(item.EventId), holderName));
