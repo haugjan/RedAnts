@@ -8,7 +8,12 @@ public sealed record EventAdmissionCounts(
     int RedeemedMemberCards,
     int RedeemedFreeEntries,
     int SeasonPassHolders = 0,
-    int MemberHolders = 0)
+    int MemberHolders = 0,
+    int ConvertedSeasonPasses = 0,
+    int ConvertedMemberCards = 0,
+    int ConvertedFlex = 0,
+    int ConvertedPaid = 0,
+    decimal ConvertedRevenue = 0m)
 {
     public static readonly EventAdmissionCounts Empty = new(0, 0, 0, 0, 0, 0);
 
@@ -18,6 +23,8 @@ public sealed record EventAdmissionCounts(
 
     public int ExpectedAdmissions =>
         SoldSingleTickets + SeasonPassHolders + MemberHolders + RedeemedFreeEntries;
+
+    public int TotalConversions => ConvertedSeasonPasses + ConvertedMemberCards + ConvertedFlex;
 }
 
 public interface IEventAdmissionReport

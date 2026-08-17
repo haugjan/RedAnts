@@ -108,7 +108,10 @@
                             <td class="ta-num">@c.SoldSingleTickets</td>
                             <td class="ta-num @PastClass(e, c)">@c.TotalRedeemed</td>
                             <td class="ta-num @ExpectedClass(e, c)" title="@ExpectedTitle(e, c)">@c.ExpectedAdmissions</td>
-                            <td class="ta-num ta-group-col">@c.RedeemedEventTickets</td>
+                            <td class="ta-num ta-group-col" title="@ConvTitle(c)">
+                                @c.RedeemedEventTickets@if (c.TotalConversions > 0)
+                                {<span class="ta-conv-badge">· @c.TotalConversions Uml.</span>}
+                            </td>
                             <td class="ta-num">@c.RedeemedSeasonSingleTickets</td>
                             <td class="ta-num">@c.RedeemedSeasonPasses</td>
                             <td class="ta-num">@c.RedeemedMemberCards</td>
@@ -315,6 +318,11 @@
     }
 
     private EventAdmissionCounts Counts(int eventId) => _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
+
+    private static string ConvTitle(EventAdmissionCounts c) =>
+        c.TotalConversions == 0
+            ? "Keine Ticketumwandlungen"
+            : $"Umwandlungen: {c.TotalConversions} (Saisonkarte {c.ConvertedSeasonPasses}, Mitglied {c.ConvertedMemberCards}, Flex {c.ConvertedFlex}); davon bezahlt {c.ConvertedPaid}, Umwandlungs-Umsatz CHF {c.ConvertedRevenue:0.00}";
     private int? Quota(int eventId) => _quotas.TryGetValue(eventId, out var q) ? q : null;
     private int? SalesQuota(int eventId) => _salesQuotas.TryGetValue(eventId, out var q) ? q : null;
     private EventLinks Links(int eventId) => _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);

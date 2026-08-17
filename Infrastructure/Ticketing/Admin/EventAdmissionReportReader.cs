@@ -62,6 +62,25 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
             "SELECT SeasonId AS EventId, SUM(Admissions) AS Cnt FROM MembershipCards WHERE Status = @0 GROUP BY SeasonId",
             (int)TicketStatus.Valid);
 
+        var convRows = await scope.Database.FetchAsync<ConvRow>(
+            "SELECT EventId, OriginType AS OriginType, COUNT(*) AS Cnt, " +
+            "SUM(CASE WHEN Price > 0 THEN 1 ELSE 0 END) AS PaidCnt, SUM(Price) AS Revenue " +
+            "FROM EventTickets WHERE OriginType IS NOT NULL AND Status = @0 GROUP BY EventId, OriginType",
+            new object[] { (int)TicketStatus.Valid });
+        var convSeason = new Dictionary<int, int>();
+        var convMember = new Dictionary<int, int>();
+        var convFlex = new Dictionary<int, int>();
+        var convPaid = new Dictionary<int, int>();
+        var convRevenue = new Dictionary<int, decimal>();
+        foreach (var r in convRows)
+        {
+            if (r.OriginType == (int)TicketType.SeasonPass) convSeason[r.EventId] = r.Cnt;
+            else if (r.OriginType == (int)TicketType.MemberCard) convMember[r.EventId] = r.Cnt;
+            else if (r.OriginType == (int)TicketType.SeasonSingle) convFlex[r.EventId] = r.Cnt;
+            convPaid[r.EventId] = convPaid.GetValueOrDefault(r.EventId) + r.PaidCnt;
+            convRevenue[r.EventId] = convRevenue.GetValueOrDefault(r.EventId) + r.Revenue;
+        }
+
         var eventToSeason = (await events.GetAllAsync()).ToDictionary(e => e.Id, e => e.SeasonId);
 
         var ids = new HashSet<int>();
@@ -72,6 +91,9 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
         ids.UnionWith(memberVisits.Keys);
         ids.UnionWith(freeEntries.Keys);
         ids.UnionWith(fixedFree.Keys);
+        ids.UnionWith(convSeason.Keys);
+        ids.UnionWith(convMember.Keys);
+        ids.UnionWith(convFlex.Keys);
         ids.UnionWith(eventToSeason.Keys);
 
         var result = new Dictionary<int, EventAdmissionCounts>();
@@ -86,7 +108,12 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
                 memberVisits.GetValueOrDefault(id),
                 freeEntries.GetValueOrDefault(id) + fixedFree.GetValueOrDefault(id),
                 passHolders.GetValueOrDefault(seasonId),
-                memberHolders.GetValueOrDefault(seasonId));
+                memberHolders.GetValueOrDefault(seasonId),
+                convSeason.GetValueOrDefault(id),
+                convMember.GetValueOrDefault(id),
+                convFlex.GetValueOrDefault(id),
+                convPaid.GetValueOrDefault(id),
+                convRevenue.GetValueOrDefault(id));
         }
         return result;
     }
@@ -95,6 +122,15 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
     {
         public int EventId { get; set; }
         public int Cnt { get; set; }
+    }
+
+    public sealed class ConvRow
+    {
+        public int EventId { get; set; }
+        public int OriginType { get; set; }
+        public int Cnt { get; set; }
+        public int PaidCnt { get; set; }
+        public decimal Revenue { get; set; }
     }
 }
 
