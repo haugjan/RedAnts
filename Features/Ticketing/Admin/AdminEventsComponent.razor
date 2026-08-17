@@ -122,6 +122,8 @@
                                         @onclick="() => OpenPricing(e)">$</button>
                                 <button type="button" class="ta-icon-btn" title="Freieintritt-Kontingente bearbeiten"
                                         @onclick="() => OpenEdit(e)">🎟️</button>
+                                <button type="button" class="ta-icon-btn" title="Ticketumwandlung (Saisonkarte / Mitglied / Flex)"
+                                        @onclick="() => OpenConversion(e)">🔁</button>
                             </td>
                         </tr>
                     }
@@ -214,6 +216,54 @@
     </div>
 }
 
+@if (_conversionEvent is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelConversion">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Ticketumwandlung</h2>
+            <p class="ta-modal-sub">@_conversionEvent.Name · @_conversionEvent.Date.ToString("dd.MM.yyyy")</p>
+
+            <div class="ta-conv-grid">
+                <label class="ta-label">Saisonkarte</label>
+                <label class="ta-conv-toggle">
+                    <input type="checkbox" @bind="_convSeasonRequired" />
+                    <span>Umwandlung nötig (gratis)</span>
+                </label>
+
+                <label class="ta-label">Mitgliederkarte</label>
+                <label class="ta-conv-toggle">
+                    <input type="checkbox" @bind="_convMemberRequired" />
+                    <span>Umwandlung nötig (gratis)</span>
+                </label>
+
+                <label class="ta-label">Flexticket</label>
+                <div class="ta-conv-flex">
+                    <label class="ta-conv-toggle">
+                        <input type="checkbox" @bind="_convFlexRequired" />
+                        <span>Umwandlung nötig, Rabatt (CHF)</span>
+                    </label>
+                    <input type="number" min="0" step="0.01" class="ta-input" placeholder="0.00"
+                           @bind="_convFlexDiscount" @bind:after="() => _convFlexDiscount = Math.Max(0m, decimal.Round(_convFlexDiscount, 2))"
+                           disabled="@(!_convFlexRequired)" />
+                </div>
+            </div>
+            <p class="ta-field-hint">Ohne Häkchen: keine Beschränkung (Karte gibt automatisch Eintritt). Mit Häkchen ist am Eingang eine Ticketumwandlung nötig. Saisonkarte/Mitglied sind gratis; beim Flexticket wird der Rabatt vom regulären Ticketpreis abgezogen (nie unter 0).</p>
+
+            @if (_convError is not null)
+            {
+                <p class="ta-modal-error">@_convError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelConversion" disabled="@_convSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveConversion" disabled="@_convSaving">
+                    @(_convSaving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_linkEvent is not null)
 {
     var l = Links(_linkEvent.Id);
@@ -237,6 +287,7 @@
     [Inject] private IEventPrices Prices { get; set; } = default!;
     [Inject] private IPriceTiers PriceTiers { get; set; } = default!;
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
+    [Inject] private IEventConversionRules ConversionRules { get; set; } = default!;
     [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
@@ -308,6 +359,9 @@
             _salesQuotas = await SalesQuotaEditor.GetAllAsync();
             _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);
             _createEventUrl = await CreateLinks.CreateEventUrlAsync(SelectedSeasonId);
+            _conversionRules = (await ConversionRules.GetAllAsync())
+                .GroupBy(r => r.EventId)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<EventConversionRule>)g.ToList());
         }
         else
         {
@@ -316,6 +370,57 @@
             _salesQuotas = new Dictionary<int, int?>();
             _links = new Dictionary<int, EventLinks>();
             _createEventUrl = null;
+            _conversionRules = new Dictionary<int, IReadOnlyList<EventConversionRule>>();
+        }
+    }
+
+    private IReadOnlyDictionary<int, IReadOnlyList<EventConversionRule>> _conversionRules =
+        new Dictionary<int, IReadOnlyList<EventConversionRule>>();
+
+    private Event? _conversionEvent;
+    private bool _convSeasonRequired;
+    private bool _convMemberRequired;
+    private bool _convFlexRequired;
+    private decimal _convFlexDiscount;
+    private bool _convSaving;
+    private string? _convError;
+
+    private void OpenConversion(Event e)
+    {
+        _conversionEvent = e;
+        _convError = null;
+        var rules = _conversionRules.TryGetValue(e.Id, out var list) ? list : [];
+        _convSeasonRequired = rules.Any(r => r.CardType == TicketType.SeasonPass);
+        _convMemberRequired = rules.Any(r => r.CardType == TicketType.MemberCard);
+        var flex = rules.FirstOrDefault(r => r.CardType == TicketType.SeasonSingle);
+        _convFlexRequired = flex is not null;
+        _convFlexDiscount = flex?.Discount ?? 0m;
+    }
+
+    private void CancelConversion() => _conversionEvent = null;
+
+    private async Task SaveConversion()
+    {
+        if (_conversionEvent is null) return;
+        _convSaving = true;
+        _convError = null;
+        try
+        {
+            var id = _conversionEvent.Id;
+            await ConversionRules.SetAsync(id, TicketType.SeasonPass, _convSeasonRequired ? 0m : null);
+            await ConversionRules.SetAsync(id, TicketType.MemberCard, _convMemberRequired ? 0m : null);
+            await ConversionRules.SetAsync(id, TicketType.SeasonSingle,
+                _convFlexRequired ? Math.Max(0m, decimal.Round(_convFlexDiscount, 2)) : null);
+            await ReloadEventsAsync();
+            _conversionEvent = null;
+        }
+        catch (Exception ex)
+        {
+            _convError = ex.Message;
+        }
+        finally
+        {
+            _convSaving = false;
         }
     }
 

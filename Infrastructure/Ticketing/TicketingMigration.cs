@@ -51,6 +51,36 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddPageViews>("pageviews");
         To<AddMemberCardAddress>("membercard-address");
         To<AddMemberCardAdmissions>("membercard-admissions");
+        To<AddEventConversionRules>("event-conversion-rules");
+        To<AddTicketOriginColumns>("ticket-origin-columns");
+    }
+}
+
+public class AddEventConversionRules(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("EventConversionRules"))
+            Create.Table<EventConversionRuleRecord>().Do();
+        return Task.CompletedTask;
+    }
+}
+
+public class AddTicketOriginColumns(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddOrigin("EventTickets");
+        AddOrigin("TicketEventVisits");
+        return Task.CompletedTask;
+    }
+
+    private void AddOrigin(string table)
+    {
+        if (!ColumnExists(table, "OriginType"))
+            Alter.Table(table).AddColumn("OriginType").AsInt32().Nullable().Do();
+        if (!ColumnExists(table, "OriginCardUuid"))
+            Alter.Table(table).AddColumn("OriginCardUuid").AsString(36).Nullable().Do();
     }
 }
 

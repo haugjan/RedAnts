@@ -295,3 +295,7 @@
 .ta-freeentry-grid { display: grid; grid-template-columns: 1fr 8rem 8rem; gap: 0.45rem 0.8rem; align-items: center; margin: 0.3rem 0 0.2rem; }
 .ta-freeentry-head { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ta-muted); }
 .ta-freeentry-name { margin: 0; }
+.ta-conv-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem 0.9rem; align-items: center; margin: 0.4rem 0 0.2rem; }
+.ta-conv-toggle { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
+.ta-conv-flex { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.ta-conv-flex .ta-input { max-width: 8rem; }

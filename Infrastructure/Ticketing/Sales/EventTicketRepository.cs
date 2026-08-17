@@ -45,7 +45,9 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             BuyerCompany = ticket.Buyer?.Company,
             CreatedByName = ticket.CreatedByName,
             CreatedByEmail = ticket.CreatedByEmail,
-            BundleId = ticket.BundleId
+            BundleId = ticket.BundleId,
+            OriginType = (int?)ticket.OriginType,
+            OriginCardUuid = ticket.OriginCardUuid?.ToString()
         };
         if (row.Id == 0) await scope.Database.InsertAsync(row);
         else await scope.Database.UpdateAsync(row);
@@ -67,5 +69,7 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             r.CreatedByName,
             r.CreatedByEmail,
             r.BundleId,
-            r.TierId);
+            r.TierId,
+            r.OriginType is { } ot ? (TicketType)ot : null,
+            Guid.TryParse(r.OriginCardUuid, out var originUuid) ? originUuid : null);
 }
