@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,6 +52,23 @@ public sealed class BackOfficeAuthComposer : IComposer
                     options.GetClaimsFromUserInfoEndpoint = true;
                     options.SaveTokens = true;
                     options.TokenValidationParameters.NameClaimType = "preferred_username";
+                    options.Events = new OpenIdConnectEvents
+                    {
+                        OnTokenValidated = context =>
+                        {
+                            if (context.Principal?.Identity is ClaimsIdentity identity
+                                && identity.FindFirst(ClaimTypes.Email) is null)
+                            {
+                                var email = context.Principal.FindFirstValue("email")
+                                            ?? context.Principal.FindFirstValue("preferred_username")
+                                            ?? context.Principal.FindFirstValue(ClaimTypes.Upn)
+                                            ?? context.Principal.FindFirstValue("upn");
+                                if (!string.IsNullOrWhiteSpace(email) && email.Contains('@'))
+                                    identity.AddClaim(new Claim(ClaimTypes.Email, email));
+                            }
+                            return Task.CompletedTask;
+                        }
+                    };
                 }),
                 providerOptions =>
                 {
