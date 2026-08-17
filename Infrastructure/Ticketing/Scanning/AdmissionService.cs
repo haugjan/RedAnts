@@ -16,7 +16,8 @@ namespace RedAnts.Infrastructure.Ticketing.Scanning;
 public sealed class AdmissionService(
     IScopeProvider scopeProvider,
     IIssuedTicketReader tickets,
-    IEvents events) : IAdmissionService
+    IEvents events,
+    IEventConversionRules conversionRules) : IAdmissionService
 {
     public async Task<Occupancy> GetOccupancyAsync(int eventId)
     {
@@ -59,10 +60,23 @@ public sealed class AdmissionService(
                 eventId, key);
         }
 
+        var requiresConversion = false;
+        if (evaluable && type != TicketType.EventTicket)
+            requiresConversion = (await conversionRules.GetByEventAsync(eventId)).Any(r => r.CardType == type);
+
+        int? originType = null;
+        string? originCardUuid = null;
+        if (evaluable && type == TicketType.EventTicket)
+        {
+            var origin = await db.FirstOrDefaultAsync<EventTicketRecord>("WHERE Uuid = @0", key);
+            originType = origin?.OriginType;
+            originCardUuid = origin?.OriginCardUuid;
+        }
+
         var facts = issued is null ? null : new ScannedTicketFacts(issued.Type, issued.ScopeId, issued.Status);
         var evaluation = AdmissionRules.Evaluate(
             eventId, type, scopeId, mode, test, isEmpty, facts,
-            eventSeasonId, redeemedEventId, admissionsInside, admissionCap);
+            eventSeasonId, redeemedEventId, admissionsInside, admissionCap, requiresConversion);
 
         var categoryLabel = issued is null ? null : issued.CategoryName ?? issued.Category?.DisplayName();
         var holder = issued is null ? null : HolderLabel(issued);
@@ -106,7 +120,8 @@ public sealed class AdmissionService(
                 var row = new EventVisitRecord
                 {
                     EventId = eventId, TicketType = (int)type, TicketUuid = key,
-                    IsInside = true, CreatedAt = DateTime.UtcNow
+                    IsInside = true, CreatedAt = DateTime.UtcNow,
+                    OriginType = originType, OriginCardUuid = originCardUuid
                 };
                 await db.InsertAsync(row);
                 visitId = row.Id;

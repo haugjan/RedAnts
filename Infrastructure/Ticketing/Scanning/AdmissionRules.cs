@@ -19,6 +19,7 @@ public static class AdmissionRules
     public const string UnknownEvent = "Anlass unbekannt.";
     public const string WrongSeason = "Ticket gilt für eine andere Saison.";
     public const string FlexRedeemedElsewhere = "Flexticket wurde bereits an einem anderen Anlass eingelöst.";
+    public const string ConversionRequired = "Ticketumwandlung nötig — bitte auf der Event-Seite ein Ticket lösen.";
     public const string AlreadyCheckedIn = "Bereits eingecheckt.";
     public const string AllAdmissionsUsed = "Alle Einlässe dieser Karte bereits gebraucht.";
     public const string NotCheckedIn = "Noch nicht eingecheckt.";
@@ -37,7 +38,8 @@ public static class AdmissionRules
         int? eventSeasonId,
         int? redeemedEventId,
         int admissionsInside,
-        int admissionCap)
+        int admissionCap,
+        bool requiresConversion)
     {
         if (isEmptyUuid)
             return new AdmissionEvaluation(AdmissionVerdict.TestEmpty);
@@ -69,6 +71,9 @@ public static class AdmissionRules
 
         if (requestedType == TicketType.SeasonSingle && redeemedEventId is { } bound && bound != eventId)
             return Reject(FlexRedeemedElsewhere);
+
+        if (requiresConversion && requestedType != TicketType.EventTicket)
+            return Reject(ConversionRequired);
 
         if (mode == ScanMode.CheckIn)
         {
