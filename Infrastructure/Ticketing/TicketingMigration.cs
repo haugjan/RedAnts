@@ -53,6 +53,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddMemberCardAdmissions>("membercard-admissions");
         To<AddEventConversionRules>("event-conversion-rules");
         To<AddTicketOriginColumns>("ticket-origin-columns");
+        To<AddEventConversionOnly>("event-conversion-only");
+    }
+}
+
+public class AddEventConversionOnly(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("EventPrices", "ConversionOnly"))
+            Alter.Table("EventPrices").AddColumn("ConversionOnly").AsBoolean().NotNullable().WithDefaultValue(false).Do();
+        return Task.CompletedTask;
     }
 }
 

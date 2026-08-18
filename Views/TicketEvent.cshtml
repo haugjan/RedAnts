@@ -27,6 +27,7 @@
     var conversionRules = blocked
         ? (IReadOnlyList<RedAnts.Features.Ticketing.Ports.EventConversionRule>)Array.Empty<RedAnts.Features.Ticketing.Ports.EventConversionRule>()
         : await ConversionRules.GetByEventAsync(Model.Id);
+    var conversionOnly = !blocked && await ConversionRules.GetConversionOnlyAsync(Model.Id);
 }
 
 @section Head {
@@ -201,7 +202,11 @@ else
                     var cats = await Pricing.GetAvailableAsync(Model.Id);
                     var returnUrl = Context.Request.Path + Context.Request.QueryString;
                 }
-                @if (cats.Count == 0)
+                @if (conversionOnly)
+                {
+                    <p class="evt-empty">Vorverkauf: Für diesen Anlass gibt es Tickets nur über die Kartenumwandlung. Saisonkarten-, Mitglieder- und Flexticket-Besitzer:innen lösen ihr Ticket unten mit ihrer Kartennummer.</p>
+                }
+                else if (cats.Count == 0)
                 {
                     <p class="evt-empty">Für diesen Anlass sind aktuell keine Tickets verfügbar.</p>
                 }

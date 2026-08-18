@@ -7,7 +7,7 @@ namespace RedAnts.Features.Ticketing.Cart;
 public sealed class CartController(
     ICartService cart, IEventPricing pricing, IEvents events,
     ISeasonPassPricing passPricing, ISeasons seasons, ISeasonAddOns seasonAddOns,
-    IPriceTiers priceTiers, IConvertibleCards convertibleCards) : Controller
+    IPriceTiers priceTiers, IConvertibleCards convertibleCards, IEventConversionRules conversionRules) : Controller
 {
     [HttpGet("/cart")]
     public IActionResult Index() => View(cart.Get());
@@ -67,10 +67,13 @@ public sealed class CartController(
     {
         if (quantity < 1) quantity = 1;
 
-        var available = await pricing.FindAvailableByTierAsync(eventId, tierId);
-        var evt = await events.FindByIdAsync(eventId);
-        if (available is { Available: true } && evt is not null)
-            cart.Add(eventId, evt.Name, available.TierId, available.Name, StdName(available), available.Price, quantity);
+        if (!await conversionRules.GetConversionOnlyAsync(eventId))
+        {
+            var available = await pricing.FindAvailableByTierAsync(eventId, tierId);
+            var evt = await events.FindByIdAsync(eventId);
+            if (available is { Available: true } && evt is not null)
+                cart.Add(eventId, evt.Name, available.TierId, available.Name, StdName(available), available.Price, quantity);
+        }
 
         var current = cart.Get();
         if (current.IsEmpty) return Redirect("/cart");
@@ -82,6 +85,15 @@ public sealed class CartController(
     public async Task<IActionResult> Add(int eventId, int tierId, int quantity, string? returnUrl)
     {
         if (quantity < 1) quantity = 1;
+
+        if (await conversionRules.GetConversionOnlyAsync(eventId))
+        {
+            if (IsFetchRequest())
+                return Json(new { ok = false, added = 0, categoryName = "",
+                    totalQuantity = cart.Get().TotalQuantity, totalAmount = cart.Get().TotalAmount,
+                    message = "Für diesen Anlass sind normale Ticketkäufe nicht möglich (nur Kartenumwandlung)." });
+            return RedirectBack(returnUrl);
+        }
 
         var available = await pricing.FindAvailableByTierAsync(eventId, tierId);
         var evt = await events.FindByIdAsync(eventId);

@@ -11,4 +11,8 @@ public interface IEventConversionRules
     Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId);
 
     Task SetAsync(int eventId, TicketType cardType, decimal? discount);
+
+    Task<bool> GetConversionOnlyAsync(int eventId);
+
+    Task SetConversionOnlyAsync(int eventId, bool value);
 }

@@ -27,7 +27,8 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
             Id = price.Id,
             EventId = price.EventId,
             TotalSalesQuota = price.TotalSalesQuota,
-            AdmissionQuota = price.AdmissionQuota
+            AdmissionQuota = price.AdmissionQuota,
+            ConversionOnly = price.ConversionOnly
         };
         if (parent.Id == 0) await scope.Database.InsertAsync(parent);
         else await scope.Database.UpdateAsync(parent);
@@ -60,7 +61,8 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
     private static EventPrice Map(EventPriceRecord p, IEnumerable<EventPriceCategoryRecord> cats) =>
         EventPrice.FromPersistence(p.Id, p.EventId, p.TotalSalesQuota, p.AdmissionQuota,
             cats.Select(c => CategoryPrice.FromPersistence(
-                (TicketCategory)c.Category, c.SalePrice, c.Quota, ToDateOnly(c.AvailableUntil), c.TierId)).ToList());
+                (TicketCategory)c.Category, c.SalePrice, c.Quota, ToDateOnly(c.AvailableUntil), c.TierId)).ToList(),
+            p.ConversionOnly);
 
     private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
 }

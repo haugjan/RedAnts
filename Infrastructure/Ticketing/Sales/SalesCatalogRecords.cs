@@ -12,6 +12,7 @@ public class EventPriceRecord
     [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public int EventId { get; set; }
     [Column("TotalSalesQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? TotalSalesQuota { get; set; }
     [Column("AdmissionQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? AdmissionQuota { get; set; }
+    [Column("ConversionOnly")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool ConversionOnly { get; set; }
 }
 
 [TableName("EventPriceCategories")]

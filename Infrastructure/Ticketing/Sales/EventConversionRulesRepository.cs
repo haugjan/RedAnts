@@ -8,8 +8,21 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider) : IEventConversionRules
+public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider, IEventPrices eventPrices) : IEventConversionRules
 {
+    public async Task<bool> GetConversionOnlyAsync(int eventId) =>
+        (await eventPrices.GetByEventAsync(eventId))?.ConversionOnly ?? false;
+
+    public async Task SetConversionOnlyAsync(int eventId, bool value)
+    {
+        var existing = await eventPrices.GetByEventAsync(eventId);
+        var updated = existing is null
+            ? EventPrice.Create(eventId, null, null, [], conversionOnly: value)
+            : EventPrice.FromPersistence(existing.Id, existing.EventId, existing.TotalSalesQuota,
+                existing.AdmissionQuota, existing.Categories, conversionOnly: value);
+        await eventPrices.SaveAsync(updated);
+    }
+
     public async Task<IReadOnlyList<EventConversionRule>> GetAllAsync()
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

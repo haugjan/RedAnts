@@ -36,28 +36,31 @@ public sealed class EventPrice
     public int EventId { get; private set; }
     public int? TotalSalesQuota { get; private set; }
     public int? AdmissionQuota { get; private set; }
+    public bool ConversionOnly { get; private set; }
     public IReadOnlyList<CategoryPrice> Categories { get; private set; }
 
-    private EventPrice(int id, int eventId, int? totalSalesQuota, int? admissionQuota, IReadOnlyList<CategoryPrice> categories)
+    private EventPrice(int id, int eventId, int? totalSalesQuota, int? admissionQuota, bool conversionOnly, IReadOnlyList<CategoryPrice> categories)
     {
         Id = id;
         EventId = eventId;
         TotalSalesQuota = totalSalesQuota;
         AdmissionQuota = admissionQuota;
+        ConversionOnly = conversionOnly;
         Categories = categories;
     }
 
-    public static EventPrice Create(int eventId, int? totalSalesQuota, int? admissionQuota, IReadOnlyList<CategoryPrice> categories)
+    public static EventPrice Create(int eventId, int? totalSalesQuota, int? admissionQuota, IReadOnlyList<CategoryPrice> categories,
+        bool conversionOnly = false)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (totalSalesQuota is < 0) throw new DomainException("Verkaufskontingent darf nicht negativ sein.");
         if (admissionQuota is < 0) throw new DomainException("Einlasskontingent darf nicht negativ sein.");
-        return new EventPrice(0, eventId, totalSalesQuota, admissionQuota, categories ?? []);
+        return new EventPrice(0, eventId, totalSalesQuota, admissionQuota, conversionOnly, categories ?? []);
     }
 
     public static EventPrice FromPersistence(int id, int eventId, int? totalSalesQuota, int? admissionQuota,
-        IReadOnlyList<CategoryPrice> categories) =>
-        new(id, eventId, totalSalesQuota, admissionQuota, categories ?? []);
+        IReadOnlyList<CategoryPrice> categories, bool conversionOnly = false) =>
+        new(id, eventId, totalSalesQuota, admissionQuota, conversionOnly, categories ?? []);
 }
 
 public sealed class SeasonCategoryPrice

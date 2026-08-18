@@ -252,6 +252,12 @@
             </div>
             <p class="ta-field-hint">Ohne Häkchen: keine Beschränkung (Karte gibt automatisch Eintritt). Mit Häkchen ist am Eingang eine Ticketumwandlung nötig. Saisonkarte/Mitglied sind gratis; beim Flexticket wird der Rabatt vom regulären Ticketpreis abgezogen (nie unter 0).</p>
 
+            <label class="ta-conv-toggle" style="margin-top:.6rem;">
+                <input type="checkbox" @bind="_convOnly" />
+                <span>Nur Umwandlung (Vorverkauf): keine normalen Ticketkäufe für diesen Anlass</span>
+            </label>
+            <p class="ta-field-hint">Aktiv: die öffentliche Event-Seite bietet keine normalen Tickets an, nur die Kartenumwandlung. Die regulären Preise bleiben hinterlegt (Basis für den Flex-Rabatt).</p>
+
             @if (_convError is not null)
             {
                 <p class="ta-modal-error">@_convError</p>
@@ -390,10 +396,11 @@
     private bool _convMemberRequired;
     private bool _convFlexRequired;
     private decimal _convFlexDiscount;
+    private bool _convOnly;
     private bool _convSaving;
     private string? _convError;
 
-    private void OpenConversion(Event e)
+    private async Task OpenConversion(Event e)
     {
         _conversionEvent = e;
         _convError = null;
@@ -403,6 +410,7 @@
         var flex = rules.FirstOrDefault(r => r.CardType == TicketType.SeasonSingle);
         _convFlexRequired = flex is not null;
         _convFlexDiscount = flex?.Discount ?? 0m;
+        _convOnly = await ConversionRules.GetConversionOnlyAsync(e.Id);
     }
 
     private void CancelConversion() => _conversionEvent = null;
@@ -419,6 +427,7 @@
             await ConversionRules.SetAsync(id, TicketType.MemberCard, _convMemberRequired ? 0m : null);
             await ConversionRules.SetAsync(id, TicketType.SeasonSingle,
                 _convFlexRequired ? Math.Max(0m, decimal.Round(_convFlexDiscount, 2)) : null);
+            await ConversionRules.SetConversionOnlyAsync(id, _convOnly);
             await ReloadEventsAsync();
             _conversionEvent = null;
         }
