@@ -34,6 +34,7 @@ public sealed class CartItem
     public string? OriginCardUuid { get; set; }
     public string? OriginLabel { get; set; }
     public int OriginCategory { get; set; }
+    public int OriginCap { get; set; }
 
     [JsonIgnore] public bool IsConversion => OriginType is not null && !string.IsNullOrEmpty(OriginCardUuid);
     [JsonIgnore] public int RefId => Kind == CartItemKind.SeasonPass ? SeasonId : EventId;

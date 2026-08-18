@@ -73,13 +73,25 @@ else
                         <td data-label="Kategorie">@item.CategoryName</td>
                         <td data-label="Preis" class="text-end">CHF @MoneyFormat.Chf(item.UnitPrice)</td>
                         <td data-label="Menge">
-                            <form method="post" action="/cart/update" class="d-flex gap-1">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="key" value="@item.Key" />
-                                <input type="number" name="quantity" value="@item.Quantity" min="0"
-                                       class="form-control form-control-sm" style="width:5rem;"
-                                       onchange="this.form.submit()" />
-                            </form>
+                            @if (item.IsConversion && item.OriginCap <= 1)
+                            {
+                                <span>@item.Quantity</span>
+                            }
+                            else
+                            {
+                                var convMax = item.IsConversion && item.OriginCap > 0 ? item.OriginCap : 50;
+                                <form method="post" action="/cart/update" class="d-flex gap-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="key" value="@item.Key" />
+                                    <input type="number" name="quantity" value="@item.Quantity" min="0" max="@convMax"
+                                           class="form-control form-control-sm" style="width:5rem;"
+                                           onchange="this.form.submit()" />
+                                </form>
+                                @if (item.IsConversion)
+                                {
+                                    <div class="text-muted small">max. @item.OriginCap</div>
+                                }
+                            }
                         </td>
                         <td data-label="Total" class="text-end">CHF @MoneyFormat.Chf(item.LineTotal)</td>
                         <td class="cart-remove text-end">

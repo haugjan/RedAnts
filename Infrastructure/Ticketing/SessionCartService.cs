@@ -106,6 +106,7 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
             existing.UnitPrice = unitPrice;
             existing.EventName = eventName;
             existing.CategoryName = categoryName;
+            existing.OriginCap = allowed;
         }
         else
         {
@@ -123,7 +124,8 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
                 OriginType = (int)originType,
                 OriginCardUuid = cardKey,
                 OriginLabel = originLabel,
-                OriginCategory = originCategory
+                OriginCategory = originCategory,
+                OriginCap = allowed
             });
         }
         Save(cart);
@@ -154,6 +156,8 @@ public sealed class SessionCartService(IHttpContextAccessor httpContextAccessor)
         var cart = Get();
         var item = cart.Items.FirstOrDefault(i => i.Key == key);
         if (item is null) return;
+        if (item.IsConversion)
+            quantity = Math.Min(quantity, item.OriginCap > 0 ? item.OriginCap : 1);
         if (quantity <= 0) cart.Items.Remove(item);
         else item.Quantity = Math.Min(quantity, MaxQuantityPerItem);
         PruneOrphanedOrderAddOns(cart);
