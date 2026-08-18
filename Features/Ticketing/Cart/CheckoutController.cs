@@ -213,7 +213,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
     {
         var demand = current.Items
             .Where(i => i.Kind == CartItemKind.EventTicket)
-            .Select(i => new TicketDemand(i.EventId, i.TierId, i.Quantity))
+            .Select(i => new TicketDemand(i.EventId, i.TierId, i.Quantity, i.IsConversion))
             .ToList();
         foreach (var eventId in current.Items.Where(i => i.Kind == CartItemKind.EventTicket).Select(i => i.EventId).Distinct())
         {

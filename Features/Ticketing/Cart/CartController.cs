@@ -26,14 +26,24 @@ public sealed class CartController(
         else
         {
             var o = res.Offer;
-            var n = cart.AddConversion(eventId, o.EventName, o.SeasonId, o.TierId, o.CardLabel,
-                o.OriginCategory, o.Price, o.CardType, o.CardUuid, o.CardLabel, o.RemainingCap);
-            added = n > 0;
-            message = added
-                ? (o.Price > 0m
-                    ? $"Umgewandeltes Ticket ({o.CardLabel}) für CHF {o.Price:0.00} im Warenkorb."
-                    : $"Umgewandeltes Ticket ({o.CardLabel}) im Warenkorb.")
-                : "Für diese Karte sind bereits alle Umwandlungen im Warenkorb.";
+            var cartForEvent = cart.Get().Items
+                .Where(i => i.Kind == CartItemKind.EventTicket && i.EventId == eventId)
+                .Sum(i => i.Quantity);
+            if (o.EventRemaining is { } rem && cartForEvent >= rem)
+            {
+                message = "Für diesen Anlass sind keine Tickets mehr verfügbar (Kontingent ausgeschöpft).";
+            }
+            else
+            {
+                var n = cart.AddConversion(eventId, o.EventName, o.SeasonId, o.TierId, o.CardLabel,
+                    o.OriginCategory, o.Price, o.CardType, o.CardUuid, o.CardLabel, o.RemainingCap);
+                added = n > 0;
+                message = added
+                    ? (o.Price > 0m
+                        ? $"Umgewandeltes Ticket ({o.CardLabel}) für CHF {o.Price:0.00} im Warenkorb."
+                        : $"Umgewandeltes Ticket ({o.CardLabel}) im Warenkorb.")
+                    : "Für diese Karte sind bereits alle Umwandlungen im Warenkorb.";
+            }
         }
 
         if (IsFetchRequest())

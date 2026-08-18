@@ -11,7 +11,8 @@ public sealed record ConversionOffer(
     decimal Price,
     string CardLabel,
     int RemainingCap,
-    string EventName);
+    string EventName,
+    int? EventRemaining);
 
 public sealed record ConversionResolution(bool Ok, string? Error, ConversionOffer? Offer);
 

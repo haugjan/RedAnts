@@ -310,8 +310,9 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
     {
         foreach (var evGroup in demand.Where(d => d.Quantity > 0).GroupBy(d => d.EventId))
         {
+            var hasNormalSale = evGroup.Any(d => !d.IsConversion);
             var available = (await GetAvailableAsync(evGroup.Key)).ToDictionary(a => a.TierId);
-            if (available.Count == 0)
+            if (hasNormalSale && available.Count == 0)
                 return "Für einen Anlass im Warenkorb sind keine Tickets mehr verfügbar.";
 
             using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -320,7 +321,7 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
             if (parent?.TotalSalesQuota is { } tq && await SoldTotalAsync(scope.Database, evGroup.Key) + requestedTotal > tq)
                 return "Für einen Anlass im Warenkorb sind nicht mehr genügend Tickets verfügbar.";
 
-            foreach (var tierGroup in evGroup.GroupBy(d => d.TierId))
+            foreach (var tierGroup in evGroup.Where(d => !d.IsConversion).GroupBy(d => d.TierId))
             {
                 if (!available.TryGetValue(tierGroup.Key, out var a) || !a.Available)
                     return "Eine gewählte Preisstufe ist nicht mehr verfügbar.";

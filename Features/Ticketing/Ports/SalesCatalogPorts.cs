@@ -49,7 +49,7 @@ public interface ISeasonPrices
     Task DeleteAsync(int seasonPriceId);
 }
 
-public sealed record TicketDemand(int EventId, int TierId, int Quantity);
+public sealed record TicketDemand(int EventId, int TierId, int Quantity, bool IsConversion = false);
 
 public interface IEventPricing
 {
