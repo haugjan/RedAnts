@@ -1,5 +1,6 @@
 (function () {
     const PT_PER_MM = 72 / 25.4;
+    const QUIET_MM = 2;
     const PDFJS_BASE = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/';
     let pdfjs = null;
 
@@ -57,6 +58,7 @@
         box.style.top = (l.qrY * k) + 'px';
         box.style.width = (l.qrSize * k) + 'px';
         box.style.height = (l.qrSize * k) + 'px';
+        box.style.boxShadow = '0 0 0 ' + (QUIET_MM * k) + 'px #fff';
     }
 
     async function render(file) {

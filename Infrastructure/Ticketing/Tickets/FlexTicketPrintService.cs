@@ -12,6 +12,8 @@ public sealed class FlexTicketPrintService(
     ITicketTokens tokens,
     IPublicBaseUrl publicUrl) : IFlexTicketPrinter
 {
+    private const double QuietZoneMm = 2;
+
     public async Task<byte[]?> BuildAsync(int bundleId, byte[] templatePdf, FlexPrintLayout layout)
     {
         var tickets = await bundleTickets.GetByBundlesAsync([bundleId]);
@@ -20,6 +22,7 @@ public sealed class FlexTicketPrintService(
         using var templateStream = new MemoryStream(templatePdf);
         var template = XPdfForm.FromStream(templateStream);
         var black = new XSolidBrush(XColor.FromCmyk(0, 0, 0, 1));
+        var paper = new XSolidBrush(XColor.FromCmyk(0, 0, 0, 0));
 
         using var document = new PdfDocument();
         document.Options.ColorMode = PdfColorMode.Cmyk;
@@ -33,7 +36,7 @@ public sealed class FlexTicketPrintService(
             using var gfx = XGraphics.FromPdfPage(page);
             gfx.DrawImage(template, 0, 0, page.Width.Point, page.Height.Point);
 
-            DrawQr(gfx, black, layout, publicUrl.TicketUrl(tokens.CreateShort(ticket.Uuid)));
+            DrawQr(gfx, black, paper, layout, publicUrl.TicketUrl(tokens.CreateShort(ticket.Uuid)));
 
             if (layout.ShowCode)
                 DrawCode(gfx, black, layout, ticket.Uuid.ToString("N")[..8].ToUpperInvariant());
@@ -44,7 +47,7 @@ public sealed class FlexTicketPrintService(
         return output.ToArray();
     }
 
-    private static void DrawQr(XGraphics gfx, XBrush brush, FlexPrintLayout layout, string content)
+    private static void DrawQr(XGraphics gfx, XBrush brush, XBrush paper, FlexPrintLayout layout, string content)
     {
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.M);
@@ -55,7 +58,10 @@ public sealed class FlexTicketPrintService(
         var size = Mm(layout.QrSizeMm);
         var originX = Mm(layout.QrXMm);
         var originY = Mm(layout.QrYMm);
+        var quiet = Mm(QuietZoneMm);
         var module = size / count;
+
+        gfx.DrawRectangle(paper, originX - quiet, originY - quiet, size + 2 * quiet, size + 2 * quiet);
 
         for (var y = 0; y < count; y++)
         {
