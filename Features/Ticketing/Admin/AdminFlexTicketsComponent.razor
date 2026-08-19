@@ -52,6 +52,9 @@
                 {
                     <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport"
                             title="Ein oder mehrere Bundles als Excel/CSV exportieren (Karten-Nr + Bundle + Ticketlink)">Export CSV</button>
+                    <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedBundle.TicketCount == 0)"
+                            title="@(SelectedBundle.TicketCount == 0 ? "Leeres Bundle – keine Flextickets zum Drucken" : "Flextickets als druckfertiges PDF erzeugen (eine Karte pro Seite)")"
+                            @onclick="OpenPrint">PDF drucken</button>
                     <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => OpenEdit(SelectedBundle)">Referenz bearbeiten</button>
                     @if (Identity?.IsAdmin == true)
                     {
@@ -209,6 +212,67 @@
                     <button type="button" class="ta-btn ta-btn-primary" disabled>Export CSV</button>
                 }
             </div>
+        </div>
+    </div>
+}
+
+@if (_showPrint)
+{
+    <div class="ta-overlay" @onmousedown="ClosePrint">
+        <div class="ta-modal ta-modal-wide" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Flextickets als PDF drucken</h2>
+            <p class="ta-modal-sub">@SelectedBundle?.Reference · @SelectedBundle?.TicketCount Karten · eine Seite pro Karte</p>
+
+            <form id="fpForm" method="post" action="/admin/flex-tickets/print" enctype="multipart/form-data" target="_blank">
+                <input type="hidden" name="bundleId" value="@_printBundleId" />
+
+                <div class="ta-field">
+                    <label class="ta-label" for="fpFile">Vorlage (druckfertiges CMYK-PDF, eine Karte)</label>
+                    <input id="fpFile" name="template" class="ta-input" type="file" accept="application/pdf,.pdf" required />
+                    <p class="ta-field-hint">Die Vorlage wird 1:1 als Hintergrund übernommen. QR-Code und Kartennummer werden in reinem Schwarz darübergelegt.</p>
+                </div>
+
+                <div class="fp-stage" id="fpStage">
+                    <canvas id="fpCanvas" class="fp-canvas"></canvas>
+                    <div id="fpQrBox" class="fp-qrbox"><span class="fp-handle"></span></div>
+                </div>
+
+                <div class="fp-grid">
+                    <div class="ta-field">
+                        <label class="ta-label" for="fpPageW">Seite Breite (mm)</label>
+                        <input id="fpPageW" name="pageW" class="ta-input" type="number" step="0.1" min="10" value="91" />
+                    </div>
+                    <div class="ta-field">
+                        <label class="ta-label" for="fpPageH">Seite Höhe (mm)</label>
+                        <input id="fpPageH" name="pageH" class="ta-input" type="number" step="0.1" min="10" value="61" />
+                    </div>
+                    <div class="ta-field">
+                        <label class="ta-label" for="fpQrX">QR X (mm)</label>
+                        <input id="fpQrX" name="qrX" class="ta-input" type="number" step="0.1" min="0" value="5" />
+                    </div>
+                    <div class="ta-field">
+                        <label class="ta-label" for="fpQrY">QR Y (mm)</label>
+                        <input id="fpQrY" name="qrY" class="ta-input" type="number" step="0.1" min="0" value="5" />
+                    </div>
+                    <div class="ta-field">
+                        <label class="ta-label" for="fpQrSize">QR Grösse (mm)</label>
+                        <input id="fpQrSize" name="qrSize" class="ta-input" type="number" step="0.1" min="5" value="25" />
+                    </div>
+                    <div class="ta-field">
+                        <label class="ta-label" for="fpFontPt">Code Schriftgrösse (pt)</label>
+                        <input id="fpFontPt" name="fontPt" class="ta-input" type="number" step="0.5" min="4" value="8" />
+                    </div>
+                </div>
+
+                <label class="fp-check">
+                    <input id="fpShowCode" name="showCode" type="checkbox" value="true" checked /> Kartennummer unter dem QR-Code drucken
+                </label>
+
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="ClosePrint">Schliessen</button>
+                    <button id="fpSubmit" type="submit" class="ta-btn ta-btn-primary" disabled>PDF erzeugen</button>
+                </div>
+            </form>
         </div>
     </div>
 }
@@ -374,6 +438,13 @@
     .ta-export-list { display: flex; flex-direction: column; gap: .35rem; max-height: 320px; overflow-y: auto; padding: .2rem 0; }
     .ta-export-item { display: flex; align-items: center; gap: .5rem; }
     .ta-export-item .ta-muted { color: var(--ta-muted); }
+    .ta-modal-wide { max-width: 620px; }
+    .fp-stage { position: relative; width: 100%; margin: .6rem 0; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 / 16px 16px; border: 1px solid #ccc; line-height: 0; min-height: 40px; }
+    .fp-canvas { display: block; max-width: 100%; }
+    .fp-qrbox { position: absolute; display: none; border: 2px solid var(--ta-accent, #d02d38); background: rgba(208,45,56,.16); box-sizing: border-box; cursor: move; touch-action: none; }
+    .fp-qrbox .fp-handle { position: absolute; right: -7px; bottom: -7px; width: 13px; height: 13px; background: var(--ta-accent, #d02d38); border-radius: 2px; cursor: nwse-resize; touch-action: none; }
+    .fp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem 1rem; }
+    .fp-check { display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; font-size: .9rem; }
 </style>
 
 @code {
@@ -388,6 +459,34 @@
     [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private bool _showPrint;
+    private bool _printInited;
+    private int _printBundleId;
+
+    private void OpenPrint()
+    {
+        if (SelectedBundle is null || SelectedBundle.TicketCount == 0) return;
+        _printBundleId = SelectedBundle.Id;
+        _printInited = false;
+        _showPrint = true;
+    }
+
+    private void ClosePrint()
+    {
+        _showPrint = false;
+        _printInited = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_showPrint && !_printInited)
+        {
+            _printInited = true;
+            await JS.InvokeVoidAsync("flexPrint.init");
+        }
+    }
 
     private FlexTicketView? _deleteTarget;
     private bool _deleteBusy;

@@ -9,7 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Infrastructure\Ticketing\Tickets\Fonts\TicketSans.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="QuestPDF" />
+    <PackageReference Include="PdfSharp" />
     <PackageReference Include="Umbraco.Cms" />
     <PackageReference Include="Umbraco.Cms.DevelopmentMode.Backoffice" />
     <PackageReference Include="Umbraco.StorageProviders.AzureBlob" />
