@@ -8,7 +8,7 @@ namespace RedAnts.Infrastructure.Ticketing.Sales;
 
 public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : IFlexTicketBundles
 {
-    public const int MaxBundleSize = 1000;
+    public const int MaxBundleSize = 2000;
 
     public async Task<IReadOnlyList<FlexTicketBundleView>> GetBySeasonAsync(int seasonId)
     {

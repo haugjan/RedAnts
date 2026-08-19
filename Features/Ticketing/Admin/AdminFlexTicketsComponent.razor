@@ -230,7 +230,7 @@
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
-                <input id="newQuantity" class="ta-input" type="number" min="0" max="1000" @bind="_newQuantity" />
+                <input id="newQuantity" class="ta-input" type="number" min="0" max="2000" @bind="_newQuantity" />
                 <p class="ta-field-hint">0 = leeres Bundle (nur als Umbuchungsziel, ohne Tickets).</p>
             </div>
             @if (_newQuantity > 0)
