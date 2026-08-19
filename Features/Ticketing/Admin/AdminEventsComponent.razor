@@ -409,7 +409,7 @@
         _convMemberRequired = rules.Any(r => r.CardType == TicketType.MemberCard);
         var flex = rules.FirstOrDefault(r => r.CardType == TicketType.SeasonSingle);
         _convFlexRequired = flex is not null;
-        _convFlexDiscount = flex?.Discount ?? 0m;
+        _convFlexDiscount = decimal.Round(flex?.Discount ?? 0m, 2);
         _convOnly = await ConversionRules.GetConversionOnlyAsync(e.Id);
     }
 
