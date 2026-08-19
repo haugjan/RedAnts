@@ -232,9 +232,18 @@
                     <p class="ta-field-hint">Die Vorlage wird 1:1 als Hintergrund übernommen. QR-Code und Kartennummer werden in reinem Schwarz darübergelegt, mit einem obligatorischen weissen Rand (2 mm) hinter dem QR-Code.</p>
                 </div>
 
+                <div class="fp-zoombar">
+                    <label class="ta-label" for="fpZoom">Zoom</label>
+                    <input id="fpZoom" type="range" min="100" max="600" step="10" value="100" />
+                    <span id="fpZoomVal" class="fp-zoomval">100%</span>
+                    <span class="fp-zoomhint">Vorlage vergrössern für präzises Platzieren</span>
+                </div>
                 <div class="fp-stage" id="fpStage">
-                    <canvas id="fpCanvas" class="fp-canvas"></canvas>
-                    <div id="fpQrBox" class="fp-qrbox"><span class="fp-handle"></span></div>
+                    <div class="fp-scroll" id="fpScroll">
+                        <canvas id="fpCanvas" class="fp-canvas"></canvas>
+                        <div id="fpQrBox" class="fp-qrbox"><span class="fp-handle"></span></div>
+                        <div id="fpCodeLabel" class="fp-codelabel">A1B2C3D4</div>
+                    </div>
                 </div>
 
                 <div class="fp-grid">
@@ -439,10 +448,16 @@
     .ta-export-item { display: flex; align-items: center; gap: .5rem; }
     .ta-export-item .ta-muted { color: var(--ta-muted); }
     .ta-modal-wide { max-width: 620px; }
-    .fp-stage { position: relative; width: 100%; margin: .6rem 0; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 / 16px 16px; border: 1px solid #ccc; line-height: 0; min-height: 40px; }
-    .fp-canvas { display: block; max-width: 100%; }
-    .fp-qrbox { position: absolute; display: none; border: 2px solid var(--ta-accent, #d02d38); background: rgba(208,45,56,.16); box-sizing: border-box; cursor: move; touch-action: none; }
+    .fp-zoombar { display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; }
+    .fp-zoombar input[type=range] { flex: 1; max-width: 240px; }
+    .fp-zoomval { font-variant-numeric: tabular-nums; min-width: 3.2em; }
+    .fp-zoomhint { color: var(--ta-muted); font-size: .8rem; }
+    .fp-stage { width: 100%; max-height: 58vh; overflow: auto; margin: 0 0 .6rem; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 / 16px 16px; border: 1px solid #ccc; }
+    .fp-scroll { position: relative; width: max-content; line-height: 0; }
+    .fp-canvas { display: block; }
+    .fp-qrbox { position: absolute; display: none; border: 2px solid var(--ta-accent, #d02d38); background: rgba(208,45,56,.16); box-sizing: border-box; cursor: move; touch-action: none; z-index: 2; }
     .fp-qrbox .fp-handle { position: absolute; right: -7px; bottom: -7px; width: 13px; height: 13px; background: var(--ta-accent, #d02d38); border-radius: 2px; cursor: nwse-resize; touch-action: none; }
+    .fp-codelabel { position: absolute; display: none; color: #000; text-align: center; line-height: 1; white-space: nowrap; overflow: hidden; pointer-events: none; z-index: 2; font-family: 'Lato', sans-serif; }
     .fp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem 1rem; }
     .fp-check { display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; font-size: .9rem; }
 </style>

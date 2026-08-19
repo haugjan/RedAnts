@@ -3,6 +3,10 @@
     const QUIET_MM = 2;
     const PDFJS_BASE = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/';
     let pdfjs = null;
+    let pageObj = null;
+    let baseWidthPt = 0;
+    let baseScale = 1;
+    let zoom = 1;
 
     function $(id) { return document.getElementById(id); }
 
@@ -31,8 +35,14 @@
             pageH: num('fpPageH', 61),
             qrX: num('fpQrX', 5),
             qrY: num('fpQrY', 5),
-            qrSize: num('fpQrSize', 25)
+            qrSize: num('fpQrSize', 25),
+            fontPt: num('fpFontPt', 8)
         };
+    }
+
+    function showCode() {
+        const el = $('fpShowCode');
+        return !el || el.checked;
     }
 
     function pxPerMm() {
@@ -59,37 +69,79 @@
         box.style.width = (l.qrSize * k) + 'px';
         box.style.height = (l.qrSize * k) + 'px';
         box.style.boxShadow = '0 0 0 ' + (QUIET_MM * k) + 'px #fff';
+
+        const label = $('fpCodeLabel');
+        if (label) {
+            if (showCode()) {
+                label.style.display = 'block';
+                label.style.left = (l.qrX * k) + 'px';
+                label.style.top = ((l.qrY + l.qrSize) * k + l.fontPt * 0.4 * PT_PER_MM_PX(k)) + 'px';
+                label.style.width = (l.qrSize * k) + 'px';
+                label.style.fontSize = (l.fontPt * PT_PER_MM_PX(k)) + 'px';
+            } else {
+                label.style.display = 'none';
+            }
+        }
+    }
+
+    function PT_PER_MM_PX(k) {
+        return k / PT_PER_MM;
+    }
+
+    function cssSize() {
+        const canvas = $('fpCanvas');
+        if (!canvas || !baseWidthPt) return;
+        canvas.style.width = (baseWidthPt * baseScale * zoom) + 'px';
+        canvas.style.height = 'auto';
+    }
+
+    async function draw() {
+        if (!pageObj) return;
+        const dpr = window.devicePixelRatio || 1;
+        const display = baseScale * zoom;
+        const vp = pageObj.getViewport({ scale: display * dpr });
+        const canvas = $('fpCanvas');
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        canvas.style.width = (baseWidthPt * display) + 'px';
+        canvas.style.height = 'auto';
+        await pageObj.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        place();
     }
 
     async function render(file) {
         const lib = await loadPdfjs();
         const buf = await file.arrayBuffer();
         const doc = await lib.getDocument({ data: buf }).promise;
-        const page = await doc.getPage(1);
-        const base = page.getViewport({ scale: 1 });
+        pageObj = await doc.getPage(1);
+        const base = pageObj.getViewport({ scale: 1 });
+        baseWidthPt = base.width;
 
         set('fpPageW', base.width / PT_PER_MM);
         set('fpPageH', base.height / PT_PER_MM);
 
         const stage = $('fpStage');
         const target = (stage ? stage.clientWidth : 0) || 500;
-        const scale = target / base.width;
-        const dpr = window.devicePixelRatio || 1;
-        const vp = page.getViewport({ scale: scale * dpr });
-
-        const canvas = $('fpCanvas');
-        canvas.width = vp.width;
-        canvas.height = vp.height;
-        canvas.style.width = (base.width * scale) + 'px';
-        canvas.style.height = (base.height * scale) + 'px';
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        baseScale = target / base.width;
+        zoom = 1;
+        const zoomEl = $('fpZoom');
+        if (zoomEl) zoomEl.value = 100;
+        const zoomVal = $('fpZoomVal');
+        if (zoomVal) zoomVal.textContent = '100%';
 
         const box = $('fpQrBox');
         if (box) box.style.display = 'block';
         clamp();
-        place();
+        await draw();
         const submit = $('fpSubmit');
         if (submit) submit.disabled = false;
+    }
+
+    function applyZoom(pct, rerender) {
+        zoom = Math.max(1, Math.min(6, pct / 100));
+        const zoomVal = $('fpZoomVal');
+        if (zoomVal) zoomVal.textContent = Math.round(zoom * 100) + '%';
+        if (rerender) { draw(); } else { cssSize(); place(); }
     }
 
     function drag(e) {
@@ -99,6 +151,7 @@
         const sx = e.clientX, sy = e.clientY;
         const l0 = layout();
         e.preventDefault();
+        e.stopPropagation();
         function move(ev) {
             const dx = (ev.clientX - sx) / k;
             const dy = (ev.clientY - sy) / k;
@@ -121,6 +174,8 @@
 
     window.flexPrint = {
         init() {
+            pageObj = null;
+            zoom = 1;
             const file = $('fpFile');
             if (file && !file._fp) {
                 file._fp = true;
@@ -134,13 +189,24 @@
                 box._fp = true;
                 box.addEventListener('pointerdown', drag);
             }
-            ['fpQrX', 'fpQrY', 'fpQrSize', 'fpPageW', 'fpPageH'].forEach(id => {
+            ['fpQrX', 'fpQrY', 'fpQrSize', 'fpPageW', 'fpPageH', 'fpFontPt'].forEach(id => {
                 const el = $(id);
                 if (el && !el._fp) {
                     el._fp = true;
                     el.addEventListener('input', () => { clamp(); place(); });
                 }
             });
+            const showEl = $('fpShowCode');
+            if (showEl && !showEl._fp) {
+                showEl._fp = true;
+                showEl.addEventListener('change', place);
+            }
+            const zoomEl = $('fpZoom');
+            if (zoomEl && !zoomEl._fp) {
+                zoomEl._fp = true;
+                zoomEl.addEventListener('input', () => applyZoom(parseFloat(zoomEl.value), false));
+                zoomEl.addEventListener('change', () => applyZoom(parseFloat(zoomEl.value), true));
+            }
             const submit = $('fpSubmit');
             if (submit) submit.disabled = true;
         }
