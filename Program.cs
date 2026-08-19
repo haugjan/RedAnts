@@ -77,6 +77,18 @@ await app.BootUmbracoAsync();
 
 app.UseForwardedHeaders();
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/health")
+    {
+        context.Response.StatusCode = StatusCodes.Status200OK;
+        context.Response.ContentType = "text/plain; charset=utf-8";
+        await context.Response.WriteAsync("ok");
+        return;
+    }
+    await next();
+});
+
 const string devBadge =
     "<div style=\"position:fixed;left:0;right:0;bottom:0;z-index:2147483647;" +
     "background:rgba(200,16,46,0.55);color:#ffffff;text-align:center;" +
