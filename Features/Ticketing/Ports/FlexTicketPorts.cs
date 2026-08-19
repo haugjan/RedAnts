@@ -20,7 +20,8 @@ public sealed record FlexTicketView(
     int? RedeemedEventId,
     DateTime CreatedAt,
     TicketCategory Category = TicketCategory.Adult,
-    bool? IsInside = null);
+    bool? IsInside = null,
+    bool ConvertedForPurchase = false);
 
 public enum FlexRebookStatus { Moved, AlreadyInTarget, WrongSeason, NotFound }
 

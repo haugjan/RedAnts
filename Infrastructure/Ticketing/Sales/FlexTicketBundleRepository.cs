@@ -80,14 +80,15 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<FlexTicketRow>(
-            "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, v.IsInside AS InsideFlag " +
+            "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, v.IsInside AS InsideFlag, " +
+            "CASE WHEN EXISTS (SELECT 1 FROM EventTickets et WHERE et.OriginType = @1 AND et.OriginCardUuid = t.Uuid) THEN 1 ELSE 0 END AS Converted " +
             "FROM SeasonSingleTickets t " +
             "LEFT JOIN TicketEventVisits v ON v.TicketUuid = t.Uuid AND v.EventId = t.RedeemedEventId " +
-            "WHERE t.BundleId = @0 ORDER BY t.CreatedAt", bundleId);
+            "WHERE t.BundleId = @0 ORDER BY t.CreatedAt", bundleId, (int)TicketType.SeasonSingle);
         return rows.Select(r => new FlexTicketView(
             Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
             (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt,
-            (TicketCategory)r.Category, r.InsideFlag)).ToList();
+            (TicketCategory)r.Category, r.InsideFlag, r.Converted == 1)).ToList();
     }
 
     public async Task SetTicketCategoryAsync(Guid uuid, TicketCategory category)
@@ -230,5 +231,6 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         public int? RedeemedEventId { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool? InsideFlag { get; set; }
+        public int Converted { get; set; }
     }
 }

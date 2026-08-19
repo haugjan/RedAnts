@@ -136,6 +136,10 @@
                                     {
                                         <span class="ta-badge @RedemptionBadge(StateOf(t))">@StateOf(t).DisplayName()</span>
                                     }
+                                    @if (t.ConvertedForPurchase)
+                                    {
+                                        <span class="ta-conv-badge" title="Dieses Flexticket wurde für einen Ticketkauf (Umwandlung) an einem Spezialanlass gebraucht, nicht am Eingang gescannt.">↔ Umwandlung</span>
+                                    }
                                 </td>
                                 <td>
                                     <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuch</button>

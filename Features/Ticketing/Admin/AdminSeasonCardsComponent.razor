@@ -132,6 +132,10 @@
                                     {
                                         <span class="ta-muted">0</span>
                                     }
+                                    @if (p.Conversions > 0)
+                                    {
+                                        <div class="ta-conv-badge" title="Diese Saisonkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht.">↔ @p.Conversions Uml.</div>
+                                    }
                                 </td>
                                 <td>@(p.PaymentState ?? "–")</td>
                                 <td>@(p.OrderNumber ?? "–")</td>

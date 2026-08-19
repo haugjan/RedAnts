@@ -125,6 +125,10 @@
                                     {
                                         <span class="ta-muted">0</span>
                                     }
+                                    @if (c.Conversions > 0)
+                                    {
+                                        <div class="ta-conv-badge" title="Diese Mitgliederkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht.">↔ @c.Conversions Uml.</div>
+                                    }
                                 </td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="@(c.HasEmail ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!c.HasEmail)" @onclick="() => OpenMail(c)">✉</button>

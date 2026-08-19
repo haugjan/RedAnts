@@ -15,7 +15,8 @@ public sealed record MemberCardListItem(
     string? Email = null,
     string? CreatedByName = null,
     MemberAddress? Address = null,
-    int Admissions = 1)
+    int Admissions = 1,
+    int Conversions = 0)
 {
     public string HolderName => $"{FirstName} {LastName}".Trim();
     public bool HasName => !string.IsNullOrWhiteSpace(FirstName) || !string.IsNullOrWhiteSpace(LastName);

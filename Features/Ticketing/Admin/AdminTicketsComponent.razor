@@ -108,6 +108,10 @@
                                     {
                                         <span class="ta-muted">—</span>
                                     }
+                                    @if (t.OriginType is { } ot)
+                                    {
+                                        <div class="ta-conv-badge" title="Dieses Ticket entstand durch Kartenumwandlung.">↔ Umwandlung: @OriginLabel(ot)@(t.OriginCardUuid is { } cu ? " " + cu.ToString("N")[..8].ToUpperInvariant() : "")</div>
+                                    }
                                 </td>
                                 <td>
                                     @if (t.BundleId is { } bundleId && _bundleRefById.TryGetValue(bundleId, out var bundleRef))
@@ -527,6 +531,14 @@
         RedemptionState.Redeemed => "ta-badge-redeemed",
         RedemptionState.Outside => "ta-badge-blocked",
         _ => "ta-badge-draft"
+    };
+
+    private static string OriginLabel(TicketType type) => type switch
+    {
+        TicketType.SeasonPass => "Saisonkarte",
+        TicketType.MemberCard => "Mitgliederkarte",
+        TicketType.SeasonSingle => "Flexticket",
+        _ => "Karte"
     };
 
     private async Task SaveCategoryAsync(EventTicket t, TicketCategory category)

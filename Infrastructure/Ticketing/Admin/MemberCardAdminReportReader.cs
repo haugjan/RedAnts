@@ -23,6 +23,13 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
         var visits = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var v in visitRows) visits[v.Uuid] = v.Cnt;
 
+        var convRows = await scope.Database.FetchAsync<UuidCountRow>(
+            "SELECT OriginCardUuid AS Uuid, COUNT(*) AS Cnt FROM EventTickets " +
+            "WHERE OriginType = @0 AND OriginCardUuid IS NOT NULL AND Status = @1 GROUP BY OriginCardUuid",
+            new object[] { (int)TicketType.MemberCard, (int)TicketStatus.Valid });
+        var conversions = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var v in convRows) conversions[v.Uuid] = v.Cnt;
+
         return cards.Select(c => new MemberCardListItem(
             Guid.TryParse(c.Uuid, out var g) ? g : Guid.Empty,
             c.FirstName,
@@ -37,7 +44,8 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
             c.CreatedByName,
             MemberAddress.Create(c.Salutation, c.Company, c.Street, c.AddressLine2,
                 c.PostalCode, c.City, c.Country, c.Phone),
-            c.Admissions)).ToList();
+            c.Admissions,
+            conversions.GetValueOrDefault(c.Uuid ?? ""))).ToList();
     }
 
     public sealed class UuidCountRow

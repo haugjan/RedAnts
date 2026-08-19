@@ -37,6 +37,14 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         foreach (var v in visitRows)
             if (v.Uuid is not null) visits[v.Uuid] = v.Cnt;
 
+        var convRows = await scope.Database.FetchAsync<UuidCountRow>(
+            "SELECT OriginCardUuid AS Uuid, COUNT(*) AS Cnt FROM EventTickets " +
+            "WHERE OriginType = @0 AND OriginCardUuid IS NOT NULL AND Status = @1 GROUP BY OriginCardUuid",
+            new object[] { (int)TicketType.SeasonPass, (int)TicketStatus.Valid });
+        var conversions = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var v in convRows)
+            if (v.Uuid is not null) conversions[v.Uuid] = v.Cnt;
+
         return passes.Select(p =>
         {
             var buyer = Buyer.FromPersistence(p.BuyerType ?? 0, p.BuyerFirstName, p.BuyerLastName, p.BuyerCompany);
@@ -57,7 +65,8 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
                 string.IsNullOrWhiteSpace(p.BuyerEmail) ? p.BillingEmail : p.BuyerEmail,
                 buyer?.FirstName ?? p.BillingFirstName,
                 buyer?.LastName ?? p.BillingLastName,
-                buyer?.Company);
+                buyer?.Company,
+                conversions.GetValueOrDefault(p.Uuid));
         }).ToList();
     }
 
