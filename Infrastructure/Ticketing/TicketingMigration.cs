@@ -54,6 +54,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddEventConversionRules>("event-conversion-rules");
         To<AddTicketOriginColumns>("ticket-origin-columns");
         To<AddEventConversionOnly>("event-conversion-only");
+        To<AddFlexBoxOffice>("flex-box-office");
+    }
+}
+
+public class AddFlexBoxOffice(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonSingleTickets", "BoxOffice"))
+            Alter.Table("SeasonSingleTickets").AddColumn("BoxOffice").AsBoolean().NotNullable().WithDefaultValue(false).Do();
+        return Task.CompletedTask;
     }
 }
 

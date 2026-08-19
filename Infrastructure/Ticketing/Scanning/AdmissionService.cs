@@ -40,9 +40,14 @@ public sealed class AdmissionService(
             eventSeasonId = (await events.FindByIdAsync(eventId))?.SeasonId;
 
         int? redeemedEventId = null;
+        var isBoxOfficeFlex = false;
         if (evaluable && type == TicketType.SeasonSingle)
+        {
             redeemedEventId = await db.ExecuteScalarAsync<int?>(
                 "SELECT RedeemedEventId FROM SeasonSingleTickets WHERE Uuid = @0", key);
+            isBoxOfficeFlex = await db.ExecuteScalarAsync<bool>(
+                "SELECT BoxOffice FROM SeasonSingleTickets WHERE Uuid = @0", key);
+        }
 
         var isMember = type == TicketType.MemberCard;
         var visit = evaluable && !isMember
@@ -76,7 +81,7 @@ public sealed class AdmissionService(
         var facts = issued is null ? null : new ScannedTicketFacts(issued.Type, issued.ScopeId, issued.Status);
         var evaluation = AdmissionRules.Evaluate(
             eventId, type, scopeId, mode, test, isEmpty, facts,
-            eventSeasonId, redeemedEventId, admissionsInside, admissionCap, requiresConversion);
+            eventSeasonId, redeemedEventId, admissionsInside, admissionCap, requiresConversion, isBoxOfficeFlex);
 
         var categoryLabel = issued is null ? null : issued.CategoryName ?? issued.Category?.DisplayName();
         var holder = issued is null ? null : HolderLabel(issued);

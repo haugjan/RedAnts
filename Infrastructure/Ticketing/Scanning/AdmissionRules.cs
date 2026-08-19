@@ -39,7 +39,8 @@ public static class AdmissionRules
         int? redeemedEventId,
         int admissionsInside,
         int admissionCap,
-        bool requiresConversion)
+        bool requiresConversion,
+        bool isBoxOfficeFlex)
     {
         if (isEmptyUuid)
             return new AdmissionEvaluation(AdmissionVerdict.TestEmpty);
@@ -72,7 +73,7 @@ public static class AdmissionRules
         if (requestedType == TicketType.SeasonSingle && redeemedEventId is { } bound && bound != eventId)
             return Reject(FlexRedeemedElsewhere);
 
-        if (requiresConversion && requestedType != TicketType.EventTicket)
+        if (requiresConversion && requestedType != TicketType.EventTicket && !isBoxOfficeFlex)
             return Reject(ConversionRequired);
 
         if (mode == ScanMode.CheckIn)

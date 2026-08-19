@@ -25,6 +25,10 @@
     {
         <RebookView Operator="@_operator" OnBack="BackToList" />
     }
+    else if (_boxOfficeMode)
+    {
+        <BoxOfficeView Operator="@_operator" OnBack="BackToList" />
+    }
     else if (_selected is null)
     {
         <header class="scan-app__header scan-app__header--events">
@@ -88,6 +92,12 @@
                 <span class="event-card__name">Flextickets umbuchen</span>
                 <span class="event-card__meta">Flextickets scannen und einem Bundle der gleichen Saison zuordnen.</span>
             </button>
+
+            <button type="button" class="event-card event-card--rebook" @onclick="() => _boxOfficeMode = true">
+                <span class="event-card__badge event-card__badge--rebook">Abendkasse</span>
+                <span class="event-card__name">Umwandlung Abendkasse</span>
+                <span class="event-card__meta">Flextickets scannen und als Abendkassenticket markieren – gilt dann auch an Spezialanlässen.</span>
+            </button>
         }
     }
     else
@@ -109,7 +119,7 @@
         </div>
     }
 
-    @if (_selected is null && !_testMode && !_rebookMode)
+    @if (_selected is null && !_testMode && !_rebookMode && !_boxOfficeMode)
     {
         <a class="scan-app__testlink" href="/scanner-test">
             <span class="scan-app__testlink-icon" aria-hidden="true">&#9636;</span> Test QR-Code
@@ -188,7 +198,7 @@
     public void HandleBack()
     {
         if (_pendingEvent is not null) { _pendingEvent = null; StateHasChanged(); return; }
-        if (_selected is not null || _testMode || _rebookMode) { BackToList(); StateHasChanged(); }
+        if (_selected is not null || _testMode || _rebookMode || _boxOfficeMode) { BackToList(); StateHasChanged(); }
     }
 
     public void Dispose() => _selfRef?.Dispose();
@@ -204,6 +214,7 @@
     private Event? _selected;
     private bool _testMode;
     private bool _rebookMode;
+    private bool _boxOfficeMode;
     private Event? _pendingEvent;
     private string? _operator;
 
@@ -238,7 +249,7 @@
         _selected = evt;
     }
 
-    private void BackToList() { _selected = null; _testMode = false; _rebookMode = false; }
+    private void BackToList() { _selected = null; _testMode = false; _rebookMode = false; _boxOfficeMode = false; }
 
     private string VenueName(int venueId) => _venues.TryGetValue(venueId, out var name) ? name : "";
 

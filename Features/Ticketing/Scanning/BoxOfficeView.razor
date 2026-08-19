@@ -1,0 +1,223 @@
+@using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.Ports
+@implements IAsyncDisposable
+@inject IFlexTicketBundles Bundles
+@inject ITicketTokens Tickets
+@inject IJSRuntime JS
+
+<div class="boxoffice">
+    <header class="boxoffice-header">
+        <button type="button" class="boxoffice-back" @onclick="OnBack">&larr; Zurück</button>
+        <span class="boxoffice-htitle">Abendkasse-Umwandlung</span>
+    </header>
+
+    <p class="boxoffice-hint">Flexticket scannen → wird als Abendkassenticket markiert und gilt dann auch an Spezialanlässen, die Flextickets einschränken. Nur möglich, solange das Flexticket noch nicht eingelöst ist.</p>
+
+    <div class="qr-wrap">
+        <div id="qr-boxoffice-reader" class="qr-reader"></div>
+        <div class="qr-overlay">
+            <span class="qr-overlay__badge">Abendkasse</span>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="boxoffice-hint boxoffice-hint--error">@_error</p>
+    }
+
+    @if (_last is { } r)
+    {
+        <div class="boxoffice-result boxoffice-result--@ResultClass(r)" @key="_scanSeq">
+            <div class="boxoffice-result__head">
+                <span class="boxoffice-result__icon">@ResultIcon(r)</span>
+                <span class="boxoffice-result__title">@ResultTitle(r)</span>
+            </div>
+            @if (!string.IsNullOrEmpty(r.Category) || !string.IsNullOrEmpty(r.Reference))
+            {
+                <div class="boxoffice-result__cat">@r.Category@(string.IsNullOrEmpty(r.Reference) ? "" : $" · {r.Reference}")</div>
+            }
+        </div>
+    }
+
+    <div class="boxoffice-counter">@_convertedCount umgewandelt</div>
+
+    @if (_recent.Count > 0)
+    {
+        <ul class="boxoffice-recent">
+            @foreach (var e in _recent)
+            {
+                <li class="boxoffice-recent__row boxoffice-recent__row--@e.Cls">
+                    <span class="boxoffice-recent__ref">@e.Ref</span>
+                    <span class="boxoffice-recent__msg">@e.Msg</span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+<style>
+    .boxoffice { position: relative; border-radius: 14px; padding: 0.2rem 0.55rem 0.7rem; background: #fdf7e6; }
+    .boxoffice-header { display: flex; align-items: center; gap: 0.6rem; margin: 0.2rem 0 0.6rem; }
+    .boxoffice-back {
+        flex: 0 0 auto; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1px solid #d9c58a;
+        background: #fff; color: #7a5c00; font-size: 0.9rem; font-weight: 800; cursor: pointer;
+    }
+    .boxoffice-htitle { font-size: 1.05rem; font-weight: 800; color: #7a5c00; }
+    .boxoffice-hint { margin: 0.6rem 0; font-size: 0.95rem; color: #7a5c00; }
+    .boxoffice-hint--error { color: #b42318; font-weight: 700; text-align: center; }
+
+    .qr-wrap { position: relative; }
+    .qr-reader { border: 3px solid #b8860b; border-radius: 12px; overflow: hidden; max-height: 46vh; }
+    .qr-reader video { max-height: calc(46vh - 6px); object-fit: cover; width: 100%; }
+    .qr-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: flex-start; justify-content: center; }
+    .qr-overlay__badge {
+        margin-top: 10px; padding: 0.32rem 1.1rem; border-radius: 999px; background: #b8860b; color: #fff;
+        font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.98rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+
+    .boxoffice-result {
+        margin: 0.6rem 0 0; padding: 0.7rem 0.9rem; border-radius: 12px; color: #fff;
+        animation: boxoffice-pop 0.5s cubic-bezier(0.2, 0.85, 0.2, 1);
+    }
+    @@keyframes boxoffice-pop {
+        0% { transform: scale(0.9); filter: brightness(2); box-shadow: 0 0 0 6px rgba(255,255,255,0.6); }
+        35% { transform: scale(1.045); filter: brightness(1.35); box-shadow: 0 0 0 3px rgba(255,255,255,0.35); }
+        100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    }
+    .boxoffice-result--ok { background: #1a7f37; }
+    .boxoffice-result--same { background: #6b7280; }
+    .boxoffice-result--warn { background: #b42318; }
+    .boxoffice-result__head { display: flex; align-items: center; gap: 0.6rem; }
+    .boxoffice-result__icon { font-size: 2rem; line-height: 1; }
+    .boxoffice-result__title { font-size: 1.35rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; }
+    .boxoffice-result__cat { margin-top: 0.35rem; font-size: 1.15rem; font-weight: 800; }
+
+    .boxoffice-counter { margin: 0.6rem 0 0.3rem; text-align: center; font-size: 1.1rem; font-weight: 900; color: #7a5c00; }
+
+    .boxoffice-recent { list-style: none; margin: 0.2rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .boxoffice-recent__row {
+        display: flex; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.6rem; border-radius: 8px;
+        font-size: 0.9rem; background: #fff; border-left: 4px solid #d9c58a;
+    }
+    .boxoffice-recent__row--ok { border-left-color: #1a7f37; }
+    .boxoffice-recent__row--same { border-left-color: #6b7280; }
+    .boxoffice-recent__row--warn { border-left-color: #b42318; }
+    .boxoffice-recent__ref { font-family: ui-monospace, Consolas, monospace; font-weight: 800; color: #14171A; }
+    .boxoffice-recent__msg { color: #555; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public string Operator { get; set; } = "";
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private DotNetObjectReference<BoxOfficeView>? _ref;
+    private FlexBoxOfficeResult? _last;
+    private int _convertedCount;
+    private int _scanSeq;
+    private readonly List<RecentEntry> _recent = [];
+    private bool _cameraStarted;
+    private string? _error;
+
+    private sealed record RecentEntry(string Ref, string Msg, string Cls);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_cameraStarted)
+        {
+            _cameraStarted = true;
+            _ref ??= DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("ticketScanner.start", "qr-boxoffice-reader", _ref, true);
+            }
+            catch (JSException ex)
+            {
+                _error = "Kamera konnte nicht gestartet werden: " + ex.Message;
+                StateHasChanged();
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnCodeScanned(string code)
+    {
+        var scanned = ExtractToken(code);
+        FlexBoxOfficeResult result;
+        if (Tickets.TryVerify(scanned, out var data))
+            result = await Bundles.ConvertToBoxOfficeByUuidAsync(data.Uuid, Operator);
+        else if (Tickets.TryVerifyShort(scanned, out var shortCode))
+            result = await Bundles.ConvertToBoxOfficeByCodeAsync(shortCode, Operator);
+        else
+            result = new FlexBoxOfficeResult(FlexBoxOfficeStatus.NotFound, Shorten(code));
+
+        _last = result;
+        _scanSeq++;
+        if (result.Status == FlexBoxOfficeStatus.Converted) _convertedCount++;
+        PushRecent(result);
+        StateHasChanged();
+        await Beep(result.Ok);
+    }
+
+    private void PushRecent(FlexBoxOfficeResult r)
+    {
+        _recent.Insert(0, new RecentEntry(r.Reference ?? "?", RecentMsg(r), ResultClass(r)));
+        if (_recent.Count > 6) _recent.RemoveAt(_recent.Count - 1);
+    }
+
+    private async Task Beep(bool ok)
+    {
+        try { await JS.InvokeVoidAsync("ticketScanner.beep", ok); }
+        catch (JSException) { }
+    }
+
+    private static string RecentMsg(FlexBoxOfficeResult r) => r.Status switch
+    {
+        FlexBoxOfficeStatus.Converted => "→ Abendkasse",
+        FlexBoxOfficeStatus.AlreadyBoxOffice => "schon Abendkasse",
+        FlexBoxOfficeStatus.AlreadyRedeemed => "bereits eingelöst",
+        _ => "kein Flexticket"
+    };
+
+    private static string ResultClass(FlexBoxOfficeResult r) => r.Status switch
+    {
+        FlexBoxOfficeStatus.Converted => "ok",
+        FlexBoxOfficeStatus.AlreadyBoxOffice => "same",
+        _ => "warn"
+    };
+
+    private static string ResultIcon(FlexBoxOfficeResult r) => r.Status switch
+    {
+        FlexBoxOfficeStatus.Converted => "✓",
+        FlexBoxOfficeStatus.AlreadyBoxOffice => "•",
+        _ => "✕"
+    };
+
+    private static string ResultTitle(FlexBoxOfficeResult r) => r.Status switch
+    {
+        FlexBoxOfficeStatus.Converted => "Abendkasse",
+        FlexBoxOfficeStatus.AlreadyBoxOffice => "Schon Abendkasse",
+        FlexBoxOfficeStatus.AlreadyRedeemed => "Bereits eingelöst",
+        _ => "Kein Flexticket"
+    };
+
+    private static string ExtractToken(string code)
+    {
+        var s = (code ?? "").Trim();
+        var cut = s.IndexOfAny(['?', '#']);
+        if (cut >= 0) s = s[..cut];
+        var slash = s.LastIndexOf('/');
+        return slash >= 0 ? s[(slash + 1)..] : s;
+    }
+
+    private static string Shorten(string? s) =>
+        string.IsNullOrEmpty(s) ? "" : (s.Length <= 40 ? s : s[..40] + "…");
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("ticketScanner.stop"); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

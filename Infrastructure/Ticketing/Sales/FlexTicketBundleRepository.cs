@@ -60,6 +60,10 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         var reference = ticket.Uuid.Length >= 8 ? ticket.Uuid[..8].ToUpperInvariant() : ticket.Uuid.ToUpperInvariant();
         var category = ((TicketCategory)ticket.Category).DisplayName();
 
+        if (ticket.Redeemed || ticket.RedeemedEventId is not null)
+            return new FlexRebookResult(FlexRebookStatus.AlreadyRedeemed, reference, category,
+                ToBundle: target.Reference, TicketSeasonId: ticket.SeasonId);
+
         if (ticket.SeasonId != target.SeasonId)
             return new FlexRebookResult(FlexRebookStatus.WrongSeason, reference, category,
                 ToBundle: target.Reference, TicketSeasonId: ticket.SeasonId);
@@ -72,15 +76,75 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         if (ticket.BundleId is { } prev)
             fromRef = (await db.FirstOrDefaultAsync<FlexTicketBundleRecord>("WHERE Id = @0", prev))?.Reference;
 
-        await db.ExecuteAsync("UPDATE SeasonSingleTickets SET BundleId = @0 WHERE Uuid = @1", targetBundleId, ticket.Uuid);
+        await db.ExecuteAsync("UPDATE SeasonSingleTickets SET BundleId = @0, BoxOffice = 0 WHERE Uuid = @1", targetBundleId, ticket.Uuid);
         return new FlexRebookResult(FlexRebookStatus.Moved, reference, category, fromRef, target.Reference, ticket.SeasonId);
+    }
+
+    public async Task<FlexBoxOfficeResult> ConvertToBoxOfficeByUuidAsync(Guid uuid, string? operatorName)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        var ticket = await db.FirstOrDefaultAsync<SeasonSingleTicketRecord>("WHERE Uuid = @0", uuid.ToString());
+        return await ApplyBoxOfficeAsync(db, ticket);
+    }
+
+    public async Task<FlexBoxOfficeResult> ConvertToBoxOfficeByCodeAsync(string codePrefix, string? operatorName)
+    {
+        var code = (codePrefix ?? "").Trim().ToLowerInvariant();
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        var ticket = code.Length == 0
+            ? null
+            : await db.FirstOrDefaultAsync<SeasonSingleTicketRecord>("WHERE Uuid LIKE @0", code + "%");
+        return await ApplyBoxOfficeAsync(db, ticket);
+    }
+
+    private const string BoxOfficeBundleReference = "Abendkasse";
+
+    private static async Task<FlexBoxOfficeResult> ApplyBoxOfficeAsync(IDatabase db, SeasonSingleTicketRecord? ticket)
+    {
+        if (ticket is null) return new FlexBoxOfficeResult(FlexBoxOfficeStatus.NotFound);
+
+        var reference = ticket.Uuid.Length >= 8 ? ticket.Uuid[..8].ToUpperInvariant() : ticket.Uuid.ToUpperInvariant();
+        var category = ((TicketCategory)ticket.Category).DisplayName();
+
+        if (ticket.Redeemed || ticket.RedeemedEventId is not null)
+            return new FlexBoxOfficeResult(FlexBoxOfficeStatus.AlreadyRedeemed, reference, category);
+
+        var bundleId = await GetOrCreateBoxOfficeBundleAsync(db, ticket.SeasonId);
+
+        if (ticket.BoxOffice && ticket.BundleId == bundleId)
+            return new FlexBoxOfficeResult(FlexBoxOfficeStatus.AlreadyBoxOffice, reference, category);
+
+        await db.ExecuteAsync("UPDATE SeasonSingleTickets SET BoxOffice = 1, BundleId = @0 WHERE Uuid = @1",
+            bundleId, ticket.Uuid);
+        return new FlexBoxOfficeResult(FlexBoxOfficeStatus.Converted, reference, category);
+    }
+
+    private static async Task<int> GetOrCreateBoxOfficeBundleAsync(IDatabase db, int seasonId)
+    {
+        var existing = await db.FirstOrDefaultAsync<FlexTicketBundleRecord>(
+            "WHERE SeasonId = @0 AND Reference = @1", seasonId, BoxOfficeBundleReference);
+        if (existing is not null) return existing.Id;
+
+        var record = new FlexTicketBundleRecord
+        {
+            SeasonId = seasonId,
+            Category = (int)TicketCategory.Adult,
+            Reference = BoxOfficeBundleReference,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByName = "Abendkasse",
+            CreatedByEmail = null
+        };
+        await db.InsertAsync(record);
+        return record.Id;
     }
 
     public async Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<FlexTicketRow>(
-            "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, v.IsInside AS InsideFlag, " +
+            "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, t.BoxOffice, v.IsInside AS InsideFlag, " +
             "CASE WHEN EXISTS (SELECT 1 FROM EventTickets et WHERE et.OriginType = @1 AND et.OriginCardUuid = t.Uuid) THEN 1 ELSE 0 END AS Converted " +
             "FROM SeasonSingleTickets t " +
             "LEFT JOIN TicketEventVisits v ON v.TicketUuid = t.Uuid AND v.EventId = t.RedeemedEventId " +
@@ -88,7 +152,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         return rows.Select(r => new FlexTicketView(
             Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
             (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt,
-            (TicketCategory)r.Category, r.InsideFlag, r.Converted == 1)).ToList();
+            (TicketCategory)r.Category, r.InsideFlag, r.Converted == 1, r.BoxOffice)).ToList();
     }
 
     public async Task SetTicketCategoryAsync(Guid uuid, TicketCategory category)
@@ -232,5 +296,6 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         public DateTime CreatedAt { get; set; }
         public bool? InsideFlag { get; set; }
         public int Converted { get; set; }
+        public bool BoxOffice { get; set; }
     }
 }

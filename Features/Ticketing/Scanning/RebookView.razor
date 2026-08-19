@@ -289,6 +289,7 @@
         FlexRebookStatus.Moved => string.IsNullOrEmpty(r.FromBundle) ? $"→ {r.ToBundle}" : $"{r.FromBundle} → {r.ToBundle}",
         FlexRebookStatus.AlreadyInTarget => "bereits in diesem Bundle",
         FlexRebookStatus.WrongSeason => "andere Saison",
+        FlexRebookStatus.AlreadyRedeemed => "bereits eingelöst",
         _ => "nicht erkannt"
     };
 
@@ -311,6 +312,7 @@
         FlexRebookStatus.Moved => "Umgebucht",
         FlexRebookStatus.AlreadyInTarget => "Schon in diesem Bundle",
         FlexRebookStatus.WrongSeason => "Andere Saison",
+        FlexRebookStatus.AlreadyRedeemed => "Bereits eingelöst",
         _ => "Kein Flexticket"
     };
 

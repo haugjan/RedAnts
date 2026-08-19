@@ -140,6 +140,10 @@
                                     {
                                         <span class="ta-conv-badge" title="Dieses Flexticket wurde für einen Ticketkauf (Umwandlung) an einem Spezialanlass gebraucht, nicht am Eingang gescannt.">↔ Umwandlung</span>
                                     }
+                                    @if (t.BoxOffice)
+                                    {
+                                        <span class="ta-conv-badge" title="Als Abendkassenticket markiert: gilt auch an Spezialanlässen, die Flextickets einschränken. Das „Abendkasse“-Bundle dient nur der Gruppierung.">🎫 Abendkasse</span>
+                                    }
                                 </td>
                                 <td>
                                     <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuch</button>
