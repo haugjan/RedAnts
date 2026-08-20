@@ -55,6 +55,11 @@ public sealed class BackOfficeAuthComposer : IComposer
                     options.TokenValidationParameters.NameClaimType = "preferred_username";
                     options.Events = new OpenIdConnectEvents
                     {
+                        OnRedirectToIdentityProvider = context =>
+                        {
+                            context.ProtocolMessage.Prompt = "select_account";
+                            return Task.CompletedTask;
+                        },
                         OnTokenValidated = context =>
                         {
                             if (context.Principal?.Identity is ClaimsIdentity identity
