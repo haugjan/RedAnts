@@ -104,14 +104,13 @@ jobs:
           BASE="https://$WEBAPP.azurewebsites.net"
           # The app-settings write above triggers an async in-place restart. Warming now would
           # compile the runtime Razor views in the old worker that Azure then recycles, leaving
-          # users on a cold worker. So force one deterministic restart, wait for the old worker to
-          # drop, then poll until the NEW worker answers and only precompile the views on it.
+          # users on a cold worker. So wait for that restart to tear down the old worker before we
+          # poll - we do NOT force an extra restart (the shared dev box is easily overwhelmed by
+          # back-to-back restarts). Then poll until the NEW worker answers and warm only that one.
           # "Up" = 2xx, 3xx or 401: the root redirects to /ticketing/ (3xx) and the site gate
           # answers 401 without credentials - both mean Umbraco booted. Best-effort: never fail here.
-          echo "Forcing a clean restart so warm-up targets the final worker..."
-          az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || echo "(restart call failed, best-effort)"
-          echo "Waiting for the old worker to be torn down..."
-          sleep 45
+          echo "Waiting for the app-settings restart to take the old worker down..."
+          sleep 60
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
@@ -183,12 +182,10 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
-          # See deploy-dev: force a clean restart so warm-up targets the final worker, not the
-          # old one that the app-settings write is about to recycle.
-          echo "Forcing a clean restart so warm-up targets the final worker..."
-          az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || echo "(restart call failed, best-effort)"
-          echo "Waiting for the old worker to be torn down..."
-          sleep 45
+          # See deploy-dev: wait for the app-settings restart to take the old worker down so warm-up
+          # targets the final worker. We do not force an extra restart.
+          echo "Waiting for the app-settings restart to take the old worker down..."
+          sleep 60
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
