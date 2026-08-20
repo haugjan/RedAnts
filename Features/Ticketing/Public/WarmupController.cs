@@ -10,10 +10,11 @@ public sealed class WarmupController(
     IConfiguration configuration,
     IDataProtectionProvider dataProtection,
     ISeasons seasons,
+    IEvents events,
     IContentUrls contentUrls) : Controller
 {
     private static readonly string[] CorePaths =
-        ["/", "/ticketing/", "/seasons/", "/next", "/next/embed", "/scan/login", "/scanner-test", "/umbraco"];
+        ["/", "/ticketing/", "/seasons/", "/next", "/next/embed", "/scan/login", "/scanner-test", "/cart", "/umbraco"];
 
     [HttpGet("/warmup")]
     public async Task<IActionResult> Warmup()
@@ -24,6 +25,9 @@ public sealed class WarmupController(
         var seasonUrl = await FirstSeasonUrlAsync();
         if (seasonUrl is not null) paths.Add(seasonUrl);
 
+        var eventUrl = await FirstEventUrlAsync();
+        if (eventUrl is not null) paths.Add(eventUrl);
+
         string? gateCookie = null;
         if (!string.IsNullOrEmpty(configuration["BasicAuth:Password"]))
         {
@@ -32,7 +36,7 @@ public sealed class WarmupController(
         }
 
         var client = httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(45);
+        client.Timeout = TimeSpan.FromSeconds(60);
 
         var report = new StringBuilder("warmup\n");
         foreach (var path in paths)
@@ -58,5 +62,12 @@ public sealed class WarmupController(
     {
         var season = (await seasons.GetPublicOpenAsync()).FirstOrDefault();
         return season is null ? null : contentUrls.GetUrl(season.Id);
+    }
+
+    private async Task<string?> FirstEventUrlAsync()
+    {
+        var ev = (await events.GetPublicOpenAsync())
+            .OrderBy(e => e.Date).ThenBy(e => e.StartTime).FirstOrDefault();
+        return ev is null ? null : contentUrls.GetUrl(ev.Id);
     }
 }
