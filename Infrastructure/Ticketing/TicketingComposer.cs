@@ -1,8 +1,10 @@
+using PdfSharp.Fonts;
 using RedAnts.Features.Ticketing.Email;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Infrastructure.Ticketing.Content;
 using RedAnts.Infrastructure.Ticketing.Email;
 using RedAnts.Infrastructure.Ticketing.Sales;
+using RedAnts.Infrastructure.Ticketing.Tickets;
 using Umbraco.Cms.Core.Composing;
 
 namespace RedAnts.Infrastructure.Ticketing;
@@ -12,6 +14,10 @@ public class TicketingComposer : IComposer
     public void Compose(IUmbracoBuilder builder)
     {
         builder.AddComponent<TicketingMigrationComponent>();
+
+        if (GlobalFontSettings.FontResolver is null)
+            GlobalFontSettings.FontResolver = new FlexPrintFontResolver();
+        builder.Services.AddScoped<IFlexTicketPrinter, FlexTicketPrintService>();
 
         builder.Services.AddScoped<ISeasons, UmbracoSeasons>();
         builder.Services.AddScoped<IVenues, UmbracoVenues>();

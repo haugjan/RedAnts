@@ -34,6 +34,21 @@ jobs:
       - run: dotnet restore RedAnts.csproj
       - run: dotnet build RedAnts.csproj --configuration Release --no-restore
       - run: dotnet publish RedAnts.csproj --configuration Release --output ./publish --no-build
+      - name: Strip PdfSharp companion DLLs from deps.json
+        run: |
+          jq '
+            .targets |= map_values(
+              map_values(
+                if has("runtime") then
+                  .runtime |= with_entries(
+                    select(.key | test("PdfSharp\\.(BarCodes|Charting|Quality|Snippets|WPFonts)\\.dll$") | not)
+                  )
+                else . end
+              )
+            )
+          ' ./publish/RedAnts.deps.json > /tmp/deps.tmp \
+            && mv /tmp/deps.tmp ./publish/RedAnts.deps.json
+          echo "PdfSharp companions stripped from deps.json"
       - name: Package
         run: cd ./publish && zip -r ../app.zip . && cd ..
       - name: Upload build artifact
