@@ -38,7 +38,8 @@ public sealed record TicketVisitEntry(
     IReadOnlyList<TicketVisitScan> Scans,
     TicketVisitKind Kind = TicketVisitKind.Visit,
     DateTime? ConvertedAt = null,
-    bool ViaConversion = false);
+    bool ViaConversion = false,
+    Guid? TicketUuid = null);
 
 public interface IVisitLogReader
 {

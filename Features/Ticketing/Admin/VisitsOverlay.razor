@@ -43,6 +43,10 @@
                                 <span class="ta-visit-date">@cd.ToString("dd.MM.yyyy")</span>
                             }
                             <span class="ta-badge ta-badge-conv">Umgewandelt</span>
+                            @if (v.TicketUuid is { } cu)
+                            {
+                                <span class="ta-visit-ticketno">Ticket @AdminFormat.TicketNo(cu)</span>
+                            }
                             <span class="ta-visit-summary">@(v.ConvertedAt is { } ca ? $"am {ca.ToLocalTime():dd.MM.yyyy HH:mm}" : "")</span>
                         </div>
                     }
@@ -54,6 +58,10 @@
                             @if (v.ViaConversion)
                             {
                                 <span class="ta-badge ta-badge-conv">via Umwandlung</span>
+                                @if (v.TicketUuid is { } vu)
+                                {
+                                    <span class="ta-visit-ticketno">Ticket @AdminFormat.TicketNo(vu)</span>
+                                }
                             }
                             @if (v.EventDate is { } d)
                             {
@@ -104,6 +112,8 @@
     .ta-visit-static:hover { background: none; }
     .ta-visit-conv { background: rgba(200,16,46,.04); border-radius: 6px; }
     .ta-badge-conv { background: rgba(200,16,46,.12); color: #c8102e; }
+    .ta-visit-ticketno { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; color: var(--ta-muted); }
+
 </style>
 
 @code {

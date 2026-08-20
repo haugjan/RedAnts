@@ -81,16 +81,17 @@ public sealed class VisitLogReader(IScopeProvider scopeProvider, IEvents events)
         {
             var evt = eventsById.GetValueOrDefault(c.EventId);
             var name = evt?.Name ?? $"Anlass {c.EventId}";
+            Guid? ticketUuid = Guid.TryParse(c.Uuid, out var tu) ? tu : null;
             result.Add(new TicketVisitEntry(
                 0, c.EventId, name, evt?.Date, false, [],
-                TicketVisitKind.Conversion, c.CreatedAt));
+                TicketVisitKind.Conversion, c.CreatedAt, TicketUuid: ticketUuid));
 
             foreach (var cv in convVisits.Where(x =>
                 string.Equals(x.TicketUuid, c.Uuid, StringComparison.OrdinalIgnoreCase)))
             {
                 result.Add(new TicketVisitEntry(
                     cv.Id, cv.EventId, name, evt?.Date, cv.IsInside,
-                    ScansFor(cv.Id, convLogs), TicketVisitKind.Visit, null, ViaConversion: true));
+                    ScansFor(cv.Id, convLogs), TicketVisitKind.Visit, null, ViaConversion: true, TicketUuid: ticketUuid));
             }
         }
 
