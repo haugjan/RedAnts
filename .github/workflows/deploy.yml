@@ -36,23 +36,19 @@ jobs:
       - run: dotnet publish RedAnts.csproj --configuration Release --output ./publish --no-build
       - name: Strip PdfSharp companion DLLs from deps.json
         run: |
-          python3 - << 'PYEOF'
-import json, os
-path = './publish/RedAnts.deps.json'
-companions = {'PdfSharp.BarCodes', 'PdfSharp.Charting', 'PdfSharp.Quality', 'PdfSharp.Snippets', 'PdfSharp.WPFonts'}
-with open(path) as f:
-    d = json.load(f)
-for target in d.get('targets', {}).values():
-    for lib_entry in target.values():
-        if 'runtime' in lib_entry:
-            lib_entry['runtime'] = {
-                k: v for k, v in lib_entry['runtime'].items()
-                if not any(k.endswith(c + '.dll') for c in companions)
-            }
-with open(path, 'w') as f:
-    json.dump(d, f, indent=2)
-print('PdfSharp companions removed from deps.json')
-PYEOF
+          jq '
+            .targets |= map_values(
+              map_values(
+                if has("runtime") then
+                  .runtime |= with_entries(
+                    select(.key | test("PdfSharp\\.(BarCodes|Charting|Quality|Snippets|WPFonts)\\.dll$") | not)
+                  )
+                else . end
+              )
+            )
+          ' ./publish/RedAnts.deps.json > /tmp/deps.tmp \
+            && mv /tmp/deps.tmp ./publish/RedAnts.deps.json
+          echo "PdfSharp companions stripped from deps.json"
       - name: Package
         run: cd ./publish && zip -r ../app.zip . && cd ..
       - name: Upload build artifact
