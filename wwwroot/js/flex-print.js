@@ -82,6 +82,34 @@
                 label.style.display = 'none';
             }
         }
+
+        drawMarks(l, k);
+    }
+
+    function drawMarks(l, k) {
+        const svg = $('fpMarks');
+        const canvas = $('fpCanvas');
+        if (!svg || !canvas) return;
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        svg.setAttribute('width', w);
+        svg.setAttribute('height', h);
+        const left = (l.qrX - QUIET_MM) * k, right = (l.qrX + l.qrSize + QUIET_MM) * k;
+        const top = (l.qrY - QUIET_MM) * k, bottom = (l.qrY + l.qrSize + QUIET_MM) * k;
+        const arm = 9, gap = 3;
+        let d = '';
+        [[left, top], [right, top], [left, bottom], [right, bottom]].forEach(function (c) {
+            const cx = c[0], cy = c[1];
+            d += mkLine(cx - arm, cy, cx - gap, cy);
+            d += mkLine(cx + gap, cy, cx + arm, cy);
+            d += mkLine(cx, cy - arm, cx, cy - gap);
+            d += mkLine(cx, cy + gap, cx, cy + arm);
+        });
+        svg.innerHTML = d;
+    }
+
+    function mkLine(x1, y1, x2, y2) {
+        return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2
+            + '" stroke="#e53" stroke-width="1.5" />';
     }
 
     function PT_PER_MM_PX(k) {

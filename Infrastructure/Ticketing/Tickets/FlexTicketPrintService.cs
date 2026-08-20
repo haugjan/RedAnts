@@ -47,28 +47,36 @@ public sealed class FlexTicketPrintService(
         return output.ToArray();
     }
 
+    private const int QrBuiltInQuietModules = 4;
+
     private static void DrawQr(XGraphics gfx, XBrush brush, XBrush paper, FlexPrintLayout layout, string content)
     {
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.M);
         var matrix = data.ModuleMatrix;
-        var count = matrix.Count;
-        if (count == 0) return;
+        var total = matrix.Count;
+        if (total <= QrBuiltInQuietModules * 2) return;
 
         var size = Mm(layout.QrSizeMm);
         var originX = Mm(layout.QrXMm);
         var originY = Mm(layout.QrYMm);
         var quiet = Mm(QuietZoneMm);
-        var module = size / count;
+
+        var qz = QrBuiltInQuietModules;
+        var dataCount = total - qz * 2;
+        var module = size / dataCount;
 
         gfx.DrawRectangle(paper, originX - quiet, originY - quiet, size + 2 * quiet, size + 2 * quiet);
 
-        for (var y = 0; y < count; y++)
+        for (var y = qz; y < total - qz; y++)
         {
             var row = matrix[y];
-            for (var x = 0; x < count; x++)
+            for (var x = qz; x < total - qz; x++)
                 if (row[x])
-                    gfx.DrawRectangle(brush, originX + x * module, originY + y * module, module, module);
+                    gfx.DrawRectangle(brush,
+                        originX + (x - qz) * module,
+                        originY + (y - qz) * module,
+                        module, module);
         }
     }
 
