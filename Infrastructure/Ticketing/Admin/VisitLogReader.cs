@@ -28,35 +28,73 @@ public sealed class VisitLogReader(IScopeProvider scopeProvider, IEvents events)
     {
         List<EventVisitRecord> visits;
         List<EventVisitLogRecord> logs;
+        List<EventTicketRecord> conversions;
+        List<EventVisitRecord> convVisits = [];
+        List<EventVisitLogRecord> convLogs = [];
         using (var scope = scopeProvider.CreateScope(autoComplete: true))
         {
             visits = await scope.Database.FetchAsync<EventVisitRecord>(
                 "WHERE TicketUuid = @0 ORDER BY CreatedAt", uuid.ToString());
-            if (visits.Count == 0) return [];
 
-            var visitIds = visits.Select(v => v.Id).ToArray();
-            logs = await scope.Database.FetchAsync<EventVisitLogRecord>(
-                $"WHERE VisitId IN ({string.Join(',', visitIds)}) ORDER BY OccurredAt");
+            conversions = await scope.Database.FetchAsync<EventTicketRecord>(
+                "WHERE OriginCardUuid = @0 AND Status = @1 ORDER BY CreatedAt",
+                uuid.ToString(), (int)TicketStatus.Valid);
+
+            if (visits.Count == 0 && conversions.Count == 0) return [];
+
+            if (visits.Count > 0)
+                logs = await scope.Database.FetchAsync<EventVisitLogRecord>(
+                    $"WHERE VisitId IN ({string.Join(',', visits.Select(v => v.Id))}) ORDER BY OccurredAt");
+            else
+                logs = [];
+
+            if (conversions.Count > 0)
+            {
+                var convUuids = string.Join(",", conversions.Select(c => $"'{c.Uuid}'"));
+                convVisits = await scope.Database.FetchAsync<EventVisitRecord>(
+                    $"WHERE TicketUuid IN ({convUuids}) ORDER BY CreatedAt");
+                if (convVisits.Count > 0)
+                    convLogs = await scope.Database.FetchAsync<EventVisitLogRecord>(
+                        $"WHERE VisitId IN ({string.Join(',', convVisits.Select(v => v.Id))}) ORDER BY OccurredAt");
+            }
         }
 
         var allEvents = await events.GetAllAsync();
         var eventsById = allEvents.ToDictionary(e => e.Id);
-        var logsByVisit = logs.GroupBy(l => l.VisitId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<TicketVisitScan>)g
-                .Select(l => new TicketVisitScan((VisitLogType)l.Type, l.OccurredAt, l.ScannedBy))
-                .ToList());
 
-        return visits.Select(v =>
+        IReadOnlyList<TicketVisitScan> ScansFor(long visitId, IEnumerable<EventVisitLogRecord> source) =>
+            source.Where(l => l.VisitId == visitId)
+                .Select(l => new TicketVisitScan((VisitLogType)l.Type, l.OccurredAt, l.ScannedBy))
+                .ToList();
+
+        var result = new List<TicketVisitEntry>();
+
+        foreach (var v in visits)
         {
             var evt = eventsById.GetValueOrDefault(v.EventId);
-            return new TicketVisitEntry(
-                v.Id,
-                v.EventId,
-                evt?.Name ?? $"Anlass {v.EventId}",
-                evt?.Date,
-                v.IsInside,
-                logsByVisit.GetValueOrDefault(v.Id) ?? []);
-        }).ToList();
+            result.Add(new TicketVisitEntry(
+                v.Id, v.EventId, evt?.Name ?? $"Anlass {v.EventId}", evt?.Date,
+                v.IsInside, ScansFor(v.Id, logs)));
+        }
+
+        foreach (var c in conversions)
+        {
+            var evt = eventsById.GetValueOrDefault(c.EventId);
+            var name = evt?.Name ?? $"Anlass {c.EventId}";
+            result.Add(new TicketVisitEntry(
+                0, c.EventId, name, evt?.Date, false, [],
+                TicketVisitKind.Conversion, c.CreatedAt));
+
+            foreach (var cv in convVisits.Where(x =>
+                string.Equals(x.TicketUuid, c.Uuid, StringComparison.OrdinalIgnoreCase)))
+            {
+                result.Add(new TicketVisitEntry(
+                    cv.Id, cv.EventId, name, evt?.Date, cv.IsInside,
+                    ScansFor(cv.Id, convLogs), TicketVisitKind.Visit, null, ViaConversion: true));
+            }
+        }
+
+        return result;
     }
 }
 

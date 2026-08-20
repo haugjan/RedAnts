@@ -27,13 +27,18 @@ public static class RedemptionStateExtensions
 
 public sealed record TicketVisitScan(VisitLogType Type, DateTime OccurredAt, string? ScannedBy);
 
+public enum TicketVisitKind { Visit, Conversion }
+
 public sealed record TicketVisitEntry(
     long VisitId,
     int EventId,
     string EventName,
     DateOnly? EventDate,
     bool IsInside,
-    IReadOnlyList<TicketVisitScan> Scans);
+    IReadOnlyList<TicketVisitScan> Scans,
+    TicketVisitKind Kind = TicketVisitKind.Visit,
+    DateTime? ConvertedAt = null,
+    bool ViaConversion = false);
 
 public interface IVisitLogReader
 {

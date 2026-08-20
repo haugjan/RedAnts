@@ -17,8 +17,11 @@
         {
             @if (_visits.Count > 1)
             {
+                var visitCount = _visits.Count(x => x.Kind == TicketVisitKind.Visit);
+                var convCount = _visits.Count(x => x.Kind == TicketVisitKind.Conversion);
+                var scanCount = _visits.Sum(x => x.Scans.Count);
                 <div class="ta-visits-bar">
-                    <span class="ta-muted">@_visits.Count Anlässe · @_visits.Sum(v => v.Scans.Count) Scans</span>
+                    <span class="ta-muted">@(visitCount > 0 ? $"{visitCount} Besuche · " : "")@(convCount > 0 ? $"{convCount} Umwandlung{(convCount == 1 ? "" : "en")} · " : "")@scanCount Scans</span>
                     <button type="button" class="ta-linkbtn" @onclick="ToggleAll">
                         @(_expanded.Count == _visits.Count ? "Alle zuklappen" : "Alle aufklappen")
                     </button>
@@ -29,36 +32,56 @@
                 var index = i;
                 var v = _visits[index];
                 var open = _expanded.Contains(index);
-                <div class="ta-visit">
-                    <button type="button" class="ta-visit-toggle" @onclick="() => Toggle(index)">
-                        <span class="ta-visit-chevron">@(open ? "▾" : "▸")</span>
-                        <span class="ta-visit-event">@v.EventName</span>
-                        @if (v.EventDate is { } d)
-                        {
-                            <span class="ta-visit-date">@d.ToString("dd.MM.yyyy")</span>
-                        }
-                        <span class="ta-badge @(v.IsInside ? "ta-badge-valid" : "ta-badge-draft")">
-                            @(v.IsInside ? "Drin" : "Draussen")
-                        </span>
-                        <span class="ta-visit-summary">@Summary(v)</span>
-                    </button>
-                    @if (open && v.Scans.Count > 0)
+                <div class="ta-visit @(v.Kind == TicketVisitKind.Conversion ? "ta-visit-conv" : "")">
+                    @if (v.Kind == TicketVisitKind.Conversion)
                     {
-                        <table class="ta-subtable">
-                            <thead>
-                                <tr><th>Scan</th><th>Zeit</th><th>Scannperson</th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var s in v.Scans)
-                                {
-                                    <tr>
-                                        <td>@(s.Type == VisitLogType.CheckIn ? "Eingescannt" : "Ausgescannt")</td>
-                                        <td>@s.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                                        <td>@(string.IsNullOrEmpty(s.ScannedBy) ? "—" : s.ScannedBy)</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <div class="ta-visit-toggle ta-visit-static">
+                            <span class="ta-visit-chevron">↻</span>
+                            <span class="ta-visit-event">@v.EventName</span>
+                            @if (v.EventDate is { } cd)
+                            {
+                                <span class="ta-visit-date">@cd.ToString("dd.MM.yyyy")</span>
+                            }
+                            <span class="ta-badge ta-badge-conv">Umgewandelt</span>
+                            <span class="ta-visit-summary">@(v.ConvertedAt is { } ca ? $"am {ca.ToLocalTime():dd.MM.yyyy HH:mm}" : "")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <button type="button" class="ta-visit-toggle" @onclick="() => Toggle(index)">
+                            <span class="ta-visit-chevron">@(open ? "▾" : "▸")</span>
+                            <span class="ta-visit-event">@v.EventName</span>
+                            @if (v.ViaConversion)
+                            {
+                                <span class="ta-badge ta-badge-conv">via Umwandlung</span>
+                            }
+                            @if (v.EventDate is { } d)
+                            {
+                                <span class="ta-visit-date">@d.ToString("dd.MM.yyyy")</span>
+                            }
+                            <span class="ta-badge @(v.IsInside ? "ta-badge-valid" : "ta-badge-draft")">
+                                @(v.IsInside ? "Drin" : "Draussen")
+                            </span>
+                            <span class="ta-visit-summary">@Summary(v)</span>
+                        </button>
+                        @if (open && v.Scans.Count > 0)
+                        {
+                            <table class="ta-subtable">
+                                <thead>
+                                    <tr><th>Scan</th><th>Zeit</th><th>Scannperson</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in v.Scans)
+                                    {
+                                        <tr>
+                                            <td>@(s.Type == VisitLogType.CheckIn ? "Eingescannt" : "Ausgescannt")</td>
+                                            <td>@s.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>@(string.IsNullOrEmpty(s.ScannedBy) ? "—" : s.ScannedBy)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
                     }
                 </div>
             }
@@ -77,6 +100,10 @@
     .ta-visit-toggle:hover { background: rgba(0,0,0,.03); }
     .ta-visit-chevron { color: var(--ta-muted); font-size: .8rem; width: .9rem; flex-shrink: 0; }
     .ta-visit-summary { margin-left: auto; color: var(--ta-muted); font-size: .82rem; white-space: nowrap; }
+    .ta-visit-static { cursor: default; }
+    .ta-visit-static:hover { background: none; }
+    .ta-visit-conv { background: rgba(200,16,46,.04); border-radius: 6px; }
+    .ta-badge-conv { background: rgba(200,16,46,.12); color: #c8102e; }
 </style>
 
 @code {
