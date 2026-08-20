@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection.Emit;
 using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -9,28 +10,26 @@ using RedAnts.Infrastructure.Ticketing;
 using RedAnts.Infrastructure.Ticketing.Analytics;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
-static System.Reflection.Assembly? ResolvePdfSharp(string? simpleName)
+static System.Reflection.Assembly ResolvePdfSharpOrStub(string? simpleName)
 {
-    if (simpleName is null || !simpleName.StartsWith("PdfSharp", StringComparison.Ordinal))
-        return null;
-    var candidate = Path.Combine(AppContext.BaseDirectory, simpleName + ".dll");
-    Console.Error.WriteLine($"[PdfSharp] resolve {simpleName} exists={File.Exists(candidate)} base={AppContext.BaseDirectory}");
-    if (!File.Exists(candidate)) return null;
-    try
+    if (simpleName is not null && simpleName.StartsWith("PdfSharp", StringComparison.Ordinal))
     {
-        var asm = AssemblyLoadContext.Default.LoadFromAssemblyPath(candidate);
-        Console.Error.WriteLine($"[PdfSharp] loaded {simpleName} OK");
-        return asm;
+        var f = Path.Combine(AppContext.BaseDirectory, simpleName + ".dll");
+        if (File.Exists(f))
+            try { return AssemblyLoadContext.Default.LoadFromAssemblyPath(f); } catch { }
     }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"[PdfSharp] load error {simpleName}: {ex.GetType().Name}: {ex.Message}");
-        return null;
-    }
+    return AssemblyBuilder.DefineDynamicAssembly(
+        new System.Reflection.AssemblyName(simpleName ?? "PdfSharp.__stub"), AssemblyBuilderAccess.Run);
 }
 
-AssemblyLoadContext.Default.Resolving += (_, name) => ResolvePdfSharp(name.Name);
-AppDomain.CurrentDomain.AssemblyResolve += (_, args) => ResolvePdfSharp(new System.Reflection.AssemblyName(args.Name).Name);
+AssemblyLoadContext.Default.Resolving += (_, name) =>
+    name.Name?.StartsWith("PdfSharp", StringComparison.Ordinal) == true
+        ? ResolvePdfSharpOrStub(name.Name) : null;
+AppDomain.CurrentDomain.AssemblyResolve += (_, args) =>
+{
+    var n = new System.Reflection.AssemblyName(args.Name).Name;
+    return n?.StartsWith("PdfSharp", StringComparison.Ordinal) == true ? ResolvePdfSharpOrStub(n) : null;
+};
 
 var swissCulture = new CultureInfo("de-CH");
 CultureInfo.DefaultThreadCurrentCulture = swissCulture;
