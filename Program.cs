@@ -9,13 +9,28 @@ using RedAnts.Infrastructure.Ticketing;
 using RedAnts.Infrastructure.Ticketing.Analytics;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
-AssemblyLoadContext.Default.Resolving += (context, name) =>
+static System.Reflection.Assembly? ResolvePdfSharp(string? simpleName)
 {
-    if (name.Name is not { } simpleName || !simpleName.StartsWith("PdfSharp", StringComparison.Ordinal))
+    if (simpleName is null || !simpleName.StartsWith("PdfSharp", StringComparison.Ordinal))
         return null;
     var candidate = Path.Combine(AppContext.BaseDirectory, simpleName + ".dll");
-    return File.Exists(candidate) ? context.LoadFromAssemblyPath(candidate) : null;
-};
+    Console.Error.WriteLine($"[PdfSharp] resolve {simpleName} exists={File.Exists(candidate)} base={AppContext.BaseDirectory}");
+    if (!File.Exists(candidate)) return null;
+    try
+    {
+        var asm = AssemblyLoadContext.Default.LoadFromAssemblyPath(candidate);
+        Console.Error.WriteLine($"[PdfSharp] loaded {simpleName} OK");
+        return asm;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[PdfSharp] load error {simpleName}: {ex.GetType().Name}: {ex.Message}");
+        return null;
+    }
+}
+
+AssemblyLoadContext.Default.Resolving += (_, name) => ResolvePdfSharp(name.Name);
+AppDomain.CurrentDomain.AssemblyResolve += (_, args) => ResolvePdfSharp(new System.Reflection.AssemblyName(args.Name).Name);
 
 var swissCulture = new CultureInfo("de-CH");
 CultureInfo.DefaultThreadCurrentCulture = swissCulture;
