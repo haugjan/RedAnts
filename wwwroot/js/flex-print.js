@@ -181,7 +181,7 @@
     }
 
     function applyZoom(pct, rerender) {
-        zoom = Math.max(1, Math.min(6, pct / 100));
+        zoom = Math.max(1, Math.min(10, pct / 100));
         const zoomVal = $('fpZoomVal');
         if (zoomVal) zoomVal.textContent = Math.round(zoom * 100) + '%';
         if (rerender) { draw(); } else { cssSize(); place(); }
