@@ -44,6 +44,7 @@ public sealed class BackOfficeAuthComposer : IComposer
                     options.ClientSecret = clientSecret;
                     options.ResponseType = "code";
                     options.UsePkce = true;
+                    options.Prompt = "select_account";
                     options.CallbackPath = "/umbraco-entra-signin";
                     options.SignedOutCallbackPath = "/umbraco-entra-signout";
                     options.Scope.Add("openid");
