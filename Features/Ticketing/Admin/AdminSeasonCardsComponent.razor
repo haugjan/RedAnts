@@ -134,7 +134,7 @@
                                     }
                                     @if (p.Conversions > 0)
                                     {
-                                        <div class="ta-conv-badge" title="Diese Saisonkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht.">↔ @p.Conversions Uml.</div>
+                                        <button type="button" class="ta-conv-badge ta-conv-link" title="Diese Saisonkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht. Details anzeigen." @onclick="() => OpenVisits(p)">↔ @p.Conversions Uml.</button>
                                     }
                                 </td>
                                 <td>@(p.PaymentState ?? "–")</td>
