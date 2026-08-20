@@ -14,14 +14,22 @@ public sealed class CartController(
 
     [HttpPost("/cart/convert")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Convert(int eventId, string? cardNumber, string? returnUrl)
+    public async Task<IActionResult> Convert(int eventId, string? cardNumber, int? tierId, string? returnUrl)
     {
-        var res = await convertibleCards.ResolveAsync(eventId, cardNumber ?? "");
+        var res = await convertibleCards.ResolveAsync(eventId, cardNumber ?? "", tierId);
         var added = false;
         string message;
         if (!res.Ok || res.Offer is null)
         {
             message = res.Error ?? "Umwandlung nicht möglich.";
+            if (IsFetchRequest() && res.TierChoices is { Count: > 0 } choices)
+                return Json(new
+                {
+                    ok = false,
+                    needsTier = true,
+                    message,
+                    tierChoices = choices.Select(c => new { tierId = c.TierId, name = c.Name, price = c.Price })
+                });
         }
         else
         {
