@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
@@ -7,6 +8,14 @@ using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Infrastructure.Ticketing;
 using RedAnts.Infrastructure.Ticketing.Analytics;
 using Umbraco.StorageProviders.AzureBlob.IO;
+
+AssemblyLoadContext.Default.Resolving += (context, name) =>
+{
+    if (name.Name is not { } simpleName || !simpleName.StartsWith("PdfSharp", StringComparison.Ordinal))
+        return null;
+    var candidate = Path.Combine(AppContext.BaseDirectory, simpleName + ".dll");
+    return File.Exists(candidate) ? context.LoadFromAssemblyPath(candidate) : null;
+};
 
 var swissCulture = new CultureInfo("de-CH");
 CultureInfo.DefaultThreadCurrentCulture = swissCulture;
