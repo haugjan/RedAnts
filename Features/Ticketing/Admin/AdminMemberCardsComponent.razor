@@ -127,7 +127,7 @@
                                     }
                                     @if (c.Conversions > 0)
                                     {
-                                        <div class="ta-conv-badge" title="Diese Mitgliederkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht.">↔ @c.Conversions Uml.</div>
+                                        <button type="button" class="ta-conv-badge ta-conv-link" title="Diese Mitgliederkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht. Details anzeigen." @onclick="() => OpenVisits(c)">↔ @c.Conversions Uml.</button>
                                     }
                                 </td>
                                 <td class="ta-col-actions">

@@ -14,11 +14,14 @@ public sealed record ConversionOffer(
     string EventName,
     int? EventRemaining);
 
-public sealed record ConversionResolution(bool Ok, string? Error, ConversionOffer? Offer);
+public sealed record ConversionTierChoice(int TierId, string Name, decimal Price);
+
+public sealed record ConversionResolution(bool Ok, string? Error, ConversionOffer? Offer,
+    IReadOnlyList<ConversionTierChoice>? TierChoices = null);
 
 public interface IConvertibleCards
 {
-    Task<ConversionResolution> ResolveAsync(int eventId, string cardNumber);
+    Task<ConversionResolution> ResolveAsync(int eventId, string cardNumber, int? chosenTierId = null);
 
     Task MarkFlexConvertedAsync(Guid flexUuid, int eventId);
 }

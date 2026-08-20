@@ -276,6 +276,8 @@ else
                     .evt-convert__hint { margin: 0 0 .8rem; font-size: .9rem; color: #555; }
                     .evt-convert-form { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
                     .evt-convert-form input[type=text] { flex: 1 1 12rem; padding: .55rem .7rem; border: 1px solid #bbb; border-radius: 6px; font-size: 1rem; }
+                    .evt-convert-tier { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-top: .7rem; }
+                    .evt-convert-tier select { flex: 1 1 12rem; padding: .55rem .7rem; border: 1px solid #bbb; border-radius: 6px; font-size: 1rem; background: #fff; }
                     .evt-convert-msg { margin: .7rem 0 0; font-size: .9rem; font-weight: 600; }
                     .evt-convert-msg.is-ok { color: #1a7f37; }
                     .evt-convert-msg.is-error { color: #c8102e; }
@@ -394,34 +396,76 @@ else
         var convMsg = document.getElementById('evt-convert-msg');
         var convBtn = convForm.querySelector('button');
         var convLabel = convBtn ? convBtn.textContent : '';
+        var tierWrap = null;
+
+        function clearTierChoice() {
+            if (tierWrap) { tierWrap.remove(); tierWrap = null; }
+        }
+
+        function showTierChoice(choices) {
+            clearTierChoice();
+            tierWrap = document.createElement('div');
+            tierWrap.className = 'evt-convert-tier';
+            var sel = document.createElement('select');
+            sel.setAttribute('aria-label', 'Kategorie');
+            choices.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c.tierId;
+                opt.textContent = c.name + ' – CHF ' + Number(c.price).toFixed(2);
+                sel.appendChild(opt);
+            });
+            var ok = document.createElement('button');
+            ok.type = 'button';
+            ok.className = 'evt-addbtn';
+            ok.textContent = 'Umwandeln';
+            ok.addEventListener('click', function () {
+                ok.disabled = true;
+                postConvert(sel.value).finally(function () { ok.disabled = false; });
+            });
+            tierWrap.appendChild(sel);
+            tierWrap.appendChild(ok);
+            convForm.parentNode.insertBefore(tierWrap, convMsg);
+        }
+
+        function onConvertDone(data) {
+            if (convMsg) {
+                convMsg.textContent = data.message || '';
+                convMsg.classList.toggle('is-ok', !!data.ok);
+                convMsg.classList.toggle('is-error', !data.ok);
+                convMsg.hidden = false;
+            }
+            if (data.ok) {
+                clearTierChoice();
+                bumpBadge(data.totalQuantity);
+                var cont = document.getElementById('evt-continue');
+                if (cont) cont.classList.add('is-visible');
+                convForm.reset();
+            } else if (data.needsTier && data.tierChoices) {
+                showTierChoice(data.tierChoices);
+            }
+        }
+
+        function postConvert(tierId) {
+            if (convMsg) convMsg.hidden = true;
+            var body = new FormData(convForm);
+            if (tierId) body.append('tierId', tierId);
+            return fetch('/cart/convert', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'fetch' },
+                body: body
+            })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(onConvertDone)
+            .catch(function () {
+                if (convMsg) { convMsg.textContent = 'Umwandlung momentan nicht möglich.'; convMsg.classList.add('is-error'); convMsg.hidden = false; }
+            });
+        }
+
         convForm.addEventListener('submit', function (e) {
             e.preventDefault();
             convBtn.disabled = true;
-            if (convMsg) convMsg.hidden = true;
-            fetch('/cart/convert', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'fetch' },
-                body: new FormData(convForm)
-            })
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
-            .then(function (data) {
-                if (convMsg) {
-                    convMsg.textContent = data.message || '';
-                    convMsg.classList.toggle('is-ok', !!data.ok);
-                    convMsg.classList.toggle('is-error', !data.ok);
-                    convMsg.hidden = false;
-                }
-                if (data.ok) {
-                    bumpBadge(data.totalQuantity);
-                    var cont = document.getElementById('evt-continue');
-                    if (cont) cont.classList.add('is-visible');
-                    convForm.reset();
-                }
-            })
-            .catch(function () {
-                if (convMsg) { convMsg.textContent = 'Umwandlung momentan nicht möglich.'; convMsg.classList.add('is-error'); convMsg.hidden = false; }
-            })
-            .finally(function () { convBtn.disabled = false; convBtn.textContent = convLabel; });
+            clearTierChoice();
+            postConvert(null).finally(function () { convBtn.disabled = false; convBtn.textContent = convLabel; });
         });
     }
 }());
