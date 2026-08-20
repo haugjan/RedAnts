@@ -102,16 +102,23 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
+          # The app-settings write above triggers an async in-place restart. Warming now would
+          # compile the runtime Razor views in the old worker that Azure then recycles, leaving
+          # users on a cold worker. So force one deterministic restart, wait for the old worker to
+          # drop, then poll until the NEW worker answers and only precompile the views on it.
           # "Up" = 2xx, 3xx or 401: the root redirects to /ticketing/ (3xx) and the site gate
-          # answers 401 without credentials - both mean Umbraco booted. Then hit /warmup so the
-          # runtime-compiled Razor views are precompiled. Best-effort: never fail the deploy here.
+          # answers 401 without credentials - both mean Umbraco booted. Best-effort: never fail here.
+          echo "Forcing a clean restart so warm-up targets the final worker..."
+          az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || echo "(restart call failed, best-effort)"
+          echo "Waiting for the old worker to be torn down..."
+          sleep 45
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
             case "$S" in
               2*|3*|401)
                 echo "Up. Warming core pages via /warmup..."
-                curl -s --max-time 180 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
+                curl -s --max-time 300 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
                 exit 0 ;;
             esac
             sleep 15
@@ -176,13 +183,19 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
+          # See deploy-dev: force a clean restart so warm-up targets the final worker, not the
+          # old one that the app-settings write is about to recycle.
+          echo "Forcing a clean restart so warm-up targets the final worker..."
+          az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || echo "(restart call failed, best-effort)"
+          echo "Waiting for the old worker to be torn down..."
+          sleep 45
           for i in $(seq 1 40); do
             S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
             echo "Attempt $i: GET / -> $S"
             case "$S" in
               2*|3*|401)
                 echo "Up. Warming core pages via /warmup..."
-                curl -s --max-time 180 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
+                curl -s --max-time 300 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
                 exit 0 ;;
             esac
             sleep 15
