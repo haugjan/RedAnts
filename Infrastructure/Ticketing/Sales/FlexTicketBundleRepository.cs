@@ -234,6 +234,48 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             record.CreatedAt, quantity, 0, record.CreatedByName, record.CreatedByEmail);
     }
 
+    public async Task<FlexTicketBundleView> AddTicketsAsync(int bundleId, TicketCategory category, int quantity,
+        string? createdByName = null, string? createdByEmail = null, int? orderId = null)
+    {
+        if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
+        if (quantity > MaxBundleSize) throw new DomainException($"Die Anzahl darf höchstens {MaxBundleSize} sein.");
+
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+
+        var record = await db.FirstOrDefaultAsync<FlexTicketBundleRecord>("WHERE Id = @0", bundleId)
+            ?? throw new DomainException("Das Bundle wurde nicht gefunden.");
+
+        var existing = await db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0", bundleId);
+        if (existing + quantity > MaxBundleSize)
+            throw new DomainException($"Ein Bundle darf höchstens {MaxBundleSize} Tickets enthalten.");
+
+        for (var i = 0; i < quantity; i++)
+        {
+            var ticket = SeasonSingleTicket.CreateForBundle(record.SeasonId, category, 0m, record.Id, orderId: orderId);
+            var uuid = await TicketCode.AllocateAsync(db, ticket.Uuid);
+            await db.InsertAsync(new SeasonSingleTicketRecord
+            {
+                Uuid = uuid.ToString(),
+                SeasonId = ticket.SeasonId,
+                Category = (int)ticket.Category,
+                Price = ticket.Price,
+                OrderId = ticket.OrderId,
+                Status = (int)ticket.Status,
+                CreatedAt = ticket.CreatedAt,
+                RedeemedEventId = ticket.RedeemedEventId,
+                Redeemed = ticket.Redeemed,
+                BundleId = ticket.BundleId
+            });
+        }
+
+        var redeemed = await db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0 AND Redeemed = 1", bundleId);
+        return new FlexTicketBundleView(record.Id, record.SeasonId, (TicketCategory)record.Category, record.Reference,
+            record.CreatedAt, existing + quantity, redeemed, record.CreatedByName, record.CreatedByEmail);
+    }
+
     public async Task<FlexTicketBundleView> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
         string? createdByName = null, string? createdByEmail = null)
     {

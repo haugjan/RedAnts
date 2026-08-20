@@ -442,6 +442,14 @@
                    OnConfirm="DeleteBundleConfirmedAsync" OnCancel="CancelDeleteBundle" />
 }
 
+@if (_confirmAddBundle is not null)
+{
+    <ConfirmDialog Title="Bundle existiert bereits"
+                   Message="@($"Ein Bundle „{_confirmAddBundle.Reference}“ existiert in dieser Saison bereits ({_confirmAddBundle.TicketCount} Tickets). {_newQuantity} weitere{(_newQuantity == 1 ? "s" : "")} Ticket{(_newQuantity == 1 ? "" : "s")} ({_newCategory.DisplayName()}) unter demselben Bundle erstellen?")"
+                   ConfirmLabel="Hinzufügen" Busy="_confirmAddBusy" Error="@_confirmAddError"
+                   OnConfirm="AddToExistingBundleConfirmedAsync" OnCancel="CancelAddToExisting" />
+}
+
 <style>
     .ta-export-tools { display: flex; gap: 1rem; margin: 0 0 .5rem; }
     .ta-linkish { background: none; border: 0; padding: 0; color: var(--ta-accent); font-size: .85rem; cursor: pointer; text-decoration: underline; }
@@ -775,7 +783,16 @@
         {
             if (await Bundles.ReferenceExistsAsync(SelectedSeasonId, reference))
             {
-                _createError = $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.";
+                var existingBundle = _bundles.FirstOrDefault(b =>
+                    string.Equals(b.Reference, reference, StringComparison.OrdinalIgnoreCase));
+                if (existingBundle is null || _newQuantity < 1)
+                {
+                    _createError = existingBundle is null
+                        ? $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben."
+                        : $"Das Bundle „{reference}“ existiert bereits. Für weitere Tickets bitte Anzahl mindestens 1 wählen.";
+                    return;
+                }
+                _confirmAddBundle = existingBundle;
                 return;
             }
             FlexTicketBundleView created;
@@ -799,6 +816,35 @@
         }
         catch (DomainException ex) { _createError = ex.Message; }
         finally { _saving = false; }
+    }
+
+    private FlexTicketBundleView? _confirmAddBundle;
+    private bool _confirmAddBusy;
+    private string? _confirmAddError;
+
+    private void CancelAddToExisting() { if (!_confirmAddBusy) _confirmAddBundle = null; }
+
+    private async Task AddToExistingBundleConfirmedAsync()
+    {
+        if (_confirmAddBundle is null) return;
+        _confirmAddError = null;
+        _confirmAddBusy = true;
+        try
+        {
+            var reference = _confirmAddBundle.Reference;
+            var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
+                Identity?.Name ?? AdminUser, _newPaymentSource);
+            var updated = await Bundles.AddTicketsAsync(_confirmAddBundle.Id, _newCategory, _newQuantity,
+                Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
+            _confirmAddBundle = null;
+            _showCreate = false;
+            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+            SelectedBundleId = updated.Id;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _confirmAddError = ex.Message; }
+        finally { _confirmAddBusy = false; }
     }
 
     private FlexTicketBundleView? _editing;
