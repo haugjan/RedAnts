@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Reflection.Emit;
 using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -10,25 +9,11 @@ using RedAnts.Infrastructure.Ticketing;
 using RedAnts.Infrastructure.Ticketing.Analytics;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
-static System.Reflection.Assembly ResolvePdfSharpOrStub(string? simpleName)
+AssemblyLoadContext.Default.Resolving += (ctx, name) =>
 {
-    if (simpleName is not null && simpleName.StartsWith("PdfSharp", StringComparison.Ordinal))
-    {
-        var f = Path.Combine(AppContext.BaseDirectory, simpleName + ".dll");
-        if (File.Exists(f))
-            try { return AssemblyLoadContext.Default.LoadFromAssemblyPath(f); } catch { }
-    }
-    return AssemblyBuilder.DefineDynamicAssembly(
-        new System.Reflection.AssemblyName(simpleName ?? "PdfSharp.__stub"), AssemblyBuilderAccess.Run);
-}
-
-AssemblyLoadContext.Default.Resolving += (_, name) =>
-    name.Name?.StartsWith("PdfSharp", StringComparison.Ordinal) == true
-        ? ResolvePdfSharpOrStub(name.Name) : null;
-AppDomain.CurrentDomain.AssemblyResolve += (_, args) =>
-{
-    var n = new System.Reflection.AssemblyName(args.Name).Name;
-    return n?.StartsWith("PdfSharp", StringComparison.Ordinal) == true ? ResolvePdfSharpOrStub(n) : null;
+    if (name.Name is not { } n || !n.StartsWith("PdfSharp", StringComparison.Ordinal)) return null;
+    var f = Path.Combine(AppContext.BaseDirectory, n + ".dll");
+    return File.Exists(f) ? ctx.LoadFromAssemblyPath(f) : null;
 };
 
 var swissCulture = new CultureInfo("de-CH");

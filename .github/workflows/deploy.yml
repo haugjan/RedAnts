@@ -34,6 +34,25 @@ jobs:
       - run: dotnet restore RedAnts.csproj
       - run: dotnet build RedAnts.csproj --configuration Release --no-restore
       - run: dotnet publish RedAnts.csproj --configuration Release --output ./publish --no-build
+      - name: Strip PdfSharp companion DLLs from deps.json
+        run: |
+          python3 - << 'PYEOF'
+import json, os
+path = './publish/RedAnts.deps.json'
+companions = {'PdfSharp.BarCodes', 'PdfSharp.Charting', 'PdfSharp.Quality', 'PdfSharp.Snippets', 'PdfSharp.WPFonts'}
+with open(path) as f:
+    d = json.load(f)
+for target in d.get('targets', {}).values():
+    for lib_entry in target.values():
+        if 'runtime' in lib_entry:
+            lib_entry['runtime'] = {
+                k: v for k, v in lib_entry['runtime'].items()
+                if not any(k.endswith(c + '.dll') for c in companions)
+            }
+with open(path, 'w') as f:
+    json.dump(d, f, indent=2)
+print('PdfSharp companions removed from deps.json')
+PYEOF
       - name: Package
         run: cd ./publish && zip -r ../app.zip . && cd ..
       - name: Upload build artifact
@@ -70,59 +89,21 @@ jobs:
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
             --src-path app.zip --type zip --track-status false --timeout 600000
-      - name: Configure Payrexx (dev — test instance)
+      - name: Configure app settings (dev)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
           PAYREXX_TEST_API_SECRET: ${{ secrets.PAYREXX_TEST_API_SECRET }}
-        run: |
-          if [ -z "$PAYREXX_TEST_API_SECRET" ]; then
-            echo "Payrexx test secret (PAYREXX_TEST_API_SECRET) not set; leaving dev Payrexx config unchanged."; exit 0
-          fi
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Payrexx__Instance=redants-test Payrexx__ApiSecret="$PAYREXX_TEST_API_SECRET" \
-            --output none
-          echo "Payrexx test instance (redants-test) applied to $WEBAPP."
-      - name: Configure order-number prefix (dev)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
-        run: |
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Orders__NumberPrefix=DEV- \
-            --output none
-          echo "Order-number prefix DEV- applied to $WEBAPP."
-      - name: Configure runtime mode (dev)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
-        run: |
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Umbraco__CMS__Runtime__Mode=BackofficeDevelopment \
-            --output none
-          echo "Runtime mode BackofficeDevelopment applied to $WEBAPP."
-      - name: Configure Imaging HMAC (dev)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
           IMAGING_HMAC_KEY: ${{ secrets.IMAGING_HMAC_KEY }}
-        run: |
-          if [ -z "$IMAGING_HMAC_KEY" ]; then
-            echo "Imaging HMAC secret not set; skipping."; exit 0
-          fi
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Umbraco__CMS__Imaging__HMACSecretKey="$IMAGING_HMAC_KEY" \
-            --output none
-          echo "Imaging HMAC applied to $WEBAPP."
-      - name: Configure SMTP (dev)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: |
-          if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASSWORD" ]; then
-            echo "SMTP secrets not set; skipping."; exit 0
-          fi
+          SETTINGS="Orders__NumberPrefix=DEV- Umbraco__CMS__Runtime__Mode=BackofficeDevelopment"
+          [ -n "$PAYREXX_TEST_API_SECRET" ] && SETTINGS="$SETTINGS Payrexx__Instance=redants-test Payrexx__ApiSecret=$PAYREXX_TEST_API_SECRET"
+          [ -n "$IMAGING_HMAC_KEY" ]        && SETTINGS="$SETTINGS Umbraco__CMS__Imaging__HMACSecretKey=$IMAGING_HMAC_KEY"
+          [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ] && SETTINGS="$SETTINGS Smtp__User=$SMTP_USER Smtp__Password=$SMTP_PASSWORD"
           az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Smtp__User="$SMTP_USER" Smtp__Password="$SMTP_PASSWORD" \
-            --output none
-          echo "SMTP settings applied to $WEBAPP."
+            --settings $SETTINGS --output none
+          echo "App settings applied to $WEBAPP (one restart)."
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -170,51 +151,21 @@ jobs:
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
             --src-path app.zip --type zip --track-status false --timeout 600000
-      - name: Configure Payrexx (prod)
+      - name: Configure app settings (prod)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
           PAYREXX_API_SECRET: ${{ secrets.PAYREXX_API_SECRET }}
-        run: |
-          if [ -z "$PAYREXX_API_SECRET" ]; then
-            echo "Payrexx secret not set for prod; skipping."; exit 0
-          fi
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Payrexx__Instance=redants Payrexx__ApiSecret="$PAYREXX_API_SECRET" \
-            --output none
-          echo "Payrexx settings applied to $WEBAPP."
-      - name: Configure runtime mode (prod)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
-        run: |
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Umbraco__CMS__Runtime__Mode=BackofficeDevelopment \
-            --output none
-          echo "Runtime mode BackofficeDevelopment applied to $WEBAPP."
-      - name: Configure Imaging HMAC (prod)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
           IMAGING_HMAC_KEY: ${{ secrets.IMAGING_HMAC_KEY }}
-        run: |
-          if [ -z "$IMAGING_HMAC_KEY" ]; then
-            echo "Imaging HMAC secret not set; skipping."; exit 0
-          fi
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Umbraco__CMS__Imaging__HMACSecretKey="$IMAGING_HMAC_KEY" \
-            --output none
-          echo "Imaging HMAC applied to $WEBAPP."
-      - name: Configure SMTP (prod)
-        env:
-          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: |
-          if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASSWORD" ]; then
-            echo "SMTP secrets not set; skipping."; exit 0
-          fi
+          SETTINGS="Umbraco__CMS__Runtime__Mode=BackofficeDevelopment"
+          [ -n "$PAYREXX_API_SECRET" ]  && SETTINGS="$SETTINGS Payrexx__Instance=redants Payrexx__ApiSecret=$PAYREXX_API_SECRET"
+          [ -n "$IMAGING_HMAC_KEY" ]    && SETTINGS="$SETTINGS Umbraco__CMS__Imaging__HMACSecretKey=$IMAGING_HMAC_KEY"
+          [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ] && SETTINGS="$SETTINGS Smtp__User=$SMTP_USER Smtp__Password=$SMTP_PASSWORD"
           az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
-            --settings Smtp__User="$SMTP_USER" Smtp__Password="$SMTP_PASSWORD" \
-            --output none
-          echo "SMTP settings applied to $WEBAPP."
+            --settings $SETTINGS --output none
+          echo "App settings applied to $WEBAPP (one restart)."
       - name: Warm up the site
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
