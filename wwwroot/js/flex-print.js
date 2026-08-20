@@ -93,23 +93,38 @@
         const w = canvas.clientWidth, h = canvas.clientHeight;
         svg.setAttribute('width', w);
         svg.setAttribute('height', h);
-        const left = (l.qrX - QUIET_MM) * k, right = (l.qrX + l.qrSize + QUIET_MM) * k;
-        const top = (l.qrY - QUIET_MM) * k, bottom = (l.qrY + l.qrSize + QUIET_MM) * k;
-        const arm = 9, gap = 3;
-        let d = '';
-        [[left, top], [right, top], [left, bottom], [right, bottom]].forEach(function (c) {
+        svg.setAttribute('overflow', 'visible');
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+        const NS = 'http://www.w3.org/2000/svg';
+        const arm = 12, gap = 4;
+        const corners = [
+            [(l.qrX - QUIET_MM) * k, (l.qrY - QUIET_MM) * k],
+            [(l.qrX + l.qrSize + QUIET_MM) * k, (l.qrY - QUIET_MM) * k],
+            [(l.qrX - QUIET_MM) * k, (l.qrY + l.qrSize + QUIET_MM) * k],
+            [(l.qrX + l.qrSize + QUIET_MM) * k, (l.qrY + l.qrSize + QUIET_MM) * k]
+        ];
+        corners.forEach(function (c) {
             const cx = c[0], cy = c[1];
-            d += mkLine(cx - arm, cy, cx - gap, cy);
-            d += mkLine(cx + gap, cy, cx + arm, cy);
-            d += mkLine(cx, cy - arm, cx, cy - gap);
-            d += mkLine(cx, cy + gap, cx, cy + arm);
+            addSvgLine(svg, NS, cx - arm, cy, cx - gap, cy);
+            addSvgLine(svg, NS, cx + gap, cy, cx + arm, cy);
+            addSvgLine(svg, NS, cx, cy - arm, cx, cy - gap);
+            addSvgLine(svg, NS, cx, cy + gap, cx, cy + arm);
         });
-        svg.innerHTML = d;
     }
 
-    function mkLine(x1, y1, x2, y2) {
-        return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2
-            + '" stroke="#e53" stroke-width="1.5" />';
+    function addSvgLine(svg, NS, x1, y1, x2, y2) {
+        var bg = document.createElementNS(NS, 'line');
+        bg.setAttribute('x1', x1); bg.setAttribute('y1', y1);
+        bg.setAttribute('x2', x2); bg.setAttribute('y2', y2);
+        bg.setAttribute('stroke', '#fff'); bg.setAttribute('stroke-width', '4');
+        bg.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(bg);
+        var fg = document.createElementNS(NS, 'line');
+        fg.setAttribute('x1', x1); fg.setAttribute('y1', y1);
+        fg.setAttribute('x2', x2); fg.setAttribute('y2', y2);
+        fg.setAttribute('stroke', '#e53'); fg.setAttribute('stroke-width', '2');
+        fg.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(fg);
     }
 
     function PT_PER_MM_PX(k) {
@@ -173,7 +188,8 @@
     }
 
     function drag(e) {
-        const isHandle = e.target.classList.contains('fp-handle');
+        const isHandleBR = e.target.classList.contains('fp-handle');
+        const isHandleTL = e.target.classList.contains('fp-handle-tl');
         const k = pxPerMm();
         if (k <= 0) return;
         const sx = e.clientX, sy = e.clientY;
@@ -183,8 +199,13 @@
         function move(ev) {
             const dx = (ev.clientX - sx) / k;
             const dy = (ev.clientY - sy) / k;
-            if (isHandle) {
+            if (isHandleBR) {
                 set('fpQrSize', l0.qrSize + dx);
+            } else if (isHandleTL) {
+                const delta = (dx + dy) / 2;
+                set('fpQrX', l0.qrX + delta);
+                set('fpQrY', l0.qrY + delta);
+                set('fpQrSize', l0.qrSize - delta);
             } else {
                 set('fpQrX', l0.qrX + dx);
                 set('fpQrY', l0.qrY + dy);
