@@ -41,6 +41,7 @@
                         <th class="ta-num">Standard-Verkaufs&shy;kontingent</th>
                         <th class="ta-num">Verk. Saison&shy;karten</th>
                         <th class="ta-num">Verk. Tickets</th>
+                        <th class="ta-num">Flex&shy;tickets</th>
                         <th class="ta-num">Einlässe</th>
                         <th></th>
                         <th class="ta-col-actions"></th>
@@ -84,6 +85,7 @@
                             </td>
                             <td class="ta-num">@stats.PassesSold</td>
                             <td class="ta-num">@stats.TicketsSold</td>
+                            <td class="ta-num">@stats.FlexTickets</td>
                             <td class="ta-num">@stats.Admissions</td>
                             <td class="ta-links">
                                 <button type="button" class="ta-link-btn" title="Links anzeigen und kopieren"
@@ -394,7 +396,7 @@
     private int? Quota(int seasonId) => Price(seasonId)?.TotalSalesQuota;
     private int? SalesQuota(int seasonId) => Price(seasonId)?.DefaultTicketSalesQuota;
     private int EventCount(int seasonId) => _eventCounts.GetValueOrDefault(seasonId);
-    private SeasonStats Stats(int seasonId) => _stats.GetValueOrDefault(seasonId) ?? new SeasonStats(0, 0, 0);
+    private SeasonStats Stats(int seasonId) => _stats.GetValueOrDefault(seasonId) ?? new SeasonStats(0, 0, 0, 0);
     private SeasonLinks Links(int seasonId) => _links.GetValueOrDefault(seasonId) ?? new SeasonLinks(null, null);
 
     private static string StatusLabel(SeasonStatus status) => status switch

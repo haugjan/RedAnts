@@ -1,6 +1,6 @@
 namespace RedAnts.Features.Ticketing.Admin;
 
-public sealed record SeasonStats(int PassesSold, int TicketsSold, int Admissions);
+public sealed record SeasonStats(int PassesSold, int TicketsSold, int FlexTickets, int Admissions);
 
 public interface ISeasonStatsReader
 {

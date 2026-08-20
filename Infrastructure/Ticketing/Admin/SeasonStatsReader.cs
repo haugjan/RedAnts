@@ -34,7 +34,7 @@ public sealed class SeasonStatsReader(IScopeProvider scopeProvider) : ISeasonSta
                 "SELECT COUNT(*) FROM TicketEventVisits WHERE EventId IN (@0)", eventIds);
         }
 
-        return new SeasonStats(passesSold, eventTicketsSold + flexSold, admissions);
+        return new SeasonStats(passesSold, eventTicketsSold, flexSold, admissions);
     }
 }
 
