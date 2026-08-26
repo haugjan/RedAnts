@@ -328,15 +328,52 @@
             </div>
 
             <div class="ta-field">
-                <label class="ta-label">CSV-Datei</label>
-                <InputFile OnChange="OnFileSelectedAsync" accept=".csv,text/csv" />
+                <label class="ta-label">Datei (CSV oder Excel)</label>
+                <InputFile OnChange="OnFileSelectedAsync" accept=".csv,.xlsx,text/csv" />
                 <p class="ta-hint">
                     Alle Zeilen werden als @(_importCategory.DisplayName())-Mitglieder importiert (Kategorie oben wählen, nicht in der Datei).
-                    Spalten (alle optional): Karten-Nr, Anzahl (Einlässe pro Event, Standard 1), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
-                    Zeilen mit einer bestehenden Karten-Nr werden aktualisiert, Zeilen ohne neu angelegt. So kannst du exportieren, Adressen ergänzen und wieder importieren.
+                    Spalten (alle optional): Anzahl (Einlässe pro Event, Standard 1), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
+                    Die Spalten werden automatisch erkannt. Passt die Zuordnung nicht, kannst du sie unten von Hand anpassen.
+                    Exportierte Zeilen mit einer bestehenden Karten-Nr werden beim erneuten Import aktualisiert.
                     <a href="/admin/members/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
                 </p>
             </div>
+
+            @if (_table is not null && _table.Columns.Count > 0)
+            {
+                <div class="ta-field">
+                    @if (!_showMapping)
+                    {
+                        <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => _showMapping = true">Spaltenzuordnung anpassen</button>
+                    }
+                    else
+                    {
+                        <label class="ta-label">Spaltenzuordnung</label>
+                        <p class="ta-hint">Ordne jeder benötigten Spalte eine Spalte aus deiner Datei zu.</p>
+                        <table class="ta-map">
+                            @foreach (var field in MemberCsv.Fields)
+                            {
+                                <tr>
+                                    <td class="ta-map-label">@field.Label</td>
+                                    <td>
+                                        <select class="ta-select" value="@MapValue(field.Key)" @onchange="e => SetMap(field.Key, e.Value?.ToString())">
+                                            <option value="-1">(nicht zuordnen)</option>
+                                            @for (var i = 0; i < _table.Columns.Count; i++)
+                                            {
+                                                var idx = i;
+                                                <option value="@idx">@_table.Columns[idx]</option>
+                                            }
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </table>
+                        <div class="ta-modal-actions">
+                            <button type="button" class="ta-btn ta-btn-primary" @onclick="ApplyMapping">Zuordnung übernehmen</button>
+                        </div>
+                    }
+                </div>
+            }
 
             @if (_fileName is not null)
             {
@@ -771,6 +808,9 @@
     private IReadOnlyList<MemberImportRow> _parsedRows = [];
     private IReadOnlyList<string> _parseWarnings = [];
     private IReadOnlyList<string> _parseErrors = [];
+    private MemberTable? _table;
+    private Dictionary<string, int> _map = new();
+    private bool _showMapping;
 
     private void OpenImport()
     {
@@ -781,6 +821,9 @@
         _parsedRows = [];
         _parseWarnings = [];
         _parseErrors = [];
+        _table = null;
+        _map = new();
+        _showMapping = false;
         _showImport = true;
     }
 
@@ -793,22 +836,63 @@
         {
             var file = e.File;
             using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-            var text = await reader.ReadToEndAsync();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
 
-            var result = MemberCsv.Parse(text);
+            var table = MemberCsv.ReadTable(buffer.ToArray(), file.Name);
             _fileName = file.Name;
-            _parsedRows = result.Rows;
-            _parseWarnings = result.Warnings;
-            _parseErrors = result.Errors;
+            _table = table;
+            _map = new Dictionary<string, int>(table.AutoMap);
+
+            if (table.Columns.Count == 0 || table.Rows.Count == 0)
+            {
+                _parsedRows = [];
+                _parseWarnings = [];
+                _parseErrors = ["Keine Datenzeilen gefunden. Bitte prüfe die Datei."];
+                _showMapping = false;
+                return;
+            }
+
+            if (MemberCsv.EssentialMapped(_map))
+            {
+                ApplyMapping();
+            }
+            else
+            {
+                _parsedRows = [];
+                _parseWarnings = [];
+                _parseErrors = [];
+                _importError = "Spalten konnten nicht automatisch erkannt werden. Bitte unten von Hand zuordnen.";
+                _showMapping = true;
+            }
         }
         catch (Exception ex)
         {
             _fileName = null;
+            _table = null;
             _parsedRows = [];
             _parseWarnings = [];
             _importError = $"Datei konnte nicht gelesen werden: {ex.Message}";
         }
+    }
+
+    private int MapValue(string key) => _map.TryGetValue(key, out var idx) ? idx : -1;
+
+    private void SetMap(string key, string? value)
+    {
+        if (int.TryParse(value, out var idx) && idx >= 0) _map[key] = idx;
+        else _map.Remove(key);
+    }
+
+    private void ApplyMapping()
+    {
+        if (_table is null) return;
+        _importError = null;
+        var result = MemberCsv.BuildRows(_table, _map);
+        _parsedRows = result.Rows;
+        _parseWarnings = result.Warnings;
+        _parseErrors = result.Errors;
+        _showMapping = false;
     }
 
     private async Task ImportAsync()

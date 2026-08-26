@@ -179,6 +179,11 @@
 .ta-parse { margin: 0.2rem 0 0.6rem; font-size: 0.85rem; color: var(--ta-ink); }
 .ta-warnings { margin: 0.4rem 0 0; padding-left: 1.1rem; color: #9a6a12; font-size: 0.8rem; }
 
+.ta-map { width: 100%; border-collapse: collapse; margin: 0.3rem 0; }
+.ta-map td { padding: 0.15rem 0.4rem 0.15rem 0; vertical-align: middle; }
+.ta-map-label { white-space: nowrap; color: var(--ta-ink); font-size: 0.85rem; width: 1%; }
+.ta-map .ta-select { width: 100%; }
+
 .ta-ticketno { display: inline-flex; align-items: center; gap: 0.5rem; }
 .ta-ticketno .ta-no {
     font-family: ui-monospace, "Consolas", monospace; font-size: 0.82rem; font-weight: 700;
