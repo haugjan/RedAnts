@@ -4,7 +4,7 @@ namespace RedAnts.Features.Ticketing.Ports;
 
 public sealed record MemberImportRow(string? LastName, string? FirstName,
     DateOnly? Birthday, string? Email = null, string? CardNo = null, MemberAddress? Address = null,
-    int Admissions = 1);
+    int Admissions = 1, string? Reference = null);
 
 public interface IMemberCards
 {

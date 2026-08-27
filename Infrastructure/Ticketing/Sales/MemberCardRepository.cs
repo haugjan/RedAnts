@@ -19,15 +19,18 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         var affected = 0;
         foreach (var row in rows)
         {
+            var overrideReference = string.IsNullOrWhiteSpace(row.Reference) ? null : row.Reference.Trim();
+            var rowReference = overrideReference ?? reference;
+
             if (!string.IsNullOrWhiteSpace(row.CardNo)
-                && await TryUpdateByCodeAsync(scope.Database, seasonId, category, row))
+                && await TryUpdateByCodeAsync(scope.Database, seasonId, category, row, overrideReference))
             {
                 affected++;
                 continue;
             }
 
             var card = MemberCard.Create(seasonId, category, row.FirstName, row.LastName, row.Birthday,
-                email: row.Email, reference: reference, createdByName: createdByName, createdByEmail: createdByEmail,
+                email: row.Email, reference: rowReference, createdByName: createdByName, createdByEmail: createdByEmail,
                 address: row.Address, admissions: row.Admissions);
             await InsertAsync(scope.Database, card);
             affected++;
@@ -35,7 +38,8 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         return affected;
     }
 
-    private static async Task<bool> TryUpdateByCodeAsync(IDatabase db, int seasonId, MemberCategory category, MemberImportRow row)
+    private static async Task<bool> TryUpdateByCodeAsync(IDatabase db, int seasonId, MemberCategory category,
+        MemberImportRow row, string? overrideReference)
     {
         var code = (row.CardNo ?? "").Trim().ToLowerInvariant();
         if (code.Length != 8 || !code.All(Uri.IsHexDigit)) return false;
@@ -44,7 +48,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         var affected = await db.ExecuteAsync(
             "UPDATE MembershipCards SET FirstName=@0, LastName=@1, Birthday=@2, Category=@3, Email=@4, " +
             "Salutation=@5, Company=@6, Street=@7, AddressLine2=@8, PostalCode=@9, City=@10, Country=@11, Phone=@12, " +
-            "Admissions=@13 WHERE SeasonId=@14 AND Uuid LIKE @15",
+            "Admissions=@13, Reference=ISNULL(@16, Reference) WHERE SeasonId=@14 AND Uuid LIKE @15",
             (object[])new object?[]
             {
                 Clean(row.FirstName), Clean(row.LastName),
@@ -52,7 +56,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
                 (int)category, Clean(row.Email),
                 addr.Salutation, addr.Company, addr.Street, addr.AddressLine2,
                 addr.PostalCode, addr.City, addr.Country, addr.Phone,
-                Math.Max(1, row.Admissions), seasonId, code + "%"
+                Math.Max(1, row.Admissions), seasonId, code + "%", overrideReference
             });
         return affected > 0;
     }

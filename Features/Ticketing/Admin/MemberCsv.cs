@@ -11,6 +11,7 @@ public static class MemberCsv
 
     public static readonly IReadOnlyList<MemberField> Fields =
     [
+        new("reference", "Referenz"),
         new("admissions", "Anzahl Einlässe"),
         new("company", "Firma"),
         new("salutation", "Anrede"),
@@ -115,7 +116,7 @@ public static class MemberCsv
             if (lastName is null && firstName is null && email is null && address.IsEmpty) continue;
 
             rows.Add(new MemberImportRow(lastName, firstName, birthday, email, Get("cardno"),
-                address.IsEmpty ? null : address, admissions));
+                address.IsEmpty ? null : address, admissions, Get("reference")));
         }
 
         return new MemberCsvResult(rows, warnings, errors);
@@ -151,6 +152,7 @@ public static class MemberCsv
         return norm switch
         {
             "kartennr" or "kartennummer" or "karte" => "cardno",
+            "referenz" or "reference" or "ref" or "gruppe" => "reference",
             "anzahl" or "einlässe" or "einlaesse" or "anzahleinlässe" or "anzahleinlaesse" => "admissions",
             "anrede" or "geschlecht" => "salutation",
             "firma" or "firmenname" => "company",
