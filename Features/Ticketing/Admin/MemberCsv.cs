@@ -11,7 +11,6 @@ public static class MemberCsv
 
     public static readonly IReadOnlyList<MemberField> Fields =
     [
-        new("cardno", "Karten-Nr"),
         new("admissions", "Anzahl Einlässe"),
         new("company", "Firma"),
         new("salutation", "Anrede"),
