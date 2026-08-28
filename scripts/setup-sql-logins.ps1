@@ -328,15 +328,15 @@ GRANT VIEW DATABASE STATE TO [redants_backup];
 PRINT 'redants_backup: Rollen gesetzt.';
 "@
 
-        Write-Host "  $DB_DEV : redants_app ..."
+        Write-Host "  ${DB_DEV}: redants_app ..."
         Invoke-SqlQuery -Database $DB_DEV -AdminUser $ADMIN_USER `
                         -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlAppDev
 
-        Write-Host "  $DB_PROD: redants_app ..."
+        Write-Host "  ${DB_PROD}: redants_app ..."
         Invoke-SqlQuery -Database $DB_PROD -AdminUser $ADMIN_USER `
                         -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlAppProd
 
-        Write-Host "  $DB_PROD: redants_backup ..."
+        Write-Host "  ${DB_PROD}: redants_backup ..."
         Invoke-SqlQuery -Database $DB_PROD -AdminUser $ADMIN_USER `
                         -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlBackup
 
