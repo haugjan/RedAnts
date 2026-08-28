@@ -1,11 +1,19 @@
 name: Weekly Backup
 
-# Requires:
-#   - redants-github-deploy app registration: Contributor role on RG_RedAnts
-#     (currently only Website Contributor on the App Service — must be extended once)
-#     az role assignment create --assignee <appId> --role Contributor \
-#       --scope /subscriptions/<sub>/resourceGroups/RG_RedAnts
-#   - Repo secrets: BACKUP_SQL_ADMIN_USER, BACKUP_SQL_ADMIN_PASSWORD
+# Exports the prod database to a BACPAC in the sql-backups blob container.
+#
+# Auth: OIDC (azure/login) as the redants-github-deploy app registration. The SQL
+# admin credentials are read at runtime from Key Vault (no DB password in GitHub).
+#
+# Requires (granted once, on the RedAnts subscription fdf0cdfa-...):
+#   - Service principal ea133dd3-...:
+#       * "Storage Account Contributor" on storage account stredantsprod
+#       * "SQL DB Contributor" on SQL server sql-redants-ch
+#       * Key Vault access policy get/list secrets on kv-redants-prod
+#   - Key Vault kv-redants-prod secrets: sql-admin-user, sql-admin-password
+#
+# Manual runs (workflow_dispatch) are restricted to the repo owner; the schedule
+# always runs.
 
 on:
   schedule:
@@ -19,6 +27,7 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.actor == 'haugjan'
     environment: prod
     env:
       RESOURCE_GROUP: RG_RedAnts
@@ -26,6 +35,7 @@ jobs:
       SQL_DATABASE: sqldb-redants-prod
       STORAGE_ACCOUNT: stredantsprod
       BACKUP_CONTAINER: sql-backups
+      KEY_VAULT: kv-redants-prod
 
     steps:
       - name: Azure Login (OIDC)
@@ -56,6 +66,14 @@ jobs:
           echo "::add-mask::$KEY"
           echo "STORAGE_KEY=$KEY" >> "$GITHUB_ENV"
 
+      - name: Fetch SQL credentials from Key Vault
+        run: |
+          ADMIN_USER=$(az keyvault secret show --vault-name "$KEY_VAULT" --name sql-admin-user --query value -o tsv)
+          ADMIN_PASSWORD=$(az keyvault secret show --vault-name "$KEY_VAULT" --name sql-admin-password --query value -o tsv)
+          echo "::add-mask::$ADMIN_PASSWORD"
+          echo "SQL_ADMIN_USER=$ADMIN_USER" >> "$GITHUB_ENV"
+          echo "SQL_ADMIN_PASSWORD=$ADMIN_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Ensure sql-backups container exists
         run: |
           az storage container create \
@@ -72,8 +90,8 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --server "$SQL_SERVER" \
             --name "$SQL_DATABASE" \
-            --admin-user "${{ secrets.BACKUP_SQL_ADMIN_USER }}" \
-            --admin-password "${{ secrets.BACKUP_SQL_ADMIN_PASSWORD }}" \
+            --admin-user "$SQL_ADMIN_USER" \
+            --admin-password "$SQL_ADMIN_PASSWORD" \
             --storage-key-type StorageAccessKey \
             --storage-key "$STORAGE_KEY" \
             --storage-uri "$BACPAC_URI"
