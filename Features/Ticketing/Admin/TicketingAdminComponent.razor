@@ -46,6 +46,9 @@
                 case "stats":
                     <AdminStatsComponent AdminUser="@AdminUser" />
                     break;
+                case "visits":
+                    <AdminVisitStatsComponent AdminUser="@AdminUser" />
+                    break;
                 case "newsletter":
                     <AdminNewsletterComponent AdminUser="@AdminUser" />
                     break;
@@ -159,7 +162,7 @@
 
     private void WriteUrl()
     {
-        var showEvent = _tab is "tickets" or "freeentries";
+        var showEvent = _tab is "tickets" or "freeentries" or "visits";
         var showBundle = _tab is "flextickets";
         var url = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
         {
@@ -185,6 +188,7 @@
         ("orders", "Bestellungen"),
         ("addons", "Zusatzoptionen"),
         ("stats", "Statistik"),
+        ("visits", "Besuchsstatistik"),
         ("newsletter", "Newsletter"),
         ("helper", "Helfer"),
         ("outbox", "E-Mails")

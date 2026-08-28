@@ -1,0 +1,407 @@
+@using RedAnts.Domain.Ticketing.Sales
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Besuchsstatistik</h1>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-stat-head">
+            <div class="tvs-modes">
+                <button type="button" class="tvs-mode @(_mode == "season" ? "active" : "")"
+                        @onclick='() => SetModeAsync("season")'>Ganze Saison</button>
+                <button type="button" class="tvs-mode @(_mode == "event" ? "active" : "")"
+                        @onclick='() => SetModeAsync("event")'>Einzelner Anlass</button>
+            </div>
+            <div class="tvs-filters">
+                <div class="ta-field">
+                    <select class="ta-select" @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+                @if (_mode == "event")
+                {
+                    <div class="ta-field">
+                        <select class="ta-select" disabled="@(_events.Count == 0)"
+                                @bind="SelectedEventId" @bind:after="ReloadEventAsync">
+                            @if (_events.Count == 0)
+                            {
+                                <option value="0">— keine Anlässe —</option>
+                            }
+                            else
+                            {
+                                @foreach (var e in _events)
+                                {
+                                    <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (_mode == "season")
+        {
+            @if (_season is null || _season.TotalVisits == 0 && _season.FlexReferences.Count == 0)
+            {
+                <div class="ta-placeholder">Für diese Saison wurden noch keine Einlässe erfasst.</div>
+            }
+            else
+            {
+                var avgPerEvent = _season.EventCount == 0 ? 0 : _season.TotalVisits / _season.EventCount;
+                <div class="ta-stat-tiles">
+                    <div class="ta-stat-tile ta-stat-tile--accent">
+                        <div class="ta-stat-num">@_season.TotalVisits.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Besucher total (Einlässe)</div>
+                    </div>
+                    <div class="ta-stat-tile">
+                        <div class="ta-stat-num">@avgPerEvent.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Ø pro Anlass</div>
+                    </div>
+                    <div class="ta-stat-tile">
+                        <div class="ta-stat-num">@_season.EventCount.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Anlässe mit Einlass</div>
+                    </div>
+                </div>
+
+                <div class="ta-stat-block">
+                    <h3 class="ta-stat-subtitle" style="margin-top:0">Besucher pro Anlass</h3>
+                    @{
+                        var maxEvent = _events.Count == 0 ? 0 : _events.Max(e => _season.PerEvent.GetValueOrDefault(e.Id));
+                    }
+                    @if (maxEvent == 0)
+                    {
+                        <div class="ta-placeholder">Noch keine Einlässe erfasst.</div>
+                    }
+                    else
+                    {
+                        <div class="ta-chart" role="img" aria-label="Besucher pro Anlass">
+                            @foreach (var e in _events)
+                            {
+                                var v = _season.PerEvent.GetValueOrDefault(e.Id);
+                                var pct = maxEvent == 0 ? 0 : (int)Math.Round(v * 100.0 / maxEvent);
+                                <div class="ta-chart-col" title="@e.Date.ToString("dd.MM.yyyy") · @e.Name: @v Einlässe">
+                                    <div class="ta-chart-bar" style="height:@(Math.Max(pct, v > 0 ? 3 : 0))%"></div>
+                                </div>
+                            }
+                        </div>
+                        <div class="ta-chart-axis">
+                            <span>@_events.First().Date.ToString("dd.MM.")</span>
+                            <span>pro Anlass</span>
+                            <span>@_events.Last().Date.ToString("dd.MM.")</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="tvs-grid">
+                    <div class="ta-stat-block">
+                        <h3 class="ta-stat-subtitle" style="margin-top:0">Verteilung Besucherarten</h3>
+                        @RenderTypeBars(_season.TypeBreakdown)
+                    </div>
+                    <div class="ta-stat-block">
+                        <h3 class="ta-stat-subtitle" style="margin-top:0">Freikarten nach Typ</h3>
+                        @RenderFreeBars(_season.FreeEntryBreakdown)
+                    </div>
+                </div>
+
+                <div class="ta-stat-block">
+                    <h3 class="ta-stat-subtitle" style="margin-top:0">Flexticket-Referenzen</h3>
+                    @if (_season.FlexReferences.Count == 0)
+                    {
+                        <div class="ta-placeholder">Für diese Saison sind keine Flexticket-Kontingente erfasst.</div>
+                    }
+                    else
+                    {
+                        <div class="ta-table-wrap">
+                            <table class="ta-table">
+                                <thead>
+                                    <tr>
+                                        <th>Referenz</th>
+                                        <th>Kategorie</th>
+                                        <th class="ta-num">Ausgegeben</th>
+                                        <th class="ta-num">Eingelöst</th>
+                                        <th class="ta-num">Einlösequote</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in _season.FlexReferences)
+                                    {
+                                        var rate = r.Issued == 0 ? 0 : (int)Math.Round(r.Redeemed * 100.0 / r.Issued);
+                                        <tr>
+                                            <td>@r.Reference</td>
+                                            <td>@(((TicketCategory)r.Category).DisplayName())</td>
+                                            <td class="ta-num">@r.Issued</td>
+                                            <td class="ta-num">@r.Redeemed</td>
+                                            <td class="ta-num">@rate %</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            @if (SelectedEventId <= 0 || _event is null)
+            {
+                <div class="ta-placeholder">Bitte einen Anlass wählen.</div>
+            }
+            else if (_event.TotalVisits == 0)
+            {
+                <div class="ta-placeholder">Für diesen Anlass wurden noch keine Einlässe erfasst.</div>
+            }
+            else
+            {
+                <div class="ta-stat-tiles">
+                    <div class="ta-stat-tile ta-stat-tile--accent">
+                        <div class="ta-stat-num">@_event.TotalVisits.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Besucher (Einlässe)</div>
+                    </div>
+                    <div class="ta-stat-tile">
+                        <div class="ta-stat-num">@_event.PeakInside.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Peak gleichzeitig drin@(_event.PeakAtLabel is null ? "" : $" · {_event.PeakAtLabel}")</div>
+                    </div>
+                    <div class="ta-stat-tile">
+                        <div class="ta-stat-num">@(_event.MedianArrivalMinutes is int m ? $"{m} Min." : "—")</div>
+                        <div class="ta-stat-lbl">Ankunft vor Anpfiff (Median)@(_event.AverageArrivalMinutes is int a ? $" · Ø {a}" : "")</div>
+                    </div>
+                    <div class="ta-stat-tile">
+                        <div class="ta-stat-num">@_event.FreeEntries.ToString("N0")</div>
+                        <div class="ta-stat-lbl">Freikarten</div>
+                    </div>
+                </div>
+
+                <div class="ta-stat-block">
+                    <h3 class="ta-stat-subtitle" style="margin-top:0">Wann treffen die Besucher ein?</h3>
+                    @{
+                        var maxArr = _event.Arrivals.Count == 0 ? 0 : _event.Arrivals.Max(b => b.Count);
+                    }
+                    @if (maxArr == 0)
+                    {
+                        <div class="ta-placeholder">Keine gescannten Eintritte mit Zeitstempel vorhanden.</div>
+                    }
+                    else
+                    {
+                        <div class="tvs-hist">
+                            @foreach (var b in _event.Arrivals)
+                            {
+                                var pct = maxArr == 0 ? 0 : (int)Math.Round(b.Count * 100.0 / maxArr);
+                                <div class="tvs-hist-col">
+                                    <div class="tvs-hist-num">@b.Count</div>
+                                    <div class="tvs-hist-bar-wrap">
+                                        <div class="tvs-hist-bar" style="height:@(Math.Max(pct, b.Count > 0 ? 3 : 0))%"></div>
+                                    </div>
+                                    <div class="tvs-hist-lbl">@b.Label</div>
+                                </div>
+                            }
+                        </div>
+                        <p class="ta-muted-text tvs-hint">Erster gescannter Eintritt je Besucher, relativ zum Anpfiff.</p>
+                    }
+                </div>
+
+                <div class="tvs-grid">
+                    <div class="ta-stat-block">
+                        <h3 class="ta-stat-subtitle" style="margin-top:0">Verteilung Besucherarten</h3>
+                        @RenderTypeBars(_event.TypeBreakdown)
+                    </div>
+                    <div class="ta-stat-block">
+                        <h3 class="ta-stat-subtitle" style="margin-top:0">Freikarten nach Typ</h3>
+                        @RenderFreeBars(_event.FreeEntryBreakdown)
+                    </div>
+                </div>
+            }
+        }
+    }
+</section>
+
+<style>
+    .tvs-modes { display: inline-flex; border: 1px solid var(--ta-border); border-radius: 4px; overflow: hidden; background: #fff; }
+    .tvs-mode { appearance: none; border: none; background: #fff; cursor: pointer; font-family: var(--ta-font); font-size: 0.85rem; font-weight: 600; color: var(--ta-muted); padding: 0.5rem 1rem; }
+    .tvs-mode:hover { background: #f0f2f8; }
+    .tvs-mode.active { background: var(--ta-nav); color: #fff; }
+    .tvs-filters { display: flex; gap: 0.75rem; align-items: flex-end; }
+    .tvs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @@media (max-width: 820px) { .tvs-grid { grid-template-columns: 1fr; } }
+
+    .tvs-bars { display: flex; flex-direction: column; gap: 0.55rem; }
+    .tvs-bar-row { display: grid; grid-template-columns: 9.5rem 1fr 3rem; align-items: center; gap: 0.6rem; }
+    .tvs-bar-lbl { font-size: 0.82rem; color: var(--ta-ink); }
+    .tvs-bar-track { background: #eef0f5; border-radius: 4px; height: 1rem; overflow: hidden; }
+    .tvs-bar-fill { height: 100%; background: var(--ta-accent); border-radius: 4px; min-width: 2px; }
+    .tvs-bar-num { text-align: right; font-size: 0.82rem; font-weight: 700; color: var(--ta-ink); }
+
+    .tvs-hist { display: flex; align-items: flex-end; gap: 0.5rem; height: 170px; margin-top: 0.5rem; }
+    .tvs-hist-col { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; height: 100%; }
+    .tvs-hist-num { font-size: 0.8rem; font-weight: 700; color: var(--ta-ink); margin-bottom: 0.25rem; }
+    .tvs-hist-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+    .tvs-hist-bar { width: 100%; background: var(--ta-nav); border-radius: 3px 3px 0 0; min-height: 0; }
+    .tvs-hist-lbl { font-size: 0.72rem; color: var(--ta-muted); margin-top: 0.4rem; text-align: center; }
+    .tvs-hint { margin-top: 0.75rem; }
+    .tvs-empty { color: var(--ta-muted); font-size: 0.85rem; }
+</style>
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private ISeasonVisitStatsReport SeasonReport { get; set; } = default!;
+    [Inject] private IEventVisitStatsReport EventReport { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+
+    private bool _loading = true;
+    private string _mode = "season";
+    private IReadOnlyList<Season> _seasons = [];
+    private List<Event> _events = [];
+    private SeasonVisitStats? _season;
+    private EventVisitStats? _event;
+
+    public int SelectedSeasonId { get; set; }
+    public int SelectedEventId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+
+        await LoadEventsAsync();
+        await ReloadSeasonAsync();
+        if (_mode == "event") await ReloadEventAsync();
+        _loading = false;
+    }
+
+    private async Task SetModeAsync(string mode)
+    {
+        if (_mode == mode) return;
+        _mode = mode;
+        if (_mode == "event") await ReloadEventAsync();
+    }
+
+    private async Task OnSeasonChangedAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        await LoadEventsAsync();
+        await ReloadSeasonAsync();
+        if (_mode == "event") await ReloadEventAsync();
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        _events = SelectedSeasonId > 0
+            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
+            : [];
+
+        if (_events.All(e => e.Id != SelectedEventId))
+        {
+            SelectedEventId = _events.Any(e => e.Id == AdminState.SelectedEventId)
+                ? AdminState.SelectedEventId!.Value
+                : _events.FirstOrDefault()?.Id ?? 0;
+        }
+    }
+
+    private async Task ReloadSeasonAsync()
+    {
+        var ids = _events.Select(e => e.Id).ToList();
+        _season = await SeasonReport.GetAsync(SelectedSeasonId, ids);
+    }
+
+    private async Task ReloadEventAsync()
+    {
+        AdminState.SelectedEventId = SelectedEventId > 0 ? SelectedEventId : null;
+        var ev = _events.FirstOrDefault(e => e.Id == SelectedEventId);
+        if (ev is null)
+        {
+            _event = null;
+            return;
+        }
+        var kickoff = ev.Date.ToDateTime(ev.StartTime);
+        _event = await EventReport.GetAsync(SelectedEventId, kickoff);
+    }
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = SwissTime.Today;
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private RenderFragment RenderTypeBars(IReadOnlyList<VisitTypeSlice> slices) => builder =>
+    {
+        if (slices.Count == 0)
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "tvs-empty");
+            builder.AddContent(2, "Keine Einlässe erfasst.");
+            builder.CloseElement();
+            return;
+        }
+        var max = slices.Max(s => s.Count);
+        var rows = slices.Select(s => (Label: ((TicketType)s.TicketType).DisplayName(), s.Count)).ToList();
+        BuildBars(builder, rows, max);
+    };
+
+    private RenderFragment RenderFreeBars(IReadOnlyList<FreeEntrySlice> slices) => builder =>
+    {
+        if (slices.Count == 0)
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "tvs-empty");
+            builder.AddContent(2, "Keine Freikarten erfasst.");
+            builder.CloseElement();
+            return;
+        }
+        var max = slices.Max(s => s.Count);
+        var rows = slices.Select(s => (Label: ((FreeEntryType)s.FreeEntryType).DisplayName(), s.Count)).ToList();
+        BuildBars(builder, rows, max);
+    };
+
+    private static void BuildBars(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder,
+        List<(string Label, int Count)> rows, int max)
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "tvs-bars");
+        var seq = 2;
+        foreach (var (label, count) in rows)
+        {
+            var pct = max == 0 ? 0 : (int)Math.Round(count * 100.0 / max);
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "tvs-bar-row");
+
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "tvs-bar-lbl");
+            builder.AddContent(seq++, label);
+            builder.CloseElement();
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "tvs-bar-track");
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "tvs-bar-fill");
+            builder.AddAttribute(seq++, "style", $"width:{Math.Max(pct, count > 0 ? 2 : 0)}%");
+            builder.CloseElement();
+            builder.CloseElement();
+
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "tvs-bar-num");
+            builder.AddContent(seq++, count.ToString("N0"));
+            builder.CloseElement();
+
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+    }
+}
