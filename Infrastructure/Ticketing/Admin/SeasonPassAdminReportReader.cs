@@ -25,9 +25,16 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
             WHERE sp.SeasonId = @0
             ORDER BY sp.CreatedAt DESC", new object[] { seasonId });
 
-        var tierNames = (await scope.Database.FetchAsync<TierNameRow>(
-                "SELECT Id, Name FROM SeasonPriceTiers WHERE SeasonId = @0", new object[] { seasonId }))
-            .ToDictionary(t => t.Id, t => t.Name);
+        var tiers = (await scope.Database.FetchAsync<TierNameRow>(
+                "SELECT Id, Name, PromoOfTierId FROM SeasonPriceTiers WHERE SeasonId = @0", new object[] { seasonId }))
+            .ToDictionary(t => t.Id);
+
+        string ResolveCategory(int? tierId)
+        {
+            if (tierId is not { } tid || !tiers.TryGetValue(tid, out var t)) return "–";
+            if (t.PromoOfTierId is { } parent && tiers.TryGetValue(parent, out var pt)) return pt.Name;
+            return t.Name;
+        }
 
         var visitRows = await scope.Database.FetchAsync<UuidCountRow>(
             "SELECT TicketUuid AS Uuid, COUNT(DISTINCT EventId) AS Cnt FROM TicketEventVisits " +
@@ -50,7 +57,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
             var buyer = Buyer.FromPersistence(p.BuyerType ?? 0, p.BuyerFirstName, p.BuyerLastName, p.BuyerCompany);
             return new SeasonPassListItem(
                 Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
-                p.TierId is { } tid && tierNames.TryGetValue(tid, out var tn) ? tn : "–",
+                ResolveCategory(p.TierId),
                 p.Price,
                 (TicketStatus)p.Status,
                 p.CreatedAt,
@@ -117,6 +124,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
     {
         public int Id { get; set; }
         public string Name { get; set; } = "";
+        public int? PromoOfTierId { get; set; }
     }
 }
 
