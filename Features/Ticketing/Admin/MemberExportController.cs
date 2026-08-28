@@ -54,7 +54,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
               .Append(Csv(url)).Append("\r\n");
         }
 
-        var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(sb.ToString());
+        var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
         var safeRef = new string(referenz.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
         return File(bytes, "text/csv; charset=utf-8", $"mitglieder-{safeRef}.csv");
     }
