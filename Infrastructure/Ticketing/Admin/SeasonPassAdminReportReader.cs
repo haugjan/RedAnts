@@ -50,8 +50,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
             var buyer = Buyer.FromPersistence(p.BuyerType ?? 0, p.BuyerFirstName, p.BuyerLastName, p.BuyerCompany);
             return new SeasonPassListItem(
                 Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
-                (TicketCategory)p.Category,
-                p.TierId is { } tid && tierNames.TryGetValue(tid, out var tn) ? tn : ((TicketCategory)p.Category).DisplayName(),
+                p.TierId is { } tid && tierNames.TryGetValue(tid, out var tn) ? tn : "–",
                 p.Price,
                 (TicketStatus)p.Status,
                 p.CreatedAt,

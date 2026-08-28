@@ -202,7 +202,7 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
         + await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM SeasonPasses WHERE TierId = @0", tierId);
 
     private static PriceTier Map(SeasonPriceTierRecord r) =>
-        PriceTier.FromPersistence(r.Id, r.SeasonId, r.Name, r.MinAge, r.MaxAge, r.PromoOfTierId, r.SortOrder);
+        PriceTier.FromPersistence(r.Id, r.SeasonId, r.Name, r.MinAge, r.MaxAge, r.PromoOfTierId, r.SortOrder, r.LegacyCategory);
 }
 
 internal sealed record TierRow(

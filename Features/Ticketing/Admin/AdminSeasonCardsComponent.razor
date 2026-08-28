@@ -5,6 +5,7 @@
 @using RedAnts.Features.Ticketing.Ports
 @inject ISeasonPassAdminReport Report
 @inject ISeasonPasses Passes
+@inject IPriceTiers PriceTiers
 @inject IAdminOrderFactory OrderFactory
 @inject ISeasonPassMailer Mailer
 @inject IPublicBaseUrl PublicUrl
@@ -108,18 +109,7 @@
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
                                 <td>@(string.IsNullOrEmpty(p.Reference) ? "–" : p.Reference)</td>
-                                <td>
-                                    @if (p.TierId is not null)
-                                    {
-                                        <span>@p.CategoryName</span>
-                                    }
-                                    else
-                                    {
-                                        <InlineSelectEdit TValue="TicketCategory" Value="p.Category" FieldLabel="Kategorie"
-                                                          Options="CategoryOptions" Label="@(c => c.DisplayName())"
-                                                          Save="@(v => SaveCategoryAsync(p, v))" />
-                                    }
-                                </td>
+                                <td>@p.CategoryName</td>
                                 <td class="ta-num">CHF @p.Price.ToString("N2")</td>
                                 <td>
                                     <InlineSelectEdit TValue="TicketStatus" Value="p.Status" FieldLabel="Status"
@@ -218,10 +208,10 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="newSpCategory">Kategorie</label>
-                <select id="newSpCategory" class="ta-select" @bind="_newCategory">
-                    @foreach (var c in Enum.GetValues<TicketCategory>())
+                <select id="newSpCategory" class="ta-select" @bind="_newTierId">
+                    @foreach (var t in _tiers)
                     {
-                        <option value="@c">@c.DisplayName()</option>
+                        <option value="@t.Id">@t.Name</option>
                     }
                 </select>
             </div>
@@ -294,10 +284,10 @@
 
             <div class="ta-field">
                 <label class="ta-label" for="editCategory">Kategorie</label>
-                <select id="editCategory" class="ta-select" @bind="_editCategory">
-                    @foreach (var c in Enum.GetValues<TicketCategory>())
+                <select id="editCategory" class="ta-select" @bind="_editTierId">
+                    @foreach (var t in _tiers)
                     {
-                        <option value="@c">@c.DisplayName()</option>
+                        <option value="@t.Id">@t.Name</option>
                     }
                 </select>
             </div>
@@ -579,6 +569,7 @@
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _passes = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
+        _tiers = SelectedSeasonId > 0 ? await PriceTiers.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
@@ -610,7 +601,7 @@
     private static string Haystack(SeasonPassListItem p) => string.Join(' ', new[]
     {
         AdminFormat.TicketNo(p.Uuid), p.BuyerName ?? "", p.Email ?? "", p.Reference ?? "",
-        p.CategoryName, p.Category.DisplayName(), StatusLabel(p.Status), p.PaymentState ?? "",
+        p.CategoryName, StatusLabel(p.Status), p.PaymentState ?? "",
         p.OrderNumber ?? "", p.Price.ToString("N2")
     });
 
@@ -623,23 +614,13 @@
 
     private static int? OnlineMarker(SeasonPassListItem p) => p.OrderNumber is null ? null : 0;
 
-    private static readonly TicketCategory[] CategoryOptions = Enum.GetValues<TicketCategory>();
     private static readonly TicketStatus[] StatusOptions = [TicketStatus.Valid, TicketStatus.Cancelled];
-
-    private async Task SaveCategoryAsync(SeasonPassListItem p, TicketCategory category)
-    {
-        var pass = await Passes.GetByUuidAsync(p.Uuid);
-        if (pass is null) return;
-        pass.Edit(category, pass.Price, pass.Status);
-        await Passes.SaveAsync(pass);
-        await ReloadPassesAsync();
-    }
 
     private async Task SaveStatusAsync(SeasonPassListItem p, TicketStatus status)
     {
         var pass = await Passes.GetByUuidAsync(p.Uuid);
         if (pass is null) return;
-        pass.Edit(pass.Category, pass.Price, status);
+        pass.Edit(pass.Price, status);
         await Passes.SaveAsync(pass);
         await ReloadPassesAsync();
     }
@@ -724,9 +705,10 @@
         _ => status.ToString()
     };
 
+    private IReadOnlyList<PriceTier> _tiers = [];
     private bool _showCreate;
     private bool _creating;
-    private TicketCategory _newCategory = TicketCategory.Adult;
+    private int _newTierId;
     private decimal _newPrice;
     private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
     private BuyerType _newBuyerType = BuyerType.Private;
@@ -751,7 +733,7 @@
 
     private void OpenCreate()
     {
-        _newCategory = TicketCategory.Adult;
+        _newTierId = _tiers.FirstOrDefault(t => !t.IsPromo)?.Id ?? _tiers.FirstOrDefault()?.Id ?? 0;
         _newPrice = 0m;
         _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
         _newBuyerType = BuyerType.Private;
@@ -765,17 +747,21 @@
     {
         if (_creating) return;
         if (SelectedSeasonId <= 0) { _createError = "Es ist keine Saison gewählt."; return; }
+        if (_newTierId <= 0) { _createError = "Es ist keine Stufe gewählt."; return; }
         if (_newPrice < 0) { _createError = "Der Preis darf nicht negativ sein."; return; }
         _creating = true;
         _createError = null;
         try
         {
+            var tier = _tiers.FirstOrDefault(t => t.Id == _newTierId);
+            if (tier is null) { _createError = "Die gewählte Stufe wurde nicht gefunden."; return; }
+            var lineCategory = tier.LegacyCategory is { } lc ? (TicketCategory)lc : TicketCategory.Adult;
             var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
             var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
             var order = await OrderFactory.CreateAsync(buyer, Identity.Email,
-                [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
+                [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, lineCategory, tier.Name, 1, _newPrice)],
                 Identity.Name, paymentSource);
-            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newCategory, _newPrice, order.Id,
+            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newTierId, _newPrice, order.Id,
                 buyer, Identity.Name, Identity.Email,
                 email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim()));
             _showCreate = false;
@@ -786,7 +772,7 @@
     }
 
     private SeasonPassListItem? _editing;
-    private TicketCategory _editCategory;
+    private int _editTierId;
     private decimal _editPrice;
     private TicketStatus _editStatus;
     private BuyerType _editBuyerType = BuyerType.Private;
@@ -800,7 +786,7 @@
     private async Task OpenEdit(SeasonPassListItem pass)
     {
         _editing = pass;
-        _editCategory = pass.Category;
+        _editTierId = pass.TierId ?? _tiers.FirstOrDefault(t => !t.IsPromo)?.Id ?? _tiers.FirstOrDefault()?.Id ?? 0;
         _editPrice = decimal.Round(pass.Price, 2);
         _editStatus = pass.Status;
         _editFirstName = _editLastName = _editCompany = "";
@@ -830,7 +816,7 @@
             var pass = await Passes.GetByUuidAsync(_editing.Uuid);
             if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
 
-            pass.Edit(_editCategory, _editPrice, _editStatus);
+            pass.Edit(_editPrice, _editStatus, _editTierId);
             pass.SetBuyer(Buyer.Create(_editBuyerType, _editFirstName, _editLastName, _editCompany));
             pass.SetEmail(_editEmail);
             await Passes.SaveAsync(pass);

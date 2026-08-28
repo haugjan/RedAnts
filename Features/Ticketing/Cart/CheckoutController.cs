@@ -329,7 +329,7 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
                 if (item.Kind == (int)CartItemKind.SeasonPass)
                 {
                     var pass = await passes.SaveAsync(
-                        SeasonPass.Create(item.SeasonId, default, item.UnitPrice, order.Id, buyer, "Online-Kauf", tierId: item.TierId));
+                        SeasonPass.Create(item.SeasonId, item.TierId, item.UnitPrice, order.Id, buyer, "Online-Kauf"));
                     var passToken = tokens.CreateShort(pass.Uuid);
                     var passCategory = await TicketCategoryNameAsync(pass.Uuid, item.CategoryName);
                     issued.Add(new ConfirmationTicket(pass.Uuid, item.EventName, passCategory, passToken, (int)TicketType.SeasonPass, await SeasonDateTextAsync(item.SeasonId), HolderName: holderName));

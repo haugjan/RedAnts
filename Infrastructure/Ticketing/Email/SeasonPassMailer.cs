@@ -78,7 +78,7 @@ public sealed class SeasonPassMailer(
         var reference = pass.Uuid.ToString("N")[..8].ToUpperInvariant();
         var holderName = pass.Buyer?.DisplayName is { Length: > 0 } n ? n : "Saisonkarte";
         var holder = WebUtility.HtmlEncode(holderName);
-        var category = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(categoryLabel) ? pass.Category.DisplayName() : categoryLabel);
+        var category = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(categoryLabel) ? "Saisonkarte" : categoryLabel);
         var typeLabel = TicketDisplay.TypeLabel(TicketType.SeasonPass);
         var kicker = TicketDisplay.Kicker(TicketType.SeasonPass);
 

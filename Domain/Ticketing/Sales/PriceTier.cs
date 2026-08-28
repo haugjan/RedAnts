@@ -9,8 +9,9 @@ public sealed class PriceTier
     public int? MaxAge { get; private set; }
     public int? PromoOfTierId { get; private set; }
     public int SortOrder { get; private set; }
+    public int? LegacyCategory { get; private set; }
 
-    private PriceTier(int id, int seasonId, string name, int? minAge, int? maxAge, int? promoOfTierId, int sortOrder)
+    private PriceTier(int id, int seasonId, string name, int? minAge, int? maxAge, int? promoOfTierId, int sortOrder, int? legacyCategory)
     {
         Id = id;
         SeasonId = seasonId;
@@ -19,6 +20,7 @@ public sealed class PriceTier
         MaxAge = maxAge;
         PromoOfTierId = promoOfTierId;
         SortOrder = sortOrder;
+        LegacyCategory = legacyCategory;
     }
 
     public bool IsPromo => PromoOfTierId is not null;
@@ -33,9 +35,9 @@ public sealed class PriceTier
         if (maxAge is < 0) throw new DomainException("Das Alter darf nicht negativ sein.");
         if (minAge is { } lo && maxAge is { } hi && lo > hi)
             throw new DomainException("Das Alter «von» darf nicht grösser als das Alter «bis» sein.");
-        return new PriceTier(0, seasonId, name, minAge, maxAge, promoOfTierId, sortOrder);
+        return new PriceTier(0, seasonId, name, minAge, maxAge, promoOfTierId, sortOrder, null);
     }
 
-    public static PriceTier FromPersistence(int id, int seasonId, string name, int? minAge, int? maxAge, int? promoOfTierId, int sortOrder) =>
-        new(id, seasonId, name, minAge, maxAge, promoOfTierId, sortOrder);
+    public static PriceTier FromPersistence(int id, int seasonId, string name, int? minAge, int? maxAge, int? promoOfTierId, int sortOrder, int? legacyCategory = null) =>
+        new(id, seasonId, name, minAge, maxAge, promoOfTierId, sortOrder, legacyCategory);
 }

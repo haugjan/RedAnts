@@ -7,12 +7,17 @@ using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
 namespace RedAnts.Infrastructure.Ticketing.Sales;
 
-public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders orders) : ISeasonPasses
+public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders orders, IPriceTiers priceTiers) : ISeasonPasses
 {
     public async Task<int> ImportAsync(int seasonId, IReadOnlyList<SeasonPassImportRow> rows,
         string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
+
+        var tiers = await priceTiers.GetBySeasonAsync(seasonId);
+        int? ResolveTier(TicketCategory category) =>
+            tiers.FirstOrDefault(t => t.LegacyCategory == (int)category)?.Id
+            ?? tiers.FirstOrDefault(t => !t.IsPromo)?.Id;
 
         var created = 0;
         foreach (var row in rows)
@@ -34,7 +39,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
                 catch (DomainException) { orderId = null; }
             }
 
-            var pass = SeasonPass.Create(seasonId, row.Category, 0m, orderId, row.Buyer,
+            var pass = SeasonPass.Create(seasonId, ResolveTier(row.Category), 0m, orderId, row.Buyer,
                 createdByName, createdByEmail, row.Reference, email: row.Address.Email);
             await SaveAsync(pass);
             created++;
@@ -67,7 +72,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             Id = pass.Id,
             Uuid = uuid.ToString(),
             SeasonId = pass.SeasonId,
-            Category = (int)pass.Category,
+            Category = 0,
             TierId = pass.TierId,
             Price = pass.Price,
             OrderId = pass.OrderId,
@@ -92,7 +97,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             r.Id,
             Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
             r.SeasonId,
-            (TicketCategory)r.Category,
+            r.TierId,
             r.Price,
             r.OrderId,
             (TicketStatus)r.Status,
@@ -101,6 +106,5 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IOrders o
             r.CreatedByName,
             r.CreatedByEmail,
             r.Reference,
-            r.TierId,
             r.BuyerEmail);
 }
