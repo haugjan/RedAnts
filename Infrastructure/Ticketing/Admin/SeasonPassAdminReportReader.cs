@@ -66,7 +66,8 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
                 buyer?.FirstName ?? p.BillingFirstName,
                 buyer?.LastName ?? p.BillingLastName,
                 buyer?.Company,
-                conversions.GetValueOrDefault(p.Uuid));
+                conversions.GetValueOrDefault(p.Uuid),
+                p.TierId);
         }).ToList();
     }
 

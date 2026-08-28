@@ -109,9 +109,16 @@
                                 <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
                                 <td>@(string.IsNullOrEmpty(p.Reference) ? "–" : p.Reference)</td>
                                 <td>
-                                    <InlineSelectEdit TValue="TicketCategory" Value="p.Category" FieldLabel="Kategorie"
-                                                      Options="CategoryOptions" Label="@(c => c.DisplayName())"
-                                                      Save="@(v => SaveCategoryAsync(p, v))" />
+                                    @if (p.TierId is not null)
+                                    {
+                                        <span>@p.CategoryName</span>
+                                    }
+                                    else
+                                    {
+                                        <InlineSelectEdit TValue="TicketCategory" Value="p.Category" FieldLabel="Kategorie"
+                                                          Options="CategoryOptions" Label="@(c => c.DisplayName())"
+                                                          Save="@(v => SaveCategoryAsync(p, v))" />
+                                    }
                                 </td>
                                 <td class="ta-num">CHF @p.Price.ToString("N2")</td>
                                 <td>
@@ -581,7 +588,7 @@
         var src = Filtered();
         IEnumerable<SeasonPassListItem> q = _sortCol switch
         {
-            "category" => src.OrderBy(p => p.Category),
+            "category" => src.OrderBy(p => p.CategoryName),
             "price" => src.OrderBy(p => p.Price),
             "status" => src.OrderBy(p => p.Status),
             "visits" => src.OrderBy(p => p.EventVisits),
