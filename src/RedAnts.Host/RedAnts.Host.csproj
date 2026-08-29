@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RedAnts.Ticketing\RedAnts.Ticketing.csproj" />
+    <ProjectReference Include="..\RedAnts.Show\RedAnts.Show.csproj" />
   </ItemGroup>
 
   <ItemGroup>

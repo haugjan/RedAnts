@@ -2,5 +2,6 @@
   <Folder Name="/src/">
     <Project Path="src/RedAnts.Host/RedAnts.Host.csproj" />
     <Project Path="src/RedAnts.Ticketing/RedAnts.Ticketing.csproj" />
+    <Project Path="src/RedAnts.Show/RedAnts.Show.csproj" />
   </Folder>
 </Solution>

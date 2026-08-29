@@ -3,6 +3,7 @@ using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
+using RedAnts.Infrastructure.Show;
 using RedAnts.Infrastructure.Ticketing;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
@@ -39,6 +40,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
 builder.Services.AddTicketing(builder.Configuration);
+builder.Services.AddShow(builder.Configuration);
 
 var umbracoBuilder = builder.CreateUmbracoBuilder()
     .AddBackOffice()
@@ -233,7 +235,9 @@ app.Use(async (context, next) =>
             || host.StartsWith("scan-dev.", StringComparison.OrdinalIgnoreCase);
         var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
             || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
-        context.Response.Redirect(isScanHost ? "/scan" : isAdminHost ? "/umbraco" : "/ticketing/");
+        var isShowHost = host.StartsWith("show.", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("show-dev.", StringComparison.OrdinalIgnoreCase);
+        context.Response.Redirect(isScanHost ? "/scan" : isAdminHost ? "/umbraco" : isShowHost ? "/show" : "/ticketing/");
         return;
     }
     await next();
@@ -242,6 +246,8 @@ app.Use(async (context, next) =>
 app.UseTicketingAnalytics();
 
 app.UseTicketingScanAuth();
+
+app.UseShow();
 
 var gatePassword = app.Configuration["BasicAuth:Password"];
 {
@@ -275,6 +281,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/umbraco-entra-signin")
         || path.StartsWithSegments("/umbraco-entra-signout")
         || path.StartsWithSegments("/admin/ticketing")
+        || path.StartsWithSegments("/admin/show")
         || path.StartsWithSegments("/App_Plugins")
         || path.StartsWithSegments("/_blazor")
         || path.StartsWithSegments("/_content")

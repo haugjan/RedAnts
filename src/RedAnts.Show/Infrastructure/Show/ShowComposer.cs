@@ -1,0 +1,15 @@
+using RedAnts.Features.Show;
+using Umbraco.Cms.Core.Composing;
+using Umbraco.Cms.Core.DependencyInjection;
+using Umbraco.Cms.Infrastructure.Manifest;
+
+namespace RedAnts.Infrastructure.Show;
+
+public sealed class ShowComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder builder)
+    {
+        builder.AddComponent<ShowMigrationComponent>();
+        builder.Services.AddSingleton<IPackageManifestReader, ShowAdminManifestReader>();
+    }
+}

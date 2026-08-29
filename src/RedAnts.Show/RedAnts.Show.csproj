@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>RedAnts</RootNamespace>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The Web SDK adds these implicit usings; the Razor SDK does not -->
+    <Using Include="System.Net.Http.Json" />
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Umbraco.Cms.Targets copies JSON schema files into every referencing project;
+         only the Host needs them, and duplicates break publish (NETSDK1152) -->
+    <UmbracoJsonSchemaFiles Remove="@(UmbracoJsonSchemaFiles)" />
+    <UmbracoPackageSchemaFiles Remove="@(UmbracoPackageSchemaFiles)" />
+    <UmbracoJsonSchemaReferences Remove="@(UmbracoJsonSchemaReferences)" />
+    <Content Remove="appsettings-schema.json;appsettings-schema.*.json;umbraco-package-schema.json" />
+    <!-- Views are compiled into the assembly; raw .cshtml must not flow into the Host publish output -->
+    <Content Update="**\*.cshtml" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Umbraco.Cms" />
+  </ItemGroup>
+</Project>
