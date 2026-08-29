@@ -26,7 +26,7 @@
     {
         <div class="ta-toolbar">
             <div class="ta-toolbar-filters">
-                <div class="ta-field">
+                <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="spSeasonSelect">Saison</label>
                     <select id="spSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadPassesAsync">
                         @foreach (var s in _seasons)
@@ -35,13 +35,7 @@
                         }
                     </select>
                 </div>
-                <div class="ta-field ta-field--grow">
-                    <label class="ta-label" for="spSearch">Suche</label>
-                    <input id="spSearch" type="search" class="ta-input ta-cards-search"
-                           placeholder="Name, Firma, E-Mail, Bundle, Kategorie, Bestell-Nr. …"
-                           @bind="_search" @bind:event="oninput" />
-                </div>
-                <div class="ta-field">
+                <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="spBundleFilter">Bundle</label>
                     <select id="spBundleFilter" class="ta-select" @bind="_bundleFilter">
                         <option value="">Alle anzeigen</option>
@@ -50,6 +44,12 @@
                             <option value="@b">@b</option>
                         }
                     </select>
+                </div>
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="spSearch">Suche</label>
+                    <input id="spSearch" type="search" class="ta-input"
+                           placeholder="Name, E-Mail, Bundle …"
+                           @bind="_search" @bind:event="oninput" />
                 </div>
             </div>
             <div class="ta-toolbar-actions">

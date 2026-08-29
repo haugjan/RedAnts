@@ -20,7 +20,7 @@
     {
         <div class="ta-toolbar">
             <div class="ta-toolbar-filters">
-                <div class="ta-field">
+                <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="seasonSelect">Saison</label>
                     <select id="seasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
                         @foreach (var s in _seasons)
@@ -29,7 +29,7 @@
                         }
                     </select>
                 </div>
-                <div class="ta-field">
+                <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="bundleSelect">Bundle</label>
                     <select id="bundleSelect" class="ta-select" disabled="@(_bundles.Count == 0)"
                             @bind="SelectedBundleId" @bind:after="ReloadTicketsAsync">
@@ -47,9 +47,9 @@
                         }
                     </select>
                 </div>
-                <div class="ta-field">
+                <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="flexSearch">Suche</label>
-                    <input id="flexSearch" class="ta-input" type="search" placeholder="Karten-Nr, Name, E-Mail …" @bind="_search" @bind:event="oninput" />
+                    <input id="flexSearch" class="ta-input" type="search" placeholder="Name, E-Mail …" @bind="_search" @bind:event="oninput" />
                 </div>
             </div>
             <div class="ta-toolbar-actions">

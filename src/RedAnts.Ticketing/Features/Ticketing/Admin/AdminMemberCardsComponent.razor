@@ -22,7 +22,7 @@
     {
         <div class="ta-toolbar">
             <div class="ta-toolbar-filters">
-                <div class="ta-field">
+                <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="mcSeasonSelect">Saison</label>
                     <select id="mcSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadCardsAsync">
                         @foreach (var s in _seasons)
@@ -31,13 +31,7 @@
                         }
                     </select>
                 </div>
-                <div class="ta-field ta-field--grow">
-                    <label class="ta-label" for="mcSearch">Suche</label>
-                    <input id="mcSearch" type="search" class="ta-input ta-cards-search"
-                           placeholder="Name, Firma, E-Mail, Bundle, Kategorie …"
-                           @bind="_search" @bind:event="oninput" />
-                </div>
-                <div class="ta-field">
+                <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="mcBundleFilter">Bundle</label>
                     <select id="mcBundleFilter" class="ta-select" @bind="_bundleFilter">
                         <option value="">Alle anzeigen</option>
@@ -46,6 +40,12 @@
                             <option value="@b">@b</option>
                         }
                     </select>
+                </div>
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="mcSearch">Suche</label>
+                    <input id="mcSearch" type="search" class="ta-input"
+                           placeholder="Name, E-Mail, Bundle …"
+                           @bind="_search" @bind:event="oninput" />
                 </div>
             </div>
             <div class="ta-toolbar-actions">
