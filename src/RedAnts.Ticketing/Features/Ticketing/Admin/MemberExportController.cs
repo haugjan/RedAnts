@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Domain.Ticketing.Sales;
@@ -17,58 +16,31 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
         => Json(await memberCards.GetReferencesAsync());
 
     [HttpGet("/admin/members/export.csv")]
-    public async Task<IActionResult> ExportCsv([FromQuery] string? referenz)
+    public async Task<IActionResult> ExportCsv([FromQuery] string? bundles)
     {
-        if (string.IsNullOrWhiteSpace(referenz))
+        var selected = (bundles ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (selected.Length == 0)
             return BadRequest("Bundle fehlt.");
 
-        var cards = await memberCards.GetByReferenceAsync(referenz);
-
-        var sb = new StringBuilder();
-        sb.Append("Karten-Nr;Kategorie;Anzahl;Firma;Anrede;Name;Vorname;Strasse;Adresszusatz;PLZ;Ort;Land;E-Mail;Telefon;Geburtsdatum;Bundle;Link\r\n");
-        foreach (var card in cards)
+        var rows = new List<TicketExportRow>();
+        foreach (var referenz in selected)
         {
-            var birthday = card.Birthday?.ToString("dd.MM.yyyy") ?? "";
-            var url = card.Uuid != Guid.Empty
-                ? publicUrl.TicketUrl(tokens.CreateShort(card.Uuid))
-                : "";
-            var cardNo = card.Uuid != Guid.Empty ? card.Uuid.ToString("N")[..8].ToUpperInvariant() : "";
-            var a = card.Address;
-
-            sb.Append(Csv(cardNo)).Append(';')
-              .Append(Csv(card.Category.DisplayName())).Append(';')
-              .Append(Csv(card.Admissions.ToString())).Append(';')
-              .Append(Csv(a.Company)).Append(';')
-              .Append(Csv(a.Salutation)).Append(';')
-              .Append(Csv(card.LastName)).Append(';')
-              .Append(Csv(card.FirstName)).Append(';')
-              .Append(Csv(a.Street)).Append(';')
-              .Append(Csv(a.AddressLine2)).Append(';')
-              .Append(Csv(a.PostalCode)).Append(';')
-              .Append(Csv(a.City)).Append(';')
-              .Append(Csv(a.Country)).Append(';')
-              .Append(Csv(card.Email)).Append(';')
-              .Append(Csv(a.Phone)).Append(';')
-              .Append(Csv(birthday)).Append(';')
-              .Append(Csv(referenz)).Append(';')
-              .Append(Csv(url)).Append("\r\n");
+            foreach (var card in await memberCards.GetByReferenceAsync(referenz))
+            {
+                var a = card.Address;
+                var holder = CardHolder.Create(
+                    a.Company is { Length: > 0 } ? BuyerType.Company : BuyerType.Private,
+                    a.Salutation, a.Company, card.FirstName, card.LastName, card.Birthday, card.Email,
+                    a.Street, a.AddressLine2, a.PostalCode, a.City, a.Country, a.Phone);
+                var link = card.Uuid != Guid.Empty ? publicUrl.TicketUrl(tokens.CreateShort(card.Uuid)) : "";
+                var cardNo = card.Uuid != Guid.Empty ? card.Uuid.ToString("N")[..8].ToUpperInvariant() : "";
+                rows.Add(new TicketExportRow(cardNo, referenz, card.Category.DisplayName(), holder, card.Admissions, link));
+            }
         }
 
-        var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
-        var safeRef = new string(referenz.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
-        return File(bytes, "text/csv; charset=utf-8", $"mitglieder-{safeRef}.csv");
+        var suffix = selected.Length == 1
+            ? new string(selected[0].Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray())
+            : "alle";
+        return File(TicketExportCsv.Build(rows), "text/csv; charset=utf-8", $"mitglieder-{suffix}.csv");
     }
-
-    private static string Csv(string? value)
-    {
-        var s = Neutralize(value ?? "");
-        if (s.Contains(';') || s.Contains('"') || s.Contains('\n') || s.Contains('\r'))
-            return "\"" + s.Replace("\"", "\"\"") + "\"";
-        return s;
-    }
-
-    private static string Neutralize(string value) =>
-        value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
-            ? "'" + value
-            : value;
 }

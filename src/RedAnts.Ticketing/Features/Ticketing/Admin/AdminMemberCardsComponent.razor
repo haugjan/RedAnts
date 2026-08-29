@@ -282,6 +282,7 @@
     <div class="ta-overlay" @onmousedown="CloseExport">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Mitglieder exportieren (CSV)</h2>
+            <p class="ta-modal-sub">Bundle wählen (Mehrfachauswahl möglich).</p>
 
             @if (_references.Count == 0)
             {
@@ -290,21 +291,24 @@
             else
             {
                 <div class="ta-field">
-                    <label class="ta-label" for="expReference">Bundle</label>
-                    <select id="expReference" class="ta-select" @bind="_exportReference">
+                    <label class="ta-label">Bundle</label>
+                    <div class="ta-export-list">
                         @foreach (var r in _references)
                         {
-                            <option value="@r">@r</option>
+                            <label class="ta-export-item">
+                                <input type="checkbox" checked="@_exportSel.Contains(r)"
+                                       @onchange="e => ToggleExport(r, (bool)(e.Value ?? false))" /> @r
+                            </label>
                         }
-                    </select>
+                    </div>
                 </div>
             }
 
             <div class="ta-modal-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
-                @if (!string.IsNullOrEmpty(_exportReference))
+                @if (_exportSel.Count > 0)
                 {
-                    <a class="ta-btn ta-btn-primary" href="/admin/members/export.csv?referenz=@Uri.EscapeDataString(_exportReference)"
+                    <a class="ta-btn ta-btn-primary" href="/admin/members/export.csv?bundles=@Uri.EscapeDataString(string.Join(",", _exportSel))"
                        target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
                 }
             </div>
@@ -786,7 +790,7 @@
 
     private bool _showExport;
     private IReadOnlyList<string> _references = [];
-    private string _exportReference = "";
+    private readonly HashSet<string> _exportSel = [];
 
     private void OpenExport()
     {
@@ -796,9 +800,10 @@
             .Distinct()
             .OrderBy(r => r)
             .ToList();
-        _exportReference = _references.FirstOrDefault() ?? "";
+        _exportSel.Clear();
         _showExport = true;
     }
+    private void ToggleExport(string bundle, bool on) { if (on) _exportSel.Add(bundle); else _exportSel.Remove(bundle); }
     private void CloseExport() => _showExport = false;
 
     private bool _showImport;
