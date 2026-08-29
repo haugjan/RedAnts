@@ -359,9 +359,23 @@ PRINT 'redants_backup: db_owner gesetzt.';
         Invoke-SqlQuery -Database $DB_PROD -AdminUser $ADMIN_USER `
                         -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlAppProd
 
-        Write-Host "  master: redants_backup LOGIN ..."
+        Write-Host "  master: redants_backup LOGIN + USER ..."
         Invoke-SqlQuery -Database "master" -AdminUser $ADMIN_USER `
                         -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlBackupLogin
+
+        # Der Azure ImportExport Service verbindet sich zuerst gegen master.
+        # Ohne USER-Eintrag in master schlägt die Authentifizierung mit Error 916 fehl.
+        $sqlBackupMasterUser = @"
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'redants_backup')
+BEGIN
+    CREATE USER [redants_backup] FOR LOGIN [redants_backup];
+    PRINT 'redants_backup USER in master: erstellt.';
+END
+ELSE
+    PRINT 'redants_backup USER in master: bereits vorhanden.';
+"@
+        Invoke-SqlQuery -Database "master" -AdminUser $ADMIN_USER `
+                        -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlBackupMasterUser
 
         Write-Host "  ${DB_PROD}: redants_backup USER ..."
         Invoke-SqlQuery -Database $DB_PROD -AdminUser $ADMIN_USER `
