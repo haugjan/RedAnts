@@ -56,6 +56,8 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddEventConversionOnly>("event-conversion-only");
         To<AddFlexBoxOffice>("flex-box-office");
         To<AddFlexOriginBundle>("flex-origin-bundle");
+        To<AddTicketHolderColumns>("ticket-holder-columns");
+        To<AddTicketPrintSettings>("ticket-print-settings");
     }
 }
 
@@ -75,6 +77,69 @@ public class AddFlexBoxOffice(IMigrationContext context) : AsyncMigrationBase(co
     {
         if (!ColumnExists("SeasonSingleTickets", "BoxOffice"))
             Alter.Table("SeasonSingleTickets").AddColumn("BoxOffice").AsBoolean().NotNullable().WithDefaultValue(false).Do();
+        return Task.CompletedTask;
+    }
+}
+
+public class AddTicketHolderColumns(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddString("EventTickets", "Salutation", 50);
+        AddDate("EventTickets", "Birthday");
+        AddString("EventTickets", "Email", 200);
+        AddAddress("EventTickets");
+
+        AddString("SeasonPasses", "Salutation", 50);
+        AddDate("SeasonPasses", "Birthday");
+        AddAddress("SeasonPasses");
+
+        AddInt("SeasonSingleTickets", "BuyerType");
+        AddString("SeasonSingleTickets", "BuyerFirstName", 100);
+        AddString("SeasonSingleTickets", "BuyerLastName", 100);
+        AddString("SeasonSingleTickets", "BuyerCompany", 200);
+        AddString("SeasonSingleTickets", "BuyerEmail", 200);
+        AddString("SeasonSingleTickets", "Salutation", 50);
+        AddDate("SeasonSingleTickets", "Birthday");
+        AddAddress("SeasonSingleTickets");
+        return Task.CompletedTask;
+    }
+
+    private void AddAddress(string table)
+    {
+        AddString(table, "Street", 200);
+        AddString(table, "AddressLine2", 200);
+        AddString(table, "PostalCode", 20);
+        AddString(table, "City", 100);
+        AddString(table, "Country", 100);
+        AddString(table, "Phone", 50);
+    }
+
+    private void AddString(string table, string column, int length)
+    {
+        if (ColumnExists(table, column)) return;
+        Alter.Table(table).AddColumn(column).AsString(length).Nullable().Do();
+    }
+
+    private void AddInt(string table, string column)
+    {
+        if (ColumnExists(table, column)) return;
+        Alter.Table(table).AddColumn(column).AsInt32().Nullable().Do();
+    }
+
+    private void AddDate(string table, string column)
+    {
+        if (ColumnExists(table, column)) return;
+        Alter.Table(table).AddColumn(column).AsDateTime().Nullable().Do();
+    }
+}
+
+public class AddTicketPrintSettings(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("TicketPrintSettings"))
+            Create.Table<TicketPrintSettingsRecord>().Do();
         return Task.CompletedTask;
     }
 }
