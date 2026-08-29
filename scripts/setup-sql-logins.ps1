@@ -201,7 +201,7 @@ IF NOT EXISTS (
 }
 
 # ── Globaler Cleanup-Scope (Az Config-Dir) ─────────────────────────────────
-$azConfigDir = Join-Path $env:TEMP "ra-sql-setup-$(Get-Random)"
+$azConfigDir = Join-Path ([System.IO.Path]::GetTempPath()) "ra-sql-setup-$(Get-Random)"
 
 try {
 
@@ -452,10 +452,14 @@ if (-not $SkipAdminRotation) {
 Step "FERTIG"
 Write-Host "Alle Phasen erfolgreich durchgefuehrt." -ForegroundColor Green
 
+} catch {
+    Write-Host "`nFEHLER: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "  Zeile $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line.Trim())" -ForegroundColor Red
+    throw
 } finally {
-    if (Test-Path $azConfigDir) {
-        Remove-Item $azConfigDir -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "`n  (Az-Config-Dir mit Tokens bereinigt.)"
-    }
     [System.Environment]::SetEnvironmentVariable("AZURE_CONFIG_DIR", $null)
+    if ($azConfigDir -and (Test-Path $azConfigDir -ErrorAction SilentlyContinue)) {
+        try { Remove-Item $azConfigDir -Recurse -Force }
+        catch { Write-Host "  (Az-Config-Dir konnte nicht bereinigt werden: $azConfigDir)" -ForegroundColor DarkGray }
+    }
 }
