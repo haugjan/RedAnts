@@ -329,6 +329,8 @@ ELSE BEGIN
 END
 "@
 
+        # az sql db export braucht db_owner auf der Quelldatenbank — db_datareader allein
+        # reicht dem Azure ImportExport Service nicht.
         $sqlBackup = @"
 -- Allfälligen contained user von früheren Läufen entfernen
 IF EXISTS (
@@ -345,10 +347,8 @@ BEGIN
     CREATE USER [redants_backup] FOR LOGIN [redants_backup];
     PRINT 'redants_backup USER: erstellt.';
 END
-$(Get-RoleGrantSql 'db_datareader' 'redants_backup')
-GRANT VIEW DEFINITION     TO [redants_backup];
-GRANT VIEW DATABASE STATE TO [redants_backup];
-PRINT 'redants_backup: Rollen gesetzt.';
+$(Get-RoleGrantSql 'db_owner' 'redants_backup')
+PRINT 'redants_backup: db_owner gesetzt.';
 "@
 
         Write-Host "  ${DB_DEV}: redants_app ..."
