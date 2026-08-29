@@ -96,7 +96,11 @@
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
                                 <td>@(string.IsNullOrEmpty(p.Reference) ? "–" : p.Reference)</td>
-                                <td>@p.CategoryName</td>
+                                <td>
+                                    <InlineSelectEdit TValue="int" Value="MainTierId(p)" FieldLabel="Kategorie"
+                                                      Options="MainTierIds" Label="@(id => TierName(id))"
+                                                      Save="@(id => SaveTierAsync(p, id))" />
+                                </td>
                                 <td class="ta-num">CHF @p.Price.ToString("N2")</td>
                                 <td>
                                     <InlineSelectEdit TValue="TicketStatus" Value="p.Status" FieldLabel="Status"
@@ -608,6 +612,21 @@
         var pass = await Passes.GetByUuidAsync(p.Uuid);
         if (pass is null) return;
         pass.Edit(pass.Price, status);
+        await Passes.SaveAsync(pass);
+        await ReloadPassesAsync();
+    }
+
+    private IReadOnlyList<int> MainTierIds => _tiers.Where(t => !t.IsPromo).Select(t => t.Id).ToList();
+    private string TierName(int id) => _tiers.FirstOrDefault(t => t.Id == id)?.Name ?? "–";
+    private int MainTierId(SeasonPassListItem p) =>
+        _tiers.FirstOrDefault(t => !t.IsPromo && t.Name == p.CategoryName)?.Id
+        ?? (p.TierId is { } tid ? (_tiers.FirstOrDefault(t => t.Id == tid)?.PromoOfTierId ?? tid) : MainTierIds.FirstOrDefault());
+
+    private async Task SaveTierAsync(SeasonPassListItem p, int tierId)
+    {
+        var pass = await Passes.GetByUuidAsync(p.Uuid);
+        if (pass is null) return;
+        pass.Edit(pass.Price, pass.Status, tierId);
         await Passes.SaveAsync(pass);
         await ReloadPassesAsync();
     }
