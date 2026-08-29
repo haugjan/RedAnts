@@ -316,15 +316,19 @@ PRINT 'redants_app: Rollen und EXECUTE auf dbo gesetzt.';
         # az sql db export nutzt den Azure Import/Export-Dienst, der sich zuerst
         # gegen master authentifiziert — Contained Database Users (WITH PASSWORD)
         # werden dort abgelehnt. redants_backup braucht daher ein Server-Level Login.
+        # DEFAULT_DATABASE auf sqldb-redants-prod setzen: Der Azure ImportExport-Dienst
+        # verbindet sich zuerst gegen master. Ohne DEFAULT_DATABASE wählt SQL Server master
+        # als Default, was Error 916 gibt (kein User in master). Mit DEFAULT_DATABASE
+        # verbindet sich das Login direkt gegen die Ziel-DB.
         $sqlBackupLogin = @"
 IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = 'redants_backup')
 BEGIN
-    CREATE LOGIN [redants_backup] WITH PASSWORD = '$pwBackup';
+    CREATE LOGIN [redants_backup] WITH PASSWORD = '$pwBackup', DEFAULT_DATABASE = [$DB_PROD];
     PRINT 'redants_backup LOGIN: erstellt.';
 END
 ELSE BEGIN
-    ALTER LOGIN [redants_backup] WITH PASSWORD = '$pwBackup';
-    PRINT 'redants_backup LOGIN: Passwort aktualisiert.';
+    ALTER LOGIN [redants_backup] WITH PASSWORD = '$pwBackup', DEFAULT_DATABASE = [$DB_PROD];
+    PRINT 'redants_backup LOGIN: Passwort und Default-DB aktualisiert.';
 END
 "@
 
