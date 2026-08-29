@@ -141,28 +141,42 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         return record.Id;
     }
 
+    private const string TicketSelect =
+        "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, t.BoxOffice, v.IsInside AS InsideFlag, " +
+        "cb.CreatedByName AS CreatorName, cb.CreatedByEmail AS CreatorEmail, bb.Reference AS BundleReference, " +
+        "t.BuyerType, t.BuyerFirstName, t.BuyerLastName, t.BuyerCompany, t.BuyerEmail, " +
+        "t.Salutation, t.Birthday, t.Street, t.AddressLine2, t.PostalCode, t.City, t.Country, t.Phone, " +
+        "CASE WHEN EXISTS (SELECT 1 FROM EventTickets et WHERE et.OriginType = @1 AND et.OriginCardUuid = t.Uuid) THEN 1 ELSE 0 END AS Converted " +
+        "FROM SeasonSingleTickets t " +
+        "LEFT JOIN TicketEventVisits v ON v.TicketUuid = t.Uuid AND v.EventId = t.RedeemedEventId " +
+        "LEFT JOIN FlexTicketBundles cb ON cb.Id = COALESCE(t.OriginBundleId, CASE WHEN t.BoxOffice = 1 THEN NULL ELSE t.BundleId END) " +
+        "LEFT JOIN FlexTicketBundles bb ON bb.Id = t.BundleId ";
+
     public async Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<FlexTicketRow>(
-            "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, t.BoxOffice, v.IsInside AS InsideFlag, " +
-            "cb.CreatedByName AS CreatorName, cb.CreatedByEmail AS CreatorEmail, " +
-            "t.BuyerType, t.BuyerFirstName, t.BuyerLastName, t.BuyerCompany, t.BuyerEmail, " +
-            "t.Salutation, t.Birthday, t.Street, t.AddressLine2, t.PostalCode, t.City, t.Country, t.Phone, " +
-            "CASE WHEN EXISTS (SELECT 1 FROM EventTickets et WHERE et.OriginType = @1 AND et.OriginCardUuid = t.Uuid) THEN 1 ELSE 0 END AS Converted " +
-            "FROM SeasonSingleTickets t " +
-            "LEFT JOIN TicketEventVisits v ON v.TicketUuid = t.Uuid AND v.EventId = t.RedeemedEventId " +
-            "LEFT JOIN FlexTicketBundles cb ON cb.Id = COALESCE(t.OriginBundleId, CASE WHEN t.BoxOffice = 1 THEN NULL ELSE t.BundleId END) " +
-            "WHERE t.BundleId = @0 ORDER BY t.CreatedAt", bundleId, (int)TicketType.SeasonSingle);
-        return rows.Select(r => new FlexTicketView(
-            Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
-            (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt,
-            (TicketCategory)r.Category, r.InsideFlag, r.Converted == 1, r.BoxOffice,
-            r.CreatorName, r.CreatorEmail,
-            CardHolder.Create((BuyerType)(r.BuyerType ?? 0), r.Salutation, r.BuyerCompany,
-                r.BuyerFirstName, r.BuyerLastName, r.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
-                r.BuyerEmail, r.Street, r.AddressLine2, r.PostalCode, r.City, r.Country, r.Phone))).ToList();
+            TicketSelect + "WHERE t.BundleId = @0 ORDER BY t.CreatedAt", bundleId, (int)TicketType.SeasonSingle);
+        return rows.Select(MapTicket).ToList();
     }
+
+    public async Task<IReadOnlyList<FlexTicketView>> GetTicketsBySeasonAsync(int seasonId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<FlexTicketRow>(
+            TicketSelect + "WHERE t.SeasonId = @0 ORDER BY t.CreatedAt", seasonId, (int)TicketType.SeasonSingle);
+        return rows.Select(MapTicket).ToList();
+    }
+
+    private static FlexTicketView MapTicket(FlexTicketRow r) => new(
+        Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
+        (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt,
+        (TicketCategory)r.Category, r.InsideFlag, r.Converted == 1, r.BoxOffice,
+        r.CreatorName, r.CreatorEmail,
+        CardHolder.Create((BuyerType)(r.BuyerType ?? 0), r.Salutation, r.BuyerCompany,
+            r.BuyerFirstName, r.BuyerLastName, r.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
+            r.BuyerEmail, r.Street, r.AddressLine2, r.PostalCode, r.City, r.Country, r.Phone),
+        r.BundleReference);
 
     public async Task SetTicketCategoryAsync(Guid uuid, TicketCategory category)
     {
@@ -350,6 +364,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         public bool BoxOffice { get; set; }
         public string? CreatorName { get; set; }
         public string? CreatorEmail { get; set; }
+        public string? BundleReference { get; set; }
         public int? BuyerType { get; set; }
         public string? BuyerFirstName { get; set; }
         public string? BuyerLastName { get; set; }

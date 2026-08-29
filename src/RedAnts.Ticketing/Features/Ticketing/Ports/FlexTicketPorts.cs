@@ -25,7 +25,8 @@ public sealed record FlexTicketView(
     bool BoxOffice = false,
     string? CreatorName = null,
     string? CreatorEmail = null,
-    CardHolder? Holder = null);
+    CardHolder? Holder = null,
+    string? BundleReference = null);
 
 public enum FlexRebookStatus { Moved, AlreadyInTarget, WrongSeason, NotFound, AlreadyRedeemed }
 
@@ -63,6 +64,7 @@ public interface IFlexTicketBundles
     Task<FlexBoxOfficeResult> ConvertToBoxOfficeByCodeAsync(string codePrefix, string? operatorName);
 
     Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId);
+    Task<IReadOnlyList<FlexTicketView>> GetTicketsBySeasonAsync(int seasonId);
 
     Task SetTicketStatusAsync(Guid uuid, TicketStatus status);
 

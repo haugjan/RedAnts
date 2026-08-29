@@ -39,6 +39,7 @@
                         }
                         else
                         {
+                            <option value="0">Alle anzeigen</option>
                             @foreach (var b in _bundles)
                             {
                                 <option value="@b.Id">@b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.</option>
@@ -91,6 +92,7 @@
                             <th>Ticket-Nr.</th>
                             <th>Person</th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th>Bundle</th>
                             <th>Kategorie</th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
@@ -113,6 +115,14 @@
                                 <td class="ta-cell-name"><PersonCell Holder="t.Holder" /></td>
                                 <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.CreatorName, t.CreatorEmail, null)">
                                     @AdminFormat.CreatedShort(t.CreatedAt, t.CreatorName, null)
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(t.BundleReference)) { <span class="ta-badge ta-badge-buyer">@t.BundleReference</span> }
+                                    else { <span class="ta-muted">–</span> }
+                                    @if (t.BoxOffice)
+                                    {
+                                        <span class="ta-badge ta-badge-firma" title="Als Abendkassenticket markiert: gilt auch an Spezialanlässen, die Flextickets einschränken.">🎫 Abendkasse</span>
+                                    }
                                 </td>
                                 <td>
                                     <InlineSelectEdit TValue="TicketCategory"
@@ -148,10 +158,6 @@
                                     @if (t.ConvertedForPurchase)
                                     {
                                         <span class="ta-conv-badge" title="Dieses Flexticket wurde für einen Ticketkauf (Umwandlung) an einem Spezialanlass gebraucht, nicht am Eingang gescannt.">↔ Umwandlung</span>
-                                    }
-                                    @if (t.BoxOffice)
-                                    {
-                                        <span class="ta-conv-badge" title="Als Abendkassenticket markiert: gilt auch an Spezialanlässen, die Flextickets einschränken. Das „Abendkasse“-Bundle dient nur der Gruppierung.">🎫 Abendkasse</span>
                                     }
                                 </td>
                                 <td>
@@ -652,7 +658,11 @@
     private async Task ReloadTicketsAsync()
     {
         AdminState.SelectedBundleId = SelectedBundleId > 0 ? SelectedBundleId : null;
-        _tickets = SelectedBundleId > 0 ? await Bundles.GetTicketsAsync(SelectedBundleId) : [];
+        _tickets = SelectedBundleId > 0
+            ? await Bundles.GetTicketsAsync(SelectedBundleId)
+            : _bundles.Count > 0 && SelectedSeasonId > 0
+                ? await Bundles.GetTicketsBySeasonAsync(SelectedSeasonId)
+                : [];
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
