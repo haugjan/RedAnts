@@ -4,6 +4,8 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.2" />
+    <PackageVersion Include="Azure.Identity" Version="1.14.2" />
     <PackageVersion Include="QuestPDF" Version="2026.7.1" />
     <PackageVersion Include="PdfSharp" Version="6.2.0" />
     <PackageVersion Include="Umbraco.Cms" Version="17.4.2" />

@@ -398,6 +398,15 @@ Invoke-AzCmd @("webapp", "config", "appsettings", "set",
     "--output", "none") -RedactOnError | Out-Null
 Ok "DEV App Setting gesetzt (App startet neu)."
 
+# Auch im KV ablegen: lokales dotnet run liest via AddAzureKeyVault
+# (Secret-Name 'ConnectionStrings--umbracoDbDSN' → Config-Key 'ConnectionStrings:umbracoDbDSN')
+Invoke-AzCmd @("keyvault", "secret", "set",
+    "--vault-name", $KV,
+    "--name", "ConnectionStrings--umbracoDbDSN",
+    "--value", $dsnDev,
+    "--output", "none") -RedactOnError | Out-Null
+Ok "KV-Secret 'ConnectionStrings--umbracoDbDSN' gesetzt (für lokales dotnet run)."
+
 if (-not $SkipHealthChecks) { Wait-Health -Url $HEALTH_DEV }
 
 # ── Phase 6: PROD Connection String + Health Check ────────────────────────
