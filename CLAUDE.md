@@ -12,16 +12,21 @@ Public website plus a self-service ticketing application for Red Ants Winterthur
 
 ## Architecture
 
-Layered / ports-and-adapters, split into three top-level folders:
+The solution (`RedAnts.slnx`) is split into three projects plus one test project per slice:
 
-- **`Domain/`** — pure domain models, enums, value objects, and `DomainException`. No framework or Umbraco dependencies. `Domain/Ticketing/` (catalog: `Event`, `Season`, `Venue`) and `Domain/Ticketing/Sales/` (`Order`, the ticket types, visits, pricing aggregates, enums).
-- **`Features/`** — application layer, organized by use case. `Features/Ticketing/Ports/` holds the interfaces (`CatalogPorts`, `SalesCatalogPorts`); use-case folders (`Public/`, `Cart/`, `Admin/`, `Scanning/`) hold controllers and Blazor components.
-- **`Infrastructure/`** — adapters that implement the ports and integrate with Umbraco and external services. Split by slice: `Shared/`, `Ticketing/` (with a `Sales/` sub-slice for the NPoco records/repositories), `Website/`.
+- **`src/RedAnts.Host`** (web app, `AssemblyName=RedAnts`) — `Program.cs` (host-based routing, health, dev badge, CSP, 404, site gate), Umbraco boot, `Infrastructure/Shared/` (Entra backoffice auth, themes), the Website slice (`Infrastructure/Website/`, `Features/Website/`), `uSync/`, the Umbraco template views under `Views/` and the shared wwwroot assets (site.css, favicons, PWA manifest, scanner service worker).
+- **`src/RedAnts.Ticketing`** (Razor class library, compiled views) — the whole ticketing slice: `Domain/`, `Features/Ticketing/` (ports, controllers, Blazor components), `Infrastructure/Ticketing/` (NPoco repos, migrations, email outbox, Payrexx, PDF/QR), the plain MVC views, the `/scan` Razor Page and the ticketing css/js served under `/_content/RedAnts.Ticketing/`. The Host consumes it via `AddTicketing(...)`, `UseTicketingShortHostRedirect()`, `UseTicketingAnalytics()` and `UseTicketingScanAuth()`.
+- **`src/RedAnts.Show`** (Razor class library, placeholder) — future soundboard/light control at `show[-dev].redants.ch` → `/show`, backoffice section "Show" (iframe to `/admin/show`), own SQL schema `show` created idempotently on `ConnectionStrings:showDbDSN` (fallback: Umbraco DB), prepared `Show:Storage` blob options.
 
-Two independent content slices coexist and must stay decoupled:
+Each project layers internally as Domain → Features (ports) → Infrastructure (adapters). Umbraco composers in the class libraries are discovered by Umbraco's assembly scan; no extra wiring in `Program.cs` is needed.
 
-1. **Ticketing** (`Infrastructure/Ticketing/`, `Features/Ticketing/`): events, seasons, event/season tickets, season passes, member cards, ticket bundles, season add-ons, a guest cart, per-season price tiers and per-event/season pricing with quotas, admission scanning, PDF/QR ticket delivery, Payrexx payment, Microsoft Graph email (drained from a SQL outbox), Turnstile captcha.
-2. **Website** (`Infrastructure/Website/`, `Views/`): the public marketing site (FlexPage + block elements, adaptive navigation).
+The slices must stay decoupled:
+
+1. **Ticketing** (`src/RedAnts.Ticketing`): events, seasons, event/season tickets, season passes, member cards, ticket bundles, season add-ons, a guest cart, per-season price tiers and per-event/season pricing with quotas, admission scanning, PDF/QR ticket delivery, Payrexx payment, Microsoft Graph email (drained from a SQL outbox), Turnstile captcha.
+2. **Website** (`src/RedAnts.Host`: `Infrastructure/Website/`, `Views/`): FlexPage + block elements, legal pages, robots/sitemap.
+3. **Show** (`src/RedAnts.Show`): placeholder, own schema and storage config, no Umbraco content.
+
+Exception forced by Umbraco: the ticketing **template** views (`TicketingHome`, `TicketEvent`, `TicketSeason`, `TicketVenue`, `SaisonsPromo`) live in the Host's `Views/` folder because Umbraco templates are DB entities backed by physical content-root files (the seeder reads them from disk, the backoffice edits them). They may consume ticketing ports via `@inject`; Host *code* uses ticketing only through the extension methods above.
 
 ## Ticketing data model
 
@@ -54,22 +59,21 @@ page.Value<IPublishedContent>(alias);
 
 Do not assume or generate ModelsBuilder classes.
 
-## Razor is runtime-compiled
+## Razor compilation is split
 
-`RazorCompileOnBuild` and `RazorCompileOnPublish` are **`false`** (required for the backoffice). Consequences:
-
-- `dotnet build` does **not** catch errors in `.cshtml` files. To validate a view you must run the app and hit the page.
-- Gotcha: a `foreach` loop variable named `page` breaks compilation, because `@page.Url()` is parsed as the `@page` directive. Use a different name (e.g. `item`).
+- **Host views** (`src/RedAnts.Host/Views/`, the Umbraco templates and website views) are **runtime-compiled** (`RazorCompileOnBuild=false`, required for the backoffice). `dotnet build` does **not** catch errors there; run the app and hit the page. Gotcha: a `foreach` loop variable named `page` breaks compilation, because `@page.Url()` is parsed as the `@page` directive. Use a different name (e.g. `item`).
+- **Ticketing and Show views** (in the class libraries) are **compiled at build time** — view errors surface in `dotnet build`. Their static assets are served under `/_content/<ProjectName>/…`; the site gate exempts `/_content`.
 
 ## Environments (custom domains)
 
-Host-based routing (`Program.cs`): the root `/` redirects by host — `scan[-dev].redants.ch` → `/scan`, `admin[-dev].redants.ch` → `/umbraco`, everything else → `/ticketing/`.
+Host-based routing (`Program.cs`): the root `/` redirects by host — `scan[-dev].redants.ch` → `/scan`, `admin[-dev].redants.ch` → `/umbraco`, `show[-dev].redants.ch` → `/show`, everything else → `/ticketing/`.
 
 | Surface | PROD | DEV |
 |---|---|---|
 | Public / tickets | `tickets.redants.ch` | `tickets-dev.redants.ch` |
 | Scanning | `scan.redants.ch` | `scan-dev.redants.ch` |
 | Admin / backoffice | `admin.redants.ch` | `admin-dev.redants.ch` |
+| Show (placeholder) | `show.redants.ch` | `show-dev.redants.ch` |
 
 Underlying App Services: `app-redants-prod` / `app-redants-dev`. **Only `tickets.redants.ch` is search-indexed** (`index,follow`); every other host — all `*-dev`, plus `scan.*`/`admin.*` and `*.azurewebsites.net` — is `noindex,nofollow`.
 
@@ -80,15 +84,16 @@ Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqi
 ## Conventions
 
 - **No comments in code.** The code speaks for itself: prefer clear names and small well-named methods over explanatory comments. This covers line, block, XML-doc (`///`), Razor (`@* *@`), and embedded CSS/JS comments. Non-obvious "why" (design decisions, Swiss compliance, gotchas) goes in `ARCHITECTURE.md` under "Design rationale and gotchas", not inline.
-- Keep the two slices decoupled: no direct references from Website code into Ticketing internals (go through ports if a genuine dependency arises).
-- New website block elements: element type + alias in `WebsiteAliases`, register the block in the "Website Content Blocks" Block List, add a partial under `Views/Partials/Blocks/{alias}.cshtml`, add styles to `wwwroot/css/site.css`.
-- Secrets (Payrexx, Microsoft Graph, Turnstile) come from configuration / user secrets, never hardcoded.
+- Keep the slices decoupled: no direct references from Website or Show code into Ticketing internals (go through ports if a genuine dependency arises). Cross-project code sharing beyond that needs a deliberate decision, not an ad-hoc reference.
+- Tests are cut per slice: `tests/RedAnts.Host.Tests`, `tests/RedAnts.Ticketing.Tests`, `tests/RedAnts.Show.Tests`, each referencing its src project. `dotnet test RedAnts.slnx` runs in CI before publish.
+- New website block elements: element type + alias in `WebsiteAliases`, register the block in the "Website Content Blocks" Block List, add a partial under `src/RedAnts.Host/Views/Partials/Blocks/{alias}.cshtml`, add styles to `src/RedAnts.Host/wwwroot/css/site.css`.
+- Secrets (Payrexx, Microsoft Graph, Turnstile) come from configuration / user secrets, never hardcoded. User secrets live on the Host project (`--project src/RedAnts.Host`).
 
 ## Session workflow: preview & deploy
 
 Parallel sessions (S1–S7) each work in their own worktree `C:\development\RedAnts-s<N>` on their own branch `feature/s<N>-<short>`, never directly on `main`, and commit immediately. After each change, classify it:
 
-- **Simple (no DB/schema change)** — CSS, views/layout, text, front-end, PDF/mail templates, config without a migration: **run it locally, do NOT deploy to dev.** `dotnet run` (`ASPNETCORE_ENVIRONMENT=Development`, `--no-build` once built) on the session's own port `560<N>` (S1 → 5601 … S7 → 5607) against the Azure **dev** DB (the user-secrets DSN). Give the user the **localhost URL** (`http://localhost:560<N>/…`, reachable because the agent runs on the user's own machine) plus a one-line summary. Deploying every simple change to the single shared `app-redants-dev` makes parallel sessions overwrite each other, so don't.
+- **Simple (no DB/schema change)** — CSS, views/layout, text, front-end, PDF/mail templates, config without a migration: **run it locally, do NOT deploy to dev.** `dotnet run --project src/RedAnts.Host` (`ASPNETCORE_ENVIRONMENT=Development`, `--no-build` once built) on the session's own port `560<N>` (S1 → 5601 … S7 → 5607) against the Azure **dev** DB (the user-secrets DSN). Give the user the **localhost URL** (`http://localhost:560<N>/…`, reachable because the agent runs on the user's own machine) plus a one-line summary. Deploying every simple change to the single shared `app-redants-dev` makes parallel sessions overwrite each other, so don't.
 - **Complicated** — DB schema/migrations/seeders, or a flow that needs the real domain (Payrexx payment, backoffice/OIDC login, host-based `scan.`/`admin.` behaviour): **push the feature branch** (the pipeline deploys DEV only; `deploy-prod` is gated to `main`), watch the run, and report the matching dev link — tickets `tickets-dev.redants.ch`, scanning `scan-dev.redants.ch`, admin `admin-dev.redants.ch` (prod: the same hosts without `-dev`).
 
 Then always ask **"Auf prod deployen? Ja/Nein"** (Ja first, so the user can arrow + Enter). On **Ja**: `git push origin HEAD:main` (prod deploys); watch the CI build and report when green.

@@ -2,9 +2,19 @@
 
 RedAnts is an Umbraco 17 / .NET 10 application combining a public marketing website with a self-service ticketing system, backed by **Azure SQL in every environment** (dev and prod).
 
+## Solution layout
+
+The solution `RedAnts.slnx` contains three src projects and one test project per slice:
+
+- **`src/RedAnts.Host`** — the web app (`AssemblyName=RedAnts`, so publish output and deployment stay unchanged). Hosts `Program.cs`, Umbraco, `Infrastructure/Shared/`, the Website slice, `uSync/`, the Umbraco template views and shared wwwroot assets. References the two class libraries; consumes ticketing only through `AddTicketing(...)` / `UseTicketing*()` extension methods.
+- **`src/RedAnts.Ticketing`** — Razor class library with build-time-compiled views for the whole ticketing slice, including the plain MVC views, the `/scan` Razor Page, Blazor components and the ticketing static assets under `/_content/RedAnts.Ticketing/`.
+- **`src/RedAnts.Show`** — Razor class library, currently a placeholder for the soundboard/light-control app (`/show`, backoffice section "Show", SQL schema `show` on `ConnectionStrings:showDbDSN` with fallback to the Umbraco DSN, `Show:Storage` options for a separate blob container).
+
+Umbraco composers in the class libraries are discovered through Umbraco's assembly scan of referenced Umbraco-referencing assemblies (the same mechanism uSync relies on). The Umbraco template views (`TicketingHome`, `TicketEvent`, `TicketSeason`, `TicketVenue`, `SaisonsPromo`) must stay physical in the Host's `Views/` folder: Umbraco templates are DB entities backed by content-root files that the seeders read from disk and the backoffice edits. The class libraries suppress the Umbraco JSON schema copy and exclude their raw `.cshtml` from publish, both of which would otherwise collide with the Host's files (NETSDK1152).
+
 ## Layering (ports and adapters)
 
-Three top-level layers, with dependencies pointing inward (`Infrastructure` → `Features` → `Domain`):
+Within each project, three layers with dependencies pointing inward (`Infrastructure` → `Features` → `Domain`):
 
 ### `Domain/`
 Pure business model: entities, enums, value objects, and `DomainException`. No dependency on Umbraco, ASP.NET, or any framework. Examples: `Domain/Ticketing/` (`Event`, `Season`, `Venue`, `BillingAddress`, `PostalCode`) and `Domain/Ticketing/Sales/` (`Order`, `EventTicket`, `SeasonSingleTicket`, `SeasonPass`, `MemberCard`, `EventVisit`/`EventVisitLog`/`EventFreeEntry`, the pricing aggregates `EventPrice`/`SeasonPrice`/`CategoryPrice`, and the enums in `SalesEnums.cs`).
@@ -24,9 +34,9 @@ Adapters that implement the ports and integrate with Umbraco and external servic
 - `Infrastructure/Ticketing/`: catalog readers over Umbraco content (`UmbracoCatalogReaders`), the `Sales/` slice (NPoco records + repositories for orders/tickets/pricing/tiers/add-ons and `AdminOrderFactory`), the additive migration chain `TicketingMigration`, `SessionCartService` (SQL-backed session), `Payments/` (Payrexx gateway), `Email/` (the SQL outbox, `OutboxDispatcher`, Microsoft Graph transport and the order/member/pass/helper mailers), `Tickets/` (HMAC QR tokens + QuestPDF), `Scanning/` (admission service), `Content/` (code-first seeders and the `scanHelper` member type), the `Admin/` report readers, and the `TicketingComposer`/`EmailComposer` that wire it up.
 - `Infrastructure/Website/`: the public website content types and seeding.
 
-## Two content slices
+## Content slices
 
-Two independent slices share the Umbraco instance and must stay decoupled:
+Independent slices share the Umbraco instance and must stay decoupled (Show adds a third, content-free slice as its own project):
 
 1. **Ticketing**: events, seasons, event tickets / season single tickets / season passes / member cards, ticket bundles, season add-ons, a guest shopping cart, per-season price tiers and per-event/season pricing with quotas, admission scanning, PDF/QR ticket delivery, and a purchase flow with Payrexx payment and a Microsoft Graph confirmation email queued through a SQL outbox.
 2. **Website**: the public marketing site. A `flexPage` document type holds a `content` Block List of element types (`heroElement`, `headerElement`, `eventListElement`), rendered through `Views/FlexPage.cshtml`, `Views/Shared/_SiteLayout.cshtml`, and `Views/Partials/Blocks/{alias}.cshtml`.
@@ -73,12 +83,10 @@ var media = page.Value<MediaWithCrops>(WebsiteAliases.HeroImage);
 
 Do not introduce or assume ModelsBuilder-generated classes.
 
-## Razor is runtime-compiled
+## Razor compilation is split
 
-`RazorCompileOnBuild` and `RazorCompileOnPublish` are `false` (needed for the backoffice to work). Therefore:
-
-- `dotnet build` does not compile `.cshtml` files, so it will not surface view errors. Validate views by running the app and requesting the page.
-- Known trap: naming a `foreach` variable `page` breaks compilation, because `@page.Url()` is parsed as the `@page` Razor directive. Use another name such as `item`.
+- **Host views** are runtime-compiled (`RazorCompileOnBuild`/`RazorCompileOnPublish` are `false`, needed for the backoffice). `dotnet build` does not surface view errors there; validate by running the app and requesting the page. Known trap: naming a `foreach` variable `page` breaks compilation, because `@page.Url()` is parsed as the `@page` Razor directive. Use another name such as `item`.
+- **Ticketing and Show views** in the class libraries compile at build time; view errors fail `dotnet build`. The runtime view engine falls back to the precompiled application parts for view paths that have no physical file in the Host, so the explicit `~/Views/...` and `~/Features/...` view paths keep working unchanged.
 
 ## Routing and URLs
 

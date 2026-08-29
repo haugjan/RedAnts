@@ -1,0 +1,90 @@
+@model RedAnts.Features.Ticketing.Cart.CheckoutProcessingView
+@using RedAnts.Features.Ticketing.Tickets
+@using RedAnts.Domain.Ticketing.Sales
+@{
+    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    ViewData["Title"] = "Zahlung wird verarbeitet";
+}
+
+<link rel="stylesheet" href="/_content/RedAnts.Ticketing/css/ticket-card.css" asp-append-version="true" />
+
+<div class="text-center py-4" id="processing" style="@(Model.AlreadyPaid ? "display:none;" : "")">
+    <div class="spinner-border text-danger mb-3" role="status"><span class="visually-hidden">…</span></div>
+    <p class="text-muted">Bitte dieses Fenster offen lassen. Wir bestätigen deine Zahlung in wenigen Sekunden.</p>
+    <p class="text-muted small">Bestellnummer @Model.OrderNumber</p>
+</div>
+
+<div id="paid" style="@(Model.AlreadyPaid ? "" : "display:none;")">
+    <div class="text-center py-4">
+        <div style="font-size:3rem; line-height:1; color:#1c7c43;">&#10003;</div>
+        <h1 class="mt-2">Vielen Dank!</h1>
+        <p class="text-muted">Deine Zahlung ist bestätigt.</p>
+        <p>Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>.</p>
+    </div>
+
+    @if (Model.AddOnInfoTexts.Count > 0)
+    {
+        <h2 class="h5 mb-2 text-center">Zu deinen Zusatzoptionen</h2>
+        @foreach (var info in Model.AddOnInfoTexts)
+        {
+            <div class="ra-addon-note small mb-2">@info</div>
+        }
+    }
+
+    @if (Model.Tickets.Count > 0)
+    {
+        <h2 class="h5 mb-3 text-center">Deine Tickets</h2>
+        <div class="ra-ticket-grid">
+            @foreach (var t in Model.Tickets)
+            {
+                var card = new TicketCardModel(
+                    Kicker: TicketDisplay.Kicker((TicketType)t.Type),
+                    TypeLabel: TicketDisplay.TypeLabel((TicketType)t.Type),
+                    ScopeName: t.EventName,
+                    DateText: t.DateText,
+                    CategoryLabel: t.CategoryName,
+                    HolderName: null,
+                    Serial: t.Uuid.ToString("N")[..8].ToUpperInvariant(),
+                    QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />",
+                    VenueName: t.VenueName);
+                <div class="ra-ticket-cell">
+                    <partial name="~/Views/Partials/_TicketCard.cshtml" model="card" />
+                    <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="text-center mt-4">
+        <a href="/" class="btn btn-outline-secondary">Zur Startseite</a>
+    </div>
+</div>
+
+<style>
+    .ra-ticket-grid { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; background: #f4f4f5; border-radius: 14px; padding: 24px 18px; }
+    .ra-ticket-cell { display: flex; flex-direction: column; align-items: center; width: 300px; max-width: 100%; }
+    .ra-ticket-cell .rtk-card { --rtk-notch: #f4f4f5; }
+    .ra-addon-note { white-space: pre-line; background: #f4f4f5; border-left: 4px solid #C8102E; border-radius: 4px; padding: 12px 14px; color: #323232; text-align: left; }
+</style>
+
+<script>
+(function () {
+    if (@(Model.AlreadyPaid ? "true" : "false")) return;
+    var token = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Token));
+    var tries = 0;
+    function schedule() { if (tries < 120) setTimeout(poll, 2500); }
+    function poll() {
+        tries++;
+        fetch('/checkout/status?t=' + encodeURIComponent(token), { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (s) {
+                if (!s) { schedule(); return; }
+                if (s.cancelled) { window.location.href = '/checkout/cancel'; return; }
+                if (s.paid) { window.location.reload(); return; }
+                schedule();
+            })
+            .catch(schedule);
+    }
+    setTimeout(poll, 2500);
+}());
+</script>
