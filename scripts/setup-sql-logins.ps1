@@ -313,15 +313,36 @@ GRANT EXECUTE ON SCHEMA::dbo TO [redants_app];
 PRINT 'redants_app: Rollen und EXECUTE auf dbo gesetzt.';
 "@
 
-        $sqlBackup = @"
-IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'redants_backup' AND type_desc = 'SQL_USER')
+        # az sql db export nutzt den Azure Import/Export-Dienst, der sich zuerst
+        # gegen master authentifiziert — Contained Database Users (WITH PASSWORD)
+        # werden dort abgelehnt. redants_backup braucht daher ein Server-Level Login.
+        $sqlBackupLogin = @"
+IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = 'redants_backup')
 BEGIN
-    CREATE USER [redants_backup] WITH PASSWORD = '$pwBackup';
-    PRINT 'redants_backup: erstellt.';
+    CREATE LOGIN [redants_backup] WITH PASSWORD = '$pwBackup';
+    PRINT 'redants_backup LOGIN: erstellt.';
 END
 ELSE BEGIN
-    ALTER USER [redants_backup] WITH PASSWORD = '$pwBackup';
-    PRINT 'redants_backup: Passwort aktualisiert.';
+    ALTER LOGIN [redants_backup] WITH PASSWORD = '$pwBackup';
+    PRINT 'redants_backup LOGIN: Passwort aktualisiert.';
+END
+"@
+
+        $sqlBackup = @"
+-- Allfälligen contained user von früheren Läufen entfernen
+IF EXISTS (
+    SELECT 1 FROM sys.database_principals
+    WHERE name = 'redants_backup' AND authentication_type_desc = 'DATABASE'
+)
+BEGIN
+    DROP USER [redants_backup];
+    PRINT 'redants_backup: contained user entfernt.';
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'redants_backup')
+BEGIN
+    CREATE USER [redants_backup] FOR LOGIN [redants_backup];
+    PRINT 'redants_backup USER: erstellt.';
 END
 $(Get-RoleGrantSql 'db_datareader' 'redants_backup')
 GRANT VIEW DEFINITION     TO [redants_backup];
@@ -337,7 +358,11 @@ PRINT 'redants_backup: Rollen gesetzt.';
         Invoke-SqlQuery -Database $DB_PROD -AdminUser $ADMIN_USER `
                         -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlAppProd
 
-        Write-Host "  ${DB_PROD}: redants_backup ..."
+        Write-Host "  master: redants_backup LOGIN ..."
+        Invoke-SqlQuery -Database "master" -AdminUser $ADMIN_USER `
+                        -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlBackupLogin
+
+        Write-Host "  ${DB_PROD}: redants_backup USER ..."
         Invoke-SqlQuery -Database $DB_PROD -AdminUser $ADMIN_USER `
                         -AdminPwSecure $ADMIN_PW_SECURE -Query $sqlBackup
 

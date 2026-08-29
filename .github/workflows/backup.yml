@@ -11,7 +11,7 @@ name: Weekly Backup
 #       * "SQL DB Contributor" on SQL server sql-redants-ch
 #       * Key Vault access policy get/list secrets on kv-redants-prod
 #   - Key Vault kv-redants-prod secrets: backup-sql-prod-user, backup-sql-prod-password
-#     (contained DB user redants_backup on sqldb-redants-prod with db_datareader + VIEW DEFINITION)
+#     (server-level login redants_backup; az sql db export requires master-level auth)
 #
 # Manual runs (workflow_dispatch) are restricted to the repo owner; the schedule
 # always runs.
