@@ -4,15 +4,15 @@ namespace RedAnts.Features.Show;
 // in Rasterzellen; unpositionierte Buttons (X<0) fliessen automatisch ein.
 public static class ShowLayout
 {
-    public const int Cols = 12;
-    public const int Rows = 8;
+    public const int Cols = 26;
+    public const int Rows = 16;
 
     public static (int W, int H) DefaultSize(TileSize s) => s switch
     {
-        TileSize.Wide => (6, 2),
-        TileSize.Tall => (3, 4),
-        TileSize.Big => (6, 4),
-        _ => (3, 2),
+        TileSize.Wide => (8, 3),
+        TileSize.Tall => (4, 6),
+        TileSize.Big => (8, 6),
+        _ => (4, 3),
     };
 
     public static (int W, int H) Dim(int w, int h, TileSize size)
@@ -26,7 +26,7 @@ public static class ShowLayout
     {
         var occ = new bool[Cols, Rows];
         var result = new Dictionary<string, (int, int, int, int)>();
-        if (reserveTopLeft) Mark(occ, 0, 0, 3, 2);
+        if (reserveTopLeft) Mark(occ, 0, 0, 4, 3);
 
         foreach (var n in nodes.Where(n => n is { X: >= 0, Y: >= 0 }))
         {

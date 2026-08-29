@@ -57,16 +57,18 @@
         (function () {
             var gd = null, drag = null;
             window.showGridInit = function (ref) { gd = ref; };
+            var COLS = 26, ROWS = 16, PAD = 6, GAP = 2;
             function metrics(canvas) {
-                var r = canvas.getBoundingClientRect(), pad = 6, gap = 4;
-                return { r: r, pad: pad, gap: gap,
-                    cw: (r.width - pad * 2 - gap * 11) / 12, ch: (r.height - pad * 2 - gap * 7) / 8 };
+                var r = canvas.getBoundingClientRect();
+                return { r: r,
+                    cw: (r.width - PAD * 2 - GAP * (COLS - 1)) / COLS,
+                    ch: (r.height - PAD * 2 - GAP * (ROWS - 1)) / ROWS };
             }
             function cellAt(canvas, cx, cy) {
                 var m = metrics(canvas);
-                var col = Math.floor((cx - m.r.left - m.pad) / (m.cw + m.gap));
-                var row = Math.floor((cy - m.r.top - m.pad) / (m.ch + m.gap));
-                return { col: Math.max(0, Math.min(11, col)), row: Math.max(0, Math.min(7, row)) };
+                var col = Math.floor((cx - m.r.left - PAD) / (m.cw + GAP));
+                var row = Math.floor((cy - m.r.top - PAD) / (m.ch + GAP));
+                return { col: Math.max(0, Math.min(COLS - 1, col)), row: Math.max(0, Math.min(ROWS - 1, row)) };
             }
             document.addEventListener('pointerdown', function (e) {
                 var tile = e.target.closest && e.target.closest('.se-ct');

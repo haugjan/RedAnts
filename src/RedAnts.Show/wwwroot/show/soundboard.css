@@ -101,9 +101,9 @@ html, body {
 .sb-board {
   flex: 1; min-height: 0;
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: repeat(8, 1fr);
-  gap: clamp(4px, 0.8vmin, 12px);
+  grid-template-columns: repeat(26, 1fr);
+  grid-template-rows: repeat(16, 1fr);
+  gap: clamp(2px, 0.5vmin, 8px);
 }
 
 .sb-tile {

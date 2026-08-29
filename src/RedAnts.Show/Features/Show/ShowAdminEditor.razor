@@ -102,19 +102,14 @@
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Sound)">+ Sound</button>
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Random)">+ Zufall</button>
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Ordner</button>
-                    @if (_selected is not null)
-                    {
-                        <button class="se-btn sm danger" @onclick="() => DeleteSelected()">🗑 Kachel löschen</button>
-                    }
                 </div>
 
-                @if (_selected is null)
-                {
-                    <p class="se-muted">Kachel im Raster wählen oder oben anlegen.</p>
-                }
-                else
+                @if (_selected is not null)
                 {
                     var n = _selected;
+                    <div class="se-editwrap" @onclick="() => _selected = null">
+                    <div class="se-editcard" @onclick:stopPropagation="true">
+                    <button class="se-editclose" @onclick="() => _selected = null">✕</button>
                     <div class="se-preview" style="--c:@n.Color">
                         <span class="se-pv-icon">@(string.IsNullOrEmpty(n.Icon) ? "🔊" : n.Icon)</span>
                         <span class="se-pv-label">@n.Label</span>
@@ -144,19 +139,6 @@
                             }
                         </div>
                         <label>Farbe <input type="color" @bind="n.Color" /></label>
-                        <div class="se-fieldcol">
-                            <span class="se-lbl">Grösse (Rasterzellen)</span>
-                            <div class="se-size">
-                                <span>B</span>
-                                <button type="button" @onclick="() => Resize(n, -1, 0)">−</button>
-                                <b>@n.W</b>
-                                <button type="button" @onclick="() => Resize(n, 1, 0)">+</button>
-                                <span>H</span>
-                                <button type="button" @onclick="() => Resize(n, 0, -1)">−</button>
-                                <b>@n.H</b>
-                                <button type="button" @onclick="() => Resize(n, 0, 1)">+</button>
-                            </div>
-                        </div>
                     </div>
 
                     @if (n.Kind == NodeKind.Sound)
@@ -244,6 +226,9 @@
                     {
                         <p class="se-muted">Ordner: mit „öffnen" (Raster) oder links reingehen, dann darin Kacheln anlegen.</p>
                     }
+                    <button class="se-btn sm danger se-editdel" @onclick="DeleteSelected">🗑 Kachel löschen</button>
+                    </div>
+                    </div>
                 }
             </div>
         </div>
@@ -326,7 +311,7 @@
     }
 
     private void GoLevel(int depth) { while (_levelStack.Count > depth) _levelStack.RemoveAt(_levelStack.Count - 1); }
-    private void EnterLevel(EditButton folder) { if (folder.Kind == NodeKind.Folder) { _levelStack.Add(folder); _selected = folder; } }
+    private void EnterLevel(EditButton folder) { if (folder.Kind == NodeKind.Folder) { _levelStack.Add(folder); _selected = null; } }
 
     private void Resize(EditButton n, int dw, int dh)
     {
@@ -447,7 +432,7 @@
         if (_profile is null) return;
         var path = new List<EditButton>();
         if (FindPath(_profile.Root, folder, path)) { _levelStack.Clear(); _levelStack.AddRange(path); }
-        _selected = folder;
+        _selected = null;
     }
 
     private static bool FindPath(List<EditButton> nodes, EditButton target, List<EditButton> path)
@@ -685,23 +670,25 @@
     .se-crumb2 { appearance: none; border: none; background: none; cursor: pointer; color: #ff9aa6; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
     .se-crumb2:hover { background: var(--ra-panel2); }
     .se-sep2 { color: var(--ra-muted); }
-    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(8, 1fr); gap: 6px; aspect-ratio: 12 / 8; width: 100%; background:
-        linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/12) calc(100%/8),
-        linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/12) calc(100%/8), #0b0b0e;
-        border: 1px solid var(--ra-line); border-radius: 16px; padding: 8px; margin-bottom: 18px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }
-    .se-ct { --c: var(--ra-red); position: relative; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff) 0%, var(--c) 100%); color: #fff; border: none; border-radius: 12px; cursor: grab; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22); transition: box-shadow 0.12s; }
-    .se-ct:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
+    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(26, 1fr); grid-template-rows: repeat(16, 1fr); gap: 2px; aspect-ratio: 26 / 16; width: 100%; max-width: min(100%, calc((100vh - 240px) * 26 / 16)); max-height: calc(100vh - 240px); margin: 0 auto 16px; background:
+        linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16),
+        linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16), #0b0b0e;
+        border: 1px solid var(--ra-line); border-radius: 14px; padding: 6px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }
+    .se-ct { --c: var(--ra-red); container-type: size; position: relative; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff) 0%, var(--c) 100%); color: #fff; border: none; border-radius: 8px; cursor: grab; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22); transition: box-shadow 0.12s; }
+    .se-ct:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
     .se-ct:active { cursor: grabbing; }
-    .se-ct.sel { outline: 3px solid #fff; outline-offset: -3px; box-shadow: 0 0 0 4px rgba(225,19,48,0.5); }
-    .se-ct-resize { position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.85) 45%); border-bottom-right-radius: 12px; }
+    .se-ct.sel { outline: 3px solid #fff; outline-offset: -3px; box-shadow: 0 0 0 4px rgba(225,19,48,0.5); z-index: 3; }
+    .se-ct-resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.85) 45%); border-bottom-right-radius: 8px; }
     .se-current { border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.6rem 0.75rem; background: var(--ra-in); color: var(--ra-text); font-weight: 500; text-transform: none; letter-spacing: 0; word-break: break-word; }
-    .se-ct-ico { font-size: clamp(1.1rem, 2.6vw, 2rem); }
-    .se-ct-lbl { font-weight: 900; font-size: clamp(0.62rem, 1.3vw, 1rem); line-height: 1.05; text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
-    .se-ct-open { position: absolute; bottom: 3px; right: 20px; appearance: none; border: none; background: rgba(0,0,0,0.35); color: #fff; border-radius: 6px; font-size: 0.62rem; padding: 1px 5px; cursor: pointer; }
-    .se-size { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--ra-text); text-transform: none; }
-    .se-size button { appearance: none; border: 1px solid var(--ra-line); background: var(--ra-panel2); color: var(--ra-text); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1.15rem; line-height: 1; }
-    .se-size button:hover { background: #33333d; }
-    .se-size b { min-width: 18px; text-align: center; }
+    .se-ct-ico { font-size: min(46cqmin, 2.2rem); line-height: 1; }
+    .se-ct-lbl { font-weight: 900; font-size: min(22cqmin, 1rem); line-height: 1.02; text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+    .se-ct-open { position: absolute; bottom: 2px; left: 3px; appearance: none; border: none; background: rgba(0,0,0,0.35); color: #fff; border-radius: 5px; font-size: min(14cqmin, 0.6rem); padding: 0 4px; cursor: pointer; }
+
+    .se-editwrap { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
+    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(94vw, 430px); max-height: 88vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
+    .se-editclose { position: absolute; top: 14px; right: 14px; appearance: none; border: none; background: var(--ra-panel2); color: var(--ra-text); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
+    .se-editclose:hover { background: #3a3a45; }
+    .se-editdel { margin-top: 18px; width: 100%; }
 
     .se-ftree { display: flex; flex-direction: column; gap: 3px; margin-bottom: 14px; }
     .se-fnode { appearance: none; border: none; background: none; cursor: pointer; text-align: left; padding: 0.55rem 0.7rem; border-radius: 10px; font: inherit; font-weight: 700; color: var(--ra-text); width: 100%; }
