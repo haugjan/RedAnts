@@ -2,7 +2,7 @@ using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using Xunit;
 
-namespace RedAnts.Domain.Tests.Sales;
+namespace RedAnts.Ticketing.Tests.Sales;
 
 public class PricingTests
 {

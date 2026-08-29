@@ -3,7 +3,7 @@ using RedAnts.Features.Ticketing.Scanning;
 using RedAnts.Infrastructure.Ticketing.Scanning;
 using Xunit;
 
-namespace RedAnts.Infrastructure.Tests.Scanning;
+namespace RedAnts.Ticketing.Tests.Scanning;
 
 public class AdmissionRulesTests
 {
@@ -58,14 +58,16 @@ public class AdmissionRulesTests
 
         return AdmissionRules.Evaluate(
             eventId, type, scopeId, mode, test, empty, facts,
-            eventSeasonId, redeemedEventId, visitExists && visitInside ? 1 : 0, 1);
+            eventSeasonId, redeemedEventId, visitExists && visitInside ? 1 : 0, 1,
+            requiresConversion: false, isBoxOfficeFlex: false);
     }
 
     private static AdmissionEvaluation RunMember(ScanMode mode, int admissionsInside, int admissionCap) =>
         AdmissionRules.Evaluate(
             Event, TicketType.MemberCard, Season, mode, test: false, isEmptyUuid: false,
             new ScannedTicketFacts(TicketType.MemberCard, Season, TicketStatus.Valid),
-            eventSeasonId: Season, redeemedEventId: null, admissionsInside, admissionCap);
+            eventSeasonId: Season, redeemedEventId: null, admissionsInside, admissionCap,
+            requiresConversion: false, isBoxOfficeFlex: false);
 
     private static AdmissionEvaluation RunValid(
         TicketType type,

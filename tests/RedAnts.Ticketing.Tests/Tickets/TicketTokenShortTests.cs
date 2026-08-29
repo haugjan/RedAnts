@@ -7,7 +7,7 @@ using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Infrastructure.Ticketing.Tickets;
 using Xunit;
 
-namespace RedAnts.Infrastructure.Tests.Tickets;
+namespace RedAnts.Ticketing.Tests.Tickets;
 
 public class TicketTokenShortTests
 {

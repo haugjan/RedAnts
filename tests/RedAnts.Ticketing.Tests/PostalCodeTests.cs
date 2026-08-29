@@ -1,7 +1,7 @@
 using RedAnts.Domain.Ticketing;
 using Xunit;
 
-namespace RedAnts.Domain.Tests;
+namespace RedAnts.Ticketing.Tests;
 
 public class PostalCodeTests
 {

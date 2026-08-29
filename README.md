@@ -22,17 +22,17 @@ App Services `app-redants-prod` / `app-redants-dev` (Switzerland North). Only `t
 Set the dev connection string once as a user secret:
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:umbracoDbDSN" "<dev Azure SQL DSN>"
-dotnet user-secrets set "ConnectionStrings:umbracoDbDSN_ProviderName" "Microsoft.Data.SqlClient"
+dotnet user-secrets set "ConnectionStrings:umbracoDbDSN" "<dev Azure SQL DSN>" --project src/RedAnts.Host
+dotnet user-secrets set "ConnectionStrings:umbracoDbDSN_ProviderName" "Microsoft.Data.SqlClient" --project src/RedAnts.Host
 ```
 
 ## Run locally
 
 ```bash
-dotnet run
+dotnet run --project src/RedAnts.Host
 ```
 
-- Serves on the ports in `Properties/launchSettings.json`; backoffice at `/umbraco`.
+- Serves on the ports in `src/RedAnts.Host/Properties/launchSettings.json`; backoffice at `/umbraco`.
 - The Umbraco schema and an admin account already live in the shared dev database, so there is no installer step. Content types and sample content are (re)seeded in code on every boot, idempotently.
 - Local development runs with test Turnstile keys and empty Payrexx credentials, so captcha and payment are effectively stubbed until real secrets are supplied via user secrets.
 - A soft **site access gate** (HTTP Basic, `BasicAuth:Password`) fronts the public site in every environment. To browse locally without it, start with an empty password (`BasicAuth__Password=`) or unlock via `/__gate` (or append `?key=<password>` to any URL).
@@ -51,14 +51,16 @@ For DEV/PROD the same keys come from App Service app settings (`BackOfficeAuth__
 
 ## Project layout
 
+The solution `RedAnts.slnx` is split per slice (details in `ARCHITECTURE.md`):
+
 | Path | Purpose |
 |------|---------|
-| `Domain/` | Pure domain models, enums, value objects (no framework deps). |
-| `Features/` | Application layer by use case, with `Ports/` interfaces. |
-| `Infrastructure/` | Adapters: Umbraco integration, repositories, payment, email. Split into `Shared`, `Ticketing`, `Website`. |
-| `Views/` | Razor views for the public website and ticketing pages. |
-| `wwwroot/` | Static assets (`css/site.css` etc.). |
-| `uSync/` | uSync content-type / configuration snapshots. |
+| `src/RedAnts.Host/` | Web app (`AssemblyName=RedAnts`): `Program.cs`, Umbraco, `Infrastructure/Shared`, Website slice, Umbraco template views, shared `wwwroot/`, `uSync/`. |
+| `src/RedAnts.Ticketing/` | Razor class library: the whole ticketing slice (`Domain/`, `Features/Ticketing/`, `Infrastructure/Ticketing/`), compiled views, assets under `/_content/RedAnts.Ticketing/`. |
+| `src/RedAnts.Show/` | Razor class library: placeholder for the soundboard/light-control app (`/show`, backoffice section "Show", SQL schema `show`). |
+| `tests/` | One xunit project per slice: `RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.Show.Tests`. |
+
+Each src project layers internally as `Domain/` → `Features/` (with `Ports/`) → `Infrastructure/`.
 
 ## Data model (ticketing)
 

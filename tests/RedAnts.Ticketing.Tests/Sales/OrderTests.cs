@@ -3,7 +3,7 @@ using RedAnts.Domain.Ticketing.Sales;
 using Xunit;
 using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
-namespace RedAnts.Domain.Tests.Sales;
+namespace RedAnts.Ticketing.Tests.Sales;
 
 public class OrderTests
 {

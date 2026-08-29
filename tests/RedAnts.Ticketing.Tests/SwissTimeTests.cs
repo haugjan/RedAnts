@@ -1,7 +1,7 @@
 using RedAnts.Domain;
 using Xunit;
 
-namespace RedAnts.Domain.Tests;
+namespace RedAnts.Ticketing.Tests;
 
 public class SwissTimeTests
 {

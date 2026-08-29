@@ -2,14 +2,14 @@ using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using Xunit;
 
-namespace RedAnts.Domain.Tests.Sales;
+namespace RedAnts.Ticketing.Tests.Sales;
 
 public class SeasonPassAndCardTests
 {
     [Fact]
     public void SeasonPass_Create_RoundsPrice_AndStartsValid()
     {
-        var pass = SeasonPass.Create(seasonId: 3, TicketCategory.Adult, price: 199.999m, orderId: 1);
+        var pass = SeasonPass.Create(seasonId: 3, tierId: 1, price: 199.999m, orderId: 1);
 
         Assert.Equal(200.00m, pass.Price);
         Assert.Equal(TicketStatus.Valid, pass.Status);
@@ -19,18 +19,18 @@ public class SeasonPassAndCardTests
     [Fact]
     public void SeasonPass_Create_RejectsNegativePriceOrSeason()
     {
-        Assert.Throws<DomainException>(() => SeasonPass.Create(3, TicketCategory.Adult, -1m, null));
-        Assert.Throws<DomainException>(() => SeasonPass.Create(0, TicketCategory.Adult, 10m, null));
+        Assert.Throws<DomainException>(() => SeasonPass.Create(3, 1, -1m, null));
+        Assert.Throws<DomainException>(() => SeasonPass.Create(0, 1, 10m, null));
     }
 
     [Fact]
     public void SeasonPass_Edit_UpdatesFields_AndRoundsPrice()
     {
-        var pass = SeasonPass.Create(3, TicketCategory.Adult, 100m, 1);
+        var pass = SeasonPass.Create(3, 1, 100m, 1);
 
-        pass.Edit(TicketCategory.Youth, 49.999m, TicketStatus.Blocked);
+        pass.Edit(49.999m, TicketStatus.Blocked, tierId: 2);
 
-        Assert.Equal(TicketCategory.Youth, pass.Category);
+        Assert.Equal(2, pass.TierId);
         Assert.Equal(50.00m, pass.Price);
         Assert.Equal(TicketStatus.Blocked, pass.Status);
     }
@@ -38,8 +38,8 @@ public class SeasonPassAndCardTests
     [Fact]
     public void SeasonPass_Edit_RejectsNegativePrice()
     {
-        var pass = SeasonPass.Create(3, TicketCategory.Adult, 100m, 1);
-        Assert.Throws<DomainException>(() => pass.Edit(TicketCategory.Adult, -1m, TicketStatus.Valid));
+        var pass = SeasonPass.Create(3, 1, 100m, 1);
+        Assert.Throws<DomainException>(() => pass.Edit(-1m, TicketStatus.Valid));
     }
 
     [Fact]

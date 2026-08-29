@@ -4,4 +4,9 @@
     <Project Path="src/RedAnts.Ticketing/RedAnts.Ticketing.csproj" />
     <Project Path="src/RedAnts.Show/RedAnts.Show.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RedAnts.Host.Tests/RedAnts.Host.Tests.csproj" />
+    <Project Path="tests/RedAnts.Ticketing.Tests/RedAnts.Ticketing.Tests.csproj" />
+    <Project Path="tests/RedAnts.Show.Tests/RedAnts.Show.Tests.csproj" />
+  </Folder>
 </Solution>

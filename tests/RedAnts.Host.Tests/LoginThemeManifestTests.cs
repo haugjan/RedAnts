@@ -2,7 +2,7 @@ using System.Text.Json;
 using RedAnts.Infrastructure.Shared;
 using Xunit;
 
-namespace RedAnts.Infrastructure.Tests;
+namespace RedAnts.Host.Tests;
 
 public class LoginThemeManifestTests
 {
