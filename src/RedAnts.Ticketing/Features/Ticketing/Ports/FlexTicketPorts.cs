@@ -22,7 +22,9 @@ public sealed record FlexTicketView(
     TicketCategory Category = TicketCategory.Adult,
     bool? IsInside = null,
     bool ConvertedForPurchase = false,
-    bool BoxOffice = false);
+    bool BoxOffice = false,
+    string? CreatorName = null,
+    string? CreatorEmail = null);
 
 public enum FlexRebookStatus { Moved, AlreadyInTarget, WrongSeason, NotFound, AlreadyRedeemed }
 

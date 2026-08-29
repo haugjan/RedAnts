@@ -105,8 +105,8 @@
                                         </a>
                                     </span>
                                 </td>
-                                <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.BoxOffice ? null : SelectedBundle?.CreatedByName, t.BoxOffice ? null : SelectedBundle?.CreatedByEmail, null)">
-                                    @AdminFormat.CreatedShort(t.CreatedAt, t.BoxOffice ? null : SelectedBundle?.CreatedByName, null)
+                                <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.CreatorName, t.CreatorEmail, null)">
+                                    @AdminFormat.CreatedShort(t.CreatedAt, t.CreatorName, null)
                                 </td>
                                 <td>
                                     <InlineSelectEdit TValue="TicketCategory"

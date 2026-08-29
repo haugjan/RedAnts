@@ -102,6 +102,7 @@ public class SeasonSingleTicketRecord
     [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
     [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
     [Column("BoxOffice")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool BoxOffice { get; set; }
+    [Column("OriginBundleId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginBundleId { get; set; }
 }
 
 [TableName("SeasonPasses")]

@@ -55,6 +55,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddTicketOriginColumns>("ticket-origin-columns");
         To<AddEventConversionOnly>("event-conversion-only");
         To<AddFlexBoxOffice>("flex-box-office");
+        To<AddFlexOriginBundle>("flex-origin-bundle");
+    }
+}
+
+public class AddFlexOriginBundle(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!ColumnExists("SeasonSingleTickets", "OriginBundleId"))
+            Alter.Table("SeasonSingleTickets").AddColumn("OriginBundleId").AsInt32().Nullable().Do();
+        return Task.CompletedTask;
     }
 }
 
