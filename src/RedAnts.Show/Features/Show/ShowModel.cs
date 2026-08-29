@@ -6,7 +6,7 @@ public enum TileSize { Normal, Wide, Tall, Big }
 
 public enum SoundKind { Local, Spotify }
 
-public sealed record ShowSound(SoundKind Kind, string Ref, int StartSec = 0, int? DurationSec = null);
+public sealed record ShowSound(SoundKind Kind, string Ref, int StartSec = 0, int? DurationSec = null, bool Shuffle = false);
 
 public sealed record ShowButton(
     string Id,

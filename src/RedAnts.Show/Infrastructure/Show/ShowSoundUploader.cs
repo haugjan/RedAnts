@@ -22,7 +22,10 @@ public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> optio
         await container.CreateIfNotExistsAsync(PublicAccessType.Blob);
 
         var safe = Sanitize(Path.GetFileName(fileName));
-        var blobPath = $"sounds/{safe}";
+        var stem = Path.GetFileNameWithoutExtension(safe);
+        var ext = Path.GetExtension(safe);
+        if (string.IsNullOrEmpty(ext)) ext = ".mp3";
+        var blobPath = $"sounds/{stem}-{Guid.NewGuid().ToString("N")[..6]}{ext}";
         var blob = container.GetBlobClient(blobPath);
         content.Position = 0;
         await blob.UploadAsync(content, new BlobUploadOptions

@@ -23,14 +23,18 @@
             if (startSec > 0) showEditAudio.currentTime = startSec;
             showEditAudio.play().catch(function () { });
         };
-        window.showEditTestSpotify = async function (uri, startSec) {
+        window.showEditTestSpotify = async function (uri, startSec, shuffle) {
             if (!uri) { alert('Kein Spotify-Track/URI gesetzt.'); return; }
             if (!window.showBoard) { alert('Spotify-Player nicht geladen.'); return; }
             if (!showBoard.isLoggedIn()) { alert('Zuerst auf dem Board (▶ Board öffnen → Zahnrad) mit Spotify verbinden.'); return; }
             var ready = await showBoard.ensureSpotify();
             if (!ready) { alert('Spotify-Player noch nicht bereit – kurz warten und erneut.'); return; }
-            var status = await showBoard.playSpotify(uri, (startSec || 0) * 1000);
+            var status = await showBoard.playSpotify(uri, (startSec || 0) * 1000, !!shuffle);
             if (status !== 'ok') { alert('Spotify: ' + status); }
+        };
+        window.showEditStop = function () {
+            try { if (showEditAudio) showEditAudio.pause(); } catch (e) { }
+            if (window.showBoard) { try { showBoard.stopAll(); } catch (e) { } }
         };
         // Drag-and-drop auf die Upload-Zone: Dateien an das versteckte File-Input weiterreichen.
         document.addEventListener('dragover', function (e) {
@@ -98,6 +102,45 @@
             });
             document.addEventListener('pointerup', function () { drag = null; });
             document.addEventListener('pointercancel', function () { drag = null; });
+
+            // Neue Kachel per Aufziehen auf freie Rasterfläche.
+            var draw = null, marquee = null;
+            function rectFromCells(canvas, a, b) {
+                var x = Math.min(a.col, b.col), y = Math.min(a.row, b.row);
+                var w = Math.abs(a.col - b.col) + 1, h = Math.abs(a.row - b.row) + 1;
+                return { x: x, y: y, w: w, h: h };
+            }
+            function positionMarquee(canvas, r) {
+                var m = metrics(canvas);
+                if (!marquee) { marquee = document.createElement('div'); marquee.className = 'se-marquee'; canvas.appendChild(marquee); }
+                marquee.style.left = (PAD + r.x * (m.cw + GAP)) + 'px';
+                marquee.style.top = (PAD + r.y * (m.ch + GAP)) + 'px';
+                marquee.style.width = (r.w * m.cw + (r.w - 1) * GAP) + 'px';
+                marquee.style.height = (r.h * m.ch + (r.h - 1) * GAP) + 'px';
+            }
+            function clearMarquee() { if (marquee) { marquee.remove(); marquee = null; } }
+            document.addEventListener('pointerdown', function (e) {
+                if (e.target.closest && e.target.closest('.se-ct')) return;
+                var canvas = e.target.closest && e.target.closest('.se-canvas');
+                if (!canvas) return;
+                var start = cellAt(canvas, e.clientX, e.clientY);
+                draw = { canvas: canvas, start: start, cur: start };
+                positionMarquee(canvas, rectFromCells(canvas, start, start));
+            });
+            document.addEventListener('pointermove', function (e) {
+                if (!draw) return;
+                draw.cur = cellAt(draw.canvas, e.clientX, e.clientY);
+                positionMarquee(draw.canvas, rectFromCells(draw.canvas, draw.start, draw.cur));
+            });
+            document.addEventListener('pointerup', function () {
+                if (!draw) return;
+                var r = rectFromCells(draw.canvas, draw.start, draw.cur);
+                clearMarquee();
+                draw = null;
+                if (r.w * r.h < 2) return;
+                if (gd) gd.invokeMethodAsync('CreateRect', r.x, r.y, r.w, r.h);
+            });
+            document.addEventListener('pointercancel', function () { draw = null; clearMarquee(); });
         })();
     </script>
     <script src="/_framework/blazor.server.js"></script>

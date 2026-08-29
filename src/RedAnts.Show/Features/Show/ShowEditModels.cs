@@ -8,10 +8,11 @@ public sealed class EditSound
     public string Ref { get; set; } = "";
     public int StartSec { get; set; }
     public int? DurationSec { get; set; }
+    public bool Shuffle { get; set; }
 
-    public EditSound Clone() => new() { Kind = Kind, Ref = Ref, StartSec = StartSec, DurationSec = DurationSec };
-    public ShowSound ToModel() => new(Kind, Ref, StartSec, DurationSec);
-    public static EditSound From(ShowSound s) => new() { Kind = s.Kind, Ref = s.Ref, StartSec = s.StartSec, DurationSec = s.DurationSec };
+    public EditSound Clone() => new() { Kind = Kind, Ref = Ref, StartSec = StartSec, DurationSec = DurationSec, Shuffle = Shuffle };
+    public ShowSound ToModel() => new(Kind, Ref, StartSec, DurationSec, Shuffle);
+    public static EditSound From(ShowSound s) => new() { Kind = s.Kind, Ref = s.Ref, StartSec = s.StartSec, DurationSec = s.DurationSec, Shuffle = s.Shuffle };
 }
 
 public sealed class EditButton

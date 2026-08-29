@@ -98,9 +98,9 @@
                     }
                 </div>
 
+                <p class="se-hint">Neue Kachel: mit der Maus auf freie Rasterfläche aufziehen, dann Ordner oder Song wählen.</p>
                 <div class="se-add-tiles">
-                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Sound)">+ Sound</button>
-                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Random)">+ Zufall</button>
+                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Sound)">+ Song</button>
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Ordner</button>
                 </div>
 
@@ -185,24 +185,37 @@
                                     </div>
                                 }
                             }
-                            else
+                            <label class="se-full">Spotify-Link oder URI einfügen
+                                <input value="@n.Sound.Ref" @onchange="@(e => n.Sound.Ref = NormalizeSpotify(e.Value?.ToString()))" placeholder="https://open.spotify.com/track/… oder spotify:track:…" />
+                            </label>
+                            @if (!Search.Configured)
                             {
-                                <p class="se-muted">Spotify-Suche inaktiv (Client-ID + Secret hinterlegen). Solange manuell:</p>
-                                <label class="se-full">Spotify-URI
-                                    <input @bind="n.Sound.Ref" @bind:event="oninput" placeholder="spotify:track:…" />
-                                </label>
+                                <p class="se-muted">Suche inaktiv (Client-ID + Secret hinterlegen). Link einfügen geht trotzdem.</p>
                             }
-                            <div class="se-full">
-                                <span class="se-lbl">Aktueller Track</span>
-                                <div class="se-current">@(string.IsNullOrWhiteSpace(n.Sound.Ref) ? "— keiner —" : n.Sound.Ref)</div>
-                            </div>
+                            @if (IsContextRef(n.Sound.Ref))
+                            {
+                                <div class="se-fieldcol">
+                                    <span class="se-lbl">Playlist-Reihenfolge</span>
+                                    <div class="se-src-tabs">
+                                        <button type="button" class="@(!n.Sound.Shuffle ? "active" : "")" @onclick="() => n.Sound.Shuffle = false">➡ Der Reihe nach</button>
+                                        <button type="button" class="@(n.Sound.Shuffle ? "active" : "")" @onclick="() => n.Sound.Shuffle = true">🔀 Zufällig</button>
+                                    </div>
+                                </div>
+                            }
                         }
 
-                        <div class="se-grid">
-                            <label>Cue-Start (Sek.) <input type="number" min="0" @bind="n.Sound.StartSec" /></label>
-                            <label>Dauer (Sek., leer = ganz) <input type="number" min="0" @bind="n.Sound.DurationSec" /></label>
+                        <div class="se-fader">
+                            <span class="se-lbl">Cue-Start: @Mmss(n.Sound.StartSec)</span>
+                            <input type="range" min="0" max="480" step="1" @bind="n.Sound.StartSec" @bind:event="oninput" />
                         </div>
-                        <button class="se-btn" @onclick="() => TestAsync(n.Sound)">▶ Test</button>
+                        <div class="se-fader">
+                            <span class="se-lbl">Dauer: @(n.Sound.DurationSec is int dd ? Mmss(dd) : "ganzer Song")</span>
+                            <input type="range" min="0" max="240" step="1" value="@(n.Sound.DurationSec ?? 0)" @oninput="OnDurationFader" />
+                        </div>
+                        <div class="se-testrow">
+                            <button class="se-btn primary" @onclick="() => TestAsync(n.Sound)">▶ Test</button>
+                            <button class="se-btn" @onclick="StopTest">⏹ Stopp</button>
+                        </div>
                         @if (_uploadError is { Length: > 0 })
                         {
                             <p class="se-err">@_uploadError</p>
@@ -228,6 +241,20 @@
                     }
                     <button class="se-btn sm danger se-editdel" @onclick="DeleteSelected">🗑 Kachel löschen</button>
                     </div>
+                    </div>
+                }
+
+                @if (_chooseKind)
+                {
+                    <div class="se-choosewrap" @onclick="CancelNewTile">
+                        <div class="se-choosecard" @onclick:stopPropagation="true">
+                            <h3>Neue Kachel</h3>
+                            <div class="se-choosebtns">
+                                <button class="se-btn" @onclick="() => CommitNewTile(NodeKind.Folder)">📁 Ordner</button>
+                                <button class="se-btn primary" @onclick="() => CommitNewTile(NodeKind.Sound)">🔊 Song</button>
+                            </div>
+                            <button class="se-btn sm se-choosecancel" @onclick="CancelNewTile">Abbrechen</button>
+                        </div>
                     </div>
                 }
             </div>
@@ -497,9 +524,67 @@
         }
         else
         {
-            await JS.InvokeVoidAsync("showEditTestSpotify", s.Ref, s.StartSec);
+            await JS.InvokeVoidAsync("showEditTestSpotify", s.Ref, s.StartSec, s.Shuffle);
         }
     }
+
+    private async Task StopTest() => await JS.InvokeVoidAsync("showEditStop");
+
+    private static string Mmss(int s) => $"{s / 60}:{s % 60:00}";
+
+    private void OnDurationFader(ChangeEventArgs e)
+    {
+        if (_selected is null) return;
+        var v = int.TryParse(e.Value?.ToString(), out var n) ? n : 0;
+        _selected.Sound.DurationSec = v <= 0 ? null : v;
+    }
+
+    private static bool IsContextRef(string? r) =>
+        !string.IsNullOrWhiteSpace(r) && System.Text.RegularExpressions.Regex.IsMatch(r, @"^spotify:(playlist|album|artist):");
+
+    private static string NormalizeSpotify(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return "";
+        input = input.Trim();
+        if (input.StartsWith("spotify:")) return input.Split('?')[0];
+        var m = System.Text.RegularExpressions.Regex.Match(input,
+            @"open\.spotify\.com/(track|playlist|album|artist|episode)/([A-Za-z0-9]+)");
+        return m.Success ? $"spotify:{m.Groups[1].Value}:{m.Groups[2].Value}" : input;
+    }
+
+    private (int X, int Y, int W, int H)? _newRect;
+    private bool _chooseKind;
+
+    [JSInvokable]
+    public Task CreateRect(int x, int y, int w, int h)
+    {
+        w = Math.Clamp(w, 1, ShowLayout.Cols);
+        h = Math.Clamp(h, 1, ShowLayout.Rows);
+        x = Math.Clamp(x, 0, ShowLayout.Cols - w);
+        y = Math.Clamp(y, 0, ShowLayout.Rows - h);
+        if (Overlaps(CurrentLevel(), new EditButton(), x, y, w, h)) return Task.CompletedTask;
+        _newRect = (x, y, w, h);
+        _chooseKind = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void CommitNewTile(NodeKind kind)
+    {
+        if (_newRect is not { } r) { _chooseKind = false; return; }
+        var b = new EditButton
+        {
+            Kind = kind,
+            Label = kind == NodeKind.Folder ? "Ordner" : "Neu",
+            Icon = kind == NodeKind.Folder ? "📁" : "🔊",
+            X = r.X, Y = r.Y, W = r.W, H = r.H,
+        };
+        CurrentLevel().Add(b);
+        _selected = b;
+        _newRect = null;
+        _chooseKind = false;
+    }
+
+    private void CancelNewTile() { _newRect = null; _chooseKind = false; }
 
     private string _query = "";
     private IReadOnlyList<SpotifyTrack> _results = [];
@@ -573,9 +658,8 @@
                     @RenderNode(c, node.Children)
                 }
                 <div class="tn-add">
-                    <button @onclick="() => AddChild(node.Children, NodeKind.Sound)">+ Sound</button>
+                    <button @onclick="() => AddChild(node.Children, NodeKind.Sound)">+ Song</button>
                     <button @onclick="() => AddChild(node.Children, NodeKind.Folder)">+ Ordner</button>
-                    <button @onclick="() => AddChild(node.Children, NodeKind.Random)">+ Zufall</button>
                 </div>
             </div>
         }
@@ -696,4 +780,20 @@
     .se-fnode.cur { background: var(--ra-red); color: #fff; }
     .se-fnode-row { display: flex; }
     .se-add-tiles { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 14px; }
+    .se-hint { color: var(--ra-muted); font-size: 0.82rem; margin: 4px 0; }
+
+    .se-fader { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ra-muted); }
+    .se-fader input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; background: var(--ra-in); outline: none; }
+    .se-fader input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--ra-red); cursor: pointer; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+    .se-fader input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--ra-red); cursor: pointer; border: 2px solid #fff; }
+    .se-testrow { display: flex; gap: 8px; margin-top: 8px; }
+
+    .se-marquee { position: absolute; z-index: 5; border: 2px dashed var(--ra-red); background: rgba(225,19,48,0.18); border-radius: 8px; pointer-events: none; }
+
+    .se-choosewrap { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
+    .se-choosecard { background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(92vw, 360px); text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
+    .se-choosecard h3 { margin: 0 0 16px; }
+    .se-choosebtns { display: flex; gap: 10px; }
+    .se-choosebtns .se-btn { flex: 1; justify-content: center; padding: 1rem; font-size: 1rem; }
+    .se-choosecancel { margin-top: 14px; }
 </style>

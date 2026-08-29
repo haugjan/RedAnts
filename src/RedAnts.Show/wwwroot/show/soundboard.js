@@ -207,15 +207,18 @@
     return res;
   }
 
-  board.playSpotify = async function (uri, positionMs) {
+  board.playSpotify = async function (uri, positionMs, shuffle) {
     if (!board.isLoggedIn()) return 'not-logged-in';
     if (!deviceId) return 'not-ready';
     board.stopLocal();
     try {
       if (player) await player.setVolume(volume);
       var isContext = /^spotify:(playlist|album|artist):/.test(uri);
+      if (isContext) {
+        try { await spotifyApi('/me/player/shuffle?state=' + (shuffle ? 'true' : 'false') + '&device_id=' + deviceId, { method: 'PUT' }); } catch (x) {}
+      }
       var body = isContext
-        ? { context_uri: uri, offset: { position: 0 }, position_ms: positionMs }
+        ? (shuffle ? { context_uri: uri, position_ms: positionMs } : { context_uri: uri, offset: { position: 0 }, position_ms: positionMs })
         : { uris: [uri], position_ms: positionMs };
       await spotifyApi('/me/player/play?device_id=' + deviceId, {
         method: 'PUT',

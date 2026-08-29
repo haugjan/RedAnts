@@ -324,7 +324,7 @@
         }
 
         if (!_loggedIn) { Toast("Zuerst mit Spotify verbinden (Button oben rechts)"); return; }
-        var status = await JS.InvokeAsync<string>("showBoard.playSpotify", sound.Ref, sound.StartSec * 1000);
+        var status = await JS.InvokeAsync<string>("showBoard.playSpotify", sound.Ref, sound.StartSec * 1000, sound.Shuffle);
         if (status == "ok")
         {
             var endsAt = sound.DurationSec is int d ? DateTime.UtcNow.AddSeconds(d) : (DateTime?)null;
