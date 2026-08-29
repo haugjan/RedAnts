@@ -161,11 +161,12 @@ function Assert-SqlToolAvailable {
     $hasSqlModule = $null -ne (Get-Module -ListAvailable -Name SqlServer -ErrorAction SilentlyContinue)
     $hasSqlCmd    = $null -ne (Get-Command sqlcmd -ErrorAction SilentlyContinue)
     if (-not $hasSqlModule -and -not $hasSqlCmd) {
-        throw @"
-Weder SqlServer-Modul noch sqlcmd CLI gefunden.
-  SqlServer-Modul: Install-Module SqlServer -Scope CurrentUser
-  sqlcmd CLI:      https://learn.microsoft.com/sql/tools/sqlcmd-utility
-"@
+        Write-Host "  SqlServer-Modul nicht gefunden — wird installiert..."
+        Install-Module SqlServer -Scope CurrentUser -Force -AllowClobber
+        $hasSqlModule = $null -ne (Get-Module -ListAvailable -Name SqlServer -ErrorAction SilentlyContinue)
+        if (-not $hasSqlModule) {
+            throw "Installation von SqlServer-Modul fehlgeschlagen."
+        }
     }
     if ($hasSqlModule) { Ok "SqlServer-Modul verfügbar." } else { Ok "sqlcmd CLI verfügbar." }
 }
