@@ -373,16 +373,26 @@
     <div class="ta-overlay" @onmousedown="CloseExport">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Saisonkarten exportieren</h2>
+            <p class="ta-modal-sub">Ohne Auswahl werden alle Saisonkarten der Saison exportiert. Mehrfachauswahl möglich.</p>
 
             <div class="ta-field">
-                <label class="ta-label" for="expBundle">Bundle</label>
-                <select id="expBundle" class="ta-select" @bind="_exportBundle">
-                    <option value="">Alle Saisonkarten dieser Saison</option>
-                    @foreach (var b in Bundles())
-                    {
-                        <option value="@b">@b</option>
-                    }
-                </select>
+                <label class="ta-label">Bundle</label>
+                @if (!Bundles().Any())
+                {
+                    <p class="ta-muted-text">Keine Bundles vorhanden – es werden alle Saisonkarten exportiert.</p>
+                }
+                else
+                {
+                    <div class="ta-export-list">
+                        @foreach (var b in Bundles())
+                        {
+                            <label class="ta-export-item">
+                                <input type="checkbox" checked="@_exportSel.Contains(b)"
+                                       @onchange="e => ToggleExport(b, (bool)(e.Value ?? false))" /> @b
+                            </label>
+                        }
+                    </div>
+                }
             </div>
 
             <div class="ta-modal-actions">
@@ -692,12 +702,13 @@
     }
 
     private bool _showExport;
-    private string _exportBundle = "";
-    private void OpenExport() { _exportBundle = ""; _showExport = true; }
+    private readonly HashSet<string> _exportSel = [];
+    private void OpenExport() { _exportSel.Clear(); _showExport = true; }
     private void CloseExport() => _showExport = false;
-    private string ExportUrl => string.IsNullOrEmpty(_exportBundle)
+    private void ToggleExport(string bundle, bool on) { if (on) _exportSel.Add(bundle); else _exportSel.Remove(bundle); }
+    private string ExportUrl => _exportSel.Count == 0
         ? $"/admin/season-passes/season/{SelectedSeasonId}/passes.csv"
-        : $"/admin/season-passes/season/{SelectedSeasonId}/passes.csv?bundle={Uri.EscapeDataString(_exportBundle)}";
+        : $"/admin/season-passes/season/{SelectedSeasonId}/passes.csv?bundles={Uri.EscapeDataString(string.Join(",", _exportSel))}";
 
     private static string StatusLabel(TicketStatus status) => status switch
     {
