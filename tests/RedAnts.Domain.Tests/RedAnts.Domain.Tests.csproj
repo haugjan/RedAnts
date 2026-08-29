@@ -14,6 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\Domain\**\*.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Domain\**\*.cs" />
   </ItemGroup>
 </Project>

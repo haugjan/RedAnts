@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RedAnts.Host/RedAnts.Host.csproj" />
+  </Folder>
+</Solution>

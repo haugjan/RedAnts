@@ -31,9 +31,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
-      - run: dotnet restore RedAnts.csproj
-      - run: dotnet build RedAnts.csproj --configuration Release --no-restore
-      - run: dotnet publish RedAnts.csproj --configuration Release --output ./publish --no-build
+      - run: dotnet restore RedAnts.slnx
+      - run: dotnet build RedAnts.slnx --configuration Release --no-restore
+      - run: dotnet publish src/RedAnts.Host/RedAnts.Host.csproj --configuration Release --output ./publish --no-build
       - name: Strip PdfSharp companion DLLs from deps.json
         run: |
           jq '

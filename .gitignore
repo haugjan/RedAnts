@@ -465,22 +465,22 @@ appsettings-schema.*.json
 umbraco-package-schema.json
 
 # Packages created from the backoffice (package.xml/package.zip)
-/umbraco/Data/CreatedPackages/
+/src/RedAnts.Host/umbraco/Data/CreatedPackages/
 
 # Temp folder containing Examine indexes, NuCache, MediaCache, etc.
-/umbraco/Data/TEMP/
+/src/RedAnts.Host/umbraco/Data/TEMP/
 
 # SQLite database files
-/umbraco/Data/*.sqlite.db
-/umbraco/Data/*.sqlite.db-shm
-/umbraco/Data/*.sqlite.db-wal
+/src/RedAnts.Host/umbraco/Data/*.sqlite.db
+/src/RedAnts.Host/umbraco/Data/*.sqlite.db-shm
+/src/RedAnts.Host/umbraco/Data/*.sqlite.db-wal
 
 # Log files
-/umbraco/Logs/
+/src/RedAnts.Host/umbraco/Logs/
 
 # Media files
-/wwwroot/media/
+/src/RedAnts.Host/wwwroot/media/
 
 # uSync output: schema is created code-first by the seeder; uSync also exports content
 # (seed data, which can contain access secrets), so keep the whole folder out of git.
-/uSync/
+/src/RedAnts.Host/uSync/

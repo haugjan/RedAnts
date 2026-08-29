@@ -16,12 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\Infrastructure\Shared\LoginThemeManifest.cs" />
-    <Compile Include="..\..\Domain\Ticketing\Sales\SalesEnums.cs" />
-    <Compile Include="..\..\Features\Ticketing\Scanning\IAdmissionService.cs" />
-    <Compile Include="..\..\Infrastructure\Ticketing\Scanning\AdmissionRules.cs" />
-    <Compile Include="..\..\Domain\Ticketing\Sales\MemberCategory.cs" />
-    <Compile Include="..\..\Features\Ticketing\Tickets\ITicketTokens.cs" />
-    <Compile Include="..\..\Infrastructure\Ticketing\Tickets\TicketTokenService.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Infrastructure\Shared\LoginThemeManifest.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Domain\Ticketing\Sales\SalesEnums.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Features\Ticketing\Scanning\IAdmissionService.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Infrastructure\Ticketing\Scanning\AdmissionRules.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Domain\Ticketing\Sales\MemberCategory.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Features\Ticketing\Tickets\ITicketTokens.cs" />
+    <Compile Include="..\..\src\RedAnts.Host\Infrastructure\Ticketing\Tickets\TicketTokenService.cs" />
   </ItemGroup>
 </Project>
