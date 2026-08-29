@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Domain.Ticketing.Sales;
@@ -13,37 +12,22 @@ public sealed class EventBundleExportController(
     ITicketTokens tokens,
     IPublicBaseUrl publicUrl) : Controller
 {
-    [HttpGet("/admin/event-tickets/bundle/{bundleId:int}/tickets.csv")]
-    public async Task<IActionResult> Export(int bundleId)
+    [HttpGet("/admin/event-tickets/tickets.csv")]
+    public async Task<IActionResult> Export([FromQuery] string? ids)
     {
-        var tickets = await bundleTickets.GetByBundleAsync(bundleId);
+        var bundleIds = (ids ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => int.TryParse(s, out var n) ? n : 0)
+            .Where(n => n > 0)
+            .Distinct()
+            .ToList();
 
-        var sb = new StringBuilder();
-        sb.Append("Karten-Nr;Bundle;Link\r\n");
-        foreach (var t in tickets)
-        {
-            var link = publicUrl.TicketUrl(tokens.CreateShort(t.Uuid));
-            sb.Append(ShortCode(t.Uuid)).Append(';')
-              .Append(CsvField(t.Reference)).Append(';')
-              .Append(link).Append("\r\n");
-        }
+        var tickets = await bundleTickets.GetByBundlesAsync(bundleIds);
+        var rows = tickets.Select(t => new TicketExportRow(
+            t.Uuid.ToString("N")[..8].ToUpperInvariant(), t.Reference, t.Category.DisplayName(),
+            t.Holder ?? CardHolder.Empty, null, publicUrl.TicketUrl(tokens.CreateShort(t.Uuid))));
 
-        var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
-        return File(bytes, "text/csv; charset=utf-8", $"spieltickets-bundle-{bundleId}.csv");
+        var name = bundleIds.Count == 1 ? $"spieltickets-bundle-{bundleIds[0]}.csv" : "spieltickets-bundles.csv";
+        return File(TicketExportCsv.Build(rows), "text/csv; charset=utf-8", name);
     }
-
-    private static string ShortCode(Guid uuid) => uuid.ToString("N")[..8].ToUpperInvariant();
-
-    private static string CsvField(string value)
-    {
-        var s = Neutralize(value);
-        return s.IndexOfAny([';', '"', '\r', '\n']) >= 0
-            ? $"\"{s.Replace("\"", "\"\"")}\""
-            : s;
-    }
-
-    private static string Neutralize(string value) =>
-        value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
-            ? "'" + value
-            : value;
 }

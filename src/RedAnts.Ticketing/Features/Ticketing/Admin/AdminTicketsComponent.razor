@@ -386,29 +386,32 @@
 {
     <div class="ta-overlay" @onmousedown="CloseExport">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Bundle exportieren</h2>
-            <p class="ta-modal-sub">Bundle wählen, das als CSV heruntergeladen wird.</p>
+            <h2 class="ta-modal-title">Spieltickets exportieren</h2>
+            <p class="ta-modal-sub">Bundle wählen (Mehrfachauswahl möglich).</p>
             @if (_bundles.Count == 0)
             {
                 <p class="ta-muted-text">Für diesen Anlass sind keine Bundles erfasst.</p>
             }
             else
             {
-                <ul class="ta-bundle-list">
+                <div class="ta-export-list">
                     @foreach (var b in _bundles)
                     {
-                        <li>
-                            <a class="ta-btn ta-btn-ghost" href="/admin/event-tickets/bundle/@b.Id/tickets.csv"
-                               target="_blank" rel="noopener"
-                               title="Bundle als Excel/CSV herunterladen (Karten-Nr + Bundle + Ticketlink)">
-                                @b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.
-                            </a>
-                        </li>
+                        <label class="ta-export-item">
+                            <input type="checkbox" checked="@_exportSel.Contains(b.Id)"
+                                   @onchange="e => ToggleExport(b.Id, (bool)(e.Value ?? false))" />
+                            @b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.
+                        </label>
                     }
-                </ul>
+                </div>
             }
             <div class="ta-modal-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
+                @if (_exportSel.Count > 0)
+                {
+                    <a class="ta-btn ta-btn-primary" href="/admin/event-tickets/tickets.csv?ids=@string.Join(",", _exportSel)"
+                       target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
+                }
             </div>
         </div>
     </div>
@@ -736,8 +739,10 @@
     }
 
     private bool _showExport;
-    private void OpenExport() => _showExport = true;
+    private readonly HashSet<int> _exportSel = [];
+    private void OpenExport() { _exportSel.Clear(); _showExport = true; }
     private void CloseExport() => _showExport = false;
+    private void ToggleExport(int bundleId, bool on) { if (on) _exportSel.Add(bundleId); else _exportSel.Remove(bundleId); }
 
     private EventTicket? _editing;
     private TicketCategory _editCategory;
