@@ -2,6 +2,7 @@
 @using RedAnts.Infrastructure.Show
 @using System.Text.Json
 @inject IShowProfileStore Store
+@inject IShowSoundUploader Uploader
 @inject IOptions<ShowStorageOptions> Storage
 @inject IJSRuntime JS
 
@@ -95,7 +96,22 @@
                         </label>
                         <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
                         <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
-                        <label>Icon (Emoji) <input @bind="n.Icon" @bind:event="oninput" /></label>
+                        <div class="se-fieldcol">
+                            <span class="se-lbl">Icon</span>
+                            <button type="button" class="se-emoji-btn" @onclick="() => _emojiOpen = !_emojiOpen">
+                                <span>@(string.IsNullOrEmpty(n.Icon) ? "＋" : n.Icon)</span> auswählen
+                            </button>
+                            @if (_emojiOpen)
+                            {
+                                <div class="se-emoji-pop">
+                                    @foreach (var e in Emojis)
+                                    {
+                                        <button type="button" @onclick="@(() => { n.Icon = e; _emojiOpen = false; })">@e</button>
+                                    }
+                                    <button type="button" class="clear" @onclick="@(() => { n.Icon = null; _emojiOpen = false; })">✕</button>
+                                </div>
+                            }
+                        </div>
                         <label>Farbe <input type="color" @bind="n.Color" /></label>
                         <label>Grösse
                             <select @bind="n.Size">
@@ -110,20 +126,37 @@
                     @if (n.Kind == NodeKind.Sound)
                     {
                         <h3>Sound</h3>
+                        <div class="se-src-tabs">
+                            <button type="button" class="@(n.Sound.Kind == SoundKind.Local ? "active" : "")" @onclick="() => n.Sound.Kind = SoundKind.Local">🎵 Datei</button>
+                            <button type="button" class="@(n.Sound.Kind == SoundKind.Spotify ? "active" : "")" @onclick="() => n.Sound.Kind = SoundKind.Spotify">🟢 Spotify</button>
+                        </div>
+
+                        @if (n.Sound.Kind == SoundKind.Local)
+                        {
+                            <label class="se-drop @(_uploading ? "busy" : "")">
+                                <InputFile OnChange="e => OnUploadAsync(e, n.Sound)" accept="audio/*" />
+                                <span>@(_uploading ? "Lädt hoch …" : "Datei hierher ziehen oder klicken zum Auswählen")</span>
+                            </label>
+                            <label class="se-full">Blob-Pfad
+                                <input @bind="n.Sound.Ref" @bind:event="oninput" placeholder="sounds/xy.mp3" />
+                            </label>
+                        }
+                        else
+                        {
+                            <label class="se-full">Spotify-URI
+                                <input @bind="n.Sound.Ref" @bind:event="oninput" placeholder="spotify:track:…" />
+                            </label>
+                        }
+
                         <div class="se-grid">
-                            <label>Quelle
-                                <select @bind="n.Sound.Kind">
-                                    <option value="@SoundKind.Local">Datei (Blob)</option>
-                                    <option value="@SoundKind.Spotify">Spotify</option>
-                                </select>
-                            </label>
-                            <label>@(n.Sound.Kind == SoundKind.Local ? "Blob-Pfad (z.B. sounds/xy.mp3)" : "Spotify-URI (spotify:track:…)")
-                                <input @bind="n.Sound.Ref" @bind:event="oninput" />
-                            </label>
                             <label>Cue-Start (Sek.) <input type="number" min="0" @bind="n.Sound.StartSec" /></label>
                             <label>Dauer (Sek., leer = ganz) <input type="number" min="0" @bind="n.Sound.DurationSec" /></label>
                         </div>
                         <button class="se-btn" @onclick="() => TestAsync(n.Sound)">▶ Test</button>
+                        @if (_uploadError is { Length: > 0 })
+                        {
+                            <p class="se-err">@_uploadError</p>
+                        }
                     }
                     else if (n.Kind == NodeKind.Random)
                     {
@@ -157,6 +190,31 @@
     private bool _showIo;
     private string _ioText = "";
     private string _ioError = "";
+    private bool _emojiOpen;
+    private bool _uploading;
+    private string _uploadError = "";
+
+    private static readonly string[] Emojis =
+    [
+        "🥅", "🏒", "⚽", "🏆", "🏅", "🎯", "💪", "🙌", "👏", "📣", "📢", "🚨", "⏱️", "🔔",
+        "🎵", "🎶", "🎤", "🥁", "🎸", "🎺", "🎬", "🎉", "🎲", "🔥", "⭐", "⚡", "💥", "🌪️",
+        "🐯", "🦗", "💰", "🪙", "😇", "🛝", "💿", "😬", "😱", "😄", "🕺", "🎧",
+    ];
+
+    private async Task OnUploadAsync(InputFileChangeEventArgs e, EditSound sound)
+    {
+        var file = e.File;
+        if (file is null) return;
+        _uploading = true;
+        _uploadError = "";
+        try
+        {
+            await using var stream = file.OpenReadStream(50L * 1024 * 1024);
+            sound.Ref = await Uploader.UploadAsync(file.Name, stream, file.ContentType);
+        }
+        catch (Exception ex) { _uploadError = "Upload fehlgeschlagen: " + ex.Message; }
+        finally { _uploading = false; }
+    }
 
     private string SoundBase => string.IsNullOrWhiteSpace(Storage.Value.PublicBaseUrl)
         ? "/_content/RedAnts.Show/show/"
@@ -205,9 +263,10 @@
         _selected = null;
     }
 
-    private void DeleteProfile()
+    private async Task DeleteProfile()
     {
         if (_profile is null) return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Profil „{_profile.Name}“ wirklich löschen?")) return;
         _profiles.Remove(_profile);
         _profile = _profiles.FirstOrDefault();
         _selected = null;
@@ -230,8 +289,12 @@
         (list[i], list[j]) = (list[j], list[i]);
     }
 
-    private void Delete(EditButton node, List<EditButton> list)
+    private async Task Delete(EditButton node, List<EditButton> list)
     {
+        var what = node.Kind == NodeKind.Folder && node.Children.Count > 0
+            ? $"Ordner „{node.Label}“ samt {node.Children.Count} Einträgen löschen?"
+            : $"„{node.Label}“ löschen?";
+        if (!await JS.InvokeAsync<bool>("confirm", what)) return;
         list.Remove(node);
         if (_selected == node) _selected = null;
     }
@@ -351,4 +414,23 @@
     .se-grid input, .se-grid select { border: 1px solid #d9d9de; border-radius: 8px; padding: 0.45rem 0.6rem; font: inherit; font-weight: 400; }
     .se-pool-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
     .se-pool-row input { flex: 1; border: 1px solid #d9d9de; border-radius: 8px; padding: 0.4rem 0.6rem; }
+
+    .se-fieldcol { position: relative; display: flex; flex-direction: column; gap: 4px; }
+    .se-lbl { font-size: 0.82rem; font-weight: 700; color: #55545b; }
+    .se-full { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 700; color: #55545b; }
+    .se-full input { border: 1px solid #d9d9de; border-radius: 8px; padding: 0.45rem 0.6rem; font-weight: 400; }
+    .se-emoji-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d9d9de; border-radius: 8px; background: #fff; padding: 0.4rem 0.6rem; cursor: pointer; font: inherit; font-weight: 400; }
+    .se-emoji-btn span { font-size: 1.3rem; }
+    .se-emoji-pop { position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 4px; width: 280px; max-height: 200px; overflow: auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: #fff; border: 1px solid #d9d9de; border-radius: 10px; padding: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+    .se-emoji-pop button { appearance: none; border: none; background: none; cursor: pointer; font-size: 1.35rem; padding: 4px; border-radius: 6px; }
+    .se-emoji-pop button:hover { background: #f0f0f3; }
+    .se-emoji-pop .clear { grid-column: 1 / -1; font-size: 0.85rem; color: #C8102E; }
+
+    .se-src-tabs { display: inline-flex; border: 1px solid #d9d9de; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+    .se-src-tabs button { appearance: none; border: none; background: #fff; cursor: pointer; padding: 0.5rem 1rem; font: inherit; font-weight: 700; color: #55545b; }
+    .se-src-tabs button.active { background: #1b1b1f; color: #fff; }
+
+    .se-drop { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 2px dashed #cfcfd6; border-radius: 12px; padding: 16px; text-align: center; color: #77767c; background: #fafafb; margin-bottom: 10px; }
+    .se-drop.busy { border-color: #C8102E; color: #C8102E; }
+    .se-drop input[type=file] { font: inherit; }
 </style>

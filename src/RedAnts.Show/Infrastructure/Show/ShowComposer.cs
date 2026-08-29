@@ -11,6 +11,7 @@ public sealed class ShowComposer : IComposer
     {
         builder.AddComponent<ShowMigrationComponent>();
         builder.Services.AddSingleton<IShowProfileStore, ShowProfileStore>();
+        builder.Services.AddSingleton<IShowSoundUploader, ShowSoundUploader>();
         builder.Services.AddSingleton<IPackageManifestReader, ShowAdminManifestReader>();
     }
 }

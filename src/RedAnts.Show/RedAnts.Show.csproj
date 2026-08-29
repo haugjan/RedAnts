@@ -33,5 +33,6 @@
 
   <ItemGroup>
     <PackageReference Include="Umbraco.Cms" />
+    <PackageReference Include="Azure.Storage.Blobs" />
   </ItemGroup>
 </Project>

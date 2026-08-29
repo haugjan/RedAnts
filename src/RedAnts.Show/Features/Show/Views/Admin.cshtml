@@ -22,6 +22,26 @@
             if (startSec > 0) showEditAudio.currentTime = startSec;
             showEditAudio.play().catch(function () { });
         };
+        // Drag-and-drop auf die Upload-Zone: Dateien an das versteckte File-Input weiterreichen.
+        document.addEventListener('dragover', function (e) {
+            var z = e.target.closest && e.target.closest('.se-drop');
+            if (z) { e.preventDefault(); z.classList.add('busy'); }
+        });
+        document.addEventListener('dragleave', function (e) {
+            var z = e.target.closest && e.target.closest('.se-drop');
+            if (z) z.classList.remove('busy');
+        });
+        document.addEventListener('drop', function (e) {
+            var z = e.target.closest && e.target.closest('.se-drop');
+            if (!z) return;
+            e.preventDefault();
+            z.classList.remove('busy');
+            var input = z.querySelector('input[type=file]');
+            if (input && e.dataTransfer && e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
     </script>
     <script src="/_framework/blazor.server.js"></script>
 </body>
