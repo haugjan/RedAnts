@@ -46,6 +46,10 @@
                         }
                     </select>
                 </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="ticketSearch">Suche</label>
+                    <input id="ticketSearch" class="ta-input" type="search" placeholder="Karten-Nr, Name, E-Mail …" @bind="_search" @bind:event="oninput" />
+                </div>
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_bundles.Count == 0)" @onclick="OpenExport">
@@ -586,16 +590,37 @@
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private string _search = "";
+
+    private IEnumerable<EventTicket> Filtered()
+    {
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return terms.Length == 0
+            ? _tickets
+            : _tickets.Where(t => terms.All(term => Haystack(t).Contains(term, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private string Haystack(EventTicket t)
+    {
+        var h = t.Holder;
+        var bundle = t.BundleId is { } b && _bundleRefById.TryGetValue(b, out var r) ? r : "";
+        return string.Join(' ', new[]
+        {
+            AdminFormat.TicketNo(t.Uuid), h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email ?? "",
+            t.Category.DisplayName(), t.Status.DisplayName(), bundle, t.Price.ToString("N2")
+        });
+    }
+
     private IEnumerable<EventTicket> Sorted()
     {
         IEnumerable<EventTicket> q = _sortCol switch
         {
-            "buyer" => _tickets.OrderBy(t => t.Buyer?.DisplayName ?? "", StringComparer.OrdinalIgnoreCase),
-            "created" => _tickets.OrderBy(t => t.CreatedAt),
-            "price" => _tickets.OrderBy(t => t.Price),
-            "status" => _tickets.OrderBy(t => t.Status),
-            "redeemed" => _tickets.OrderBy(t => t.Redeemed),
-            _ => _tickets.OrderBy(t => t.Category),
+            "buyer" => Filtered().OrderBy(t => t.Buyer?.DisplayName ?? "", StringComparer.OrdinalIgnoreCase),
+            "created" => Filtered().OrderBy(t => t.CreatedAt),
+            "price" => Filtered().OrderBy(t => t.Price),
+            "status" => Filtered().OrderBy(t => t.Status),
+            "redeemed" => Filtered().OrderBy(t => t.Redeemed),
+            _ => Filtered().OrderBy(t => t.Category),
         };
         return _sortAsc ? q : q.Reverse();
     }

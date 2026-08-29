@@ -46,6 +46,10 @@
                         }
                     </select>
                 </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="flexSearch">Suche</label>
+                    <input id="flexSearch" class="ta-input" type="search" placeholder="Karten-Nr, Name, E-Mail …" @bind="_search" @bind:event="oninput" />
+                </div>
             </div>
             <div class="ta-toolbar-actions">
                 @if (SelectedBundle is not null)
@@ -653,13 +657,33 @@
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private string _search = "";
+
+    private IEnumerable<FlexTicketView> Filtered()
+    {
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return terms.Length == 0
+            ? _tickets
+            : _tickets.Where(t => terms.All(term => Haystack(t).Contains(term, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static string Haystack(FlexTicketView t)
+    {
+        var h = t.Holder;
+        return string.Join(' ', new[]
+        {
+            AdminFormat.TicketNo(t.Uuid), h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email ?? "",
+            t.Category.DisplayName(), t.Status.DisplayName()
+        });
+    }
+
     private IEnumerable<FlexTicketView> Sorted()
     {
         IEnumerable<FlexTicketView> q = _sortCol switch
         {
-            "status" => _tickets.OrderBy(t => t.Status),
-            "redeemed" => _tickets.OrderBy(t => t.Redeemed),
-            _ => _tickets.OrderBy(t => t.CreatedAt),
+            "status" => Filtered().OrderBy(t => t.Status),
+            "redeemed" => Filtered().OrderBy(t => t.Redeemed),
+            _ => Filtered().OrderBy(t => t.CreatedAt),
         };
         return _sortAsc ? q : q.Reverse();
     }
