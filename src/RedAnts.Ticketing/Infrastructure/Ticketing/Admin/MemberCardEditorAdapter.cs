@@ -34,6 +34,22 @@ public sealed class MemberCardEditorAdapter(IScopeProvider scopeProvider) : IMem
                 uuid.ToString()
             });
     }
+
+    public async Task SetStatusAsync(Guid uuid, TicketStatus status)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE MembershipCards SET Status = @0 WHERE Uuid = @1",
+            (object[])new object?[] { (int)status, uuid.ToString() });
+    }
+
+    public async Task SetCategoryAsync(Guid uuid, MemberCategory category)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE MembershipCards SET Category = @0 WHERE Uuid = @1",
+            (object[])new object?[] { (int)category, uuid.ToString() });
+    }
 }
 
 public sealed class MemberCardEditorComposer : IComposer

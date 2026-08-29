@@ -89,7 +89,15 @@
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(c.CreatedAt, c.CreatedByName, null, null)">@AdminFormat.CreatedShort(c.CreatedAt, c.CreatedByName, null)</td>
                                 <td>@(string.IsNullOrEmpty(c.Reference) ? "–" : c.Reference)</td>
-                                <td><span class="ta-badge @CategoryBadgeClass(c.Category)">@c.CategoryLabel</span></td>
+                                <td>
+                                    <InlineSelectEdit TValue="MemberCategory" Value="c.Category" FieldLabel="Kategorie"
+                                                      Options="MemberCategoryOptions" Label="@(m => m.DisplayName())"
+                                                      Save="@(m => SaveCategoryAsync(c, m))">
+                                        <Display Context="cat">
+                                            <span class="ta-badge @CategoryBadgeClass(cat)">@cat.DisplayName()</span>
+                                        </Display>
+                                    </InlineSelectEdit>
+                                </td>
                                 <td class="ta-num">
                                     @if (c.Admissions > 1)
                                     {
@@ -101,9 +109,13 @@
                                     }
                                 </td>
                                 <td>
-                                    <span class="ta-badge @(c.IsCancelled ? "ta-badge-cancelled" : "ta-badge-valid")">
-                                        @(c.IsCancelled ? "Storniert" : "Gültig")
-                                    </span>
+                                    <InlineSelectEdit TValue="TicketStatus" Value="c.Status" FieldLabel="Status"
+                                                      Options="MemberStatusOptions" Label="@StatusLabel"
+                                                      Save="@(s => SaveStatusAsync(c, s))">
+                                        <Display Context="st">
+                                            <span class="ta-badge @(st == TicketStatus.Cancelled ? "ta-badge-cancelled" : "ta-badge-valid")">@StatusLabel(st)</span>
+                                        </Display>
+                                    </InlineSelectEdit>
                                 </td>
                                 <td class="ta-num">
                                     @if (c.EventVisits > 0)
@@ -1110,4 +1122,20 @@
         MemberCategory.Block4 => "ta-badge-block4",
         _ => "ta-badge-redants"
     };
+
+    private static readonly MemberCategory[] MemberCategoryOptions = [MemberCategory.RedAnts, MemberCategory.Block4];
+    private static readonly TicketStatus[] MemberStatusOptions = [TicketStatus.Valid, TicketStatus.Cancelled];
+    private static string StatusLabel(TicketStatus status) => status == TicketStatus.Cancelled ? "Storniert" : "Gültig";
+
+    private async Task SaveCategoryAsync(MemberCardListItem c, MemberCategory category)
+    {
+        await MemberEditor.SetCategoryAsync(c.Uuid, category);
+        await ReloadCardsAsync();
+    }
+
+    private async Task SaveStatusAsync(MemberCardListItem c, TicketStatus status)
+    {
+        await MemberEditor.SetStatusAsync(c.Uuid, status);
+        await ReloadCardsAsync();
+    }
 }
