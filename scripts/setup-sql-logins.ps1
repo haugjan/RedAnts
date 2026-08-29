@@ -127,7 +127,7 @@ function Invoke-SqlQuery {
         Import-Module SqlServer -ErrorAction Stop
         Invoke-Sqlcmd -ServerInstance $SQL_SERVER_FQDN -Database $Database `
                       -Username $AdminUser -Password $plain `
-                      -Query $Query -Encrypt Mandatory -TrustServerCertificate $false `
+                      -Query $Query -Encrypt Mandatory -TrustServerCertificate:$false `
                       -ErrorAction Stop
     } elseif ($null -ne (Get-Command sqlcmd -ErrorAction SilentlyContinue)) {
         $tmpSql = New-TemporaryFile
@@ -265,7 +265,7 @@ if (-not $SkipSqlUsers) {
     # Upsert: löschen falls vorhanden, dann neu erstellen (idempotent bei Neustart)
     az sql server firewall-rule delete `
         --resource-group $RG --server $SQL_SERVER_NAME `
-        --name $FW_RULE_NAME --yes 2>$null
+        --name $FW_RULE_NAME 2>$null
     Invoke-AzCmd @("sql", "server", "firewall-rule", "create",
         "--resource-group", $RG, "--server", $SQL_SERVER_NAME,
         "--name", $FW_RULE_NAME,
@@ -348,12 +348,12 @@ PRINT 'redants_backup: Rollen gesetzt.';
         try {
             Invoke-AzCmd @("sql", "server", "firewall-rule", "delete",
                 "--resource-group", $RG, "--server", $SQL_SERVER_NAME,
-                "--name", $FW_RULE_NAME, "--yes") | Out-Null
+                "--name", $FW_RULE_NAME) | Out-Null
             Ok "Firewall-Regel '$FW_RULE_NAME' entfernt."
         } catch {
             Warn "Firewall-Regel konnte nicht automatisch entfernt werden: $_"
             Warn "Bitte manuell entfernen:"
-            Warn "  az sql server firewall-rule delete --resource-group $RG --server $SQL_SERVER_NAME --name $FW_RULE_NAME --yes"
+            Warn "  az sql server firewall-rule delete --resource-group $RG --server $SQL_SERVER_NAME --name $FW_RULE_NAME"
         }
     }
 }
