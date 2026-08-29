@@ -391,23 +391,26 @@ if ($LASTEXITCODE -ne 0) { throw "git push fehlgeschlagen." }
 Ok "Branch '$BRANCH' gepusht."
 
 if (-not $SkipBackupTest) {
-    $triggerTime = [System.DateTimeOffset]::UtcNow
-    gh workflow run backup.yml --repo haugjan/RedAnts --ref $BRANCH
-    if ($LASTEXITCODE -ne 0) { throw "gh workflow run fehlgeschlagen." }
-    Ok "Backup Workflow ausgelöst."
+    # Run-ID direkt aus gh-Output extrahieren (gh CLI gibt URL mit Run-ID aus)
+    $wfOutput = gh workflow run backup.yml --repo haugjan/RedAnts --ref $BRANCH 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "gh workflow run fehlgeschlagen:`n$wfOutput" }
+    Write-Host ($wfOutput -join "`n")
 
-    Write-Host "  Warte 20s auf GitHub-seitige Run-Erstellung..."
-    Start-Sleep -Seconds 20
+    $runId = ($wfOutput | Where-Object { $_ -match '/runs/(\d+)' } |
+              Select-Object -First 1) -replace '.*/runs/(\d+).*', '$1'
 
-    # Run anhand des Trigger-Zeitstempels identifizieren (kein Race mit anderen Runs)
-    $ts = $triggerTime.ToString('yyyy-MM-ddTHH:mm:ss') + 'Z'
-    $runId = gh run list --repo haugjan/RedAnts --workflow backup.yml `
-                 --limit 5 --json databaseId,createdAt `
-                 -q "[.[] | select(.createdAt >= `"$ts`")] | first | .databaseId"
-    if ($LASTEXITCODE -ne 0 -or -not $runId) {
+    if (-not $runId) {
+        Write-Host "  Run-ID nicht im Output — warte 20s und frage gh run list..."
+        Start-Sleep -Seconds 20
+        $runId = gh run list --repo haugjan/RedAnts --workflow backup.yml `
+                     --limit 1 --json databaseId -q ".[0].databaseId"
+    }
+
+    if (-not $runId) {
         throw "Konnte Run-ID nicht ermitteln. Manuell prüfen: gh run list --repo haugjan/RedAnts --workflow backup.yml"
     }
-    Write-Host "  Run ID: $runId — warte auf Abschluss..."
+    Ok "Backup Workflow ausgelöst (Run $runId)."
+    Write-Host "  Warte auf Abschluss..."
 
     gh run watch $runId --repo haugjan/RedAnts --exit-status
     if ($LASTEXITCODE -ne 0) {
