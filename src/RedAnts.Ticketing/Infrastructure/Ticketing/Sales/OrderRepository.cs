@@ -73,6 +73,32 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
         return affected > 0;
     }
 
+    public async Task CopyBillingToTicketsAsync(int orderId)
+    {
+        if (orderId <= 0) return;
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await CopyAsync(scope.Database, "EventTickets", "Email", orderId);
+        await CopyAsync(scope.Database, "SeasonPasses", "BuyerEmail", orderId);
+        await CopyAsync(scope.Database, "SeasonSingleTickets", "BuyerEmail", orderId);
+    }
+
+    private static Task CopyAsync(IDatabase db, string table, string emailColumn, int orderId) =>
+        db.ExecuteAsync($@"
+            UPDATE t SET
+                BuyerType = COALESCE(t.BuyerType, o.BillingType),
+                BuyerFirstName = COALESCE(t.BuyerFirstName, o.BillingFirstName),
+                BuyerLastName = COALESCE(t.BuyerLastName, o.BillingLastName),
+                BuyerCompany = COALESCE(t.BuyerCompany, o.BillingCompany),
+                {emailColumn} = COALESCE(t.{emailColumn}, o.BillingEmail),
+                Street = COALESCE(t.Street, o.BillingStreet),
+                AddressLine2 = COALESCE(t.AddressLine2, o.BillingAddressLine2),
+                PostalCode = COALESCE(t.PostalCode, o.BillingPostalCode),
+                City = COALESCE(t.City, o.BillingCity),
+                Country = COALESCE(t.Country, o.BillingCountry),
+                Phone = COALESCE(t.Phone, o.BillingPhone)
+            FROM {table} t INNER JOIN Orders o ON o.Id = t.OrderId
+            WHERE t.OrderId = @0", orderId);
+
     public async Task<string> NextOrderNumberAsync()
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

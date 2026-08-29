@@ -100,6 +100,7 @@ public interface IOrders
     Task<Order?> GetByIdAsync(int id);
     Task<Order?> GetByNumberAsync(string orderNumber);
     Task<bool> TryMarkPaidAsync(int orderId);
+    Task CopyBillingToTicketsAsync(int orderId);
 }
 
 public interface ISeasonAddOns

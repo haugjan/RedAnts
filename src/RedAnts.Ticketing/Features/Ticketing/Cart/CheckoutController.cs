@@ -353,6 +353,8 @@ public sealed class CheckoutController(ICartService cart, IOrders orders, IEvent
             }
         }
 
+        await orders.CopyBillingToTicketsAsync(order.Id);
+
         if (snapshot.AddOns.Count > 0)
         {
             var addOnLines = snapshot.AddOns
