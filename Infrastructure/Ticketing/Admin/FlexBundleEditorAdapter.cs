@@ -16,11 +16,11 @@ public sealed class FlexBundleEditorAdapter(IScopeProvider scopeProvider, IFlexT
     {
         var reference = (newReference ?? "").Trim();
         if (reference.Length == 0)
-            throw new DomainException("Bitte eine Referenz angeben.");
+            throw new DomainException("Bitte ein Bundle angeben.");
         if (reference.Length > FlexTicketBundle.ReferenceMaxLength)
-            throw new DomainException($"Die Referenz darf höchstens {FlexTicketBundle.ReferenceMaxLength} Zeichen lang sein.");
+            throw new DomainException($"Das Bundle darf höchstens {FlexTicketBundle.ReferenceMaxLength} Zeichen lang sein.");
         if (await bundles.ReferenceExistsAsync(seasonId, reference))
-            throw new DomainException($"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben.");
+            throw new DomainException($"Das Bundle „{reference}“ ist in dieser Saison bereits vergeben.");
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await scope.Database.ExecuteAsync(

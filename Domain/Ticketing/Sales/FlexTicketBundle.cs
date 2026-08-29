@@ -29,9 +29,9 @@ public sealed class FlexTicketBundle
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         reference = (reference ?? "").Trim();
-        if (reference.Length == 0) throw new DomainException("Eine Referenz muss angegeben werden.");
+        if (reference.Length == 0) throw new DomainException("Ein Bundle muss angegeben werden.");
         if (reference.Length > ReferenceMaxLength)
-            throw new DomainException($"Die Referenz darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
+            throw new DomainException($"Das Bundle darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
         return new FlexTicketBundle(0, seasonId, category, reference, DateTime.UtcNow,
             Clean(createdByName), Clean(createdByEmail));
     }

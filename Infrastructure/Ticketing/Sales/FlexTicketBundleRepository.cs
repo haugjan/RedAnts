@@ -133,7 +133,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             Category = (int)TicketCategory.Adult,
             Reference = BoxOfficeBundleReference,
             CreatedAt = DateTime.UtcNow,
-            CreatedByName = "Abendkasse",
+            CreatedByName = null,
             CreatedByEmail = null
         };
         await db.InsertAsync(record);
@@ -198,7 +198,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         var db = scope.Database;
 
         if (await ReferenceExistsAsync(db, seasonId, bundle.Reference))
-            throw new DomainException($"Die Referenz „{bundle.Reference}“ ist in dieser Saison bereits vergeben.");
+            throw new DomainException($"Das Bundle „{bundle.Reference}“ ist in dieser Saison bereits vergeben.");
 
         var record = new FlexTicketBundleRecord
         {
@@ -285,7 +285,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         var db = scope.Database;
 
         if (await ReferenceExistsAsync(db, seasonId, bundle.Reference))
-            throw new DomainException($"Die Referenz „{bundle.Reference}“ ist in dieser Saison bereits vergeben.");
+            throw new DomainException($"Das Bundle „{bundle.Reference}“ ist in dieser Saison bereits vergeben.");
 
         var record = new FlexTicketBundleRecord
         {

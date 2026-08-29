@@ -12,7 +12,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
-        if (string.IsNullOrWhiteSpace(reference)) throw new DomainException("Eine Referenz muss angegeben werden.");
+        if (string.IsNullOrWhiteSpace(reference)) throw new DomainException("Ein Bundle muss angegeben werden.");
         if (rows.Count == 0) return 0;
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -69,9 +69,9 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         var reff = (reference ?? "").Trim();
-        if (reff.Length == 0) throw new DomainException("Eine Referenz muss angegeben werden.");
+        if (reff.Length == 0) throw new DomainException("Ein Bundle muss angegeben werden.");
         if (await ReferenceExistsAsync(seasonId, reff))
-            throw new DomainException($"Die Referenz „{reff}“ ist in dieser Saison bereits vergeben.");
+            throw new DomainException($"Das Bundle „{reff}“ ist in dieser Saison bereits vergeben.");
 
         var card = MemberCard.Create(seasonId, category, firstName, lastName, birthday,
             email: email, reference: reff, createdByName: createdByName, createdByEmail: createdByEmail,

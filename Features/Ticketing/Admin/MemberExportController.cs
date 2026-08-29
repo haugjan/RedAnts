@@ -20,7 +20,7 @@ public sealed class MemberExportController(IMemberCards memberCards, ITicketToke
     public async Task<IActionResult> ExportCsv([FromQuery] string? referenz)
     {
         if (string.IsNullOrWhiteSpace(referenz))
-            return BadRequest("Referenz fehlt.");
+            return BadRequest("Bundle fehlt.");
 
         var cards = await memberCards.GetByReferenceAsync(referenz);
 

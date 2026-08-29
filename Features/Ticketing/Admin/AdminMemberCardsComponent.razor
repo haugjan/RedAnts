@@ -34,13 +34,13 @@
                 <div class="ta-field ta-field--grow">
                     <label class="ta-label" for="mcSearch">Suche</label>
                     <input id="mcSearch" type="search" class="ta-input ta-cards-search"
-                           placeholder="Name, Firma, E-Mail, Referenz, Kategorie …"
+                           placeholder="Name, Firma, E-Mail, Bundle, Kategorie …"
                            @bind="_search" @bind:event="oninput" />
                 </div>
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_cards.Count == 0)"
-                        title="Mitglieder einer Referenz als CSV herunterladen">Export CSV</button>
+                        title="Mitglieder eines Bundles als CSV herunterladen">Export CSV</button>
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
                     Import CSV
                 </button>
@@ -66,7 +66,7 @@
                             <th>Karten-Nr.</th>
                             <th class="ta-th-sort" @onclick='() => Sort("name")'>Inhaber:in <span class="ta-sort-ind">@Ind("name")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
-                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Referenz <span class="ta-sort-ind">@Ind("reference")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("reference")'>Bundle <span class="ta-sort-ind">@Ind("reference")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("admissions")' title="Einlässe pro Event">Anzahl <span class="ta-sort-ind">@Ind("admissions")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
@@ -212,7 +212,7 @@
                 <DateBox @bind-Value="_newBirthday" />
             </div>
             <div class="ta-field">
-                <label class="ta-label" for="newMcReference">Referenz</label>
+                <label class="ta-label" for="newMcReference">Bundle</label>
                 <input id="newMcReference" class="ta-input" type="text" maxlength="100" placeholder="Eindeutig pro Saison" @bind="_newReference" />
             </div>
             <div class="ta-field">
@@ -274,12 +274,12 @@
 
             @if (_references.Count == 0)
             {
-                <p class="ta-muted-text">Für diese Saison sind keine Referenzen vorhanden.</p>
+                <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
             }
             else
             {
                 <div class="ta-field">
-                    <label class="ta-label" for="expReference">Referenz (Bundle)</label>
+                    <label class="ta-label" for="expReference">Bundle</label>
                     <select id="expReference" class="ta-select" @bind="_exportReference">
                         @foreach (var r in _references)
                         {
@@ -323,7 +323,7 @@
             </div>
 
             <div class="ta-field">
-                <label class="ta-label" for="impReference">Referenz</label>
+                <label class="ta-label" for="impReference">Bundle</label>
                 <input id="impReference" class="ta-input" type="text" maxlength="100" placeholder="z. B. Mitglieder 2026" @bind="_importReference" />
             </div>
 
@@ -456,7 +456,7 @@
                 <input id="editAdmissions" class="ta-input" type="number" min="1" step="1" @bind="_editAdmissions" />
             </div>
             <div class="ta-field">
-                <label class="ta-label" for="editReference">Referenz</label>
+                <label class="ta-label" for="editReference">Bundle</label>
                 <input id="editReference" class="ta-input" type="text" maxlength="100" @bind="_editReference" />
             </div>
             <div class="ta-field">
@@ -543,7 +543,7 @@
             }
             else if (_references.Count == 0)
             {
-                <p class="ta-muted-text">Für diese Saison sind keine Referenzen (Bundles) vorhanden.</p>
+                <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
                 <div class="ta-modal-actions">
                     <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk">Schliessen</button>
                 </div>
@@ -551,7 +551,7 @@
             else
             {
                 <div class="ta-field">
-                    <label class="ta-label" for="bulkReference">Referenz (Bundle)</label>
+                    <label class="ta-label" for="bulkReference">Bundle</label>
                     <select id="bulkReference" class="ta-select" @bind="_bulkReference">
                         @foreach (var r in _references)
                         {
@@ -758,7 +758,7 @@
     {
         if (_creating) return;
         if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
-        if (string.IsNullOrWhiteSpace(_newReference)) { _createError = "Bitte eine Referenz angeben."; return; }
+        if (string.IsNullOrWhiteSpace(_newReference)) { _createError = "Bitte ein Bundle angeben."; return; }
         if (_newAdmissions < 1) { _createError = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
         var contactError = ValidateContact(_newEmail, _newBirthday);
         if (contactError is not null) { _createError = contactError; return; }
@@ -899,7 +899,7 @@
     {
         _importError = null;
         if (SelectedSeasonId <= 0) { _importError = "Bitte zuerst eine Saison wählen."; return; }
-        if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte eine Referenz angeben."; return; }
+        if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte ein Bundle angeben."; return; }
         if (_parseErrors.Count > 0) { _importError = "Bitte zuerst die Fehler in der Datei beheben."; return; }
         if (_parsedRows.Count == 0) { _importError = "Bitte eine CSV-Datei mit mindestens einer Zeile wählen."; return; }
 

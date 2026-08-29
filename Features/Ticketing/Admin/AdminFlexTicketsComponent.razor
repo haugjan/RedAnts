@@ -55,7 +55,7 @@
                     <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedBundle.TicketCount == 0)"
                             title="@(SelectedBundle.TicketCount == 0 ? "Leeres Bundle – keine Flextickets zum Drucken" : "Flextickets als druckfertiges PDF erzeugen (eine Karte pro Seite)")"
                             @onclick="OpenPrint">PDF drucken</button>
-                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => OpenEdit(SelectedBundle)">Referenz bearbeiten</button>
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => OpenEdit(SelectedBundle)">Bundle bearbeiten</button>
                     @if (Identity?.IsAdmin == true)
                     {
                         <button type="button" class="ta-btn ta-btn-ghost ta-btn-danger"
@@ -105,8 +105,8 @@
                                         </a>
                                     </span>
                                 </td>
-                                <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, SelectedBundle?.CreatedByName, SelectedBundle?.CreatedByEmail, null)">
-                                    @AdminFormat.CreatedShort(t.CreatedAt, SelectedBundle?.CreatedByName, null)
+                                <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.BoxOffice ? null : SelectedBundle?.CreatedByName, t.BoxOffice ? null : SelectedBundle?.CreatedByEmail, null)">
+                                    @AdminFormat.CreatedShort(t.CreatedAt, t.BoxOffice ? null : SelectedBundle?.CreatedByName, null)
                                 </td>
                                 <td>
                                     <InlineSelectEdit TValue="TicketCategory"
@@ -307,7 +307,7 @@
                 </select>
             </div>
             <div class="ta-field">
-                <label class="ta-label" for="newReference">Referenz</label>
+                <label class="ta-label" for="newReference">Bundle</label>
                 <input id="newReference" class="ta-input" type="text" maxlength="50" placeholder="z. B. Charge 2026-A" @bind="_newReference" />
             </div>
             <div class="ta-field">
@@ -351,7 +351,7 @@
             <p class="ta-modal-sub">@_editing.Category.DisplayName() · @_editing.TicketCount Flextickets</p>
 
             <div class="ta-field">
-                <label class="ta-label" for="editReference">Referenz</label>
+                <label class="ta-label" for="editReference">Bundle</label>
                 <input id="editReference" class="ta-input" type="text" maxlength="50" @bind="_editReference" />
                 <p class="ta-field-hint">Kategorie und Anzahl eines ausgestellten Bundles sind nicht änderbar.</p>
             </div>
@@ -773,9 +773,9 @@
         var reference = (_newReference ?? "").Trim();
 
         if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
-        if (reference.Length == 0) { _createError = "Bitte eine Referenz angeben."; return; }
+        if (reference.Length == 0) { _createError = "Bitte ein Bundle angeben."; return; }
         if (reference.Length > FlexTicketBundle.ReferenceMaxLength)
-        { _createError = $"Die Referenz darf höchstens {FlexTicketBundle.ReferenceMaxLength} Zeichen lang sein."; return; }
+        { _createError = $"Das Bundle darf höchstens {FlexTicketBundle.ReferenceMaxLength} Zeichen lang sein."; return; }
         if (_newQuantity < 0) { _createError = "Die Anzahl darf nicht negativ sein."; return; }
 
         _saving = true;
@@ -788,7 +788,7 @@
                 if (existingBundle is null || _newQuantity < 1)
                 {
                     _createError = existingBundle is null
-                        ? $"Die Referenz „{reference}“ ist in dieser Saison bereits vergeben."
+                        ? $"Das Bundle „{reference}“ ist in dieser Saison bereits vergeben."
                         : $"Das Bundle „{reference}“ existiert bereits. Für weitere Tickets bitte Anzahl mindestens 1 wählen.";
                     return;
                 }

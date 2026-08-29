@@ -239,17 +239,17 @@
             </div>
 
             <div class="ta-stat-block">
-                <h2 class="ta-stat-title">Referenzen &amp; Bundles</h2>
+                <h2 class="ta-stat-title">Bundles</h2>
                 <p class="tvs-hint" style="margin:0 0 .8rem">Sponsor-Linse: ausgegeben gegen eingelöst, sortiert nach Quote.</p>
                 @if (_season.References.Count == 0)
                 {
-                    <div class="ta-placeholder">Für diese Saison sind keine Referenzen erfasst.</div>
+                    <div class="ta-placeholder">Für diese Saison sind keine Bundles erfasst.</div>
                 }
                 else
                 {
                     <div class="ta-table-wrap">
                         <table class="ta-table">
-                            <thead><tr><th>Referenz</th><th>Typ</th><th>Kategorie</th><th class="ta-num">Ausgegeben</th><th class="ta-num">Eingelöst</th><th class="ta-num">Quote</th></tr></thead>
+                            <thead><tr><th>Bundle</th><th>Typ</th><th>Kategorie</th><th class="ta-num">Ausgegeben</th><th class="ta-num">Eingelöst</th><th class="ta-num">Quote</th></tr></thead>
                             <tbody>
                                 @foreach (var r in _season.References)
                                 {
