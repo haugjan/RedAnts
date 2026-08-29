@@ -152,16 +152,16 @@
 
 .ta-overlay, .ta-modal-backdrop {
     position: fixed; inset: 0; z-index: 1000; background: rgba(27, 38, 79, 0.45);
-    display: flex; align-items: flex-start; justify-content: center; padding: 4rem 1rem;
+    display: flex; align-items: flex-start; justify-content: center; padding: 1.5rem 1rem;
 }
 .ta-modal {
     background: #fff; border-radius: 5px; width: 100%; max-width: 440px;
     padding: 1.5rem 1.6rem 1.6rem; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    max-height: calc(100vh - 8rem); max-height: calc(100dvh - 8rem); overflow-y: auto;
+    max-height: calc(100vh - 3rem); max-height: calc(100dvh - 3rem); overflow-y: auto;
 }
-@media (max-height: 760px), (max-width: 640px) {
-    .ta-overlay, .ta-modal-backdrop { padding: 0.8rem 0.6rem; }
-    .ta-modal { max-height: calc(100vh - 1.6rem); max-height: calc(100dvh - 1.6rem); }
+@media (max-width: 640px) {
+    .ta-overlay, .ta-modal-backdrop { padding: 0.6rem; }
+    .ta-modal { max-height: calc(100vh - 1.2rem); max-height: calc(100dvh - 1.2rem); }
     .ta-modal .ta-field { margin-bottom: 0.7rem; }
     .ta-modal-actions { margin-top: 1rem; }
 }

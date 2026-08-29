@@ -456,13 +456,16 @@
     .ta-export-list { display: flex; flex-direction: column; gap: .35rem; max-height: 320px; overflow-y: auto; padding: .2rem 0; }
     .ta-export-item { display: flex; align-items: center; gap: .5rem; }
     .ta-export-item .ta-muted { color: var(--ta-muted); }
-    .ta-modal-wide { max-width: 620px; display: flex; flex-direction: column; overflow: hidden; }
+    .ta-modal-wide { max-width: 620px; height: min(820px, calc(100dvh - 3rem)); display: flex; flex-direction: column; overflow: hidden; }
     .ta-modal-wide > form { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .ta-modal-wide .ta-field { margin-bottom: .6rem; }
+    .ta-modal-wide .ta-field-hint { margin: .25rem 0 0; }
+    @@media (max-width: 640px) { .ta-modal-wide { height: calc(100dvh - 1.2rem); } }
     .fp-zoombar { display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; flex-shrink: 0; }
     .fp-zoombar input[type=range] { flex: 1; max-width: 240px; }
     .fp-zoomval { font-variant-numeric: tabular-nums; min-width: 3.2em; }
     .fp-zoomhint { color: var(--ta-muted); font-size: .8rem; }
-    .fp-stage { width: 100%; flex: 1 1 auto; min-height: 120px; overflow: auto; margin: 0 0 .6rem; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 / 16px 16px; border: 1px solid #ccc; }
+    .fp-stage { width: 100%; flex: 1 1 auto; min-height: 90px; overflow: auto; margin: 0 0 .5rem; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 / 16px 16px; border: 1px solid #ccc; }
     .fp-scroll { position: relative; width: max-content; line-height: 0; }
     .fp-canvas { display: block; }
     .fp-qrbox { position: absolute; display: none; border: 2px solid var(--ta-accent, #d02d38); background: rgba(208,45,56,.16); box-sizing: border-box; cursor: move; touch-action: none; z-index: 2; }
@@ -470,7 +473,7 @@
     .fp-qrbox .fp-handle-tl { position: absolute; left: -7px; top: -7px; width: 13px; height: 13px; background: var(--ta-accent, #d02d38); border-radius: 2px; cursor: nwse-resize; touch-action: none; }
     .fp-codelabel { position: absolute; display: none; color: #000; text-align: center; line-height: 1; white-space: nowrap; overflow: hidden; pointer-events: none; z-index: 2; font-family: 'Lato', sans-serif; }
     .fp-marks { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 3; }
-    .fp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem 1rem; }
+    .fp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem 1rem; }
     .fp-check { display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; font-size: .9rem; }
 </style>
 
