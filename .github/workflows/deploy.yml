@@ -126,18 +126,33 @@ jobs:
           # answers 401 without credentials - both mean Umbraco booted. Best-effort: never fail here.
           echo "Waiting for the app-settings restart to take the old worker down..."
           sleep 60
-          for i in $(seq 1 40); do
-            S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
-            echo "Attempt $i: GET / -> $S"
-            case "$S" in
-              2*|3*|401)
-                echo "Up. Warming core pages via /warmup..."
-                curl -s --max-time 300 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
-                exit 0 ;;
-            esac
-            sleep 15
-          done
-          echo "App did not respond within the warm-up window (best-effort)."; exit 0
+          wait_up() {
+            for i in $(seq 1 40); do
+              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
+              echo "Attempt $i: GET / -> $S"
+              case "$S" in 2*|3*|401) return 0 ;; esac
+              sleep 15
+            done
+            return 1
+          }
+          if ! wait_up; then
+            echo "App did not respond within the warm-up window (best-effort)."; exit 0
+          fi
+          echo "Up. Warming core pages via /warmup..."
+          OUT=$(curl -s --max-time 300 "$BASE/warmup" || echo "")
+          echo "$OUT"
+          # A freshly swapped worker occasionally boots into a broken state after the zip
+          # deploy (500s on runtime-compiled pages until the next restart). One clean
+          # restart heals it, so detect 500s in the warm-up output and restart once.
+          if [ -z "$OUT" ] || echo "$OUT" | grep -q ' -> 500'; then
+            echo "Warm-up saw errors; restarting once and re-warming..."
+            az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || true
+            sleep 60
+            if wait_up; then
+              curl -s --max-time 300 "$BASE/warmup" || echo "(re-warmup failed, best-effort)"
+            fi
+          fi
+          exit 0
 
   deploy-prod:
     needs: [build, deploy-dev]
@@ -201,15 +216,30 @@ jobs:
           # targets the final worker. We do not force an extra restart.
           echo "Waiting for the app-settings restart to take the old worker down..."
           sleep 60
-          for i in $(seq 1 40); do
-            S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
-            echo "Attempt $i: GET / -> $S"
-            case "$S" in
-              2*|3*|401)
-                echo "Up. Warming core pages via /warmup..."
-                curl -s --max-time 300 "$BASE/warmup" || echo "(warmup call failed, best-effort)"
-                exit 0 ;;
-            esac
-            sleep 15
-          done
-          echo "App did not respond within the warm-up window (best-effort)."; exit 0
+          wait_up() {
+            for i in $(seq 1 40); do
+              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$BASE/" || echo "000")
+              echo "Attempt $i: GET / -> $S"
+              case "$S" in 2*|3*|401) return 0 ;; esac
+              sleep 15
+            done
+            return 1
+          }
+          if ! wait_up; then
+            echo "App did not respond within the warm-up window (best-effort)."; exit 0
+          fi
+          echo "Up. Warming core pages via /warmup..."
+          OUT=$(curl -s --max-time 300 "$BASE/warmup" || echo "")
+          echo "$OUT"
+          # A freshly swapped worker occasionally boots into a broken state after the zip
+          # deploy (500s on runtime-compiled pages until the next restart). One clean
+          # restart heals it, so detect 500s in the warm-up output and restart once.
+          if [ -z "$OUT" ] || echo "$OUT" | grep -q ' -> 500'; then
+            echo "Warm-up saw errors; restarting once and re-warming..."
+            az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || true
+            sleep 60
+            if wait_up; then
+              curl -s --max-time 300 "$BASE/warmup" || echo "(re-warmup failed, best-effort)"
+            fi
+          fi
+          exit 0
