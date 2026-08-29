@@ -261,6 +261,10 @@
 
   board.stopAll = function () { board.stopLocal(); void board.stopSpotify(false); };
 
+  board.getState = async function () {
+    try { return player ? await player.getCurrentState() : null; } catch (e) { return null; }
+  };
+
   // Stellt sicher, dass der Spotify-Player bereit ist (für den Editor-Test).
   board.ensureSpotify = async function () {
     if (!board.isLoggedIn()) return false;

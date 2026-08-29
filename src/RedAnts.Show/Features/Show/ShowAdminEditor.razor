@@ -107,9 +107,9 @@
                 @if (_selected is not null)
                 {
                     var n = _selected;
-                    <div class="se-editwrap" @onclick="() => _selected = null">
+                    <div class="se-editwrap" @onclick="CloseEditor">
                     <div class="se-editcard" @onclick:stopPropagation="true">
-                    <button class="se-editclose" @onclick="() => _selected = null">✕</button>
+                    <button class="se-editclose" @onclick="CloseEditor">✕</button>
                     <div class="se-preview" style="--c:@n.Color">
                         <span class="se-pv-icon">@(string.IsNullOrEmpty(n.Icon) ? "🔊" : n.Icon)</span>
                         <span class="se-pv-label">@n.Label</span>
@@ -204,17 +204,36 @@
                             }
                         }
 
+                        <div class="se-timeline">
+                            <div class="se-tl-track">
+                                <div class="se-tl-sel" style="left:@Pct(n.Sound.StartSec, TrackMax)%; width:@Pct(n.Sound.DurationSec ?? 0, TrackMax)%;"></div>
+                                <div class="se-tl-mark start" style="left:@Pct(n.Sound.StartSec, TrackMax)%;" title="Cue"></div>
+                                @if (n.Sound.DurationSec is int)
+                                {
+                                    <div class="se-tl-mark end" style="left:@Pct(n.Sound.StartSec + (n.Sound.DurationSec ?? 0), TrackMax)%;" title="Ende"></div>
+                                }
+                                <div class="se-tl-head @(_playing ? "on" : "")" style="left:@Pct(_playPos, TrackMax)%;"></div>
+                            </div>
+                            <div class="se-tl-times"><span>@Mmss((int)_playPos)</span><span>@Mmss(TrackMax)</span></div>
+                        </div>
+
                         <div class="se-fader">
                             <span class="se-lbl">Cue-Start: @Mmss(n.Sound.StartSec)</span>
-                            <input type="range" min="0" max="480" step="1" @bind="n.Sound.StartSec" @bind:event="oninput" />
+                            <input type="range" min="0" max="@TrackMax" step="1" @bind="n.Sound.StartSec" @bind:event="oninput" />
                         </div>
                         <div class="se-fader">
                             <span class="se-lbl">Dauer: @(n.Sound.DurationSec is int dd ? Mmss(dd) : "ganzer Song")</span>
-                            <input type="range" min="0" max="240" step="1" value="@(n.Sound.DurationSec ?? 0)" @oninput="OnDurationFader" />
+                            <input type="range" min="0" max="@TrackMax" step="1" value="@(n.Sound.DurationSec ?? 0)" @oninput="OnDurationFader" />
+                        </div>
+
+                        <div class="se-testrow">
+                            <button class="se-btn primary" @onclick="() => PlayFullAsync(n.Sound)">▶ Abspielen</button>
+                            <button class="se-btn" @onclick="() => PlayFromCueAsync(n.Sound)">▶ Von Cue</button>
+                            <button class="se-btn" @onclick="StopTest">⏹ Stopp</button>
                         </div>
                         <div class="se-testrow">
-                            <button class="se-btn primary" @onclick="() => TestAsync(n.Sound)">▶ Test</button>
-                            <button class="se-btn" @onclick="StopTest">⏹ Stopp</button>
+                            <button class="se-btn" @onclick="() => SetCueFromPos(n.Sound)">⤓ Position als Cue</button>
+                            <button class="se-btn" @onclick="() => SetEndFromPos(n.Sound)">⤒ Position als Ende</button>
                         </div>
                         @if (_uploadError is { Length: > 0 })
                         {
@@ -427,7 +446,12 @@
         _selected = null;
     }
 
-    private void Select(EditButton node) => _selected = node;
+    private void Select(EditButton node)
+    {
+        _selected = node;
+        _playPos = 0; _playDur = 0; _playing = false;
+        _ = JS.InvokeVoidAsync("showEditStop");
+    }
 
     private void AddChild(List<EditButton> list, NodeKind kind)
     {
@@ -514,21 +538,83 @@
         }
     </text>;
 
+    private double _playPos;
+    private double _playDur;
+    private bool _playing;
+    private int TrackMax => _playDur > 1 ? (int)Math.Ceiling(_playDur) : 480;
+
+    private static string Pct(double v, double max) =>
+        (max <= 0 ? 0 : Math.Clamp(v / max * 100.0, 0, 100)).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    [JSInvokable]
+    public Task OnEditPosition(double pos, double dur)
+    {
+        _playPos = pos;
+        if (dur > 0) _playDur = dur;
+        _playing = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnEditStopped()
+    {
+        _playing = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
     private async Task TestAsync(EditSound s)
     {
         if (s.Kind == SoundKind.Local)
         {
             if (string.IsNullOrWhiteSpace(s.Ref)) { await JS.InvokeVoidAsync("alert", "Noch keine Datei hinterlegt."); return; }
             var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
-            await JS.InvokeVoidAsync("showEditTest", url, s.StartSec);
+            await JS.InvokeVoidAsync("showEditPlay", url, s.StartSec, s.DurationSec);
         }
         else
         {
-            await JS.InvokeVoidAsync("showEditTestSpotify", s.Ref, s.StartSec, s.Shuffle);
+            await JS.InvokeVoidAsync("showEditPlaySpotify", s.Ref, s.StartSec, s.Shuffle);
         }
+        _playing = true;
     }
 
-    private async Task StopTest() => await JS.InvokeVoidAsync("showEditStop");
+    private Task PlayFromCueAsync(EditSound s) => TestAsync(s);
+
+    private async Task PlayFullAsync(EditSound s)
+    {
+        if (s.Kind == SoundKind.Local)
+        {
+            if (string.IsNullOrWhiteSpace(s.Ref)) { await JS.InvokeVoidAsync("alert", "Noch keine Datei hinterlegt."); return; }
+            var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
+            await JS.InvokeVoidAsync("showEditPlay", url, 0, (int?)null);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("showEditPlaySpotify", s.Ref, 0, s.Shuffle);
+        }
+        _playing = true;
+    }
+
+    private async Task StopTest()
+    {
+        await JS.InvokeVoidAsync("showEditStop");
+        _playing = false;
+    }
+
+    private void SetCueFromPos(EditSound s) => s.StartSec = (int)Math.Round(_playPos);
+
+    private void SetEndFromPos(EditSound s)
+    {
+        var dur = (int)Math.Round(_playPos) - s.StartSec;
+        s.DurationSec = dur > 0 ? dur : null;
+    }
+
+    private void CloseEditor()
+    {
+        _selected = null;
+        _playing = false;
+        _playPos = 0;
+        _ = JS.InvokeVoidAsync("showEditStop");
+    }
 
     private static string Mmss(int s) => $"{s / 60}:{s % 60:00}";
 
@@ -769,7 +855,7 @@
     .se-ct-open { position: absolute; bottom: 2px; left: 3px; appearance: none; border: none; background: rgba(0,0,0,0.35); color: #fff; border-radius: 5px; font-size: min(14cqmin, 0.6rem); padding: 0 4px; cursor: pointer; }
 
     .se-editwrap { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
-    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(94vw, 430px); max-height: 88vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
+    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(96vw, 760px); max-height: 88vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
     .se-editclose { position: absolute; top: 14px; right: 14px; appearance: none; border: none; background: var(--ra-panel2); color: var(--ra-text); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
     .se-editclose:hover { background: #3a3a45; }
     .se-editdel { margin-top: 18px; width: 100%; }
@@ -786,7 +872,18 @@
     .se-fader input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; background: var(--ra-in); outline: none; }
     .se-fader input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--ra-red); cursor: pointer; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
     .se-fader input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--ra-red); cursor: pointer; border: 2px solid #fff; }
-    .se-testrow { display: flex; gap: 8px; margin-top: 8px; }
+    .se-testrow { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .se-testrow .se-btn { flex: 1; justify-content: center; min-width: 120px; }
+
+    .se-timeline { margin: 14px 0 8px; }
+    .se-tl-track { position: relative; height: 30px; background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 8px; overflow: hidden; }
+    .se-tl-sel { position: absolute; top: 0; bottom: 0; background: rgba(29,185,84,0.22); }
+    .se-tl-mark { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; }
+    .se-tl-mark.start { background: #1db954; box-shadow: 0 0 6px rgba(29,185,84,0.8); }
+    .se-tl-mark.end { background: #ff5069; box-shadow: 0 0 6px rgba(255,80,105,0.8); }
+    .se-tl-head { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; opacity: 0.3; transition: left 0.2s linear; }
+    .se-tl-head.on { opacity: 1; box-shadow: 0 0 8px #fff; }
+    .se-tl-times { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--ra-muted); margin-top: 5px; font-weight: 700; letter-spacing: 0.02em; }
 
     .se-marquee { position: absolute; z-index: 5; border: 2px dashed var(--ra-red); background: rgba(225,19,48,0.18); border-radius: 8px; pointer-events: none; }
 

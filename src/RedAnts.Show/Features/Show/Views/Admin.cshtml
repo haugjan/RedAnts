@@ -16,25 +16,52 @@
     <component type="typeof(RedAnts.Features.Show.ShowAdminEditor)" render-mode="Server" />
     <script src="/_content/RedAnts.Show/show/soundboard.js"></script>
     <script>
-        var showEditAudio = null;
-        window.showEditTest = function (url, startSec) {
-            try { if (showEditAudio) { showEditAudio.pause(); } } catch (e) { }
+        var showEditAudio = null, showEditTimer = null, showEditSpTimer = null;
+        function showEditReport(pos, dur) {
+            if (window.__showDotNet) { try { window.__showDotNet.invokeMethodAsync('OnEditPosition', pos || 0, dur || 0); } catch (e) { } }
+        }
+        function showEditReportStopped() {
+            if (window.__showDotNet) { try { window.__showDotNet.invokeMethodAsync('OnEditStopped'); } catch (e) { } }
+        }
+        function showEditClearTimers() {
+            if (showEditTimer) { clearInterval(showEditTimer); showEditTimer = null; }
+            if (showEditSpTimer) { clearInterval(showEditSpTimer); showEditSpTimer = null; }
+        }
+        window.showEditPlay = function (url, startSec, durationSec) {
+            window.showEditStop();
             showEditAudio = new Audio(url);
-            if (startSec > 0) showEditAudio.currentTime = startSec;
-            showEditAudio.play().catch(function () { });
+            showEditAudio.addEventListener('loadedmetadata', function () { showEditReport(showEditAudio.currentTime, showEditAudio.duration || 0); });
+            showEditAudio.addEventListener('ended', function () { window.showEditStop(); });
+            var begin = function () { if (startSec > 0) { try { showEditAudio.currentTime = startSec; } catch (e) { } } showEditAudio.play().catch(function () { }); };
+            if (showEditAudio.readyState >= 1) begin(); else showEditAudio.addEventListener('canplay', begin, { once: true });
+            showEditClearTimers();
+            showEditTimer = setInterval(function () {
+                if (!showEditAudio) return;
+                showEditReport(showEditAudio.currentTime, showEditAudio.duration || 0);
+                if (durationSec && showEditAudio.currentTime >= (startSec || 0) + durationSec) window.showEditStop();
+            }, 250);
         };
-        window.showEditTestSpotify = async function (uri, startSec, shuffle) {
+        window.showEditPlaySpotify = async function (uri, startSec, shuffle) {
             if (!uri) { alert('Kein Spotify-Track/URI gesetzt.'); return; }
             if (!window.showBoard) { alert('Spotify-Player nicht geladen.'); return; }
             if (!showBoard.isLoggedIn()) { alert('Zuerst auf dem Board (▶ Board öffnen → Zahnrad) mit Spotify verbinden.'); return; }
             var ready = await showBoard.ensureSpotify();
             if (!ready) { alert('Spotify-Player noch nicht bereit – kurz warten und erneut.'); return; }
+            window.showEditStop();
             var status = await showBoard.playSpotify(uri, (startSec || 0) * 1000, !!shuffle);
-            if (status !== 'ok') { alert('Spotify: ' + status); }
+            if (status !== 'ok') { alert('Spotify: ' + status); return; }
+            showEditClearTimers();
+            showEditSpTimer = setInterval(async function () {
+                var st = await showBoard.getState();
+                if (st) showEditReport((st.position || 0) / 1000, (st.duration || 0) / 1000);
+            }, 300);
         };
         window.showEditStop = function () {
+            showEditClearTimers();
             try { if (showEditAudio) showEditAudio.pause(); } catch (e) { }
+            showEditAudio = null;
             if (window.showBoard) { try { showBoard.stopAll(); } catch (e) { } }
+            showEditReportStopped();
         };
         // Drag-and-drop auf die Upload-Zone: Dateien an das versteckte File-Input weiterreichen.
         document.addEventListener('dragover', function (e) {
@@ -60,7 +87,7 @@
         // Kachel-Raster: verschieben (Kachel greifen) und Grösse ziehen (Ecke).
         (function () {
             var gd = null, drag = null;
-            window.showGridInit = function (ref) { gd = ref; };
+            window.showGridInit = function (ref) { gd = ref; window.__showDotNet = ref; };
             var COLS = 26, ROWS = 16, PAD = 6, GAP = 2;
             function metrics(canvas) {
                 var r = canvas.getBoundingClientRect();
