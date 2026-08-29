@@ -1,3 +1,4 @@
+extern alias AzureId;
 using System.Globalization;
 using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
@@ -19,6 +20,10 @@ CultureInfo.DefaultThreadCurrentCulture = swissCulture;
 CultureInfo.DefaultThreadCurrentUICulture = swissCulture;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+var kvUri = builder.Configuration["Azure:KeyVaultUri"];
+if (!string.IsNullOrEmpty(kvUri))
+    builder.Configuration.AddAzureKeyVault(new Uri(kvUri), new AzureId::Azure.Identity.DefaultAzureCredential());
 
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 

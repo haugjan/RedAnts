@@ -10,7 +10,8 @@ name: Weekly Backup
 #       * "Storage Account Contributor" on storage account stredantsprod
 #       * "SQL DB Contributor" on SQL server sql-redants-ch
 #       * Key Vault access policy get/list secrets on kv-redants-prod
-#   - Key Vault kv-redants-prod secrets: sql-admin-user, sql-admin-password
+#   - Key Vault kv-redants-prod secrets: backup-sql-prod-user, backup-sql-prod-password
+#     (server-level login redants_backup; az sql db export requires master-level auth)
 #
 # Manual runs (workflow_dispatch) are restricted to the repo owner; the schedule
 # always runs.
@@ -68,11 +69,11 @@ jobs:
 
       - name: Fetch SQL credentials from Key Vault
         run: |
-          ADMIN_USER=$(az keyvault secret show --vault-name "$KEY_VAULT" --name sql-admin-user --query value -o tsv)
-          ADMIN_PASSWORD=$(az keyvault secret show --vault-name "$KEY_VAULT" --name sql-admin-password --query value -o tsv)
-          echo "::add-mask::$ADMIN_PASSWORD"
-          echo "SQL_ADMIN_USER=$ADMIN_USER" >> "$GITHUB_ENV"
-          echo "SQL_ADMIN_PASSWORD=$ADMIN_PASSWORD" >> "$GITHUB_ENV"
+          BACKUP_USER=$(az keyvault secret show --vault-name "$KEY_VAULT" --name backup-sql-prod-user --query value -o tsv)
+          BACKUP_PASSWORD=$(az keyvault secret show --vault-name "$KEY_VAULT" --name backup-sql-prod-password --query value -o tsv)
+          echo "::add-mask::$BACKUP_PASSWORD"
+          echo "SQL_ADMIN_USER=$BACKUP_USER" >> "$GITHUB_ENV"
+          echo "SQL_ADMIN_PASSWORD=$BACKUP_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Ensure sql-backups container exists
         run: |
