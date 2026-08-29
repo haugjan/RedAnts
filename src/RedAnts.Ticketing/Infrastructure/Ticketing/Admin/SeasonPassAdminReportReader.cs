@@ -17,6 +17,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
             SELECT sp.Uuid, sp.Category, sp.TierId, sp.Price, sp.Status, sp.CreatedAt,
                    sp.BuyerType, sp.BuyerFirstName, sp.BuyerLastName, sp.BuyerCompany, sp.CreatedByName, sp.Reference,
                    sp.BuyerEmail AS BuyerEmail,
+                   sp.Salutation, sp.Birthday, sp.Street, sp.AddressLine2, sp.PostalCode, sp.City, sp.Country, sp.Phone,
                    o.OrderNumber AS OrderNumber, o.Status AS OrderStatus,
                    o.BillingFirstName AS BillingFirstName, o.BillingLastName AS BillingLastName,
                    o.BillingEmail AS BillingEmail
@@ -55,6 +56,12 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         return passes.Select(p =>
         {
             var buyer = Buyer.FromPersistence(p.BuyerType ?? 0, p.BuyerFirstName, p.BuyerLastName, p.BuyerCompany);
+            var email = string.IsNullOrWhiteSpace(p.BuyerEmail) ? p.BillingEmail : p.BuyerEmail;
+            var holder = CardHolder.Create(
+                (BuyerType)(p.BuyerType ?? 0), p.Salutation, buyer?.Company,
+                buyer?.FirstName ?? p.BillingFirstName, buyer?.LastName ?? p.BillingLastName,
+                p.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null, email,
+                p.Street, p.AddressLine2, p.PostalCode, p.City, p.Country, p.Phone);
             return new SeasonPassListItem(
                 Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
                 ResolveCategory(p.TierId),
@@ -68,12 +75,13 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
                 buyer?.Type,
                 p.CreatedByName,
                 p.Reference,
-                string.IsNullOrWhiteSpace(p.BuyerEmail) ? p.BillingEmail : p.BuyerEmail,
+                email,
                 buyer?.FirstName ?? p.BillingFirstName,
                 buyer?.LastName ?? p.BillingLastName,
                 buyer?.Company,
                 conversions.GetValueOrDefault(p.Uuid),
-                p.TierId);
+                p.TierId,
+                holder);
         }).ToList();
     }
 
@@ -107,6 +115,14 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         public string? CreatedByName { get; set; }
         public string? Reference { get; set; }
         public string? BuyerEmail { get; set; }
+        public string? Salutation { get; set; }
+        public DateTime? Birthday { get; set; }
+        public string? Street { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? PostalCode { get; set; }
+        public string? City { get; set; }
+        public string? Country { get; set; }
+        public string? Phone { get; set; }
         public string? OrderNumber { get; set; }
         public int? OrderStatus { get; set; }
         public string? BillingFirstName { get; set; }

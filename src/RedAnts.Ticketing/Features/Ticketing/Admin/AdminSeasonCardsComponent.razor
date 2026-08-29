@@ -92,20 +92,7 @@
                                     </a>
                                 </td>
                                 <td class="ta-cell-name">
-                                    @if (p.BuyerDisplay is { } buyerName)
-                                    {
-                                        @buyerName
-                                        @if (p.BuyerType is { } bt) { <span class="ta-badge @(bt == BuyerType.Company ? "ta-badge-firma" : "ta-badge-privat")">@bt.DisplayName()</span> }
-                                    }
-                                    else { <span class="ta-muted">—</span> }
-                                    @if (p.HasEmail)
-                                    {
-                                        <div class="ta-addr-sub">@p.Email</div>
-                                    }
-                                    else
-                                    {
-                                        <span class="ta-noemail" title="Keine E-Mail hinterlegt">ohne E-Mail</span>
-                                    }
+                                    <PersonCell Holder="p.Holder" />
                                 </td>
                                 <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
                                 <td>@(string.IsNullOrEmpty(p.Reference) ? "–" : p.Reference)</td>

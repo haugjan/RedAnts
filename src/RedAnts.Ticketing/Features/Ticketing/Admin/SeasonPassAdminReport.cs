@@ -20,7 +20,8 @@ public sealed record SeasonPassListItem(
     string? BuyerLastName = null,
     string? BuyerCompany = null,
     int Conversions = 0,
-    int? TierId = null)
+    int? TierId = null,
+    CardHolder? Holder = null)
 {
     public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
     public bool IsCompany => !string.IsNullOrWhiteSpace(BuyerCompany);

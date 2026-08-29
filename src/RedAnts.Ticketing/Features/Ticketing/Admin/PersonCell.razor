@@ -1,0 +1,22 @@
+@using RedAnts.Domain.Ticketing.Sales
+
+@{
+    var h = Holder ?? CardHolder.Empty;
+    var name = AdminName.Display(h.Company, h.FirstName, h.LastName);
+}
+@if (name is { } n) { @n }
+else { <span class="ta-muted">(ohne Name)</span> }
+<span class="ta-badge @(h.IsCompany ? "ta-badge-firma" : "ta-badge-privat")">@(h.IsCompany ? "Firma" : "Privat")</span>
+@if (h.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
+@if (!string.IsNullOrWhiteSpace(h.Email))
+{
+    <div class="ta-addr-sub">@h.Email</div>
+}
+else
+{
+    <span class="ta-noemail" title="Keine E-Mail hinterlegt">ohne E-Mail</span>
+}
+
+@code {
+    [Parameter] public CardHolder? Holder { get; set; }
+}
