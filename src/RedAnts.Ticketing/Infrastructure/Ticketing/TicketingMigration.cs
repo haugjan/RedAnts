@@ -58,6 +58,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddFlexOriginBundle>("flex-origin-bundle");
         To<AddTicketHolderColumns>("ticket-holder-columns");
         To<AddTicketPrintSettings>("ticket-print-settings");
+        To<BackfillTicketHoldersFromOrders>("backfill-ticket-holders");
     }
 }
 
@@ -141,6 +142,40 @@ public class AddTicketPrintSettings(IMigrationContext context) : AsyncMigrationB
         if (!TableExists("TicketPrintSettings"))
             Create.Table<TicketPrintSettingsRecord>().Do();
         return Task.CompletedTask;
+    }
+}
+
+public class BackfillTicketHoldersFromOrders(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        var isSqlite = Database.DatabaseType.GetType().Name.Contains("SQLite", StringComparison.OrdinalIgnoreCase);
+        if (isSqlite) return Task.CompletedTask;
+
+        Backfill("EventTickets", "Email");
+        Backfill("SeasonPasses", "BuyerEmail");
+        Backfill("SeasonSingleTickets", "BuyerEmail");
+        return Task.CompletedTask;
+    }
+
+    private void Backfill(string table, string emailColumn)
+    {
+        Execute.Sql($@"
+            UPDATE t SET
+                BuyerType = COALESCE(t.BuyerType, o.BillingType),
+                BuyerFirstName = COALESCE(t.BuyerFirstName, o.BillingFirstName),
+                BuyerLastName = COALESCE(t.BuyerLastName, o.BillingLastName),
+                BuyerCompany = COALESCE(t.BuyerCompany, o.BillingCompany),
+                {emailColumn} = COALESCE(t.{emailColumn}, o.BillingEmail),
+                Street = COALESCE(t.Street, o.BillingStreet),
+                AddressLine2 = COALESCE(t.AddressLine2, o.BillingAddressLine2),
+                PostalCode = COALESCE(t.PostalCode, o.BillingPostalCode),
+                City = COALESCE(t.City, o.BillingCity),
+                Country = COALESCE(t.Country, o.BillingCountry),
+                Phone = COALESCE(t.Phone, o.BillingPhone)
+            FROM {table} t
+            INNER JOIN Orders o ON o.Id = t.OrderId
+            WHERE t.OrderId IS NOT NULL").Do();
     }
 }
 

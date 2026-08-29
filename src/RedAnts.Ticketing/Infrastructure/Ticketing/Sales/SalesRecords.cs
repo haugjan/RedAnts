@@ -71,6 +71,15 @@ public class EventTicketRecord
     [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
     [Column("OriginType")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginType { get; set; }
     [Column("OriginCardUuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] [Index(IndexTypes.NonClustered)] public string? OriginCardUuid { get; set; }
+    [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
+    [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    [Column("Email")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Email { get; set; }
+    [Column("Street")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Street { get; set; }
+    [Column("AddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? AddressLine2 { get; set; }
+    [Column("PostalCode")] [NullSetting(NullSetting = NullSettings.Null)] [Length(20)] public string? PostalCode { get; set; }
+    [Column("City")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? City { get; set; }
+    [Column("Country")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Country { get; set; }
+    [Column("Phone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Phone { get; set; }
 }
 
 [TableName("EventConversionRules")]
@@ -103,6 +112,19 @@ public class SeasonSingleTicketRecord
     [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
     [Column("BoxOffice")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool BoxOffice { get; set; }
     [Column("OriginBundleId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginBundleId { get; set; }
+    [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
+    [Column("BuyerFirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerFirstName { get; set; }
+    [Column("BuyerLastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerLastName { get; set; }
+    [Column("BuyerCompany")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerCompany { get; set; }
+    [Column("BuyerEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerEmail { get; set; }
+    [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
+    [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    [Column("Street")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Street { get; set; }
+    [Column("AddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? AddressLine2 { get; set; }
+    [Column("PostalCode")] [NullSetting(NullSetting = NullSettings.Null)] [Length(20)] public string? PostalCode { get; set; }
+    [Column("City")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? City { get; set; }
+    [Column("Country")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Country { get; set; }
+    [Column("Phone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Phone { get; set; }
 }
 
 [TableName("SeasonPasses")]
@@ -127,6 +149,14 @@ public class SeasonPassRecord
     [Column("CreatedByEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByEmail { get; set; }
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
     [Column("BuyerEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerEmail { get; set; }
+    [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
+    [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    [Column("Street")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Street { get; set; }
+    [Column("AddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? AddressLine2 { get; set; }
+    [Column("PostalCode")] [NullSetting(NullSetting = NullSettings.Null)] [Length(20)] public string? PostalCode { get; set; }
+    [Column("City")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? City { get; set; }
+    [Column("Country")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Country { get; set; }
+    [Column("Phone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Phone { get; set; }
 }
 
 [TableName("MembershipCards")]
