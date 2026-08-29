@@ -85,6 +85,7 @@
                     <thead>
                         <tr>
                             <th>Ticket-Nr.</th>
+                            <th>Person</th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th>Kategorie</th>
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
@@ -105,6 +106,7 @@
                                         </a>
                                     </span>
                                 </td>
+                                <td class="ta-cell-name"><PersonCell Holder="t.Holder" /></td>
                                 <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.CreatorName, t.CreatorEmail, null)">
                                     @AdminFormat.CreatedShort(t.CreatedAt, t.CreatorName, null)
                                 </td>

@@ -147,6 +147,8 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         var rows = await scope.Database.FetchAsync<FlexTicketRow>(
             "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, t.BoxOffice, v.IsInside AS InsideFlag, " +
             "cb.CreatedByName AS CreatorName, cb.CreatedByEmail AS CreatorEmail, " +
+            "t.BuyerType, t.BuyerFirstName, t.BuyerLastName, t.BuyerCompany, t.BuyerEmail, " +
+            "t.Salutation, t.Birthday, t.Street, t.AddressLine2, t.PostalCode, t.City, t.Country, t.Phone, " +
             "CASE WHEN EXISTS (SELECT 1 FROM EventTickets et WHERE et.OriginType = @1 AND et.OriginCardUuid = t.Uuid) THEN 1 ELSE 0 END AS Converted " +
             "FROM SeasonSingleTickets t " +
             "LEFT JOIN TicketEventVisits v ON v.TicketUuid = t.Uuid AND v.EventId = t.RedeemedEventId " +
@@ -156,7 +158,10 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
             (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt,
             (TicketCategory)r.Category, r.InsideFlag, r.Converted == 1, r.BoxOffice,
-            r.CreatorName, r.CreatorEmail)).ToList();
+            r.CreatorName, r.CreatorEmail,
+            CardHolder.Create((BuyerType)(r.BuyerType ?? 0), r.Salutation, r.BuyerCompany,
+                r.BuyerFirstName, r.BuyerLastName, r.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
+                r.BuyerEmail, r.Street, r.AddressLine2, r.PostalCode, r.City, r.Country, r.Phone))).ToList();
     }
 
     public async Task SetTicketCategoryAsync(Guid uuid, TicketCategory category)
@@ -345,5 +350,18 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         public bool BoxOffice { get; set; }
         public string? CreatorName { get; set; }
         public string? CreatorEmail { get; set; }
+        public int? BuyerType { get; set; }
+        public string? BuyerFirstName { get; set; }
+        public string? BuyerLastName { get; set; }
+        public string? BuyerCompany { get; set; }
+        public string? BuyerEmail { get; set; }
+        public string? Salutation { get; set; }
+        public DateTime? Birthday { get; set; }
+        public string? Street { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? PostalCode { get; set; }
+        public string? City { get; set; }
+        public string? Country { get; set; }
+        public string? Phone { get; set; }
     }
 }

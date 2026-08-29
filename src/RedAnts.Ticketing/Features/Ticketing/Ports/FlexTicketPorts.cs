@@ -24,7 +24,8 @@ public sealed record FlexTicketView(
     bool ConvertedForPurchase = false,
     bool BoxOffice = false,
     string? CreatorName = null,
-    string? CreatorEmail = null);
+    string? CreatorEmail = null,
+    CardHolder? Holder = null);
 
 public enum FlexRebookStatus { Moved, AlreadyInTarget, WrongSeason, NotFound, AlreadyRedeemed }
 
