@@ -37,6 +37,16 @@
                            placeholder="Name, Firma, E-Mail, Bundle, Kategorie …"
                            @bind="_search" @bind:event="oninput" />
                 </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="mcBundleFilter">Bundle</label>
+                    <select id="mcBundleFilter" class="ta-select" @bind="_bundleFilter">
+                        <option value="">Alle anzeigen</option>
+                        @foreach (var b in BundleRefs)
+                        {
+                            <option value="@b">@b</option>
+                        }
+                    </select>
+                </div>
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_cards.Count == 0)"
@@ -693,12 +703,19 @@
         return _sortAsc ? q : q.Reverse();
     }
 
+    private string _bundleFilter = "";
+    private IEnumerable<string> BundleRefs =>
+        _cards.Where(c => !string.IsNullOrWhiteSpace(c.Reference)).Select(c => c.Reference!).Distinct().OrderBy(r => r);
+
     private IEnumerable<MemberCardListItem> Filtered()
     {
+        var src = string.IsNullOrEmpty(_bundleFilter)
+            ? _cards
+            : _cards.Where(c => string.Equals(c.Reference, _bundleFilter, StringComparison.Ordinal));
         var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return terms.Length == 0
-            ? _cards
-            : _cards.Where(c => terms.All(t => Haystack(c).Contains(t, StringComparison.OrdinalIgnoreCase)));
+            ? src
+            : src.Where(c => terms.All(t => Haystack(c).Contains(t, StringComparison.OrdinalIgnoreCase)));
     }
 
     private static string Haystack(MemberCardListItem c) => string.Join(' ', new[]

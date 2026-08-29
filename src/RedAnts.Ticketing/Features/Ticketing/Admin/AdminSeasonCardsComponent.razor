@@ -41,6 +41,16 @@
                            placeholder="Name, Firma, E-Mail, Bundle, Kategorie, Bestell-Nr. …"
                            @bind="_search" @bind:event="oninput" />
                 </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="spBundleFilter">Bundle</label>
+                    <select id="spBundleFilter" class="ta-select" @bind="_bundleFilter">
+                        <option value="">Alle anzeigen</option>
+                        @foreach (var b in Bundles())
+                        {
+                            <option value="@b">@b</option>
+                        }
+                    </select>
+                </div>
             </div>
             <div class="ta-toolbar-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenExport">
@@ -562,12 +572,17 @@
         return _sortAsc ? q : q.Reverse();
     }
 
+    private string _bundleFilter = "";
+
     private IEnumerable<SeasonPassListItem> Filtered()
     {
+        var src = string.IsNullOrEmpty(_bundleFilter)
+            ? _passes
+            : _passes.Where(p => string.Equals(p.Reference, _bundleFilter, StringComparison.Ordinal));
         var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return terms.Length == 0
-            ? _passes
-            : _passes.Where(p => terms.All(t => Haystack(p).Contains(t, StringComparison.OrdinalIgnoreCase)));
+            ? src
+            : src.Where(p => terms.All(t => Haystack(p).Contains(t, StringComparison.OrdinalIgnoreCase)));
     }
 
     private static string Haystack(SeasonPassListItem p) => string.Join(' ', new[]
