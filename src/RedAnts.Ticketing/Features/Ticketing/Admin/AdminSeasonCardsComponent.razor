@@ -69,7 +69,7 @@
                     <thead>
                         <tr>
                             <th>Karten-Nr.</th>
-                            <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Käufer:in <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Person <span class="ta-sort-ind">@Ind("buyer")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("bundle")'>Bundle <span class="ta-sort-ind">@Ind("bundle")</span></th>
                             <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
@@ -77,7 +77,6 @@
                             <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
                             <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
                             <th>Zahlung</th>
-                            <th>Bestell-Nr.</th>
                             <th class="ta-col-actions"></th>
                         </tr>
                     </thead>
@@ -125,8 +124,10 @@
                                         <button type="button" class="ta-conv-badge ta-conv-link" title="Diese Saisonkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht. Details anzeigen." @onclick="() => OpenVisits(p)">↔ @p.Conversions Uml.</button>
                                     }
                                 </td>
-                                <td>@(p.PaymentState ?? "–")</td>
-                                <td>@(p.OrderNumber ?? "–")</td>
+                                <td>
+                                    @(p.PaymentState ?? "–")
+                                    @if (!string.IsNullOrEmpty(p.OrderNumber)) { <div class="ta-addr-sub">@p.OrderNumber</div> }
+                                </td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="@(p.HasEmail ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!p.HasEmail)" @onclick="() => OpenMail(p)">✉</button>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(p)">✎</button>
@@ -274,28 +275,8 @@
             }
 
             <div class="ta-field">
-                <label class="ta-label" for="editCategory">Kategorie</label>
-                <select id="editCategory" class="ta-select" @bind="_editTierId">
-                    @foreach (var t in _tiers)
-                    {
-                        <option value="@t.Id">@t.Name</option>
-                    }
-                </select>
-            </div>
-
-            <div class="ta-field">
                 <label class="ta-label" for="editPrice">Preis (CHF)</label>
                 <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_editPrice" @bind:after="() => _editPrice = decimal.Round(_editPrice, 2)" />
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="editStatus">Status</label>
-                <select id="editStatus" class="ta-select" @bind="_editStatus">
-                    @foreach (var st in Enum.GetValues<TicketStatus>())
-                    {
-                        <option value="@st">@StatusLabel(st)</option>
-                    }
-                </select>
             </div>
 
             <div class="ta-field">
@@ -822,7 +803,7 @@
             var pass = await Passes.GetByUuidAsync(_editing.Uuid);
             if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
 
-            pass.Edit(_editPrice, _editStatus, _editTierId);
+            pass.Edit(_editPrice, pass.Status);
             pass.SetBuyer(Buyer.Create(_editBuyerType, _editFirstName, _editLastName, _editCompany));
             pass.SetEmail(_editEmail);
             await Passes.SaveAsync(pass);
