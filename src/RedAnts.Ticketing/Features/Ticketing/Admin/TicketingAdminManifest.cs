@@ -31,7 +31,7 @@ public sealed class TicketingAdminManifestReader : IPackageManifestReader
                     type = "dashboard",
                     alias = "redAnts.ticketing.dashboard",
                     name = "Ticketing Admin",
-                    element = "/App_Plugins/TicketingAdmin/ticketing-admin-view.js",
+                    element = "/_content/RedAnts.Ticketing/App_Plugins/TicketingAdmin/ticketing-admin-view.js",
                     elementName = "ticketing-admin-view",
                     weight = 100,
                     meta = new { label = "Übersicht", pathname = "overview" },
