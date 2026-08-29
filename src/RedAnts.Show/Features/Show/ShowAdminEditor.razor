@@ -472,9 +472,16 @@
 
     private async Task TestAsync(EditSound s)
     {
-        if (s.Kind != SoundKind.Local || string.IsNullOrWhiteSpace(s.Ref)) return;
-        var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
-        await JS.InvokeVoidAsync("showEditTest", url, s.StartSec);
+        if (string.IsNullOrWhiteSpace(s.Ref)) return;
+        if (s.Kind == SoundKind.Local)
+        {
+            var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
+            await JS.InvokeVoidAsync("showEditTest", url, s.StartSec);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("showEditTestSpotify", s.Ref, s.StartSec);
+        }
     }
 
     private void ExportJson()

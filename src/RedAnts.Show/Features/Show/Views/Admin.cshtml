@@ -14,6 +14,7 @@
 </head>
 <body>
     <component type="typeof(RedAnts.Features.Show.ShowAdminEditor)" render-mode="Server" />
+    <script src="/_content/RedAnts.Show/show/soundboard.js"></script>
     <script>
         var showEditAudio = null;
         window.showEditTest = function (url, startSec) {
@@ -21,6 +22,15 @@
             showEditAudio = new Audio(url);
             if (startSec > 0) showEditAudio.currentTime = startSec;
             showEditAudio.play().catch(function () { });
+        };
+        window.showEditTestSpotify = async function (uri, startSec) {
+            if (!uri) { alert('Kein Spotify-Track/URI gesetzt.'); return; }
+            if (!window.showBoard) { alert('Spotify-Player nicht geladen.'); return; }
+            if (!showBoard.isLoggedIn()) { alert('Zuerst auf dem Board (▶ Board öffnen → Zahnrad) mit Spotify verbinden.'); return; }
+            var ready = await showBoard.ensureSpotify();
+            if (!ready) { alert('Spotify-Player noch nicht bereit – kurz warten und erneut.'); return; }
+            var status = await showBoard.playSpotify(uri, (startSec || 0) * 1000);
+            if (status !== 'ok') { alert('Spotify: ' + status); }
         };
         // Drag-and-drop auf die Upload-Zone: Dateien an das versteckte File-Input weiterreichen.
         document.addEventListener('dragover', function (e) {

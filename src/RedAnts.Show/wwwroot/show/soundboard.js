@@ -258,6 +258,15 @@
 
   board.stopAll = function () { board.stopLocal(); void board.stopSpotify(false); };
 
+  // Stellt sicher, dass der Spotify-Player bereit ist (für den Editor-Test).
+  board.ensureSpotify = async function () {
+    if (!board.isLoggedIn()) return false;
+    if (deviceId) return true;
+    try { await initPlayer(); } catch (e) { return false; }
+    for (var i = 0; i < 50 && !deviceId; i++) { await new Promise(function (r) { setTimeout(r, 100); }); }
+    return deviceId !== null;
+  };
+
   let escBound = false;
   board.init = async function (ref, assetBaseUrl, appBaseUrl) {
     dotnet = ref;
