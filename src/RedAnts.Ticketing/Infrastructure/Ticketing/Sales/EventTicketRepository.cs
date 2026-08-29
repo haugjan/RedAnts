@@ -71,5 +71,8 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             r.BundleId,
             r.TierId,
             r.OriginType is { } ot ? (TicketType)ot : null,
-            Guid.TryParse(r.OriginCardUuid, out var originUuid) ? originUuid : null);
+            Guid.TryParse(r.OriginCardUuid, out var originUuid) ? originUuid : null,
+            CardHolder.Create((BuyerType)(r.BuyerType ?? 0), r.Salutation, r.BuyerCompany,
+                r.BuyerFirstName, r.BuyerLastName, r.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
+                r.Email, r.Street, r.AddressLine2, r.PostalCode, r.City, r.Country, r.Phone));
 }

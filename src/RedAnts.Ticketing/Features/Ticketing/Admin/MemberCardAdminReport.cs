@@ -26,6 +26,10 @@ public sealed record MemberCardListItem(
     public bool IsCompany => !string.IsNullOrWhiteSpace(Address?.Company);
     public string? BuyerDisplay => AdminName.Display(Address?.Company, FirstName, LastName);
     public string SortKey => AdminName.SortKey(Address?.Company, FirstName, LastName);
+    public CardHolder Holder => CardHolder.Create(
+        IsCompany ? BuyerType.Company : BuyerType.Private,
+        Address?.Salutation, Address?.Company, FirstName, LastName, Birthday, Email,
+        Address?.Street, Address?.AddressLine2, Address?.PostalCode, Address?.City, Address?.Country, Address?.Phone);
 }
 
 public interface IMemberCardAdminReport

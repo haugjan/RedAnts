@@ -99,15 +99,7 @@
                                     </span>
                                 </td>
                                 <td class="ta-cell-name">
-                                    @if (t.Buyer is not null)
-                                    {
-                                        @t.Buyer.DisplayName
-                                        <span class="ta-badge ta-badge-buyer">@t.Buyer.Type.DisplayName()</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="ta-muted">—</span>
-                                    }
+                                    <PersonCell Holder="t.Holder" />
                                     @if (t.OriginType is { } ot)
                                     {
                                         <div class="ta-conv-badge" title="Dieses Ticket entstand durch Kartenumwandlung.">↔ Umwandlung: @OriginLabel(ot)@(t.OriginCardUuid is { } cu ? " " + cu.ToString("N")[..8].ToUpperInvariant() : "")</div>
