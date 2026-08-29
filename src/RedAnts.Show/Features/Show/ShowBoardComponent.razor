@@ -66,13 +66,12 @@
     @{
         var tiles = CurrentNodes();
         var hasBack = _path.Count > 0;
-        var cellCount = tiles.Sum(TileWeight) + (hasBack ? 1 : 0);
-        var cols = ColumnsFor(cellCount);
+        var layout = ShowLayout.Resolve(tiles, hasBack);
     }
-    <main class="sb-board" style="--cols:@cols">
+    <main class="sb-board">
         @if (hasBack)
         {
-            <button class="sb-tile back" @onclick="() => TrimPath(_path.Count - 1)">
+            <button class="sb-tile back" style="grid-column:1 / span 3; grid-row:1 / span 2" @onclick="() => TrimPath(_path.Count - 1)">
                 <span class="sb-tile-icon">↩</span>
                 <span class="sb-tile-label">Zurück</span>
             </button>
@@ -82,8 +81,9 @@
             var isFolder = node.IsFolder;
             var isSpotify = node.Sound?.Kind == SoundKind.Spotify;
             var isActive = _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
-            <button class="sb-tile size-@node.Size.ToString().ToLowerInvariant() @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(isActive ? "active" : "")"
-                    style="--tile-color:@(node.Color ?? "#555")"
+            var pos = layout[node.Id];
+            <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(isActive ? "active" : "")"
+                    style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
                     @onclick="() => HandleButtonAsync(node)">
                 <span class="sb-tile-icon">@(node.Icon ?? (isFolder ? "📁" : "🔊"))</span>
                 <span class="sb-tile-label">@node.Label</span>

@@ -22,6 +22,10 @@ public sealed class EditButton
     public string? Icon { get; set; }
     public string Color { get; set; } = "#C8102E";
     public TileSize Size { get; set; } = TileSize.Normal;
+    public int X { get; set; } = -1;
+    public int Y { get; set; } = -1;
+    public int W { get; set; }
+    public int H { get; set; }
     public NodeKind Kind { get; set; } = NodeKind.Sound;
     public EditSound Sound { get; set; } = new();
     public List<EditButton> Children { get; set; } = new();
@@ -38,6 +42,7 @@ public sealed class EditButton
             Icon = b.Icon,
             Color = b.Color ?? "#C8102E",
             Size = b.Size,
+            X = b.X, Y = b.Y, W = b.W, H = b.H,
             Kind = kind,
             Sound = b.Sound is { } s ? EditSound.From(s) : new EditSound(),
             Children = (b.Children ?? []).Select(From).ToList(),
@@ -47,9 +52,9 @@ public sealed class EditButton
 
     public ShowButton ToModel() => Kind switch
     {
-        NodeKind.Folder => new ShowButton(Id, Label, Icon, Color, Size, Children.Select(c => c.ToModel()).ToList(), null, Subtitle),
-        NodeKind.Random => new ShowButton(Id, Label, Icon, Color, Size, null, null, Subtitle, Pool.Select(p => p.ToModel()).ToList()),
-        _ => new ShowButton(Id, Label, Icon, Color, Size, null, Sound.ToModel(), Subtitle),
+        NodeKind.Folder => new ShowButton(Id, Label, Icon, Color, Size, Children.Select(c => c.ToModel()).ToList(), null, Subtitle, null, X, Y, W, H),
+        NodeKind.Random => new ShowButton(Id, Label, Icon, Color, Size, null, null, Subtitle, Pool.Select(p => p.ToModel()).ToList(), X, Y, W, H),
+        _ => new ShowButton(Id, Label, Icon, Color, Size, null, Sound.ToModel(), Subtitle, null, X, Y, W, H),
     };
 }
 

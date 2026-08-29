@@ -17,7 +17,11 @@ public sealed record ShowButton(
     IReadOnlyList<ShowButton>? Children = null,
     ShowSound? Sound = null,
     string? Subtitle = null,
-    IReadOnlyList<ShowSound>? Pool = null)
+    IReadOnlyList<ShowSound>? Pool = null,
+    int X = -1,
+    int Y = -1,
+    int W = 0,
+    int H = 0)
 {
     [JsonIgnore] public bool IsFolder => Children is { Count: > 0 };
     [JsonIgnore] public bool IsRandom => Pool is { Count: > 0 };
