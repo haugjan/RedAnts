@@ -21,6 +21,17 @@ public static class ShowSchema
                 );
                 INSERT INTO [show].[SchemaInfo] ([Version], [CreatedAt]) VALUES (1, SYSUTCDATETIME());
             END
+
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Profiles' AND schema_id = SCHEMA_ID('show'))
+            BEGIN
+                CREATE TABLE [show].[Profiles](
+                    [Id] nvarchar(60) NOT NULL,
+                    [SortOrder] int NOT NULL,
+                    [Json] nvarchar(max) NOT NULL,
+                    [UpdatedAt] datetime2(0) NOT NULL,
+                    CONSTRAINT [PK_show_Profiles] PRIMARY KEY CLUSTERED ([Id] ASC)
+                );
+            END
             """;
 
         using var connection = new SqlConnection(connectionString);

@@ -1,0 +1,354 @@
+@using Microsoft.Extensions.Options
+@using RedAnts.Infrastructure.Show
+@using System.Text.Json
+@inject IShowProfileStore Store
+@inject IOptions<ShowStorageOptions> Storage
+@inject IJSRuntime JS
+
+<div class="se">
+    <header class="se-top">
+        <h1>Show · Soundboard-Konfiguration</h1>
+        <div class="se-actions">
+            <button class="se-btn primary" @onclick="SaveAsync">💾 Speichern</button>
+            <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
+            <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
+            <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
+            @if (_status is { Length: > 0 })
+            {
+                <span class="se-status">@_status</span>
+            }
+        </div>
+    </header>
+
+    @if (_showIo)
+    {
+        <div class="se-io">
+            <textarea @bind="_ioText" spellcheck="false" placeholder="JSON hier einfügen und &quot;Importieren&quot; klicken"></textarea>
+            <div class="se-io-actions">
+                <button class="se-btn" @onclick="ExportJson">Export → Textfeld</button>
+                <button class="se-btn" @onclick="ImportJson">Importieren</button>
+                @if (_ioError is { Length: > 0 })
+                {
+                    <span class="se-err">@_ioError</span>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_profile is null)
+    {
+        <p class="se-muted">Wird geladen …</p>
+    }
+    else
+    {
+        <div class="se-tabs">
+            @foreach (var p in _profiles)
+            {
+                <button class="se-tab @(p == _profile ? "active" : "")" @onclick="() => SelectProfile(p)">@p.Name</button>
+            }
+            <button class="se-tab add" title="Neues Profil" @onclick="AddProfile">+ Profil</button>
+        </div>
+
+        <div class="se-body">
+            <div class="se-tree">
+                <div class="se-prof-head">
+                    <input class="se-in" @bind="_profile.Name" @bind:event="oninput" />
+                    <input class="se-color" type="color" @bind="_profile.Color" />
+                    <button class="se-btn sm" title="Profil duplizieren" @onclick="DuplicateProfile">⧉</button>
+                    <button class="se-btn sm danger" title="Profil löschen" @onclick="DeleteProfile">🗑</button>
+                </div>
+                @foreach (var n in _profile.Root)
+                {
+                    @RenderNode(n, _profile.Root)
+                }
+                <div class="tn-add root">
+                    <button @onclick="() => AddChild(_profile.Root, NodeKind.Sound)">+ Sound</button>
+                    <button @onclick="() => AddChild(_profile.Root, NodeKind.Folder)">+ Ordner</button>
+                    <button @onclick="() => AddChild(_profile.Root, NodeKind.Random)">+ Zufall</button>
+                </div>
+            </div>
+
+            <div class="se-detail">
+                @if (_selected is null)
+                {
+                    <p class="se-muted">Links einen Button wählen oder anlegen.</p>
+                }
+                else
+                {
+                    var n = _selected;
+                    <div class="se-preview" style="--c:@n.Color">
+                        <span class="se-pv-icon">@(string.IsNullOrEmpty(n.Icon) ? "🔊" : n.Icon)</span>
+                        <span class="se-pv-label">@n.Label</span>
+                        @if (!string.IsNullOrEmpty(n.Subtitle))
+                        {
+                            <span class="se-pv-sub">@n.Subtitle</span>
+                        }
+                    </div>
+
+                    <div class="se-grid">
+                        <label>Typ
+                            <select @bind="n.Kind">
+                                <option value="@NodeKind.Sound">Sound</option>
+                                <option value="@NodeKind.Folder">Ordner</option>
+                                <option value="@NodeKind.Random">Zufall</option>
+                            </select>
+                        </label>
+                        <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
+                        <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
+                        <label>Icon (Emoji) <input @bind="n.Icon" @bind:event="oninput" /></label>
+                        <label>Farbe <input type="color" @bind="n.Color" /></label>
+                        <label>Grösse
+                            <select @bind="n.Size">
+                                <option value="@TileSize.Normal">Normal (1×1)</option>
+                                <option value="@TileSize.Wide">Breit (2×1)</option>
+                                <option value="@TileSize.Tall">Hoch (1×2)</option>
+                                <option value="@TileSize.Big">Gross (2×2)</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    @if (n.Kind == NodeKind.Sound)
+                    {
+                        <h3>Sound</h3>
+                        <div class="se-grid">
+                            <label>Quelle
+                                <select @bind="n.Sound.Kind">
+                                    <option value="@SoundKind.Local">Datei (Blob)</option>
+                                    <option value="@SoundKind.Spotify">Spotify</option>
+                                </select>
+                            </label>
+                            <label>@(n.Sound.Kind == SoundKind.Local ? "Blob-Pfad (z.B. sounds/xy.mp3)" : "Spotify-URI (spotify:track:…)")
+                                <input @bind="n.Sound.Ref" @bind:event="oninput" />
+                            </label>
+                            <label>Cue-Start (Sek.) <input type="number" min="0" @bind="n.Sound.StartSec" /></label>
+                            <label>Dauer (Sek., leer = ganz) <input type="number" min="0" @bind="n.Sound.DurationSec" /></label>
+                        </div>
+                        <button class="se-btn" @onclick="() => TestAsync(n.Sound)">▶ Test</button>
+                    }
+                    else if (n.Kind == NodeKind.Random)
+                    {
+                        <h3>Zufalls-Pool (Blob-Pfade)</h3>
+                        @for (var i = 0; i < n.Pool.Count; i++)
+                        {
+                            var idx = i;
+                            <div class="se-pool-row">
+                                <input @bind="n.Pool[idx].Ref" @bind:event="oninput" placeholder="sounds/xy.mp3" />
+                                <button class="se-btn sm" @onclick="() => TestAsync(n.Pool[idx])">▶</button>
+                                <button class="se-btn sm danger" @onclick="() => n.Pool.RemoveAt(idx)">🗑</button>
+                            </div>
+                        }
+                        <button class="se-btn" @onclick="() => n.Pool.Add(new EditSound())">+ Sound zum Pool</button>
+                    }
+                    else
+                    {
+                        <p class="se-muted">Ordner-Inhalt wird im Baum links verwaltet (+ Sound / + Ordner / + Zufall unter dem Ordner).</p>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<EditProfile> _profiles = new();
+    private EditProfile? _profile;
+    private EditButton? _selected;
+    private string _status = "";
+    private bool _showIo;
+    private string _ioText = "";
+    private string _ioError = "";
+
+    private string SoundBase => string.IsNullOrWhiteSpace(Storage.Value.PublicBaseUrl)
+        ? "/_content/RedAnts.Show/show/"
+        : Storage.Value.PublicBaseUrl!.TrimEnd('/') + "/";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var loaded = await Store.GetAllAsync();
+        _profiles = loaded.Select(EditProfile.From).ToList();
+        _profile = _profiles.FirstOrDefault();
+        _selected = null;
+        _status = "";
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await Store.SaveAllAsync(_profiles.Select(p => p.ToModel()).ToList());
+            _status = $"Gespeichert · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (Exception ex) { _status = "Fehler: " + ex.Message; }
+    }
+
+    private void SelectProfile(EditProfile p) { _profile = p; _selected = null; }
+
+    private void AddProfile()
+    {
+        var p = new EditProfile { Name = "Neues Profil" };
+        _profiles.Add(p);
+        _profile = p;
+        _selected = null;
+    }
+
+    private void DuplicateProfile()
+    {
+        if (_profile is null) return;
+        var json = JsonSerializer.Serialize(_profile.ToModel(), ShowJson.Options);
+        var copy = EditProfile.From(JsonSerializer.Deserialize<ShowProfile>(json, ShowJson.Options)!);
+        copy.Id = Guid.NewGuid().ToString("N")[..6];
+        copy.Name = _profile.Name + " (Kopie)";
+        _profiles.Add(copy);
+        _profile = copy;
+        _selected = null;
+    }
+
+    private void DeleteProfile()
+    {
+        if (_profile is null) return;
+        _profiles.Remove(_profile);
+        _profile = _profiles.FirstOrDefault();
+        _selected = null;
+    }
+
+    private void Select(EditButton node) => _selected = node;
+
+    private void AddChild(List<EditButton> list, NodeKind kind)
+    {
+        var b = new EditButton { Kind = kind, Label = kind == NodeKind.Folder ? "Ordner" : kind == NodeKind.Random ? "Überraschung" : "Neu", Icon = kind == NodeKind.Folder ? "📁" : kind == NodeKind.Random ? "🎲" : "🔊" };
+        list.Add(b);
+        _selected = b;
+    }
+
+    private void Move(EditButton node, List<EditButton> list, int delta)
+    {
+        var i = list.IndexOf(node);
+        var j = i + delta;
+        if (i < 0 || j < 0 || j >= list.Count) return;
+        (list[i], list[j]) = (list[j], list[i]);
+    }
+
+    private void Delete(EditButton node, List<EditButton> list)
+    {
+        list.Remove(node);
+        if (_selected == node) _selected = null;
+    }
+
+    private async Task TestAsync(EditSound s)
+    {
+        if (s.Kind != SoundKind.Local || string.IsNullOrWhiteSpace(s.Ref)) return;
+        var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
+        await JS.InvokeVoidAsync("showEditTest", url, s.StartSec);
+    }
+
+    private void ExportJson()
+    {
+        _ioText = JsonSerializer.Serialize(_profiles.Select(p => p.ToModel()).ToList(), ShowJson.Options);
+        _ioError = "";
+    }
+
+    private void ImportJson()
+    {
+        try
+        {
+            var list = JsonSerializer.Deserialize<List<ShowProfile>>(_ioText, ShowJson.Options);
+            if (list is null || list.Count == 0) { _ioError = "Kein gültiges Profil-JSON."; return; }
+            _profiles = list.Select(EditProfile.From).ToList();
+            _profile = _profiles.First();
+            _selected = null;
+            _ioError = "Importiert (noch nicht gespeichert).";
+        }
+        catch (Exception ex) { _ioError = "Fehler: " + ex.Message; }
+    }
+
+    private RenderFragment RenderNode(EditButton node, List<EditButton> siblings) =>
+    @<div class="tn">
+        <div class="tn-row @(node == _selected ? "sel" : "")">
+            <button class="tn-label" @onclick="() => Select(node)">
+                <span class="tn-ico">@(string.IsNullOrEmpty(node.Icon) ? (node.Kind == NodeKind.Folder ? "📁" : "🔊") : node.Icon)</span>
+                <span>@node.Label</span>
+                <span class="tn-kind">@(node.Kind == NodeKind.Folder ? "Ordner" : node.Kind == NodeKind.Random ? "Zufall" : "")</span>
+            </button>
+            <span class="tn-ctrl">
+                <button title="Nach oben" @onclick="() => Move(node, siblings, -1)">↑</button>
+                <button title="Nach unten" @onclick="() => Move(node, siblings, 1)">↓</button>
+                <button title="Löschen" class="danger" @onclick="() => Delete(node, siblings)">🗑</button>
+            </span>
+        </div>
+        @if (node.Kind == NodeKind.Folder)
+        {
+            <div class="tn-children">
+                @foreach (var c in node.Children)
+                {
+                    @RenderNode(c, node.Children)
+                }
+                <div class="tn-add">
+                    <button @onclick="() => AddChild(node.Children, NodeKind.Sound)">+ Sound</button>
+                    <button @onclick="() => AddChild(node.Children, NodeKind.Folder)">+ Ordner</button>
+                    <button @onclick="() => AddChild(node.Children, NodeKind.Random)">+ Zufall</button>
+                </div>
+            </div>
+        }
+    </div>;
+}
+
+<style>
+    .se { font-family: 'Segoe UI', Roboto, sans-serif; color: #1b1b1f; padding: 16px; max-width: 1200px; margin: 0 auto; }
+    .se-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .se-top h1 { font-size: 1.3rem; margin: 0; }
+    .se-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .se-btn { appearance: none; border: 1px solid #d9d9de; background: #fff; border-radius: 8px; padding: 0.5rem 0.9rem; cursor: pointer; font: inherit; font-weight: 600; text-decoration: none; color: #1b1b1f; }
+    .se-btn:hover { background: #f4f4f6; }
+    .se-btn.primary { background: #C8102E; border-color: #C8102E; color: #fff; }
+    .se-btn.sm { padding: 0.3rem 0.5rem; }
+    .se-btn.danger { color: #C8102E; }
+    .se-status { color: #1c7c43; font-weight: 700; font-size: 0.85rem; }
+    .se-err { color: #C8102E; font-weight: 700; font-size: 0.85rem; }
+    .se-muted { color: #77767c; }
+
+    .se-io { margin: 12px 0; }
+    .se-io textarea { width: 100%; height: 160px; font-family: monospace; font-size: 0.8rem; border: 1px solid #d9d9de; border-radius: 8px; padding: 8px; }
+    .se-io-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+
+    .se-tabs { display: flex; gap: 6px; margin: 14px 0; flex-wrap: wrap; }
+    .se-tab { appearance: none; border: 1px solid #d9d9de; background: #fff; border-radius: 999px; padding: 0.45rem 1rem; cursor: pointer; font-weight: 700; }
+    .se-tab.active { background: #1b1b1f; color: #fff; border-color: #1b1b1f; }
+    .se-tab.add { color: #C8102E; }
+
+    .se-body { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 18px; align-items: start; }
+    @@media (max-width: 800px) { .se-body { grid-template-columns: 1fr; } }
+
+    .se-tree { border: 1px solid #e6e6ea; border-radius: 12px; padding: 12px; background: #fafafb; }
+    .se-prof-head { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .se-prof-head .se-in { flex: 1; }
+    .se-in { border: 1px solid #d9d9de; border-radius: 8px; padding: 0.45rem 0.6rem; font: inherit; }
+    .se-color { width: 40px; height: 34px; border: 1px solid #d9d9de; border-radius: 8px; background: #fff; }
+
+    .tn { }
+    .tn-row { display: flex; align-items: center; gap: 6px; border-radius: 8px; padding: 2px 4px; }
+    .tn-row.sel { background: #ffe3e7; }
+    .tn-label { flex: 1; display: flex; align-items: center; gap: 8px; appearance: none; border: none; background: none; cursor: pointer; text-align: left; padding: 0.35rem; font: inherit; }
+    .tn-kind { color: #9a99a0; font-size: 0.75rem; }
+    .tn-ctrl { display: flex; gap: 2px; }
+    .tn-ctrl button { appearance: none; border: none; background: none; cursor: pointer; font-size: 0.9rem; padding: 2px 4px; }
+    .tn-ctrl .danger { color: #C8102E; }
+    .tn-children { margin-left: 16px; border-left: 2px solid #e6e6ea; padding-left: 8px; }
+    .tn-add { display: flex; gap: 6px; margin: 6px 0; }
+    .tn-add button { appearance: none; border: 1px dashed #cfcfd6; background: #fff; border-radius: 8px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.8rem; }
+    .tn-add.root { margin-top: 10px; }
+
+    .se-detail { border: 1px solid #e6e6ea; border-radius: 12px; padding: 16px; }
+    .se-preview { --c: #C8102E; background: var(--c); color: #fff; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+    .se-pv-icon { font-size: 2.4rem; }
+    .se-pv-label { font-weight: 900; font-size: 1.3rem; }
+    .se-pv-sub { font-size: 0.85rem; opacity: 0.9; }
+    .se-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @@media (max-width: 520px) { .se-grid { grid-template-columns: 1fr; } }
+    .se-grid label, .se-detail > h3 { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 700; color: #55545b; }
+    .se-detail h3 { margin: 16px 0 8px; }
+    .se-grid input, .se-grid select { border: 1px solid #d9d9de; border-radius: 8px; padding: 0.45rem 0.6rem; font: inherit; font-weight: 400; }
+    .se-pool-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+    .se-pool-row input { flex: 1; border: 1px solid #d9d9de; border-radius: 8px; padding: 0.4rem 0.6rem; }
+</style>

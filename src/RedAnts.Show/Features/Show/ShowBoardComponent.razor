@@ -3,6 +3,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject IOptions<ShowStorageOptions> Storage
+@inject IShowProfileStore Store
 
 <div class="sb-app">
     <header class="sb-header">
@@ -171,9 +172,20 @@
     private static int ColumnsFor(int cellCount) =>
         Math.Clamp((int)Math.Ceiling(Math.Sqrt(Math.Max(1, cellCount) * 1.35)), 2, 6);
 
-    private IReadOnlyList<ShowProfile> Profiles => ShowConfig.Profiles;
+    private IReadOnlyList<ShowProfile> _profiles = ShowConfig.Profiles;
+    private IReadOnlyList<ShowProfile> Profiles => _profiles;
 
     private string _profileId = ShowConfig.Profiles[0].Id;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var loaded = await Store.GetAllAsync();
+        if (loaded.Count > 0)
+        {
+            _profiles = loaded;
+            if (_profiles.All(p => p.Id != _profileId)) _profileId = _profiles[0].Id;
+        }
+    }
     private readonly List<string> _path = new();
     private string[] _activeLocalIds = [];
     private NowPlaying? _nowPlaying;

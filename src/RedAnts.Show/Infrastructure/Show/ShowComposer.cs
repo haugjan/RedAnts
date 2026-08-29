@@ -10,6 +10,7 @@ public sealed class ShowComposer : IComposer
     public void Compose(IUmbracoBuilder builder)
     {
         builder.AddComponent<ShowMigrationComponent>();
+        builder.Services.AddSingleton<IShowProfileStore, ShowProfileStore>();
         builder.Services.AddSingleton<IPackageManifestReader, ShowAdminManifestReader>();
     }
 }
