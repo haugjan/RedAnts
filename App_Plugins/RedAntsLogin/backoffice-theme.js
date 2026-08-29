@@ -10,7 +10,15 @@ function applyFavicon() {
   }
 }
 
+const PAGE_TITLE = 'Red Ants - Admin';
+function applyTitle() {
+  if (document.title !== PAGE_TITLE) document.title = PAGE_TITLE;
+}
+
 applyFavicon();
+applyTitle();
+
+new MutationObserver(applyTitle).observe(document.head, { subtree: true, childList: true, characterData: true });
 
 new MutationObserver(records => {
   let needsUpdate = false;
