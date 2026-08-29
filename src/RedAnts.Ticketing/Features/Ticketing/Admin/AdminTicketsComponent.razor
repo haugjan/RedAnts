@@ -47,6 +47,16 @@
                     </select>
                 </div>
                 <div class="ta-field">
+                    <label class="ta-label" for="ticketBundleFilter">Bundle</label>
+                    <select id="ticketBundleFilter" class="ta-select" @bind="_bundleFilter">
+                        <option value="0">Alle anzeigen</option>
+                        @foreach (var b in _bundles)
+                        {
+                            <option value="@b.Id">@b.Reference</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field">
                     <label class="ta-label" for="ticketSearch">Suche</label>
                     <input id="ticketSearch" class="ta-input" type="search" placeholder="Karten-Nr, Name, E-Mail …" @bind="_search" @bind:event="oninput" />
                 </div>
@@ -591,13 +601,15 @@
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private string _search = "";
+    private int _bundleFilter;
 
     private IEnumerable<EventTicket> Filtered()
     {
+        var src = _bundleFilter > 0 ? _tickets.Where(t => t.BundleId == _bundleFilter) : _tickets;
         var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return terms.Length == 0
-            ? _tickets
-            : _tickets.Where(t => terms.All(term => Haystack(t).Contains(term, StringComparison.OrdinalIgnoreCase)));
+            ? src
+            : src.Where(t => terms.All(term => Haystack(t).Contains(term, StringComparison.OrdinalIgnoreCase)));
     }
 
     private string Haystack(EventTicket t)
