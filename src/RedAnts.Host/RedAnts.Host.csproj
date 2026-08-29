@@ -10,20 +10,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Infrastructure\Ticketing\Tickets\Fonts\TicketSans.ttf" />
+    <ProjectReference Include="..\RedAnts.Ticketing\RedAnts.Ticketing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="QuestPDF" />
-    <PackageReference Include="PdfSharp" />
     <PackageReference Include="Umbraco.Cms" />
     <PackageReference Include="Umbraco.Cms.DevelopmentMode.Backoffice" />
     <PackageReference Include="Umbraco.StorageProviders.AzureBlob" />
-    <PackageReference Include="QRCoder" />
-    <PackageReference Include="Markdig" />
-    <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
-    <PackageReference Include="Sqids" />
     <PackageReference Include="uSync" />
   </ItemGroup>
 
