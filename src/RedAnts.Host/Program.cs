@@ -148,6 +148,17 @@ const string publicCsp =
     "form-action 'self' https://payrexx.com https://*.payrexx.com; " +
     "frame-ancestors 'self'";
 
+const string showCsp =
+    "default-src 'self'; base-uri 'self'; object-src 'none'; " +
+    "img-src 'self' data: https:; " +
+    "font-src 'self' data:; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "script-src 'self' 'unsafe-inline' https://sdk.scdn.co; " +
+    "connect-src 'self' https://api.spotify.com https://accounts.spotify.com https://*.spotify.com wss://*.spotify.com; " +
+    "media-src 'self' blob: https://*.blob.core.windows.net; " +
+    "frame-src https://sdk.scdn.co https://*.spotify.com; " +
+    "frame-ancestors 'self'";
+
 app.Use(async (context, next) =>
 {
     context.Response.OnStarting(() =>
@@ -174,8 +185,13 @@ app.Use(async (context, next) =>
             || path.StartsWithSegments("/admin")
             || path.StartsWithSegments("/scan")
             || path.StartsWithSegments("/scanner-test");
-        if (!cspExempt && !headers.ContainsKey("Content-Security-Policy"))
-            headers["Content-Security-Policy"] = publicCsp;
+        if (!headers.ContainsKey("Content-Security-Policy"))
+        {
+            if (path.StartsWithSegments("/show"))
+                headers["Content-Security-Policy"] = showCsp;
+            else if (!cspExempt)
+                headers["Content-Security-Policy"] = publicCsp;
+        }
 
         return Task.CompletedTask;
     });

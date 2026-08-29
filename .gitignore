@@ -484,3 +484,7 @@ umbraco-package-schema.json
 # uSync output: schema is created code-first by the seeder; uSync also exports content
 # (seed data, which can contain access secrets), so keep the whole folder out of git.
 /src/RedAnts.Host/uSync/
+src/RedAnts.Host/wwwroot/_framework/
+
+# Never commit audio; sounds live in Azure Blob (container "show")
+*.mp3

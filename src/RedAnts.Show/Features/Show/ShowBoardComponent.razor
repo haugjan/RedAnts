@@ -1,0 +1,457 @@
+@using Microsoft.Extensions.Options
+@using RedAnts.Infrastructure.Show
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IOptions<ShowStorageOptions> Storage
+
+<div class="sb-app">
+    <header class="sb-header">
+        <img class="sb-logo" src="/img/logo-redants-white.png" alt="Red Ants Winterthur" />
+        <div class="sb-profiles">
+            @foreach (var p in Profiles)
+            {
+                <button class="sb-profile @(p.Id == _profileId ? "active" : "")"
+                        style="--profile-color:@(p.Color ?? "#8ecae6")"
+                        @onclick="() => SelectProfile(p.Id)">@p.Name</button>
+            }
+        </div>
+        <div class="sb-spotify">
+            @if (_loggedIn)
+            {
+                <span class="sb-connected">
+                    <span class="sb-dot @(_playerReady ? "ready" : "")"></span>
+                    @(_displayName ?? "Spotify")
+                    <button class="sb-link" @onclick="LogoutAsync">trennen</button>
+                </span>
+            }
+            else
+            {
+                <button class="sb-login" disabled="@(string.IsNullOrWhiteSpace(_clientId))" @onclick="LoginAsync">Mit Spotify verbinden</button>
+            }
+            <button class="sb-gear" title="Einstellungen" @onclick="() => _settingsOpen = true">⚙️</button>
+        </div>
+    </header>
+
+    <nav class="sb-breadcrumb">
+        <button class="sb-crumb" @onclick="() => _path.Clear()">@Profile.Name</button>
+        @{
+            var crumbs = Breadcrumb();
+        }
+        @for (var i = 0; i < crumbs.Count; i++)
+        {
+            var idx = i;
+            <span class="sb-sep">›</span>
+            <button class="sb-crumb" @onclick="() => TrimPath(idx + 1)">@crumbs[idx]</button>
+        }
+    </nav>
+
+    @{
+        var activeLabels = ActiveLabels();
+        var isPlaying = activeLabels.Count > 0;
+    }
+    <button class="sb-banner @(isPlaying ? "playing" : "silent")" @onclick="() => { if (isPlaying) Panic(); }">
+        <span>@(isPlaying ? "🔊" : "🔇")</span>
+        <span>@(isPlaying ? string.Join("  +  ", activeLabels) : "Stumm")</span>
+        @if (isPlaying && _remainingSec is int r)
+        {
+            <span class="sb-remaining">@r s</span>
+        }
+        @if (isPlaying)
+        {
+            <span class="sb-hint">tippen = Stopp</span>
+        }
+    </button>
+
+    @{
+        var tiles = CurrentNodes();
+        var hasBack = _path.Count > 0;
+        var cellCount = tiles.Sum(TileWeight) + (hasBack ? 1 : 0);
+        var cols = ColumnsFor(cellCount);
+    }
+    <main class="sb-board" style="--cols:@cols">
+        @if (hasBack)
+        {
+            <button class="sb-tile back" @onclick="() => TrimPath(_path.Count - 1)">
+                <span class="sb-tile-icon">↩</span>
+                <span class="sb-tile-label">Zurück</span>
+            </button>
+        }
+        @foreach (var node in tiles)
+        {
+            var isFolder = node.IsFolder;
+            var isSpotify = node.Sound?.Kind == SoundKind.Spotify;
+            var isActive = _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
+            <button class="sb-tile size-@node.Size.ToString().ToLowerInvariant() @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(isActive ? "active" : "")"
+                    style="--tile-color:@(node.Color ?? "#555")"
+                    @onclick="() => HandleButtonAsync(node)">
+                <span class="sb-tile-icon">@(node.Icon ?? (isFolder ? "📁" : "🔊"))</span>
+                <span class="sb-tile-label">@node.Label</span>
+                @if (!string.IsNullOrEmpty(node.Subtitle))
+                {
+                    <span class="sb-tile-sub">@node.Subtitle</span>
+                }
+                @if (isFolder)
+                {
+                    <span class="sb-badge">▸ Ordner</span>
+                }
+                @if (isSpotify)
+                {
+                    <span class="sb-badge spotify">Spotify</span>
+                }
+            </button>
+        }
+    </main>
+
+    <footer class="sb-footer">
+        <div class="sb-nowplaying">
+            @if (_nowPlaying is { } np)
+            {
+                <span>🎵</span>
+                <span class="sb-np-label">@np.Label</span>
+                @if (_remainingSec is int rem)
+                {
+                    <span>@rem s</span>
+                }
+                <button class="sb-np-stop" @onclick="() => StopSpotifyAsync(true)">Stopp (Fade)</button>
+            }
+            else
+            {
+                <span>@(_activeLocalIds.Length > 0 ? $"{_activeLocalIds.Length} Sound(s) aktiv" : "Bereit")</span>
+            }
+        </div>
+        <label class="sb-volume">🔊
+            <input type="range" min="0" max="1" step="0.05" value="@_volume"
+                   @onchange="OnVolumeChanged" />
+        </label>
+        <button class="sb-panic" title="Alles sofort stoppen (Esc)" @onclick="Panic">⏹ PANIC</button>
+    </footer>
+
+    @if (_settingsOpen)
+    {
+        <div class="sb-backdrop" @onclick="() => _settingsOpen = false">
+            <div class="sb-dialog" @onclick:stopPropagation="true">
+                <h2>Spotify einrichten</h2>
+                <ol>
+                    <li>Auf <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">developer.spotify.com/dashboard</a> eine App erstellen</li>
+                    <li>Redirect-URI eintragen: <code>@_redirectUri</code></li>
+                    <li>API: „Web Playback SDK" und „Web API" auswählen</li>
+                    <li>Client-ID hier einfügen (Spotify Premium erforderlich)</li>
+                </ol>
+                <input type="text" placeholder="Spotify Client-ID" @bind="_clientIdDraft" />
+                <div class="sb-dialog-actions">
+                    <button @onclick="() => _settingsOpen = false">Abbrechen</button>
+                    <button class="primary" disabled="@(string.IsNullOrWhiteSpace(_clientIdDraft))" @onclick="SaveSettingsAsync">Speichern</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="sb-toasts">
+        @foreach (var t in _toasts)
+        {
+            <div class="sb-toast">@t.Text</div>
+        }
+    </div>
+</div>
+
+@code {
+    private const string AppBase = "/show/";
+
+    private string SoundBase => string.IsNullOrWhiteSpace(Storage.Value.PublicBaseUrl)
+        ? "/_content/RedAnts.Show/show/"
+        : Storage.Value.PublicBaseUrl!.TrimEnd('/') + "/";
+
+    private static int TileWeight(ShowButton b) => b.Size switch
+    {
+        TileSize.Big => 4,
+        TileSize.Wide or TileSize.Tall => 2,
+        _ => 1
+    };
+
+    private static int ColumnsFor(int cellCount) =>
+        Math.Clamp((int)Math.Ceiling(Math.Sqrt(Math.Max(1, cellCount) * 1.35)), 2, 6);
+
+    private IReadOnlyList<ShowProfile> Profiles => ShowConfig.Profiles;
+
+    private string _profileId = ShowConfig.Profiles[0].Id;
+    private readonly List<string> _path = new();
+    private string[] _activeLocalIds = [];
+    private NowPlaying? _nowPlaying;
+    private int? _remainingSec;
+    private double _volume = 0.9;
+
+    private string _clientId = "";
+    private string _clientIdDraft = "";
+    private bool _loggedIn;
+    private bool _playerReady;
+    private string? _displayName;
+    private bool _settingsOpen;
+    private string _redirectUri = "";
+
+    private readonly List<ToastItem> _toasts = new();
+    private int _toastCounter;
+
+    private DotNetObjectReference<ShowBoardComponent>? _ref;
+    private System.Timers.Timer? _timer;
+
+    private ShowProfile Profile => Profiles.FirstOrDefault(p => p.Id == _profileId) ?? Profiles[0];
+
+    private IReadOnlyList<ShowButton> CurrentNodes()
+    {
+        var nodes = Profile.Root;
+        foreach (var id in _path)
+        {
+            var folder = nodes.FirstOrDefault(n => n.Id == id);
+            if (folder?.Children is not { } children) return Profile.Root;
+            nodes = children;
+        }
+        return nodes;
+    }
+
+    private List<string> Breadcrumb()
+    {
+        var labels = new List<string>();
+        var nodes = Profile.Root;
+        foreach (var id in _path)
+        {
+            var folder = nodes.FirstOrDefault(n => n.Id == id);
+            if (folder?.Children is not { } children) break;
+            labels.Add(folder.Label);
+            nodes = children;
+        }
+        return labels;
+    }
+
+    private List<string> ActiveLabels()
+    {
+        var labels = _activeLocalIds.Select(id => NodeLabel(id)).ToList();
+        if (_nowPlaying is { } np) labels.Add(np.Label);
+        return labels;
+    }
+
+    private string NodeLabel(string id)
+    {
+        foreach (var p in Profiles)
+        {
+            var found = Find(p.Root, id);
+            if (found is not null) return found.Label;
+        }
+        return id;
+
+        static ShowButton? Find(IReadOnlyList<ShowButton> nodes, string id)
+        {
+            foreach (var n in nodes)
+            {
+                if (n.Id == id) return n;
+                if (n.Children is { } c && Find(c, id) is { } hit) return hit;
+            }
+            return null;
+        }
+    }
+
+    private void SelectProfile(string id)
+    {
+        _profileId = id;
+        _path.Clear();
+    }
+
+    private void TrimPath(int count)
+    {
+        while (_path.Count > count) _path.RemoveAt(_path.Count - 1);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _ref = DotNetObjectReference.Create(this);
+        _timer = new System.Timers.Timer(500) { AutoReset = true };
+        _timer.Elapsed += (_, _) => _ = TickAsync();
+        _timer.Start();
+        try
+        {
+            var init = await JS.InvokeAsync<InitResult>("showBoard.init", _ref, SoundBase, AppBase);
+            _loggedIn = init.LoggedIn;
+            _redirectUri = init.RedirectUri;
+            _clientId = await JS.InvokeAsync<string>("showBoard.getClientId");
+            _clientIdDraft = _clientId;
+            if (!init.HasClientId) _settingsOpen = true;
+            StateHasChanged();
+        }
+        catch
+        {
+            // Interop noch nicht bereit; nicht kritisch fürs lokale Board
+        }
+    }
+
+    private async Task HandleButtonAsync(ShowButton node)
+    {
+        if (node.IsFolder)
+        {
+            _path.Add(node.Id);
+            return;
+        }
+        if (node.IsRandom)
+        {
+            var pool = node.Pool!;
+            var pick = pool[System.Random.Shared.Next(pool.Count)];
+            await PlaySoundAsync(node.Id, node.Label, pick);
+            return;
+        }
+        if (node.Sound is { } sound) await PlaySoundAsync(node.Id, node.Label, sound);
+    }
+
+    private async Task PlaySoundAsync(string id, string label, ShowSound sound)
+    {
+        if (sound.Kind == SoundKind.Local)
+        {
+            _nowPlaying = null;
+            _remainingSec = null;
+            await JS.InvokeVoidAsync("showBoard.playLocal", id, sound.Ref, sound.StartSec, sound.DurationSec);
+            _path.Clear();
+            return;
+        }
+
+        if (!_loggedIn) { Toast("Zuerst mit Spotify verbinden (Button oben rechts)"); return; }
+        var status = await JS.InvokeAsync<string>("showBoard.playSpotify", sound.Ref, sound.StartSec * 1000);
+        if (status == "ok")
+        {
+            var endsAt = sound.DurationSec is int d ? DateTime.UtcNow.AddSeconds(d) : (DateTime?)null;
+            _nowPlaying = new NowPlaying(id, label, endsAt);
+            _path.Clear();
+        }
+        else
+        {
+            Toast(status switch
+            {
+                "not-logged-in" => "Zuerst mit Spotify verbinden (Button oben rechts)",
+                "not-ready" => "Spotify-Player ist noch nicht bereit, einen Moment...",
+                _ => status
+            });
+        }
+    }
+
+    private async Task TickAsync()
+    {
+        int? newRemaining = null;
+        var stop = false;
+        if (_nowPlaying?.EndsAt is DateTime end)
+        {
+            var secs = (int)Math.Ceiling((end - DateTime.UtcNow).TotalSeconds);
+            newRemaining = Math.Max(0, secs);
+            if (DateTime.UtcNow >= end) stop = true;
+        }
+        if (stop)
+        {
+            await InvokeAsync(() => StopSpotifyAsync(true));
+            return;
+        }
+        if (newRemaining != _remainingSec)
+        {
+            _remainingSec = newRemaining;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Panic()
+    {
+        _nowPlaying = null;
+        _remainingSec = null;
+        _ = JS.InvokeVoidAsync("showBoard.stopAll");
+    }
+
+    private async Task StopSpotifyAsync(bool fade)
+    {
+        _nowPlaying = null;
+        _remainingSec = null;
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("showBoard.stopSpotify", fade); } catch { }
+    }
+
+    private async Task OnVolumeChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var v))
+        {
+            _volume = v;
+            await JS.InvokeVoidAsync("showBoard.setVolume", v);
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        try { await JS.InvokeVoidAsync("showBoard.startLogin"); }
+        catch (Exception ex) { Toast(ex.Message); }
+    }
+
+    private async Task LogoutAsync()
+    {
+        await JS.InvokeVoidAsync("showBoard.logout");
+        _loggedIn = false;
+        _playerReady = false;
+        _displayName = null;
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        await JS.InvokeVoidAsync("showBoard.setClientId", _clientIdDraft);
+        _clientId = _clientIdDraft.Trim();
+        _settingsOpen = false;
+    }
+
+    private void Toast(string text)
+    {
+        var id = ++_toastCounter;
+        _toasts.Add(new ToastItem(id, text));
+        _ = RemoveToastLaterAsync(id);
+        StateHasChanged();
+    }
+
+    private async Task RemoveToastLaterAsync(int id)
+    {
+        await Task.Delay(5000);
+        _toasts.RemoveAll(t => t.Id == id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnActiveChanged(string[] ids)
+    {
+        _activeLocalIds = ids;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnPlayerReady()
+    {
+        _playerReady = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnDisplayName(string name)
+    {
+        _displayName = name;
+        _loggedIn = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnToast(string message) => Toast(message);
+
+    [JSInvokable]
+    public Task OnEscape()
+    {
+        Panic();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _timer?.Dispose();
+        try { await JS.InvokeVoidAsync("showBoard.stopAll"); } catch { }
+        _ref?.Dispose();
+    }
+
+    private sealed record NowPlaying(string ButtonId, string Label, DateTime? EndsAt);
+    private sealed record ToastItem(int Id, string Text);
+    private sealed record InitResult(bool LoggedIn, bool HasClientId, string RedirectUri);
+}

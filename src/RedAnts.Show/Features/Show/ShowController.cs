@@ -6,5 +6,6 @@ namespace RedAnts.Features.Show;
 public sealed class ShowController : Controller
 {
     [HttpGet("")]
+    [HttpGet("{**path}")]
     public IActionResult Index() => View("~/Features/Show/Views/Index.cshtml");
 }
