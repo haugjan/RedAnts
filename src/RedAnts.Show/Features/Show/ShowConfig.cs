@@ -21,6 +21,15 @@ public static class ShowConfig
         => new(id, label, icon, color, size, null, null, subtitle,
             files.Select(f => new ShowSound(SoundKind.Local, $"sounds/{f}")).ToList());
 
+    private static ShowButton Playlist(string id, string label, string icon, string color, string playlistId,
+        string? subtitle = null, TileSize size = TileSize.Normal)
+        => new(id, label, icon, color, size, null, new ShowSound(SoundKind.Spotify, $"spotify:playlist:{playlistId}"), subtitle);
+
+    // Spotify-Einzeltrack, dessen URI noch offen ist (Ref leer). Label/Cue/Untertitel sind gesetzt.
+    private static ShowButton SpotTodo(string id, string label, string icon, string color, string subtitle,
+        int start = 0, int? dur = null, TileSize size = TileSize.Normal)
+        => new(id, label, icon, color, size, null, new ShowSound(SoundKind.Spotify, "", start, dur), subtitle);
+
     private static readonly string[] FunPool =
     [
         "01_Awkward-Silence_Crickets.mp3", "02_Schlechter-Witz_Ba-dum-tss.mp3", "06_Dramatik_Dun-dun-dun.mp3",
@@ -33,17 +42,16 @@ public static class ShowConfig
         new ShowProfile("lupl", "L-UPL", "#C8102E",
         [
             Local("lupl-goal", "Tor!", "🥅", "#C8102E", "17_Boxing-Gong.mp3", "Boxing Gong", TileSize.Big),
-            Local("lupl-applause", "Applaus", "👏", "#2a9d8f", "15_Applaus.mp3", "Applaus", TileSize.Wide),
+            SpotTodo("lupl-goal-song", "Tor uns", "🎉", "#1db954", "Samba · ab 1:25", 85, 30, TileSize.Wide),
+            SpotTodo("lupl-goal-against", "Tor Gegner", "😤", "#6d597a", "Fight Back", 0, 20),
+            SpotTodo("lupl-pen-us", "Strafe uns", "😇", "#457b9d", "Always look on the bright side of life", 0, 25, TileSize.Wide),
+            SpotTodo("lupl-pen-against", "Strafe Gegner", "🪑", "#bc6c25", "Sitzed sie, hocked si", 0, 20),
+            SpotTodo("lupl-einlauf", "Einlauf", "🏃", "#1db954", "Makina Time", 0, null, TileSize.Wide),
+            Playlist("lupl-warmup", "Einspielen", "🔥", "#e07a1f", "6LgMPxiawM53teDdD0NPSU", "Playlist Game & Training", TileSize.Wide),
+            Local("lupl-applause", "Applaus", "👏", "#2a9d8f", "15_Applaus.mp3", "Applaus"),
             Local("lupl-buzzer", "Buzzer", "🚨", "#f4a261", "11_Stopp-Fokus_Buzzer.mp3", "Buzzer"),
             Local("lupl-oooh", "Ooooh!", "📣", "#457b9d", "18_Crowd-Ooooh.mp3", "Crowd"),
-            Local("lupl-timeout", "Timeout", "⏱️", "#6d597a", "07_Zeitdruck_Clock-Ticking.mp3", "Clock Ticking", TileSize.Tall, 20),
-            Spot("lupl-fansong", "Seven Nation Army", "🎶", "#1db954", "spotify:track:3dPQuX8Gs42Y7b454ybpMR", 0, 45, "The White Stripes", TileSize.Wide),
             Random("lupl-random", "Überraschung", "🎲", "#e07a1f", "Zufälliger Fun-Sound", TileSize.Normal, FunPool),
-            Folder("lupl-einlauf", "Einlauf", "🎵", "#1db954",
-                Spot("lupl-einlauf-thunderstruck", "Thunderstruck", "⚡", "#1db954", "spotify:track:57bgtoPSgt236HzfBOd8kj", 31, 90, "AC/DC · ab 0:31", TileSize.Wide),
-                Spot("lupl-einlauf-sandstorm", "Sandstorm", "🌪️", "#1db954", "spotify:track:6Sy9BUbgFse0n0LPA5lwy5", 44, 45, "Darude · ab 0:44"),
-                Spot("lupl-einlauf-eye", "Eye of the Tiger", "🐯", "#1db954", "spotify:track:2KH16WveTQWT6KOG9Rg6e2", 0, 60, "Survivor"),
-                Local("lupl-einlauf-drumroll", "Trommelwirbel", "🥁", "#b5838d", "13_Trommelwirbel.mp3", "Drumroll")),
             Folder("lupl-jingles", "Jingles", "🎬", "#457b9d",
                 Local("lupl-jingle-boom", "Boom", "💥", "#e76f51", "19_Vine-Boom.mp3", "Vine Boom"),
                 Local("lupl-jingle-coin", "Mario Coin", "🪙", "#e9c46a", "22_Mario-Coin.mp3", "Coin"),

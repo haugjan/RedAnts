@@ -213,10 +213,14 @@
     board.stopLocal();
     try {
       if (player) await player.setVolume(volume);
+      var isContext = /^spotify:(playlist|album|artist):/.test(uri);
+      var body = isContext
+        ? { context_uri: uri, offset: { position: 0 }, position_ms: positionMs }
+        : { uris: [uri], position_ms: positionMs };
       await spotifyApi('/me/player/play?device_id=' + deviceId, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uris: [uri], position_ms: positionMs }),
+        body: JSON.stringify(body),
       });
       return 'ok';
     } catch (e) {

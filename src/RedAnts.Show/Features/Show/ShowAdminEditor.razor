@@ -13,6 +13,7 @@
             <button class="se-btn primary" @onclick="SaveAsync">💾 Speichern</button>
             <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
+            <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
             {
@@ -58,15 +59,11 @@
                     <button class="se-btn sm" title="Profil duplizieren" @onclick="DuplicateProfile">⧉</button>
                     <button class="se-btn sm danger" title="Profil löschen" @onclick="DeleteProfile">🗑</button>
                 </div>
-                @foreach (var n in _profile.Root)
-                {
-                    @RenderNode(n, _profile.Root)
-                }
-                <div class="tn-add root">
-                    <button @onclick="() => AddChild(_profile.Root, NodeKind.Sound)">+ Sound</button>
-                    <button @onclick="() => AddChild(_profile.Root, NodeKind.Folder)">+ Ordner</button>
-                    <button @onclick="() => AddChild(_profile.Root, NodeKind.Random)">+ Zufall</button>
+                <div class="se-ftree">
+                    <button class="se-fnode @(_levelStack.Count == 0 ? "cur" : "")" @onclick="() => GoLevel(0)">🏠 Hauptseite</button>
+                    @RenderFolders(_profile.Root, 1)
                 </div>
+                <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Unterordner (aktuelle Ebene)</button>
             </div>
 
             <div class="se-detail">
@@ -112,9 +109,19 @@
                     }
                 </div>
 
+                <div class="se-add-tiles">
+                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Sound)">+ Sound</button>
+                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Random)">+ Zufall</button>
+                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Ordner</button>
+                    @if (_selected is not null)
+                    {
+                        <button class="se-btn sm danger" @onclick="() => DeleteSelected()">🗑 Kachel löschen</button>
+                    }
+                </div>
+
                 @if (_selected is null)
                 {
-                    <p class="se-muted">Kachel im Raster wählen (oder links im Baum anlegen).</p>
+                    <p class="se-muted">Kachel im Raster wählen oder oben anlegen.</p>
                 }
                 else
                 {
@@ -221,7 +228,7 @@
                     }
                     else
                     {
-                        <p class="se-muted">Ordner-Inhalt wird im Baum links verwaltet (+ Sound / + Ordner / + Zufall unter dem Ordner).</p>
+                        <p class="se-muted">Ordner: mit „öffnen" (Raster) oder links reingehen, dann darin Kacheln anlegen.</p>
                     }
                 }
             </div>
@@ -386,6 +393,66 @@
         if (_selected == node) _selected = null;
     }
 
+    private void NavigateTo(EditButton folder)
+    {
+        if (_profile is null) return;
+        var path = new List<EditButton>();
+        if (FindPath(_profile.Root, folder, path)) { _levelStack.Clear(); _levelStack.AddRange(path); }
+        _selected = folder;
+    }
+
+    private static bool FindPath(List<EditButton> nodes, EditButton target, List<EditButton> path)
+    {
+        foreach (var n in nodes.Where(x => x.Kind == NodeKind.Folder))
+        {
+            path.Add(n);
+            if (n == target) return true;
+            if (FindPath(n.Children, target, path)) return true;
+            path.RemoveAt(path.Count - 1);
+        }
+        return false;
+    }
+
+    private static bool RemoveFrom(List<EditButton> nodes, EditButton target)
+    {
+        if (nodes.Remove(target)) return true;
+        foreach (var n in nodes.Where(x => x.Kind == NodeKind.Folder))
+            if (RemoveFrom(n.Children, target)) return true;
+        return false;
+    }
+
+    private async Task DeleteSelected()
+    {
+        if (_selected is null || _profile is null) return;
+        var s = _selected;
+        var what = s.Kind == NodeKind.Folder && s.Children.Count > 0
+            ? $"Ordner „{s.Label}“ samt {s.Children.Count} Einträgen löschen?"
+            : $"„{s.Label}“ löschen?";
+        if (!await JS.InvokeAsync<bool>("confirm", what)) return;
+        RemoveFrom(_profile.Root, s);
+        _selected = null;
+    }
+
+    private async Task ResetAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Alle Profile auf die Standard-Vorlage zurücksetzen? Gespeicherte Änderungen gehen verloren.")) return;
+        await Store.SaveAllAsync(ShowConfig.Profiles);
+        await LoadAsync();
+        _status = "Auf Vorlage zurückgesetzt.";
+    }
+
+    private RenderFragment RenderFolders(List<EditButton> nodes, int depth) =>
+    @<text>
+        @foreach (var f in nodes.Where(n => n.Kind == NodeKind.Folder))
+        {
+            <div class="se-fnode-row">
+                <button class="se-fnode @(_levelStack.Count > 0 && _levelStack[^1] == f ? "cur" : "")"
+                        style="padding-left:@(depth * 14)px" @onclick="() => NavigateTo(f)">📁 @f.Label</button>
+            </div>
+            @RenderFolders(f.Children, depth + 1)
+        }
+    </text>;
+
     private async Task TestAsync(EditSound s)
     {
         if (s.Kind != SoundKind.Local || string.IsNullOrWhiteSpace(s.Ref)) return;
@@ -538,4 +605,11 @@
     .se-size { display: flex; align-items: center; gap: 6px; font-weight: 700; }
     .se-size button { appearance: none; border: 1px solid #d9d9de; background: #fff; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 1rem; line-height: 1; }
     .se-size b { min-width: 16px; text-align: center; }
+
+    .se-ftree { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+    .se-fnode { appearance: none; border: none; background: none; cursor: pointer; text-align: left; padding: 0.4rem 0.5rem; border-radius: 8px; font: inherit; font-weight: 700; color: #1b1b1f; width: 100%; }
+    .se-fnode:hover { background: #f0f0f3; }
+    .se-fnode.cur { background: #ffe3e7; color: #C8102E; }
+    .se-fnode-row { display: flex; }
+    .se-add-tiles { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
 </style>
