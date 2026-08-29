@@ -13,8 +13,9 @@ rebasen, Release-Build grün, mergen, pushen; `main` bleibt immer grün. Keine K
 Code (Rationale in `ARCHITECTURE.md`), Enums als int, keine Secrets im Code, kein
 Co-Authored-By. Admin-Bausteine wiederverwenden (`InlineSelectEdit`, `InlineNumberEdit`,
 `InlineDateEdit`, `ConfirmDialog`, `OrderLogOverlay`/`VisitsOverlay`-Muster, `AdminFormat`,
-`AdminIdentity`-CascadingParameter). `.cshtml`/`.razor` durch Starten der App verifizieren
-(`dotnet run` mit `ASPNETCORE_ENVIRONMENT=Development`), nicht nur durch den Build.
+`AdminIdentity`-CascadingParameter). Host-`.cshtml` durch Starten der App verifizieren
+(`dotnet run --project src/RedAnts.Host` mit `ASPNETCORE_ENVIRONMENT=Development`);
+Ticketing/Show-Views und `.razor` kompilieren beim Build.
 
 ## Reihenfolge / Abhängigkeiten
 
