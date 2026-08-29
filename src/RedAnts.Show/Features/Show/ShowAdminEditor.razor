@@ -5,6 +5,7 @@
 @inject IShowSoundUploader Uploader
 @inject IOptions<ShowStorageOptions> Storage
 @inject IJSRuntime JS
+@implements IDisposable
 
 <div class="se">
     <header class="se-top">
@@ -81,8 +82,8 @@
                 <div class="se-canvas">
                     @foreach (var node in level)
                     {
-                        <div class="se-ct @(node == _selected ? "sel" : "")" draggable="true"
-                             @ondragstart="() => _dragNode = node" @ondragend="() => _dragNode = null"
+                        <div class="se-ct @(node == _selected ? "sel" : "")"
+                             data-id="@node.Id" data-x="@node.X" data-y="@node.Y" data-w="@node.W" data-h="@node.H"
                              @onclick="() => Select(node)"
                              style="grid-column:@(node.X + 1) / span @node.W; grid-row:@(node.Y + 1) / span @node.H; --c:@node.Color">
                             <span class="se-ct-ico">@(string.IsNullOrEmpty(node.Icon) ? (node.Kind == NodeKind.Folder ? "📁" : "🔊") : node.Icon)</span>
@@ -91,20 +92,7 @@
                             {
                                 <button class="se-ct-open" @onclick:stopPropagation="true" @onclick="() => EnterLevel(node)">öffnen ↳</button>
                             }
-                        </div>
-                    }
-                    @if (_dragNode is not null)
-                    {
-                        <div class="se-dropgrid">
-                            @for (var yy = 0; yy < ShowLayout.Rows; yy++)
-                            {
-                                @for (var xx = 0; xx < ShowLayout.Cols; xx++)
-                                {
-                                    var cx = xx; var cy = yy;
-                                    <div class="se-dropcell" style="grid-column:@(xx + 1);grid-row:@(yy + 1)"
-                                         @ondragover:preventDefault="true" @ondrop="() => DropAt(cx, cy)"></div>
-                                }
-                            }
+                            <span class="se-ct-resize" title="Grösse ziehen"></span>
                         </div>
                     }
                 </div>
@@ -136,13 +124,6 @@
                     </div>
 
                     <div class="se-grid">
-                        <label>Typ
-                            <select @bind="n.Kind">
-                                <option value="@NodeKind.Sound">Sound</option>
-                                <option value="@NodeKind.Folder">Ordner</option>
-                                <option value="@NodeKind.Random">Zufall</option>
-                            </select>
-                        </label>
                         <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
                         <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
                         <div class="se-fieldcol">
@@ -187,18 +168,19 @@
 
                         @if (n.Sound.Kind == SoundKind.Local)
                         {
+                            <div class="se-full">
+                                <span class="se-lbl">Aktuelle Datei</span>
+                                <div class="se-current">@FriendlyName(n.Sound.Ref)</div>
+                            </div>
                             <label class="se-drop @(_uploading ? "busy" : "")">
                                 <InputFile OnChange="e => OnUploadAsync(e, n.Sound)" accept="audio/*" />
-                                <span>@(_uploading ? "Lädt hoch …" : "Datei hierher ziehen oder klicken zum Auswählen")</span>
-                            </label>
-                            <label class="se-full">Blob-Pfad
-                                <input @bind="n.Sound.Ref" @bind:event="oninput" placeholder="sounds/xy.mp3" />
+                                <span>@(_uploading ? "Lädt hoch …" : "Datei ziehen oder klicken – ersetzt sofort")</span>
                             </label>
                         }
                         else
                         {
                             <label class="se-full">Spotify-URI
-                                <input @bind="n.Sound.Ref" @bind:event="oninput" placeholder="spotify:track:…" />
+                                <input @bind="n.Sound.Ref" @bind:event="oninput" placeholder="spotify:track:… (Suche folgt)" />
                             </label>
                         }
 
@@ -248,7 +230,50 @@
     private bool _uploading;
     private string _uploadError = "";
     private readonly List<EditButton> _levelStack = new();
-    private EditButton? _dragNode;
+    private DotNetObjectReference<ShowAdminEditor>? _gridRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _gridRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("showGridInit", _gridRef);
+    }
+
+    public void Dispose() => _gridRef?.Dispose();
+
+    [JSInvokable]
+    public Task SetRect(string id, int x, int y, int w, int h)
+    {
+        var level = CurrentLevel();
+        var n = level.FirstOrDefault(b => b.Id == id);
+        if (n is null) return Task.CompletedTask;
+        w = Math.Clamp(w, 1, ShowLayout.Cols);
+        h = Math.Clamp(h, 1, ShowLayout.Rows);
+        x = Math.Clamp(x, 0, ShowLayout.Cols - w);
+        y = Math.Clamp(y, 0, ShowLayout.Rows - h);
+        if (Overlaps(level, n, x, y, w, h)) return Task.CompletedTask;
+        if (n.X == x && n.Y == y && n.W == w && n.H == h) return Task.CompletedTask;
+        n.X = x; n.Y = y; n.W = w; n.H = h;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static bool Overlaps(List<EditButton> level, EditButton self, int x, int y, int w, int h)
+    {
+        foreach (var o in level)
+        {
+            if (o == self) continue;
+            int ox = Math.Max(0, o.X), oy = Math.Max(0, o.Y);
+            int ow = o.W <= 0 ? 3 : o.W, oh = o.H <= 0 ? 2 : o.H;
+            if (x < ox + ow && x + w > ox && y < oy + oh && y + h > oy) return true;
+        }
+        return false;
+    }
+
+    private static string FriendlyName(string? r)
+    {
+        if (string.IsNullOrWhiteSpace(r)) return "— keine —";
+        return r.StartsWith("sounds/") ? r["sounds/".Length..] : r;
+    }
 
     private List<EditButton> CurrentLevel()
     {
@@ -270,14 +295,6 @@
 
     private void GoLevel(int depth) { while (_levelStack.Count > depth) _levelStack.RemoveAt(_levelStack.Count - 1); }
     private void EnterLevel(EditButton folder) { if (folder.Kind == NodeKind.Folder) { _levelStack.Add(folder); _selected = folder; } }
-
-    private void DropAt(int x, int y)
-    {
-        if (_dragNode is null) return;
-        _dragNode.X = Math.Clamp(x, 0, ShowLayout.Cols - _dragNode.W);
-        _dragNode.Y = Math.Clamp(y, 0, ShowLayout.Rows - _dragNode.H);
-        _dragNode = null;
-    }
 
     private void Resize(EditButton n, int dw, int dh)
     {
@@ -593,7 +610,9 @@
     .se-crumb2 { appearance: none; border: none; background: none; cursor: pointer; color: #C8102E; font-weight: 700; padding: 2px 4px; }
     .se-sep2 { color: #9a99a0; }
     .se-canvas { position: relative; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; aspect-ratio: 12 / 8; width: 100%; background: #0d0d0f; border-radius: 12px; padding: 6px; margin-bottom: 16px; }
-    .se-ct { --c: #C8102E; position: relative; overflow: hidden; background: var(--c); color: #fff; border: none; border-radius: 10px; cursor: grab; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; text-align: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.18); }
+    .se-ct { --c: #C8102E; position: relative; overflow: hidden; background: var(--c); color: #fff; border: none; border-radius: 10px; cursor: grab; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; text-align: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.18); }
+    .se-ct-resize { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.7) 50%); border-bottom-right-radius: 10px; }
+    .se-current { border: 1px solid #d9d9de; border-radius: 8px; padding: 0.45rem 0.6rem; background: #f6f6f8; font-weight: 400; word-break: break-word; }
     .se-ct:active { cursor: grabbing; }
     .se-ct.sel { outline: 3px solid #fff; outline-offset: -3px; }
     .se-ct-ico { font-size: clamp(1rem, 2.4vw, 1.8rem); }

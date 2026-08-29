@@ -42,6 +42,51 @@
                 input.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
+
+        // Kachel-Raster: verschieben (Kachel greifen) und Grösse ziehen (Ecke).
+        (function () {
+            var gd = null, drag = null;
+            window.showGridInit = function (ref) { gd = ref; };
+            function metrics(canvas) {
+                var r = canvas.getBoundingClientRect(), pad = 6, gap = 4;
+                return { r: r, pad: pad, gap: gap,
+                    cw: (r.width - pad * 2 - gap * 11) / 12, ch: (r.height - pad * 2 - gap * 7) / 8 };
+            }
+            function cellAt(canvas, cx, cy) {
+                var m = metrics(canvas);
+                var col = Math.floor((cx - m.r.left - m.pad) / (m.cw + m.gap));
+                var row = Math.floor((cy - m.r.top - m.pad) / (m.ch + m.gap));
+                return { col: Math.max(0, Math.min(11, col)), row: Math.max(0, Math.min(7, row)) };
+            }
+            document.addEventListener('pointerdown', function (e) {
+                var tile = e.target.closest && e.target.closest('.se-ct');
+                if (!tile) return;
+                var canvas = tile.closest('.se-canvas');
+                if (!canvas) return;
+                var tx = +tile.getAttribute('data-x'), ty = +tile.getAttribute('data-y');
+                var cell = cellAt(canvas, e.clientX, e.clientY);
+                drag = {
+                    id: tile.getAttribute('data-id'), canvas: canvas,
+                    resize: !!(e.target.closest && e.target.closest('.se-ct-resize')),
+                    tx: tx, ty: ty, tw: +tile.getAttribute('data-w'), th: +tile.getAttribute('data-h'),
+                    offCol: cell.col - tx, offRow: cell.row - ty, last: ''
+                };
+                if (tile.setPointerCapture) { try { tile.setPointerCapture(e.pointerId); } catch (x) { } }
+            });
+            document.addEventListener('pointermove', function (e) {
+                if (!drag || !gd) return;
+                var cell = cellAt(drag.canvas, e.clientX, e.clientY);
+                var x, y, w, h;
+                if (drag.resize) { x = drag.tx; y = drag.ty; w = Math.max(1, cell.col - drag.tx + 1); h = Math.max(1, cell.row - drag.ty + 1); }
+                else { x = cell.col - drag.offCol; y = cell.row - drag.offRow; w = drag.tw; h = drag.th; }
+                var key = x + ',' + y + ',' + w + ',' + h;
+                if (key === drag.last) return;
+                drag.last = key;
+                gd.invokeMethodAsync('SetRect', drag.id, x, y, w, h);
+            });
+            document.addEventListener('pointerup', function () { drag = null; });
+            document.addEventListener('pointercancel', function () { drag = null; });
+        })();
     </script>
     <script src="/_framework/blazor.server.js"></script>
 </body>
