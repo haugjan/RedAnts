@@ -65,7 +65,7 @@ public sealed class SeasonVisitStatsReader(IScopeProvider scopeProvider) : ISeas
             SELECT
                 SUM(CASE WHEN Status = @0 THEN 1 ELSE 0 END) AS Produced,
                 SUM(CASE WHEN Status = @0 AND Redeemed = 1 THEN 1 ELSE 0 END) AS Redeemed,
-                SUM(CASE WHEN Status = @0 AND Redeemed = 0 THEN 1 ELSE 0 END) AS Open,
+                SUM(CASE WHEN Status = @0 AND Redeemed = 0 THEN 1 ELSE 0 END) AS OpenCnt,
                 SUM(CASE WHEN Status = @0 AND OrderId IS NULL THEN 1 ELSE 0 END) AS Gifted
             FROM SeasonSingleTickets WHERE SeasonId = @1", Valid, seasonId)).FirstOrDefault() ?? new FunnelRow();
 
@@ -73,7 +73,7 @@ public sealed class SeasonVisitStatsReader(IScopeProvider scopeProvider) : ISeas
             SELECT COUNT(*) FROM SeasonSingleTickets s JOIN Orders o ON o.Id = s.OrderId
             WHERE s.SeasonId = @0 AND s.Status = @1 AND o.Status = @2", seasonId, Valid, Paid);
 
-        return new FlexFunnel(counts.Produced, sold, counts.Gifted, counts.Redeemed, counts.Open);
+        return new FlexFunnel(counts.Produced, sold, counts.Gifted, counts.Redeemed, counts.OpenCnt);
     }
 
     private async Task<PassUtilization> PassUtilizationAsync(IDatabase db, int seasonId, IReadOnlyCollection<int> eventIds)
@@ -206,7 +206,7 @@ public sealed class SeasonVisitStatsReader(IScopeProvider scopeProvider) : ISeas
 
     public sealed class CountRow { public int Grp { get; set; } public int Cnt { get; set; } }
     public sealed class UuidCountRow { public string Uuid { get; set; } = ""; public int Cnt { get; set; } }
-    public sealed class FunnelRow { public int Produced { get; set; } public int Redeemed { get; set; } public int Open { get; set; } public int Gifted { get; set; } }
+    public sealed class FunnelRow { public int Produced { get; set; } public int Redeemed { get; set; } public int OpenCnt { get; set; } public int Gifted { get; set; } }
     public sealed class DateRow { public DateTime CreatedAt { get; set; } }
     public sealed class RefRow { public string Reference { get; set; } = ""; public int Category { get; set; } public int Issued { get; set; } public int Redeemed { get; set; } }
 }
