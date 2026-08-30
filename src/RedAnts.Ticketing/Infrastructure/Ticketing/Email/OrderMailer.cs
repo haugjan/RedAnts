@@ -12,6 +12,7 @@ namespace RedAnts.Infrastructure.Ticketing.Email;
 public sealed class OrderMailer(
     IEmailSender email,
     ITicketTokens tokens,
+    IMyTicketTokens myTokens,
     IQrCodeRenderer qr,
     IEvents events,
     ISeasons seasons,
@@ -70,7 +71,8 @@ public sealed class OrderMailer(
         var total = model.Tickets.Count;
         var blocks = string.Concat(model.Tickets.Select((t, i) =>
             TicketCard(t, dates.GetValueOrDefault((t.Type, t.ScopeId)), venueNames.GetValueOrDefault((t.Type, t.ScopeId)), i + 1, total, images)));
-        return intro + blocks + AddOnInfoBlock(model.AddOnInfoTexts);
+        var myTicketsUrl = $"{publicUrl.Resolve()}/my-tickets/{myTokens.Create(model.ToEmail)}";
+        return intro + blocks + AddOnInfoBlock(model.AddOnInfoTexts) + MyTicketsBlock(myTicketsUrl);
     }
 
     private static string AddOnInfoBlock(IReadOnlyList<string>? infos)
@@ -162,6 +164,14 @@ public sealed class OrderMailer(
             "</table>" +
             MailTicketActions.Render(url, "Online-Karte öffnen", $"{typeLabel} – {ticket.EventName}");
     }
+
+    private static string MyTicketsBlock(string url) =>
+        "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:0 auto 32px;max-width:420px;\">" +
+            "<tr><td style=\"padding:0 0 8px;font-family:Verdana,Geneva,Tahoma,sans-serif;font-size:13px;color:#6b7178;text-align:center;\">Alle deine Tickets auf einen Blick:</td></tr>" +
+            "<tr><td>" +
+                $"<a href=\"{url}\" style=\"display:block;text-align:center;background:#14171A;color:#ffffff;text-decoration:none;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-size:15px;padding:13px 18px;border-radius:10px;\">Meine Tickets öffnen</a>" +
+            "</td></tr>" +
+        "</table>";
 
     private static string InfoRow(string key, string value, string valueColor) =>
         "<tr>" +
