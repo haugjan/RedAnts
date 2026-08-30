@@ -7,18 +7,14 @@
   let assetBase = '';
   let appBase = '/show/';
 
-  // ---------- lokale Audio-Engine (ein einziges, iOS-taugliches Element) ----------
-  // iOS/Safari blockiert play(), wenn es nicht in einer Nutzergeste steht. Der Tap
-  // läuft hier über einen Blazor-Server-Roundtrip, daher ist play() später nicht mehr
-  // in der Geste. Lösung: EIN wiederverwendetes Audio-Element, das bei der ersten
-  // Geste freigeschaltet wird; danach sind programmatische play() darauf erlaubt.
-  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  // ---------- lokale Audio-Engine (ein einziges Audio-Element) ----------
+  // iOS/Safari blockiert play(), wenn es nicht direkt in einer Nutzergeste steht.
+  // Daher wird playLocal aus dem echten Klick-Event heraus aufgerufen (siehe
+  // Delegations-Handler unten), nicht über den Blazor-Server-Roundtrip.
   let volume = 0.9;
   let mediaEl = null;
   let activeId = null;
   let activeTimer = null;
-  let audioPrimed = false;
-  let audioCtx = null;
 
   function getMediaEl() {
     if (!mediaEl) {
@@ -30,24 +26,6 @@
     return mediaEl;
   }
 
-  function primeAudio() {
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx) { audioCtx = audioCtx || new Ctx(); if (audioCtx.state !== 'running') audioCtx.resume(); }
-    } catch (e) {}
-    if (audioPrimed || activeId) return;
-    const el = getMediaEl();
-    try {
-      el.src = SILENT_WAV;
-      const p = el.play();
-      if (p && p.then) p.then(function () { audioPrimed = true; try { el.pause(); el.currentTime = 0; } catch (e) {} }).catch(function () {});
-      else audioPrimed = true;
-    } catch (e) {}
-  }
-  ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(function (ev) {
-    document.addEventListener(ev, primeAudio, { passive: true });
-  });
-
   function emitActive() {
     if (dotnet) dotnet.invokeMethodAsync('OnActiveChanged', activeId ? [activeId] : []);
   }
@@ -56,6 +34,8 @@
     if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
     if (activeId !== null) { activeId = null; emitActive(); }
   }
+
+  board.currentLocalId = function () { return activeId; };
 
   board.playLocal = function (id, ref, startSec, durationSec) {
     // Nur ein Sound gleichzeitig.
@@ -92,6 +72,29 @@
     if (mediaEl) mediaEl.volume = v;
     if (player) player.setVolume(v);
   };
+
+  // Lokale Sounds direkt im Klick-Event abspielen (iOS-Nutzergeste). Spotify und
+  // Ordner laufen weiter über Blazor.
+  document.addEventListener('click', function (e) {
+    const tile = e.target && e.target.closest ? e.target.closest('.sb-tile[data-play]') : null;
+    if (!tile) return;
+    const kind = tile.getAttribute('data-play');
+    const id = tile.getAttribute('data-id');
+    if (kind !== 'local' && kind !== 'random') return;
+    if (activeId === id) { board.stopLocal(); return; }
+    if (kind === 'local') {
+      board.playLocal(id, tile.getAttribute('data-ref'),
+        parseFloat(tile.getAttribute('data-start')) || 0,
+        tile.getAttribute('data-dur') ? parseFloat(tile.getAttribute('data-dur')) : null);
+    } else {
+      let pool = [];
+      try { pool = JSON.parse(tile.getAttribute('data-pool') || '[]'); } catch (x) {}
+      if (!pool.length) return;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      board.playLocal(id, pick.r, pick.s || 0, (pick.d != null ? pick.d : null));
+    }
+    if (dotnet) { try { dotnet.invokeMethodAsync('OnLocalStarted'); } catch (x) {} }
+  }, true);
 
   // ---------- Spotify: PKCE + Web Playback SDK ----------
   const CLIENT_ID_KEY = 'sb_spotify_client_id';

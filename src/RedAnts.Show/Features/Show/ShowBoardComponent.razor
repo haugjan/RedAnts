@@ -68,6 +68,7 @@
             var pos = layout[node.Id];
             <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(isActive ? "active" : "")"
                     style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
+                    @attributes="TileAttrs(node)"
                     @onclick="() => HandleButtonAsync(node)">
                 @if (isFolder)
                 {
@@ -297,15 +298,44 @@
             _path.Add(node.Id);
             return;
         }
+        // Lokale Sounds und Zufall laufen client-seitig direkt im Klick-Event (iOS-Nutzergeste).
+        if (node.IsRandom || node.Sound is { Kind: SoundKind.Local }) return;
         if (IsNodeActive(node)) { await StopNodeAsync(node); return; }
+        if (node.Sound is { } sound) await PlaySoundAsync(node.Id, node.Label, sound);
+    }
+
+    private Dictionary<string, object> TileAttrs(ShowButton node)
+    {
+        var a = new Dictionary<string, object> { ["data-id"] = node.Id };
+        if (node.IsFolder) return a;
         if (node.IsRandom)
         {
-            var pool = node.Pool!;
-            var pick = pool[System.Random.Shared.Next(pool.Count)];
-            await PlaySoundAsync(node.Id, node.Label, pick);
-            return;
+            a["data-play"] = "random";
+            a["data-pool"] = System.Text.Json.JsonSerializer.Serialize(
+                node.Pool!.Where(p => p.Kind == SoundKind.Local)
+                    .Select(p => new { r = SoundUrl(p.Ref), s = p.StartSec, d = p.DurationSec }));
         }
-        if (node.Sound is { } sound) await PlaySoundAsync(node.Id, node.Label, sound);
+        else if (node.Sound is { Kind: SoundKind.Local } s)
+        {
+            a["data-play"] = "local";
+            a["data-ref"] = SoundUrl(s.Ref);
+            a["data-start"] = Num(s.StartSec);
+            if (s.DurationSec is { } d) a["data-dur"] = Num(d);
+        }
+        return a;
+    }
+
+    private string SoundUrl(string reff) => reff.StartsWith("http") ? reff : SoundBase + reff;
+
+    private static string Num(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    [JSInvokable]
+    public Task OnLocalStarted()
+    {
+        _nowPlaying = null;
+        _remainingSec = null;
+        _paused = false;
+        return InvokeAsync(StateHasChanged);
     }
 
     private async Task PlaySoundAsync(string id, string label, ShowSound sound)
