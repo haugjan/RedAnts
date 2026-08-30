@@ -7,11 +7,6 @@ public static class ShowLayout
     public const int Cols = 26;
     public const int Rows = 16;
 
-    public const int PanicX = 0;
-    public const int PanicY = 13;
-    public const int PanicW = 8;
-    public const int PanicH = 3;
-
     public static (int W, int H) DefaultSize(TileSize s) => s switch
     {
         TileSize.Wide => (8, 3),
@@ -27,12 +22,11 @@ public static class ShowLayout
     }
 
     public static IReadOnlyDictionary<string, (int X, int Y, int W, int H)> Resolve(
-        IReadOnlyList<ShowButton> nodes, bool reserveTopLeft, bool reservePanic = false)
+        IReadOnlyList<ShowButton> nodes, bool reserveTopLeft)
     {
         var occ = new bool[Cols, Rows];
         var result = new Dictionary<string, (int, int, int, int)>();
         if (reserveTopLeft) Mark(occ, 0, 0, 4, 3);
-        if (reservePanic) Mark(occ, PanicX, PanicY, PanicW, PanicH);
 
         foreach (var n in nodes.Where(n => n is { X: >= 0, Y: >= 0 }))
         {

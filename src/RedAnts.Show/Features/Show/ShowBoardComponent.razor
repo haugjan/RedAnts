@@ -47,27 +47,9 @@
     </nav>
 
     @{
-        var activeLabels = ActiveLabels();
-        var isPlaying = activeLabels.Count > 0;
-    }
-    <button class="sb-banner @(isPlaying ? "playing" : "silent")" @onclick="() => { if (isPlaying) Panic(); }">
-        <span>@(isPlaying ? "🔊" : "🔇")</span>
-        <span>@(isPlaying ? string.Join("  +  ", activeLabels) : "Stumm")</span>
-        @if (isPlaying && _remainingSec is int r)
-        {
-            <span class="sb-remaining">@r s</span>
-        }
-        @if (isPlaying)
-        {
-            <span class="sb-hint">tippen = Stopp</span>
-        }
-    </button>
-
-    @{
         var tiles = CurrentNodes();
         var hasBack = _path.Count > 0;
-        var hasPanic = tiles.Any(t => t.Panic);
-        var layout = ShowLayout.Resolve(tiles, hasBack, !hasPanic);
+        var layout = ShowLayout.Resolve(tiles, hasBack);
     }
     <main class="sb-board">
         @if (hasBack)
@@ -83,7 +65,7 @@
             var isSpotify = node.Sound?.Kind == SoundKind.Spotify;
             var isActive = _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
             var pos = layout[node.Id];
-            <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(node.Panic ? "panic" : "") @(isActive ? "active" : "")"
+            <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(isActive ? "active" : "")"
                     style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
                     @onclick="() => HandleButtonAsync(node)">
                 @if (isFolder)
@@ -95,7 +77,7 @@
                 {
                     <span class="sb-tile-icon">@(node.Icon ?? "🔊")</span>
                     <span class="sb-tile-label">@node.Label</span>
-                    @if (!string.IsNullOrEmpty(node.Subtitle) && !node.Panic)
+                    @if (!string.IsNullOrEmpty(node.Subtitle))
                     {
                         <span class="sb-tile-sub">@node.Subtitle</span>
                     }
@@ -110,15 +92,11 @@
                 }
             </button>
         }
-        @if (!hasPanic)
-        {
-            <button class="sb-tile panic" style="grid-column:@(ShowLayout.PanicX + 1) / span @ShowLayout.PanicW; grid-row:@(ShowLayout.PanicY + 1) / span @ShowLayout.PanicH" @onclick="Panic">
-                <span class="sb-tile-icon">⏹</span>
-                <span class="sb-tile-label">PANIC</span>
-            </button>
-        }
     </main>
 
+    @{
+        var isPlaying = _activeLocalIds.Length > 0 || _nowPlaying is not null;
+    }
     <footer class="sb-footer">
         <div class="sb-nowplaying">
             @if (_nowPlaying is { } np)
@@ -129,13 +107,27 @@
                 {
                     <span>@rem s</span>
                 }
-                <button class="sb-np-stop" @onclick="() => StopSpotifyAsync(true)">Stopp (Fade)</button>
             }
             else
             {
                 <span>@(_activeLocalIds.Length > 0 ? $"{_activeLocalIds.Length} Sound(s) aktiv" : "Bereit")</span>
             }
         </div>
+        @if (isPlaying)
+        {
+            <div class="sb-transport">
+                @if (_paused)
+                {
+                    <button class="sb-tp play" @onclick="ResumeAsync">▶ Play</button>
+                }
+                else
+                {
+                    <button class="sb-tp" @onclick="PauseAsync">⏸ Pause</button>
+                }
+                <button class="sb-tp fade" @onclick="FadeOutAsync">🔉 Fade-out</button>
+                <button class="sb-tp stop" @onclick="StopAllAsync">⏹ Stopp</button>
+            </div>
+        }
         <label class="sb-volume">🔊
             <input type="range" min="0" max="1" step="0.05" value="@_volume"
                    @onchange="OnVolumeChanged" />
@@ -196,7 +188,7 @@
     {
         var loaded = await Store.GetAllAsync();
         var src = loaded.Count > 0 ? loaded : _profiles;
-        _profiles = src.Select(p => p with { Root = ShowPanic.EnsureModel(p.Root) }).ToList();
+        _profiles = src.Select(p => p with { Root = p.Root.Where(b => !b.Panic).ToList() }).ToList();
         if (_profiles.All(p => p.Id != _profileId)) _profileId = _profiles[0].Id;
     }
     private readonly List<string> _path = new();
@@ -247,33 +239,6 @@
         return labels;
     }
 
-    private List<string> ActiveLabels()
-    {
-        var labels = _activeLocalIds.Select(id => NodeLabel(id)).ToList();
-        if (_nowPlaying is { } np) labels.Add(np.Label);
-        return labels;
-    }
-
-    private string NodeLabel(string id)
-    {
-        foreach (var p in Profiles)
-        {
-            var found = Find(p.Root, id);
-            if (found is not null) return found.Label;
-        }
-        return id;
-
-        static ShowButton? Find(IReadOnlyList<ShowButton> nodes, string id)
-        {
-            foreach (var n in nodes)
-            {
-                if (n.Id == id) return n;
-                if (n.Children is { } c && Find(c, id) is { } hit) return hit;
-            }
-            return null;
-        }
-    }
-
     private void SelectProfile(string id)
     {
         _profileId = id;
@@ -321,7 +286,6 @@
 
     private async Task HandleButtonAsync(ShowButton node)
     {
-        if (node.Panic) { Panic(); return; }
         if (node.IsFolder)
         {
             _path.Add(node.Id);
@@ -340,6 +304,7 @@
 
     private async Task PlaySoundAsync(string id, string label, ShowSound sound)
     {
+        _paused = false;
         if (sound.Kind == SoundKind.Local)
         {
             _nowPlaying = null;
@@ -390,12 +355,12 @@
         }
     }
 
-    private void Panic()
-    {
-        _nowPlaying = null;
-        _remainingSec = null;
-        _ = JS.InvokeVoidAsync("showBoard.stopAll");
-    }
+    private bool _paused;
+
+    private async Task PauseAsync() { _paused = true; await JS.InvokeVoidAsync("showBoard.pause"); }
+    private async Task ResumeAsync() { _paused = false; await JS.InvokeVoidAsync("showBoard.resume"); }
+    private async Task StopAllAsync() { _paused = false; _nowPlaying = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.stopAll"); }
+    private async Task FadeOutAsync() { _paused = false; _nowPlaying = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.fadeOut"); }
 
     private async Task StopSpotifyAsync(bool fade)
     {
@@ -476,10 +441,10 @@
     public void OnToast(string message) => Toast(message);
 
     [JSInvokable]
-    public Task OnEscape()
+    public async Task OnEscape()
     {
-        Panic();
-        return InvokeAsync(StateHasChanged);
+        await StopAllAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     public async ValueTask DisposeAsync()

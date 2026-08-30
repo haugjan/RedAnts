@@ -115,8 +115,8 @@ html, body {
   background: var(--tile-color, #555);
   color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2cqmin;
-  padding: 4cqmin;
+  gap: clamp(1px, 0.6vmin, 6px);
+  padding: clamp(3px, 1.1vmin, 12px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   transition: transform 0.06s ease, filter 0.12s ease;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
@@ -124,11 +124,11 @@ html, body {
 .sb-tile:hover { filter: brightness(1.06); }
 .sb-tile:active { transform: scale(0.97); }
 
-.sb-tile-icon { font-size: clamp(1.3rem, 5vmin, 2.6rem); line-height: 1; flex: 0 1 auto; min-height: 0; }
-.sb-tile-label { flex: 0 0 auto; font-weight: 900; font-size: clamp(1.1rem, 3.4vmin, 2rem); line-height: 1.08; text-align: center;
-  letter-spacing: 0.01em; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; }
-.sb-tile-sub { flex: 0 0 auto; font-size: clamp(0.8rem, 2vmin, 1.2rem); font-weight: 700; opacity: 0.9; text-align: center;
-  line-height: 1.15; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; }
+.sb-tile-icon { font-size: clamp(1rem, 3.4vmin, 1.9rem); line-height: 1; flex: 0 1 auto; min-height: 0; }
+.sb-tile-label { flex: 0 0 auto; font-weight: 900; font-size: clamp(0.8rem, 2.2vmin, 1.3rem); line-height: 1.1; text-align: center;
+  letter-spacing: 0.01em; max-width: 100%; max-height: 3.4em; overflow: hidden; overflow-wrap: anywhere; }
+.sb-tile-sub { flex: 0 0 auto; font-size: clamp(0.68rem, 1.6vmin, 0.95rem); font-weight: 700; opacity: 0.85; text-align: center;
+  line-height: 1.12; max-width: 100%; max-height: 2.3em; overflow: hidden; overflow-wrap: anywhere; }
 
 .sb-tile.folder {
   background: color-mix(in srgb, var(--tile-color, #555) 82%, #000);
@@ -195,24 +195,30 @@ html, body {
   flex: 0 1 auto;
 }
 .sb-np-label { font-weight: 800; color: var(--ra-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sb-np-stop { appearance: none; border: 1px solid var(--ra-line); background: rgba(255, 255, 255, 0.08); color: var(--ra-text); border-radius: 999px; padding: 0.4rem 0.9rem; cursor: pointer; font-size: 0.82rem; }
 .sb-volume {
   display: flex; align-items: center; gap: 10px; font-size: 1.3rem;
   padding: 0 16px; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 16px;
 }
 .sb-volume input { width: clamp(90px, 16vw, 220px); }
-.sb-panic {
-  appearance: none; border: none; cursor: pointer;
-  flex: 1 1 40%;
-  background: linear-gradient(180deg, #e11330 0%, var(--ra-red-dark) 100%);
-  color: #fff;
-  font: 900 clamp(1.4rem, 4.5vmin, 3rem)/1 'Segoe UI', sans-serif;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  border-radius: 20px;
-  box-shadow: 0 8px 26px rgba(200, 16, 46, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.25);
+
+.sb-transport { flex: 1 1 auto; display: flex; align-items: stretch; gap: clamp(6px, 1vmin, 14px); }
+.sb-tp {
+  appearance: none; border: 1px solid var(--ra-line); cursor: pointer;
+  flex: 1 1 0; min-width: 0;
+  background: var(--ra-panel); color: var(--ra-text);
+  font: 900 clamp(1rem, 2.6vmin, 1.6rem)/1 'Segoe UI', sans-serif;
+  letter-spacing: 0.02em; border-radius: 16px;
   display: flex; align-items: center; justify-content: center; gap: 0.4em;
+  transition: filter 0.1s, transform 0.06s;
 }
-.sb-panic:active { transform: translateY(2px); box-shadow: 0 4px 14px rgba(200, 16, 46, 0.5); }
+.sb-tp:hover { filter: brightness(1.12); }
+.sb-tp:active { transform: translateY(2px); }
+.sb-tp.play { background: linear-gradient(180deg, #1db954 0%, #159c45 100%); color: #fff; border-color: transparent; }
+.sb-tp.fade { background: linear-gradient(180deg, #e0952a 0%, #c8791a 100%); color: #fff; border-color: transparent; }
+.sb-tp.stop {
+  background: linear-gradient(180deg, #e11330 0%, var(--ra-red-dark) 100%); color: #fff; border-color: transparent;
+  box-shadow: 0 6px 20px rgba(200, 16, 46, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.22);
+}
 
 /* ---------- Settings dialog + toasts ---------- */
 .sb-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }

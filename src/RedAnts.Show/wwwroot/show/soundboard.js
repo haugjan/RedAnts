@@ -261,6 +261,30 @@
 
   board.stopAll = function () { board.stopLocal(); void board.stopSpotify(false); };
 
+  board.pause = function () {
+    for (const e of active) { try { e.audio.pause(); if (e.timer) { clearTimeout(e.timer); e.timer = null; } } catch {} }
+    if (player) { try { player.pause(); } catch {} }
+  };
+
+  board.resume = function () {
+    for (const e of active) { try { e.audio.play().catch(function () {}); } catch {} }
+    if (player) { try { player.resume(); } catch {} }
+  };
+
+  board.fadeOut = async function () {
+    const entries = Array.from(active);
+    if (entries.length) {
+      const steps = 12;
+      for (let i = steps - 1; i >= 0; i--) {
+        for (const e of entries) { try { e.audio.volume = volume * (i / steps); } catch {} }
+        await new Promise(function (r) { setTimeout(r, 90); });
+      }
+      board.stopLocal();
+      for (const e of entries) { try { e.audio.volume = volume; } catch {} }
+    }
+    if (player) { await board.stopSpotify(true); }
+  };
+
   board.getState = async function () {
     try { return player ? await player.getCurrentState() : null; } catch (e) { return null; }
   };
