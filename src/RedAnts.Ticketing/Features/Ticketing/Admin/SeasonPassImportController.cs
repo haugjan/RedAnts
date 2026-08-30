@@ -7,5 +7,5 @@ public sealed class SeasonPassImportController : Controller
 {
     [HttpGet("/admin/season-passes/example.csv")]
     public IActionResult SampleCsv() =>
-        File(SeasonPassCsv.SampleBytes(), "text/csv; charset=utf-8", "saisonkarten-vorlage.csv");
+        File(TicketImportCsv.SampleBytes(), "text/csv; charset=utf-8", "saisonkarten-vorlage.csv");
 }

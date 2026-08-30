@@ -75,22 +75,13 @@ public interface IEventTickets
     Task<EventTicket> SaveAsync(EventTicket ticket);
 }
 
-public sealed record SeasonPassImportAddress(
-    string? Street, string? PostalCode, string? City, string? Country, string? Email, string? Phone)
-{
-    public bool IsComplete =>
-        !string.IsNullOrWhiteSpace(Street) && !string.IsNullOrWhiteSpace(City) && !string.IsNullOrWhiteSpace(Email);
-}
-
-public sealed record SeasonPassImportRow(string Reference, TicketCategory Category, Buyer Buyer, SeasonPassImportAddress Address);
-
 public interface ISeasonPasses
 {
     Task<SeasonPass?> GetByUuidAsync(Guid uuid);
     Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId);
     Task<SeasonPass> SaveAsync(SeasonPass pass);
-    Task<int> ImportAsync(int seasonId, IReadOnlyList<SeasonPassImportRow> rows,
-        string? createdByName = null, string? createdByEmail = null);
+    Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,
+        string defaultBundle, int? defaultTierId = null, string? createdByName = null, string? createdByEmail = null);
 }
 
 public interface IOrders
