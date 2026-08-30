@@ -124,18 +124,18 @@ html, body {
 .sb-tile:hover { filter: brightness(1.06); }
 .sb-tile:active { transform: scale(0.97); }
 
-.sb-tile-icon { font-size: min(2.6rem, 34cqh, 22cqw); line-height: 1; }
-.sb-tile-label { font-weight: 900; font-size: min(1.5rem, 22cqh, 15cqw); line-height: 1.05; text-align: center; letter-spacing: 0.01em;
-  max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.sb-tile-sub { font-size: min(1rem, 12cqh, 8cqw); font-weight: 700; opacity: 0.9; text-align: center; line-height: 1.12;
-  max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.sb-tile-icon { font-size: clamp(1.3rem, 5vmin, 2.6rem); line-height: 1; flex: 0 1 auto; min-height: 0; }
+.sb-tile-label { flex: 0 0 auto; font-weight: 900; font-size: clamp(1.1rem, 3.4vmin, 2rem); line-height: 1.08; text-align: center;
+  letter-spacing: 0.01em; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; }
+.sb-tile-sub { flex: 0 0 auto; font-size: clamp(0.8rem, 2vmin, 1.2rem); font-weight: 700; opacity: 0.9; text-align: center;
+  line-height: 1.15; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; }
 
 .sb-tile.folder {
   background: color-mix(in srgb, var(--tile-color, #555) 82%, #000);
   color: #fff;
   border: none;
   justify-content: center;
-  padding-top: clamp(26px, 6cqh, 52px);
+  padding-top: clamp(24px, 5vmin, 48px);
 }
 .sb-fhead {
   position: absolute; top: 0; left: 0; right: 0;
@@ -158,7 +158,7 @@ html, body {
   box-shadow: 0 8px 24px rgba(200, 16, 46, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.25);
   letter-spacing: 0.08em;
 }
-.sb-tile.panic .sb-tile-label { font-size: min(1.8rem, 30cqh, 14cqw); }
+.sb-tile.panic .sb-tile-label { font-size: clamp(1.4rem, 4vmin, 2.6rem); }
 .sb-tile.panic:hover { filter: brightness(1.08); }
 
 .sb-badge {
