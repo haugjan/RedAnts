@@ -7,72 +7,89 @@
   let assetBase = '';
   let appBase = '/show/';
 
-  // ---------- lokale Audio-Engine (Effekte dürfen sich überlagern) ----------
-  const active = new Set();
-  const counts = new Map();
-  let volume = 0.9;
-
-  // iOS/Safari: Wiedergabe wird sonst blockiert, weil der Tap über einen
-  // Blazor-Server-Roundtrip läuft und play() dadurch ausserhalb der Nutzergeste
-  // liegt. Bei jeder echten Geste den Audio-Kanal freischalten.
+  // ---------- lokale Audio-Engine (ein einziges, iOS-taugliches Element) ----------
+  // iOS/Safari blockiert play(), wenn es nicht in einer Nutzergeste steht. Der Tap
+  // läuft hier über einen Blazor-Server-Roundtrip, daher ist play() später nicht mehr
+  // in der Geste. Lösung: EIN wiederverwendetes Audio-Element, das bei der ersten
+  // Geste freigeschaltet wird; danach sind programmatische play() darauf erlaubt.
   const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  let volume = 0.9;
+  let mediaEl = null;
+  let activeId = null;
+  let activeTimer = null;
+  let audioPrimed = false;
   let audioCtx = null;
-  let unlockEl = null;
-  function unlockAudio() {
+
+  function getMediaEl() {
+    if (!mediaEl) {
+      mediaEl = new Audio();
+      mediaEl.preload = 'auto';
+      mediaEl.addEventListener('ended', onLocalEnded);
+      mediaEl.addEventListener('error', onLocalEnded);
+    }
+    return mediaEl;
+  }
+
+  function primeAudio() {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (Ctx) { audioCtx = audioCtx || new Ctx(); if (audioCtx.state !== 'running') audioCtx.resume(); }
     } catch (e) {}
+    if (audioPrimed || activeId) return;
+    const el = getMediaEl();
     try {
-      if (!unlockEl) { unlockEl = new Audio(SILENT_WAV); unlockEl.volume = 0; }
-      const p = unlockEl.play();
-      if (p && p.catch) p.catch(function () {});
+      el.src = SILENT_WAV;
+      const p = el.play();
+      if (p && p.then) p.then(function () { audioPrimed = true; try { el.pause(); el.currentTime = 0; } catch (e) {} }).catch(function () {});
+      else audioPrimed = true;
     } catch (e) {}
   }
-  ['touchend', 'pointerup', 'mousedown', 'keydown'].forEach(function (ev) {
-    document.addEventListener(ev, unlockAudio, { passive: true });
+  ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(function (ev) {
+    document.addEventListener(ev, primeAudio, { passive: true });
   });
 
   function emitActive() {
-    if (dotnet) dotnet.invokeMethodAsync('OnActiveChanged', Array.from(counts.keys()));
+    if (dotnet) dotnet.invokeMethodAsync('OnActiveChanged', activeId ? [activeId] : []);
+  }
+
+  function onLocalEnded() {
+    if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
+    if (activeId !== null) { activeId = null; emitActive(); }
   }
 
   board.playLocal = function (id, ref, startSec, durationSec) {
-    // Nur ein Sound gleichzeitig: Laufendes (lokal + Spotify) sofort stoppen.
-    board.stopLocal();
+    // Nur ein Sound gleichzeitig.
     if (player) { try { player.pause(); } catch {} }
+    if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
     const src = /^(https?:)?\//.test(ref) ? ref : assetBase + ref;
-    const audio = new Audio(src);
-    audio.volume = volume;
-    if (startSec > 0) audio.currentTime = startSec;
-    const entry = { id, audio, timer: null };
-    const finish = () => {
-      if (!active.has(entry)) return;
-      active.delete(entry);
-      if (entry.timer) clearTimeout(entry.timer);
-      const c = (counts.get(id) || 1) - 1;
-      if (c <= 0) counts.delete(id); else counts.set(id, c);
-      emitActive();
-    };
-    audio.addEventListener('ended', finish);
-    audio.addEventListener('error', finish);
-    active.add(entry);
-    counts.set(id, (counts.get(id) || 0) + 1);
+    const el = getMediaEl();
+    el.volume = volume;
+    activeId = id;
     emitActive();
-    audio.play().catch(finish);
-    if (durationSec) entry.timer = setTimeout(() => { audio.pause(); finish(); }, durationSec * 1000);
+    const begin = function () {
+      try { el.currentTime = startSec > 0 ? startSec : 0; } catch (e) {}
+      const p = el.play();
+      if (p && p.catch) p.catch(function () {});
+      if (durationSec) activeTimer = setTimeout(function () { try { el.pause(); } catch (e) {} onLocalEnded(); }, durationSec * 1000);
+    };
+    if (el.src !== src) {
+      el.src = src;
+      if (startSec > 0) { el.addEventListener('loadedmetadata', begin, { once: true }); el.load(); }
+      else { begin(); }
+    } else {
+      begin();
+    }
   };
 
   board.stopLocal = function () {
-    for (const e of active) { if (e.timer) clearTimeout(e.timer); e.audio.pause(); }
-    active.clear();
-    counts.clear();
-    emitActive();
+    if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
+    if (mediaEl) { try { mediaEl.pause(); } catch {} }
+    if (activeId !== null) { activeId = null; emitActive(); }
   };
 
   board.setVolume = function (v) {
     volume = v;
-    for (const e of active) e.audio.volume = v;
+    if (mediaEl) mediaEl.volume = v;
     if (player) player.setVolume(v);
   };
 
@@ -283,25 +300,24 @@
   board.stopAll = function () { board.stopLocal(); void board.stopSpotify(false); };
 
   board.pause = function () {
-    for (const e of active) { try { e.audio.pause(); if (e.timer) { clearTimeout(e.timer); e.timer = null; } } catch {} }
+    if (mediaEl && activeId) { try { mediaEl.pause(); } catch {} if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; } }
     if (player) { try { player.pause(); } catch {} }
   };
 
   board.resume = function () {
-    for (const e of active) { try { e.audio.play().catch(function () {}); } catch {} }
+    if (mediaEl && activeId) { const p = mediaEl.play(); if (p && p.catch) p.catch(function () {}); }
     if (player) { try { player.resume(); } catch {} }
   };
 
   board.fadeOut = async function () {
-    const entries = Array.from(active);
-    if (entries.length) {
+    if (mediaEl && activeId) {
       const steps = 12;
       for (let i = steps - 1; i >= 0; i--) {
-        for (const e of entries) { try { e.audio.volume = volume * (i / steps); } catch {} }
+        try { mediaEl.volume = volume * (i / steps); } catch {}
         await new Promise(function (r) { setTimeout(r, 90); });
       }
       board.stopLocal();
-      for (const e of entries) { try { e.audio.volume = volume; } catch {} }
+      try { mediaEl.volume = volume; } catch {}
     }
     if (player) { await board.stopSpotify(true); }
   };
