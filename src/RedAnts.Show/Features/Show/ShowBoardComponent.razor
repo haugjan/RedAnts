@@ -104,6 +104,10 @@
                 {
                     <span class="sb-badge spotify">Spotify</span>
                 }
+                @if (isActive)
+                {
+                    <span class="sb-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                }
             </button>
         }
         @if (!hasPanic)
@@ -304,6 +308,17 @@
         }
     }
 
+    private bool IsNodeActive(ShowButton node) =>
+        _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
+
+    private async Task StopNodeAsync(ShowButton node)
+    {
+        if (_nowPlaying?.ButtonId == node.Id) { await StopSpotifyAsync(false); return; }
+        _nowPlaying = null;
+        _remainingSec = null;
+        await JS.InvokeVoidAsync("showBoard.stopLocal");
+    }
+
     private async Task HandleButtonAsync(ShowButton node)
     {
         if (node.Panic) { Panic(); return; }
@@ -312,6 +327,7 @@
             _path.Add(node.Id);
             return;
         }
+        if (IsNodeActive(node)) { await StopNodeAsync(node); return; }
         if (node.IsRandom)
         {
             var pool = node.Pool!;
