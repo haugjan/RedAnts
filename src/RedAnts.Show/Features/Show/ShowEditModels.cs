@@ -31,6 +31,7 @@ public sealed class EditButton
     public EditSound Sound { get; set; } = new();
     public List<EditButton> Children { get; set; } = new();
     public List<EditSound> Pool { get; set; } = new();
+    public bool Panic { get; set; }
 
     public static EditButton From(ShowButton b)
     {
@@ -45,6 +46,7 @@ public sealed class EditButton
             Size = b.Size,
             X = b.X, Y = b.Y, W = b.W, H = b.H,
             Kind = kind,
+            Panic = b.Panic,
             Sound = b.Sound is { } s ? EditSound.From(s) : new EditSound(),
             Children = (b.Children ?? []).Select(From).ToList(),
             Pool = (b.Pool ?? []).Select(EditSound.From).ToList(),
@@ -53,6 +55,7 @@ public sealed class EditButton
 
     public ShowButton ToModel() => Kind switch
     {
+        _ when Panic => new ShowButton(Id, Label, Icon, Color, Size, null, null, Subtitle, null, X, Y, W, H, true),
         NodeKind.Folder => new ShowButton(Id, Label, Icon, Color, Size, Children.Select(c => c.ToModel()).ToList(), null, Subtitle, null, X, Y, W, H),
         NodeKind.Random => new ShowButton(Id, Label, Icon, Color, Size, null, null, Subtitle, Pool.Select(p => p.ToModel()).ToList(), X, Y, W, H),
         _ => new ShowButton(Id, Label, Icon, Color, Size, null, Sound.ToModel(), Subtitle, null, X, Y, W, H),

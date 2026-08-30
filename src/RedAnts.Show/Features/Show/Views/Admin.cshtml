@@ -63,6 +63,18 @@
             if (window.showBoard) { try { showBoard.stopAll(); } catch (e) { } }
             showEditReportStopped();
         };
+
+        var showPreviewAudio = null;
+        window.showPreviewToggle = function (url) {
+            if (showPreviewAudio && !showPreviewAudio.paused && showPreviewAudio.dataset.url === url) { window.showPreviewStop(); return; }
+            window.showPreviewStop();
+            showPreviewAudio = new Audio(url);
+            showPreviewAudio.dataset.url = url;
+            showPreviewAudio.play().catch(function () { });
+        };
+        window.showPreviewStop = function () {
+            try { if (showPreviewAudio) { showPreviewAudio.pause(); showPreviewAudio = null; } } catch (e) { }
+        };
         // Drag-and-drop auf die Upload-Zone: Dateien an das versteckte File-Input weiterreichen.
         document.addEventListener('dragover', function (e) {
             var z = e.target.closest && e.target.closest('.se-drop');
@@ -125,9 +137,17 @@
                 var key = x + ',' + y + ',' + w + ',' + h;
                 if (key === drag.last) return;
                 drag.last = key;
+                drag.moved = true;
                 gd.invokeMethodAsync('SetRect', drag.id, x, y, w, h);
             });
-            document.addEventListener('pointerup', function () { drag = null; });
+            document.addEventListener('pointerup', function () {
+                if (drag && drag.moved) {
+                    var sup = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
+                    document.addEventListener('click', sup, { capture: true, once: true });
+                    setTimeout(function () { document.removeEventListener('click', sup, { capture: true }); }, 350);
+                }
+                drag = null;
+            });
             document.addEventListener('pointercancel', function () { drag = null; });
 
             // Neue Kachel per Aufziehen auf freie Rasterfläche.

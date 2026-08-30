@@ -65,7 +65,6 @@
                     <button class="se-fnode @(_levelStack.Count == 0 ? "cur" : "")" @onclick="() => GoLevel(0)">🏠 Hauptseite</button>
                     @RenderFolders(_profile.Root, 1)
                 </div>
-                <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Unterordner (aktuelle Ebene)</button>
             </div>
 
             <div class="se-detail">
@@ -79,11 +78,11 @@
                         <button class="se-crumb2" @onclick="() => GoLevel(depth + 1)">@_levelStack[depth].Label</button>
                     }
                 </div>
-                @{ var level = CurrentLevel(); ShowLayout.EnsureEdit(level); }
+                @{ var level = CurrentLevel(); if (_levelStack.Count == 0) ShowPanic.EnsureEdit(level); ShowLayout.EnsureEdit(level); }
                 <div class="se-canvas">
                     @foreach (var node in level)
                     {
-                        <div class="se-ct @(node == _selected ? "sel" : "")"
+                        <div class="se-ct @(node.Kind == NodeKind.Folder ? "folder" : "") @(node.Panic ? "panic" : "") @(node == _selected ? "sel" : "")"
                              data-id="@node.Id" data-x="@node.X" data-y="@node.Y" data-w="@node.W" data-h="@node.H"
                              @onclick="() => Select(node)"
                              style="grid-column:@(node.X + 1) / span @node.W; grid-row:@(node.Y + 1) / span @node.H; --c:@node.Color">
@@ -92,6 +91,10 @@
                             @if (node.Kind == NodeKind.Folder)
                             {
                                 <button class="se-ct-open" @onclick:stopPropagation="true" @onclick="() => EnterLevel(node)">öffnen ↳</button>
+                            }
+                            @if (node.Panic)
+                            {
+                                <span class="se-ct-lock" title="Gesperrt – nur verschieben/skalieren">🔒</span>
                             }
                             <span class="se-ct-resize" title="Grösse ziehen"></span>
                         </div>
@@ -107,8 +110,8 @@
                 @if (_selected is not null)
                 {
                     var n = _selected;
-                    <div class="se-editwrap" @onclick="CloseEditor">
-                    <div class="se-editcard" @onclick:stopPropagation="true">
+                    <div class="se-editwrap" @onmousedown="() => _downOnBackdrop = true" @onclick="OnWrapClick">
+                    <div class="se-editcard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
                     <button class="se-editclose" @onclick="CloseEditor">✕</button>
                     <div class="se-preview" style="--c:@n.Color">
                         <span class="se-pv-icon">@(string.IsNullOrEmpty(n.Icon) ? "🔊" : n.Icon)</span>
@@ -138,7 +141,22 @@
                                 </div>
                             }
                         </div>
-                        <label>Farbe <input type="color" @bind="n.Color" /></label>
+                        <div class="se-fieldcol">
+                            <span class="se-lbl">Farbe</span>
+                            <button type="button" class="se-color-btn" @onclick="() => _colorOpen = !_colorOpen">
+                                <span class="se-color-chip" style="background:@n.Color"></span> auswählen
+                            </button>
+                            @if (_colorOpen)
+                            {
+                                <div class="se-color-pop">
+                                    @foreach (var c in Palette)
+                                    {
+                                        <button type="button" class="se-swatch @(string.Equals(n.Color, c, StringComparison.OrdinalIgnoreCase) ? "sel" : "")"
+                                                style="background:@c" title="@c" @onclick="@(() => { n.Color = c; _colorOpen = false; })"></button>
+                                    }
+                                </div>
+                            }
+                        </div>
                     </div>
 
                     @if (n.Kind == NodeKind.Sound)
@@ -168,30 +186,44 @@
                                     <input class="se-search-in" @bind="_query" @bind:event="oninput" @onkeyup="OnSearchKey" placeholder="Song auf Spotify suchen …" />
                                     <button class="se-btn primary" @onclick="DoSearch">🔍 Suchen</button>
                                 </div>
-                                @if (_searching)
-                                {
-                                    <p class="se-muted">Suche …</p>
-                                }
-                                @if (_results.Count > 0)
-                                {
-                                    <div class="se-results">
-                                        @foreach (var t in _results)
-                                        {
-                                            <button class="se-result" @onclick="() => PickTrack(t)">
-                                                <span class="se-result-name">@t.Name</span>
-                                                <span class="se-result-artist">@t.Artist</span>
-                                            </button>
-                                        }
-                                    </div>
-                                }
                             }
-                            <label class="se-full">Spotify-Link oder URI einfügen
-                                <input value="@n.Sound.Ref" @onchange="@(e => n.Sound.Ref = NormalizeSpotify(e.Value?.ToString()))" placeholder="https://open.spotify.com/track/… oder spotify:track:…" />
+                            <label class="se-full">Spotify-Link, URL oder ID einfügen
+                                <input value="@n.Sound.Ref" @onchange="e => ApplyPaste(e, n.Sound)"
+                                       placeholder="https://open.spotify.com/… · spotify:track:… · oder nur die ID" />
                             </label>
                             @if (!Search.Configured)
                             {
                                 <p class="se-muted">Suche inaktiv (Client-ID + Secret hinterlegen). Link einfügen geht trotzdem.</p>
                             }
+
+                            @if (_trackInfo is { } ti && ShowSpotifyLink.Parse(n.Sound.Ref)?.Kind == "track")
+                            {
+                                <div class="se-trackcard">
+                                    @if (!string.IsNullOrEmpty(ti.CoverUrl))
+                                    {
+                                        <img class="se-cover" src="@ti.CoverUrl" alt="" />
+                                    }
+                                    <div class="se-trackmeta">
+                                        <div class="se-trackname">@ti.Name</div>
+                                        <div class="se-trackartist">@ti.Artist</div>
+                                        <div class="se-trackalbum">@ti.Album@(ti.DurationMs > 0 ? $" · {Mmss(ti.DurationMs / 1000)}" : "")</div>
+                                    </div>
+                                </div>
+                            }
+                            @if (_ctxInfo is { } ci)
+                            {
+                                <div class="se-trackcard">
+                                    @if (!string.IsNullOrEmpty(ci.CoverUrl))
+                                    {
+                                        <img class="se-cover" src="@ci.CoverUrl" alt="" />
+                                    }
+                                    <div class="se-trackmeta">
+                                        <div class="se-trackname">@(string.IsNullOrEmpty(ci.Name) ? ci.Kind : ci.Name)</div>
+                                        <div class="se-trackartist">@(ci.Kind == "playlist" ? $"Playlist · {ci.TrackCount} Songs" : ci.Kind)@(string.IsNullOrEmpty(ci.Owner) ? "" : " · " + ci.Owner)</div>
+                                    </div>
+                                </div>
+                            }
+
                             @if (IsContextRef(n.Sound.Ref))
                             {
                                 <div class="se-fieldcol">
@@ -228,7 +260,7 @@
 
                         <div class="se-testrow">
                             <button class="se-btn primary" @onclick="() => PlayFullAsync(n.Sound)">▶ Abspielen</button>
-                            <button class="se-btn" @onclick="() => PlayFromCueAsync(n.Sound)">▶ Von Cue</button>
+                            <button class="se-btn" @onclick="() => PlayFromCueAsync(n.Sound)">▶ Abschnitt</button>
                             <button class="se-btn" @onclick="StopTest">⏹ Stopp</button>
                         </div>
                         <div class="se-testrow">
@@ -258,8 +290,65 @@
                     {
                         <p class="se-muted">Ordner: mit „öffnen" (Raster) oder links reingehen, dann darin Kacheln anlegen.</p>
                     }
-                    <button class="se-btn sm danger se-editdel" @onclick="DeleteSelected">🗑 Kachel löschen</button>
+                    @if (_selectedIsNew && !IsTileValid(n))
+                    {
+                        <p class="se-warn">Bitte einen Song/eine Datei wählen. „Abbrechen" verwirft die neue Kachel.</p>
+                    }
+                    <div class="se-editfoot">
+                        @if (_selectedIsNew)
+                        {
+                            <button class="se-btn sm" @onclick="CancelTile">Abbrechen</button>
+                        }
+                        <button class="se-btn sm danger se-editdel" @onclick="DeleteSelected">🗑 Kachel löschen</button>
                     </div>
+                    </div>
+                    </div>
+                }
+
+                @if (_searchOpen)
+                {
+                    <div class="se-searchwrap" @onclick="CloseSearch">
+                        <div class="se-searchcard" @onclick:stopPropagation="true">
+                            <div class="se-searchhead">
+                                <input class="se-search-in" @bind="_query" @bind:event="oninput" @onkeyup="OnSearchKey" placeholder="Song auf Spotify suchen …" />
+                                <button class="se-btn primary" @onclick="DoSearch">🔍 Suchen</button>
+                                <button class="se-editclose" @onclick="CloseSearch">✕</button>
+                            </div>
+                            @if (_searching)
+                            {
+                                <p class="se-muted">Suche …</p>
+                            }
+                            @if (_searchError is { Length: > 0 })
+                            {
+                                <p class="se-err">@_searchError</p>
+                            }
+                            <div class="se-reslist">
+                                @foreach (var t in _results)
+                                {
+                                    <div class="se-resrow">
+                                        <img class="se-cover sm" src="@t.CoverUrl" alt="" />
+                                        <div class="se-resmeta">
+                                            <div class="se-trackname">@t.Name</div>
+                                            <div class="se-trackartist">@t.Artist</div>
+                                            <div class="se-trackalbum">@t.Album@(t.DurationMs > 0 ? $" · {Mmss(t.DurationMs / 1000)}" : "")</div>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(t.PreviewUrl))
+                                        {
+                                            <button class="se-btn sm" title="Vorschau anhören" @onclick="() => PreviewAsync(t)">▶</button>
+                                        }
+                                        else
+                                        {
+                                            <span class="se-nopreview" title="Keine Vorschau verfügbar">–</span>
+                                        }
+                                        <button class="se-btn sm primary" @onclick="() => PickTrack(t)">Wählen</button>
+                                    </div>
+                                }
+                                @if (!_searching && _results.Count == 0 && _searchError.Length == 0)
+                                {
+                                    <p class="se-muted">Keine Treffer.</p>
+                                }
+                            </div>
+                        </div>
                     </div>
                 }
 
@@ -448,16 +537,26 @@
 
     private void Select(EditButton node)
     {
+        if (node.Panic) return;
         _selected = node;
+        _selectedIsNew = false;
+        _colorOpen = false; _emojiOpen = false;
         _playPos = 0; _playDur = 0; _playing = false;
+        _trackInfo = null; _ctxInfo = null;
         _ = JS.InvokeVoidAsync("showEditStop");
+        _ = RefreshSpotifyInfoAsync(node.Sound);
     }
+
+    private static bool IsTileValid(EditButton n) =>
+        n.Kind == NodeKind.Folder || n.Panic || (n.Sound is { } s && !string.IsNullOrWhiteSpace(s.Ref));
 
     private void AddChild(List<EditButton> list, NodeKind kind)
     {
-        var b = new EditButton { Kind = kind, Label = kind == NodeKind.Folder ? "Ordner" : kind == NodeKind.Random ? "Überraschung" : "Neu", Icon = kind == NodeKind.Folder ? "📁" : kind == NodeKind.Random ? "🎲" : "🔊" };
+        var b = new EditButton { Kind = kind, Label = kind == NodeKind.Folder ? "Ordner" : "Neu", Icon = kind == NodeKind.Folder ? "📁" : "🔊" };
         list.Add(b);
         _selected = b;
+        _selectedIsNew = true;
+        _colorOpen = false; _emojiOpen = false; _trackInfo = null; _ctxInfo = null;
     }
 
     private void Move(EditButton node, List<EditButton> list, int delta)
@@ -608,12 +707,35 @@
         s.DurationSec = dur > 0 ? dur : null;
     }
 
+    private bool _colorOpen;
+    private bool _selectedIsNew;
+    private bool _downOnBackdrop;
+
+    private static readonly string[] Palette =
+    [
+        "#E11330", "#C8102E", "#ff5069", "#e07a1f", "#f4a261", "#e9c46a",
+        "#2a9d8f", "#1db954", "#43aa8b", "#457b9d", "#3a86ff", "#4361ee",
+        "#6d597a", "#9d4edd", "#b5179e", "#bc6c25", "#606c38", "#264653",
+        "#8ecae6", "#ffb703", "#e63946", "#f72585", "#111318", "#6c757d",
+    ];
+
+    private void OnWrapClick()
+    {
+        if (_downOnBackdrop) CloseEditor();
+        _downOnBackdrop = false;
+    }
+
     private void CloseEditor()
     {
+        if (_selected is { } n && _selectedIsNew && !IsTileValid(n) && _profile is not null)
+            RemoveFrom(_profile.Root, n);
         _selected = null;
-        _playing = false;
-        _playPos = 0;
+        _selectedIsNew = false;
+        _colorOpen = false; _emojiOpen = false; _searchOpen = false;
+        _playing = false; _playPos = 0;
+        _trackInfo = null; _ctxInfo = null;
         _ = JS.InvokeVoidAsync("showEditStop");
+        _ = JS.InvokeVoidAsync("showPreviewStop");
     }
 
     private static string Mmss(int s) => $"{s / 60}:{s % 60:00}";
@@ -628,14 +750,11 @@
     private static bool IsContextRef(string? r) =>
         !string.IsNullOrWhiteSpace(r) && System.Text.RegularExpressions.Regex.IsMatch(r, @"^spotify:(playlist|album|artist):");
 
-    private static string NormalizeSpotify(string? input)
+    private async Task ApplyPaste(ChangeEventArgs e, EditSound s)
     {
-        if (string.IsNullOrWhiteSpace(input)) return "";
-        input = input.Trim();
-        if (input.StartsWith("spotify:")) return input.Split('?')[0];
-        var m = System.Text.RegularExpressions.Regex.Match(input,
-            @"open\.spotify\.com/(track|playlist|album|artist|episode)/([A-Za-z0-9]+)");
-        return m.Success ? $"spotify:{m.Groups[1].Value}:{m.Groups[2].Value}" : input;
+        s.Kind = SoundKind.Spotify;
+        s.Ref = ShowSpotifyLink.ToUri(e.Value?.ToString()) ?? (e.Value?.ToString()?.Trim() ?? "");
+        await RefreshSpotifyInfoAsync(s);
     }
 
     private (int X, int Y, int W, int H)? _newRect;
@@ -666,6 +785,8 @@
         };
         CurrentLevel().Add(b);
         _selected = b;
+        _selectedIsNew = true;
+        _colorOpen = false; _emojiOpen = false; _trackInfo = null; _ctxInfo = null;
         _newRect = null;
         _chooseKind = false;
     }
@@ -675,14 +796,27 @@
     private string _query = "";
     private IReadOnlyList<SpotifyTrack> _results = [];
     private bool _searching;
+    private bool _searchOpen;
+    private string _searchError = "";
+    private SpotifyTrack? _trackInfo;
+    private SpotifyContext? _ctxInfo;
 
     private async Task DoSearch()
     {
         if (string.IsNullOrWhiteSpace(_query)) return;
-        _searching = true;
-        _uploadError = "";
+        var link = ShowSpotifyLink.ToUri(_query);
+        if (link is not null && _selected is not null)
+        {
+            _selected.Sound.Kind = SoundKind.Spotify;
+            _selected.Sound.Ref = link;
+            await RefreshSpotifyInfoAsync(_selected.Sound);
+            _selectedIsNew = false;
+            _query = "";
+            return;
+        }
+        _searching = true; _searchError = ""; _searchOpen = true; _results = [];
         try { _results = await Search.SearchAsync(_query); }
-        catch (Exception ex) { _uploadError = "Suche: " + ex.Message; _results = []; }
+        catch (Exception ex) { _searchError = "Suche: " + ex.Message; _results = []; }
         finally { _searching = false; }
     }
 
@@ -691,15 +825,53 @@
         if (e.Key == "Enter") await DoSearch();
     }
 
-    private void PickTrack(SpotifyTrack t)
+    private async Task PickTrack(SpotifyTrack t)
     {
         if (_selected is null) return;
         _selected.Sound.Kind = SoundKind.Spotify;
         _selected.Sound.Ref = t.Uri;
         if (string.IsNullOrWhiteSpace(_selected.Label) || _selected.Label == "Neu") _selected.Label = t.Name;
         _selected.Subtitle = t.Artist;
+        _trackInfo = t; _ctxInfo = null;
+        _selectedIsNew = false;
+        _searchOpen = false;
         _results = [];
         _query = "";
+        await JS.InvokeVoidAsync("showPreviewStop");
+    }
+
+    private void CloseSearch()
+    {
+        _searchOpen = false;
+        _ = JS.InvokeVoidAsync("showPreviewStop");
+    }
+
+    private void CancelTile()
+    {
+        if (_selected is { } n && _profile is not null) RemoveFrom(_profile.Root, n);
+        _selected = null;
+        _selectedIsNew = false;
+        _ = JS.InvokeVoidAsync("showEditStop");
+    }
+
+    private async Task PreviewAsync(SpotifyTrack t)
+    {
+        if (string.IsNullOrEmpty(t.PreviewUrl)) return;
+        await JS.InvokeVoidAsync("showPreviewToggle", t.PreviewUrl);
+    }
+
+    private async Task RefreshSpotifyInfoAsync(EditSound s)
+    {
+        _trackInfo = null; _ctxInfo = null;
+        if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref) || !Search.Configured) { StateHasChanged(); return; }
+        try
+        {
+            var p = ShowSpotifyLink.Parse(s.Ref);
+            if (p?.Kind == "track") _trackInfo = await Search.GetTrackAsync(s.Ref);
+            else if (p is not null) _ctxInfo = await Search.GetContextAsync(s.Ref);
+        }
+        catch { }
+        StateHasChanged();
     }
 
     private void ExportJson()
@@ -760,10 +932,10 @@
     }
     .se { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; font-size: 15px; color: var(--ra-text);
         background: radial-gradient(120% 80% at 50% -10%, rgba(225,19,48,0.18) 0%, transparent 55%), var(--ra-bg);
-        min-height: 100vh; padding: 22px clamp(16px, 3vw, 40px); }
+        min-height: 100vh; padding: 12px clamp(12px, 2vw, 28px); }
 
-    .se-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
-    .se-top h1 { font-size: 1.5rem; margin: 0; font-weight: 800; letter-spacing: 0.01em; }
+    .se-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+    .se-top h1 { font-size: 1.2rem; margin: 0; font-weight: 800; letter-spacing: 0.01em; }
     .se-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .se-btn { appearance: none; border: 1px solid var(--ra-line); background: var(--ra-panel2); border-radius: 12px;
         padding: 0.6rem 1.1rem; cursor: pointer; font: inherit; font-weight: 700; text-decoration: none; color: var(--ra-text);
@@ -814,7 +986,7 @@
     .se-full { grid-column: 1 / -1; }
     .se-emoji-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ra-line); border-radius: 10px; background: var(--ra-in); color: var(--ra-text); padding: 0.55rem 0.75rem; cursor: pointer; font: inherit; font-weight: 500; text-transform: none; }
     .se-emoji-btn span { font-size: 1.5rem; }
-    .se-emoji-pop { position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px; width: 320px; max-height: 240px; overflow: auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; background: var(--ra-panel2); border: 1px solid var(--ra-line); border-radius: 14px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+    .se-emoji-pop { position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px; width: min(90vw, 520px); display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; background: var(--ra-panel2); border: 1px solid var(--ra-line); border-radius: 14px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
     .se-emoji-pop button { appearance: none; border: none; background: none; cursor: pointer; font-size: 1.5rem; padding: 6px; border-radius: 8px; }
     .se-emoji-pop button:hover { background: #3a3a45; }
     .se-emoji-pop .clear { grid-column: 1 / -1; font-size: 0.9rem; color: #ff9aa6; }
@@ -840,7 +1012,7 @@
     .se-crumb2 { appearance: none; border: none; background: none; cursor: pointer; color: #ff9aa6; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
     .se-crumb2:hover { background: var(--ra-panel2); }
     .se-sep2 { color: var(--ra-muted); }
-    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(26, 1fr); grid-template-rows: repeat(16, 1fr); gap: 2px; aspect-ratio: 26 / 16; width: 100%; max-width: min(100%, calc((100vh - 240px) * 26 / 16)); max-height: calc(100vh - 240px); margin: 0 auto 16px; background:
+    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(26, 1fr); grid-template-rows: repeat(16, 1fr); gap: 2px; aspect-ratio: 26 / 16; width: 100%; max-width: min(100%, calc((100vh - 190px) * 26 / 16)); max-height: calc(100vh - 190px); margin: 0 auto 10px; background:
         linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16),
         linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16), #0b0b0e;
         border: 1px solid var(--ra-line); border-radius: 14px; padding: 6px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }
@@ -893,4 +1065,38 @@
     .se-choosebtns { display: flex; gap: 10px; }
     .se-choosebtns .se-btn { flex: 1; justify-content: center; padding: 1rem; font-size: 1rem; }
     .se-choosecancel { margin-top: 14px; }
+
+    .se-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
+    .se-color-btn { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--ra-line); border-radius: 10px; background: var(--ra-in); color: var(--ra-text); padding: 0.5rem 0.75rem; cursor: pointer; font: inherit; font-weight: 500; text-transform: none; }
+    .se-color-chip { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); }
+    .se-color-pop { position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px; width: min(90vw, 320px); display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; background: var(--ra-panel2); border: 1px solid var(--ra-line); border-radius: 14px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+    .se-swatch { appearance: none; border: 2px solid transparent; width: 100%; aspect-ratio: 1; border-radius: 8px; cursor: pointer; }
+    .se-swatch:hover { transform: scale(1.08); }
+    .se-swatch.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--ra-red); }
+
+    .se-trackcard { display: flex; gap: 12px; align-items: center; margin: 10px 0; padding: 10px; border: 1px solid var(--ra-line); border-radius: 12px; background: var(--ra-in); }
+    .se-cover { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #000; }
+    .se-cover.sm { width: 52px; height: 52px; }
+    .se-trackmeta, .se-resmeta { min-width: 0; text-transform: none; letter-spacing: 0; }
+    .se-trackname { font-weight: 800; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .se-trackartist { color: var(--ra-text); font-size: 0.88rem; }
+    .se-trackalbum { color: var(--ra-muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .se-searchwrap { position: fixed; inset: 0; z-index: 130; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); padding: 20px; }
+    .se-searchcard { background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 18px; padding: 18px; width: min(96vw, 620px); max-height: 84vh; display: flex; flex-direction: column; box-shadow: 0 24px 80px rgba(0,0,0,0.7); }
+    .se-searchhead { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+    .se-searchhead .se-editclose { position: static; }
+    .se-reslist { display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+    .se-resrow { display: flex; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--ra-line); border-radius: 12px; background: var(--ra-panel2); }
+    .se-resrow .se-resmeta { flex: 1; }
+    .se-nopreview { width: 34px; text-align: center; color: var(--ra-muted); }
+
+    .se-editfoot { display: flex; gap: 8px; margin-top: 18px; }
+    .se-editfoot .se-editdel { margin-top: 0; flex: 1; }
+    .se-warn { color: #ffd166; font-weight: 700; font-size: 0.9rem; margin: 8px 0 0; }
+
+    .se-ct.folder { border: 2px dashed rgba(255,255,255,0.4); box-shadow: 0 2px 8px rgba(0,0,0,0.35), 2.5cqmin -2cqmin 0 -0.5cqmin color-mix(in srgb, var(--c) 60%, #000); }
+    .se-ct.panic { background: linear-gradient(160deg, #ff2740 0%, #c8102e 100%); }
+    .se-ct-lock { position: absolute; top: 3px; right: 3px; font-size: min(16cqmin, 0.8rem); opacity: 0.9; }
 </style>

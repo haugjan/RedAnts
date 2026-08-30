@@ -82,18 +82,18 @@
             var isSpotify = node.Sound?.Kind == SoundKind.Spotify;
             var isActive = _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
             var pos = layout[node.Id];
-            <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(isActive ? "active" : "")"
+            <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(node.Panic ? "panic" : "") @(isActive ? "active" : "")"
                     style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
                     @onclick="() => HandleButtonAsync(node)">
                 <span class="sb-tile-icon">@(node.Icon ?? (isFolder ? "📁" : "🔊"))</span>
                 <span class="sb-tile-label">@node.Label</span>
-                @if (!string.IsNullOrEmpty(node.Subtitle))
+                @if (!string.IsNullOrEmpty(node.Subtitle) && !node.Panic)
                 {
                     <span class="sb-tile-sub">@node.Subtitle</span>
                 }
                 @if (isFolder)
                 {
-                    <span class="sb-badge">▸ Ordner</span>
+                    <span class="sb-badge">📂 Ordner öffnen</span>
                 }
                 @if (isSpotify)
                 {
@@ -124,7 +124,6 @@
             <input type="range" min="0" max="1" step="0.05" value="@_volume"
                    @onchange="OnVolumeChanged" />
         </label>
-        <button class="sb-panic" title="Alles sofort stoppen (Esc)" @onclick="Panic">⏹ PANIC</button>
     </footer>
 
     @if (_settingsOpen)
@@ -180,11 +179,9 @@
     protected override async Task OnInitializedAsync()
     {
         var loaded = await Store.GetAllAsync();
-        if (loaded.Count > 0)
-        {
-            _profiles = loaded;
-            if (_profiles.All(p => p.Id != _profileId)) _profileId = _profiles[0].Id;
-        }
+        var src = loaded.Count > 0 ? loaded : _profiles;
+        _profiles = src.Select(p => p with { Root = ShowPanic.EnsureModel(p.Root) }).ToList();
+        if (_profiles.All(p => p.Id != _profileId)) _profileId = _profiles[0].Id;
     }
     private readonly List<string> _path = new();
     private string[] _activeLocalIds = [];
@@ -297,6 +294,7 @@
 
     private async Task HandleButtonAsync(ShowButton node)
     {
+        if (node.Panic) { Panic(); return; }
         if (node.IsFolder)
         {
             _path.Add(node.Id);

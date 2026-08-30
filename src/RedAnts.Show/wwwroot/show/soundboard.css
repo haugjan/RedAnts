@@ -124,17 +124,36 @@ html, body {
 .sb-tile:hover { filter: brightness(1.06); }
 .sb-tile:active { transform: scale(0.97); }
 
-.sb-tile-icon { font-size: min(30cqmin, 34cqh); line-height: 1; }
-.sb-tile-label { font-weight: 900; font-size: min(20cqmin, 22cqh); line-height: 1.02; text-align: center; letter-spacing: 0.01em; }
-.sb-tile-sub { font-size: min(9cqmin, 10cqh); font-weight: 600; opacity: 0.85; text-align: center; line-height: 1.1; }
+.sb-tile-icon { font-size: clamp(1.4rem, 44cqmin, 5rem); line-height: 1; }
+.sb-tile-label { font-weight: 900; font-size: clamp(1rem, 30cqmin, 3.4rem); line-height: 1.02; text-align: center; letter-spacing: 0.01em; }
+.sb-tile-sub { font-size: clamp(0.7rem, 12cqmin, 1.3rem); font-weight: 700; opacity: 0.9; text-align: center; line-height: 1.12; }
 
 .sb-tile.folder {
-  background: color-mix(in srgb, var(--tile-color, #555) 30%, #1a1a1d);
+  background: color-mix(in srgb, var(--tile-color, #555) 48%, #16161b);
   color: #fff;
-  border: 2px dashed rgba(255, 255, 255, 0.35);
+  border: none;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.45), inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+    3cqmin -2.4cqmin 0 -0.6cqmin color-mix(in srgb, var(--tile-color, #555) 48%, #16161b),
+    3cqmin -2.4cqmin 0 0 rgba(0, 0, 0, 0.4);
 }
+.sb-tile.folder::before {
+  content: ""; position: absolute; top: 0; left: 0; width: 44%; height: 16%;
+  background: color-mix(in srgb, var(--tile-color, #555) 82%, #000);
+  border-radius: 0 3cqmin 0 0;
+}
+.sb-tile.folder .sb-tile-icon { font-size: clamp(1.6rem, 50cqmin, 6rem); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
 .sb-tile.random { background: linear-gradient(135deg, #e07a1f 0%, #c8102e 100%); }
 .sb-tile.back { background: rgba(255, 255, 255, 0.08); color: var(--ra-muted); box-shadow: none; }
+
+.sb-tile.panic {
+  background: linear-gradient(160deg, #ff2740 0%, #c8102e 100%);
+  border: none;
+  box-shadow: 0 8px 24px rgba(200, 16, 46, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.08em;
+}
+.sb-tile.panic .sb-tile-label { font-size: clamp(1.2rem, 36cqmin, 4rem); }
+.sb-tile.panic:hover { filter: brightness(1.08); }
 
 .sb-badge {
   position: absolute; top: 6cqmin; right: 6cqmin;

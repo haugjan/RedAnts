@@ -21,7 +21,8 @@ public sealed record ShowButton(
     int X = -1,
     int Y = -1,
     int W = 0,
-    int H = 0)
+    int H = 0,
+    bool Panic = false)
 {
     [JsonIgnore] public bool IsFolder => Children is { Count: > 0 };
     [JsonIgnore] public bool IsRandom => Pool is { Count: > 0 };
