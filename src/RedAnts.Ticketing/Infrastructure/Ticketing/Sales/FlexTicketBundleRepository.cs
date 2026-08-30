@@ -220,19 +220,21 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
 
-        if (await ReferenceExistsAsync(db, seasonId, bundle.Reference))
-            throw new DomainException($"Das Bundle „{bundle.Reference}“ ist in dieser Saison bereits vergeben.");
-
-        var record = new FlexTicketBundleRecord
+        var record = await db.FirstOrDefaultAsync<FlexTicketBundleRecord>(
+            "WHERE SeasonId = @0 AND Reference = @1", seasonId, bundle.Reference);
+        if (record is null)
         {
-            SeasonId = bundle.SeasonId,
-            Category = (int)bundle.Category,
-            Reference = bundle.Reference,
-            CreatedAt = bundle.CreatedAt,
-            CreatedByName = bundle.CreatedByName,
-            CreatedByEmail = bundle.CreatedByEmail
-        };
-        await db.InsertAsync(record);
+            record = new FlexTicketBundleRecord
+            {
+                SeasonId = bundle.SeasonId,
+                Category = (int)bundle.Category,
+                Reference = bundle.Reference,
+                CreatedAt = bundle.CreatedAt,
+                CreatedByName = bundle.CreatedByName,
+                CreatedByEmail = bundle.CreatedByEmail
+            };
+            await db.InsertAsync(record);
+        }
 
         for (var i = 0; i < quantity; i++)
         {
@@ -253,8 +255,10 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             });
         }
 
-        return new FlexTicketBundleView(record.Id, record.SeasonId, category, record.Reference,
-            record.CreatedAt, quantity, 0, record.CreatedByName, record.CreatedByEmail);
+        var total = await db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0", record.Id);
+        return new FlexTicketBundleView(record.Id, record.SeasonId, (TicketCategory)record.Category, record.Reference,
+            record.CreatedAt, total, 0, record.CreatedByName, record.CreatedByEmail);
     }
 
     public async Task<FlexTicketBundleView> AddTicketsAsync(int bundleId, TicketCategory category, int quantity,
@@ -307,22 +311,26 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
 
-        if (await ReferenceExistsAsync(db, seasonId, bundle.Reference))
-            throw new DomainException($"Das Bundle „{bundle.Reference}“ ist in dieser Saison bereits vergeben.");
-
-        var record = new FlexTicketBundleRecord
+        var record = await db.FirstOrDefaultAsync<FlexTicketBundleRecord>(
+            "WHERE SeasonId = @0 AND Reference = @1", seasonId, bundle.Reference);
+        if (record is null)
         {
-            SeasonId = bundle.SeasonId,
-            Category = (int)bundle.Category,
-            Reference = bundle.Reference,
-            CreatedAt = bundle.CreatedAt,
-            CreatedByName = bundle.CreatedByName,
-            CreatedByEmail = bundle.CreatedByEmail
-        };
-        await db.InsertAsync(record);
+            record = new FlexTicketBundleRecord
+            {
+                SeasonId = bundle.SeasonId,
+                Category = (int)bundle.Category,
+                Reference = bundle.Reference,
+                CreatedAt = bundle.CreatedAt,
+                CreatedByName = bundle.CreatedByName,
+                CreatedByEmail = bundle.CreatedByEmail
+            };
+            await db.InsertAsync(record);
+        }
 
-        return new FlexTicketBundleView(record.Id, record.SeasonId, category, record.Reference,
-            record.CreatedAt, 0, 0, record.CreatedByName, record.CreatedByEmail);
+        var count = await db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0", record.Id);
+        return new FlexTicketBundleView(record.Id, record.SeasonId, (TicketCategory)record.Category, record.Reference,
+            record.CreatedAt, count, 0, record.CreatedByName, record.CreatedByEmail);
     }
 
     public async Task<bool> DeleteEmptyAsync(int bundleId)
