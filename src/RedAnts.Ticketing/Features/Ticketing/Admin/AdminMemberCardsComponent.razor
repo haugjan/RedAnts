@@ -224,7 +224,10 @@
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newMcReference">Bundle</label>
-                <input id="newMcReference" class="ta-input" type="text" maxlength="100" placeholder="Eindeutig pro Saison" @bind="_newReference" />
+                <input id="newMcReference" class="ta-input" type="text" maxlength="100" list="mcBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_newReference" />
+                <datalist id="mcBundleOptions">
+                    @foreach (var b in BundleRefs) { <option value="@b" /> }
+                </datalist>
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newMcEmail">E-Mail (optional)</label>

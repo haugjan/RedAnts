@@ -320,7 +320,10 @@
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newReference">Bundle</label>
-                <input id="newReference" class="ta-input" type="text" maxlength="50" placeholder="z. B. Charge 2026-A" @bind="_newReference" />
+                <input id="newReference" class="ta-input" type="text" maxlength="50" list="flexBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_newReference" />
+                <datalist id="flexBundleOptions">
+                    @foreach (var b in _bundles) { <option value="@b.Reference" /> }
+                </datalist>
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
