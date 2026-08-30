@@ -68,6 +68,9 @@
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreateBundle">
                     Bundle erstellen
                 </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenImport">
+                    Import CSV
+                </button>
                 <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreate">
                     Ticket erstellen
                 </button>
@@ -382,6 +385,117 @@
     </div>
 }
 
+@if (_showImport)
+{
+    <div class="ta-overlay" @onmousedown="CloseImport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Spieltickets importieren</h2>
+
+            <div class="ta-field">
+                <label class="ta-label">Anlass</label>
+                <div class="ta-readonly">@_selectedEventName</div>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impEventCategory">Kategorie (Vorauswahl, Datei kann überschreiben)</label>
+                <select id="impEventCategory" class="ta-select" @bind="_importCategory">
+                    @foreach (var c in MainCategories)
+                    {
+                        <option value="@c">@c.DisplayName()</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impEventReference">Bundle</label>
+                <input id="impEventReference" class="ta-input" type="text" maxlength="50" list="eventImportBundleOptions" placeholder="z. B. Sponsoren 2026" @bind="_importReference" />
+                <datalist id="eventImportBundleOptions">
+                    @foreach (var b in _bundles) { <option value="@b.Reference" /> }
+                </datalist>
+                <p class="ta-hint">Gilt für Zeilen ohne eigene Bundle-Spalte; eine Bundle-Spalte in der Datei hat Vorrang.</p>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label">Datei (CSV oder Excel)</label>
+                <InputFile OnChange="OnImportFileAsync" accept=".csv,.xlsx,text/csv" />
+                <p class="ta-hint">
+                    Spalten (alle optional): Karten-Nr, Bundle, Kategorie, Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
+                    Die Spalten werden automatisch erkannt; passt die Zuordnung nicht, unten von Hand anpassen.
+                    Zeilen mit bestehender Ticket-Nr werden aktualisiert.
+                    <a href="/admin/event-tickets/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
+                </p>
+            </div>
+
+            @if (_importTable is not null && _importTable.Columns.Count > 0)
+            {
+                <div class="ta-field">
+                    @if (!_showMapping)
+                    {
+                        <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => _showMapping = true">Spaltenzuordnung anpassen</button>
+                    }
+                    else
+                    {
+                        <label class="ta-label">Spaltenzuordnung</label>
+                        <p class="ta-hint">Ordne jeder benötigten Spalte eine Spalte aus deiner Datei zu.</p>
+                        <table class="ta-map">
+                            @foreach (var field in TicketImportCsv.Fields)
+                            {
+                                <tr>
+                                    <td class="ta-map-label">@field.Label</td>
+                                    <td>
+                                        <select class="ta-select" value="@MapValue(field.Key)" @onchange="e => SetMap(field.Key, e.Value?.ToString())">
+                                            <option value="-1">(nicht zuordnen)</option>
+                                            @for (var i = 0; i < _importTable.Columns.Count; i++)
+                                            {
+                                                var idx = i;
+                                                <option value="@idx">@_importTable.Columns[idx]</option>
+                                            }
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </table>
+                        <div class="ta-modal-actions">
+                            <button type="button" class="ta-btn ta-btn-primary" @onclick="ApplyMapping">Zuordnung übernehmen</button>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (_importFileName is not null)
+            {
+                <div class="ta-parse">
+                    <strong>@_importFileName</strong>: @_importRows.Count gültige Zeile@(_importRows.Count == 1 ? "" : "n") erkannt.
+                    @if (_importWarnings.Count > 0)
+                    {
+                        <ul class="ta-warnings">
+                            @foreach (var w in _importWarnings) { <li>@w</li> }
+                        </ul>
+                    }
+                </div>
+                @if (_importErrors.Count > 0)
+                {
+                    <div class="ta-error">
+                        @_importErrors.Count Fehler, bitte in der Datei korrigieren:
+                        <ul class="ta-warnings">
+                            @foreach (var er in _importErrors) { <li>@er</li> }
+                        </ul>
+                    </div>
+                }
+            }
+
+            @if (!string.IsNullOrEmpty(_importError)) { <div class="ta-error">@_importError</div> }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_importSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="RunImportAsync" disabled="@(_importSaving || _importRows.Count == 0 || _importErrors.Count > 0)">
+                    @(_importSaving ? "Wird importiert …" : _importErrors.Count > 0 ? "Bitte Fehler beheben" : $"{_importRows.Count} Spieltickets importieren")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_showExport)
 {
     <div class="ta-overlay" @onmousedown="CloseExport">
@@ -453,6 +567,8 @@
     }
 
     private static readonly TicketCategory[] AllCategories = Enum.GetValues<TicketCategory>();
+    private static readonly TicketCategory[] MainCategories =
+        [TicketCategory.Adult, TicketCategory.Youth, TicketCategory.Child];
     private static readonly TicketStatus[] AllStatuses = [TicketStatus.Valid, TicketStatus.Cancelled];
     private static readonly RedemptionState[] AllRedemptionStates = Enum.GetValues<RedemptionState>();
     private static readonly Func<RedemptionState, string> RedemptionLabel = s => s.DisplayName();
@@ -707,6 +823,120 @@
         _showCreateBundle = true;
     }
     private void CloseCreateBundle() => _showCreateBundle = false;
+
+    private bool _showImport;
+    private bool _importSaving;
+    private string? _importFileName;
+    private string? _importError;
+    private string _importReference = "";
+    private TicketCategory _importCategory = TicketCategory.Adult;
+    private IReadOnlyList<TicketImportRow> _importRows = [];
+    private IReadOnlyList<string> _importWarnings = [];
+    private IReadOnlyList<string> _importErrors = [];
+    private TicketImportTable? _importTable;
+    private Dictionary<string, int> _map = new();
+    private bool _showMapping;
+
+    private void OpenImport()
+    {
+        _importFileName = null;
+        _importReference = "";
+        _importCategory = TicketCategory.Adult;
+        _importRows = [];
+        _importWarnings = [];
+        _importErrors = [];
+        _importError = null;
+        _importTable = null;
+        _map = new();
+        _showMapping = false;
+        _showImport = true;
+    }
+    private void CloseImport() { if (!_importSaving) _showImport = false; }
+
+    private async Task OnImportFileAsync(InputFileChangeEventArgs e)
+    {
+        _importError = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+
+            var table = TicketImportCsv.ReadTable(buffer.ToArray(), e.File.Name);
+            _importFileName = e.File.Name;
+            _importTable = table;
+            _map = new Dictionary<string, int>(table.AutoMap);
+
+            if (table.Columns.Count == 0 || table.Rows.Count == 0)
+            {
+                _importRows = [];
+                _importWarnings = [];
+                _importErrors = ["Keine Datenzeilen gefunden. Bitte prüfe die Datei."];
+                _showMapping = false;
+                return;
+            }
+
+            if (TicketImportCsv.EssentialMapped(_map))
+            {
+                ApplyMapping();
+            }
+            else
+            {
+                _importRows = [];
+                _importWarnings = [];
+                _importErrors = [];
+                _importError = "Spalten konnten nicht automatisch erkannt werden. Bitte unten von Hand zuordnen.";
+                _showMapping = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _importFileName = null;
+            _importTable = null;
+            _importRows = [];
+            _importWarnings = [];
+            _importErrors = [];
+            _importError = $"Datei konnte nicht gelesen werden: {ex.Message}";
+        }
+    }
+
+    private int MapValue(string key) => _map.TryGetValue(key, out var idx) ? idx : -1;
+
+    private void SetMap(string key, string? value)
+    {
+        if (int.TryParse(value, out var idx) && idx >= 0) _map[key] = idx;
+        else _map.Remove(key);
+    }
+
+    private void ApplyMapping()
+    {
+        if (_importTable is null) return;
+        _importError = null;
+        var result = TicketImportCsv.BuildRows(_importTable, _map);
+        _importRows = result.Rows;
+        _importWarnings = result.Warnings;
+        _importErrors = result.Errors;
+        _showMapping = false;
+    }
+
+    private async Task RunImportAsync()
+    {
+        _importError = null;
+        if (SelectedEventId <= 0) { _importError = "Bitte zuerst einen Anlass wählen."; return; }
+        if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte ein Bundle angeben."; return; }
+        if (_importErrors.Count > 0) { _importError = "Bitte zuerst die Fehler in der Datei beheben."; return; }
+        if (_importRows.Count == 0) { _importError = "Bitte eine Datei mit mindestens einer Zeile wählen."; return; }
+        _importSaving = true;
+        try
+        {
+            await Bundles.ImportUnifiedAsync(SelectedEventId, _importRows, _importReference.Trim(),
+                _importCategory, Identity?.Name ?? AdminUser, Identity?.Email);
+            _showImport = false;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _importError = ex.Message; }
+        finally { _importSaving = false; }
+    }
 
     private async Task CreateBundleAsync()
     {

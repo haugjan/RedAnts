@@ -21,4 +21,8 @@ public interface IEventTicketBundles
 
     Task<EventTicketBundleView> CreateAsync(int eventId, TicketCategory category, string reference, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null);
+
+    Task<(int Created, int Updated)> ImportUnifiedAsync(int eventId, IReadOnlyList<TicketImportRow> rows,
+        string defaultBundle, TicketCategory defaultCategory,
+        string? createdByName = null, string? createdByEmail = null);
 }
