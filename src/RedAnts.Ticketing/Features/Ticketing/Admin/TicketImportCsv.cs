@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.Ports;
 
 namespace RedAnts.Features.Ticketing.Admin;
 
@@ -10,9 +11,6 @@ public sealed record TicketImportTable(
     IReadOnlyList<string> Columns,
     IReadOnlyList<IReadOnlyList<string>> Rows,
     IReadOnlyDictionary<string, int> AutoMap);
-
-public sealed record TicketImportRow(
-    string? CardNo, string? Bundle, string? Category, int? Admissions, CardHolder Holder);
 
 public sealed record TicketImportResult(
     IReadOnlyList<TicketImportRow> Rows, IReadOnlyList<string> Warnings, IReadOnlyList<string> Errors);
