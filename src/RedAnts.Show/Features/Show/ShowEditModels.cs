@@ -6,8 +6,8 @@ public sealed class EditSound
 {
     public SoundKind Kind { get; set; } = SoundKind.Local;
     public string Ref { get; set; } = "";
-    public int StartSec { get; set; }
-    public int? DurationSec { get; set; }
+    public double StartSec { get; set; }
+    public double? DurationSec { get; set; }
     public bool Shuffle { get; set; }
 
     public EditSound Clone() => new() { Kind = Kind, Ref = Ref, StartSec = StartSec, DurationSec = DurationSec, Shuffle = Shuffle };

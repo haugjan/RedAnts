@@ -75,6 +75,32 @@
         window.showPreviewStop = function () {
             try { if (showPreviewAudio) { showPreviewAudio.pause(); showPreviewAudio = null; } } catch (e) { }
         };
+
+        window.showEditSeek = function (frac) {
+            if (showEditAudio && showEditAudio.duration) {
+                try { showEditAudio.currentTime = frac * showEditAudio.duration; } catch (e) { }
+                showEditReport(showEditAudio.currentTime, showEditAudio.duration || 0);
+                return;
+            }
+            if (window.showBoard && showBoard.seek) { showBoard.seek(frac); }
+        };
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && window.__showDotNet) {
+                window.__showDotNet.invokeMethodAsync('OnEditorEscape');
+            }
+        });
+
+        (function () {
+            var seeking = false, track = null;
+            function frac(el, x) { var r = el.getBoundingClientRect(); return Math.min(1, Math.max(0, (x - r.left) / r.width)); }
+            document.addEventListener('pointerdown', function (e) {
+                var tl = e.target.closest && e.target.closest('.se-tl-track'); if (!tl) return;
+                seeking = true; track = tl; window.showEditSeek(frac(tl, e.clientX));
+            });
+            document.addEventListener('pointermove', function (e) { if (seeking && track) window.showEditSeek(frac(track, e.clientX)); });
+            document.addEventListener('pointerup', function () { seeking = false; track = null; });
+        })();
         // Drag-and-drop auf die Upload-Zone: Dateien an das versteckte File-Input weiterreichen.
         document.addEventListener('dragover', function (e) {
             var z = e.target.closest && e.target.closest('.se-drop');

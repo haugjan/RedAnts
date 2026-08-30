@@ -57,9 +57,11 @@
             <div class="se-tree">
                 <div class="se-prof-head">
                     <input class="se-in" @bind="_profile.Name" @bind:event="oninput" />
-                    <input class="se-color" type="color" @bind="_profile.Color" />
-                    <button class="se-btn sm" title="Profil duplizieren" @onclick="DuplicateProfile">⧉</button>
-                    <button class="se-btn sm danger" title="Profil löschen" @onclick="DeleteProfile">🗑</button>
+                    <input class="se-color" type="color" @bind="_profile.Color" title="Profilfarbe" />
+                </div>
+                <div class="se-prof-btns">
+                    <button class="se-btn sm" @onclick="DuplicateProfile">⧉ Duplizieren</button>
+                    <button class="se-btn sm danger" @onclick="DeleteProfile">🗑 Löschen</button>
                 </div>
                 <div class="se-ftree">
                     <button class="se-fnode @(_levelStack.Count == 0 ? "cur" : "")" @onclick="() => GoLevel(0)">🏠 Hauptseite</button>
@@ -86,11 +88,16 @@
                              data-id="@node.Id" data-x="@node.X" data-y="@node.Y" data-w="@node.W" data-h="@node.H"
                              @onclick="() => Select(node)"
                              style="grid-column:@(node.X + 1) / span @node.W; grid-row:@(node.Y + 1) / span @node.H; --c:@node.Color">
-                            <span class="se-ct-ico">@(string.IsNullOrEmpty(node.Icon) ? (node.Kind == NodeKind.Folder ? "📁" : "🔊") : node.Icon)</span>
-                            <span class="se-ct-lbl">@node.Label</span>
                             @if (node.Kind == NodeKind.Folder)
                             {
+                                <span class="se-ct-fhead"><span>📂</span>@node.Label</span>
+                                <span class="se-ct-ico fbody">@(string.IsNullOrEmpty(node.Icon) ? "📁" : node.Icon)</span>
                                 <button class="se-ct-open" @onclick:stopPropagation="true" @onclick="() => EnterLevel(node)">öffnen ↳</button>
+                            }
+                            else
+                            {
+                                <span class="se-ct-ico">@(string.IsNullOrEmpty(node.Icon) ? "🔊" : node.Icon)</span>
+                                <span class="se-ct-lbl">@node.Label</span>
                             }
                             @if (node.Panic)
                             {
@@ -112,7 +119,7 @@
                     var n = _selected;
                     <div class="se-editwrap" @onmousedown="() => _downOnBackdrop = true" @onclick="OnWrapClick">
                     <div class="se-editcard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
-                    <button class="se-editclose" @onclick="CloseEditor">✕</button>
+                    <button class="se-editclose" @onclick="AttemptClose">✕</button>
                     <div class="se-preview" style="--c:@n.Color">
                         <span class="se-pv-icon">@(string.IsNullOrEmpty(n.Icon) ? "🔊" : n.Icon)</span>
                         <span class="se-pv-label">@n.Label</span>
@@ -122,6 +129,8 @@
                         }
                     </div>
 
+                    <div class="se-editbody">
+                    <div class="se-col">
                     <div class="se-grid">
                         <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
                         <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
@@ -158,6 +167,8 @@
                             }
                         </div>
                     </div>
+                    </div>
+                    <div class="se-col">
 
                     @if (n.Kind == NodeKind.Sound)
                     {
@@ -237,25 +248,25 @@
                         }
 
                         <div class="se-timeline">
-                            <div class="se-tl-track">
+                            <div class="se-tl-track" title="Klicken/ziehen zum Einspringen">
                                 <div class="se-tl-sel" style="left:@Pct(n.Sound.StartSec, TrackMax)%; width:@Pct(n.Sound.DurationSec ?? 0, TrackMax)%;"></div>
                                 <div class="se-tl-mark start" style="left:@Pct(n.Sound.StartSec, TrackMax)%;" title="Cue"></div>
-                                @if (n.Sound.DurationSec is int)
+                                @if (n.Sound.DurationSec is { } dsec)
                                 {
-                                    <div class="se-tl-mark end" style="left:@Pct(n.Sound.StartSec + (n.Sound.DurationSec ?? 0), TrackMax)%;" title="Ende"></div>
+                                    <div class="se-tl-mark end" style="left:@Pct(n.Sound.StartSec + dsec, TrackMax)%;" title="Ende"></div>
                                 }
                                 <div class="se-tl-head @(_playing ? "on" : "")" style="left:@Pct(_playPos, TrackMax)%;"></div>
                             </div>
-                            <div class="se-tl-times"><span>@Mmss((int)_playPos)</span><span>@Mmss(TrackMax)</span></div>
+                            <div class="se-tl-times"><span>@Clock(_playPos)</span><span>@Mmss(TrackMax)</span></div>
                         </div>
 
-                        <div class="se-fader">
-                            <span class="se-lbl">Cue-Start: @Mmss(n.Sound.StartSec)</span>
-                            <input type="range" min="0" max="@TrackMax" step="1" @bind="n.Sound.StartSec" @bind:event="oninput" />
-                        </div>
-                        <div class="se-fader">
-                            <span class="se-lbl">Dauer: @(n.Sound.DurationSec is int dd ? Mmss(dd) : "ganzer Song")</span>
-                            <input type="range" min="0" max="@TrackMax" step="1" value="@(n.Sound.DurationSec ?? 0)" @oninput="OnDurationFader" />
+                        <div class="se-grid">
+                            <label>Cue-Start (m:ss.mmm)
+                                <input value="@Clock(n.Sound.StartSec)" @onchange="e => SetCueText(e, n.Sound)" placeholder="0:00.000" />
+                            </label>
+                            <label>Länge (leer = ganzer Song)
+                                <input value="@(n.Sound.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, n.Sound)" placeholder="ganzer Song" />
+                            </label>
                         </div>
 
                         <div class="se-testrow">
@@ -290,6 +301,8 @@
                     {
                         <p class="se-muted">Ordner: mit „öffnen" (Raster) oder links reingehen, dann darin Kacheln anlegen.</p>
                     }
+                    </div>
+                    </div>
                     @if (_selectedIsNew && !IsTileValid(n))
                     {
                         <p class="se-warn">Bitte einen Song/eine Datei wählen. „Abbrechen" verwirft die neue Kachel.</p>
@@ -302,6 +315,20 @@
                         <button class="se-btn sm danger se-editdel" @onclick="DeleteSelected">🗑 Kachel löschen</button>
                     </div>
                     </div>
+                    </div>
+                }
+
+                @if (_askDiscard)
+                {
+                    <div class="se-choosewrap" @onclick="KeepEditing">
+                        <div class="se-choosecard" @onclick:stopPropagation="true">
+                            <h3>Kein Song gewählt</h3>
+                            <p class="se-muted" style="margin:0 0 14px">Diese Kachel hat noch keinen Song/keine Datei.</p>
+                            <div class="se-choosebtns">
+                                <button class="se-btn" @onclick="DiscardTile">Verwerfen</button>
+                                <button class="se-btn primary" @onclick="KeepEditing">Weiterbearbeiten</button>
+                            </div>
+                        </div>
                     </div>
                 }
 
@@ -699,12 +726,24 @@
         _playing = false;
     }
 
-    private void SetCueFromPos(EditSound s) => s.StartSec = (int)Math.Round(_playPos);
+    private void SetCueFromPos(EditSound s) => s.StartSec = Math.Round(_playPos, 3);
 
     private void SetEndFromPos(EditSound s)
     {
-        var dur = (int)Math.Round(_playPos) - s.StartSec;
+        var dur = Math.Round(_playPos - s.StartSec, 3);
         s.DurationSec = dur > 0 ? dur : null;
+    }
+
+    private void SetCueText(ChangeEventArgs e, EditSound s)
+    {
+        var v = ParseClock(e.Value?.ToString());
+        s.StartSec = v is { } x && x >= 0 ? x : 0;
+    }
+
+    private void SetLenText(ChangeEventArgs e, EditSound s)
+    {
+        var v = ParseClock(e.Value?.ToString());
+        s.DurationSec = v is { } x && x > 0 ? x : null;
     }
 
     private bool _colorOpen;
@@ -719,18 +758,45 @@
         "#8ecae6", "#ffb703", "#e63946", "#f72585", "#111318", "#6c757d",
     ];
 
+    private bool _askDiscard;
+
     private void OnWrapClick()
     {
-        if (_downOnBackdrop) CloseEditor();
+        if (_downOnBackdrop) AttemptClose();
         _downOnBackdrop = false;
+    }
+
+    private void AttemptClose()
+    {
+        if (_selected is { } n && _selectedIsNew && !IsTileValid(n)) { _askDiscard = true; return; }
+        CloseEditor();
+    }
+
+    private void DiscardTile()
+    {
+        if (_selected is { } n && _profile is not null) RemoveFrom(_profile.Root, n);
+        _askDiscard = false;
+        CloseEditor();
+    }
+
+    private void KeepEditing() => _askDiscard = false;
+
+    [JSInvokable]
+    public Task OnEditorEscape()
+    {
+        if (_askDiscard) _askDiscard = false;
+        else if (_searchOpen) CloseSearch();
+        else if (_chooseKind) CancelNewTile();
+        else if (_selected is not null) AttemptClose();
+        else return Task.CompletedTask;
+        return InvokeAsync(StateHasChanged);
     }
 
     private void CloseEditor()
     {
-        if (_selected is { } n && _selectedIsNew && !IsTileValid(n) && _profile is not null)
-            RemoveFrom(_profile.Root, n);
         _selected = null;
         _selectedIsNew = false;
+        _askDiscard = false;
         _colorOpen = false; _emojiOpen = false; _searchOpen = false;
         _playing = false; _playPos = 0;
         _trackInfo = null; _ctxInfo = null;
@@ -740,11 +806,28 @@
 
     private static string Mmss(int s) => $"{s / 60}:{s % 60:00}";
 
-    private void OnDurationFader(ChangeEventArgs e)
+    private static string Clock(double sec)
     {
-        if (_selected is null) return;
-        var v = int.TryParse(e.Value?.ToString(), out var n) ? n : 0;
-        _selected.Sound.DurationSec = v <= 0 ? null : v;
+        if (sec < 0) sec = 0;
+        var total = (int)Math.Round(sec * 1000);
+        var ms = total % 1000; var s = total / 1000 % 60; var m = total / 60000;
+        return $"{m}:{s:00}.{ms:000}";
+    }
+
+    private static double? ParseClock(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var t = input.Trim().Replace(',', '.');
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var num = System.Globalization.NumberStyles.Float;
+        if (t.Contains(':'))
+        {
+            var parts = t.Split(':', 2);
+            if (int.TryParse(parts[0], num, inv, out var mm) && double.TryParse(parts[1], num, inv, out var ss))
+                return mm * 60 + ss;
+            return null;
+        }
+        return double.TryParse(t, num, inv, out var v) ? v : null;
     }
 
     private static bool IsContextRef(string? r) =>
@@ -932,7 +1015,8 @@
     }
     .se { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; font-size: 15px; color: var(--ra-text);
         background: radial-gradient(120% 80% at 50% -10%, rgba(225,19,48,0.18) 0%, transparent 55%), var(--ra-bg);
-        min-height: 100vh; padding: 12px clamp(12px, 2vw, 28px); }
+        min-height: 100vh; padding: 12px clamp(12px, 2vw, 28px); overflow-x: hidden; box-sizing: border-box; max-width: 100vw; }
+    .se *, .se *::before, .se *::after { box-sizing: border-box; }
 
     .se-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
     .se-top h1 { font-size: 1.2rem; margin: 0; font-weight: 800; letter-spacing: 0.01em; }
@@ -958,10 +1042,10 @@
     .se-tab.active { background: var(--ra-red); color: #fff; border-color: var(--ra-red); box-shadow: 0 6px 18px rgba(225,19,48,0.35); }
     .se-tab.add { color: #ff9aa6; }
 
-    .se-body { display: grid; grid-template-columns: 260px 1fr; gap: 22px; align-items: start; }
+    .se-body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
     @@media (max-width: 900px) { .se-body { grid-template-columns: 1fr; } }
 
-    .se-tree, .se-detail { background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: var(--ra-radius); padding: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
+    .se-tree, .se-detail { min-width: 0; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: var(--ra-radius); padding: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
     .se-prof-head { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
     .se-prof-head .se-in { flex: 1; }
     .se-in { border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.6rem 0.75rem; font: inherit; background: var(--ra-in); color: var(--ra-text); }
@@ -1027,7 +1111,7 @@
     .se-ct-open { position: absolute; bottom: 2px; left: 3px; appearance: none; border: none; background: rgba(0,0,0,0.35); color: #fff; border-radius: 5px; font-size: min(14cqmin, 0.6rem); padding: 0 4px; cursor: pointer; }
 
     .se-editwrap { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
-    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(96vw, 760px); max-height: 88vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
+    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 22px; width: min(96vw, 900px); max-height: 92vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
     .se-editclose { position: absolute; top: 14px; right: 14px; appearance: none; border: none; background: var(--ra-panel2); color: var(--ra-text); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
     .se-editclose:hover { background: #3a3a45; }
     .se-editdel { margin-top: 18px; width: 100%; }
@@ -1096,7 +1180,20 @@
     .se-editfoot .se-editdel { margin-top: 0; flex: 1; }
     .se-warn { color: #ffd166; font-weight: 700; font-size: 0.9rem; margin: 8px 0 0; }
 
-    .se-ct.folder { border: 2px dashed rgba(255,255,255,0.4); box-shadow: 0 2px 8px rgba(0,0,0,0.35), 2.5cqmin -2cqmin 0 -0.5cqmin color-mix(in srgb, var(--c) 60%, #000); }
+    .se-ct.folder { background: color-mix(in srgb, var(--c) 82%, #000); padding-top: 18px; justify-content: center; }
+    .se-ct-fhead { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 4px; padding: 2px 6px;
+        background: color-mix(in srgb, var(--c) 100%, #000); filter: brightness(0.6); font-weight: 900; font-size: min(18cqmin, 0.75rem);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .se-ct-ico.fbody { font-size: min(40cqmin, 1.8rem); }
     .se-ct.panic { background: linear-gradient(160deg, #ff2740 0%, #c8102e 100%); }
     .se-ct-lock { position: absolute; top: 3px; right: 3px; font-size: min(16cqmin, 0.8rem); opacity: 0.9; }
+
+    .se-prof-btns { display: flex; gap: 8px; margin-bottom: 12px; }
+    .se-prof-btns .se-btn { flex: 1; }
+
+    .se-editbody { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+    .se-editbody .se-col { min-width: 0; }
+    @@media (max-width: 720px) { .se-editbody { grid-template-columns: 1fr; } }
+
+    .se-tl-track { cursor: pointer; }
 </style>

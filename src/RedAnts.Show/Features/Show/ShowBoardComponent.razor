@@ -66,7 +66,8 @@
     @{
         var tiles = CurrentNodes();
         var hasBack = _path.Count > 0;
-        var layout = ShowLayout.Resolve(tiles, hasBack);
+        var hasPanic = tiles.Any(t => t.Panic);
+        var layout = ShowLayout.Resolve(tiles, hasBack, !hasPanic);
     }
     <main class="sb-board">
         @if (hasBack)
@@ -85,20 +86,31 @@
             <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(node.Panic ? "panic" : "") @(isActive ? "active" : "")"
                     style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
                     @onclick="() => HandleButtonAsync(node)">
-                <span class="sb-tile-icon">@(node.Icon ?? (isFolder ? "📁" : "🔊"))</span>
-                <span class="sb-tile-label">@node.Label</span>
-                @if (!string.IsNullOrEmpty(node.Subtitle) && !node.Panic)
-                {
-                    <span class="sb-tile-sub">@node.Subtitle</span>
-                }
                 @if (isFolder)
                 {
-                    <span class="sb-badge">📂 Ordner öffnen</span>
+                    <span class="sb-fhead"><span class="sb-fico">📂</span>@node.Label</span>
+                    <span class="sb-tile-icon fbody">@(node.Icon ?? "📁")</span>
+                }
+                else
+                {
+                    <span class="sb-tile-icon">@(node.Icon ?? "🔊")</span>
+                    <span class="sb-tile-label">@node.Label</span>
+                    @if (!string.IsNullOrEmpty(node.Subtitle) && !node.Panic)
+                    {
+                        <span class="sb-tile-sub">@node.Subtitle</span>
+                    }
                 }
                 @if (isSpotify)
                 {
                     <span class="sb-badge spotify">Spotify</span>
                 }
+            </button>
+        }
+        @if (!hasPanic)
+        {
+            <button class="sb-tile panic" style="grid-column:@(ShowLayout.PanicX + 1) / span @ShowLayout.PanicW; grid-row:@(ShowLayout.PanicY + 1) / span @ShowLayout.PanicH" @onclick="Panic">
+                <span class="sb-tile-icon">⏹</span>
+                <span class="sb-tile-label">PANIC</span>
             </button>
         }
     </main>
@@ -325,7 +337,7 @@
         var status = await JS.InvokeAsync<string>("showBoard.playSpotify", sound.Ref, sound.StartSec * 1000, sound.Shuffle);
         if (status == "ok")
         {
-            var endsAt = sound.DurationSec is int d ? DateTime.UtcNow.AddSeconds(d) : (DateTime?)null;
+            var endsAt = sound.DurationSec is { } d ? DateTime.UtcNow.AddSeconds(d) : (DateTime?)null;
             _nowPlaying = new NowPlaying(id, label, endsAt);
             _path.Clear();
         }

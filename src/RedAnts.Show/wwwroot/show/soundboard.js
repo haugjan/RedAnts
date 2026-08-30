@@ -265,6 +265,10 @@
     try { return player ? await player.getCurrentState() : null; } catch (e) { return null; }
   };
 
+  board.seek = async function (frac) {
+    try { if (!player) return; const st = await player.getCurrentState(); if (st) await player.seek(Math.floor(frac * (st.duration || 0))); } catch (e) { }
+  };
+
   // Stellt sicher, dass der Spotify-Player bereit ist (für den Editor-Test).
   board.ensureSpotify = async function () {
     if (!board.isLoggedIn()) return false;
