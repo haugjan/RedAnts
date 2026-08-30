@@ -820,24 +820,24 @@
         _saving = true;
         try
         {
-            if (await Bundles.ReferenceExistsAsync(SelectedSeasonId, reference))
+            var existing = _bundles.FirstOrDefault(b =>
+                string.Equals(b.Reference, reference, StringComparison.OrdinalIgnoreCase));
+            FlexTicketBundleView result;
+            if (existing is not null)
             {
-                var existingBundle = _bundles.FirstOrDefault(b =>
-                    string.Equals(b.Reference, reference, StringComparison.OrdinalIgnoreCase));
-                if (existingBundle is null || _newQuantity < 1)
+                result = existing;
+                if (_newQuantity >= 1)
                 {
-                    _createError = existingBundle is null
-                        ? $"Das Bundle „{reference}“ ist in dieser Saison bereits vergeben."
-                        : $"Das Bundle „{reference}“ existiert bereits. Für weitere Tickets bitte Anzahl mindestens 1 wählen.";
-                    return;
+                    var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                        [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
+                        Identity?.Name ?? AdminUser, _newPaymentSource);
+                    result = await Bundles.AddTicketsAsync(existing.Id, _newCategory, _newQuantity,
+                        Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
                 }
-                _confirmAddBundle = existingBundle;
-                return;
             }
-            FlexTicketBundleView created;
-            if (_newQuantity == 0)
+            else if (_newQuantity == 0)
             {
-                created = await Bundles.CreateEmptyAsync(SelectedSeasonId, _newCategory, reference,
+                result = await Bundles.CreateEmptyAsync(SelectedSeasonId, _newCategory, reference,
                     Identity?.Name ?? AdminUser, Identity?.Email);
             }
             else
@@ -845,12 +845,12 @@
                 var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                     [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
                     Identity?.Name ?? AdminUser, _newPaymentSource);
-                created = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
+                result = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
                     Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
             }
             _showCreate = false;
             _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
-            SelectedBundleId = created.Id;
+            SelectedBundleId = result.Id;
             await ReloadTicketsAsync();
         }
         catch (DomainException ex) { _createError = ex.Message; }

@@ -49,19 +49,21 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
 
-        if (await ReferenceExistsAsync(db, eventId, bundle.Reference))
-            throw new DomainException($"Der Bundlename „{bundle.Reference}“ ist für diesen Anlass bereits vergeben.");
-
-        var record = new EventTicketBundleRecord
+        var record = await db.FirstOrDefaultAsync<EventTicketBundleRecord>(
+            "WHERE EventId = @0 AND Reference = @1", eventId, bundle.Reference);
+        if (record is null)
         {
-            EventId = bundle.EventId,
-            Category = (int)bundle.Category,
-            Reference = bundle.Reference,
-            CreatedAt = bundle.CreatedAt,
-            CreatedByName = bundle.CreatedByName,
-            CreatedByEmail = bundle.CreatedByEmail
-        };
-        await db.InsertAsync(record);
+            record = new EventTicketBundleRecord
+            {
+                EventId = bundle.EventId,
+                Category = (int)bundle.Category,
+                Reference = bundle.Reference,
+                CreatedAt = bundle.CreatedAt,
+                CreatedByName = bundle.CreatedByName,
+                CreatedByEmail = bundle.CreatedByEmail
+            };
+            await db.InsertAsync(record);
+        }
 
         for (var i = 0; i < quantity; i++)
         {
@@ -83,8 +85,10 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
             });
         }
 
-        return new EventTicketBundleView(record.Id, record.EventId, category, record.Reference,
-            record.CreatedAt, quantity, 0, record.CreatedByName, record.CreatedByEmail);
+        var total = await db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM EventTickets WHERE BundleId = @0", record.Id);
+        return new EventTicketBundleView(record.Id, record.EventId, (TicketCategory)record.Category, record.Reference,
+            record.CreatedAt, total, 0, record.CreatedByName, record.CreatedByEmail);
     }
 
     private static async Task<bool> ReferenceExistsAsync(IDatabase db, int eventId, string reference)
