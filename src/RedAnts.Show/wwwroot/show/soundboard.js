@@ -12,6 +12,27 @@
   const counts = new Map();
   let volume = 0.9;
 
+  // iOS/Safari: Wiedergabe wird sonst blockiert, weil der Tap über einen
+  // Blazor-Server-Roundtrip läuft und play() dadurch ausserhalb der Nutzergeste
+  // liegt. Bei jeder echten Geste den Audio-Kanal freischalten.
+  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  let audioCtx = null;
+  let unlockEl = null;
+  function unlockAudio() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) { audioCtx = audioCtx || new Ctx(); if (audioCtx.state !== 'running') audioCtx.resume(); }
+    } catch (e) {}
+    try {
+      if (!unlockEl) { unlockEl = new Audio(SILENT_WAV); unlockEl.volume = 0; }
+      const p = unlockEl.play();
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+  ['touchend', 'pointerup', 'mousedown', 'keydown'].forEach(function (ev) {
+    document.addEventListener(ev, unlockAudio, { passive: true });
+  });
+
   function emitActive() {
     if (dotnet) dotnet.invokeMethodAsync('OnActiveChanged', Array.from(counts.keys()));
   }
