@@ -27,8 +27,12 @@ public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> optio
         if (string.IsNullOrEmpty(ext)) ext = ".mp3";
         var blobPath = $"sounds/{stem}-{Guid.NewGuid().ToString("N")[..6]}{ext}";
         var blob = container.GetBlobClient(blobPath);
-        content.Position = 0;
-        await blob.UploadAsync(content, new BlobUploadOptions
+
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer);
+        buffer.Position = 0;
+
+        await blob.UploadAsync(buffer, new BlobUploadOptions
         {
             HttpHeaders = new BlobHttpHeaders { ContentType = string.IsNullOrWhiteSpace(contentType) ? "audio/mpeg" : contentType }
         });
