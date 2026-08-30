@@ -235,6 +235,13 @@
                 <label class="ta-label" for="newSpEmail">E-Mail (optional)</label>
                 <input id="newSpEmail" class="ta-input" type="email" maxlength="200" placeholder="für den Kartenversand" @bind="_newEmail" />
             </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newSpReference">Bundle (optional)</label>
+                <input id="newSpReference" class="ta-input" type="text" maxlength="100" list="spBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_newReference" />
+                <datalist id="spBundleOptions">
+                    @foreach (var b in Bundles()) { <option value="@b" /> }
+                </datalist>
+            </div>
 
             @if (_createError is not null)
             {
@@ -729,6 +736,7 @@
     private string _newLastName = "";
     private string _newCompany = "";
     private string _newEmail = "";
+    private string _newReference = "";
     private string? _createError;
 
     private void OnNewPriceChanged()
@@ -750,7 +758,7 @@
         _newPrice = 0m;
         _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
         _newBuyerType = BuyerType.Private;
-        _newFirstName = _newLastName = _newCompany = _newEmail = "";
+        _newFirstName = _newLastName = _newCompany = _newEmail = _newReference = "";
         _createError = null;
         _showCreate = true;
     }
@@ -776,6 +784,7 @@
                 Identity.Name, paymentSource);
             await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newTierId, _newPrice, order.Id,
                 buyer, Identity.Name, Identity.Email,
+                reference: string.IsNullOrWhiteSpace(_newReference) ? null : _newReference.Trim(),
                 email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim()));
             _showCreate = false;
             await ReloadPassesAsync();
