@@ -225,4 +225,14 @@ public static class TicketCategoryExtensions
         TicketCategory.Youth => TicketCategory.YouthPromo,
         _ => null
     };
+
+    public static TicketCategory ParseMainCategory(string? text, TicketCategory fallback)
+    {
+        var t = (text ?? "").Trim().ToLowerInvariant();
+        if (t.Length == 0) return fallback;
+        if (t.Contains("erwachs") || t.Contains("adult")) return TicketCategory.Adult;
+        if (t.Contains("jugend") || t.Contains("youth") || t.Contains("junior")) return TicketCategory.Youth;
+        if (t.Contains("kind") || t.Contains("child")) return TicketCategory.Child;
+        return fallback;
+    }
 }

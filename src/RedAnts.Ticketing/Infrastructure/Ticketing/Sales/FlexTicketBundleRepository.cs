@@ -333,6 +333,104 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             record.CreatedAt, count, 0, record.CreatedByName, record.CreatedByEmail);
     }
 
+    public async Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,
+        string defaultBundle, TicketCategory defaultCategory,
+        string? createdByName = null, string? createdByEmail = null)
+    {
+        if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
+        var fallbackBundle = (defaultBundle ?? "").Trim();
+        if (fallbackBundle.Length == 0) throw new DomainException("Ein Bundle muss angegeben werden.");
+        if (rows.Count == 0) return (0, 0);
+
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        var bundleIds = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var created = 0;
+        var updated = 0;
+
+        async Task<int> BundleIdForAsync(string reference, TicketCategory category)
+        {
+            if (bundleIds.TryGetValue(reference, out var cached)) return cached;
+            var record = await db.FirstOrDefaultAsync<FlexTicketBundleRecord>(
+                "WHERE SeasonId = @0 AND Reference = @1", seasonId, reference);
+            if (record is null)
+            {
+                var bundle = FlexTicketBundle.Create(seasonId, category, reference, createdByName, createdByEmail);
+                record = new FlexTicketBundleRecord
+                {
+                    SeasonId = bundle.SeasonId,
+                    Category = (int)bundle.Category,
+                    Reference = bundle.Reference,
+                    CreatedAt = bundle.CreatedAt,
+                    CreatedByName = bundle.CreatedByName,
+                    CreatedByEmail = bundle.CreatedByEmail
+                };
+                await db.InsertAsync(record);
+            }
+            bundleIds[reference] = record.Id;
+            return record.Id;
+        }
+
+        foreach (var row in rows)
+        {
+            var reference = string.IsNullOrWhiteSpace(row.Bundle) ? fallbackBundle : row.Bundle.Trim();
+            var category = TicketCategoryExtensions.ParseMainCategory(row.Category, defaultCategory);
+            var bundleId = await BundleIdForAsync(reference, category);
+            var h = row.Holder;
+            var birthday = h.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null;
+            var buyerType = (int)(h.IsCompany ? BuyerType.Company : BuyerType.Private);
+
+            var code = (row.CardNo ?? "").Trim().ToLowerInvariant();
+            if (code.Length == 8 && code.All(Uri.IsHexDigit))
+            {
+                var affected = await db.ExecuteAsync(
+                    "UPDATE SeasonSingleTickets SET Category=@0, BundleId=@1, BuyerType=@2, BuyerFirstName=@3, " +
+                    "BuyerLastName=@4, BuyerCompany=@5, BuyerEmail=@6, Salutation=@7, Birthday=@8, Street=@9, " +
+                    "AddressLine2=@10, PostalCode=@11, City=@12, Country=@13, Phone=@14 " +
+                    "WHERE SeasonId=@15 AND Uuid LIKE @16",
+                    (object[])new object?[]
+                    {
+                        (int)category, bundleId, buyerType, h.FirstName, h.LastName, h.Company, h.Email,
+                        h.Salutation, birthday, h.Street, h.AddressLine2, h.PostalCode, h.City, h.Country, h.Phone,
+                        seasonId, code + "%"
+                    });
+                if (affected > 0) { updated++; continue; }
+            }
+
+            var ticket = SeasonSingleTicket.CreateForBundle(seasonId, category, 0m, bundleId);
+            var uuid = await TicketCode.AllocateAsync(db, ticket.Uuid);
+            await db.InsertAsync(new SeasonSingleTicketRecord
+            {
+                Uuid = uuid.ToString(),
+                SeasonId = ticket.SeasonId,
+                Category = (int)ticket.Category,
+                Price = ticket.Price,
+                OrderId = ticket.OrderId,
+                Status = (int)ticket.Status,
+                CreatedAt = ticket.CreatedAt,
+                RedeemedEventId = ticket.RedeemedEventId,
+                Redeemed = ticket.Redeemed,
+                BundleId = ticket.BundleId,
+                BuyerType = buyerType,
+                BuyerFirstName = h.FirstName,
+                BuyerLastName = h.LastName,
+                BuyerCompany = h.Company,
+                BuyerEmail = h.Email,
+                Salutation = h.Salutation,
+                Birthday = birthday,
+                Street = h.Street,
+                AddressLine2 = h.AddressLine2,
+                PostalCode = h.PostalCode,
+                City = h.City,
+                Country = h.Country,
+                Phone = h.Phone
+            });
+            created++;
+        }
+
+        return (created, updated);
+    }
+
     public async Task<bool> DeleteEmptyAsync(int bundleId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

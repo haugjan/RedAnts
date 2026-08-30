@@ -84,4 +84,8 @@ public interface IFlexTicketBundles
         string? createdByName = null, string? createdByEmail = null);
 
     Task<bool> DeleteEmptyAsync(int bundleId);
+
+    Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,
+        string defaultBundle, TicketCategory defaultCategory,
+        string? createdByName = null, string? createdByEmail = null);
 }
