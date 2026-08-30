@@ -17,7 +17,8 @@ public class TicketingComposer : IComposer
 
         if (GlobalFontSettings.FontResolver is null)
             GlobalFontSettings.FontResolver = new FlexPrintFontResolver();
-        builder.Services.AddScoped<IFlexTicketPrinter, FlexTicketPrintService>();
+        builder.Services.AddScoped<ITicketPrinter, TicketPrintService>();
+        builder.Services.AddScoped<ITicketPrintSettings, TicketPrintSettingsRepository>();
 
         builder.Services.AddScoped<ISeasons, UmbracoSeasons>();
         builder.Services.AddScoped<IVenues, UmbracoVenues>();

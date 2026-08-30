@@ -1,0 +1,126 @@
+@using RedAnts.Domain.Ticketing.Sales
+@inject IJSRuntime JS
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal ta-modal-wide" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">@Title</h2>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="ta-modal-sub">@Subtitle</p>
+        }
+
+        <form id="fpForm" method="post" action="/admin/tickets/print" enctype="multipart/form-data" target="_blank">
+            <input type="hidden" name="ticketType" value="@((int)Type)" />
+            @HiddenInputs
+
+            <div class="ta-field" style="flex-shrink:0">
+                <label class="ta-label" for="fpFile">Vorlage (druckfertiges CMYK-PDF, eine Karte)</label>
+                <input id="fpFile" name="template" class="ta-input" type="file" accept="application/pdf,.pdf" required />
+            </div>
+
+            <div class="fp-zoombar">
+                <label class="ta-label" for="fpZoom">Zoom</label>
+                <input id="fpZoom" type="range" min="100" max="1000" step="10" value="100" />
+                <span id="fpZoomVal">100%</span>
+            </div>
+
+            <div class="fp-stage" id="fpStage">
+                <div class="fp-scroll" id="fpScroll">
+                    <canvas id="fpCanvas" class="fp-canvas"></canvas>
+                    <div id="fpQrBox" class="fp-qrbox">
+                        <span class="fp-handle-tl"></span>
+                        <span class="fp-handle"></span>
+                    </div>
+                    <div id="fpCodeLabel" class="fp-codelabel">A1B2C3D4</div>
+                    <div id="fpNameBox" class="fp-namebox">
+                        <span class="fp-name-text">Muster Anna</span>
+                        <span class="fp-name-handle"></span>
+                    </div>
+                    <svg id="fpMarks" class="fp-marks"></svg>
+                </div>
+            </div>
+
+            <div class="fp-grid" style="flex-shrink:0">
+                <div class="ta-field">
+                    <label class="ta-label" for="fpPageW">Seite Breite (mm)</label>
+                    <input id="fpPageW" name="pageW" class="ta-input" type="number" step="0.1" min="10" value="@F(Layout.PageWidthMm)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpPageH">Seite Höhe (mm)</label>
+                    <input id="fpPageH" name="pageH" class="ta-input" type="number" step="0.1" min="10" value="@F(Layout.PageHeightMm)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpQrX">QR X (mm)</label>
+                    <input id="fpQrX" name="qrX" class="ta-input" type="number" step="0.1" min="0" value="@F(Layout.QrXMm)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpQrY">QR Y (mm)</label>
+                    <input id="fpQrY" name="qrY" class="ta-input" type="number" step="0.1" min="0" value="@F(Layout.QrYMm)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpQrSize">QR Grösse (mm)</label>
+                    <input id="fpQrSize" name="qrSize" class="ta-input" type="number" step="0.1" min="5" value="@F(Layout.QrSizeMm)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpFontPt">Nummer Schriftgrösse (pt)</label>
+                    <input id="fpFontPt" name="fontPt" class="ta-input" type="number" step="0.5" min="4" value="@F(Layout.CodeFontPt)" />
+                </div>
+            </div>
+
+            <label class="fp-check" style="flex-shrink:0">
+                <input id="fpShowName" name="showName" type="checkbox" value="true" checked="@Layout.ShowName" />
+                Name der Inhaber:in aufdrucken
+            </label>
+
+            <div class="fp-grid" style="flex-shrink:0">
+                <div class="ta-field">
+                    <label class="ta-label" for="fpNameX">Name X (mm)</label>
+                    <input id="fpNameX" name="nameX" class="ta-input" type="number" step="0.1" min="0" value="@F(Layout.NameXMm)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpNameY">Name Y (mm)</label>
+                    <input id="fpNameY" name="nameY" class="ta-input" type="number" step="0.1" min="0" value="@F(Layout.NameYMm)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpNameFontPt">Name Schriftgrösse (pt)</label>
+                    <input id="fpNameFontPt" name="nameFontPt" class="ta-input" type="number" step="0.5" min="4" value="@F(Layout.NameFontPt)" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="fpNameMaxW">Name max. Breite (mm)</label>
+                    <input id="fpNameMaxW" name="nameMaxW" class="ta-input" type="number" step="0.1" min="5" value="@F(Layout.NameMaxWidthMm)" />
+                </div>
+            </div>
+
+            <div class="ta-modal-actions" style="flex-shrink:0">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
+                <button id="fpSubmit" type="submit" class="ta-btn ta-btn-primary" disabled>PDF erzeugen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@code {
+    [Parameter] public TicketType Type { get; set; }
+    [Parameter] public string Title { get; set; } = "Tickets als PDF drucken";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public TicketPrintLayout Layout { get; set; } = TicketPrintLayout.Default;
+    [Parameter] public RenderFragment? HiddenInputs { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool _inited;
+
+    protected override void OnParametersSet() => _inited = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_inited)
+        {
+            _inited = true;
+            await JS.InvokeVoidAsync("ticketPrint.init");
+        }
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+
+    private static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+}

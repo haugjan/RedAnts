@@ -36,13 +36,17 @@
             qrX: num('fpQrX', 5),
             qrY: num('fpQrY', 5),
             qrSize: num('fpQrSize', 25),
-            fontPt: num('fpFontPt', 8)
+            fontPt: num('fpFontPt', 8),
+            nameX: num('fpNameX', 34),
+            nameY: num('fpNameY', 8),
+            nameFontPt: num('fpNameFontPt', 9),
+            nameMaxW: num('fpNameMaxW', 52)
         };
     }
 
-    function showCode() {
-        const el = $('fpShowCode');
-        return !el || el.checked;
+    function showName() {
+        const el = $('fpShowName');
+        return !!(el && el.checked);
     }
 
     function pxPerMm() {
@@ -57,6 +61,10 @@
         const s = num('fpQrSize', l.qrSize);
         set('fpQrX', Math.max(0, Math.min(l.qrX, l.pageW - s)));
         set('fpQrY', Math.max(0, Math.min(l.qrY, l.pageH - s)));
+        set('fpNameMaxW', Math.max(5, Math.min(l.nameMaxW, l.pageW)));
+        const nw = num('fpNameMaxW', l.nameMaxW);
+        set('fpNameX', Math.max(0, Math.min(l.nameX, l.pageW - nw)));
+        set('fpNameY', Math.max(0, Math.min(l.nameY, l.pageH)));
     }
 
     function place() {
@@ -72,18 +80,27 @@
 
         const label = $('fpCodeLabel');
         if (label) {
-            if (showCode()) {
-                label.style.display = 'block';
-                label.style.left = (l.qrX * k) + 'px';
-                label.style.top = ((l.qrY + l.qrSize) * k + l.fontPt * 0.4 * PT_PER_MM_PX(k)) + 'px';
-                label.style.width = (l.qrSize * k) + 'px';
-                label.style.fontSize = (l.fontPt * PT_PER_MM_PX(k)) + 'px';
-            } else {
-                label.style.display = 'none';
-            }
+            label.style.display = 'block';
+            label.style.left = (l.qrX * k) + 'px';
+            label.style.top = ((l.qrY + l.qrSize) * k + l.fontPt * 0.4 * pxPerPt(k)) + 'px';
+            label.style.width = (l.qrSize * k) + 'px';
+            label.style.fontSize = (l.fontPt * pxPerPt(k)) + 'px';
         }
 
+        placeName(l, k);
         drawMarks(l, k);
+    }
+
+    function placeName(l, k) {
+        const nameBox = $('fpNameBox');
+        if (!nameBox) return;
+        if (!showName()) { nameBox.style.display = 'none'; return; }
+        nameBox.style.display = 'flex';
+        nameBox.style.left = (l.nameX * k) + 'px';
+        nameBox.style.top = (l.nameY * k) + 'px';
+        nameBox.style.width = (l.nameMaxW * k) + 'px';
+        nameBox.style.height = (l.nameFontPt * 1.6 * pxPerPt(k)) + 'px';
+        nameBox.style.fontSize = (l.nameFontPt * pxPerPt(k)) + 'px';
     }
 
     function drawMarks(l, k) {
@@ -127,7 +144,7 @@
         svg.appendChild(fg);
     }
 
-    function PT_PER_MM_PX(k) {
+    function pxPerPt(k) {
         return k / PT_PER_MM;
     }
 
@@ -221,7 +238,35 @@
         document.addEventListener('pointerup', up);
     }
 
-    window.flexPrint = {
+    function dragName(e) {
+        const isHandle = e.target.classList.contains('fp-name-handle');
+        const k = pxPerMm();
+        if (k <= 0) return;
+        const sx = e.clientX, sy = e.clientY;
+        const l0 = layout();
+        e.preventDefault();
+        e.stopPropagation();
+        function move(ev) {
+            const dx = (ev.clientX - sx) / k;
+            const dy = (ev.clientY - sy) / k;
+            if (isHandle) {
+                set('fpNameMaxW', l0.nameMaxW + dx);
+            } else {
+                set('fpNameX', l0.nameX + dx);
+                set('fpNameY', l0.nameY + dy);
+            }
+            clamp();
+            place();
+        }
+        function up() {
+            document.removeEventListener('pointermove', move);
+            document.removeEventListener('pointerup', up);
+        }
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', up);
+    }
+
+    window.ticketPrint = {
         init() {
             pageObj = null;
             zoom = 1;
@@ -238,14 +283,20 @@
                 box._fp = true;
                 box.addEventListener('pointerdown', drag);
             }
-            ['fpQrX', 'fpQrY', 'fpQrSize', 'fpPageW', 'fpPageH', 'fpFontPt'].forEach(id => {
+            const nameBox = $('fpNameBox');
+            if (nameBox && !nameBox._fp) {
+                nameBox._fp = true;
+                nameBox.addEventListener('pointerdown', dragName);
+            }
+            ['fpQrX', 'fpQrY', 'fpQrSize', 'fpPageW', 'fpPageH', 'fpFontPt',
+             'fpNameX', 'fpNameY', 'fpNameFontPt', 'fpNameMaxW'].forEach(id => {
                 const el = $(id);
                 if (el && !el._fp) {
                     el._fp = true;
                     el.addEventListener('input', () => { clamp(); place(); });
                 }
             });
-            const showEl = $('fpShowCode');
+            const showEl = $('fpShowName');
             if (showEl && !showEl._fp) {
                 showEl._fp = true;
                 showEl.addEventListener('change', place);

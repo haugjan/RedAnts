@@ -1,24 +1,18 @@
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using QRCoder;
-using RedAnts.Features.Ticketing.Admin;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class FlexTicketPrintService(
-    IFlexBundleTickets bundleTickets,
-    ITicketTokens tokens,
-    IPublicBaseUrl publicUrl) : IFlexTicketPrinter
+public sealed class TicketPrintService(ITicketTokens tokens, IPublicBaseUrl publicUrl) : ITicketPrinter
 {
     private const double QuietZoneMm = 2;
+    private const int QrBuiltInQuietModules = 4;
 
-    public async Task<byte[]?> BuildAsync(int bundleId, byte[] templatePdf, FlexPrintLayout layout)
+    public Task<byte[]> BuildAsync(IReadOnlyList<TicketPrintItem> items, byte[] templatePdf, TicketPrintLayout layout)
     {
-        var tickets = await bundleTickets.GetByBundlesAsync([bundleId]);
-        if (tickets.Count == 0) return null;
-
         using var templateStream = new MemoryStream(templatePdf);
         var template = XPdfForm.FromStream(templateStream);
         var black = new XSolidBrush(XColor.FromCmyk(0, 0, 0, 1));
@@ -27,7 +21,7 @@ public sealed class FlexTicketPrintService(
         using var document = new PdfDocument();
         document.Options.ColorMode = PdfColorMode.Cmyk;
 
-        foreach (var ticket in tickets)
+        foreach (var item in items)
         {
             var page = document.AddPage();
             page.Width = XUnit.FromMillimeter(layout.PageWidthMm);
@@ -36,20 +30,19 @@ public sealed class FlexTicketPrintService(
             using var gfx = XGraphics.FromPdfPage(page);
             gfx.DrawImage(template, 0, 0, page.Width.Point, page.Height.Point);
 
-            DrawQr(gfx, black, paper, layout, publicUrl.TicketUrl(tokens.CreateShort(ticket.Uuid)));
+            DrawQr(gfx, black, paper, layout, publicUrl.TicketUrl(tokens.CreateShort(item.Uuid)));
+            DrawCode(gfx, black, layout, item.Uuid.ToString("N")[..8].ToUpperInvariant());
 
-            if (layout.ShowCode)
-                DrawCode(gfx, black, layout, ticket.Uuid.ToString("N")[..8].ToUpperInvariant());
+            if (layout.ShowName && !string.IsNullOrWhiteSpace(item.HolderName))
+                DrawName(gfx, black, layout, item.HolderName.Trim());
         }
 
         using var output = new MemoryStream();
         document.Save(output, false);
-        return output.ToArray();
+        return Task.FromResult(output.ToArray());
     }
 
-    private const int QrBuiltInQuietModules = 4;
-
-    private static void DrawQr(XGraphics gfx, XBrush brush, XBrush paper, FlexPrintLayout layout, string content)
+    private static void DrawQr(XGraphics gfx, XBrush brush, XBrush paper, TicketPrintLayout layout, string content)
     {
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.M);
@@ -80,13 +73,28 @@ public sealed class FlexTicketPrintService(
         }
     }
 
-    private static void DrawCode(XGraphics gfx, XBrush brush, FlexPrintLayout layout, string code)
+    private static void DrawCode(XGraphics gfx, XBrush brush, TicketPrintLayout layout, string code)
     {
         var font = new XFont(FlexPrintFontResolver.FamilyName, layout.CodeFontPt);
         var size = Mm(layout.QrSizeMm);
         var rect = new XRect(Mm(layout.QrXMm), Mm(layout.QrYMm) + size + layout.CodeFontPt * 0.4,
             size, layout.CodeFontPt * 1.6);
         gfx.DrawString(code, font, brush, rect, XStringFormats.TopCenter);
+    }
+
+    private static void DrawName(XGraphics gfx, XBrush brush, TicketPrintLayout layout, string name)
+    {
+        var maxWidth = Mm(layout.NameMaxWidthMm);
+        var fontPt = layout.NameFontPt;
+        var font = new XFont(FlexPrintFontResolver.FamilyName, fontPt);
+        while (fontPt > 4 && gfx.MeasureString(name, font).Width > maxWidth)
+        {
+            fontPt -= 0.5;
+            font = new XFont(FlexPrintFontResolver.FamilyName, fontPt);
+        }
+
+        var rect = new XRect(Mm(layout.NameXMm), Mm(layout.NameYMm), maxWidth, fontPt * 1.6);
+        gfx.DrawString(name, font, brush, rect, XStringFormats.TopLeft);
     }
 
     private static double Mm(double mm) => XUnit.FromMillimeter(mm).Point;
