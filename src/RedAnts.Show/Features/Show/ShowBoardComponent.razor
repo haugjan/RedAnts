@@ -4,6 +4,7 @@
 @inject IJSRuntime JS
 @inject IOptions<ShowStorageOptions> Storage
 @inject IShowProfileStore Store
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 
 <div class="sb-app">
     <header class="sb-header">
@@ -259,12 +260,17 @@
         _timer.Start();
         try
         {
+            var configuredId = (Config["Spotify:ClientId"] ?? "").Trim();
+            if (configuredId.Length > 0)
+            {
+                await JS.InvokeVoidAsync("showBoard.setClientId", configuredId);
+            }
             var init = await JS.InvokeAsync<InitResult>("showBoard.init", _ref, SoundBase, AppBase);
             _loggedIn = init.LoggedIn;
             _redirectUri = init.RedirectUri;
             _clientId = await JS.InvokeAsync<string>("showBoard.getClientId");
             _clientIdDraft = _clientId;
-            if (!init.HasClientId) _settingsOpen = true;
+            if (!init.HasClientId && configuredId.Length == 0) _settingsOpen = true;
             StateHasChanged();
         }
         catch
