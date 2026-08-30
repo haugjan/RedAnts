@@ -7,5 +7,5 @@ public sealed class MemberImportController : Controller
 {
     [HttpGet("/admin/members/example.csv")]
     public IActionResult SampleCsv() =>
-        File(MemberCsv.SampleBytes(), "text/csv; charset=utf-8", "mitglieder-vorlage.csv");
+        File(TicketImportCsv.SampleBytes(), "text/csv; charset=utf-8", "mitglieder-vorlage.csv");
 }

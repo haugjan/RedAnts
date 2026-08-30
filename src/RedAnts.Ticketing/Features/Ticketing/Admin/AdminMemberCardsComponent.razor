@@ -369,7 +369,7 @@
                         <label class="ta-label">Spaltenzuordnung</label>
                         <p class="ta-hint">Ordne jeder benötigten Spalte eine Spalte aus deiner Datei zu.</p>
                         <table class="ta-map">
-                            @foreach (var field in MemberCsv.Fields)
+                            @foreach (var field in TicketImportCsv.Fields)
                             {
                                 <tr>
                                     <td class="ta-map-label">@field.Label</td>
@@ -818,7 +818,7 @@
     private IReadOnlyList<MemberImportRow> _parsedRows = [];
     private IReadOnlyList<string> _parseWarnings = [];
     private IReadOnlyList<string> _parseErrors = [];
-    private MemberTable? _table;
+    private TicketImportTable? _table;
     private Dictionary<string, int> _map = new();
     private bool _showMapping;
 
@@ -849,7 +849,7 @@
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer);
 
-            var table = MemberCsv.ReadTable(buffer.ToArray(), file.Name);
+            var table = TicketImportCsv.ReadTable(buffer.ToArray(), file.Name);
             _fileName = file.Name;
             _table = table;
             _map = new Dictionary<string, int>(table.AutoMap);
@@ -863,7 +863,7 @@
                 return;
             }
 
-            if (MemberCsv.EssentialMapped(_map))
+            if (TicketImportCsv.EssentialMapped(_map))
             {
                 ApplyMapping();
             }
@@ -898,11 +898,20 @@
     {
         if (_table is null) return;
         _importError = null;
-        var result = MemberCsv.BuildRows(_table, _map);
-        _parsedRows = result.Rows;
+        var result = TicketImportCsv.BuildRows(_table, _map);
+        _parsedRows = result.Rows.Select(ToMemberRow).ToList();
         _parseWarnings = result.Warnings;
         _parseErrors = result.Errors;
         _showMapping = false;
+    }
+
+    private static MemberImportRow ToMemberRow(TicketImportRow row)
+    {
+        var h = row.Holder;
+        return new MemberImportRow(h.LastName, h.FirstName, h.Birthday, h.Email, row.CardNo,
+            MemberAddress.Create(h.Salutation, h.Company, h.Street, h.AddressLine2,
+                h.PostalCode, h.City, h.Country, h.Phone),
+            row.Admissions ?? 1, row.Bundle);
     }
 
     private async Task ImportAsync()
