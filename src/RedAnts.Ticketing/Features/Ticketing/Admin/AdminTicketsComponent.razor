@@ -65,6 +65,11 @@
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_bundles.Count == 0)" @onclick="OpenExport">
                     Export CSV
                 </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_bundleFilter <= 0)"
+                        title="@(_bundleFilter <= 0 ? "Zum Drucken zuerst ein Bundle wählen" : "Alle Tickets dieses Bundles als PDF drucken")"
+                        @onclick="OpenBundlePrint">
+                    PDF drucken
+                </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreateBundle">
                     Bundle erstellen
                 </button>
@@ -187,6 +192,7 @@
                                 </td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(t)">✎</button>
+                                    <button type="button" class="ta-icon-btn" title="Als PDF drucken" @onclick="() => OpenSinglePrint(t.Uuid)">🖨</button>
                                     @if (Identity?.IsAdmin == true)
                                     {
                                         <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = t">🗑</button>
@@ -531,6 +537,26 @@
     </div>
 }
 
+@if (_showPrint)
+{
+    <TicketPrintDialog Type="TicketType.EventTicket"
+                       Title="Spieltickets als PDF drucken"
+                       Subtitle="@_printSubtitle"
+                       Layout="_printLayout"
+                       OnClose="ClosePrint">
+        <HiddenInputs>
+            @if (_printUuid is { } u)
+            {
+                <input type="hidden" name="uuid" value="@u" />
+            }
+            else if (_printBundleId is { } b)
+            {
+                <input type="hidden" name="bundleId" value="@b" />
+            }
+        </HiddenInputs>
+    </TicketPrintDialog>
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
@@ -544,6 +570,35 @@
     [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+    [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
+
+    private bool _showPrint;
+    private TicketPrintLayout _printLayout = TicketPrintLayout.Default;
+    private int? _printBundleId;
+    private Guid? _printUuid;
+    private string _printSubtitle = "";
+
+    private async Task OpenBundlePrint()
+    {
+        if (_bundleFilter <= 0) return;
+        var bundle = _bundles.FirstOrDefault(b => b.Id == _bundleFilter);
+        _printBundleId = _bundleFilter;
+        _printUuid = null;
+        _printSubtitle = bundle is null ? "" : $"{bundle.Reference} · {bundle.TicketCount} Tickets · eine Seite pro Ticket";
+        _printLayout = await PrintSettings.GetAsync(TicketType.EventTicket);
+        _showPrint = true;
+    }
+
+    private async Task OpenSinglePrint(Guid uuid)
+    {
+        _printUuid = uuid;
+        _printBundleId = null;
+        _printSubtitle = $"Ticket-Nr. {AdminFormat.TicketNo(uuid)}";
+        _printLayout = await PrintSettings.GetAsync(TicketType.EventTicket);
+        _showPrint = true;
+    }
+
+    private void ClosePrint() => _showPrint = false;
 
     private EventTicket? _deleteTarget;
     private bool _deleteBusy;

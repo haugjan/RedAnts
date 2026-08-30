@@ -56,6 +56,8 @@
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenBulk" disabled="@(_cards.Count == 0)"
                         title="Alle Karten eines Bundles per E-Mail versenden">Karten versenden</button>
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenBundlePrint" disabled="@(string.IsNullOrEmpty(_bundleFilter))"
+                        title="@(string.IsNullOrEmpty(_bundleFilter) ? "Zum Drucken zuerst ein Bundle wählen" : "Alle Karten dieses Bundles als PDF drucken")">PDF drucken</button>
                 <button type="button" class="ta-btn ta-btn-primary" @onclick="OpenCreate" disabled="@(SelectedSeasonId <= 0)">
                     Mitgliederkarte erstellen
                 </button>
@@ -144,6 +146,7 @@
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="@(c.HasEmail ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!c.HasEmail)" @onclick="() => OpenMail(c)">✉</button>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(c)">✎</button>
+                                    <button type="button" class="ta-icon-btn" title="Als PDF drucken" @onclick="() => OpenSinglePrint(c.Uuid)">🖨</button>
                                     @if (Identity.IsAdmin)
                                     {
                                         <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = c">🗑</button>
@@ -629,6 +632,27 @@
                    OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
 }
 
+@if (_showPrint)
+{
+    <TicketPrintDialog Type="TicketType.MemberCard"
+                       Title="Mitgliederkarten als PDF drucken"
+                       Subtitle="@_printSubtitle"
+                       Layout="_printLayout"
+                       OnClose="ClosePrint">
+        <HiddenInputs>
+            @if (_printUuid is { } u)
+            {
+                <input type="hidden" name="uuid" value="@u" />
+            }
+            else
+            {
+                <input type="hidden" name="seasonId" value="@SelectedSeasonId" />
+                <input type="hidden" name="reference" value="@_bundleFilter" />
+            }
+        </HiddenInputs>
+    </TicketPrintDialog>
+}
+
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
@@ -640,6 +664,32 @@
     [Inject] private IMemberCardMailer Mailer { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+    [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
+
+    private bool _showPrint;
+    private TicketPrintLayout _printLayout = TicketPrintLayout.Default;
+    private Guid? _printUuid;
+    private string _printSubtitle = "";
+
+    private async Task OpenBundlePrint()
+    {
+        if (string.IsNullOrEmpty(_bundleFilter)) return;
+        _printUuid = null;
+        var count = _cards.Count(c => string.Equals(c.Reference, _bundleFilter, StringComparison.Ordinal));
+        _printSubtitle = $"{_bundleFilter} · {count} Karten · eine Seite pro Karte";
+        _printLayout = await PrintSettings.GetAsync(TicketType.MemberCard);
+        _showPrint = true;
+    }
+
+    private async Task OpenSinglePrint(Guid uuid)
+    {
+        _printUuid = uuid;
+        _printSubtitle = $"Karten-Nr. {AdminFormat.TicketNo(uuid)}";
+        _printLayout = await PrintSettings.GetAsync(TicketType.MemberCard);
+        _showPrint = true;
+    }
+
+    private void ClosePrint() => _showPrint = false;
 
     private MemberCardListItem? _deleteTarget;
     private bool _deleteBusy;
