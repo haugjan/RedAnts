@@ -186,31 +186,7 @@
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Saisonkarte erstellen</h2>
 
-            <div class="ta-field">
-                <label class="ta-label" for="newSpBuyerType">Käufer:in</label>
-                <select id="newSpBuyerType" class="ta-select" @bind="_newBuyerType">
-                    <option value="@BuyerType.Private">Privatperson</option>
-                    <option value="@BuyerType.Company">Firma</option>
-                </select>
-            </div>
-            @if (_newBuyerType == BuyerType.Company)
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="newSpCompany">Firmenname</label>
-                    <input id="newSpCompany" class="ta-input" @bind="_newCompany" />
-                </div>
-            }
-            else
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="newSpFirstName">Vorname</label>
-                    <input id="newSpFirstName" class="ta-input" @bind="_newFirstName" />
-                </div>
-                <div class="ta-field">
-                    <label class="ta-label" for="newSpLastName">Nachname</label>
-                    <input id="newSpLastName" class="ta-input" @bind="_newLastName" />
-                </div>
-            }
+            <PersonEditor Model="_newPerson" Prefix="newSp" EmailHint=" (optional, für den Kartenversand)" />
 
             <div class="ta-field">
                 <label class="ta-label" for="newSpCategory">Kategorie</label>
@@ -234,10 +210,6 @@
                         <option value="@ps">@ps.DisplayName()</option>
                     }
                 </select>
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newSpEmail">E-Mail (optional)</label>
-                <input id="newSpEmail" class="ta-input" type="email" maxlength="200" placeholder="für den Kartenversand" @bind="_newEmail" />
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newSpReference">Bundle (optional)</label>
@@ -269,40 +241,11 @@
             <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
             <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
 
-            <div class="ta-field">
-                <label class="ta-label" for="editBuyerType">Käufer:in</label>
-                <select id="editBuyerType" class="ta-select" @bind="_editBuyerType">
-                    <option value="@BuyerType.Private">Privatperson</option>
-                    <option value="@BuyerType.Company">Firma</option>
-                </select>
-            </div>
-            @if (_editBuyerType == BuyerType.Company)
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="editCompany">Firmenname</label>
-                    <input id="editCompany" class="ta-input" @bind="_editCompany" />
-                </div>
-            }
-            else
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="editFirstName">Vorname</label>
-                    <input id="editFirstName" class="ta-input" @bind="_editFirstName" />
-                </div>
-                <div class="ta-field">
-                    <label class="ta-label" for="editLastName">Nachname</label>
-                    <input id="editLastName" class="ta-input" @bind="_editLastName" />
-                </div>
-            }
+            <PersonEditor Model="_editPerson" Prefix="editSp" />
 
             <div class="ta-field">
                 <label class="ta-label" for="editPrice">Preis (CHF)</label>
                 <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_editPrice" @bind:after="() => _editPrice = decimal.Round(_editPrice, 2)" />
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="editEmail">E-Mail</label>
-                <input id="editEmail" class="ta-input" type="email" maxlength="200" @bind="_editEmail" />
             </div>
 
             @if (_editError is not null)
@@ -906,11 +849,7 @@
     private int _newTierId;
     private decimal _newPrice;
     private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
-    private BuyerType _newBuyerType = BuyerType.Private;
-    private string _newFirstName = "";
-    private string _newLastName = "";
-    private string _newCompany = "";
-    private string _newEmail = "";
+    private PersonForm _newPerson = new();
     private string _newReference = "";
     private string? _createError;
 
@@ -932,8 +871,8 @@
         _newTierId = _tiers.FirstOrDefault(t => !t.IsPromo)?.Id ?? _tiers.FirstOrDefault()?.Id ?? 0;
         _newPrice = 0m;
         _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
-        _newBuyerType = BuyerType.Private;
-        _newFirstName = _newLastName = _newCompany = _newEmail = _newReference = "";
+        _newPerson = new PersonForm();
+        _newReference = "";
         _createError = null;
         _showCreate = true;
     }
@@ -952,15 +891,17 @@
             var tier = _tiers.FirstOrDefault(t => t.Id == _newTierId);
             if (tier is null) { _createError = "Die gewählte Stufe wurde nicht gefunden."; return; }
             var lineCategory = tier.LegacyCategory is { } lc ? (TicketCategory)lc : TicketCategory.Adult;
-            var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
+            var buyer = _newPerson.ToBuyer();
+            if (buyer is null) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
             var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
             var order = await OrderFactory.CreateAsync(buyer, Identity.Email,
                 [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, lineCategory, tier.Name, 1, _newPrice)],
                 Identity.Name, paymentSource);
-            await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newTierId, _newPrice, order.Id,
+            var saved = await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newTierId, _newPrice, order.Id,
                 buyer, Identity.Name, Identity.Email,
                 reference: string.IsNullOrWhiteSpace(_newReference) ? null : _newReference.Trim(),
-                email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim()));
+                email: string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim()));
+            await Passes.SetHolderAsync(saved.Uuid, _newPerson.ToHolder());
             _showCreate = false;
             await ReloadPassesAsync();
         }
@@ -969,36 +910,19 @@
     }
 
     private SeasonPassListItem? _editing;
-    private int _editTierId;
     private decimal _editPrice;
-    private TicketStatus _editStatus;
-    private BuyerType _editBuyerType = BuyerType.Private;
-    private string _editFirstName = "";
-    private string _editLastName = "";
-    private string _editCompany = "";
-    private string _editEmail = "";
+    private PersonForm _editPerson = new();
     private bool _saving;
     private string? _editError;
 
-    private async Task OpenEdit(SeasonPassListItem pass)
+    private Task OpenEdit(SeasonPassListItem pass)
     {
         _editing = pass;
-        _editTierId = pass.TierId ?? _tiers.FirstOrDefault(t => !t.IsPromo)?.Id ?? _tiers.FirstOrDefault()?.Id ?? 0;
         _editPrice = decimal.Round(pass.Price, 2);
-        _editStatus = pass.Status;
-        _editFirstName = _editLastName = _editCompany = "";
-        _editEmail = pass.Email ?? "";
-        _editBuyerType = BuyerType.Private;
-
-        var current = await Passes.GetByUuidAsync(pass.Uuid);
-        if (current?.Buyer is { } b)
-        {
-            _editBuyerType = b.Type;
-            _editFirstName = b.FirstName ?? "";
-            _editLastName = b.LastName ?? "";
-            _editCompany = b.Company ?? "";
-        }
+        _editPerson = PersonForm.From(pass.Holder);
+        if (string.IsNullOrWhiteSpace(_editPerson.Email)) _editPerson.Email = pass.Email;
         _editError = null;
+        return Task.CompletedTask;
     }
 
     private void CancelEdit() { _editing = null; _editError = null; }
@@ -1014,9 +938,8 @@
             if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
 
             pass.Edit(_editPrice, pass.Status);
-            pass.SetBuyer(Buyer.Create(_editBuyerType, _editFirstName, _editLastName, _editCompany));
-            pass.SetEmail(_editEmail);
             await Passes.SaveAsync(pass);
+            await Passes.SetHolderAsync(_editing.Uuid, _editPerson.ToHolder());
 
             _editing = null;
             await ReloadPassesAsync();

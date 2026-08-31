@@ -221,31 +221,7 @@
     <div class="ta-overlay" @onmousedown="CloseCreate">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Ticket erstellen</h2>
-            <div class="ta-field">
-                <label class="ta-label" for="newBuyerType">Käufer:in</label>
-                <select id="newBuyerType" class="ta-select" @bind="_newBuyerType">
-                    <option value="@BuyerType.Private">Privatperson</option>
-                    <option value="@BuyerType.Company">Firma</option>
-                </select>
-            </div>
-            @if (_newBuyerType == BuyerType.Company)
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="newCompany">Firmenname</label>
-                    <input id="newCompany" class="ta-input" @bind="_newCompany" />
-                </div>
-            }
-            else
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="newFirstName">Vorname</label>
-                    <input id="newFirstName" class="ta-input" @bind="_newFirstName" />
-                </div>
-                <div class="ta-field">
-                    <label class="ta-label" for="newLastName">Nachname</label>
-                    <input id="newLastName" class="ta-input" @bind="_newLastName" />
-                </div>
-            }
+            <PersonEditor Model="_newPerson" Prefix="newEt" EmailHint=" (optional, für den Ticketversand)" />
             <div class="ta-field">
                 <label class="ta-label" for="newCategory">Kategorie</label>
                 <select id="newCategory" class="ta-select" @bind="_newCategory">
@@ -315,6 +291,8 @@
                 </select>
                 <p class="ta-field-hint">Ein storniertes Ticket kann nicht eingelöst sein.</p>
             </div>
+
+            <PersonEditor Model="_editPerson" Prefix="editEt" EmailHint=" (für den Ticketversand)" />
 
             @if (_editError is not null)
             {
@@ -805,10 +783,7 @@
     private TicketCategory _newCategory = TicketCategory.Adult;
     private decimal _newPrice;
     private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
-    private BuyerType _newBuyerType = BuyerType.Private;
-    private string _newFirstName = "";
-    private string _newLastName = "";
-    private string _newCompany = "";
+    private PersonForm _newPerson = new();
     private string? _createError;
 
     private void OnNewPriceChanged()
@@ -983,8 +958,7 @@
         _newCategory = TicketCategory.Adult;
         _newPrice = 0m;
         _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
-        _newBuyerType = BuyerType.Private;
-        _newFirstName = _newLastName = _newCompany = "";
+        _newPerson = new PersonForm();
         _createError = null;
         _showCreate = true;
     }
@@ -998,13 +972,15 @@
         { _createError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
         try
         {
-            var buyer = Buyer.Create(_newBuyerType, _newFirstName, _newLastName, _newCompany);
+            var buyer = _newPerson.ToBuyer();
+            if (buyer is null) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
             var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
             var order = await OrderFactory.CreateAsync(buyer, Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
                 Identity?.Name ?? AdminUser, paymentSource);
-            await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, order.Id, buyer,
+            var saved = await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, order.Id, buyer,
                 Identity?.Name ?? AdminUser, Identity?.Email));
+            await Tickets.SetHolderAsync(saved.Uuid, _newPerson.ToHolder());
         }
         catch (DomainException ex) { _createError = ex.Message; return; }
         _showCreate = false;
@@ -1186,6 +1162,7 @@
     private decimal _editPrice;
     private TicketStatus _editStatus;
     private bool _editRedeemed;
+    private PersonForm _editPerson = new();
     private bool _saving;
     private string? _editError;
 
@@ -1196,6 +1173,7 @@
         _editPrice = decimal.Round(t.Price, 2);
         _editStatus = t.Status;
         _editRedeemed = t.Redeemed;
+        _editPerson = PersonForm.From(t.Holder);
         _editError = null;
     }
 
@@ -1209,10 +1187,12 @@
         _editError = null;
         try
         {
+            var uuid = _editing.Uuid;
             var redeemed = RedeemedOnlyIfValid(_editStatus, _editRedeemed);
             await Tickets.SaveAsync(EventTicket.FromPersistence(_editing.Id, _editing.Uuid, _editing.EventId,
                 _editCategory, decimal.Round(_editPrice, 2), _editing.OrderId, _editStatus, _editing.CreatedAt, redeemed,
                 _editing.Buyer, _editing.CreatedByName, _editing.CreatedByEmail, _editing.BundleId));
+            await Tickets.SetHolderAsync(uuid, _editPerson.ToHolder());
             _editing = null;
             await ReloadTicketsAsync();
         }

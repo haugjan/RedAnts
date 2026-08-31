@@ -336,3 +336,6 @@
 .fp-marks { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 3; }
 .fp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem 1rem; }
 .fp-check { display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; font-size: .9rem; }
+
+.ta-person-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+@media (max-width: 520px) { .ta-person-row { grid-template-columns: 1fr; } }

@@ -1,0 +1,71 @@
+@using RedAnts.Domain.Ticketing.Sales
+
+<div class="ta-field">
+    <label class="ta-label" for="@($"{Prefix}Type")">Käufer:in</label>
+    <select id="@($"{Prefix}Type")" class="ta-select" @bind="Model.BuyerType">
+        <option value="@BuyerType.Private">Privatperson</option>
+        <option value="@BuyerType.Company">Firma</option>
+    </select>
+</div>
+
+@if (Model.IsCompany)
+{
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}Company")">Firmenname</label>
+        <input id="@($"{Prefix}Company")" class="ta-input" maxlength="200" @bind="Model.Company" />
+    </div>
+}
+else
+{
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}Salutation")">Anrede</label>
+        <input id="@($"{Prefix}Salutation")" class="ta-input" maxlength="50" placeholder="z. B. Frau, Herr" @bind="Model.Salutation" />
+    </div>
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}FirstName")">Vorname</label>
+        <input id="@($"{Prefix}FirstName")" class="ta-input" maxlength="100" @bind="Model.FirstName" />
+    </div>
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}LastName")">Nachname</label>
+        <input id="@($"{Prefix}LastName")" class="ta-input" maxlength="100" @bind="Model.LastName" />
+    </div>
+}
+
+<div class="ta-field">
+    <label class="ta-label" for="@($"{Prefix}Email")">E-Mail@(EmailHint)</label>
+    <input id="@($"{Prefix}Email")" class="ta-input" type="email" maxlength="200" @bind="Model.Email" />
+</div>
+<div class="ta-field">
+    <label class="ta-label" for="@($"{Prefix}Street")">Strasse</label>
+    <input id="@($"{Prefix}Street")" class="ta-input" maxlength="200" @bind="Model.Street" />
+</div>
+<div class="ta-field">
+    <label class="ta-label" for="@($"{Prefix}AddressLine2")">Adresszusatz</label>
+    <input id="@($"{Prefix}AddressLine2")" class="ta-input" maxlength="200" @bind="Model.AddressLine2" />
+</div>
+<div class="ta-person-row">
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}PostalCode")">PLZ</label>
+        <input id="@($"{Prefix}PostalCode")" class="ta-input" maxlength="20" @bind="Model.PostalCode" />
+    </div>
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}City")">Ort</label>
+        <input id="@($"{Prefix}City")" class="ta-input" maxlength="100" @bind="Model.City" />
+    </div>
+</div>
+<div class="ta-person-row">
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}Country")">Land</label>
+        <input id="@($"{Prefix}Country")" class="ta-input" maxlength="100" @bind="Model.Country" />
+    </div>
+    <div class="ta-field">
+        <label class="ta-label" for="@($"{Prefix}Phone")">Telefon</label>
+        <input id="@($"{Prefix}Phone")" class="ta-input" maxlength="50" @bind="Model.Phone" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public PersonForm Model { get; set; } = new();
+    [Parameter] public string Prefix { get; set; } = "pf";
+    [Parameter] public string EmailHint { get; set; } = " (für den Ticketversand)";
+}

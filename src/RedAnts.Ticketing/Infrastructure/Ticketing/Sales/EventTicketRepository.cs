@@ -23,6 +23,22 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
         return rows.Select(Map).ToList();
     }
 
+    public async Task SetHolderAsync(Guid uuid, CardHolder holder)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE EventTickets SET BuyerType=@0, BuyerFirstName=@1, BuyerLastName=@2, BuyerCompany=@3, Email=@4, " +
+            "Salutation=@5, Birthday=@6, Street=@7, AddressLine2=@8, PostalCode=@9, City=@10, Country=@11, Phone=@12 " +
+            "WHERE Uuid=@13",
+            (object[])new object?[]
+            {
+                (int)holder.Type, holder.FirstName, holder.LastName, holder.Company, holder.Email,
+                holder.Salutation, holder.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+                holder.Street, holder.AddressLine2, holder.PostalCode, holder.City, holder.Country, holder.Phone,
+                uuid.ToString()
+            });
+    }
+
     public async Task<EventTicket> SaveAsync(EventTicket ticket)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

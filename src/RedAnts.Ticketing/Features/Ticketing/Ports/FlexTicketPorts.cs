@@ -88,4 +88,9 @@ public interface IFlexTicketBundles
     Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,
         string defaultBundle, TicketCategory defaultCategory,
         string? createdByName = null, string? createdByEmail = null);
+
+    Task<Guid> CreateSingleAsync(int seasonId, TicketCategory category, string reference, CardHolder holder,
+        string? createdByName = null, string? createdByEmail = null);
+
+    Task SetHolderAsync(Guid uuid, CardHolder holder);
 }

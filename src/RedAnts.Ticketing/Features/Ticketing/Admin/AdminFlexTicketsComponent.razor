@@ -171,6 +171,7 @@
                                 </td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="@(HasEmail(t) ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!HasEmail(t))" @onclick="() => OpenMail(t)">✉</button>
+                                    <button type="button" class="ta-icon-btn" title="Personendaten bearbeiten" @onclick="() => OpenEditPerson(t)">✎</button>
                                     <button type="button" class="ta-icon-btn" title="Als PDF drucken" @onclick="() => OpenSinglePrint(t.Uuid)">🖨</button>
                                     @if (Identity?.IsAdmin == true)
                                     {
@@ -286,6 +287,27 @@
     </div>
 }
 
+@if (_editPersonFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseEditPerson">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Flexticket bearbeiten</h2>
+            <p class="ta-modal-sub">Ticket-Nr. @AdminFormat.TicketNo(_editPersonFor.Uuid)</p>
+
+            <PersonEditor Model="_editPersonForm" Prefix="editFt" EmailHint=" (für den Ticketversand)" />
+
+            @if (!string.IsNullOrEmpty(_editPersonError)) { <div class="ta-modal-error">@_editPersonError</div> }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseEditPerson" disabled="@_editPersonSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEditPerson" disabled="@_editPersonSaving">
+                    @(_editPersonSaving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_showBulk)
 {
     <div class="ta-overlay" @onmousedown="CloseBulk">
@@ -334,11 +356,18 @@
 {
     <div class="ta-overlay" @onmousedown="CloseCreate">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Flexticket-Bundle erstellen</h2>
+            <h2 class="ta-modal-title">Flexticket erstellen</h2>
 
             <div class="ta-field">
                 <label class="ta-label">Saison</label>
                 <div class="ta-readonly">@_selectedSeasonName</div>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newFlexMode">Was erstellen?</label>
+                <select id="newFlexMode" class="ta-select" @bind="_createSingle">
+                    <option value="true">Einzelticket (mit Personendaten)</option>
+                    <option value="false">Bundle (mehrere Tickets auf einmal)</option>
+                </select>
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newCategory">Ticketkategorie</label>
@@ -356,22 +385,30 @@
                     @foreach (var b in _bundles) { <option value="@b.Reference" /> }
                 </datalist>
             </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
-                <input id="newQuantity" class="ta-input" type="number" min="0" max="2000" @bind="_newQuantity" />
-                <p class="ta-field-hint">0 = leeres Bundle (nur als Umbuchungsziel, ohne Tickets).</p>
-            </div>
-            @if (_newQuantity > 0)
+
+            @if (_createSingle)
+            {
+                <PersonEditor Model="_newPerson" Prefix="newFt" EmailHint=" (optional, für den Ticketversand)" />
+            }
+            else
             {
                 <div class="ta-field">
-                    <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
-                    <select id="newFlexPaymentSource" class="ta-select" @bind="_newPaymentSource">
-                        @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
-                        {
-                            <option value="@ps">@ps.DisplayName()</option>
-                        }
-                    </select>
+                    <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
+                    <input id="newQuantity" class="ta-input" type="number" min="0" max="2000" @bind="_newQuantity" />
+                    <p class="ta-field-hint">0 = leeres Bundle (nur als Umbuchungsziel, ohne Tickets).</p>
                 </div>
+                @if (_newQuantity > 0)
+                {
+                    <div class="ta-field">
+                        <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
+                        <select id="newFlexPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                            @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                            {
+                                <option value="@ps">@ps.DisplayName()</option>
+                            }
+                        </select>
+                    </div>
+                }
             }
 
             @if (!string.IsNullOrEmpty(_createError))
@@ -381,9 +418,18 @@
 
             <div class="ta-modal-actions">
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_saving">
-                    @(_saving ? "Wird erstellt …" : "Bundle erstellen")
-                </button>
+                @if (_createSingle)
+                {
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateSingleTicketAsync" disabled="@_saving">
+                        @(_saving ? "Wird erstellt …" : "Einzelticket erstellen")
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_saving">
+                        @(_saving ? "Wird erstellt …" : "Bundle erstellen")
+                    </button>
+                }
             </div>
         </div>
     </div>
@@ -658,6 +704,35 @@
 
     private static bool HasEmail(FlexTicketView t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
 
+    private FlexTicketView? _editPersonFor;
+    private PersonForm _editPersonForm = new();
+    private bool _editPersonSaving;
+    private string? _editPersonError;
+
+    private void OpenEditPerson(FlexTicketView t)
+    {
+        _editPersonFor = t;
+        _editPersonForm = PersonForm.From(t.Holder);
+        _editPersonError = null;
+    }
+
+    private void CloseEditPerson() { if (!_editPersonSaving) { _editPersonFor = null; _editPersonError = null; } }
+
+    private async Task SaveEditPerson()
+    {
+        if (_editPersonFor is null) return;
+        _editPersonSaving = true;
+        _editPersonError = null;
+        try
+        {
+            await Bundles.SetHolderAsync(_editPersonFor.Uuid, _editPersonForm.ToHolder());
+            _editPersonFor = null;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _editPersonError = ex.Message; }
+        finally { _editPersonSaving = false; }
+    }
+
     private FlexTicketView? _mailFor;
     private string _mailSubject = "";
     private string _mailBody = "";
@@ -831,10 +906,32 @@
     private bool _showCreate;
     private bool _saving;
     private string? _createError;
+    private bool _createSingle = true;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
     private string _newReference = "";
     private int _newQuantity = 1;
+    private PersonForm _newPerson = new();
+
+    private async Task CreateSingleTicketAsync()
+    {
+        if (SelectedSeasonId <= 0) { _createError = "Es ist keine Saison gewählt."; return; }
+        var reference = (_newReference ?? "").Trim();
+        if (reference.Length == 0) { _createError = "Bitte ein Bundle angeben."; return; }
+        var holder = _newPerson.ToHolder();
+        if (!holder.HasName) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
+        _saving = true;
+        _createError = null;
+        try
+        {
+            await Bundles.CreateSingleAsync(SelectedSeasonId, _newCategory, reference, holder,
+                Identity?.Name ?? AdminUser, Identity?.Email);
+            _showCreate = false;
+            await OnSeasonChangedAsync();
+        }
+        catch (DomainException ex) { _createError = ex.Message; }
+        finally { _saving = false; }
+    }
 
     private bool _showImport;
     private bool _importSaving;
@@ -1117,6 +1214,8 @@
     private void OpenCreate()
     {
         _createError = null;
+        _createSingle = true;
+        _newPerson = new PersonForm();
         _newCategory = TicketCategory.Adult;
         _newReference = "";
         _newQuantity = 1;

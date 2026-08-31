@@ -194,7 +194,6 @@
             <h2 class="ta-modal-title">Mitgliederkarte erstellen</h2>
             <p class="ta-modal-sub">@_selectedSeasonName</p>
 
-            <div class="ta-mc-grid">
             <div class="ta-field">
                 <label class="ta-label" for="newMcCategory">Kategorie</label>
                 <select id="newMcCategory" class="ta-select" @bind="_newCategory">
@@ -210,18 +209,6 @@
                 <p class="ta-field-hint">Wie oft diese Karte pro Anlass eingelassen wird (z. B. Block 4 = mehrere Personen). Standard: 1.</p>
             </div>
             <div class="ta-field">
-                <label class="ta-label" for="newMcCompany">Firma (optional)</label>
-                <input id="newMcCompany" class="ta-input" type="text" maxlength="200" @bind="_newCompany" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcLastName">Name (optional)</label>
-                <input id="newMcLastName" class="ta-input" type="text" maxlength="100" @bind="_newLastName" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcFirstName">Vorname (optional)</label>
-                <input id="newMcFirstName" class="ta-input" type="text" maxlength="100" @bind="_newFirstName" />
-            </div>
-            <div class="ta-field">
                 <label class="ta-label">Geburtsdatum (optional)</label>
                 <DateBox @bind-Value="_newBirthday" />
             </div>
@@ -232,41 +219,8 @@
                     @foreach (var b in BundleRefs) { <option value="@b" /> }
                 </datalist>
             </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcEmail">E-Mail (optional)</label>
-                <input id="newMcEmail" class="ta-input" type="email" maxlength="200" placeholder="für den Kartenversand" @bind="_newEmail" />
-            </div>
 
-            <p class="ta-modal-section">Adresse (optional, z. B. für Serienbriefe)</p>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcSalutation">Anrede (optional)</label>
-                <input id="newMcSalutation" class="ta-input" type="text" maxlength="50" placeholder="z. B. Frau / Herr" @bind="_newSalutation" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcStreet">Strasse (optional)</label>
-                <input id="newMcStreet" class="ta-input" type="text" maxlength="200" @bind="_newStreet" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcAddressLine2">Adresszusatz (optional)</label>
-                <input id="newMcAddressLine2" class="ta-input" type="text" maxlength="200" @bind="_newAddressLine2" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcPostalCode">PLZ (optional)</label>
-                <input id="newMcPostalCode" class="ta-input" type="text" maxlength="20" @bind="_newPostalCode" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcCity">Ort (optional)</label>
-                <input id="newMcCity" class="ta-input" type="text" maxlength="100" @bind="_newCity" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcCountry">Land (optional)</label>
-                <input id="newMcCountry" class="ta-input" type="text" maxlength="100" placeholder="Schweiz" @bind="_newCountry" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcPhone">Telefon (optional)</label>
-                <input id="newMcPhone" class="ta-input" type="text" maxlength="50" @bind="_newPhone" />
-            </div>
-            </div>
+            <PersonEditor Model="_newPerson" Prefix="newMc" EmailHint=" (optional, für den Kartenversand)" />
 
             @if (!string.IsNullOrEmpty(_createError))
             {
@@ -446,19 +400,6 @@
             <h2 class="ta-modal-title">Mitglied bearbeiten</h2>
             <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
 
-            <div class="ta-mc-grid">
-            <div class="ta-field">
-                <label class="ta-label" for="editCompany">Firma (optional)</label>
-                <input id="editCompany" class="ta-input" type="text" maxlength="200" @bind="_editCompany" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editLastName">Name (optional)</label>
-                <input id="editLastName" class="ta-input" type="text" maxlength="100" @bind="_editLastName" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editFirstName">Vorname (optional)</label>
-                <input id="editFirstName" class="ta-input" type="text" maxlength="100" @bind="_editFirstName" />
-            </div>
             <div class="ta-field">
                 <label class="ta-label">Geburtsdatum (optional)</label>
                 <DateBox @bind-Value="_editBirthday" />
@@ -471,42 +412,8 @@
                 <label class="ta-label" for="editReference">Bundle</label>
                 <input id="editReference" class="ta-input" type="text" maxlength="100" @bind="_editReference" />
             </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editEmail">E-Mail (optional)</label>
-                <input id="editEmail" class="ta-input" type="email" maxlength="200" @bind="_editEmail" />
-            </div>
 
-            <p class="ta-modal-section">Adresse (optional)</p>
-            <div class="ta-field">
-                <label class="ta-label" for="editSalutation">Anrede</label>
-                <input id="editSalutation" class="ta-input" type="text" maxlength="50" placeholder="z. B. Frau / Herr" @bind="_editSalutation" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editStreet">Strasse</label>
-                <input id="editStreet" class="ta-input" type="text" maxlength="200" @bind="_editStreet" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editAddressLine2">Adresszusatz</label>
-                <input id="editAddressLine2" class="ta-input" type="text" maxlength="200" @bind="_editAddressLine2" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editPostalCode">PLZ</label>
-                <input id="editPostalCode" class="ta-input" type="text" maxlength="20" @bind="_editPostalCode" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editCity">Ort</label>
-                <input id="editCity" class="ta-input" type="text" maxlength="100" @bind="_editCity" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editCountry">Land</label>
-                <input id="editCountry" class="ta-input" type="text" maxlength="100" placeholder="Schweiz" @bind="_editCountry" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editPhone">Telefon</label>
-                <input id="editPhone" class="ta-input" type="text" maxlength="50" @bind="_editPhone" />
-            </div>
-
-            </div>
+            <PersonEditor Model="_editPerson" Prefix="editMc" EmailHint=" (optional, für den Kartenversand)" />
 
             @if (!string.IsNullOrEmpty(_editError))
             {
@@ -784,28 +691,17 @@
     private bool _showCreate;
     private bool _creating;
     private MemberCategory _newCategory = MemberCategory.RedAnts;
-    private string _newFirstName = "";
-    private string _newLastName = "";
     private DateOnly? _newBirthday;
     private int _newAdmissions = 1;
     private string _newReference = "";
-    private string _newEmail = "";
-    private string _newSalutation = "";
-    private string _newCompany = "";
-    private string _newStreet = "";
-    private string _newAddressLine2 = "";
-    private string _newPostalCode = "";
-    private string _newCity = "";
-    private string _newCountry = "";
-    private string _newPhone = "";
+    private PersonForm _newPerson = new();
     private string? _createError;
 
     private void OpenCreate()
     {
         _newCategory = MemberCategory.RedAnts;
-        _newFirstName = _newLastName = _newReference = _newEmail = "";
-        _newSalutation = _newCompany = _newStreet = _newAddressLine2 = "";
-        _newPostalCode = _newCity = _newCountry = _newPhone = "";
+        _newReference = "";
+        _newPerson = new PersonForm();
         _newBirthday = null;
         _newAdmissions = 1;
         _createError = null;
@@ -819,19 +715,18 @@
         if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
         if (string.IsNullOrWhiteSpace(_newReference)) { _createError = "Bitte ein Bundle angeben."; return; }
         if (_newAdmissions < 1) { _createError = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
-        var contactError = ValidateContact(_newEmail, _newBirthday);
+        var contactError = ValidateContact(_newPerson.Email, _newBirthday);
         if (contactError is not null) { _createError = contactError; return; }
         _creating = true;
         _createError = null;
         try
         {
-            var first = string.IsNullOrWhiteSpace(_newFirstName) ? null : _newFirstName;
-            var last = string.IsNullOrWhiteSpace(_newLastName) ? null : _newLastName;
-            var address = MemberAddress.Create(_newSalutation, _newCompany, _newStreet, _newAddressLine2,
-                _newPostalCode, _newCity, _newCountry, _newPhone);
+            var first = string.IsNullOrWhiteSpace(_newPerson.FirstName) ? null : _newPerson.FirstName;
+            var last = string.IsNullOrWhiteSpace(_newPerson.LastName) ? null : _newPerson.LastName;
+            var address = _newPerson.ToMemberAddress();
             await Members.CreateAsync(SelectedSeasonId, _newCategory, first, last,
                 _newBirthday, _newReference.Trim(),
-                email: string.IsNullOrWhiteSpace(_newEmail) ? null : _newEmail.Trim(),
+                email: string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim(),
                 createdByName: Identity.Name, createdByEmail: Identity.Email, address: address,
                 admissions: _newAdmissions);
             _showCreate = false;
@@ -985,45 +880,20 @@
     }
 
     private MemberCardListItem? _editing;
-    private string _editFirstName = "";
-    private string _editLastName = "";
     private DateOnly? _editBirthday;
-    private MemberCategory _editCategory;
     private int _editAdmissions = 1;
     private string _editReference = "";
-    private string _editEmail = "";
-    private string _editSalutation = "";
-    private string _editCompany = "";
-    private string _editStreet = "";
-    private string _editAddressLine2 = "";
-    private string _editPostalCode = "";
-    private string _editCity = "";
-    private string _editCountry = "";
-    private string _editPhone = "";
-    private TicketStatus _editStatus;
+    private PersonForm _editPerson = new();
     private bool _savingEdit;
     private string? _editError;
 
     private void OpenEdit(MemberCardListItem c)
     {
         _editing = c;
-        _editFirstName = c.FirstName ?? "";
-        _editLastName = c.LastName ?? "";
         _editBirthday = c.Birthday;
-        _editCategory = c.Category;
         _editAdmissions = c.Admissions;
         _editReference = c.Reference ?? "";
-        _editEmail = c.Email ?? "";
-        var a = c.Address ?? MemberAddress.Empty;
-        _editSalutation = a.Salutation ?? "";
-        _editCompany = a.Company ?? "";
-        _editStreet = a.Street ?? "";
-        _editAddressLine2 = a.AddressLine2 ?? "";
-        _editPostalCode = a.PostalCode ?? "";
-        _editCity = a.City ?? "";
-        _editCountry = a.Country ?? "";
-        _editPhone = a.Phone ?? "";
-        _editStatus = c.Status;
+        _editPerson = PersonForm.From(c.Holder);
         _editError = null;
     }
 
@@ -1033,16 +903,15 @@
     {
         if (_editing is null) return;
         if (_editAdmissions < 1) { _editError = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
-        var contactError = ValidateContact(_editEmail, _editBirthday);
+        var contactError = ValidateContact(_editPerson.Email, _editBirthday);
         if (contactError is not null) { _editError = contactError; return; }
         _savingEdit = true;
         _editError = null;
         try
         {
-            var address = MemberAddress.Create(_editSalutation, _editCompany, _editStreet, _editAddressLine2,
-                _editPostalCode, _editCity, _editCountry, _editPhone);
-            await MemberEditor.SetDetailsAsync(_editing.Uuid, _editFirstName, _editLastName, _editBirthday,
-                _editing.Category, _editing.Status, _editReference, _editEmail, address, _editAdmissions);
+            await MemberEditor.SetDetailsAsync(_editing.Uuid, _editPerson.FirstName, _editPerson.LastName, _editBirthday,
+                _editing.Category, _editing.Status, _editReference, _editPerson.Email, _editPerson.ToMemberAddress(),
+                _editAdmissions);
             _editing = null;
             await ReloadCardsAsync();
         }

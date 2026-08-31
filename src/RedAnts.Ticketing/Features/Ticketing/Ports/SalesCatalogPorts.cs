@@ -73,6 +73,7 @@ public interface IEventTickets
     Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId);
     Task<IReadOnlyList<EventTicket>> GetByOrderAsync(int orderId);
     Task<EventTicket> SaveAsync(EventTicket ticket);
+    Task SetHolderAsync(Guid uuid, CardHolder holder);
 }
 
 public interface ISeasonPasses
@@ -80,6 +81,7 @@ public interface ISeasonPasses
     Task<SeasonPass?> GetByUuidAsync(Guid uuid);
     Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId);
     Task<SeasonPass> SaveAsync(SeasonPass pass);
+    Task SetHolderAsync(Guid uuid, CardHolder holder);
     Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,
         string defaultBundle, int? defaultTierId = null, string? createdByName = null, string? createdByEmail = null);
 }

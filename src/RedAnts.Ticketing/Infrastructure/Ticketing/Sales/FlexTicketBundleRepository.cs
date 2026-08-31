@@ -431,6 +431,80 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         return (created, updated);
     }
 
+    public async Task<Guid> CreateSingleAsync(int seasonId, TicketCategory category, string reference, CardHolder holder,
+        string? createdByName = null, string? createdByEmail = null)
+    {
+        if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
+        var reff = (reference ?? "").Trim();
+        if (reff.Length == 0) throw new DomainException("Ein Bundle muss angegeben werden.");
+
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+
+        var record = await db.FirstOrDefaultAsync<FlexTicketBundleRecord>(
+            "WHERE SeasonId = @0 AND Reference = @1", seasonId, reff);
+        if (record is null)
+        {
+            var bundle = FlexTicketBundle.Create(seasonId, category, reff, createdByName, createdByEmail);
+            record = new FlexTicketBundleRecord
+            {
+                SeasonId = bundle.SeasonId,
+                Category = (int)bundle.Category,
+                Reference = bundle.Reference,
+                CreatedAt = bundle.CreatedAt,
+                CreatedByName = bundle.CreatedByName,
+                CreatedByEmail = bundle.CreatedByEmail
+            };
+            await db.InsertAsync(record);
+        }
+
+        var ticket = SeasonSingleTicket.CreateForBundle(seasonId, category, 0m, record.Id);
+        var uuid = await TicketCode.AllocateAsync(db, ticket.Uuid);
+        await db.InsertAsync(new SeasonSingleTicketRecord
+        {
+            Uuid = uuid.ToString(),
+            SeasonId = ticket.SeasonId,
+            Category = (int)ticket.Category,
+            Price = ticket.Price,
+            OrderId = ticket.OrderId,
+            Status = (int)ticket.Status,
+            CreatedAt = ticket.CreatedAt,
+            RedeemedEventId = ticket.RedeemedEventId,
+            Redeemed = ticket.Redeemed,
+            BundleId = ticket.BundleId,
+            BuyerType = (int)holder.Type,
+            BuyerFirstName = holder.FirstName,
+            BuyerLastName = holder.LastName,
+            BuyerCompany = holder.Company,
+            BuyerEmail = holder.Email,
+            Salutation = holder.Salutation,
+            Birthday = holder.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : null,
+            Street = holder.Street,
+            AddressLine2 = holder.AddressLine2,
+            PostalCode = holder.PostalCode,
+            City = holder.City,
+            Country = holder.Country,
+            Phone = holder.Phone
+        });
+        return uuid;
+    }
+
+    public async Task SetHolderAsync(Guid uuid, CardHolder holder)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE SeasonSingleTickets SET BuyerType=@0, BuyerFirstName=@1, BuyerLastName=@2, BuyerCompany=@3, BuyerEmail=@4, " +
+            "Salutation=@5, Birthday=@6, Street=@7, AddressLine2=@8, PostalCode=@9, City=@10, Country=@11, Phone=@12 " +
+            "WHERE Uuid=@13",
+            (object[])new object?[]
+            {
+                (int)holder.Type, holder.FirstName, holder.LastName, holder.Company, holder.Email,
+                holder.Salutation, holder.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+                holder.Street, holder.AddressLine2, holder.PostalCode, holder.City, holder.Country, holder.Phone,
+                uuid.ToString()
+            });
+    }
+
     public async Task<bool> DeleteEmptyAsync(int bundleId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
