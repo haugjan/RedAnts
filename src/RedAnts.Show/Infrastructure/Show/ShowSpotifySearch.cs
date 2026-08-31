@@ -64,10 +64,10 @@ public static partial class ShowSpotifyLink
     private static partial Regex BareId();
 }
 
-public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfiguration config) : IShowSpotifySearch
+public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfiguration config, IShowSettingsStore settings) : IShowSpotifySearch
 {
-    private string? ClientId => config["Spotify:ClientId"];
-    private string? Secret => config["Spotify:ClientSecret"];
+    private string? ClientId => settings.Get("Spotify:ClientId") ?? config["Spotify:ClientId"];
+    private string? Secret => settings.Get("Spotify:ClientSecret") ?? config["Spotify:ClientSecret"];
     public bool Configured => !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(Secret);
 
     private string? _token;

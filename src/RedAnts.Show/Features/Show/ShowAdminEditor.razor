@@ -6,6 +6,7 @@
 @inject IShowProfileStore Store
 @inject IShowSoundUploader Uploader
 @inject IShowSpotifySearch Search
+@inject IShowSettingsStore Settings
 @inject IOptions<ShowStorageOptions> Storage
 @inject IJSRuntime JS
 @implements IDisposable
@@ -17,6 +18,7 @@
             <button class="se-btn primary" @onclick="SaveAsync">💾 Speichern</button>
             <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
+            <button class="se-btn" @onclick="OpenSpotifySettings">🟢 Spotify</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
@@ -55,6 +57,33 @@
                     <button class="se-btn" @onclick="ImportJson">Importieren</button>
                 </div>
             </details>
+        </div>
+    }
+
+    @if (_showSpotify)
+    {
+        <div class="se-io">
+            <div class="se-grid">
+                <label>Spotify Client-ID
+                    <input @bind="_spotifyClientId" placeholder="z. B. 20dc00b2e3db4ab790fad325e510897d" />
+                </label>
+                <label>Spotify Client-Secret (nur für die Suche)
+                    <input type="password" @bind="_spotifyClientSecret" placeholder="leer lassen = unverändert" />
+                </label>
+            </div>
+            <div class="se-io-actions">
+                <button class="se-btn primary" @onclick="SaveSpotifyAsync" disabled="@_spotifyBusy">💾 Spotify speichern</button>
+                <button class="se-btn" @onclick="() => _showSpotify = false">Schliessen</button>
+                @if (_spotifyStatus is { Length: > 0 })
+                {
+                    <span class="se-status">@_spotifyStatus</span>
+                }
+                @if (_spotifyError is { Length: > 0 })
+                {
+                    <span class="se-err">@_spotifyError</span>
+                }
+            </div>
+            <p class="se-muted" style="margin:8px 0 0">Wird zentral in der Datenbank gespeichert und gilt für alle Geräte und Umgebungen. Das Secret wird nur angezeigt, wenn du es neu setzt.</p>
         </div>
     }
 
@@ -991,6 +1020,40 @@
             _ioError = "Importiert (noch nicht gespeichert).";
         }
         catch (Exception ex) { _ioError = "Fehler: " + ex.Message; }
+    }
+
+    private bool _showSpotify;
+    private string _spotifyClientId = "";
+    private string _spotifyClientSecret = "";
+    private bool _spotifyBusy;
+    private string _spotifyStatus = "";
+    private string _spotifyError = "";
+
+    private void OpenSpotifySettings()
+    {
+        _showSpotify = !_showSpotify;
+        if (_showSpotify)
+        {
+            _spotifyClientId = Settings.Get("Spotify:ClientId") ?? "";
+            _spotifyClientSecret = "";
+            _spotifyStatus = "";
+            _spotifyError = "";
+        }
+    }
+
+    private async Task SaveSpotifyAsync()
+    {
+        _spotifyBusy = true; _spotifyStatus = ""; _spotifyError = "";
+        try
+        {
+            await Settings.SetAsync("Spotify:ClientId", _spotifyClientId.Trim());
+            if (!string.IsNullOrWhiteSpace(_spotifyClientSecret))
+                await Settings.SetAsync("Spotify:ClientSecret", _spotifyClientSecret.Trim());
+            _spotifyClientSecret = "";
+            _spotifyStatus = $"Gespeichert · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (Exception ex) { _spotifyError = "Fehler: " + ex.Message; }
+        finally { _spotifyBusy = false; }
     }
 
     private bool _ioBusy;

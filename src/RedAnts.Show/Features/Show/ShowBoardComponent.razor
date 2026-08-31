@@ -4,6 +4,7 @@
 @inject IJSRuntime JS
 @inject IOptions<ShowStorageOptions> Storage
 @inject IShowProfileStore Store
+@inject IShowSettingsStore Settings
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
 
 <div class="sb-app">
@@ -267,7 +268,7 @@
         _timer.Start();
         try
         {
-            var configuredId = (Config["Spotify:ClientId"] ?? "").Trim();
+            var configuredId = (Settings.Get("Spotify:ClientId") ?? Config["Spotify:ClientId"] ?? "").Trim();
             if (configuredId.Length > 0)
             {
                 await JS.InvokeVoidAsync("showBoard.setClientId", configuredId);

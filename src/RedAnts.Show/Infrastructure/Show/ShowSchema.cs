@@ -32,6 +32,16 @@ public static class ShowSchema
                     CONSTRAINT [PK_show_Profiles] PRIMARY KEY CLUSTERED ([Id] ASC)
                 );
             END
+
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Settings' AND schema_id = SCHEMA_ID('show'))
+            BEGIN
+                CREATE TABLE [show].[Settings](
+                    [Key] nvarchar(100) NOT NULL,
+                    [Value] nvarchar(max) NULL,
+                    [UpdatedAt] datetime2(0) NOT NULL,
+                    CONSTRAINT [PK_show_Settings] PRIMARY KEY CLUSTERED ([Key] ASC)
+                );
+            END
             """;
 
         using var connection = new SqlConnection(connectionString);
