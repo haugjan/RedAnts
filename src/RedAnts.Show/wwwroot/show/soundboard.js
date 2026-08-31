@@ -329,6 +329,23 @@
     }
   };
 
+  board.diagnose = async function () {
+    const out = [];
+    try {
+      const me = await (await spotifyApi('/me', {})).json();
+      out.push('Account: ' + (me.id || '?') + '  Produkt: ' + (me.product || '?') + '  Land: ' + (me.country || '?'));
+    } catch (e) { out.push('/me FEHLER: ' + (e && e.message ? e.message : e)); }
+    out.push('SDK deviceId: ' + (deviceId || 'null'));
+    try {
+      const d = await (await spotifyApi('/me/player/devices', {})).json();
+      const list = (d.devices || []).map(function (x) { return x.name + ' [active=' + x.is_active + ' restricted=' + x.is_restricted + ']'; });
+      out.push('Geräte: ' + (list.length ? list.join(', ') : 'keine'));
+    } catch (e) { out.push('/me/player/devices FEHLER: ' + (e && e.message ? e.message : e)); }
+    try { await transferToDevice(); out.push('Transfer aufs SDK-Gerät: OK'); }
+    catch (e) { out.push('Transfer FEHLER: ' + (e && e.message ? e.message : e)); }
+    return out.join('\n');
+  };
+
   board.stopSpotify = async function (fade) {
     spotifyId = null;
     try {

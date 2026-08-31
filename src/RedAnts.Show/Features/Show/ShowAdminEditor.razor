@@ -62,28 +62,44 @@
 
     @if (_showSpotify)
     {
-        <div class="se-io">
-            <div class="se-grid">
-                <label>Spotify Client-ID
+        <div class="se-editwrap" @onclick="() => _showSpotify = false">
+            <div class="se-editcard se-spotifycard" @onclick:stopPropagation="true">
+                <button class="se-editclose" @onclick="() => _showSpotify = false">✕</button>
+                <h3 class="se-spotifyh">🟢 Spotify-Zugang</h3>
+
+                <div class="se-spotifycur">
+                    <div>Aktuell gespeicherte Client-ID</div>
+                    <strong>@(string.IsNullOrWhiteSpace(_savedClientId) ? "— keine hinterlegt —" : _savedClientId)</strong>
+                    <div class="se-muted">Client-Secret: @(_hasSecret ? "gesetzt ✓" : "nicht gesetzt")</div>
+                </div>
+
+                <label class="se-full">Client-ID
                     <input @bind="_spotifyClientId" placeholder="z. B. 20dc00b2e3db4ab790fad325e510897d" />
                 </label>
-                <label>Spotify Client-Secret (nur für die Suche)
+                <label class="se-full">Client-Secret (nur für die Suche; leer lassen = unverändert)
                     <input type="password" @bind="_spotifyClientSecret" placeholder="leer lassen = unverändert" />
                 </label>
-            </div>
-            <div class="se-io-actions">
-                <button class="se-btn primary" @onclick="SaveSpotifyAsync" disabled="@_spotifyBusy">💾 Spotify speichern</button>
-                <button class="se-btn" @onclick="() => _showSpotify = false">Schliessen</button>
+
+                <div class="se-testrow">
+                    <button class="se-btn primary" @onclick="SaveSpotifyAsync" disabled="@_spotifyBusy">💾 Speichern</button>
+                    <button class="se-btn" @onclick="() => _showSpotify = false">Schliessen</button>
+                </div>
                 @if (_spotifyStatus is { Length: > 0 })
                 {
-                    <span class="se-status">@_spotifyStatus</span>
+                    <p class="se-savedbanner">✓ @_spotifyStatus</p>
                 }
                 @if (_spotifyError is { Length: > 0 })
                 {
-                    <span class="se-err">@_spotifyError</span>
+                    <p class="se-err">@_spotifyError</p>
                 }
+
+                <p class="se-muted" style="margin-top:14px">Wird zentral in der Datenbank gespeichert und gilt für alle Geräte dieser Umgebung (dev und prod haben getrennte Datenbanken). In deiner Spotify-App müssen diese Redirect-URIs eingetragen sein:</p>
+                <ul class="se-redirects">
+                    <li><code>https://show.redants.ch/show/callback</code></li>
+                    <li><code>https://show-dev.redants.ch/show/callback</code></li>
+                    <li><code>http://127.0.0.1:5603/show/callback</code></li>
+                </ul>
             </div>
-            <p class="se-muted" style="margin:8px 0 0">Wird zentral in der Datenbank gespeichert und gilt für alle Geräte und Umgebungen. Das Secret wird nur angezeigt, wenn du es neu setzt.</p>
         </div>
     }
 
@@ -1029,12 +1045,22 @@
     private string _spotifyStatus = "";
     private string _spotifyError = "";
 
+    private string _savedClientId = "";
+    private bool _hasSecret;
+
+    private void RefreshSpotifyState()
+    {
+        _savedClientId = Settings.Get("Spotify:ClientId") ?? "";
+        _hasSecret = !string.IsNullOrWhiteSpace(Settings.Get("Spotify:ClientSecret"));
+    }
+
     private void OpenSpotifySettings()
     {
         _showSpotify = !_showSpotify;
         if (_showSpotify)
         {
-            _spotifyClientId = Settings.Get("Spotify:ClientId") ?? "";
+            RefreshSpotifyState();
+            _spotifyClientId = _savedClientId;
             _spotifyClientSecret = "";
             _spotifyStatus = "";
             _spotifyError = "";
@@ -1050,7 +1076,8 @@
             if (!string.IsNullOrWhiteSpace(_spotifyClientSecret))
                 await Settings.SetAsync("Spotify:ClientSecret", _spotifyClientSecret.Trim());
             _spotifyClientSecret = "";
-            _spotifyStatus = $"Gespeichert · {DateTime.Now:HH:mm:ss}";
+            RefreshSpotifyState();
+            _spotifyStatus = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
         }
         catch (Exception ex) { _spotifyError = "Fehler: " + ex.Message; }
         finally { _spotifyBusy = false; }
@@ -1380,4 +1407,13 @@
     @@media (max-width: 720px) { .se-editbody { grid-template-columns: 1fr; } }
 
     .se-tl-track { cursor: pointer; }
+
+    .se-spotifycard { width: min(96vw, 560px); }
+    .se-spotifyh { margin: 0 0 14px; }
+    .se-spotifycur { background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+    .se-spotifycur > div:first-child { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ra-muted); }
+    .se-spotifycur strong { display: block; font-size: 1.05rem; word-break: break-all; margin: 2px 0 4px; }
+    .se-savedbanner { background: rgba(29,185,84,0.15); border: 1px solid rgba(29,185,84,0.4); color: #62e39b; border-radius: 10px; padding: 0.6rem 0.8rem; font-weight: 700; margin: 12px 0 0; }
+    .se-redirects { margin: 6px 0 0; padding-left: 1.1rem; }
+    .se-redirects code { background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 6px; padding: 0.1rem 0.4rem; word-break: break-all; }
 </style>

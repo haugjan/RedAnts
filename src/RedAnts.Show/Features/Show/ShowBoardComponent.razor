@@ -27,11 +27,14 @@
                     <button class="sb-link" @onclick="LogoutAsync">trennen</button>
                 </span>
             }
+            else if (string.IsNullOrWhiteSpace(_clientId))
+            {
+                <span class="sb-hint">Spotify-Client-ID im Admin-Bereich hinterlegen</span>
+            }
             else
             {
-                <button class="sb-login" disabled="@(string.IsNullOrWhiteSpace(_clientId))" @onclick="LoginAsync">Mit Spotify verbinden</button>
+                <button class="sb-login" @onclick="LoginAsync">Mit Spotify verbinden</button>
             }
-            <button class="sb-gear" title="Einstellungen" @onclick="() => _settingsOpen = true">⚙️</button>
         </div>
     </header>
 
@@ -137,31 +140,6 @@
         </label>
     </footer>
 
-    @if (_settingsOpen)
-    {
-        <div class="sb-backdrop" @onclick="() => _settingsOpen = false">
-            <div class="sb-dialog" @onclick:stopPropagation="true">
-                <h2>Spotify einrichten</h2>
-                <ol>
-                    <li>Auf <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">developer.spotify.com/dashboard</a> eine App erstellen</li>
-                    <li>
-                        Redirect-URI eintragen:
-                        <span class="sb-copyrow">
-                            <code>@_redirectUri</code>
-                            <button type="button" class="sb-copy" @onclick="() => CopyAsync(_redirectUri)">@(_copied == _redirectUri ? "✓ Kopiert" : "📋 Kopieren")</button>
-                        </span>
-                    </li>
-                    <li>API: „Web Playback SDK" und „Web API" auswählen</li>
-                    <li>Client-ID hier einfügen (Spotify Premium erforderlich)</li>
-                </ol>
-                <input type="text" placeholder="Spotify Client-ID" @bind="_clientIdDraft" />
-                <div class="sb-dialog-actions">
-                    <button @onclick="() => _settingsOpen = false">Abbrechen</button>
-                    <button class="primary" disabled="@(string.IsNullOrWhiteSpace(_clientIdDraft))" @onclick="SaveSettingsAsync">Speichern</button>
-                </div>
-            </div>
-        </div>
-    }
 
     <div class="sb-toasts">
         @foreach (var t in _toasts)
@@ -207,12 +185,9 @@
     private double _volume = 0.9;
 
     private string _clientId = "";
-    private string _clientIdDraft = "";
     private bool _loggedIn;
     private bool _playerReady;
     private string? _displayName;
-    private bool _settingsOpen;
-    private string _redirectUri = "";
 
     private readonly List<ToastItem> _toasts = new();
     private int _toastCounter;
@@ -275,10 +250,7 @@
             }
             var init = await JS.InvokeAsync<InitResult>("showBoard.init", _ref, SoundBase, AppBase);
             _loggedIn = init.LoggedIn;
-            _redirectUri = init.RedirectUri;
             _clientId = await JS.InvokeAsync<string>("showBoard.getClientId");
-            _clientIdDraft = _clientId;
-            if (!init.HasClientId && configuredId.Length == 0) _settingsOpen = true;
             StateHasChanged();
         }
         catch
@@ -428,22 +400,6 @@
         _loggedIn = false;
         _playerReady = false;
         _displayName = null;
-    }
-
-    private async Task SaveSettingsAsync()
-    {
-        await JS.InvokeVoidAsync("showBoard.setClientId", _clientIdDraft);
-        _clientId = _clientIdDraft.Trim();
-        _settingsOpen = false;
-    }
-
-    private string? _copied;
-
-    private async Task CopyAsync(string text)
-    {
-        if (string.IsNullOrEmpty(text)) return;
-        var ok = await JS.InvokeAsync<bool>("showBoard.copyText", text);
-        if (ok) { _copied = text; StateHasChanged(); }
     }
 
     private void Toast(string text)
