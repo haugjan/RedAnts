@@ -39,6 +39,7 @@
 
   board.playLocal = function (id, ref, startSec, durationSec) {
     // Nur ein Sound gleichzeitig.
+    spotifyId = null;
     if (player) { try { player.pause(); } catch {} }
     if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
     const src = /^(https?:)?\//.test(ref) ? ref : assetBase + ref;
@@ -80,6 +81,24 @@
     if (!tile) return;
     const kind = tile.getAttribute('data-play');
     const id = tile.getAttribute('data-id');
+
+    if (kind === 'spotify') {
+      if (spotifyId === id) { void board.stopSpotify(false); spotifyId = null; if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStopped'); return; }
+      if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); return; }
+      board.activateSpotify();
+      const uri = tile.getAttribute('data-uri');
+      const startMs = parseInt(tile.getAttribute('data-startms'), 10) || 0;
+      const shuffle = tile.getAttribute('data-shuffle') === '1';
+      const label = tile.getAttribute('data-label') || '';
+      const dur = tile.getAttribute('data-dur') ? parseFloat(tile.getAttribute('data-dur')) : null;
+      spotifyId = id;
+      board.playSpotify(uri, startMs, shuffle).then(function (status) {
+        if (status === 'ok') { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStarted', id, label, dur); }
+        else { spotifyId = null; if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', status); }
+      });
+      return;
+    }
+
     if (kind !== 'local' && kind !== 'random') return;
     if (activeId === id) { board.stopLocal(); return; }
     if (kind === 'local') {
@@ -96,6 +115,9 @@
     if (dotnet) { try { dotnet.invokeMethodAsync('OnLocalStarted'); } catch (x) {} }
   }, true);
 
+  // iOS: der Spotify-Player muss in einer Nutzergeste freigeschaltet werden.
+  document.addEventListener('pointerdown', function () { board.activateSpotify(); }, { passive: true });
+
   // ---------- Spotify: PKCE + Web Playback SDK ----------
   const CLIENT_ID_KEY = 'sb_spotify_client_id';
   const TOKEN_KEY = 'sb_spotify_token';
@@ -104,6 +126,15 @@
 
   let player = null;
   let deviceId = null;
+  let spotifyId = null;
+  let spotifyActivated = false;
+
+  // iOS-Freischaltung des SDK-Audioelements (muss in einer Nutzergeste passieren).
+  board.activateSpotify = function () {
+    if (spotifyActivated || !player || typeof player.activateElement !== 'function') return;
+    try { player.activateElement(); spotifyActivated = true; } catch (e) {}
+  };
+  board.currentSpotifyId = function () { return spotifyId; };
 
   function redirectUri() { return location.origin + appBase + 'callback'; }
   function callbackPath() { return (appBase + 'callback').replace(/\/{2,}/g, '/'); }
@@ -273,6 +304,7 @@
   };
 
   board.stopSpotify = async function (fade) {
+    spotifyId = null;
     try {
       if (fade && player) {
         const steps = 10;

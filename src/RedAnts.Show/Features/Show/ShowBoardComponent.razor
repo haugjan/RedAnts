@@ -280,28 +280,11 @@
         }
     }
 
-    private bool IsNodeActive(ShowButton node) =>
-        _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
-
-    private async Task StopNodeAsync(ShowButton node)
+    private void HandleButtonAsync(ShowButton node)
     {
-        if (_nowPlaying?.ButtonId == node.Id) { await StopSpotifyAsync(false); return; }
-        _nowPlaying = null;
-        _remainingSec = null;
-        await JS.InvokeVoidAsync("showBoard.stopLocal");
-    }
-
-    private async Task HandleButtonAsync(ShowButton node)
-    {
-        if (node.IsFolder)
-        {
-            _path.Add(node.Id);
-            return;
-        }
-        // Lokale Sounds und Zufall laufen client-seitig direkt im Klick-Event (iOS-Nutzergeste).
-        if (node.IsRandom || node.Sound is { Kind: SoundKind.Local }) return;
-        if (IsNodeActive(node)) { await StopNodeAsync(node); return; }
-        if (node.Sound is { } sound) await PlaySoundAsync(node.Id, node.Label, sound);
+        // Ordner navigieren. Alle Sounds (lokal, Zufall, Spotify) laufen
+        // client-seitig direkt im Klick-Event (iOS-Nutzergeste), siehe soundboard.js.
+        if (node.IsFolder) _path.Add(node.Id);
     }
 
     private Dictionary<string, object> TileAttrs(ShowButton node)
@@ -322,6 +305,15 @@
             a["data-start"] = Num(s.StartSec);
             if (s.DurationSec is { } d) a["data-dur"] = Num(d);
         }
+        else if (node.Sound is { Kind: SoundKind.Spotify } sp && !string.IsNullOrWhiteSpace(sp.Ref))
+        {
+            a["data-play"] = "spotify";
+            a["data-uri"] = sp.Ref;
+            a["data-startms"] = ((long)Math.Round(sp.StartSec * 1000)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            a["data-shuffle"] = sp.Shuffle ? "1" : "0";
+            a["data-label"] = node.Label;
+            if (sp.DurationSec is { } d) a["data-dur"] = Num(d);
+        }
         return a;
     }
 
@@ -338,35 +330,34 @@
         return InvokeAsync(StateHasChanged);
     }
 
-    private async Task PlaySoundAsync(string id, string label, ShowSound sound)
+    [JSInvokable]
+    public Task OnSpotifyStarted(string id, string label, double? durationSec)
     {
         _paused = false;
-        if (sound.Kind == SoundKind.Local)
-        {
-            _nowPlaying = null;
-            _remainingSec = null;
-            await JS.InvokeVoidAsync("showBoard.playLocal", id, sound.Ref, sound.StartSec, sound.DurationSec);
-            _path.Clear();
-            return;
-        }
+        var endsAt = durationSec is { } d ? DateTime.UtcNow.AddSeconds(d) : (DateTime?)null;
+        _nowPlaying = new NowPlaying(id, label, endsAt);
+        return InvokeAsync(StateHasChanged);
+    }
 
-        if (!_loggedIn) { Toast("Zuerst mit Spotify verbinden (Button oben rechts)"); return; }
-        var status = await JS.InvokeAsync<string>("showBoard.playSpotify", sound.Ref, sound.StartSec * 1000, sound.Shuffle);
-        if (status == "ok")
+    [JSInvokable]
+    public Task OnSpotifyStopped()
+    {
+        _nowPlaying = null;
+        _remainingSec = null;
+        _paused = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnSpotifyStatus(string status)
+    {
+        Toast(status switch
         {
-            var endsAt = sound.DurationSec is { } d ? DateTime.UtcNow.AddSeconds(d) : (DateTime?)null;
-            _nowPlaying = new NowPlaying(id, label, endsAt);
-            _path.Clear();
-        }
-        else
-        {
-            Toast(status switch
-            {
-                "not-logged-in" => "Zuerst mit Spotify verbinden (Button oben rechts)",
-                "not-ready" => "Spotify-Player ist noch nicht bereit, einen Moment...",
-                _ => status
-            });
-        }
+            "not-logged-in" => "Zuerst mit Spotify verbinden (Button oben rechts)",
+            "not-ready" => "Spotify-Player ist noch nicht bereit, einen Moment...",
+            _ => "Spotify: " + status
+        });
+        return InvokeAsync(StateHasChanged);
     }
 
     private async Task TickAsync()
