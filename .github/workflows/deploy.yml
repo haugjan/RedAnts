@@ -129,7 +129,7 @@ jobs:
           sleep 30
           wait_up() {
             for i in $(seq 1 30); do
-              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health" || echo "000")
+              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health") || S="000"
               echo "Attempt $i: GET /health -> $S"
               case "$S" in 200) return 0 ;; esac
               sleep 10
@@ -140,7 +140,7 @@ jobs:
             echo "App did not respond within the warm-up window (best-effort)."; exit 0
           fi
           echo "Up. Warming core pages via /warmup..."
-          OUT=$(curl -s --max-time 120 "$BASE/warmup" || echo "")
+          OUT=$(curl -s --max-time 120 "$BASE/warmup") || OUT=""
           echo "$OUT"
           # A freshly swapped worker occasionally boots into a broken state after the zip
           # deploy (500s on runtime-compiled pages until the next restart). One clean
@@ -150,7 +150,7 @@ jobs:
             az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || true
             sleep 30
             if wait_up; then
-              curl -s --max-time 120 "$BASE/warmup" || echo "(re-warmup failed, best-effort)"
+              curl -s --max-time 120 "$BASE/warmup" || true
             fi
           fi
           exit 0
@@ -220,7 +220,7 @@ jobs:
           sleep 30
           wait_up() {
             for i in $(seq 1 30); do
-              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health" || echo "000")
+              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health") || S="000"
               echo "Attempt $i: GET /health -> $S"
               case "$S" in 200) return 0 ;; esac
               sleep 10
@@ -231,7 +231,7 @@ jobs:
             echo "App did not respond within the warm-up window (best-effort)."; exit 0
           fi
           echo "Up. Warming core pages via /warmup..."
-          OUT=$(curl -s --max-time 120 "$BASE/warmup" || echo "")
+          OUT=$(curl -s --max-time 120 "$BASE/warmup") || OUT=""
           echo "$OUT"
           # A freshly swapped worker occasionally boots into a broken state after the zip
           # deploy (500s on runtime-compiled pages until the next restart). One clean
