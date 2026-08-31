@@ -378,6 +378,12 @@ public sealed class TicketingContentTypeSeeder(
         changed |= AddMailProp(type, textBox, A.SeasonPassMailSubject, "Saisonkarte (Betreff)", null);
         changed |= AddMailProp(type, textArea, A.SeasonPassMailBody, "Saisonkarte (Text)",
             "Platzhalter: {Vorname}, {Nachname}, {Name}, {Saison}");
+        changed |= AddMailProp(type, textBox, A.EventTicketMailSubject, "Spielticket (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.EventTicketMailBody, "Spielticket (Text)",
+            "Platzhalter: {Name}, {Anlass}, {Datum}");
+        changed |= AddMailProp(type, textBox, A.FlexTicketMailSubject, "Flexticket (Betreff)", null);
+        changed |= AddMailProp(type, textArea, A.FlexTicketMailBody, "Flexticket (Text)",
+            "Platzhalter: {Name}, {Saison}");
         return changed;
     }
 

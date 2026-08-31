@@ -28,6 +28,8 @@ public sealed class TicketingMailSettings(IPublishedContentQuery query, IUmbraco
         TicketingMailKind.MemberCardBlock4Private => A.MemberCardBlock4PrivateMailSubject,
         TicketingMailKind.MemberCardBlock4Company => A.MemberCardBlock4CompanyMailSubject,
         TicketingMailKind.SeasonPass => A.SeasonPassMailSubject,
+        TicketingMailKind.EventTicket => A.EventTicketMailSubject,
+        TicketingMailKind.FlexTicket => A.FlexTicketMailSubject,
         _ => A.HelperInviteMailSubject
     };
 
@@ -37,6 +39,8 @@ public sealed class TicketingMailSettings(IPublishedContentQuery query, IUmbraco
         TicketingMailKind.MemberCardBlock4Private => A.MemberCardBlock4PrivateMailBody,
         TicketingMailKind.MemberCardBlock4Company => A.MemberCardBlock4CompanyMailBody,
         TicketingMailKind.SeasonPass => A.SeasonPassMailBody,
+        TicketingMailKind.EventTicket => A.EventTicketMailBody,
+        TicketingMailKind.FlexTicket => A.FlexTicketMailBody,
         _ => A.HelperInviteMailBody
     };
 }

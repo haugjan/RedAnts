@@ -49,4 +49,8 @@ internal static class TicketingAliases
     public const string MemberCardBlock4CompanyMailBody = "memberCardBlock4CompanyBody";
     public const string SeasonPassMailSubject = "seasonPassSubject";
     public const string SeasonPassMailBody = "seasonPassBody";
+    public const string EventTicketMailSubject = "eventTicketSubject";
+    public const string EventTicketMailBody = "eventTicketBody";
+    public const string FlexTicketMailSubject = "flexTicketSubject";
+    public const string FlexTicketMailBody = "flexTicketBody";
 }

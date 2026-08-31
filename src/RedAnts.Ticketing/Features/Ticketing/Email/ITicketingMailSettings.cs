@@ -6,7 +6,9 @@ public enum TicketingMailKind
     MemberCardRedAnts,
     MemberCardBlock4Private,
     MemberCardBlock4Company,
-    SeasonPass
+    SeasonPass,
+    EventTicket,
+    FlexTicket
 }
 
 public interface ITicketingMailSettings
