@@ -273,7 +273,10 @@
     });
     if (!res.ok && res.status !== 204) {
       let detail = '';
-      try { const j = await res.json(); detail = (j && j.error && j.error.message) || ''; } catch {}
+      try {
+        const j = await res.json();
+        if (j && j.error) detail = [j.error.reason, j.error.message].filter(Boolean).join(' - ');
+      } catch {}
       throw new Error('Spotify-API-Fehler ' + res.status + (detail ? ': ' + detail : ''));
     }
     return res;

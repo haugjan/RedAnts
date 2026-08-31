@@ -358,12 +358,15 @@
     [JSInvokable]
     public Task OnSpotifyStatus(string status)
     {
-        Toast(status switch
-        {
-            "not-logged-in" => "Zuerst mit Spotify verbinden (Button oben rechts)",
-            "not-ready" => "Spotify-Player ist noch nicht bereit, einen Moment...",
-            _ => "Spotify: " + status
-        });
+        string msg;
+        if (status == "not-logged-in") msg = "Zuerst mit Spotify verbinden (Button oben rechts)";
+        else if (status == "not-ready") msg = "Spotify-Player ist noch nicht bereit, einen Moment...";
+        else if (status.Contains("PREMIUM_REQUIRED", StringComparison.OrdinalIgnoreCase))
+            msg = "Spotify Premium erforderlich: Der eingeloggte Account muss ein Premium-Abo haben.";
+        else if (status.Contains("403"))
+            msg = "Spotify 403: Account nicht berechtigt (Premium nötig, und im Development-Modus der App unter User Management freischalten). Detail: " + status;
+        else msg = "Spotify: " + status;
+        Toast(msg);
         return InvokeAsync(StateHasChanged);
     }
 
