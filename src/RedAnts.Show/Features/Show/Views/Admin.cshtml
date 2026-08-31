@@ -76,6 +76,16 @@
             try { if (showPreviewAudio) { showPreviewAudio.pause(); showPreviewAudio = null; } } catch (e) { }
         };
 
+        window.showDownloadBytes = async function (filename, streamRef) {
+            const arr = await streamRef.arrayBuffer();
+            const blob = new Blob([arr], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        };
+
         window.showEditSeek = function (frac) {
             if (showEditAudio && showEditAudio.duration) {
                 try { showEditAudio.currentTime = frac * showEditAudio.duration; } catch (e) { }

@@ -1,6 +1,8 @@
 @using Microsoft.Extensions.Options
 @using RedAnts.Infrastructure.Show
 @using System.Text.Json
+@using System.IO.Compression
+@using Microsoft.JSInterop
 @inject IShowProfileStore Store
 @inject IShowSoundUploader Uploader
 @inject IShowSpotifySearch Search
@@ -27,15 +29,32 @@
     @if (_showIo)
     {
         <div class="se-io">
-            <textarea @bind="_ioText" spellcheck="false" placeholder="JSON hier einfügen und &quot;Importieren&quot; klicken"></textarea>
             <div class="se-io-actions">
-                <button class="se-btn" @onclick="ExportJson">Export → Textfeld</button>
-                <button class="se-btn" @onclick="ImportJson">Importieren</button>
+                <button class="se-btn primary" @onclick="ExportBundleAsync" disabled="@_ioBusy">⬇ Bundle exportieren (ZIP mit Dateien)</button>
+                <label class="se-btn @(_ioBusy ? "disabled" : "")">⬆ Bundle importieren (ZIP)
+                    <InputFile OnChange="ImportBundleAsync" accept=".zip" style="display:none" disabled="@_ioBusy" />
+                </label>
+                @if (_ioBusy)
+                {
+                    <span class="se-muted">Arbeite …</span>
+                }
+                @if (_ioStatus is { Length: > 0 })
+                {
+                    <span class="se-status">@_ioStatus</span>
+                }
                 @if (_ioError is { Length: > 0 })
                 {
                     <span class="se-err">@_ioError</span>
                 }
             </div>
+            <details class="se-io-json">
+                <summary>Nur JSON (ohne Dateien)</summary>
+                <textarea @bind="_ioText" spellcheck="false" placeholder="JSON hier einfügen und &quot;Importieren&quot; klicken"></textarea>
+                <div class="se-io-actions">
+                    <button class="se-btn" @onclick="ExportJson">Export → Textfeld</button>
+                    <button class="se-btn" @onclick="ImportJson">Importieren</button>
+                </div>
+            </details>
         </div>
     }
 
@@ -966,11 +985,117 @@
             var list = JsonSerializer.Deserialize<List<ShowProfile>>(_ioText, ShowJson.Options);
             if (list is null || list.Count == 0) { _ioError = "Kein gültiges Profil-JSON."; return; }
             _profiles = list.Select(EditProfile.From).ToList();
+            foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
             _profile = _profiles.First();
             _selected = null;
             _ioError = "Importiert (noch nicht gespeichert).";
         }
         catch (Exception ex) { _ioError = "Fehler: " + ex.Message; }
+    }
+
+    private bool _ioBusy;
+    private string _ioStatus = "";
+
+    private List<string> CollectLocalRefs()
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Walk(List<EditButton> nodes)
+        {
+            foreach (var n in nodes)
+            {
+                if (n.Sound is { Kind: SoundKind.Local } s && s.Ref.StartsWith("sounds/")) set.Add(s.Ref);
+                foreach (var p in n.Pool)
+                    if (p.Kind == SoundKind.Local && p.Ref.StartsWith("sounds/")) set.Add(p.Ref);
+                if (n.Children.Count > 0) Walk(n.Children);
+            }
+        }
+        foreach (var pr in _profiles) Walk(pr.Root);
+        return set.ToList();
+    }
+
+    private static string ContentTypeFor(string path)
+    {
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext switch
+        {
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            ".ogg" => "audio/ogg",
+            ".m4a" or ".aac" => "audio/mp4",
+            ".flac" => "audio/flac",
+            _ => "application/octet-stream",
+        };
+    }
+
+    private async Task ExportBundleAsync()
+    {
+        _ioBusy = true; _ioError = ""; _ioStatus = "";
+        try
+        {
+            var refs = CollectLocalRefs();
+            var missing = 0;
+            var ms = new MemoryStream();
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+            {
+                var json = JsonSerializer.Serialize(_profiles.Select(p => p.ToModel()).ToList(), ShowJson.Options);
+                var je = zip.CreateEntry("profiles.json");
+                await using (var w = new StreamWriter(je.Open())) { await w.WriteAsync(json); }
+
+                foreach (var r in refs)
+                {
+                    var bytes = await Uploader.DownloadAsync(r);
+                    if (bytes is null) { missing++; continue; }
+                    var e = zip.CreateEntry(r);
+                    await using var s = e.Open();
+                    await s.WriteAsync(bytes);
+                }
+            }
+            ms.Position = 0;
+            using var streamRef = new DotNetStreamReference(ms);
+            await JS.InvokeVoidAsync("showDownloadBytes", "soundboard-bundle.zip", streamRef);
+            _ioStatus = $"Exportiert: {refs.Count - missing} Datei(en)" + (missing > 0 ? $", {missing} fehlten im Blob" : "") + ".";
+        }
+        catch (Exception ex) { _ioError = "Export fehlgeschlagen: " + ex.Message; }
+        finally { _ioBusy = false; }
+    }
+
+    private async Task ImportBundleAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        _ioBusy = true; _ioError = ""; _ioStatus = "";
+        try
+        {
+            using var buffer = new MemoryStream();
+            await file.OpenReadStream(200L * 1024 * 1024).CopyToAsync(buffer);
+            buffer.Position = 0;
+            using var zip = new ZipArchive(buffer, ZipArchiveMode.Read);
+
+            var jsonEntry = zip.GetEntry("profiles.json");
+            if (jsonEntry is null) { _ioError = "Kein profiles.json im ZIP gefunden."; return; }
+
+            var uploaded = 0;
+            foreach (var entry in zip.Entries)
+            {
+                if (!entry.FullName.StartsWith("sounds/") || entry.FullName.EndsWith("/")) continue;
+                await using var es = entry.Open();
+                await Uploader.UploadAtPathAsync(entry.FullName, es, ContentTypeFor(entry.FullName));
+                uploaded++;
+            }
+
+            string text;
+            using (var r = new StreamReader(jsonEntry.Open())) text = await r.ReadToEndAsync();
+            var list = JsonSerializer.Deserialize<List<ShowProfile>>(text, ShowJson.Options);
+            if (list is null || list.Count == 0) { _ioError = "profiles.json im ZIP ist ungültig."; return; }
+
+            _profiles = list.Select(EditProfile.From).ToList();
+            foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
+            _profile = _profiles.First();
+            _selected = null;
+            _ioStatus = $"Bundle importiert: {uploaded} Datei(en) hochgeladen. Jetzt 💾 Speichern klicken.";
+        }
+        catch (Exception ex) { _ioError = "Import fehlgeschlagen: " + ex.Message; }
+        finally { _ioBusy = false; }
     }
 
     private RenderFragment RenderNode(EditButton node, List<EditButton> siblings) =>

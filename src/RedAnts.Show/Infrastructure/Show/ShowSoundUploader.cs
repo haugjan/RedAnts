@@ -8,24 +8,35 @@ namespace RedAnts.Infrastructure.Show;
 public interface IShowSoundUploader
 {
     Task<string> UploadAsync(string fileName, Stream content, string? contentType);
+    Task UploadAtPathAsync(string blobPath, Stream content, string? contentType);
+    Task<byte[]?> DownloadAsync(string blobPath);
 }
 
 public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> options) : IShowSoundUploader
 {
-    public async Task<string> UploadAsync(string fileName, Stream content, string? contentType)
+    private BlobContainerClient Container()
     {
         var opts = options.Value;
         if (string.IsNullOrWhiteSpace(opts.ConnectionString))
             throw new InvalidOperationException("Kein Show:Storage:ConnectionString konfiguriert. Datei-Upload ist nicht möglich.");
+        return new BlobContainerClient(opts.ConnectionString, opts.Container);
+    }
 
-        var container = new BlobContainerClient(opts.ConnectionString, opts.Container);
-        await container.CreateIfNotExistsAsync(PublicAccessType.Blob);
-
+    public async Task<string> UploadAsync(string fileName, Stream content, string? contentType)
+    {
         var safe = Sanitize(Path.GetFileName(fileName));
         var stem = Path.GetFileNameWithoutExtension(safe);
         var ext = Path.GetExtension(safe);
         if (string.IsNullOrEmpty(ext)) ext = ".mp3";
         var blobPath = $"sounds/{stem}-{Guid.NewGuid().ToString("N")[..6]}{ext}";
+        await UploadAtPathAsync(blobPath, content, contentType);
+        return blobPath;
+    }
+
+    public async Task UploadAtPathAsync(string blobPath, Stream content, string? contentType)
+    {
+        var container = Container();
+        await container.CreateIfNotExistsAsync(PublicAccessType.Blob);
         var blob = container.GetBlobClient(blobPath);
 
         using var buffer = new MemoryStream();
@@ -36,7 +47,15 @@ public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> optio
         {
             HttpHeaders = new BlobHttpHeaders { ContentType = string.IsNullOrWhiteSpace(contentType) ? "audio/mpeg" : contentType }
         });
-        return blobPath;
+    }
+
+    public async Task<byte[]?> DownloadAsync(string blobPath)
+    {
+        var blob = Container().GetBlobClient(blobPath);
+        if (!await blob.ExistsAsync()) return null;
+        using var ms = new MemoryStream();
+        await blob.DownloadToAsync(ms);
+        return ms.ToArray();
     }
 
     private static string Sanitize(string name)
