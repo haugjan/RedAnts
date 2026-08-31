@@ -270,6 +270,116 @@ app.UseTicketingScanAuth();
 
 app.UseShow();
 
+// Always-on password gate for the public soundboard (dev + prod), independent of
+// the site gate. Only protects the board surface (/show); assets and the backoffice
+// editor stay reachable.
+{
+    var showPassword = app.Configuration["Show:BoardPassword"];
+    if (!string.IsNullOrEmpty(showPassword))
+    {
+        const string showGateCookie = "RedAnts.ShowGate";
+        const string showGatePath = "/show/__gate";
+        const string showGateHtml =
+            "<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\">" +
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Red Ants Soundboard</title>" +
+            "<style>" +
+            "body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#141418;color:#fff;font-family:Verdana,sans-serif}" +
+            "form{background:#1d1d24;padding:2rem;border-radius:14px;width:min(90vw,340px);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}" +
+            "h1{font-size:1.15rem;margin:0 0 1.2rem}" +
+            "input{width:100%;padding:.7rem;border:1px solid #444;border-radius:6px;background:#0f0f13;color:#fff;font-size:1rem;box-sizing:border-box}" +
+            "button{margin-top:1rem;width:100%;padding:.7rem;border:0;border-radius:6px;background:#E11330;color:#fff;font-weight:700;font-size:1rem;cursor:pointer}" +
+            ".err{color:#ff8080;font-size:.9rem;margin:.7rem 0 0}" +
+            "</style></head><body>" +
+            "<form method=\"post\" action=\"{ACTION}\">" +
+            "<h1>Red Ants Soundboard</h1>" +
+            "<input type=\"password\" name=\"password\" placeholder=\"Passwort\" autofocus autocomplete=\"current-password\">" +
+            "<input type=\"hidden\" name=\"returnUrl\" value=\"{RETURN}\">" +
+            "<button type=\"submit\">Weiter</button>{ERROR}" +
+            "</form></body></html>";
+
+        var showCookieDomain = app.Configuration["BasicAuth:CookieDomain"];
+        var showProtector = app.Services
+            .GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("RedAnts.ShowGate.v1");
+
+        static string SafeReturnShow(string? value) =>
+            !string.IsNullOrEmpty(value) && value.StartsWith('/') && !value.StartsWith("//") ? value : "/show";
+
+        bool HasShowGate(HttpContext ctx)
+        {
+            var value = ctx.Request.Cookies[showGateCookie];
+            if (string.IsNullOrEmpty(value)) return false;
+            try { return showProtector.Unprotect(value) == "ok"; }
+            catch { return false; }
+        }
+
+        void SetShowGateCookie(HttpContext ctx) =>
+            ctx.Response.Cookies.Append(showGateCookie, showProtector.Protect("ok"), new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                MaxAge = TimeSpan.FromDays(30),
+                Domain = string.IsNullOrWhiteSpace(showCookieDomain) ? null : showCookieDomain,
+            });
+
+        async Task WriteShowGate(HttpContext ctx, string returnUrl, bool failed)
+        {
+            ctx.Response.StatusCode = failed ? StatusCodes.Status401Unauthorized : StatusCodes.Status200OK;
+            ctx.Response.ContentType = "text/html; charset=utf-8";
+            var action = System.Net.WebUtility.HtmlEncode($"{showGatePath}?returnUrl={Uri.EscapeDataString(returnUrl)}");
+            await ctx.Response.WriteAsync(showGateHtml
+                .Replace("{ACTION}", action)
+                .Replace("{RETURN}", System.Net.WebUtility.HtmlEncode(returnUrl))
+                .Replace("{ERROR}", failed ? "<p class=\"err\">Falsches Passwort.</p>" : ""));
+        }
+
+        app.Use(async (context, next) =>
+        {
+            if (!context.Request.Path.StartsWithSegments("/show"))
+            {
+                await next();
+                return;
+            }
+
+            if (context.Request.Path.StartsWithSegments(showGatePath))
+            {
+                if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    var form = await context.Request.ReadFormAsync();
+                    var returnUrl = SafeReturnShow(form["returnUrl"].ToString());
+                    if (form["password"].ToString() == showPassword)
+                    {
+                        SetShowGateCookie(context);
+                        context.Response.Redirect(returnUrl);
+                        return;
+                    }
+                    await WriteShowGate(context, returnUrl, true);
+                    return;
+                }
+                await WriteShowGate(context, SafeReturnShow(context.Request.Query["returnUrl"].ToString()), false);
+                return;
+            }
+
+            if (context.Request.Query["key"].ToString() == showPassword)
+            {
+                SetShowGateCookie(context);
+                await next();
+                return;
+            }
+
+            if (HasShowGate(context))
+            {
+                await next();
+                return;
+            }
+
+            var target = context.Request.Path + context.Request.QueryString;
+            context.Response.Redirect($"{showGatePath}?returnUrl={Uri.EscapeDataString(target)}");
+        });
+    }
+}
+
 var gatePassword = app.Configuration["BasicAuth:Password"];
 {
     const string gateCookie = "RedAnts.Gate";
@@ -319,6 +429,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/agb")
         || path.StartsWithSegments("/scanner-test")
         || path.StartsWithSegments("/scan")
+        || path.StartsWithSegments("/show")
         || path.StartsWithSegments("/payrexx/webhook")
         || path.StartsWithSegments("/checkout/success")
         || path.StartsWithSegments("/checkout/cancel")
