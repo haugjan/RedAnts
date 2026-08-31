@@ -282,27 +282,50 @@
     return res;
   }
 
+  async function transferToDevice() {
+    await spotifyApi('/me/player', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_ids: [deviceId], play: false }),
+    });
+  }
+
+  async function playBody(body) {
+    await spotifyApi('/me/player/play?device_id=' + deviceId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
   board.playSpotify = async function (uri, positionMs, shuffle) {
     if (!board.isLoggedIn()) return 'not-logged-in';
     if (!deviceId) return 'not-ready';
     board.stopLocal();
+    board.activateSpotify();
+    var isContext = /^spotify:(playlist|album|artist):/.test(uri);
+    var body = isContext
+      ? (shuffle ? { context_uri: uri, position_ms: positionMs } : { context_uri: uri, offset: { position: 0 }, position_ms: positionMs })
+      : { uris: [uri], position_ms: positionMs };
     try {
-      if (player) await player.setVolume(volume);
-      var isContext = /^spotify:(playlist|album|artist):/.test(uri);
+      if (player) { try { await player.setVolume(volume); } catch (x) {} }
+      // SDK-Gerät zum aktiven Gerät machen (behebt geräteabhängige 403).
+      try { await transferToDevice(); await new Promise(function (r) { setTimeout(r, 400); }); } catch (x) {}
       if (isContext) {
         try { await spotifyApi('/me/player/shuffle?state=' + (shuffle ? 'true' : 'false') + '&device_id=' + deviceId, { method: 'PUT' }); } catch (x) {}
       }
-      var body = isContext
-        ? (shuffle ? { context_uri: uri, position_ms: positionMs } : { context_uri: uri, offset: { position: 0 }, position_ms: positionMs })
-        : { uris: [uri], position_ms: positionMs };
-      await spotifyApi('/me/player/play?device_id=' + deviceId, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      await playBody(body);
       return 'ok';
     } catch (e) {
-      return e instanceof Error ? e.message : String(e);
+      // Ein Retry nach erneutem Transfer (Gerät war evtl. noch nicht aktiv).
+      try {
+        await transferToDevice();
+        await new Promise(function (r) { setTimeout(r, 700); });
+        await playBody(body);
+        return 'ok';
+      } catch (e2) {
+        return e2 instanceof Error ? e2.message : String(e2);
+      }
     }
   };
 
