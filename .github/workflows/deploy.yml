@@ -85,7 +85,7 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
-            --src-path app.zip --type zip --track-status false --timeout 600000
+            --src-path app.zip --type zip --track-status false --restart false --timeout 600000
       - name: Configure app settings (dev — single write, one restart)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -118,11 +118,10 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
-          # The app-settings write above triggers an async in-place restart. Warming now would
-          # compile the runtime Razor views in the old worker that Azure then recycles, leaving
-          # users on a cold worker. So wait for that restart to tear down the old worker before we
-          # poll - we do NOT force an extra restart (the shared dev box is easily overwhelmed by
-          # back-to-back restarts). Then poll until the NEW worker answers and warm only that one.
+          # Deploy runs with --restart false so the old worker keeps serving during the zip upload.
+          # The appsettings write above is the ONLY restart trigger: new code + new settings land
+          # together in a single cold start. Wait for that restart to tear down the old worker,
+          # then poll /health until the new worker answers before warming views.
           # /health returns 200 immediately once ASP.NET is listening; no site-gate auth needed.
           # Best-effort: never fail here.
           echo "Waiting for the app-settings restart to take the old worker down..."
@@ -180,7 +179,7 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
-            --src-path app.zip --type zip --track-status false --timeout 600000
+            --src-path app.zip --type zip --track-status false --restart false --timeout 600000
       - name: Configure app settings (prod — single write, one restart)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -213,9 +212,8 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           BASE="https://$WEBAPP.azurewebsites.net"
-          # See deploy-dev: wait for the app-settings restart to take the old worker down so warm-up
-          # targets the final worker. We do not force an extra restart.
-          # /health returns 200 immediately once ASP.NET is listening; no site-gate auth needed.
+          # Deploy runs with --restart false (see deploy-dev): appsettings write is the sole restart,
+          # new code + new settings land together. /health returns 200 once ASP.NET is listening.
           echo "Waiting for the app-settings restart to take the old worker down..."
           sleep 30
           wait_up() {
