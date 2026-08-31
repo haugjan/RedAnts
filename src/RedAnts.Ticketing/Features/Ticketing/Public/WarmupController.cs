@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Features.Ticketing.Ports;
@@ -22,11 +21,8 @@ public sealed class WarmupController(
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var paths = CorePaths.ToList();
 
-        var seasonUrl = await FirstSeasonUrlAsync();
-        if (seasonUrl is not null) paths.Add(seasonUrl);
-
-        var eventUrl = await FirstEventUrlAsync();
-        if (eventUrl is not null) paths.Add(eventUrl);
+        foreach (var url in await Task.WhenAll(FirstSeasonUrlAsync(), FirstEventUrlAsync()))
+            if (url is not null) paths.Add(url);
 
         string? gateCookie = null;
         if (!string.IsNullOrEmpty(configuration["BasicAuth:Password"]))
@@ -36,26 +32,26 @@ public sealed class WarmupController(
         }
 
         var client = httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(60);
+        client.Timeout = TimeSpan.FromSeconds(30);
 
-        var report = new StringBuilder("warmup\n");
-        foreach (var path in paths)
+        async Task<string> FetchAsync(string path)
         {
             var url = path.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? path : baseUrl + path;
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                if (gateCookie is not null) request.Headers.Add("Cookie", gateCookie);
-                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseContentRead);
-                report.Append(path).Append(" -> ").Append((int)response.StatusCode).Append('\n');
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                if (gateCookie is not null) req.Headers.Add("Cookie", gateCookie);
+                using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseContentRead);
+                return $"{path} -> {(int)resp.StatusCode}";
             }
             catch (Exception ex)
             {
-                report.Append(path).Append(" -> error ").Append(ex.GetType().Name).Append('\n');
+                return $"{path} -> error {ex.GetType().Name}";
             }
         }
 
-        return Content(report.ToString(), "text/plain; charset=utf-8");
+        var lines = await Task.WhenAll(paths.Select(FetchAsync));
+        return Content("warmup\n" + string.Join('\n', lines) + '\n', "text/plain; charset=utf-8");
     }
 
     private async Task<string?> FirstSeasonUrlAsync()

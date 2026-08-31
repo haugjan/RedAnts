@@ -123,15 +123,15 @@ jobs:
           # users on a cold worker. So wait for that restart to tear down the old worker before we
           # poll - we do NOT force an extra restart (the shared dev box is easily overwhelmed by
           # back-to-back restarts). Then poll until the NEW worker answers and warm only that one.
-          # "Up" = 2xx, 3xx or 401: the root redirects to /ticketing/ (3xx) and the site gate
-          # answers 401 without credentials - both mean Umbraco booted. Best-effort: never fail here.
+          # /health returns 200 immediately once ASP.NET is listening; no site-gate auth needed.
+          # Best-effort: never fail here.
           echo "Waiting for the app-settings restart to take the old worker down..."
           sleep 30
           wait_up() {
             for i in $(seq 1 30); do
-              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/" || echo "000")
-              echo "Attempt $i: GET / -> $S"
-              case "$S" in 2*|3*|401) return 0 ;; esac
+              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health" || echo "000")
+              echo "Attempt $i: GET /health -> $S"
+              case "$S" in 200) return 0 ;; esac
               sleep 10
             done
             return 1
@@ -215,13 +215,14 @@ jobs:
           BASE="https://$WEBAPP.azurewebsites.net"
           # See deploy-dev: wait for the app-settings restart to take the old worker down so warm-up
           # targets the final worker. We do not force an extra restart.
+          # /health returns 200 immediately once ASP.NET is listening; no site-gate auth needed.
           echo "Waiting for the app-settings restart to take the old worker down..."
           sleep 30
           wait_up() {
             for i in $(seq 1 30); do
-              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/" || echo "000")
-              echo "Attempt $i: GET / -> $S"
-              case "$S" in 2*|3*|401) return 0 ;; esac
+              S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health" || echo "000")
+              echo "Attempt $i: GET /health -> $S"
+              case "$S" in 200) return 0 ;; esac
               sleep 10
             done
             return 1
