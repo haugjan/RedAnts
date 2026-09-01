@@ -58,6 +58,7 @@ public sealed class BackOfficeAuthComposer : IComposer
                         OnRedirectToIdentityProvider = context =>
                         {
                             context.ProtocolMessage.Prompt = "select_account";
+                            context.ProtocolMessage.DomainHint = "redants.ch";
                             return Task.CompletedTask;
                         },
                         OnTokenValidated = context =>

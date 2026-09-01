@@ -12,6 +12,19 @@ function applyFavicon() {
 
 applyFavicon();
 
+(function addSwitchAccountLink() {
+  if (document.getElementById('ra-ms-signout')) return;
+  const logoutUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/logout'
+    + '?post_logout_redirect_uri=' + encodeURIComponent(location.origin + '/umbraco/login');
+  const a = document.createElement('a');
+  a.id = 'ra-ms-signout';
+  a.href = logoutUrl;
+  a.textContent = 'Anderes Microsoft-Konto verwenden';
+  a.style.cssText = 'position:fixed;bottom:1rem;right:1rem;font-size:0.75rem;'
+    + 'color:#888;opacity:0.7;text-decoration:underline;z-index:9999;';
+  document.body.appendChild(a);
+})();
+
 new MutationObserver(records => {
   let needsUpdate = false;
   records.forEach(r => {
