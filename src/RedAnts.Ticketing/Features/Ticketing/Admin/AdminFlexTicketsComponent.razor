@@ -75,8 +75,11 @@
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_tickets.Count == 0)" @onclick="OpenBulk"
                         title="Die aktuell gefilterten Flextickets mit E-Mail versenden">Tickets versenden</button>
-                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreateBundle">
                     Bundle erstellen
+                </button>
+                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreateSingle">
+                    Einzelticket erstellen
                 </button>
             </div>
         </div>
@@ -356,18 +359,11 @@
 {
     <div class="ta-overlay" @onmousedown="CloseCreate">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Flexticket erstellen</h2>
+            <h2 class="ta-modal-title">@(_createSingle ? "Flexticket erstellen" : "Flexticket-Bundle erstellen")</h2>
 
             <div class="ta-field">
                 <label class="ta-label">Saison</label>
                 <div class="ta-readonly">@_selectedSeasonName</div>
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newFlexMode">Was erstellen?</label>
-                <select id="newFlexMode" class="ta-select" @bind="_createSingle">
-                    <option value="true">Einzelticket (mit Personendaten)</option>
-                    <option value="false">Bundle (mehrere Tickets auf einmal)</option>
-                </select>
             </div>
             <div class="ta-field">
                 <label class="ta-label" for="newCategory">Ticketkategorie</label>
@@ -1211,10 +1207,13 @@
         return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
     }
 
-    private void OpenCreate()
+    private void OpenCreateSingle() => OpenCreate(true);
+    private void OpenCreateBundle() => OpenCreate(false);
+
+    private void OpenCreate(bool single)
     {
         _createError = null;
-        _createSingle = true;
+        _createSingle = single;
         _newPerson = new PersonForm();
         _newCategory = TicketCategory.Adult;
         _newReference = "";
