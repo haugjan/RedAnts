@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
 using Umbraco.Cms.Core;
@@ -14,7 +15,8 @@ public sealed class WebTicketController(
     ISeasons seasons,
     IVenues venues,
     IPublicBaseUrl publicUrl,
-    ITicketPdf pdf) : Controller
+    ITicketPdf pdf,
+    ILogger<WebTicketController> logger) : Controller
 {
     [HttpGet("/ticket/{token}")]
     public async Task<IActionResult> Show(string token)
@@ -68,18 +70,28 @@ public sealed class WebTicketController(
         if (issued is not { Status: TicketStatus.Valid }) return NotFound();
         var (scopeName, dateText, venueName, _, _) = await ResolveContextAsync(data);
 
-        var bytes = pdf.Render(new TicketPdfModel(
-            Kicker: TicketDisplay.Kicker(data.Type),
-            TypeLabel: DisplayTitle(data.Type, issued),
-            ScopeName: scopeName,
-            DateText: dateText,
-            CategoryLabel: CategoryLabel(issued),
-            HolderName: issued?.HolderName ?? issued?.BuyerName,
-            TicketRef: TicketRef(data.Uuid),
-            AccentHex: TypeAccentHex(data.Type),
-            QrPng: qr.RenderPng(QrUrl(data.Uuid), 10),
-            VenueName: venueName,
-            Admissions: issued?.Admissions ?? 1));
+        byte[] bytes;
+        try
+        {
+            bytes = pdf.Render(new TicketPdfModel(
+                Kicker: TicketDisplay.Kicker(data.Type),
+                TypeLabel: DisplayTitle(data.Type, issued),
+                ScopeName: scopeName,
+                DateText: dateText,
+                CategoryLabel: CategoryLabel(issued),
+                HolderName: issued?.HolderName ?? issued?.BuyerName,
+                TicketRef: TicketRef(data.Uuid),
+                AccentHex: TypeAccentHex(data.Type),
+                QrPng: qr.RenderPng(QrUrl(data.Uuid), 10),
+                VenueName: venueName,
+                Admissions: issued?.Admissions ?? 1));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Ticket PDF render failed for {TicketRef} (type {Type}).", TicketRef(data.Uuid), data.Type);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                "Das Ticket-PDF konnte gerade nicht erzeugt werden. Bitte versuche es in einem Moment erneut.");
+        }
 
         return File(bytes, "application/pdf", $"redants-ticket-{TicketRef(data.Uuid)}.pdf");
     }
