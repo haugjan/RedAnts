@@ -52,6 +52,11 @@
         }
     </nav>
 
+    @if (!_activated)
+    {
+        <div class="sb-activate">👆 Einmal tippen, damit auch die Fernsteuerung / das Streamdeck Ton abspielt.</div>
+    }
+
     @{
         var tiles = CurrentNodes();
         var hasBack = _path.Count > 0;
@@ -531,6 +536,16 @@
     {
         await StopAllAsync();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private bool _activated;
+
+    [JSInvokable]
+    public Task OnActivated()
+    {
+        if (_activated) return Task.CompletedTask;
+        _activated = true;
+        return InvokeAsync(StateHasChanged);
     }
 
     private IDisposable? _remoteReg;

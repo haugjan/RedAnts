@@ -77,6 +77,7 @@ html, body {
 .sb-link { appearance: none; border: none; background: none; color: #ff9aa8; cursor: pointer; font-size: 0.8rem; text-decoration: underline; padding: 0; }
 .sb-gear { appearance: none; border: none; background: none; cursor: pointer; font-size: 1.4rem; line-height: 1; }
 .sb-spotify .sb-hint { color: var(--ra-muted); font-size: 0.85rem; font-weight: 600; }
+.sb-activate { margin: 0 0 8px; padding: 0.5rem 0.9rem; border-radius: 10px; background: rgba(225,19,48,0.16); border: 1px solid rgba(225,19,48,0.4); color: #ffd0d6; font-size: 0.85rem; font-weight: 700; text-align: center; }
 
 /* ---------- Breadcrumb + banner ---------- */
 .sb-breadcrumb { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }

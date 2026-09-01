@@ -11,10 +11,27 @@
   // iOS/Safari blockiert play(), wenn es nicht direkt in einer Nutzergeste steht.
   // Daher wird playLocal aus dem echten Klick-Event heraus aufgerufen (siehe
   // Delegations-Handler unten), nicht über den Blazor-Server-Roundtrip.
+  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
   let volume = 0.9;
   let mediaEl = null;
   let activeId = null;
   let activeTimer = null;
+  let mediaUnlocked = false;
+
+  // Einmalige Audio-Freischaltung in der ersten Nutzergeste, damit auch per API/
+  // Streamdeck ausgelöste Wiedergabe (nicht in einer Geste) Ton macht.
+  function unlockMediaOnce() {
+    if (mediaUnlocked) return;
+    const el = getMediaEl();
+    if (activeId) { mediaUnlocked = true; return; }
+    try {
+      el.src = SILENT_WAV;
+      el.muted = true;
+      const p = el.play();
+      if (p && p.then) p.then(function () { try { el.pause(); el.currentTime = 0; } catch (e) {} el.muted = false; mediaUnlocked = true; }).catch(function () { el.muted = false; });
+      else mediaUnlocked = true;
+    } catch (e) {}
+  }
 
   function getMediaEl() {
     if (!mediaEl) {
@@ -182,7 +199,11 @@
   }, true);
 
   // iOS: der Spotify-Player muss in einer Nutzergeste freigeschaltet werden.
-  document.addEventListener('pointerdown', function () { board.activateSpotify(); }, { passive: true });
+  document.addEventListener('pointerdown', function () {
+    board.activateSpotify();
+    unlockMediaOnce();
+    if (dotnet) { try { dotnet.invokeMethodAsync('OnActivated'); } catch (e) {} }
+  }, { passive: true });
 
   // Long-Press auf Mehr-Song-Kacheln → Einzelsong-Auswahl (Overlay in Blazor).
   (function () {
