@@ -315,15 +315,23 @@
 .ta-conv-link { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--ta-font); display: block; width: 100%; text-align: right; margin-top: 0.1rem; }
 .ta-conv-link:hover { text-decoration: underline; }
 
-.ta-modal-wide { max-width: 620px; height: min(820px, calc(100dvh - 3rem)); display: flex; flex-direction: column; overflow: hidden; }
+.ta-modal-wide { max-width: 960px; height: min(900px, calc(100dvh - 2rem)); display: flex; flex-direction: column; overflow: hidden; }
 .ta-modal-wide > form { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .ta-modal-wide .ta-field { margin-bottom: .6rem; }
 .ta-modal-wide .ta-field-hint { margin: .25rem 0 0; }
-@media (max-width: 640px) { .ta-modal-wide { height: calc(100dvh - 1.2rem); } }
-.fp-zoombar { display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; flex-shrink: 0; }
+.tp-main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 0 1.1rem; overflow: hidden; }
+.tp-preview { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.tp-side { min-height: 0; overflow-y: auto; padding-right: .3rem; }
+.tp-side .fp-grid { grid-template-columns: 1fr 1fr; }
+@media (max-width: 780px) {
+    .ta-modal-wide { max-width: 620px; height: calc(100dvh - 1.2rem); }
+    .tp-main { grid-template-columns: 1fr; overflow-y: auto; }
+    .tp-preview { min-height: 300px; }
+}
+.fp-zoombar { display: flex; align-items: center; gap: .5rem; margin: 0 0 .3rem; flex-shrink: 0; }
 .fp-zoombar input[type=range] { flex: 1; max-width: 240px; }
 .fp-zoomval { font-variant-numeric: tabular-nums; min-width: 3.2em; }
-.fp-stage { width: 100%; flex: 1 1 auto; min-height: 90px; overflow: auto; margin: 0 0 .5rem; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 / 16px 16px; border: 1px solid #ccc; }
+.fp-stage { width: 100%; flex: 1 1 auto; min-height: 200px; overflow: auto; margin: 0; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 / 16px 16px; border: 1px solid #ccc; }
 .fp-scroll { position: relative; width: max-content; line-height: 0; }
 .fp-canvas { display: block; }
 .fp-qrbox { position: absolute; display: none; border: 2px solid var(--ta-accent, #d02d38); background: rgba(208,45,56,.16); box-sizing: border-box; cursor: move; touch-action: none; z-index: 2; }
