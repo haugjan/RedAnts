@@ -430,6 +430,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/scanner-test")
         || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/show")
+        || path.StartsWithSegments("/api/show")
         || path.StartsWithSegments("/payrexx/webhook")
         || path.StartsWithSegments("/checkout/success")
         || path.StartsWithSegments("/checkout/cancel")

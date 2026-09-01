@@ -4,6 +4,7 @@
 @inject IJSRuntime JS
 @inject IOptions<ShowStorageOptions> Storage
 @inject IShowProfileStore Store
+@inject IShowRemote Remote
 @inject IShowSettingsStore Settings
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
 
@@ -325,6 +326,7 @@
     {
         if (!firstRender) return;
         _ref = DotNetObjectReference.Create(this);
+        _remoteReg = Remote.Register(HandleRemoteAsync);
         _timer = new System.Timers.Timer(500) { AutoReset = true };
         _timer.Elapsed += (_, _) => _ = TickAsync();
         _timer.Start();
@@ -530,8 +532,53 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private IDisposable? _remoteReg;
+
+    private async Task HandleRemoteAsync(ShowCommand cmd)
+    {
+        await InvokeAsync(async () =>
+        {
+            switch (cmd.Action)
+            {
+                case "stop": await StopAllAsync(); break;
+                case "pause": await PauseAsync(); break;
+                case "resume": await ResumeAsync(); break;
+                case "fade": await FadeOutAsync(); break;
+                case "back": if (_path.Count > 0) TrimPath(_path.Count - 1); break;
+                case "home": _path.Clear(); break;
+                case "profile": if (cmd.ProfileId is { } pid && Profiles.Any(p => p.Id == pid)) SelectProfile(pid); break;
+                case "folder": if (cmd.TileId is { } fid && FindNode(fid) is { IsFolder: true }) _path.Add(fid); break;
+                case "play": if (cmd.TileId is { } id) await RemotePlayAsync(id, null); break;
+                case "song": if (cmd.TileId is { } sid) await RemotePlayAsync(sid, cmd.SongIndex); break;
+            }
+            StateHasChanged();
+        });
+    }
+
+    private async Task RemotePlayAsync(string id, int? songIndex)
+    {
+        var n = FindNode(id);
+        if (n is null) return;
+        if (n.IsFolder) { _path.Add(id); return; }
+        var songs = n.EffectiveSongs.Where(s => !string.IsNullOrWhiteSpace(s.Ref)).ToList();
+        if (songs.Count == 0) return;
+        if (songIndex is { } si && si >= 0 && si < songs.Count) songs = new() { songs[si] };
+        var arr = songs.Select(x => new
+        {
+            t = x.Kind == SoundKind.Spotify ? "spotify" : "local",
+            r = x.Kind == SoundKind.Spotify ? x.Ref : SoundUrl(x.Ref),
+            s = x.StartSec,
+            d = x.DurationSec,
+            sh = x.Shuffle,
+        }).ToArray();
+        _nowPlaying = null;
+        _paused = false;
+        await JS.InvokeVoidAsync("showBoard.playSongs", id, arr, n.SongsRandom && songIndex is null);
+    }
+
     public async ValueTask DisposeAsync()
     {
+        _remoteReg?.Dispose();
         _timer?.Dispose();
         try { await JS.InvokeVoidAsync("showBoard.stopAll"); } catch { }
         _ref?.Dispose();
