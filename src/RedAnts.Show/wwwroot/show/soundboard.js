@@ -374,8 +374,12 @@
       if (dotnet) dotnet.invokeMethodAsync('OnPlayerReady');
     });
     player.addListener('not_ready', () => { deviceId = null; });
-    ['initialization_error', 'authentication_error', 'account_error', 'playback_error']
+    ['initialization_error', 'authentication_error', 'account_error']
       .forEach((ev) => player.addListener(ev, ({ message }) => toast('Spotify: ' + message)));
+    player.addListener('playback_error', ({ message }) => {
+      if (/no list was loaded|no list was previously loaded/i.test(message)) return;
+      toast('Spotify: ' + message);
+    });
     await player.connect();
   }
 
