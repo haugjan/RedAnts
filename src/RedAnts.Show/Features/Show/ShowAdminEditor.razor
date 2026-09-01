@@ -82,8 +82,13 @@
 
                 <div class="se-testrow">
                     <button class="se-btn primary" @onclick="SaveSpotifyAsync" disabled="@_spotifyBusy">💾 Speichern</button>
+                    <button class="se-btn" @onclick="TestSpotifyAsync" disabled="@_spotifyBusy">🔍 Testen</button>
                     <button class="se-btn" @onclick="() => _showSpotify = false">Schliessen</button>
                 </div>
+                @if (_spotifyTestResult is { Length: > 0 })
+                {
+                    <p class="@(_spotifyTestOk ? "se-savedbanner" : "se-err")">@_spotifyTestResult</p>
+                }
                 @if (_spotifyStatus is { Length: > 0 })
                 {
                     <p class="se-savedbanner">✓ @_spotifyStatus</p>
@@ -1064,12 +1069,34 @@
             _spotifyClientSecret = "";
             _spotifyStatus = "";
             _spotifyError = "";
+            _spotifyTestResult = "";
         }
+    }
+
+    private string _spotifyTestResult = "";
+    private bool _spotifyTestOk;
+
+    private async Task TestSpotifyAsync()
+    {
+        _spotifyBusy = true; _spotifyTestResult = ""; _spotifyStatus = ""; _spotifyError = "";
+        try
+        {
+            var secret = string.IsNullOrWhiteSpace(_spotifyClientSecret)
+                ? (Settings.Get("Spotify:ClientSecret") ?? "")
+                : _spotifyClientSecret.Trim();
+            var r = await Search.TestCredentialsAsync(_spotifyClientId.Trim(), secret);
+            _spotifyTestOk = r == "ok";
+            _spotifyTestResult = _spotifyTestOk
+                ? "✓ Client-ID + Secret gültig (die Suche funktioniert). Für die Wiedergabe braucht es zusätzlich Login + Premium auf dem Board."
+                : "✗ Test fehlgeschlagen: " + r;
+        }
+        catch (Exception ex) { _spotifyTestOk = false; _spotifyTestResult = "✗ Fehler: " + ex.Message; }
+        finally { _spotifyBusy = false; }
     }
 
     private async Task SaveSpotifyAsync()
     {
-        _spotifyBusy = true; _spotifyStatus = ""; _spotifyError = "";
+        _spotifyBusy = true; _spotifyStatus = ""; _spotifyError = ""; _spotifyTestResult = "";
         try
         {
             await Settings.SetAsync("Spotify:ClientId", _spotifyClientId.Trim());

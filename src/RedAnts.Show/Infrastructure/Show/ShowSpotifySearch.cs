@@ -29,6 +29,7 @@ public interface IShowSpotifySearch
     Task<IReadOnlyList<SpotifyTrack>> SearchAsync(string query, int limit = 10);
     Task<SpotifyTrack?> GetTrackAsync(string idOrUri);
     Task<SpotifyContext?> GetContextAsync(string idOrUri);
+    Task<string> TestCredentialsAsync(string clientId, string secret);
 }
 
 public static partial class ShowSpotifyLink
@@ -72,6 +73,27 @@ public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfigura
 
     private string? _token;
     private DateTime _expiresUtc;
+
+    public async Task<string> TestCredentialsAsync(string clientId, string secret)
+    {
+        if (string.IsNullOrWhiteSpace(clientId)) return "Client-ID fehlt.";
+        if (string.IsNullOrWhiteSpace(secret)) return "Client-Secret fehlt (für den Test nötig).";
+        try
+        {
+            var client = httpFactory.CreateClient();
+            var req = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials" }),
+            };
+            req.Headers.Authorization = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId.Trim()}:{secret.Trim()}")));
+            var res = await client.SendAsync(req);
+            if (res.IsSuccessStatusCode) return "ok";
+            var err = await res.Content.ReadAsStringAsync();
+            return $"Fehler {(int)res.StatusCode}: {err}";
+        }
+        catch (Exception ex) { return "Fehler: " + ex.Message; }
+    }
 
     private async Task<string> TokenAsync()
     {

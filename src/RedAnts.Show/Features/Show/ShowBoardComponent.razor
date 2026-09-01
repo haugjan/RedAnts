@@ -105,35 +105,38 @@
     }
     <footer class="sb-footer">
         <div class="sb-nowplaying">
-            @if (_nowPlaying is { } np)
+            @{ var cur = CurrentPlaying(); }
+            @if (cur is { } c)
             {
-                <span>🎵</span>
-                <span class="sb-np-label">@np.Label</span>
-                @if (_remainingSec is int rem)
-                {
-                    <span>@rem s</span>
-                }
+                <span class="sb-np-ico">@c.Icon</span>
+                <span class="sb-np-info">
+                    <span class="sb-np-title">@c.Title</span>
+                    @if (!string.IsNullOrEmpty(c.Sub))
+                    {
+                        <span class="sb-np-sub">@c.Sub</span>
+                    }
+                </span>
+                <span class="sb-np-time">@(_remainingSec is int rem ? $"{rem}s" : "")</span>
             }
             else
             {
-                <span>@(_activeLocalIds.Length > 0 ? $"{_activeLocalIds.Length} Sound(s) aktiv" : "Bereit")</span>
+                <span class="sb-np-ico">🔇</span>
+                <span class="sb-np-info"><span class="sb-np-title">Bereit</span></span>
+                <span class="sb-np-time"></span>
             }
         </div>
-        @if (isPlaying)
-        {
-            <div class="sb-transport">
-                @if (_paused)
-                {
-                    <button class="sb-tp play" @onclick="ResumeAsync">▶ Play</button>
-                }
-                else
-                {
-                    <button class="sb-tp" @onclick="PauseAsync">⏸ Pause</button>
-                }
-                <button class="sb-tp fade" @onclick="FadeOutAsync">🔉 Fade-out</button>
-                <button class="sb-tp stop" @onclick="StopAllAsync">⏹ Stopp</button>
-            </div>
-        }
+        <div class="sb-transport" style="@(isPlaying ? "" : "visibility:hidden")">
+            @if (_paused)
+            {
+                <button class="sb-tp play" @onclick="ResumeAsync">▶ Play</button>
+            }
+            else
+            {
+                <button class="sb-tp" @onclick="PauseAsync">⏸ Pause</button>
+            }
+            <button class="sb-tp fade" @onclick="FadeOutAsync">🔉 Fade-out</button>
+            <button class="sb-tp stop" @onclick="StopAllAsync">⏹ Stopp</button>
+        </div>
         <label class="sb-volume">🔊
             <input type="range" min="0" max="1" step="0.05" value="@_volume"
                    @onchange="OnVolumeChanged" />
@@ -221,6 +224,29 @@
             nodes = children;
         }
         return labels;
+    }
+
+    private (string Icon, string Title, string? Sub)? CurrentPlaying()
+    {
+        string? id = _nowPlaying?.ButtonId ?? (_activeLocalIds.Length > 0 ? _activeLocalIds[^1] : null);
+        if (id is null) return null;
+        var n = FindNode(id);
+        if (n is not null) return (n.Icon ?? "🎵", n.Label, n.Subtitle);
+        return ("🎵", _nowPlaying?.Label ?? "", null);
+    }
+
+    private ShowButton? FindNode(string id)
+    {
+        static ShowButton? Search(IReadOnlyList<ShowButton> nodes, string id)
+        {
+            foreach (var n in nodes)
+            {
+                if (n.Id == id) return n;
+                if (n.Children is { } c && Search(c, id) is { } hit) return hit;
+            }
+            return null;
+        }
+        return Search(Profile.Root, id);
     }
 
     private void SelectProfile(string id)
