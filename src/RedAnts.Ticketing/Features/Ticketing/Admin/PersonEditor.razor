@@ -15,21 +15,21 @@
         <input id="@($"{Prefix}Company")" class="ta-input" maxlength="200" @bind="Model.Company" />
     </div>
 }
-else
-{
+
+<div class="ta-field">
+    <label class="ta-label" for="@($"{Prefix}Salutation")">Anrede</label>
+    <input id="@($"{Prefix}Salutation")" class="ta-input" maxlength="50" placeholder="z. B. Frau, Herr" @bind="Model.Salutation" />
+</div>
+<div class="ta-person-row">
     <div class="ta-field">
-        <label class="ta-label" for="@($"{Prefix}Salutation")">Anrede</label>
-        <input id="@($"{Prefix}Salutation")" class="ta-input" maxlength="50" placeholder="z. B. Frau, Herr" @bind="Model.Salutation" />
-    </div>
-    <div class="ta-field">
-        <label class="ta-label" for="@($"{Prefix}FirstName")">Vorname</label>
+        <label class="ta-label" for="@($"{Prefix}FirstName")">Vorname@(Model.IsCompany ? " (Ansprechperson)" : "")</label>
         <input id="@($"{Prefix}FirstName")" class="ta-input" maxlength="100" @bind="Model.FirstName" />
     </div>
     <div class="ta-field">
-        <label class="ta-label" for="@($"{Prefix}LastName")">Nachname</label>
+        <label class="ta-label" for="@($"{Prefix}LastName")">Nachname@(Model.IsCompany ? " (Ansprechperson)" : "")</label>
         <input id="@($"{Prefix}LastName")" class="ta-input" maxlength="100" @bind="Model.LastName" />
     </div>
-}
+</div>
 
 <div class="ta-field">
     <label class="ta-label" for="@($"{Prefix}Email")">E-Mail@(EmailHint)</label>
