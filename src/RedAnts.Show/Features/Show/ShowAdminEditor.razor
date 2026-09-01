@@ -237,20 +237,51 @@
 
                     @if (n.Kind == NodeKind.Sound)
                     {
-                        <h3>Sound</h3>
+                        var song = CurrentSong(n);
+                        <h3>Songs (@n.Songs.Count)</h3>
+                        @if (n.Songs.Count > 1)
+                        {
+                            <div class="se-fieldcol">
+                                <span class="se-lbl">Wiedergabe · Endlos-Loop bis Stopp</span>
+                                <div class="se-src-tabs">
+                                    <button type="button" class="@(!n.SongsRandom ? "active" : "")" @onclick="() => n.SongsRandom = false">🔁 Der Reihe nach</button>
+                                    <button type="button" class="@(n.SongsRandom ? "active" : "")" @onclick="() => n.SongsRandom = true">🔀 Zufällig</button>
+                                </div>
+                            </div>
+                        }
+                        <div class="se-songlist">
+                            @for (var i = 0; i < n.Songs.Count; i++)
+                            {
+                                var idx = i;
+                                var sg = n.Songs[idx];
+                                <div class="se-songrow @(sg == song ? "sel" : "")">
+                                    <button type="button" class="se-songrow-main" @onclick="() => SelectSong(sg)">
+                                        <span class="se-songrow-nr">@(idx + 1)</span>
+                                        <span class="se-songrow-name">@SongEditLabel(sg)</span>
+                                        <span class="se-songrow-cue">@Clock(sg.StartSec)@(sg.DurationSec is { } d ? " – " + Clock(d) : "")</span>
+                                    </button>
+                                    <button type="button" class="se-btn sm" title="hoch" @onclick="() => MoveSong(n, idx, -1)" disabled="@(idx == 0)">↑</button>
+                                    <button type="button" class="se-btn sm" title="runter" @onclick="() => MoveSong(n, idx, 1)" disabled="@(idx == n.Songs.Count - 1)">↓</button>
+                                    <button type="button" class="se-btn sm danger" title="entfernen" @onclick="() => RemoveSong(n, idx)" disabled="@(n.Songs.Count <= 1)">🗑</button>
+                                </div>
+                            }
+                        </div>
+                        <button type="button" class="se-btn sm" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
+
+                        <h4 class="se-songh">Song @(n.Songs.IndexOf(song) + 1) bearbeiten</h4>
                         <div class="se-src-tabs">
-                            <button type="button" class="@(n.Sound.Kind == SoundKind.Local ? "active" : "")" @onclick="() => n.Sound.Kind = SoundKind.Local">🎵 Datei</button>
-                            <button type="button" class="@(n.Sound.Kind == SoundKind.Spotify ? "active" : "")" @onclick="() => n.Sound.Kind = SoundKind.Spotify">🟢 Spotify</button>
+                            <button type="button" class="@(song.Kind == SoundKind.Local ? "active" : "")" @onclick="() => song.Kind = SoundKind.Local">🎵 Datei</button>
+                            <button type="button" class="@(song.Kind == SoundKind.Spotify ? "active" : "")" @onclick="() => song.Kind = SoundKind.Spotify">🟢 Spotify</button>
                         </div>
 
-                        @if (n.Sound.Kind == SoundKind.Local)
+                        @if (song.Kind == SoundKind.Local)
                         {
                             <div class="se-full">
                                 <span class="se-lbl">Aktuelle Datei</span>
-                                <div class="se-current">@FriendlyName(n.Sound.Ref)</div>
+                                <div class="se-current">@FriendlyName(song.Ref)</div>
                             </div>
                             <label class="se-drop @(_uploading ? "busy" : "")">
-                                <InputFile OnChange="e => OnUploadAsync(e, n.Sound)" accept="audio/*" />
+                                <InputFile OnChange="e => OnUploadAsync(e, song)" accept="audio/*" />
                                 <span>@(_uploading ? "Lädt hoch …" : "Datei ziehen oder klicken – ersetzt sofort")</span>
                             </label>
                         }
@@ -264,7 +295,7 @@
                                 </div>
                             }
                             <label class="se-full">Spotify-Link, URL oder ID einfügen
-                                <input value="@n.Sound.Ref" @onchange="e => ApplyPaste(e, n.Sound)"
+                                <input value="@song.Ref" @onchange="e => ApplyPaste(e, song)"
                                        placeholder="https://open.spotify.com/… · spotify:track:… · oder nur die ID" />
                             </label>
                             @if (!Search.Configured)
@@ -272,7 +303,7 @@
                                 <p class="se-muted">Suche inaktiv (Client-ID + Secret hinterlegen). Link einfügen geht trotzdem.</p>
                             }
 
-                            @if (_trackInfo is { } ti && ShowSpotifyLink.Parse(n.Sound.Ref)?.Kind == "track")
+                            @if (_trackInfo is { } ti && ShowSpotifyLink.Parse(song.Ref)?.Kind == "track")
                             {
                                 <div class="se-trackcard">
                                     @if (!string.IsNullOrEmpty(ti.CoverUrl))
@@ -300,13 +331,13 @@
                                 </div>
                             }
 
-                            @if (IsContextRef(n.Sound.Ref))
+                            @if (IsContextRef(song.Ref))
                             {
                                 <div class="se-fieldcol">
                                     <span class="se-lbl">Playlist-Reihenfolge</span>
                                     <div class="se-src-tabs">
-                                        <button type="button" class="@(!n.Sound.Shuffle ? "active" : "")" @onclick="() => n.Sound.Shuffle = false">➡ Der Reihe nach</button>
-                                        <button type="button" class="@(n.Sound.Shuffle ? "active" : "")" @onclick="() => n.Sound.Shuffle = true">🔀 Zufällig</button>
+                                        <button type="button" class="@(!song.Shuffle ? "active" : "")" @onclick="() => song.Shuffle = false">➡ Der Reihe nach</button>
+                                        <button type="button" class="@(song.Shuffle ? "active" : "")" @onclick="() => song.Shuffle = true">🔀 Zufällig</button>
                                     </div>
                                 </div>
                             }
@@ -314,11 +345,11 @@
 
                         <div class="se-timeline">
                             <div class="se-tl-track" title="Klicken/ziehen zum Einspringen">
-                                <div class="se-tl-sel" style="left:@Pct(n.Sound.StartSec, TrackMax)%; width:@Pct(n.Sound.DurationSec ?? 0, TrackMax)%;"></div>
-                                <div class="se-tl-mark start" style="left:@Pct(n.Sound.StartSec, TrackMax)%;" title="Cue"></div>
-                                @if (n.Sound.DurationSec is { } dsec)
+                                <div class="se-tl-sel" style="left:@Pct(song.StartSec, TrackMax)%; width:@Pct(song.DurationSec ?? 0, TrackMax)%;"></div>
+                                <div class="se-tl-mark start" style="left:@Pct(song.StartSec, TrackMax)%;" title="Cue"></div>
+                                @if (song.DurationSec is { } dsec)
                                 {
-                                    <div class="se-tl-mark end" style="left:@Pct(n.Sound.StartSec + dsec, TrackMax)%;" title="Ende"></div>
+                                    <div class="se-tl-mark end" style="left:@Pct(song.StartSec + dsec, TrackMax)%;" title="Ende"></div>
                                 }
                                 <div class="se-tl-head @(_playing ? "on" : "")" style="left:@Pct(_playPos, TrackMax)%;"></div>
                             </div>
@@ -327,40 +358,26 @@
 
                         <div class="se-grid">
                             <label>Cue-Start (m:ss.mmm)
-                                <input value="@Clock(n.Sound.StartSec)" @onchange="e => SetCueText(e, n.Sound)" placeholder="0:00.000" />
+                                <input value="@Clock(song.StartSec)" @onchange="e => SetCueText(e, song)" placeholder="0:00.000" />
                             </label>
                             <label>Länge (leer = ganzer Song)
-                                <input value="@(n.Sound.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, n.Sound)" placeholder="ganzer Song" />
+                                <input value="@(song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, song)" placeholder="ganzer Song" />
                             </label>
                         </div>
 
                         <div class="se-testrow">
-                            <button class="se-btn primary" @onclick="() => PlayFullAsync(n.Sound)">▶ Abspielen</button>
-                            <button class="se-btn" @onclick="() => PlayFromCueAsync(n.Sound)">▶ Abschnitt</button>
+                            <button class="se-btn primary" @onclick="() => PlayFullAsync(song)">▶ Abspielen</button>
+                            <button class="se-btn" @onclick="() => PlayFromCueAsync(song)">▶ Abschnitt</button>
                             <button class="se-btn" @onclick="StopTest">⏹ Stopp</button>
                         </div>
                         <div class="se-testrow">
-                            <button class="se-btn" @onclick="() => SetCueFromPos(n.Sound)">⤓ Position als Cue</button>
-                            <button class="se-btn" @onclick="() => SetEndFromPos(n.Sound)">⤒ Position als Ende</button>
+                            <button class="se-btn" @onclick="() => SetCueFromPos(song)">⤓ Position als Cue</button>
+                            <button class="se-btn" @onclick="() => SetEndFromPos(song)">⤒ Position als Ende</button>
                         </div>
                         @if (_uploadError is { Length: > 0 })
                         {
                             <p class="se-err">@_uploadError</p>
                         }
-                    }
-                    else if (n.Kind == NodeKind.Random)
-                    {
-                        <h3>Zufalls-Pool (Blob-Pfade)</h3>
-                        @for (var i = 0; i < n.Pool.Count; i++)
-                        {
-                            var idx = i;
-                            <div class="se-pool-row">
-                                <input @bind="n.Pool[idx].Ref" @bind:event="oninput" placeholder="sounds/xy.mp3" />
-                                <button class="se-btn sm" @onclick="() => TestAsync(n.Pool[idx])">▶</button>
-                                <button class="se-btn sm danger" @onclick="() => n.Pool.RemoveAt(idx)">🗑</button>
-                            </div>
-                        }
-                        <button class="se-btn" @onclick="() => n.Pool.Add(new EditSound())">+ Sound zum Pool</button>
                     }
                     else
                     {
@@ -635,12 +652,68 @@
         _colorOpen = false; _emojiOpen = false;
         _playPos = 0; _playDur = 0; _playing = false;
         _trackInfo = null; _ctxInfo = null;
+        _editSong = node.Songs.Count > 0 ? node.Songs[0] : null;
         _ = JS.InvokeVoidAsync("showEditStop");
-        _ = RefreshSpotifyInfoAsync(node.Sound);
+        if (_editSong is { } s0) _ = RefreshSpotifyInfoAsync(s0);
     }
 
     private static bool IsTileValid(EditButton n) =>
-        n.Kind == NodeKind.Folder || (n.Sound is { } s && !string.IsNullOrWhiteSpace(s.Ref));
+        n.Kind == NodeKind.Folder || n.Songs.Any(s => !string.IsNullOrWhiteSpace(s.Ref));
+
+    private EditSound? _editSong;
+
+    private EditSound CurrentSong(EditButton n)
+    {
+        if (n.Songs.Count == 0) n.Songs.Add(new EditSound());
+        if (_editSong is null || !n.Songs.Contains(_editSong)) _editSong = n.Songs[0];
+        return _editSong;
+    }
+
+    private void SelectSong(EditSound s)
+    {
+        _editSong = s;
+        _trackInfo = null; _ctxInfo = null;
+        _playPos = 0; _playDur = 0; _playing = false;
+        _ = JS.InvokeVoidAsync("showEditStop");
+        _ = RefreshSpotifyInfoAsync(s);
+    }
+
+    private void AddSong(EditButton n)
+    {
+        var s = new EditSound();
+        n.Songs.Add(s);
+        SelectSong(s);
+    }
+
+    private void RemoveSong(EditButton n, int idx)
+    {
+        if (n.Songs.Count <= 1 || idx < 0 || idx >= n.Songs.Count) return;
+        var removed = n.Songs[idx];
+        n.Songs.RemoveAt(idx);
+        if (_editSong == removed) _editSong = n.Songs[Math.Min(idx, n.Songs.Count - 1)];
+    }
+
+    private void MoveSong(EditButton n, int idx, int delta)
+    {
+        var j = idx + delta;
+        if (j < 0 || j >= n.Songs.Count) return;
+        (n.Songs[idx], n.Songs[j]) = (n.Songs[j], n.Songs[idx]);
+    }
+
+    private static string SongEditLabel(EditSound s)
+    {
+        if (string.IsNullOrWhiteSpace(s.Ref)) return "— leer —";
+        if (s.Kind == SoundKind.Spotify)
+        {
+            var p = ShowSpotifyLink.Parse(s.Ref);
+            return p is { } v ? $"Spotify · {v.Kind}" : "Spotify";
+        }
+        var r = s.Ref;
+        if (r.StartsWith("sounds/")) r = r["sounds/".Length..];
+        var slash = r.LastIndexOf('/');
+        if (slash >= 0) r = r[(slash + 1)..];
+        return r;
+    }
 
     private void AddChild(List<EditButton> list, NodeKind kind)
     {
@@ -953,11 +1026,11 @@
     {
         if (string.IsNullOrWhiteSpace(_query)) return;
         var link = ShowSpotifyLink.ToUri(_query);
-        if (link is not null && _selected is not null)
+        if (link is not null && _editSong is not null)
         {
-            _selected.Sound.Kind = SoundKind.Spotify;
-            _selected.Sound.Ref = link;
-            await RefreshSpotifyInfoAsync(_selected.Sound);
+            _editSong.Kind = SoundKind.Spotify;
+            _editSong.Ref = link;
+            await RefreshSpotifyInfoAsync(_editSong);
             _selectedIsNew = false;
             _query = "";
             return;
@@ -975,11 +1048,14 @@
 
     private async Task PickTrack(SpotifyTrack t)
     {
-        if (_selected is null) return;
-        _selected.Sound.Kind = SoundKind.Spotify;
-        _selected.Sound.Ref = t.Uri;
-        if (string.IsNullOrWhiteSpace(_selected.Label) || _selected.Label == "Neu") _selected.Label = t.Name;
-        _selected.Subtitle = t.Artist;
+        if (_editSong is null) return;
+        _editSong.Kind = SoundKind.Spotify;
+        _editSong.Ref = t.Uri;
+        if (_selected is { } n && (string.IsNullOrWhiteSpace(n.Label) || n.Label == "Neu"))
+        {
+            n.Label = t.Name;
+            if (string.IsNullOrWhiteSpace(n.Subtitle)) n.Subtitle = t.Artist;
+        }
         _trackInfo = t; _ctxInfo = null;
         _selectedIsNew = false;
         _searchOpen = false;
@@ -1120,9 +1196,8 @@
         {
             foreach (var n in nodes)
             {
-                if (n.Sound is { Kind: SoundKind.Local } s && s.Ref.StartsWith("sounds/")) set.Add(s.Ref);
-                foreach (var p in n.Pool)
-                    if (p.Kind == SoundKind.Local && p.Ref.StartsWith("sounds/")) set.Add(p.Ref);
+                foreach (var s in n.Songs)
+                    if (s.Kind == SoundKind.Local && s.Ref.StartsWith("sounds/")) set.Add(s.Ref);
                 if (n.Children.Count > 0) Walk(n.Children);
             }
         }
@@ -1221,7 +1296,7 @@
             <button class="tn-label" @onclick="() => Select(node)">
                 <span class="tn-ico">@(string.IsNullOrEmpty(node.Icon) ? (node.Kind == NodeKind.Folder ? "📁" : "🔊") : node.Icon)</span>
                 <span>@node.Label</span>
-                <span class="tn-kind">@(node.Kind == NodeKind.Folder ? "Ordner" : node.Kind == NodeKind.Random ? "Zufall" : "")</span>
+                <span class="tn-kind">@(node.Kind == NodeKind.Folder ? "Ordner" : node.Songs.Count > 1 ? $"{node.Songs.Count} Songs" : "")</span>
             </button>
             <span class="tn-ctrl">
                 <button title="Nach oben" @onclick="() => Move(node, siblings, -1)">↑</button>
@@ -1443,4 +1518,13 @@
     .se-savedbanner { background: rgba(29,185,84,0.15); border: 1px solid rgba(29,185,84,0.4); color: #62e39b; border-radius: 10px; padding: 0.6rem 0.8rem; font-weight: 700; margin: 12px 0 0; }
     .se-redirects { margin: 6px 0 0; padding-left: 1.1rem; }
     .se-redirects code { background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 6px; padding: 0.1rem 0.4rem; word-break: break-all; }
+
+    .se-songlist { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+    .se-songrow { display: flex; align-items: center; gap: 6px; }
+    .se-songrow.sel .se-songrow-main { border-color: var(--ra-red); background: var(--ra-panel2); }
+    .se-songrow-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; appearance: none; cursor: pointer; background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.5rem 0.7rem; color: var(--ra-text); font: inherit; }
+    .se-songrow-nr { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--ra-red); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; }
+    .se-songrow-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; text-transform: none; }
+    .se-songrow-cue { flex: 0 0 auto; color: var(--ra-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+    .se-songh { margin: 16px 0 8px; }
 </style>

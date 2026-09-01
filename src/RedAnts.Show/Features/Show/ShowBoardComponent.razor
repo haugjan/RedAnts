@@ -66,11 +66,13 @@
         }
         @foreach (var node in tiles)
         {
+            var songs = node.EffectiveSongs;
             var isFolder = node.IsFolder;
-            var isSpotify = node.Sound?.Kind == SoundKind.Spotify;
+            var isSpotify = songs.Any(s => s.Kind == SoundKind.Spotify);
+            var isMulti = songs.Count(s => !string.IsNullOrWhiteSpace(s.Ref)) > 1;
             var isActive = _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
             var pos = layout[node.Id];
-            <button class="sb-tile @(isFolder ? "folder" : "") @(node.IsRandom ? "random" : "") @(isActive ? "active" : "")"
+            <button class="sb-tile @(isFolder ? "folder" : "") @(isActive ? "active" : "")"
                     style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
                     @attributes="TileAttrs(node)"
                     @onclick="() => HandleButtonAsync(node)">
@@ -88,6 +90,10 @@
                         <span class="sb-tile-sub">@node.Subtitle</span>
                     }
                 }
+                @if (isMulti)
+                {
+                    <span class="sb-badge multi">@songs.Count(s => !string.IsNullOrWhiteSpace(s.Ref)) Songs @(node.SongsRandom ? "🔀" : "🔁")</span>
+                }
                 @if (isSpotify)
                 {
                     <span class="sb-badge spotify">Spotify</span>
@@ -99,6 +105,32 @@
             </button>
         }
     </main>
+
+    @if (_songMenu is { } menu)
+    {
+        <div class="sb-backdrop" @onclick="() => _songMenu = null">
+            <div class="sb-songmenu" @onclick:stopPropagation="true">
+                <div class="sb-songmenu-head">
+                    <span>@menu.Label</span>
+                    <button class="sb-link" @onclick="() => _songMenu = null">✕</button>
+                </div>
+                @for (var i = 0; i < menu.Songs.Count; i++)
+                {
+                    var song = menu.Songs[i];
+                    var nr = i + 1;
+                    <button class="sb-songitem" data-play="songs" data-force="1"
+                            data-id="@($"{menu.Id}:{i}")"
+                            data-songs="@SongsJson(new[] { song })"
+                            data-label="@menu.Label"
+                            @onclick="() => _songMenu = null">
+                        <span class="sb-songitem-nr">@nr</span>
+                        <span class="sb-songitem-name">@SongLabel(song)</span>
+                        <span class="sb-songitem-badge">@(song.Kind == SoundKind.Spotify ? "Spotify" : "Datei")</span>
+                    </button>
+                }
+            </div>
+        </div>
+    }
 
     @{
         var isPlaying = _activeLocalIds.Length > 0 || _nowPlaying is not null;
@@ -249,6 +281,35 @@
         return Search(Profile.Root, id);
     }
 
+    private SongMenu? _songMenu;
+    private sealed record SongMenu(string Id, string Label, IReadOnlyList<ShowSound> Songs);
+
+    [JSInvokable]
+    public Task OnLongPress(string id)
+    {
+        var n = FindNode(id);
+        if (n is not null)
+        {
+            var songs = n.EffectiveSongs.Where(s => !string.IsNullOrWhiteSpace(s.Ref)).ToList();
+            if (songs.Count > 1) _songMenu = new SongMenu(id, n.Label, songs);
+        }
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static string SongLabel(ShowSound s)
+    {
+        if (s.Kind == SoundKind.Spotify)
+        {
+            var p = ShowSpotifyLink.Parse(s.Ref);
+            return p is { } v ? $"Spotify · {v.Kind} {v.Id[..Math.Min(8, v.Id.Length)]}…" : "Spotify-Track";
+        }
+        var r = s.Ref;
+        if (r.StartsWith("sounds/")) r = r["sounds/".Length..];
+        var slash = r.LastIndexOf('/');
+        if (slash >= 0) r = r[(slash + 1)..];
+        return r;
+    }
+
     private void SelectProfile(string id)
     {
         _profileId = id;
@@ -296,31 +357,25 @@
     {
         var a = new Dictionary<string, object> { ["data-id"] = node.Id };
         if (node.IsFolder) return a;
-        if (node.IsRandom)
-        {
-            a["data-play"] = "random";
-            a["data-pool"] = System.Text.Json.JsonSerializer.Serialize(
-                node.Pool!.Where(p => p.Kind == SoundKind.Local)
-                    .Select(p => new { r = SoundUrl(p.Ref), s = p.StartSec, d = p.DurationSec }));
-        }
-        else if (node.Sound is { Kind: SoundKind.Local } s)
-        {
-            a["data-play"] = "local";
-            a["data-ref"] = SoundUrl(s.Ref);
-            a["data-start"] = Num(s.StartSec);
-            if (s.DurationSec is { } d) a["data-dur"] = Num(d);
-        }
-        else if (node.Sound is { Kind: SoundKind.Spotify } sp && !string.IsNullOrWhiteSpace(sp.Ref))
-        {
-            a["data-play"] = "spotify";
-            a["data-uri"] = sp.Ref;
-            a["data-startms"] = ((long)Math.Round(sp.StartSec * 1000)).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            a["data-shuffle"] = sp.Shuffle ? "1" : "0";
-            a["data-label"] = node.Label;
-            if (sp.DurationSec is { } d) a["data-dur"] = Num(d);
-        }
+        var songs = node.EffectiveSongs.Where(s => !string.IsNullOrWhiteSpace(s.Ref)).ToList();
+        if (songs.Count == 0) return a;
+        a["data-play"] = "songs";
+        a["data-songs"] = SongsJson(songs);
+        a["data-random"] = node.SongsRandom ? "1" : "0";
+        a["data-label"] = node.Label;
+        if (songs.Count > 1) a["data-multi"] = "1";
         return a;
     }
+
+    private string SongsJson(IEnumerable<ShowSound> songs) =>
+        System.Text.Json.JsonSerializer.Serialize(songs.Select(x => new
+        {
+            t = x.Kind == SoundKind.Spotify ? "spotify" : "local",
+            r = x.Kind == SoundKind.Spotify ? x.Ref : SoundUrl(x.Ref),
+            s = x.StartSec,
+            d = x.DurationSec,
+            sh = x.Shuffle,
+        }));
 
     private string SoundUrl(string reff) => reff.StartsWith("http") ? reff : SoundBase + reff;
 

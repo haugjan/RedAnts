@@ -22,10 +22,18 @@ public sealed record ShowButton(
     int Y = -1,
     int W = 0,
     int H = 0,
-    bool Panic = false)
+    bool Panic = false,
+    IReadOnlyList<ShowSound>? Songs = null,
+    bool SongsRandom = false)
 {
     [JsonIgnore] public bool IsFolder => Children is { Count: > 0 };
     [JsonIgnore] public bool IsRandom => Pool is { Count: > 0 };
+
+    [JsonIgnore]
+    public IReadOnlyList<ShowSound> EffectiveSongs =>
+        Songs is { Count: > 0 } ? Songs
+        : Sound is { } s ? new[] { s }
+        : Pool ?? Array.Empty<ShowSound>();
 }
 
 public sealed record ShowProfile(string Id, string Name, string? Color, IReadOnlyList<ShowButton> Root);

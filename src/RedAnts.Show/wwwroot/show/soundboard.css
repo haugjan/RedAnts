@@ -169,6 +169,16 @@ html, body {
   background: rgba(0, 0, 0, 0.28); color: #fff;
 }
 .sb-badge.spotify { background: #1db954; }
+.sb-badge.multi { top: auto; bottom: 6cqmin; right: 6cqmin; background: rgba(0,0,0,0.45); }
+
+.sb-songmenu { background: #1b1b1f; color: var(--ra-text); border: 1px solid var(--ra-line); border-radius: 18px; padding: 1rem; width: min(94vw, 460px); max-height: 80vh; overflow: auto; box-shadow: 0 24px 70px rgba(0,0,0,0.6); }
+.sb-songmenu-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; font-size: 1.1rem; margin-bottom: 0.8rem; }
+.sb-songitem { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; appearance: none; cursor: pointer;
+  background: var(--ra-panel2); border: 1px solid var(--ra-line); color: var(--ra-text); border-radius: 12px; padding: 0.7rem 0.9rem; margin-bottom: 8px; font: inherit; }
+.sb-songitem:hover { background: #33333d; border-color: var(--ra-red); }
+.sb-songitem-nr { flex: 0 0 auto; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--ra-red); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.sb-songitem-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.sb-songitem-badge { flex: 0 0 auto; font-size: 0.72rem; font-weight: 800; padding: 0.1em 0.6em; border-radius: 999px; background: rgba(255,255,255,0.1); }
 
 .sb-tile.active { outline: 4px solid #fff; outline-offset: -4px; animation: sb-playing 1.15s ease-in-out infinite; z-index: 4; }
 @keyframes sb-playing {

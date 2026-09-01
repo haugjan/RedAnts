@@ -28,14 +28,20 @@ public sealed class EditButton
     public int W { get; set; }
     public int H { get; set; }
     public NodeKind Kind { get; set; } = NodeKind.Sound;
-    public EditSound Sound { get; set; } = new();
+    public List<EditSound> Songs { get; set; } = new() { new EditSound() };
+    public bool SongsRandom { get; set; }
     public List<EditButton> Children { get; set; } = new();
-    public List<EditSound> Pool { get; set; } = new();
     public bool Panic { get; set; }
+
+    public EditSound FirstSong => Songs.Count > 0 ? Songs[0] : Songs.AddAndReturn(new EditSound());
 
     public static EditButton From(ShowButton b)
     {
-        var kind = b.IsFolder ? NodeKind.Folder : b.IsRandom ? NodeKind.Random : NodeKind.Sound;
+        var kind = b.IsFolder ? NodeKind.Folder : NodeKind.Sound;
+        var songs = b.Songs is { Count: > 0 } ? b.Songs.Select(EditSound.From).ToList()
+            : b.Sound is { } s ? new List<EditSound> { EditSound.From(s) }
+            : b.Pool is { Count: > 0 } ? b.Pool.Select(EditSound.From).ToList()
+            : new List<EditSound> { new EditSound() };
         return new EditButton
         {
             Id = b.Id,
@@ -47,9 +53,9 @@ public sealed class EditButton
             X = b.X, Y = b.Y, W = b.W, H = b.H,
             Kind = kind,
             Panic = b.Panic,
-            Sound = b.Sound is { } s ? EditSound.From(s) : new EditSound(),
+            Songs = songs,
+            SongsRandom = b.SongsRandom || (b.Songs is null && b.Pool is { Count: > 0 }),
             Children = (b.Children ?? []).Select(From).ToList(),
-            Pool = (b.Pool ?? []).Select(EditSound.From).ToList(),
         };
     }
 
@@ -57,9 +63,15 @@ public sealed class EditButton
     {
         _ when Panic => new ShowButton(Id, Label, Icon, Color, Size, null, null, Subtitle, null, X, Y, W, H, true),
         NodeKind.Folder => new ShowButton(Id, Label, Icon, Color, Size, Children.Select(c => c.ToModel()).ToList(), null, Subtitle, null, X, Y, W, H),
-        NodeKind.Random => new ShowButton(Id, Label, Icon, Color, Size, null, null, Subtitle, Pool.Select(p => p.ToModel()).ToList(), X, Y, W, H),
-        _ => new ShowButton(Id, Label, Icon, Color, Size, null, Sound.ToModel(), Subtitle, null, X, Y, W, H),
+        _ => new ShowButton(Id, Label, Icon, Color, Size, null,
+            Songs.Count == 1 ? Songs[0].ToModel() : null, Subtitle, null, X, Y, W, H, false,
+            Songs.Select(s => s.ToModel()).ToList(), SongsRandom),
     };
+}
+
+internal static class EditSoundListExtensions
+{
+    public static EditSound AddAndReturn(this List<EditSound> list, EditSound s) { list.Add(s); return s; }
 }
 
 public sealed class EditProfile

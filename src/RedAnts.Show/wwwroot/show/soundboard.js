@@ -37,11 +37,16 @@
 
   board.currentLocalId = function () { return activeId; };
 
+  function pauseMedia() {
+    if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
+    if (mediaEl) { try { mediaEl.pause(); } catch {} }
+  }
+
   board.playLocal = function (id, ref, startSec, durationSec) {
-    // Nur ein Sound gleichzeitig.
+    board.stopSequence();
     spotifyId = null;
     if (player) { try { player.pause(); } catch {} }
-    if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
+    pauseMedia();
     const src = /^(https?:)?\//.test(ref) ? ref : assetBase + ref;
     const el = getMediaEl();
     el.volume = volume;
@@ -63,8 +68,8 @@
   };
 
   board.stopLocal = function () {
-    if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
-    if (mediaEl) { try { mediaEl.pause(); } catch {} }
+    board.stopSequence();
+    pauseMedia();
     if (activeId !== null) { activeId = null; emitActive(); }
   };
 
@@ -74,49 +79,137 @@
     if (player) player.setVolume(v);
   };
 
-  // Lokale Sounds direkt im Klick-Event abspielen (iOS-Nutzergeste). Spotify und
-  // Ordner laufen weiter über Blazor.
-  document.addEventListener('click', function (e) {
-    const tile = e.target && e.target.closest ? e.target.closest('.sb-tile[data-play]') : null;
-    if (!tile) return;
-    const kind = tile.getAttribute('data-play');
-    const id = tile.getAttribute('data-id');
+  // ---------- Sequenzer: mehrere Songs pro Kachel (Reihenfolge/Zufall, Endlos-Loop) ----------
+  let seqToken = 0;
+  board.stopSequence = function () { seqToken++; };
 
-    if (kind === 'spotify') {
-      if (spotifyId === id) { void board.stopSpotify(false); spotifyId = null; if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStopped'); return; }
-      if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); return; }
-      board.activateSpotify();
-      const uri = tile.getAttribute('data-uri');
-      const startMs = parseInt(tile.getAttribute('data-startms'), 10) || 0;
-      const shuffle = tile.getAttribute('data-shuffle') === '1';
-      const label = tile.getAttribute('data-label') || '';
-      const dur = tile.getAttribute('data-dur') ? parseFloat(tile.getAttribute('data-dur')) : null;
-      spotifyId = id;
-      board.playSpotify(uri, startMs, shuffle).then(function (status) {
-        if (status === 'ok') { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStarted', id, label, dur); }
-        else { spotifyId = null; if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', status); }
+  function playOneSong(song, token) {
+    return new Promise(function (resolve) {
+      if (token !== seqToken) { resolve(); return; }
+      if (song.t === 'spotify') {
+        if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); resolve(); return; }
+        board.activateSpotify();
+        board.playSpotify(song.r, (song.s || 0) * 1000, !!song.sh).then(function (status) {
+          if (token !== seqToken) { resolve(); return; }
+          if (status !== 'ok') { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', status); resolve(); return; }
+          if (song.d) { setTimeout(function () { resolve(); }, song.d * 1000); }
+          else {
+            const poll = setInterval(async function () {
+              if (token !== seqToken) { clearInterval(poll); resolve(); return; }
+              const st = await board.getState();
+              if (st && ((st.duration > 0 && st.position >= st.duration - 1500) || (st.paused && st.position === 0))) { clearInterval(poll); resolve(); }
+            }, 1000);
+          }
+        });
+      } else {
+        const el = getMediaEl();
+        if (player) { try { player.pause(); } catch {} }
+        const src = /^(https?:)?\//.test(song.r) ? song.r : assetBase + song.r;
+        el.volume = volume;
+        let done = false, cut = null;
+        const finish = function () { if (done) return; done = true; el.removeEventListener('ended', onEnd); if (cut) clearTimeout(cut); resolve(); };
+        const onEnd = function () { finish(); };
+        el.addEventListener('ended', onEnd, { once: true });
+        const begin = function () {
+          try { el.currentTime = song.s > 0 ? song.s : 0; } catch (e) {}
+          const p = el.play(); if (p && p.catch) p.catch(finish);
+          if (song.d) cut = setTimeout(function () { try { el.pause(); } catch (e) {} finish(); }, song.d * 1000);
+        };
+        if (el.src !== src) { el.src = src; if (song.s > 0) { el.addEventListener('loadedmetadata', begin, { once: true }); el.load(); } else begin(); }
+        else begin();
+      }
+    });
+  }
+
+  board.playSongs = function (id, songs, random) {
+    if (!songs || !songs.length) return;
+    board.stopSequence();
+    pauseMedia();
+    if (player) { try { player.pause(); } catch {} }
+    spotifyId = null;
+    const my = ++seqToken;
+    activeId = id;
+    emitActive();
+    const loop = songs.length > 1;
+    const order = songs.map(function (_, i) { return i; });
+    let pos = 0;
+    function nextIndex() {
+      if (random) return Math.floor(Math.random() * songs.length);
+      const i = order[pos % order.length]; pos++; return i;
+    }
+    (function step() {
+      if (my !== seqToken) return;
+      const song = songs[nextIndex()];
+      playOneSong(song, my).then(function () {
+        if (my !== seqToken) return;
+        if (loop) { step(); }
+        else if (activeId === id) { activeId = null; emitActive(); }
       });
+    })();
+  };
+
+  // Kachel-Klick: Songs direkt im Klick-Event abspielen (iOS-Nutzergeste).
+  document.addEventListener('click', function (e) {
+    const tile = e.target && e.target.closest ? e.target.closest('[data-play="songs"]') : null;
+    if (!tile) return;
+    const id = tile.getAttribute('data-id');
+    const force = tile.getAttribute('data-force') === '1';
+    let songs = [];
+    try { songs = JSON.parse(tile.getAttribute('data-songs') || '[]'); } catch (x) {}
+    if (!songs.length) return;
+    if (!force && (activeId === id || spotifyId === id)) {
+      board.stopAll();
+      if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStopped');
       return;
     }
-
-    if (kind !== 'local' && kind !== 'random') return;
-    if (activeId === id) { board.stopLocal(); return; }
-    if (kind === 'local') {
-      board.playLocal(id, tile.getAttribute('data-ref'),
-        parseFloat(tile.getAttribute('data-start')) || 0,
-        tile.getAttribute('data-dur') ? parseFloat(tile.getAttribute('data-dur')) : null);
+    if (songs.length === 1 && songs[0].t === 'spotify') {
+      const s = songs[0];
+      if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); return; }
+      board.stopLocal(); board.activateSpotify(); spotifyId = id;
+      const label = tile.getAttribute('data-label') || '';
+      board.playSpotify(s.r, (s.s || 0) * 1000, !!s.sh).then(function (status) {
+        if (status === 'ok') { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStarted', id, label, s.d != null ? s.d : null); }
+        else { spotifyId = null; if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', status); }
+      });
+    } else if (songs.length === 1) {
+      const s = songs[0];
+      board.playLocal(id, s.r, s.s || 0, (s.d != null ? s.d : null));
+      if (dotnet) { try { dotnet.invokeMethodAsync('OnLocalStarted'); } catch (x) {} }
     } else {
-      let pool = [];
-      try { pool = JSON.parse(tile.getAttribute('data-pool') || '[]'); } catch (x) {}
-      if (!pool.length) return;
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      board.playLocal(id, pick.r, pick.s || 0, (pick.d != null ? pick.d : null));
+      board.playSongs(id, songs, tile.getAttribute('data-random') === '1');
+      if (dotnet) { try { dotnet.invokeMethodAsync('OnLocalStarted'); } catch (x) {} }
     }
-    if (dotnet) { try { dotnet.invokeMethodAsync('OnLocalStarted'); } catch (x) {} }
   }, true);
 
   // iOS: der Spotify-Player muss in einer Nutzergeste freigeschaltet werden.
   document.addEventListener('pointerdown', function () { board.activateSpotify(); }, { passive: true });
+
+  // Long-Press auf Mehr-Song-Kacheln → Einzelsong-Auswahl (Overlay in Blazor).
+  (function () {
+    let lpTimer = null, lpFired = false, lpX = 0, lpY = 0;
+    document.addEventListener('pointerdown', function (e) {
+      const tile = e.target && e.target.closest ? e.target.closest('.sb-tile[data-multi="1"]') : null;
+      if (!tile) return;
+      lpFired = false; lpX = e.clientX; lpY = e.clientY;
+      lpTimer = setTimeout(function () {
+        lpFired = true;
+        if (dotnet) dotnet.invokeMethodAsync('OnLongPress', tile.getAttribute('data-id'));
+      }, 500);
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (lpTimer && (Math.abs(e.clientX - lpX) > 12 || Math.abs(e.clientY - lpY) > 12)) { clearTimeout(lpTimer); lpTimer = null; }
+    });
+    document.addEventListener('pointerup', function () {
+      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+      if (lpFired) {
+        const sup = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
+        document.addEventListener('click', sup, { capture: true, once: true });
+        setTimeout(function () { document.removeEventListener('click', sup, { capture: true }); }, 400);
+        lpFired = false;
+      }
+    });
+    document.addEventListener('pointercancel', function () { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } });
+  })();
 
   // ---------- Spotify: PKCE + Web Playback SDK ----------
   const CLIENT_ID_KEY = 'sb_spotify_client_id';
@@ -301,7 +394,7 @@
   board.playSpotify = async function (uri, positionMs, shuffle) {
     if (!board.isLoggedIn()) return 'not-logged-in';
     if (!deviceId) return 'not-ready';
-    board.stopLocal();
+    pauseMedia();
     board.activateSpotify();
     var isContext = /^spotify:(playlist|album|artist):/.test(uri);
     var body = isContext
