@@ -1,45 +1,51 @@
 namespace RedAnts.Infrastructure.Show;
 
-public sealed record ShowCommand(string Action, string? TileId = null, string? ProfileId = null, int? SongIndex = null);
+public sealed record ShowCommand(string Action, string? TileId = null, string? ProfileId = null, int? SongIndex = null, string? Room = null);
 
 public interface IShowRemote
 {
-    IDisposable Register(Func<ShowCommand, Task> handler);
+    IDisposable Register(string? room, Func<ShowCommand, Task> handler);
     Task<int> DispatchAsync(ShowCommand cmd);
 }
 
-// Bridge between the HTTP control API and the connected Blazor board circuit(s).
 public sealed class ShowRemote : IShowRemote
 {
-    private readonly List<Func<ShowCommand, Task>> _handlers = new();
+    private readonly List<Entry> _handlers = new();
     private readonly object _lock = new();
 
-    public IDisposable Register(Func<ShowCommand, Task> handler)
+    public IDisposable Register(string? room, Func<ShowCommand, Task> handler)
     {
-        lock (_lock) _handlers.Add(handler);
-        return new Registration(this, handler);
+        var entry = new Entry(Normalize(room), handler);
+        lock (_lock) _handlers.Add(entry);
+        return new Registration(this, entry);
     }
 
     public async Task<int> DispatchAsync(ShowCommand cmd)
     {
-        Func<ShowCommand, Task>[] handlers;
+        var room = Normalize(cmd.Room);
+        Entry[] handlers;
         lock (_lock) handlers = _handlers.ToArray();
         var reached = 0;
         foreach (var h in handlers)
         {
-            try { await h(cmd); reached++; }
-            catch { }
+            if (room is not null && h.Room != room) continue;
+            try { await h.Handler(cmd); reached++; } catch { }
         }
         return reached;
     }
 
-    private void Remove(Func<ShowCommand, Task> handler)
+    private static string? Normalize(string? room) =>
+        string.IsNullOrWhiteSpace(room) ? null : room.Trim().ToLowerInvariant();
+
+    private void Remove(Entry entry)
     {
-        lock (_lock) _handlers.Remove(handler);
+        lock (_lock) _handlers.Remove(entry);
     }
 
-    private sealed class Registration(ShowRemote owner, Func<ShowCommand, Task> handler) : IDisposable
+    private sealed record Entry(string? Room, Func<ShowCommand, Task> Handler);
+
+    private sealed class Registration(ShowRemote owner, Entry entry) : IDisposable
     {
-        public void Dispose() => owner.Remove(handler);
+        public void Dispose() => owner.Remove(entry);
     }
 }

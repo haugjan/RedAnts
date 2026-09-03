@@ -1,7 +1,9 @@
 @using Microsoft.Extensions.Options
+@using Microsoft.AspNetCore.WebUtilities
 @using RedAnts.Infrastructure.Show
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @inject IOptions<ShowStorageOptions> Storage
 @inject IShowProfileStore Store
 @inject IShowRemote Remote
@@ -19,6 +21,10 @@
                         @onclick="() => SelectProfile(p.Id)">@p.Name</button>
             }
         </div>
+        @if (!string.IsNullOrWhiteSpace(_room))
+        {
+            <span class="sb-room" title="Board-Code für die Fernsteuerung (Companion)">🎛 @_room</span>
+        }
         <div class="sb-spotify">
             @if (_loggedIn)
             {
@@ -205,6 +211,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var query = QueryHelpers.ParseQuery(Nav.ToAbsoluteUri(Nav.Uri).Query);
+        if (query.TryGetValue("room", out var r) && !string.IsNullOrWhiteSpace(r))
+            _room = r.ToString().Trim();
+
         var loaded = await Store.GetAllAsync();
         var src = loaded.Count > 0 ? loaded : _profiles;
         _profiles = src.Select(p => p with { Root = p.Root.Where(b => !b.Panic).ToList() }).ToList();
@@ -322,7 +332,7 @@
     {
         if (!firstRender) return;
         _ref = DotNetObjectReference.Create(this);
-        _remoteReg = Remote.Register(HandleRemoteAsync);
+        _remoteReg = Remote.Register(_room, HandleRemoteAsync);
         _timer = new System.Timers.Timer(500) { AutoReset = true };
         _timer.Elapsed += (_, _) => _ = TickAsync();
         _timer.Start();
@@ -539,6 +549,7 @@
     }
 
     private IDisposable? _remoteReg;
+    private string? _room;
 
     private async Task HandleRemoteAsync(ShowCommand cmd)
     {

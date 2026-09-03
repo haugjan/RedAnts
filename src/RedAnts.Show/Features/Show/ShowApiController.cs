@@ -44,34 +44,34 @@ public sealed class ShowApiController(IShowRemote remote, IShowProfileStore stor
     };
 
     [HttpGet("play/{id}")]
-    public Task<IActionResult> Play(string id) => Cmd(new ShowCommand("play", TileId: id));
+    public Task<IActionResult> Play(string id, string? room = null) => Cmd(new ShowCommand("play", TileId: id, Room: room));
 
     [HttpGet("song/{id}/{index:int}")]
-    public Task<IActionResult> Song(string id, int index) => Cmd(new ShowCommand("song", TileId: id, SongIndex: index));
+    public Task<IActionResult> Song(string id, int index, string? room = null) => Cmd(new ShowCommand("song", TileId: id, SongIndex: index, Room: room));
 
     [HttpGet("folder/{id}")]
-    public Task<IActionResult> Folder(string id) => Cmd(new ShowCommand("folder", TileId: id));
+    public Task<IActionResult> Folder(string id, string? room = null) => Cmd(new ShowCommand("folder", TileId: id, Room: room));
 
     [HttpGet("back")]
-    public Task<IActionResult> Back() => Cmd(new ShowCommand("back"));
+    public Task<IActionResult> Back(string? room = null) => Cmd(new ShowCommand("back", Room: room));
 
     [HttpGet("home")]
-    public Task<IActionResult> Home() => Cmd(new ShowCommand("home"));
+    public Task<IActionResult> Home(string? room = null) => Cmd(new ShowCommand("home", Room: room));
 
     [HttpGet("profile/{id}")]
-    public Task<IActionResult> Profile(string id) => Cmd(new ShowCommand("profile", ProfileId: id));
+    public Task<IActionResult> Profile(string id, string? room = null) => Cmd(new ShowCommand("profile", ProfileId: id, Room: room));
 
     [HttpGet("stop")]
-    public Task<IActionResult> Stop() => Cmd(new ShowCommand("stop"));
+    public Task<IActionResult> Stop(string? room = null) => Cmd(new ShowCommand("stop", Room: room));
 
     [HttpGet("pause")]
-    public Task<IActionResult> Pause() => Cmd(new ShowCommand("pause"));
+    public Task<IActionResult> Pause(string? room = null) => Cmd(new ShowCommand("pause", Room: room));
 
     [HttpGet("resume")]
-    public Task<IActionResult> Resume() => Cmd(new ShowCommand("resume"));
+    public Task<IActionResult> Resume(string? room = null) => Cmd(new ShowCommand("resume", Room: room));
 
     [HttpGet("fade")]
-    public Task<IActionResult> Fade() => Cmd(new ShowCommand("fade"));
+    public Task<IActionResult> Fade(string? room = null) => Cmd(new ShowCommand("fade", Room: room));
 
     [HttpPost("command")]
     public Task<IActionResult> Command([FromBody] ShowCommand cmd) => Cmd(cmd);

@@ -99,6 +99,10 @@ html, body {
 .sb-banner .sb-remaining { margin-left: auto; font-variant-numeric: tabular-nums; }
 .sb-banner .sb-hint { font-weight: 700; font-size: 0.72rem; opacity: 0.85; }
 
+.sb-room { align-self: center; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.04em; color: #fff;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 0.3rem 0.7rem; border-radius: 999px; white-space: nowrap; }
+
 /* ---------- Board: fills the screen, tiles scale ---------- */
 .sb-board {
   flex: 1 1 auto; min-height: 0;
