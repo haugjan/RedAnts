@@ -65,7 +65,7 @@
     <main class="sb-board">
         @if (hasBack)
         {
-            <button class="sb-tile back" style="grid-column:1 / span 4; grid-row:1 / span 3" @onclick="() => TrimPath(_path.Count - 1)">
+            <button class="sb-tile back" style="grid-column:1 / span 1; grid-row:1 / span 1" @onclick="() => TrimPath(_path.Count - 1)">
                 <span class="sb-tile-icon">↩</span>
                 <span class="sb-tile-label">Zurück</span>
             </button>
@@ -197,16 +197,6 @@
     private string SoundBase => string.IsNullOrWhiteSpace(Storage.Value.PublicBaseUrl)
         ? "/_content/RedAnts.Show/show/"
         : Storage.Value.PublicBaseUrl!.TrimEnd('/') + "/";
-
-    private static int TileWeight(ShowButton b) => b.Size switch
-    {
-        TileSize.Big => 4,
-        TileSize.Wide or TileSize.Tall => 2,
-        _ => 1
-    };
-
-    private static int ColumnsFor(int cellCount) =>
-        Math.Clamp((int)Math.Ceiling(Math.Sqrt(Math.Max(1, cellCount) * 1.35)), 2, 6);
 
     private IReadOnlyList<ShowProfile> _profiles = ShowConfig.Profiles;
     private IReadOnlyList<ShowProfile> Profiles => _profiles;

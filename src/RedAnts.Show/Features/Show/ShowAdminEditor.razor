@@ -140,7 +140,7 @@
 
             <div class="se-detail">
                 <div class="se-canvas-head">
-                    <strong>Anordnung (Raster ziehen)</strong>
+                    <strong>Anordnung (8 × 4, Streamdeck)</strong>
                     <button class="se-crumb2" @onclick="() => GoLevel(0)">@_profile.Name</button>
                     @for (var d = 0; d < _levelStack.Count; d++)
                     {
@@ -156,7 +156,7 @@
                         <div class="se-ct @(node.Kind == NodeKind.Folder ? "folder" : "") @(node == _selected ? "sel" : "")"
                              data-id="@node.Id" data-x="@node.X" data-y="@node.Y" data-w="@node.W" data-h="@node.H"
                              @onclick="() => Select(node)"
-                             style="grid-column:@(node.X + 1) / span @node.W; grid-row:@(node.Y + 1) / span @node.H; --c:@node.Color">
+                             style="grid-column:@(node.X + 1) / span 1; grid-row:@(node.Y + 1) / span 1; --c:@node.Color">
                             @if (node.Kind == NodeKind.Folder)
                             {
                                 <span class="se-ct-fhead"><span>📂</span>@node.Label</span>
@@ -168,12 +168,11 @@
                                 <span class="se-ct-ico">@(string.IsNullOrEmpty(node.Icon) ? "🔊" : node.Icon)</span>
                                 <span class="se-ct-lbl">@node.Label</span>
                             }
-                            <span class="se-ct-resize" title="Grösse ziehen"></span>
                         </div>
                     }
                 </div>
 
-                <p class="se-hint">Neue Kachel: mit der Maus auf freie Rasterfläche aufziehen, dann Ordner oder Song wählen.</p>
+                <p class="se-hint">Neue Kachel: auf eine freie Zelle klicken, dann Ordner oder Song wählen. Kacheln per Ziehen in eine andere Zelle verschieben.</p>
                 <div class="se-add-tiles">
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Sound)">+ Song</button>
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Ordner</button>
@@ -508,13 +507,11 @@
         var level = CurrentLevel();
         var n = level.FirstOrDefault(b => b.Id == id);
         if (n is null) return Task.CompletedTask;
-        w = Math.Clamp(w, 1, ShowLayout.Cols);
-        h = Math.Clamp(h, 1, ShowLayout.Rows);
-        x = Math.Clamp(x, 0, ShowLayout.Cols - w);
-        y = Math.Clamp(y, 0, ShowLayout.Rows - h);
-        if (Overlaps(level, n, x, y, w, h)) return Task.CompletedTask;
-        if (n.X == x && n.Y == y && n.W == w && n.H == h) return Task.CompletedTask;
-        n.X = x; n.Y = y; n.W = w; n.H = h;
+        x = Math.Clamp(x, 0, ShowLayout.Cols - 1);
+        y = Math.Clamp(y, 0, ShowLayout.Rows - 1);
+        if (Overlaps(level, n, x, y, 1, 1)) return Task.CompletedTask;
+        if (n.X == x && n.Y == y) return Task.CompletedTask;
+        n.X = x; n.Y = y; n.W = 1; n.H = 1;
         return InvokeAsync(StateHasChanged);
     }
 
@@ -524,7 +521,7 @@
         {
             if (o == self) continue;
             int ox = Math.Max(0, o.X), oy = Math.Max(0, o.Y);
-            int ow = o.W <= 0 ? 3 : o.W, oh = o.H <= 0 ? 2 : o.H;
+            int ow = o.W <= 0 ? 1 : o.W, oh = o.H <= 0 ? 1 : o.H;
             if (x < ox + ow && x + w > ox && y < oy + oh && y + h > oy) return true;
         }
         return false;
@@ -556,15 +553,6 @@
 
     private void GoLevel(int depth) { while (_levelStack.Count > depth) _levelStack.RemoveAt(_levelStack.Count - 1); }
     private void EnterLevel(EditButton folder) { if (folder.Kind == NodeKind.Folder) { _levelStack.Add(folder); _selected = null; } }
-
-    private void Resize(EditButton n, int dw, int dh)
-    {
-        n.W = Math.Clamp((n.W <= 0 ? 3 : n.W) + dw, 1, ShowLayout.Cols);
-        n.H = Math.Clamp((n.H <= 0 ? 2 : n.H) + dh, 1, ShowLayout.Rows);
-        if (n.X < 0) n.X = 0;
-        n.X = Math.Clamp(n.X, 0, ShowLayout.Cols - n.W);
-        if (n.Y < 0) n.Y = 0;
-    }
 
     private static readonly string[] Emojis =
     [
@@ -984,12 +972,10 @@
     [JSInvokable]
     public Task CreateRect(int x, int y, int w, int h)
     {
-        w = Math.Clamp(w, 1, ShowLayout.Cols);
-        h = Math.Clamp(h, 1, ShowLayout.Rows);
-        x = Math.Clamp(x, 0, ShowLayout.Cols - w);
-        y = Math.Clamp(y, 0, ShowLayout.Rows - h);
-        if (Overlaps(CurrentLevel(), new EditButton(), x, y, w, h)) return Task.CompletedTask;
-        _newRect = (x, y, w, h);
+        x = Math.Clamp(x, 0, ShowLayout.Cols - 1);
+        y = Math.Clamp(y, 0, ShowLayout.Rows - 1);
+        if (Overlaps(CurrentLevel(), new EditButton(), x, y, 1, 1)) return Task.CompletedTask;
+        _newRect = (x, y, 1, 1);
         _chooseKind = true;
         return InvokeAsync(StateHasChanged);
     }
@@ -1409,7 +1395,7 @@
     .se-crumb2 { appearance: none; border: none; background: none; cursor: pointer; color: #ff9aa6; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
     .se-crumb2:hover { background: var(--ra-panel2); }
     .se-sep2 { color: var(--ra-muted); }
-    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(26, 1fr); grid-template-rows: repeat(16, 1fr); gap: 2px; aspect-ratio: 26 / 16; width: 100%; max-width: min(100%, calc((100vh - 250px) * 26 / 16)); max-height: calc(100vh - 250px); margin: 0 auto 8px; background:
+    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; aspect-ratio: 8 / 4; width: 100%; max-width: min(100%, calc((100vh - 250px) * 2)); max-height: calc(100vh - 250px); margin: 0 auto 8px; background:
         linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16),
         linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16), #0b0b0e;
         border: 1px solid var(--ra-line); border-radius: 14px; padding: 6px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }

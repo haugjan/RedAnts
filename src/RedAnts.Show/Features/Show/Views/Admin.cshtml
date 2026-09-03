@@ -136,7 +136,7 @@
         (function () {
             var gd = null, drag = null;
             window.showGridInit = function (ref) { gd = ref; window.__showDotNet = ref; };
-            var COLS = 26, ROWS = 16, PAD = 6, GAP = 2;
+            var COLS = 8, ROWS = 4, PAD = 6, GAP = 6;
             function metrics(canvas) {
                 var r = canvas.getBoundingClientRect();
                 return { r: r,
@@ -158,8 +158,6 @@
                 var cell = cellAt(canvas, e.clientX, e.clientY);
                 drag = {
                     id: tile.getAttribute('data-id'), canvas: canvas,
-                    resize: !!(e.target.closest && e.target.closest('.se-ct-resize')),
-                    tx: tx, ty: ty, tw: +tile.getAttribute('data-w'), th: +tile.getAttribute('data-h'),
                     offCol: cell.col - tx, offRow: cell.row - ty, last: ''
                 };
                 if (tile.setPointerCapture) { try { tile.setPointerCapture(e.pointerId); } catch (x) { } }
@@ -167,14 +165,12 @@
             document.addEventListener('pointermove', function (e) {
                 if (!drag || !gd) return;
                 var cell = cellAt(drag.canvas, e.clientX, e.clientY);
-                var x, y, w, h;
-                if (drag.resize) { x = drag.tx; y = drag.ty; w = Math.max(1, cell.col - drag.tx + 1); h = Math.max(1, cell.row - drag.ty + 1); }
-                else { x = cell.col - drag.offCol; y = cell.row - drag.offRow; w = drag.tw; h = drag.th; }
-                var key = x + ',' + y + ',' + w + ',' + h;
+                var x = cell.col - drag.offCol, y = cell.row - drag.offRow;
+                var key = x + ',' + y;
                 if (key === drag.last) return;
                 drag.last = key;
                 drag.moved = true;
-                gd.invokeMethodAsync('SetRect', drag.id, x, y, w, h);
+                gd.invokeMethodAsync('SetRect', drag.id, x, y, 1, 1);
             });
             document.addEventListener('pointerup', function () {
                 if (drag && drag.moved) {
@@ -186,44 +182,23 @@
             });
             document.addEventListener('pointercancel', function () { drag = null; });
 
-            // Neue Kachel per Aufziehen auf freie Rasterfläche.
-            var draw = null, marquee = null;
-            function rectFromCells(canvas, a, b) {
-                var x = Math.min(a.col, b.col), y = Math.min(a.row, b.row);
-                var w = Math.abs(a.col - b.col) + 1, h = Math.abs(a.row - b.row) + 1;
-                return { x: x, y: y, w: w, h: h };
-            }
-            function positionMarquee(canvas, r) {
-                var m = metrics(canvas);
-                if (!marquee) { marquee = document.createElement('div'); marquee.className = 'se-marquee'; canvas.appendChild(marquee); }
-                marquee.style.left = (PAD + r.x * (m.cw + GAP)) + 'px';
-                marquee.style.top = (PAD + r.y * (m.ch + GAP)) + 'px';
-                marquee.style.width = (r.w * m.cw + (r.w - 1) * GAP) + 'px';
-                marquee.style.height = (r.h * m.ch + (r.h - 1) * GAP) + 'px';
-            }
-            function clearMarquee() { if (marquee) { marquee.remove(); marquee = null; } }
+            // Neue Kachel per Klick auf eine freie Zelle.
+            var draw = null;
             document.addEventListener('pointerdown', function (e) {
                 if (e.target.closest && e.target.closest('.se-ct')) return;
                 var canvas = e.target.closest && e.target.closest('.se-canvas');
                 if (!canvas) return;
-                var start = cellAt(canvas, e.clientX, e.clientY);
-                draw = { canvas: canvas, start: start, cur: start };
-                positionMarquee(canvas, rectFromCells(canvas, start, start));
+                draw = { canvas: canvas, cell: cellAt(canvas, e.clientX, e.clientY) };
             });
-            document.addEventListener('pointermove', function (e) {
+            document.addEventListener('pointerup', function (e) {
                 if (!draw) return;
-                draw.cur = cellAt(draw.canvas, e.clientX, e.clientY);
-                positionMarquee(draw.canvas, rectFromCells(draw.canvas, draw.start, draw.cur));
-            });
-            document.addEventListener('pointerup', function () {
-                if (!draw) return;
-                var r = rectFromCells(draw.canvas, draw.start, draw.cur);
-                clearMarquee();
+                var cell = cellAt(draw.canvas, e.clientX, e.clientY);
+                var start = draw.cell;
                 draw = null;
-                if (r.w * r.h < 2) return;
-                if (gd) gd.invokeMethodAsync('CreateRect', r.x, r.y, r.w, r.h);
+                if (cell.col !== start.col || cell.row !== start.row) return;
+                if (gd) gd.invokeMethodAsync('CreateRect', cell.col, cell.row, 1, 1);
             });
-            document.addEventListener('pointercancel', function () { draw = null; clearMarquee(); });
+            document.addEventListener('pointercancel', function () { draw = null; });
         })();
     </script>
     <script src="/_framework/blazor.server.js"></script>
