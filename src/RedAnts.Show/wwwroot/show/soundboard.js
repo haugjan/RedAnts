@@ -22,15 +22,19 @@
   // Streamdeck ausgelöste Wiedergabe (nicht in einer Geste) Ton macht.
   function unlockMediaOnce() {
     if (mediaUnlocked) return;
+    mediaUnlocked = true;
     const el = getMediaEl();
-    if (activeId) { mediaUnlocked = true; return; }
+    if (activeId) return;
     try {
       el.src = SILENT_WAV;
+      const silentSrc = el.src;
       el.muted = true;
       const p = el.play();
-      if (p && p.then) p.then(function () { try { el.pause(); el.currentTime = 0; } catch (e) {} el.muted = false; mediaUnlocked = true; }).catch(function () { el.muted = false; });
-      else mediaUnlocked = true;
-    } catch (e) {}
+      if (p && p.then) p.then(function () {
+        if (el.src === silentSrc && !activeId) { try { el.pause(); el.currentTime = 0; } catch (e) {} }
+        el.muted = false;
+      }).catch(function () { el.muted = false; });
+    } catch (e) { el.muted = false; }
   }
 
   function getMediaEl() {
@@ -70,6 +74,7 @@
     activeId = id;
     emitActive();
     const begin = function () {
+      el.muted = false;
       try { el.currentTime = startSec > 0 ? startSec : 0; } catch (e) {}
       const p = el.play();
       if (p && p.catch) p.catch(function () {});
@@ -128,6 +133,7 @@
         const onEnd = function () { finish(); };
         el.addEventListener('ended', onEnd, { once: true });
         const begin = function () {
+          el.muted = false;
           try { el.currentTime = song.s > 0 ? song.s : 0; } catch (e) {}
           const p = el.play(); if (p && p.catch) p.catch(finish);
           if (song.d) cut = setTimeout(function () { try { el.pause(); } catch (e) {} finish(); }, song.d * 1000);
