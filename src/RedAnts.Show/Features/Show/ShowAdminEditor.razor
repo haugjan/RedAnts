@@ -149,8 +149,14 @@
                         <button class="se-crumb2" @onclick="() => GoLevel(depth + 1)">@_levelStack[depth].Label</button>
                     }
                 </div>
-                @{ var level = CurrentLevel(); ShowLayout.EnsureEdit(level); }
+                @{ var level = CurrentLevel(); var canvasHasBack = _levelStack.Count > 0; ShowLayout.EnsureEdit(level, canvasHasBack); }
                 <div class="se-canvas">
+                    @if (canvasHasBack)
+                    {
+                        <div class="se-reserved" style="grid-column:1 / span 1; grid-row:1 / span 1">↩ Zurück</div>
+                    }
+                    <div class="se-reserved" style="grid-column:@(ShowLayout.PauseCell.X + 1) / span 1; grid-row:@(ShowLayout.PauseCell.Y + 1) / span 1">⏸ Pause</div>
+                    <div class="se-reserved" style="grid-column:@(ShowLayout.FadeCell.X + 1) / span 1; grid-row:@(ShowLayout.FadeCell.Y + 1) / span 1">🔉 Fade</div>
                     @foreach (var node in level)
                     {
                         <div class="se-ct @(node.Kind == NodeKind.Folder ? "folder" : "") @(node == _selected ? "sel" : "")"
@@ -509,6 +515,7 @@
         if (n is null) return Task.CompletedTask;
         x = Math.Clamp(x, 0, ShowLayout.Cols - 1);
         y = Math.Clamp(y, 0, ShowLayout.Rows - 1);
+        if (ShowLayout.IsReserved(x, y, _levelStack.Count > 0)) return Task.CompletedTask;
         if (Overlaps(level, n, x, y, 1, 1)) return Task.CompletedTask;
         if (n.X == x && n.Y == y) return Task.CompletedTask;
         n.X = x; n.Y = y; n.W = 1; n.H = 1;
@@ -974,6 +981,7 @@
     {
         x = Math.Clamp(x, 0, ShowLayout.Cols - 1);
         y = Math.Clamp(y, 0, ShowLayout.Rows - 1);
+        if (ShowLayout.IsReserved(x, y, _levelStack.Count > 0)) return Task.CompletedTask;
         if (Overlaps(CurrentLevel(), new EditButton(), x, y, 1, 1)) return Task.CompletedTask;
         _newRect = (x, y, 1, 1);
         _chooseKind = true;
@@ -1441,6 +1449,7 @@
     .se-tl-times { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--ra-muted); margin-top: 5px; font-weight: 700; letter-spacing: 0.02em; }
 
     .se-cellhint { position: absolute; z-index: 2; box-sizing: border-box; border: 2px dashed rgba(255,255,255,0.6); background: rgba(225,19,48,0.16); border-radius: 8px; pointer-events: none; }
+    .se-reserved { display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px dashed var(--ra-line); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--ra-muted); font-weight: 800; font-size: clamp(0.55rem, 1.4vmin, 0.85rem); text-align: center; pointer-events: none; z-index: 1; overflow: hidden; }
 
     .se-choosewrap { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
     .se-choosecard { background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(92vw, 360px); text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }

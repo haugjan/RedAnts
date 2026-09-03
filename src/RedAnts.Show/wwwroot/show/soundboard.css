@@ -163,6 +163,12 @@ html, body {
 .sb-tile-icon.fbody { font-size: clamp(1.8rem, 3vw, 3.6rem); filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4)); }
 .sb-tile.random { background: linear-gradient(135deg, #e07a1f 0%, #c8102e 100%); }
 .sb-tile.back { background: rgba(255, 255, 255, 0.08); color: var(--ra-muted); box-shadow: none; }
+.sb-tile.transport { color: #fff; box-shadow: none; }
+.sb-tile.transport.pause { background: rgba(255, 255, 255, 0.16); }
+.sb-tile.transport.fade { background: rgba(224, 122, 31, 0.9); }
+.sb-tile.transport.off { opacity: 0.35; }
+.sb-tile.transport:disabled { cursor: default; }
+.sb-tile.transport:disabled:hover { filter: none; }
 
 .sb-tile.panic {
   background: linear-gradient(160deg, #ff2740 0%, #c8102e 100%);
