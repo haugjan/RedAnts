@@ -1,0 +1,22 @@
+{
+	"id": "redants-show",
+	"name": "redants-show",
+	"shortname": "RedAnts Show",
+	"description": "Fernsteuerung des Red Ants Soundboards (Show-Slice) ueber die /api/show HTTP-API.",
+	"version": "1.0.0",
+	"license": "MIT",
+	"repository": "https://github.com/haugjan/RedAnts",
+	"bugs": "https://github.com/haugjan/RedAnts/issues",
+	"maintainers": [
+		{ "name": "Red Ants Winterthur", "email": "tickets@redants.ch" }
+	],
+	"legacyIds": [],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "1.7.0",
+		"entrypoint": "../src/main.js"
+	},
+	"products": ["Soundboard"],
+	"keywords": ["soundboard", "audio", "spotify", "floorball"]
+}

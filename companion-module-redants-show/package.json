@@ -1,0 +1,22 @@
+{
+	"name": "companion-module-redants-show",
+	"version": "1.0.0",
+	"type": "commonjs",
+	"main": "src/main.js",
+	"description": "Bitfocus Companion module for the Red Ants Soundboard (Show).",
+	"license": "MIT",
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"dev": "companion-module-build dev",
+		"build": "companion-module-build",
+		"package": "companion-module-build"
+	},
+	"dependencies": {
+		"@companion-module/base": "~1.11.0"
+	},
+	"devDependencies": {
+		"@companion-module/tools": "~2.1.0"
+	}
+}
