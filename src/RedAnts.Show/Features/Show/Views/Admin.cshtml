@@ -199,6 +199,25 @@
                 if (gd) gd.invokeMethodAsync('CreateRect', cell.col, cell.row, 1, 1);
             });
             document.addEventListener('pointercancel', function () { draw = null; });
+
+            var hint = null;
+            function showHint(canvas, cell) {
+                var m = metrics(canvas);
+                if (!hint) { hint = document.createElement('div'); hint.className = 'se-cellhint'; }
+                if (hint.parentNode !== canvas) canvas.appendChild(hint);
+                hint.style.display = 'block';
+                hint.style.left = (PAD + cell.col * (m.cw + GAP)) + 'px';
+                hint.style.top = (PAD + cell.row * (m.ch + GAP)) + 'px';
+                hint.style.width = m.cw + 'px';
+                hint.style.height = m.ch + 'px';
+            }
+            function hideHint() { if (hint) hint.style.display = 'none'; }
+            document.addEventListener('pointermove', function (e) {
+                var overTile = e.target.closest && e.target.closest('.se-ct');
+                var canvas = e.target.closest && e.target.closest('.se-canvas');
+                if (!canvas || overTile) { hideHint(); return; }
+                showHint(canvas, cellAt(canvas, e.clientX, e.clientY));
+            });
         })();
     </script>
     <script src="/_framework/blazor.server.js"></script>

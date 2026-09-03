@@ -1396,8 +1396,8 @@
     .se-crumb2:hover { background: var(--ra-panel2); }
     .se-sep2 { color: var(--ra-muted); }
     .se-canvas { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; aspect-ratio: 8 / 4; width: 100%; max-width: min(100%, calc((100vh - 250px) * 2)); max-height: calc(100vh - 250px); margin: 0 auto 8px; background:
-        linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16),
-        linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/26) calc(100%/16), #0b0b0e;
+        linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/8) calc(100%/4),
+        linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/8) calc(100%/4), #0b0b0e;
         border: 1px solid var(--ra-line); border-radius: 14px; padding: 6px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }
     .se-ct { --c: var(--ra-red); container-type: size; position: relative; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff) 0%, var(--c) 100%); color: #fff; border: none; border-radius: 8px; cursor: grab; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22); transition: box-shadow 0.12s; }
     .se-ct:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
@@ -1440,7 +1440,7 @@
     .se-tl-head.on { opacity: 1; box-shadow: 0 0 8px #fff; }
     .se-tl-times { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--ra-muted); margin-top: 5px; font-weight: 700; letter-spacing: 0.02em; }
 
-    .se-marquee { position: absolute; z-index: 5; border: 2px dashed var(--ra-red); background: rgba(225,19,48,0.18); border-radius: 8px; pointer-events: none; }
+    .se-cellhint { position: absolute; z-index: 2; box-sizing: border-box; border: 2px dashed rgba(255,255,255,0.6); background: rgba(225,19,48,0.16); border-radius: 8px; pointer-events: none; }
 
     .se-choosewrap { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
     .se-choosecard { background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(92vw, 360px); text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
