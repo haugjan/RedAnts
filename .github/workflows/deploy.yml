@@ -110,6 +110,9 @@ jobs:
           IMAGING_HMAC_KEY: ${{ secrets.IMAGING_HMAC_KEY }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          APP_DSN: ${{ vars.APP_DSN }}
+          MEDIA_ACCOUNT_URL: ${{ vars.MEDIA_ACCOUNT_URL }}
+          SHOW_ACCOUNT_URL: ${{ vars.SHOW_ACCOUNT_URL }}
         run: |
           SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment Orders__NumberPrefix=DEV-)
           if [ -n "$PAYREXX_TEST_API_SECRET" ]; then
@@ -121,6 +124,15 @@ jobs:
             SETTINGS+=("Umbraco__CMS__Imaging__HMACSecretKey=$IMAGING_HMAC_KEY")
           else
             echo "Imaging HMAC secret not set; leaving unchanged."
+          fi
+          if [ -n "$APP_DSN" ]; then
+            SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient")
+          fi
+          if [ -n "$MEDIA_ACCOUNT_URL" ]; then
+            SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL")
+          fi
+          if [ -n "$SHOW_ACCOUNT_URL" ]; then
+            SETTINGS+=("Show__Storage__AccountUrl=$SHOW_ACCOUNT_URL")
           fi
           if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ]; then
             SETTINGS+=("Smtp__User=$SMTP_USER" "Smtp__Password=$SMTP_PASSWORD")
@@ -221,6 +233,9 @@ jobs:
           IMAGING_HMAC_KEY: ${{ secrets.IMAGING_HMAC_KEY }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          APP_DSN: ${{ vars.APP_DSN }}
+          MEDIA_ACCOUNT_URL: ${{ vars.MEDIA_ACCOUNT_URL }}
+          SHOW_ACCOUNT_URL: ${{ vars.SHOW_ACCOUNT_URL }}
         run: |
           SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment)
           if [ -n "$PAYREXX_API_SECRET" ]; then
@@ -232,6 +247,15 @@ jobs:
             SETTINGS+=("Umbraco__CMS__Imaging__HMACSecretKey=$IMAGING_HMAC_KEY")
           else
             echo "Imaging HMAC secret not set; leaving unchanged."
+          fi
+          if [ -n "$APP_DSN" ]; then
+            SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient")
+          fi
+          if [ -n "$MEDIA_ACCOUNT_URL" ]; then
+            SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL")
+          fi
+          if [ -n "$SHOW_ACCOUNT_URL" ]; then
+            SETTINGS+=("Show__Storage__AccountUrl=$SHOW_ACCOUNT_URL")
           fi
           if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ]; then
             SETTINGS+=("Smtp__User=$SMTP_USER" "Smtp__Password=$SMTP_PASSWORD")
