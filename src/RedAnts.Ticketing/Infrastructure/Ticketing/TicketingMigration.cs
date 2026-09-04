@@ -141,6 +141,8 @@ public class AddTicketPrintSettings(IMigrationContext context) : AsyncMigrationB
     {
         if (!TableExists("TicketPrintSettings"))
             Create.Table<TicketPrintSettingsRecord>().Do();
+        else if (!ColumnExists("TicketPrintSettings", "NameAlign"))
+            Alter.Table("TicketPrintSettings").AddColumn("NameAlign").AsInt32().Nullable().Do();
         return Task.CompletedTask;
     }
 }

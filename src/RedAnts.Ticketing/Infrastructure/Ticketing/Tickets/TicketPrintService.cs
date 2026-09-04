@@ -94,7 +94,13 @@ public sealed class TicketPrintService(ITicketTokens tokens, IPublicBaseUrl publ
         }
 
         var rect = new XRect(Mm(layout.NameXMm), Mm(layout.NameYMm), maxWidth, fontPt * 1.6);
-        gfx.DrawString(name, font, brush, rect, XStringFormats.TopLeft);
+        var format = layout.NameAlign switch
+        {
+            1 => XStringFormats.TopCenter,
+            2 => XStringFormats.TopRight,
+            _ => XStringFormats.TopLeft
+        };
+        gfx.DrawString(name, font, brush, rect, format);
     }
 
     private static double Mm(double mm) => XUnit.FromMillimeter(mm).Point;

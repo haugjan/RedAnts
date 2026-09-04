@@ -92,6 +92,14 @@
                             <label class="ta-label" for="fpNameMaxW">Name max. Breite (mm)</label>
                             <input id="fpNameMaxW" name="nameMaxW" class="ta-input" type="number" step="0.1" min="5" value="@F(Layout.NameMaxWidthMm)" />
                         </div>
+                        <div class="ta-field">
+                            <label class="ta-label" for="fpNameAlign">Name Ausrichtung</label>
+                            <select id="fpNameAlign" name="nameAlign" class="ta-select">
+                                <option value="0" selected="@(Layout.NameAlign == 0)">Linksbündig</option>
+                                <option value="1" selected="@(Layout.NameAlign == 1)">Zentriert</option>
+                                <option value="2" selected="@(Layout.NameAlign == 2)">Rechtsbündig</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>

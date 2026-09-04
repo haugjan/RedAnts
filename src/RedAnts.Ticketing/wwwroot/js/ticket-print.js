@@ -101,6 +101,8 @@
         nameBox.style.width = (l.nameMaxW * k) + 'px';
         nameBox.style.height = (l.nameFontPt * 1.6 * pxPerPt(k)) + 'px';
         nameBox.style.fontSize = (l.nameFontPt * pxPerPt(k)) + 'px';
+        var align = num('fpNameAlign', 0);
+        nameBox.style.justifyContent = align === 2 ? 'flex-end' : align === 1 ? 'center' : 'flex-start';
     }
 
     function drawMarks(l, k) {
@@ -300,6 +302,11 @@
             if (showEl && !showEl._fp) {
                 showEl._fp = true;
                 showEl.addEventListener('change', place);
+            }
+            const alignEl = $('fpNameAlign');
+            if (alignEl && !alignEl._fp) {
+                alignEl._fp = true;
+                alignEl.addEventListener('change', place);
             }
             const zoomEl = $('fpZoom');
             if (zoomEl && !zoomEl._fp) {
