@@ -1,3 +1,4 @@
+extern alias AzureId;
 using System.Text.RegularExpressions;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -17,9 +18,11 @@ public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> optio
     private BlobContainerClient Container()
     {
         var opts = options.Value;
-        if (string.IsNullOrWhiteSpace(opts.ConnectionString))
-            throw new InvalidOperationException("Kein Show:Storage:ConnectionString konfiguriert. Datei-Upload ist nicht möglich.");
-        return new BlobContainerClient(opts.ConnectionString, opts.Container);
+        if (!string.IsNullOrWhiteSpace(opts.AccountUrl))
+            return new BlobContainerClient(new Uri($"{opts.AccountUrl.TrimEnd('/')}/{opts.Container}"), new AzureId::Azure.Identity.DefaultAzureCredential());
+        if (!string.IsNullOrWhiteSpace(opts.ConnectionString))
+            return new BlobContainerClient(opts.ConnectionString, opts.Container);
+        throw new InvalidOperationException("Weder Show:Storage:AccountUrl noch Show:Storage:ConnectionString konfiguriert. Datei-Upload ist nicht möglich.");
     }
 
     public async Task<string> UploadAsync(string fileName, Stream content, string? contentType)

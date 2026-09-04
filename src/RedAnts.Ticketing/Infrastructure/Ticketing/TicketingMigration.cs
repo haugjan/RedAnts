@@ -59,6 +59,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddTicketHolderColumns>("ticket-holder-columns");
         To<AddTicketPrintSettings>("ticket-print-settings");
         To<BackfillTicketHoldersFromOrders>("backfill-ticket-holders");
+        To<AddSessionCacheTable>("session-cache-table");
+    }
+}
+
+public class AddSessionCacheTable(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists(SessionCacheSchema.TableName))
+            Database.Execute(SessionCacheSchema.CreateTableSql);
+        return Task.CompletedTask;
     }
 }
 
@@ -783,15 +794,29 @@ public class TicketingMigrationComponent(
     ICoreScopeProvider scopeProvider,
     IMigrationPlanExecutor migrationPlanExecutor,
     IKeyValueService keyValueService,
-    IRuntimeState runtimeState) : IAsyncComponent
+    IRuntimeState runtimeState,
+    IConfiguration config) : IAsyncComponent
 {
+    private const string ForceTokenKey = "RedAnts.Ticketing.Migrations.ForceToken";
+
     public async Task InitializeAsync(bool isMainDom, CancellationToken cancellationToken)
     {
         if (runtimeState.Level < RuntimeLevel.Run) return;
+        if (!config.GetValue<bool>("Migrations:RunAtBoot") && !config.GetValue<bool>("Migrations:RunNow")) return;
 
         var upgrader = new Upgrader(new TicketingMigrationPlan());
-        keyValueService.SetValue(upgrader.StateValueKey, string.Empty);
+        ResetStateWhenForced(upgrader);
         await upgrader.ExecuteAsync(migrationPlanExecutor, scopeProvider, keyValueService);
+    }
+
+    private void ResetStateWhenForced(Upgrader upgrader)
+    {
+        var forceToken = config["Migrations:ForceToken"];
+        if (string.IsNullOrWhiteSpace(forceToken)) return;
+        if (string.Equals(keyValueService.GetValue(ForceTokenKey), forceToken, StringComparison.Ordinal)) return;
+
+        keyValueService.SetValue(upgrader.StateValueKey, string.Empty);
+        keyValueService.SetValue(ForceTokenKey, forceToken);
     }
 
     public Task TerminateAsync(bool isMainDom, CancellationToken cancellationToken) => Task.CompletedTask;

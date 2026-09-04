@@ -13,7 +13,9 @@ public class ShowMigrationComponent(IConfiguration config, IRuntimeState runtime
         if (string.IsNullOrWhiteSpace(dsn)) dsn = config.GetConnectionString("umbracoDbDSN");
         if (string.IsNullOrWhiteSpace(dsn)) return;
 
-        ShowSchema.Ensure(dsn);
+        var migrationsEnabled = config.GetValue<bool>("Migrations:RunAtBoot") || config.GetValue<bool>("Migrations:RunNow");
+        if (migrationsEnabled) ShowSchema.Ensure(dsn);
+
         await settings.LoadAsync();
     }
 

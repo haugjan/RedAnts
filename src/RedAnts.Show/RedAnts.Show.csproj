@@ -34,5 +34,6 @@
   <ItemGroup>
     <PackageReference Include="Umbraco.Cms" />
     <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Azure.Identity" Aliases="AzureId" />
   </ItemGroup>
 </Project>

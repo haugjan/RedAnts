@@ -80,6 +80,23 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Setup .NET (for migrations)
+        if: vars.SQL_DSN != ''
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+      - name: Run database migrations (deploy identity holds DDL, the web app does not)
+        if: vars.SQL_DSN != ''
+        env:
+          ConnectionStrings__umbracoDbDSN: ${{ vars.SQL_DSN }}
+          ConnectionStrings__umbracoDbDSN_ProviderName: Microsoft.Data.SqlClient
+          ASPNETCORE_ENVIRONMENT: Development
+          Azure__KeyVaultUri: ''
+          Umbraco__CMS__Runtime__Mode: BackofficeDevelopment
+          Migrations__RunAtBoot: 'true'
+        run: |
+          mkdir -p migrate && unzip -q app.zip -d migrate
+          cd migrate && dotnet RedAnts.dll --migrate
       - name: Deploy (az webapp deploy over ARM)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -174,6 +191,23 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Setup .NET (for migrations)
+        if: vars.SQL_DSN != ''
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+      - name: Run database migrations (deploy identity holds DDL, the web app does not)
+        if: vars.SQL_DSN != ''
+        env:
+          ConnectionStrings__umbracoDbDSN: ${{ vars.SQL_DSN }}
+          ConnectionStrings__umbracoDbDSN_ProviderName: Microsoft.Data.SqlClient
+          ASPNETCORE_ENVIRONMENT: Development
+          Azure__KeyVaultUri: ''
+          Umbraco__CMS__Runtime__Mode: BackofficeDevelopment
+          Migrations__RunAtBoot: 'true'
+        run: |
+          mkdir -p migrate && unzip -q app.zip -d migrate
+          cd migrate && dotnet RedAnts.dll --migrate
       - name: Deploy (az webapp deploy over ARM)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}

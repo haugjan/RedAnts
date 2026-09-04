@@ -33,6 +33,31 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    },
+    "Agent": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5606",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AZURE_TENANT_ID": "64a8811c-a541-4b97-9571-5a8d280bd40b",
+        "Azure__KeyVaultUri": "",
+        "ConnectionStrings__umbracoDbDSN": "Server=tcp:sql-redants-ch.database.windows.net,1433;Database=sqldb-redants-agent;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+        "ConnectionStrings__umbracoDbDSN_ProviderName": "Microsoft.Data.SqlClient",
+        "BackOfficeAuth__TenantId": "",
+        "BackOfficeAuth__ClientId": "",
+        "BackOfficeAuth__ClientSecret": "",
+        "BasicAuth__Password": "",
+        "Email__Transports": "None",
+        "Migrations__RunAtBoot": "true",
+        "Orders__NumberPrefix": "AGT-",
+        "Tickets__PublicBaseUrl": "http://localhost:5606",
+        "Umbraco__CMS__WebRouting__UmbracoApplicationUrl": "http://localhost:5606",
+        "Umbraco__Storage__AzureBlob__Media__AccountUrl": "https://stredantsdev.blob.core.windows.net",
+        "Umbraco__Storage__AzureBlob__Media__ContainerName": "media",
+        "Show__Storage__AccountUrl": "https://stredantsdev.blob.core.windows.net"
+      }
     }
   }
 }

@@ -9,7 +9,6 @@ public static class TicketingServiceCollectionExtensions
         var sessionCacheConnectionString = config.GetConnectionString("umbracoDbDSN");
         if (!string.IsNullOrWhiteSpace(sessionCacheConnectionString))
         {
-            SessionCacheSchema.Ensure(sessionCacheConnectionString);
             services.AddDistributedSqlServerCache(options =>
             {
                 options.ConnectionString = sessionCacheConnectionString;

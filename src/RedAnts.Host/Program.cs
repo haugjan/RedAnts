@@ -21,6 +21,10 @@ CultureInfo.DefaultThreadCurrentUICulture = swissCulture;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+var migrateOnly = args.Contains("--migrate", StringComparer.OrdinalIgnoreCase);
+if (migrateOnly)
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Migrations:RunNow"] = "true" });
+
 var kvUri = builder.Configuration["Azure:KeyVaultUri"];
 if (!string.IsNullOrEmpty(kvUri))
     builder.Configuration.AddAzureKeyVault(new Uri(kvUri), new AzureId::Azure.Identity.DefaultAzureCredential());
@@ -52,7 +56,17 @@ var umbracoBuilder = builder.CreateUmbracoBuilder()
     .AddWebsite()
     .AddComposers();
 
-if (!string.IsNullOrWhiteSpace(builder.Configuration["Umbraco:Storage:AzureBlob:Media:ConnectionString"]))
+var mediaAccountUrl = builder.Configuration["Umbraco:Storage:AzureBlob:Media:AccountUrl"];
+if (!string.IsNullOrWhiteSpace(mediaAccountUrl))
+{
+    umbracoBuilder.AddAzureBlobMediaFileSystem(options =>
+    {
+        options.ConnectionString = mediaAccountUrl;
+        options.TryCreateBlobContainerClientUsingUri(uri =>
+            new Azure.Storage.Blobs.BlobContainerClient(uri, new AzureId::Azure.Identity.DefaultAzureCredential()));
+    });
+}
+else if (!string.IsNullOrWhiteSpace(builder.Configuration["Umbraco:Storage:AzureBlob:Media:ConnectionString"]))
 {
     umbracoBuilder.AddAzureBlobMediaFileSystem();
 }
@@ -68,6 +82,12 @@ umbracoBuilder.Build();
 WebApplication app = builder.Build();
 
 await app.BootUmbracoAsync();
+
+if (migrateOnly)
+{
+    app.Logger.LogInformation("Database migrations finished; exiting because --migrate was given.");
+    return;
+}
 
 app.UseForwardedHeaders();
 
