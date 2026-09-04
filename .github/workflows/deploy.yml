@@ -126,7 +126,7 @@ jobs:
             echo "Imaging HMAC secret not set; leaving unchanged."
           fi
           if [ -n "$APP_DSN" ]; then
-            SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient")
+            SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient" "Migrations__RunAtBoot=false")
           fi
           if [ -n "$MEDIA_ACCOUNT_URL" ]; then
             SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL")
@@ -249,7 +249,7 @@ jobs:
             echo "Imaging HMAC secret not set; leaving unchanged."
           fi
           if [ -n "$APP_DSN" ]; then
-            SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient")
+            SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient" "Migrations__RunAtBoot=false")
           fi
           if [ -n "$MEDIA_ACCOUNT_URL" ]; then
             SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL")
