@@ -33,6 +33,25 @@ public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : I
         return rows.Select(Map).ToList();
     }
 
+    public async Task<IReadOnlyList<NewsletterSignup>> GetPendingAsync()
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<NewsletterSignupRecord>(
+            "SELECT Id, Email, Name, Source, SignedUpAt, Status, TransferredAt FROM NewsletterSignups WHERE Status = @0 ORDER BY SignedUpAt",
+            (int)NewsletterTransferStatus.Pending);
+        return rows.Select(Map).ToList();
+    }
+
+    public async Task MarkTransferredAsync(IEnumerable<int> ids)
+    {
+        var list = ids.Distinct().ToList();
+        if (list.Count == 0) return;
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE NewsletterSignups SET Status = @0, TransferredAt = @1 WHERE Status = @2 AND Id IN (@3)",
+            (int)NewsletterTransferStatus.Transferred, DateTime.UtcNow, (int)NewsletterTransferStatus.Pending, list);
+    }
+
     public async Task SetTransferStatusAsync(int id, NewsletterTransferStatus status)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

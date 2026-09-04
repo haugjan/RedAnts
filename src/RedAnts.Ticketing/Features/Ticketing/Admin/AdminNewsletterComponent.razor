@@ -4,6 +4,29 @@
 <section class="ta-page">
     <h1 class="ta-page-title">Newsletter</h1>
 
+    @if (!_loading && PendingCount > 0)
+    {
+        <div class="ta-toolbar-actions" style="margin-bottom:12px">
+            <a class="ta-btn ta-btn-primary" href="/admin/newsletter/export.csv" target="_blank" rel="noopener"
+               @onclick="OnExportClicked"
+               title="Alle noch nicht exportierten Anmeldungen als Fairgate-CSV herunterladen (Semikolon, UTF-8, Spalten Vorname;Nachname;Primäre E-Mail)">
+                Fairgate-Export (@PendingCount offen)
+            </a>
+        </div>
+    }
+
+    @if (_showConfirm)
+    {
+        <div class="ta-inline-confirm"
+             style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 16px;padding:12px 16px;border:1px solid var(--ta-border, #d9d9d9);border-radius:8px;background:var(--ta-surface-2, #f6f6f6)">
+            <span>@_exportedIds.Count Kontakt@(_exportedIds.Count == 1 ? "" : "e") exportiert. Als „exportiert" markieren?</span>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="ConfirmMarkAsync" disabled="@_marking">
+                @(_marking ? "Wird markiert …" : "Ja, als exportiert markieren")
+            </button>
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => _showConfirm = false" disabled="@_marking">Nein</button>
+        </div>
+    }
+
     @if (_loading)
     {
         <p class="ta-muted-text">Wird geladen …</p>
@@ -66,6 +89,12 @@
     private bool _loading = true;
     private IReadOnlyList<NewsletterSignup> _signups = [];
 
+    private bool _showConfirm;
+    private bool _marking;
+    private IReadOnlyList<int> _exportedIds = [];
+
+    private int PendingCount => _signups.Count(s => s.Status == NewsletterTransferStatus.Pending);
+
     private static readonly NewsletterTransferStatus[] _statusOptions =
         [NewsletterTransferStatus.Pending, NewsletterTransferStatus.Transferred];
 
@@ -79,6 +108,24 @@
     }
 
     private async Task ReloadAsync() => _signups = await Signups.GetAllAsync();
+
+    private void OnExportClicked()
+    {
+        _exportedIds = _signups
+            .Where(s => s.Status == NewsletterTransferStatus.Pending)
+            .Select(s => s.Id)
+            .ToList();
+        _showConfirm = _exportedIds.Count > 0;
+    }
+
+    private async Task ConfirmMarkAsync()
+    {
+        _marking = true;
+        await Signups.MarkTransferredAsync(_exportedIds);
+        await ReloadAsync();
+        _showConfirm = false;
+        _marking = false;
+    }
 
     private async Task SaveStatusAsync(NewsletterSignup s, NewsletterTransferStatus target)
     {
