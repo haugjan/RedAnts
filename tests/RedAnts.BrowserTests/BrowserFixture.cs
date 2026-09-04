@@ -39,7 +39,23 @@ public sealed class BrowserFixture : IAsyncLifetime
             ViewportSize = new ViewportSize { Width = 1280, Height = 900 },
             Locale = "de-CH"
         });
-        return await context.NewPageAsync();
+        var page = await context.NewPageAsync();
+        var eventLog = Path.Combine(ScreenshotDirectory, "browser-events.log");
+        page.Console += (_, message) =>
+        {
+            if (message.Type is "error" or "warning")
+                File.AppendAllText(eventLog, $"{DateTime.Now:HH:mm:ss} console.{message.Type} {page.Url} {message.Text}{Environment.NewLine}");
+        };
+        page.PageError += (_, error) =>
+            File.AppendAllText(eventLog, $"{DateTime.Now:HH:mm:ss} pageerror {page.Url} {error}{Environment.NewLine}");
+        page.RequestFailed += (_, request) =>
+            File.AppendAllText(eventLog, $"{DateTime.Now:HH:mm:ss} requestfailed {request.Method} {request.Url} {request.Failure}{Environment.NewLine}");
+        page.Response += (_, response) =>
+        {
+            if (response.Status >= 400)
+                File.AppendAllText(eventLog, $"{DateTime.Now:HH:mm:ss} response {response.Status} {response.Request.Method} {response.Url}{Environment.NewLine}");
+        };
+        return page;
     }
 
     public async Task ShotAsync(IPage page, string name)

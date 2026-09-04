@@ -35,10 +35,19 @@ public sealed class BackofficeShould(BrowserFixture browser)
         await page.GotoAsync("/umbraco/login");
         await browser.ShotAsync(page, "backoffice-login");
 
-        await page.GetByLabel(new Regex("E-Mail|Email|Benutzername|Username", RegexOptions.IgnoreCase)).FillAsync(browser.AgentUserName);
-        await page.GetByLabel(new Regex("Passwort|Password", RegexOptions.IgnoreCase)).FillAsync(browser.AgentPassword);
-        await page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("Anmelden|Login|Log in", RegexOptions.IgnoreCase) }).ClickAsync();
-        await page.WaitForURLAsync(new Regex("/umbraco(/|$|#)"), new() { Timeout = 30_000 });
+        await page.Locator("input[name='username'], input[type='email'], #email-input").First.FillAsync(browser.AgentUserName);
+        await page.Locator("input[type='password']").First.FillAsync(browser.AgentPassword);
+        await page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("^(Anmelden|Login|Log in)$", RegexOptions.IgnoreCase) }).ClickAsync();
+        try
+        {
+            await page.WaitForURLAsync(url => !url.Contains("/login", StringComparison.OrdinalIgnoreCase), new() { Timeout = 30_000 });
+            await Assertions.Expect(page.Locator("umb-backoffice, umb-app")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        }
+        catch
+        {
+            await browser.ShotAsync(page, "backoffice-login-failed");
+            throw;
+        }
         return page;
     }
 }

@@ -48,6 +48,10 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
+var staticFileContentTypes = new FileExtensionContentTypeProvider();
+staticFileContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
+builder.Services.Configure<StaticFileOptions>(options => options.ContentTypeProvider = staticFileContentTypes);
+
 builder.Services.AddTicketing(builder.Configuration);
 builder.Services.AddShow(builder.Configuration);
 
@@ -533,9 +537,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
 }
 
 
-var staticFileContentTypes = new FileExtensionContentTypeProvider();
-staticFileContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
-app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = staticFileContentTypes });
+app.UseStaticFiles();
 
 app.UseSession();
 
