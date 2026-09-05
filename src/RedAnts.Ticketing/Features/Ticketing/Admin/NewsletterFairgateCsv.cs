@@ -5,7 +5,8 @@ namespace RedAnts.Features.Ticketing.Admin;
 
 public static class NewsletterFairgateCsv
 {
-    private const string Header = "Vorname;Nachname;Primäre E-Mail";
+    private const string Header = "Vorname;Nachname;Primäre E-Mail;Korrespondenzsprache";
+    private const string Korrespondenzsprache = "De";
 
     public static byte[] Build(IEnumerable<NewsletterSignup> signups)
     {
@@ -16,7 +17,8 @@ public static class NewsletterFairgateCsv
             var (first, last) = SplitName(s.Name);
             sb.Append(Csv(first)).Append(';')
               .Append(Csv(last)).Append(';')
-              .Append(Csv(s.Email)).Append("\r\n");
+              .Append(Csv(s.Email)).Append(';')
+              .Append(Csv(Korrespondenzsprache)).Append("\r\n");
         }
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
     }
