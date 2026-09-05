@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Drittel: Kreis in drei Segmente, erstes Segment gefuellt -->
+  <path class="af" fill="currentColor" d="M72,52 L72,12 A40,40 0 0 1 106.64,72 Z"/>
+  <circle cx="72" cy="52" r="40" fill="none" stroke="currentColor" stroke-width="7"/>
+  <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round">
+    <path d="M72,52 L72,12"/>
+    <path d="M72,52 L106.64,72"/>
+    <path d="M72,52 L37.36,72"/>
+  </g>
+</svg>

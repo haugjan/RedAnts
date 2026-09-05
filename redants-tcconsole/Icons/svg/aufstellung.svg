@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Aufstellung: Liste mit Nummern-Badges -->
+  <g class="af" fill="currentColor">
+    <rect x="20" y="9"    width="21" height="21" rx="5"/>
+    <rect x="20" y="31.5" width="21" height="21" rx="5"/>
+    <rect x="20" y="54"   width="21" height="21" rx="5"/>
+    <rect x="20" y="76.5" width="21" height="21" rx="5"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round">
+    <path d="M53,19.5 H124"/>
+    <path d="M53,42   H112"/>
+    <path d="M53,64.5 H124"/>
+    <path d="M53,87   H104"/>
+  </g>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Timeout: zwei Haende formen ein T -->
+  <!-- untere Hand: Finger nach oben, Daumen links -->
+  <path d="M56,76 L46,88" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round"/>
+  <path fill="currentColor" fill-rule="evenodd"
+        d="M64,52 H80 A13,13 0 0 1 93,65 V81 A13,13 0 0 1 80,94 H64 A13,13 0 0 1 51,81 V65 A13,13 0 0 1 64,52 Z
+           M61,56 H64 V78 H61 Z
+           M70.5,54 H73.5 V78 H70.5 Z
+           M80,54 H83 V78 H80 Z"/>
+  <!-- obere Hand (Akzent): Finger nach links -->
+  <path class="af" fill="currentColor" fill-rule="evenodd"
+        d="M37,11 H101 A13,13 0 0 1 114,24 V35 A13,13 0 0 1 101,48 H37 A13,13 0 0 1 24,35 V24 A13,13 0 0 1 37,11 Z
+           M30,20 H76 V23 H30 Z
+           M30,28 H76 V31 H30 Z
+           M30,36 H76 V39 H30 Z"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Spieler B: Trikot -->
+  <path fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"
+        d="M52,20 L62,15 A13,11 0 0 0 82,15 L92,20 L118,34 L106,52 L96,46 V88
+           A6,6 0 0 1 90,94 H54 A6,6 0 0 1 48,88 V46 L38,52 L26,34 Z"/>
+  <!-- Brustringe (Akzent) -->
+  <g class="as" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round">
+    <path d="M58,58 H86"/>
+    <path d="M58,74 H86"/>
+  </g>
+</svg>

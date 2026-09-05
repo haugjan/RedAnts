@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Meldungen: Megafon mit Schallwellen -->
+  <path fill="currentColor" d="M22,46 L22,66 L42,66 L80,90 L80,22 L42,46 Z"/>
+  <path fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" d="M33,68 L29,88"/>
+  <g class="as" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round">
+    <path d="M95,44 A20,20 0 0 1 95,68"/>
+    <path d="M107,32 A34,34 0 0 1 107,80"/>
+  </g>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Strafe B: erhobene Hand mit gestreiftem Schiri-Aermel -->
+  <g fill="currentColor">
+    <rect x="55" y="10" width="8" height="30" rx="4"/>
+    <rect x="66" y="8"  width="8" height="32" rx="4"/>
+    <rect x="77" y="10" width="8" height="30" rx="4"/>
+    <rect x="88" y="14" width="8" height="26" rx="4"/>
+    <rect x="55" y="32" width="41" height="28" rx="10"/>
+  </g>
+  <path d="M58,42 L46,54" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"/>
+  <!-- Aermel mit ausgesparten Streifen (Akzent) -->
+  <path class="af" fill="currentColor" fill-rule="evenodd"
+        d="M60,58 H92 A8,8 0 0 1 100,66 V90 A6,6 0 0 1 94,96 H58 A6,6 0 0 1 52,90 V66 A8,8 0 0 1 60,58 Z
+           M66,64 H73 V90 H66 Z
+           M81,64 H88 V90 H81 Z"/>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Resultat: Anzeigetafel -->
+  <rect x="14" y="12" width="116" height="62" rx="10" fill="none" stroke="currentColor" stroke-width="7"/>
+  <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round">
+    <path d="M72,74 V88"/>
+    <path d="M50,92 H94"/>
+  </g>
+  <!-- Ziffern als Pfade (kein Font noetig), Akzent -->
+  <g class="as" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32,30 H52 L40,42 A9,9 0 1 1 33,56"/>
+    <path d="M92,32 A9,9 0 0 1 108,38 C108,48 92,50 92,58 H110"/>
+  </g>
+  <g class="af" fill="currentColor">
+    <circle cx="72" cy="36" r="4.5"/>
+    <circle cx="72" cy="52" r="4.5"/>
+  </g>
+</svg>

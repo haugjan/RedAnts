@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>TCU Stream Deck Icons – Vorschau</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;color:#eee;font-family:'Segoe UI',sans-serif;padding:22px}
+h1{color:#FFD700;font-size:19px;margin-bottom:4px}
+p.sub{color:#888;font-size:12px;margin-bottom:6px;max-width:900px;line-height:1.5}
+h2{font-size:14px;color:#FFD700;margin:26px 0 4px}
+h2 small{color:#888;font-weight:400;font-size:11px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,112px);gap:9px;margin-top:10px}
+.key{width:112px;height:112px;border-radius:10px;position:relative;overflow:hidden;
+     border:1px solid rgba(255,255,255,.14)}
+.key img{position:absolute;inset:0;width:112px;height:112px}
+.key span{position:absolute;left:0;right:0;bottom:5px;text-align:center;
+          font-size:11.5px;font-weight:700;line-height:1.15;white-space:pre-line}
+.on-light span{color:#1a1a1a}
+.on-dark span{color:#fff;text-shadow:0 1px 2px #000}
+</style>
+</head>
+<body>
+<h1>🎨 TCU Stream Deck Icons</h1>
+<p class="sub">Darstellung 1:1 wie auf dem Stream Deck: Motiv im oberen Bereich, unteres Drittel bleibt für den Button-Text frei.
+Icons mit Endung <b>-b</b> sind Alternativ-Varianten desselben Motivs.</p>
+
+<div id="out"></div>
+
+<script>
+const ICONS = [
+  ['ball','Ball'], ['coach','Coach'], ['coach-b','Coach B'],
+  ['timeout','Timeout'], ['timeout-b','Timeout B'], ['aufstellung','Aufstellung'],
+  ['strafe','Strafe'], ['strafe-b','Strafe B'], ['spieler','Spieler'], ['spieler-b','Spieler B'],
+  ['bestplayer','Bestplayer'], ['bestplayer-b','Bestplayer B'], ['starting6','Starting 6'],
+  ['meldungen','Meldungen'], ['kommentar','Kommentar'], ['kommentar-b','Kommentar B'],
+  ['schiedsrichter','Schiri'], ['schiedsrichter-b','Schiri B'], ['drittel','Drittel'],
+  ['highlights','Highlights'], ['resultat','Resultat'], ['opener','Opener'],
+  ['einblender-ein','Einblender\nEIN'], ['einblender-aus','Einblender\nAUS']
+];
+
+const VARIANTS = [
+  {name:'dark',  title:'dark – einfarbig #1A1A1A',        note:'für helle Button-Farben',  on:'light',
+   bg:['#FF7C80','#A6C9EC','#8ED973','#C1F0C8','#00E5FF','#F1A983','#ADADAD','#83E28E','#FFCCCC','#47D359']},
+  {name:'red',   title:'red – #1A1A1A + Akzent #E4002B',  note:'für helle Button-Farben',  on:'light',
+   bg:['#C1F0C8','#A6C9EC','#8ED973','#F1A983','#FFF3B0','#ADADAD','#83E28E','#EFEFEF']},
+  {name:'team',  title:'team – #E4002B + Akzent #1A1A1A', note:'für helle/neutrale Button-Farben', on:'light',
+   bg:['#EFEFEF','#FFFFFF','#E6E6E6','#FFF3B0','#DDDDDD']},
+  {name:'light', title:'light – einfarbig #FFFFFF',       note:'für dunkle Button-Farben', on:'dark',
+   bg:['#2a2a2a','#222','#555','#D86DCD','#FF6600','#FF0000','#FF4444','#1F6FB2']},
+  {name:'gold',  title:'gold – #FFFFFF + Akzent #FFD700', note:'für dunkle Button-Farben', on:'dark',
+   bg:['#222','#2a2a2a','#3a3a3a','#123B6D','#7A1020','#4A2060']}
+];
+
+document.getElementById('out').innerHTML = VARIANTS.map(v => `
+  <h2>${v.title} <small>· ${v.note}</small></h2>
+  <div class="grid">${ICONS.map((ic,i) =>
+    `<div class="key on-${v.on}" style="background:${v.bg[i % v.bg.length]}">
+       <img src="png/${v.name}/${ic[0]}.png" alt="${ic[0]}"><span>${ic[1]}</span>
+     </div>`).join('')}</div>`).join('');
+</script>
+</body>
+</html>
