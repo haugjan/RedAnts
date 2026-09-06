@@ -22,13 +22,16 @@ Three independent applications, one folder each. Paths in this file are relative
 
 ## Architecture
 
-The solution (`RedAnts-WebApp/RedAnts.slnx`) is split into three projects plus one test project per slice:
+The solution (`RedAnts-WebApp/RedAnts.slnx`) is split into a shared kernel and three module projects, plus one test project per project, an architecture test project and the browser tests:
 
+- **`RedAnts-WebApp/src/RedAnts.Kernel`** (shared kernel, no package references) — what every module shares: `SwissTime`, `DomainException`, `ValidationException` (carries the field name), `ConcurrencyException`, `CheckResult` (`Allowed`/`Denied` with a typed reason), `EmailAddress`, `Money`. Namespace `RedAnts.Domain`, imported globally in Ticketing.
 - **`RedAnts-WebApp/src/RedAnts.Host`** (web app, `AssemblyName=RedAnts`) — `Program.cs` (host-based routing, health, dev badge, CSP, 404, site gate), Umbraco boot, `Infrastructure/Shared/` (Entra backoffice auth, themes), the Website slice (`Infrastructure/Website/`, `Features/Website/`), `uSync/`, the Umbraco template views under `Views/` and the shared wwwroot assets (site.css, favicons, PWA manifest, scanner service worker).
 - **`RedAnts-WebApp/src/RedAnts.Ticketing`** (Razor class library, compiled views) — the whole ticketing slice: `Domain/`, `Features/Ticketing/` (ports, controllers, Blazor components), `Infrastructure/Ticketing/` (NPoco repos, migrations, email outbox, Payrexx, PDF/QR), the plain MVC views, the `/scan` Razor Page and the ticketing css/js served under `/_content/RedAnts.Ticketing/`. The Host consumes it via `AddTicketing(...)`, `UseTicketingShortHostRedirect()`, `UseTicketingAnalytics()` and `UseTicketingScanAuth()`.
 - **`RedAnts-WebApp/src/RedAnts.Show`** (Razor class library, placeholder) — future soundboard/light control at `show[-dev].redants.ch` → `/show`, backoffice section "Show" (iframe to `/admin/show`), own SQL schema `show` created idempotently on `ConnectionStrings:showDbDSN` (fallback: Umbraco DB), prepared `Show:Storage` blob options.
 
 Each project layers internally as Domain → Features (ports) → Infrastructure (adapters). Umbraco composers in the class libraries are discovered by Umbraco's assembly scan; no extra wiring in `Program.cs` is needed.
+
+`RedAnts-WebApp/tests/RedAnts.Architecture.Tests` (ArchUnitNET) enforces the layering, the module boundaries, the naming rule (no `Service`/`Manager`/`Adapter`/`Editor`/`Store`/`Helper` suffix outside `Domain`; the existing names are listed in `legacy-names.txt`, remove the line when you rename one) and the slice conventions (`Handler` nested once in its slice class, sealed, namespace `RedAnts.Features.<Module>[.<Name>Workflow]`, registered in `TicketingFeatures.Handlers`, never calling another handler). Run `dotnet test RedAnts-WebApp/tests/RedAnts.Architecture.Tests` after structural changes; the smell report in its output lists long files, many usings and many injections without failing.
 
 The slices must stay decoupled:
 
@@ -95,8 +98,9 @@ Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqi
 
 - **No comments in code.** The code speaks for itself: prefer clear names and small well-named methods over explanatory comments. This covers line, block, XML-doc (`///`), Razor (`@* *@`), and embedded CSS/JS comments. Non-obvious "why" (design decisions, Swiss compliance, gotchas) goes in `ARCHITECTURE.md` under "Design rationale and gotchas", not inline.
 - Keep the slices decoupled: no direct references from Website or Show code into Ticketing internals (go through ports if a genuine dependency arises). Cross-project code sharing beyond that needs a deliberate decision, not an ad-hoc reference.
-- Tests are cut per slice: `RedAnts-WebApp/tests/RedAnts.Host.Tests`, `RedAnts-WebApp/tests/RedAnts.Ticketing.Tests`, `RedAnts-WebApp/tests/RedAnts.Show.Tests`, each referencing its src project. `dotnet test RedAnts-WebApp/RedAnts.slnx` runs in CI before publish.
+- Tests are cut per project: `RedAnts-WebApp/tests/RedAnts.Kernel.Tests`, `RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.Show.Tests` (each referencing its src project), plus `RedAnts.Architecture.Tests` and `RedAnts.BrowserTests`. `dotnet test RedAnts-WebApp/RedAnts.slnx` runs in CI before publish.
 - New website block elements: element type + alias in `WebsiteAliases`, register the block in the "Website Content Blocks" Block List, add a partial under `RedAnts-WebApp/src/RedAnts.Host/Views/Partials/Blocks/{alias}.cshtml`, add styles to `RedAnts-WebApp/src/RedAnts.Host/wwwroot/css/site.css`.
+- Domain errors: value objects throw `ValidationException(field, message)`, aggregates throw `DomainException`. Controllers do not catch them: `DomainErrorFilter` (Host, registered globally) answers `/api` and `/payrexx` requests with a 400 problem document and HTML requests with a `TempData["DomainError"]` banner plus redirect back. Blazor components catch them locally and show the message.
 - Secrets (Payrexx, Microsoft Graph, Turnstile) come from configuration / user secrets, never hardcoded. User secrets live on the Host project (`--project RedAnts-WebApp/src/RedAnts.Host`).
 
 ## Session workflow: preview & deploy
