@@ -1,0 +1,149 @@
+[General]
+IPAddress=localhost
+TeamLogoPath=C:\Liverstream\Einblender\Einblender\TeamLogos
+
+[PersonalSponsor]
+PersonalSponsorHomePath=C:\Liverstream\PersonalSponsors
+PersonalSponsorAwayPath=
+PersonalSponsorConfigurationFile="C:\Liverstream\PersonalSponsors\PersSponsorLUPL.txt"
+ShowPersonalSponsorOnGoal=1
+ShowPersonalSponsorOnPenalty=1
+ShowPersonalSponsorOnName=1
+ShowPersonalSponsorOnBestPlayer=1
+
+[Scoreboard]
+StopTimeOnGoal=
+HideScoreboardOnGoal=
+
+[Shortcut01]
+Text=Entschuldigen Sie die technische Störung!<CRLF>Wir arbeiten mit Hochdruck an der Lösung!
+
+[Shortcut02]
+Text=Highlights
+
+[Shortcut03]
+Text=Leider heute ohne Kommentar
+
+[Shortcut04]
+Text=Live aus der Sporthalle Oberseen in Winterthur …
+
+[Shortcut05]
+Text=Highlights 1. Drittel
+
+[Shortcut06]
+Text=Highlights 2. Drittel
+
+[Shortcut07]
+Text=Highlights 3. Drittel
+
+[Shortcut08]
+Text=
+
+[Shortcut09]
+Text=
+
+[Card01]
+ButtonLabel=
+TitleName=
+
+[Card02]
+ButtonLabel=
+TitleName=
+
+[Card03]
+ButtonLabel=
+TitleName=
+
+[Card04]
+ButtonLabel=
+TitleName=
+
+[Card05]
+ButtonLabel=
+TitleName=
+
+[Card06]
+ButtonLabel=
+TitleName=
+
+[Card07]
+ButtonLabel=
+TitleName=
+
+[Card08]
+ButtonLabel=
+TitleName=
+
+[Sponsor01]
+ButtonLabel=Kempa
+Title=Ausrüster
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[Sponsor02]
+ButtonLabel=OchsnerSport
+Title=Sponsor
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[Sponsor03]
+ButtonLabel=updateFitness
+Title=Fitnesspartner
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[Sponsor04]
+ButtonLabel=FatPipe
+Title=Ausrüster
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[Sponsor05]
+ButtonLabel=Cembra
+Title=Sponsor
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[Sponsor06]
+ButtonLabel=Elpag
+Title=Sponsor
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[Sponsor07]
+ButtonLabel=Brainsize
+Title=Sponsor
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[Sponsor08]
+ButtonLabel=MedBase
+Title=Medical Partner
+PicturePath=C:\Livestream\TeamSponsors\01_Kempa.png
+
+[SponsorAuto]
+Order=1,2,3,4,5,6,7,8
+DurationPause=170
+DurationShow=8
+
+[Hidden]
+TextOwnGoal=Eigentor
+TextOwnGoalShort=ET
+TextStarting6=Starting 6
+TextBestPlayer=Best Player
+TextTimeOut=Time Out
+TextCoach=Coach
+TextCommentator=Kommentar
+TextReferee=Schiedsrichter
+TextResult1st=Resultat 1. Drittel
+TextResult2nd=Resultat 2. Drittel
+TextResult3rd=Resultat 3. Drittel
+TextResultEnd=Schlussresultat
+TextResultAfterOvertime=(n.V.)
+TextResultAfterPenalty=(n.P.)
+TextLineupHeader=Aufstellung
+TextLineupLabel1=Linie 1
+TextLineupLabel2=Linie 2
+TextLineupLabel3=Linie 3
+TextLineupLabel4=Linie 4
+TextLineupLabelTH=Goalies
+ScoreboardGameTimeRegular=20:00
+ScoreboardGameTimeOvertime=10:00
+ScoreboardPenaltyTimeTemplates=02:00,04:00
+
+
+[System-Config]
+[LastLineInConfig]

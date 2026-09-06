@@ -1,0 +1,7 @@
+[Scoreboard]
+TimeUpDown=down
+HideScoreboardOnReplay=0
+
+[API]
+Enable=1
+ShowExternalClock=0

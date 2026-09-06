@@ -1,0 +1,81 @@
+[Game]
+GameNr=133293
+LeagueId=luplw
+Title=NLA
+Date=22.08.2026
+Time=13:00
+Location=Axa Arena Winterthur
+Referee1=
+Referee2=
+Commentator1=
+Commentator2=
+
+[Home]
+2=Leonie Wieland
+3=Damaris Hangartner
+6=Anna Habersatter
+7=Melea Brunner
+8=Janine Hohl
+10=Larissa Nussbaumer
+14=Chiara Bertini
+16=Alissa Hartmeier
+17=Zoe Kläy
+19=Noomi Überschlag
+22=Ida Sundberg
+24=Rahel Odermatt
+25=Gentiana Behluli
+27=Lena Fleischlin
+28=Sara Piispa
+29=Nadine Stadelmann
+31=Marcia Wick
+34=Esther Juul Thomsen
+41=Livia Werz
+42=Nola Baumann
+46=Michelle Siedenberg
+71=Sophie Carbogno
+72=Marion Steiger
+73=Lea Suter
+TeamLong=Red Ants
+TeamShort=RA
+Coach=Mark van Rooden
+Starting6=,,,,,
+Line1=,,,,
+Line2=,,,,
+Line3=,,,,
+Line4=,,,,
+Goal=,-
+
+[Away]
+5=Rahel Wyss
+6=Shirin Hartmann
+7=Madlena Rozīte
+8=Michelle Stieger
+9=Soraya Gansner
+10=Vanessa Koch
+11=Noemi Anderegg
+14=Valeria Jenny
+16=Nicole Capatt
+17=Céline Vaerini
+18=Anja Jakob
+19=Alisha Niggli
+23=Flavia Hess
+27=Eliska Trojankova
+31=Noelle Weis
+32=Naomi Keel
+33=Nina Schmid
+57=Gianna Junker
+71=Luana Mark
+91=Kiia Kokko
+99=Jūlija Rozite
+TeamLong=Floorball Chur United
+TeamShort=FBCU
+Coach=Anders Ljungqvist
+Starting6=,,,,,
+Line1=,,,,
+Line2=,,,,
+Line3=,,,,
+Line4=,,,,
+Goal=,-
+
+[Game-Config]
+[LastLineInConfig]
