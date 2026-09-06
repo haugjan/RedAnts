@@ -2,8 +2,8 @@ namespace RedAnts.Features.Show;
 
 public static class ShowLayout
 {
-    public const int Cols = 8;
-    public const int Rows = 4;
+    public const int Cols = 5;
+    public const int Rows = 3;
 
     public static readonly (int X, int Y) BackCell = (0, 0);
     public static readonly (int X, int Y) PauseCell = (Cols - 2, Rows - 1);

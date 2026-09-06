@@ -140,7 +140,7 @@
 
             <div class="se-detail">
                 <div class="se-canvas-head">
-                    <strong>Anordnung (8 × 4, Streamdeck)</strong>
+                    <strong>Anordnung (5 × 3, Streamdeck)</strong>
                     <button class="se-crumb2" @onclick="() => GoLevel(0)">@_profile.Name</button>
                     @for (var d = 0; d < _levelStack.Count; d++)
                     {
@@ -1403,9 +1403,9 @@
     .se-crumb2 { appearance: none; border: none; background: none; cursor: pointer; color: #ff9aa6; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
     .se-crumb2:hover { background: var(--ra-panel2); }
     .se-sep2 { color: var(--ra-muted); }
-    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; aspect-ratio: 8 / 4; width: 100%; max-width: min(100%, calc((100vh - 250px) * 2)); max-height: calc(100vh - 250px); margin: 0 auto 8px; background:
-        linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/8) calc(100%/4),
-        linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/8) calc(100%/4), #0b0b0e;
+    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; aspect-ratio: 5 / 3; width: 100%; max-width: min(100%, calc((100vh - 250px) * 5 / 3)); max-height: calc(100vh - 250px); margin: 0 auto 8px; background:
+        linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/5) calc(100%/3),
+        linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/5) calc(100%/3), #0b0b0e;
         border: 1px solid var(--ra-line); border-radius: 14px; padding: 6px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }
     .se-ct { --c: var(--ra-red); container-type: size; position: relative; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff) 0%, var(--c) 100%); color: #fff; border: none; border-radius: 8px; cursor: grab; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22); transition: box-shadow 0.12s; }
     .se-ct:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }

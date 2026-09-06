@@ -9,7 +9,7 @@ namespace RedAnts.Features.Show;
 public sealed class ShowController(IShowProfileStore store, IConfiguration config) : Controller
 {
     [HttpGet("companion")]
-    public async Task<IActionResult> Companion(string? profile, int cols = 8, int rows = 4)
+    public async Task<IActionResult> Companion(string? profile, int cols = 5, int rows = 3)
     {
         cols = Math.Clamp(cols, 1, 32);
         rows = Math.Clamp(rows, 1, 32);
@@ -57,7 +57,7 @@ public sealed class ShowController(IShowProfileStore store, IConfiguration confi
     }
 
     [HttpGet("companion/download")]
-    public async Task<IActionResult> CompanionDownload(string? profile, int cols = 8, int rows = 4)
+    public async Task<IActionResult> CompanionDownload(string? profile, int cols = 5, int rows = 3)
     {
         cols = Math.Clamp(cols, 1, 32);
         rows = Math.Clamp(rows, 1, 32);
