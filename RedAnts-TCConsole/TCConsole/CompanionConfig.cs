@@ -65,10 +65,11 @@ public static class CompanionConfig
     const int CStateOff = 0x1E7B34;
     const int CStateOn  = 0xC0201C;
 
-    // Feste Plätze auf allen Unterseiten:
-    //   Zurück oberhalb von PANIC, Sprechverbindung unten rechts.
+    // Feste Plätze auf allen Unterseiten: Zurück oberhalb von PANIC. Die Ecke
+    // unten rechts bleibt bewusst frei — sie trug früher die Sprechverbindung
+    // und wird weiter ausgespart, damit sich das Spielerraster nicht verschiebt.
     const int BackRow = 2, BackCol = 0;
-    const int TalkRow = 3, TalkCol = 7;
+    const int FreeCornerRow = 3, FreeCornerCol = 7;
 
     static int _id;
     static string Id() => $"a{_id++:x4}";
@@ -102,10 +103,11 @@ public static class CompanionConfig
     public const int ScoreHomeRow = 2, ScoreHomeCol = 3;
     public const int ScoreAwayRow = 2, ScoreAwayCol = 4;
 
-    // Spieluhr: Start/Stop unter dem Gaststand, die Sekundenkorrektur links
-    // daneben. Beides in der Zeile unter dem Spielstand, wo vorher das Drittel
-    // sass — das ist jetzt eine Reihe höher.
-    public const int ClockRow    = 3, ClockCol    = 4;
+    // Spieluhr: Start/Stop unter dem Gaststand, links daneben die beiden
+    // Sekundenkorrekturen (−1 s und +1 s). Alle drei in der Zeile unter dem
+    // Spielstand, wo vorher das Drittel sass.
+    public const int ClockRow     = 3, ClockCol     = 5;
+    public const int ClockFwdRow  = 3, ClockFwdCol  = 4;
     public const int ClockBackRow = 3, ClockBackCol = 3;
 
     public const int SpectatorsPage = 8;
@@ -136,7 +138,7 @@ public static class CompanionConfig
 
     // Belegung der Spielerseiten:
     //   Zeilen 0–2  ganz für Spieler, ausser [2,0] — dort sitzt "Zurück"
-    //   Zeile 3     PANIC | Kopfzeile | (Eigentor) | Spieler … | Sprechverbindung
+    //   Zeile 3     PANIC | Kopfzeile | (Eigentor) | Spieler … | freie Ecke [3,7]
     //
     // Die sechs Buchstabenknöpfe der unteren Reihe sind weg. Sie waren reine
     // Zierde, und der Platz wurde knapp: der Heimkader des Beispielspiels hat
@@ -179,7 +181,7 @@ public static class CompanionConfig
             {
                 if (row == BackRow && col == BackCol) continue;          // Zurück
                 if (row == 3 && (col == 0 || col == HeadCol)) continue;  // PANIC, Kopfzeile
-                if (row == 3 && col == TalkCol) continue;                // Sprechverbindung
+                if (row == 3 && col == FreeCornerCol) continue;          // freie Ecke
                 if (row == 3 && col == OwnGoalCol && tor) continue;      // Eigentor
                 yield return (row, col);
             }
@@ -494,16 +496,17 @@ public static class CompanionConfig
         b[3, 0] = PanicBtn(navigateHome: false);
         b[3, 1] = UdpBtn  ("Kommentar",                 CInfo,    ["TcuUi=lt|commentary"], icon: TcuIcons.Kommentar,      mode: "commentary");
         b[3, 2] = UdpBtn  ("Schiri",                    CInfo,    ["TcuUi=lt|referee"],    icon: TcuIcons.Schiedsrichter, mode: "referee");
-        // Spieluhr: Sekunde zurück und Start/Stop, nebeneinander unter dem
-        // Spielstand. Die Uhrzeit selbst steht weiterhin nicht auf dem Deck —
-        // sie ändert sich jede Sekunde und wäre ein Dauerfeuer an
-        // Companion-Aufrufen für etwas, das im TCunihockey-Fenster ohnehin
-        // gross dasteht.
+        // Spieluhr: −1 s und +1 s links, Start/Stop rechts daneben, alle drei
+        // nebeneinander unter dem Spielstand. Die Uhrzeit selbst steht weiterhin
+        // nicht auf dem Deck — sie ändert sich jede Sekunde und wäre ein
+        // Dauerfeuer an Companion-Aufrufen für etwas, das im TCunihockey-Fenster
+        // ohnehin gross dasteht.
         b[ClockBackRow, ClockBackCol] = ClockBackBtn();
+        b[ClockFwdRow,  ClockFwdCol]  = ClockFwdBtn();
         b[ClockRow,     ClockCol]     = ClockBtn();
         // Werbung: schaltet Automatik und Einblendung gemeinsam, in der
         // Reihenfolge, die zum aktuellen Zustand passt (TcuLower liest ihn).
-        b[3, 5] = StateBtn("Werbung",    SponsorLiveVariable, ["TcuUi=sponsor|toggle"],
+        b[3, 6] = StateBtn("Werbung",    SponsorLiveVariable, ["TcuUi=sponsor|toggle"],
                            icon: TcuIcons.Werbung);
         // Einblender steuert den LOWER THIRD, nicht die Matchuhr.
         //
@@ -511,19 +514,11 @@ public static class CompanionConfig
         // eigenen Zustand mit und schaltet verkehrt herum, sobald der von dem
         // abweicht, was tatsächlich läuft. TcuLower liest stattdessen den
         // Zustand und sendet gezielt show oder hide.
-        b[3, 6] = StateBtn("Einblender", LowerThirdVariable, ["TcuUi=toggle"],
+        b[3, 7] = StateBtn("Einblender", LowerThirdVariable, ["TcuUi=toggle"],
                            icon: TcuIcons.EinblenderEin);
-        b[TalkRow, TalkCol] = TalkBtn();
 
         return b;
     }
-
-    /// <summary>
-    /// Sprechverbindung. Hat mit TCunihockey nichts zu tun und ist noch ohne
-    /// Funktion — der Knopf steht bereits am Platz, damit die Belegung sich
-    /// später nicht mehr verschiebt.
-    /// </summary>
-    static JsonObject TalkBtn() => LabelBtn("Sprechverb.", CInfo, icon: TcuIcons.Sprech);
 
     /// <summary>Zurück zur Startseite, auf jeder Unterseite an derselben
     /// Stelle: oberhalb von PANIC.</summary>
@@ -558,8 +553,6 @@ public static class CompanionConfig
         if (tor)
             b[3, OwnGoalCol] = MultiBtn("Eigentor", bg, [$"TcuUi=owngoal|{side}"], navPage: 1,
                                         icon: TcuIcons.Tor, mode: $"owngoal_{side}");
-
-        b[TalkRow, TalkCol] = TalkBtn();
         return b;
     }
 
@@ -579,7 +572,6 @@ public static class CompanionConfig
         b[3, 0] = PanicBtn(navigateHome: true);
         b[3, 1] = LetterBtn("S"); b[3, 2] = LetterBtn("T"); b[3, 3] = LetterBtn("A");
         b[3, 4] = LetterBtn("R"); b[3, 5] = LetterBtn("T"); b[3, 6] = LetterBtn("6");
-        b[TalkRow, TalkCol] = TalkBtn();
         return b;
     }
 
@@ -601,7 +593,6 @@ public static class CompanionConfig
         b[3, 0] = PanicBtn(navigateHome: true);
         b[3, 1] = LetterBtn("S"); b[3, 2] = LetterBtn("T"); b[3, 3] = LetterBtn("R");
         b[3, 4] = LetterBtn("A"); b[3, 5] = LetterBtn("F"); b[3, 6] = LetterBtn("E");
-        b[TalkRow, TalkCol] = TalkBtn();
         return b;
     }
 
@@ -630,6 +621,18 @@ public static class CompanionConfig
         b[0, 1] = MultiBtn("Video",   CProb, ["TcuUi=fault|bild"],    navPage: 1, icon: TcuIcons.Meldung, mode: "fault_bild");
         b[0, 2] = MultiBtn("Audio",   CProb, ["TcuUi=fault|ton"],     navPage: 1, icon: TcuIcons.Meldung, mode: "fault_ton");
 
+        // Mitteilungen: fertige Ansagetexte für die Einblendung. Wie die
+        // Störungstexte geht nur die Kennung über die Leitung, den Wortlaut hält
+        // TcuLower.CommentText. Bewusst ohne Bild, sonst passte der lange Text
+        // nicht lesbar auf die Taste. Jede Ansage führt nach einem Druck zurück
+        // zur Startseite.
+        b[1, 0] = MultiBtn("Highlights",                  CInfo, ["TcuUi=comment|highlights"], navPage: 1);
+        b[1, 1] = MultiBtn("Leider heute\nohne Kommentar", CInfo, ["TcuUi=comment|nocomment"],  navPage: 1);
+        b[1, 2] = MultiBtn("Live aus der\nWin4 Stratos-Halle", CInfo, ["TcuUi=comment|live"],   navPage: 1);
+        b[2, 0] = MultiBtn("Highlights\n1. Drittel",      CInfo, ["TcuUi=comment|hl1"],         navPage: 1);
+        b[2, 1] = MultiBtn("Highlights\n2. Drittel",      CInfo, ["TcuUi=comment|hl2"],         navPage: 1);
+        b[2, 2] = MultiBtn("Highlights\n3. Drittel",      CInfo, ["TcuUi=comment|hl3"],         navPage: 1);
+
         // Die Kurztext-Knöpfe aus der System-Konfig sind weggefallen: belegt war
         // dort nur der technische Störungstext, und den gibt es jetzt als
         // eigenen Knopf.
@@ -652,7 +655,6 @@ public static class CompanionConfig
         b[3, 0] = PanicBtn(navigateHome: true);
         b[3, 1] = LetterBtn("M"); b[3, 2] = LetterBtn("E"); b[3, 3] = LetterBtn("L");
         b[3, 4] = LetterBtn("D"); b[3, 5] = LetterBtn("U"); b[3, 6] = LetterBtn("NG");
-        b[TalkRow, TalkCol] = TalkBtn();
         return b;
     }
 
@@ -678,7 +680,6 @@ public static class CompanionConfig
         b[3, 0] = PanicBtn(navigateHome: true);
         b[3, 1] = LetterBtn("D"); b[3, 2] = LetterBtn("R"); b[3, 3] = LetterBtn("I");
         b[3, 4] = LetterBtn("T"); b[3, 5] = LetterBtn("T"); b[3, 6] = LetterBtn("EL");
-        b[TalkRow, TalkCol] = TalkBtn();
         return b;
     }
 
@@ -881,6 +882,19 @@ public static class CompanionConfig
                    [.. Steps([
                        "TcuController=scoreboard_hide",
                        "TcuController=scoreboard_secmin",
+                   ])]);
+
+    /// <summary>
+    /// Stellt die Spieluhr um eine Sekunde vor — das Gegenstück zu −1 s, für den
+    /// Fall, dass die Uhr zu früh gestoppt wurde. Gleiche Logik: erst ausblenden,
+    /// damit die springende Uhr nicht auf Sendung geht, dann scoreboard_secplus.
+    /// Eingeblendet wird wieder mit dem Start-Knopf nebenan.
+    /// </summary>
+    static JsonObject ClockFwdBtn() =>
+        MakeButton("▶ Uhr +1 s\n(aus)", CTimer, Fg(CTimer),
+                   [.. Steps([
+                       "TcuController=scoreboard_hide",
+                       "TcuController=scoreboard_secplus",
                    ])]);
 
     // ── Basis-Button ─────────────────────────────────────────────────────────

@@ -149,6 +149,7 @@ public sealed class TcuLower(
             case "highlight": return await ViaUi("TcuUi=highlight_result");
 
             case "fault":    return await ViaUi($"TcuUi=message|{FaultText(Arg(1))}");
+            case "comment":  return await ViaUi($"TcuUi=message|{CommentText(Arg(1))}");
 
             // Zuschauer zählen: nur ins Feld schreiben, NICHT einblenden —
             // sonst ginge bei jedem Tastendruck etwas auf Sendung.
@@ -381,6 +382,23 @@ public sealed class TcuLower(
         "bild" => "Entschuldigen Sie die Bildstörung! Wir arbeiten mit Hochdruck an der Lösung!",
         "ton"  => "Entschuldigen Sie die Tonstörung! Wir arbeiten mit Hochdruck an der Lösung!",
         _      => "Entschuldigen Sie die technische Störung! Wir arbeiten mit Hochdruck an der Lösung!",
+    };
+
+    /// <summary>
+    /// Die Mitteilungstexte der Meldung-Seite. Wie die Störungstexte stehen sie
+    /// hier und nicht in der Companion-Config: über die Leitung geht nur die
+    /// Kennung, TcuConsole schreibt den Text als Unicode ins Feld und blendet
+    /// ihn ein. Einzeilig, weil das Feld nur eine Zeile trägt.
+    /// </summary>
+    public static string CommentText(string kind) => kind.ToLowerInvariant() switch
+    {
+        "highlights" => "Highlights",
+        "nocomment"  => "Leider heute ohne Kommentar",
+        "live"       => "Live aus der Win4 Stratos-Halle",
+        "hl1"        => "Highlights 1. Drittel",
+        "hl2"        => "Highlights 2. Drittel",
+        "hl3"        => "Highlights 3. Drittel",
+        _            => "",
     };
 
     static string? ModeCommand(string mode) => mode.ToLowerInvariant() switch
