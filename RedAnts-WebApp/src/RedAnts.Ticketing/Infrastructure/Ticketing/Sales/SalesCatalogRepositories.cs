@@ -33,6 +33,8 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
         if (parent.Id == 0) await scope.Database.InsertAsync(parent);
         else await scope.Database.UpdateAsync(parent);
 
+        var articles = ArticleGuids.ByTierAndCategory(await scope.Database.FetchAsync<EventPriceCategoryRecord>(
+            "WHERE EventPriceId = @0", parent.Id), r => r.TierId, r => r.Category, r => r.ArticleGuid);
         await scope.Database.ExecuteAsync("DELETE FROM EventPriceCategories WHERE EventPriceId = @0", parent.Id);
         foreach (var c in price.Categories)
             await scope.Database.InsertAsync(new EventPriceCategoryRecord
@@ -43,7 +45,7 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
                 SalePrice = c.SalePrice,
                 Quota = c.Quota,
                 AvailableUntil = c.AvailableUntil?.ToDateTime(TimeOnly.MinValue),
-                ArticleGuid = Guid.NewGuid()
+                ArticleGuid = articles.Keep(c.TierId, (int)c.Category)
             });
 
         var cats = await scope.Database.FetchAsync<EventPriceCategoryRecord>(
@@ -86,6 +88,8 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
         if (parent.Id == 0) await scope.Database.InsertAsync(parent);
         else await scope.Database.UpdateAsync(parent);
 
+        var articles = ArticleGuids.ByTierAndCategory(await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
+            "WHERE SeasonPriceId = @0", parent.Id), r => r.TierId, r => r.Category, r => r.ArticleGuid);
         await scope.Database.ExecuteAsync("DELETE FROM SeasonPriceCategories WHERE SeasonPriceId = @0", parent.Id);
         foreach (var c in price.Categories)
             await scope.Database.InsertAsync(new SeasonPriceCategoryRecord
@@ -102,7 +106,7 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
                 PassAvailableFrom = c.PassAvailableFrom?.ToDateTime(TimeOnly.MinValue),
                 PassAvailableUntil = c.PassAvailableUntil?.ToDateTime(TimeOnly.MinValue),
                 TicketAvailableUntil = c.TicketAvailableUntil?.ToDateTime(TimeOnly.MinValue),
-                ArticleGuid = Guid.NewGuid()
+                ArticleGuid = articles.Keep(c.TierId, (int)c.Category)
             });
 
         var cats = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
@@ -444,6 +448,8 @@ public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeaso
     public async Task ReplaceForSeasonAsync(int seasonId, IReadOnlyList<SeasonAddOn> options)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var articles = ArticleGuids.ByIdOrLabel(await scope.Database.FetchAsync<SeasonAddOnRecord>(
+            "WHERE SeasonId = @0", seasonId), r => r.Id, r => r.Label, r => r.ArticleGuid);
         await scope.Database.ExecuteAsync("DELETE FROM SeasonAddOns WHERE SeasonId = @0", seasonId);
         var order = 0;
         foreach (var o in options)
@@ -461,7 +467,7 @@ public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeaso
                 AllowedTierIds = o.AllowedTierIds.Count == 0 ? null : string.Join(',', o.AllowedTierIds),
                 PromoOnly = o.PromoOnly,
                 RequireMobileNumber = o.RequireMobileNumber,
-                ArticleGuid = Guid.NewGuid()
+                ArticleGuid = articles.Keep(o.Id, o.Label)
             });
     }
 

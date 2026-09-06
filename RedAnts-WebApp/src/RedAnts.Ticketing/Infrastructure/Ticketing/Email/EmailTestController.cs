@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.Email;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Features.Ticketing.Tickets;
 using RedAnts.Infrastructure.Shared;
 
-namespace RedAnts.Features.Ticketing.Email;
+namespace RedAnts.Infrastructure.Ticketing.Email;
 
 public sealed class EmailTestController(
     IEmailSender email,

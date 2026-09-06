@@ -61,6 +61,24 @@ public sealed class EventPrice
     public static EventPrice FromPersistence(int id, int eventId, int? totalSalesQuota, int? admissionQuota,
         IReadOnlyList<CategoryPrice> categories, bool conversionOnly = false) =>
         new(id, eventId, totalSalesQuota, admissionQuota, conversionOnly, categories ?? []);
+
+    public EventPrice WithSalesQuota(int? totalSalesQuota)
+    {
+        if (totalSalesQuota is < 0) throw new DomainException("Verkaufskontingent darf nicht negativ sein.");
+        return new EventPrice(Id, EventId, totalSalesQuota, AdmissionQuota, ConversionOnly, Categories);
+    }
+
+    public EventPrice WithAdmissionQuota(int? admissionQuota)
+    {
+        if (admissionQuota is < 0) throw new DomainException("Einlasskontingent darf nicht negativ sein.");
+        return new EventPrice(Id, EventId, TotalSalesQuota, admissionQuota, ConversionOnly, Categories);
+    }
+
+    public EventPrice WithConversionOnly(bool conversionOnly) =>
+        new(Id, EventId, TotalSalesQuota, AdmissionQuota, conversionOnly, Categories);
+
+    public EventPrice WithCategories(IReadOnlyList<CategoryPrice> categories) =>
+        new(Id, EventId, TotalSalesQuota, AdmissionQuota, ConversionOnly, categories ?? []);
 }
 
 public sealed class SeasonCategoryPrice

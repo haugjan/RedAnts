@@ -24,10 +24,8 @@ public sealed class EventSalesQuotaEditor(IScopeProvider scopeProvider, IEventPr
     public async Task SetAsync(int eventId, int? salesQuota)
     {
         var existing = await eventPrices.GetByEventAsync(eventId);
-        var updated = existing is null
-            ? EventPrice.Create(eventId, salesQuota, null, [])
-            : EventPrice.FromPersistence(existing.Id, existing.EventId, salesQuota,
-                existing.AdmissionQuota, existing.Categories);
+        var updated = existing?.WithSalesQuota(salesQuota)
+            ?? EventPrice.Create(eventId, salesQuota, null, []);
         await eventPrices.SaveAsync(updated);
     }
 

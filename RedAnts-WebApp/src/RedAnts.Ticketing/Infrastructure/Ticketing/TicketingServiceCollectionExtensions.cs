@@ -1,3 +1,4 @@
+using RedAnts.Features.Ticketing;
 using RedAnts.Features.Ticketing.Cart;
 
 namespace RedAnts.Infrastructure.Ticketing;
@@ -24,6 +25,7 @@ public static class TicketingServiceCollectionExtensions
             options.IdleTimeout = TimeSpan.FromDays(7);
         });
         services.AddScoped<ICartService, SessionCartService>();
+        services.AddTicketingFeatures();
 
         return services;
     }

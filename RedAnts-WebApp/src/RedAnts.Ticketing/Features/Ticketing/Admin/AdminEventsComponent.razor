@@ -623,12 +623,8 @@
                 .Where(r => r.Enabled)
                 .Select(r => CategoryPrice.Create(default, decimal.Round(r.Price, 2), r.Quota, r.AvailableUntil, r.TierId))
                 .ToList();
-            var price = EventPrice.FromPersistence(
-                _pricingExisting?.Id ?? 0,
-                _pricingEvent.Id,
-                _pricingExisting?.TotalSalesQuota,
-                _pricingExisting?.AdmissionQuota,
-                categories);
+            var price = _pricingExisting?.WithCategories(categories)
+                ?? EventPrice.Create(_pricingEvent.Id, null, null, categories);
             await Prices.SaveAsync(price);
             _pricingEvent = null;
         }

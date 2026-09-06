@@ -151,6 +151,10 @@
 }
 
 <main class="tk-main">
+    @if (TempData["DomainError"] is string domainError)
+    {
+        <div class="alert alert-danger">@domainError</div>
+    }
     @RenderBody()
 </main>
 </div>

@@ -32,6 +32,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\RedAnts.Kernel\RedAnts.Kernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Umbraco.Cms" />
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Azure.Identity" Aliases="AzureId" />

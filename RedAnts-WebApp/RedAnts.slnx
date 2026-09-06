@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/RedAnts.Kernel/RedAnts.Kernel.csproj" />
     <Project Path="src/RedAnts.Host/RedAnts.Host.csproj" />
     <Project Path="src/RedAnts.Ticketing/RedAnts.Ticketing.csproj" />
     <Project Path="src/RedAnts.Show/RedAnts.Show.csproj" />
@@ -9,5 +10,7 @@
     <Project Path="tests/RedAnts.Ticketing.Tests/RedAnts.Ticketing.Tests.csproj" />
     <Project Path="tests/RedAnts.Show.Tests/RedAnts.Show.Tests.csproj" />
     <Project Path="tests/RedAnts.BrowserTests/RedAnts.BrowserTests.csproj" />
+    <Project Path="tests/RedAnts.Architecture.Tests/RedAnts.Architecture.Tests.csproj" />
+    <Project Path="tests/RedAnts.Kernel.Tests/RedAnts.Kernel.Tests.csproj" />
   </Folder>
 </Solution>

@@ -51,6 +51,7 @@ builder.Services.AddHttpClient();
 var staticFileContentTypes = new FileExtensionContentTypeProvider();
 staticFileContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
 builder.Services.Configure<StaticFileOptions>(options => options.ContentTypeProvider = staticFileContentTypes);
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options => options.Filters.Add<RedAnts.Infrastructure.Shared.DomainErrorFilter>());
 
 builder.Services.AddTicketing(builder.Configuration);
 builder.Services.AddShow(builder.Configuration);

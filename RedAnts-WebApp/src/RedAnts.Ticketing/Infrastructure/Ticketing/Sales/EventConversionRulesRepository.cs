@@ -16,10 +16,8 @@ public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider,
     public async Task SetConversionOnlyAsync(int eventId, bool value)
     {
         var existing = await eventPrices.GetByEventAsync(eventId);
-        var updated = existing is null
-            ? EventPrice.Create(eventId, null, null, [], conversionOnly: value)
-            : EventPrice.FromPersistence(existing.Id, existing.EventId, existing.TotalSalesQuota,
-                existing.AdmissionQuota, existing.Categories, conversionOnly: value);
+        var updated = existing?.WithConversionOnly(value)
+            ?? EventPrice.Create(eventId, null, null, [], conversionOnly: value);
         await eventPrices.SaveAsync(updated);
     }
 
