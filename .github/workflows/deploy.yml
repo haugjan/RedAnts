@@ -117,7 +117,7 @@ jobs:
           MEDIA_ACCOUNT_URL: ${{ vars.MEDIA_ACCOUNT_URL }}
           SHOW_ACCOUNT_URL: ${{ vars.SHOW_ACCOUNT_URL }}
         run: |
-          SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment Orders__NumberPrefix=DEV-)
+          SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment Orders__NumberPrefix=DEV- "Deploy__Marker=${{ github.run_id }}.${{ github.run_attempt }}")
           if [ -n "$PAYREXX_TEST_API_SECRET" ]; then
             SETTINGS+=(Payrexx__Instance=redants-test "Payrexx__ApiSecret=$PAYREXX_TEST_API_SECRET")
           else
@@ -240,7 +240,11 @@ jobs:
           MEDIA_ACCOUNT_URL: ${{ vars.MEDIA_ACCOUNT_URL }}
           SHOW_ACCOUNT_URL: ${{ vars.SHOW_ACCOUNT_URL }}
         run: |
-          SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment)
+          # A per-deploy-unique marker guarantees the appsettings write is an actual change, so
+          # Azure performs exactly one restart and the freshly deployed code is loaded. Without it,
+          # an unchanged settings write is a no-op that never restarts and the old worker (old code)
+          # keeps serving after a --restart false deploy.
+          SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment "Deploy__Marker=${{ github.run_id }}.${{ github.run_attempt }}")
           if [ -n "$PAYREXX_API_SECRET" ]; then
             SETTINGS+=(Payrexx__Instance=redants "Payrexx__ApiSecret=$PAYREXX_API_SECRET")
           else
