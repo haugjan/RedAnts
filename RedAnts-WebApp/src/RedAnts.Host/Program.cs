@@ -271,6 +271,46 @@ app.Use(async (context, next) =>
 
 app.UseTicketingShortHostRedirect();
 
+// Keep each surface on its own host: the backoffice is served only on admin[-dev].redants.ch
+// and the scanner only on scan[-dev].redants.ch. On any other real redants.ch host (e.g. the
+// public tickets host) these paths redirect to the correct host instead of being served, so
+// there is a single canonical URL per surface. Localhost / *.azurewebsites.net are left alone.
+app.Use(async (context, next) =>
+{
+    var host = context.Request.Host.Host;
+    if (host.EndsWith(".redants.ch", StringComparison.OrdinalIgnoreCase))
+    {
+        var isDev = host.Contains("-dev.", StringComparison.OrdinalIgnoreCase);
+        var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
+        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("scan-dev.", StringComparison.OrdinalIgnoreCase);
+        var path = context.Request.Path;
+
+        var isBackofficePath = path.StartsWithSegments("/umbraco")
+            || path.StartsWithSegments("/umbraco-entra-signin")
+            || path.StartsWithSegments("/umbraco-entra-signout");
+        var isScanPath = path.StartsWithSegments("/scan")
+            || path.StartsWithSegments("/scanner-test");
+
+        if (isBackofficePath && !isAdminHost)
+        {
+            var target = (isDev ? "https://admin-dev.redants.ch" : "https://admin.redants.ch")
+                + context.Request.Path + context.Request.QueryString;
+            context.Response.Redirect(target);
+            return;
+        }
+        if (isScanPath && !isScanHost)
+        {
+            var target = (isDev ? "https://scan-dev.redants.ch" : "https://scan.redants.ch")
+                + context.Request.Path + context.Request.QueryString;
+            context.Response.Redirect(target);
+            return;
+        }
+    }
+    await next();
+});
+
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/")
