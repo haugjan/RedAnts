@@ -1,20 +1,9 @@
-name: Weekly Backup
+name: Weekly Backup Check
 
-# Exports the prod database to a BACPAC in the sql-backups blob container.
-#
-# Auth: OIDC (azure/login) as the redants-github-deploy app registration. The SQL
-# admin credentials are read at runtime from Key Vault (no DB password in GitHub).
-#
-# Requires (granted once, on the RedAnts subscription fdf0cdfa-...):
-#   - Service principal ea133dd3-...:
-#       * "Storage Account Contributor" on storage account stredantsprod
-#       * "SQL DB Contributor" on SQL server sql-redants-ch
-#       * Key Vault access policy get/list secrets on kv-redants-prod
-#   - Key Vault kv-redants-prod secrets: backup-sql-prod-user, backup-sql-prod-password
-#     (server-level login redants_backup; az sql db export requires master-level auth)
-#
-# Manual runs (workflow_dispatch) are restricted to the repo owner; the schedule
-# always runs.
+# Backups are taken by Azure SQL itself (point-in-time restore for 14 days, long-term retention weekly,
+# monthly and yearly). This job keeps those policies and the blob protection in place (idempotent) and
+# reports what can currently be restored. It needs no SQL login and no storage key: the server is
+# Entra-only and the storage accounts have shared-key access disabled.
 
 on:
   schedule:
@@ -35,9 +24,7 @@ jobs:
       SQL_SERVER: sql-redants-ch
       SQL_DATABASE: sqldb-redants-prod
       STORAGE_ACCOUNT: stredantsprod
-      BACKUP_CONTAINER: sql-backups
-      KEY_VAULT: kv-redants-prod
-
+      LOCATION: switzerlandnorth
     steps:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -56,63 +43,25 @@ jobs:
             --enable-container-delete-retention true \
             --container-delete-retention-days 14 \
             --enable-versioning true \
-            --enable-change-feed true
+            --enable-change-feed true \
+            --output none
+          echo "Blob protection on $STORAGE_ACCOUNT is in place."
 
-      - name: Retrieve storage key
+      - name: Ensure SQL backup retention (point-in-time 14 d, long-term weekly 8 w / monthly 12 m / yearly 5 y, idempotent)
         run: |
-          KEY=$(az storage account keys list \
-            --resource-group "$RESOURCE_GROUP" \
-            --account-name "$STORAGE_ACCOUNT" \
-            --query "[0].value" -o tsv)
-          echo "::add-mask::$KEY"
-          echo "STORAGE_KEY=$KEY" >> "$GITHUB_ENV"
+          az sql db str-policy set \
+            --resource-group "$RESOURCE_GROUP" --server "$SQL_SERVER" --name "$SQL_DATABASE" \
+            --retention-days 14 --output none
+          az sql db ltr-policy set \
+            --resource-group "$RESOURCE_GROUP" --server "$SQL_SERVER" --name "$SQL_DATABASE" \
+            --weekly-retention P8W --monthly-retention P12M --yearly-retention P5Y --week-of-year 1 --output none
+          echo "Retention policies on $SQL_DATABASE are in place."
 
-      - name: Fetch SQL credentials from Key Vault
+      - name: Report restorable backups
         run: |
-          BACKUP_USER=$(az keyvault secret show --vault-name "$KEY_VAULT" --name backup-sql-prod-user --query value -o tsv)
-          BACKUP_PASSWORD=$(az keyvault secret show --vault-name "$KEY_VAULT" --name backup-sql-prod-password --query value -o tsv)
-          echo "::add-mask::$BACKUP_PASSWORD"
-          echo "SQL_ADMIN_USER=$BACKUP_USER" >> "$GITHUB_ENV"
-          echo "SQL_ADMIN_PASSWORD=$BACKUP_PASSWORD" >> "$GITHUB_ENV"
-
-      - name: Ensure sql-backups container exists
-        run: |
-          az storage container create \
-            --name "$BACKUP_CONTAINER" \
-            --account-name "$STORAGE_ACCOUNT" \
-            --account-key "$STORAGE_KEY"
-
-      - name: Export SQL database as BACPAC
-        run: |
-          BACKUP_DATE=$(date -u +%Y-%m-%d)
-          BACPAC_URI="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${BACKUP_CONTAINER}/redants-${BACKUP_DATE}.bacpac"
-          echo "Exporting to $BACPAC_URI ..."
-          az sql db export \
-            --resource-group "$RESOURCE_GROUP" \
-            --server "$SQL_SERVER" \
-            --name "$SQL_DATABASE" \
-            --admin-user "$SQL_ADMIN_USER" \
-            --admin-password "$SQL_ADMIN_PASSWORD" \
-            --storage-key-type StorageAccessKey \
-            --storage-key "$STORAGE_KEY" \
-            --storage-uri "$BACPAC_URI"
-          echo "Export done: redants-${BACKUP_DATE}.bacpac"
-
-      - name: Delete BACPAC files older than 90 days
-        run: |
-          CUTOFF=$(date -u -d "-90 days" +%Y-%m-%dT%H:%M:%SZ)
-          az storage blob list \
-            --container-name "$BACKUP_CONTAINER" \
-            --account-name "$STORAGE_ACCOUNT" \
-            --account-key "$STORAGE_KEY" \
-            --query "[?properties.lastModified < '${CUTOFF}'].name" \
-            -o tsv | \
-          while IFS= read -r blob; do
-            [ -z "$blob" ] && continue
-            echo "Deleting: $blob"
-            az storage blob delete \
-              --container-name "$BACKUP_CONTAINER" \
-              --name "$blob" \
-              --account-name "$STORAGE_ACCOUNT" \
-              --account-key "$STORAGE_KEY"
-          done
+          echo "Earliest point-in-time restore for $SQL_DATABASE:"
+          az sql db show --resource-group "$RESOURCE_GROUP" --server "$SQL_SERVER" --name "$SQL_DATABASE" \
+            --query "earliestRestoreDate" -o tsv
+          echo "Long-term retention backups:"
+          az sql db ltr-backup list --location "$LOCATION" --server "$SQL_SERVER" --database "$SQL_DATABASE" \
+            --query "[].{name:name,taken:properties.backupTime,expires:properties.backupExpirationTime}" -o table
