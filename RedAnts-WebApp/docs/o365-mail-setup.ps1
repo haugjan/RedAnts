@@ -2,7 +2,7 @@
 # ============================================================================
 #  Red Ants: Shared Mailbox tickets@ als Absender vorbereiten.
 #  Nur Exchange Online. Kein Dienstkonto/SMTP AUTH mehr, da der Versand ueber
-#  Graph app-only laeuft (siehe docs/o365-graph-appreg.ps1).
+#  Graph app-only laeuft (siehe RedAnts-WebApp/docs/o365-graph-appreg.ps1).
 #  Einmalig als M365-Admin ausfuehren. Interaktive Anmeldung (Browser/MFA).
 # ============================================================================
 

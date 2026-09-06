@@ -16,6 +16,9 @@ on:
     branches:
       - main
       - 'feature/**'
+    paths:
+      - 'RedAnts-WebApp/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,10 +34,10 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
-      - run: dotnet restore RedAnts.slnx
-      - run: dotnet build RedAnts.slnx --configuration Release --no-restore
-      - run: dotnet test RedAnts.slnx --configuration Release --no-build
-      - run: dotnet publish src/RedAnts.Host/RedAnts.Host.csproj --configuration Release --output ./publish --no-build
+      - run: dotnet restore RedAnts-WebApp/RedAnts.slnx
+      - run: dotnet build RedAnts-WebApp/RedAnts.slnx --configuration Release --no-restore
+      - run: dotnet test RedAnts-WebApp/RedAnts.slnx --configuration Release --no-build
+      - run: dotnet publish RedAnts-WebApp/src/RedAnts.Host/RedAnts.Host.csproj --configuration Release --output ./publish --no-build
       - name: Strip PdfSharp companion DLLs from deps.json
         run: |
           jq '

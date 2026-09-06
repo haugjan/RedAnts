@@ -465,26 +465,26 @@ appsettings-schema.*.json
 umbraco-package-schema.json
 
 # Packages created from the backoffice (package.xml/package.zip)
-/src/RedAnts.Host/umbraco/Data/CreatedPackages/
+/RedAnts-WebApp/src/RedAnts.Host/umbraco/Data/CreatedPackages/
 
 # Temp folder containing Examine indexes, NuCache, MediaCache, etc.
-/src/RedAnts.Host/umbraco/Data/TEMP/
+/RedAnts-WebApp/src/RedAnts.Host/umbraco/Data/TEMP/
 
 # SQLite database files
-/src/RedAnts.Host/umbraco/Data/*.sqlite.db
-/src/RedAnts.Host/umbraco/Data/*.sqlite.db-shm
-/src/RedAnts.Host/umbraco/Data/*.sqlite.db-wal
+/RedAnts-WebApp/src/RedAnts.Host/umbraco/Data/*.sqlite.db
+/RedAnts-WebApp/src/RedAnts.Host/umbraco/Data/*.sqlite.db-shm
+/RedAnts-WebApp/src/RedAnts.Host/umbraco/Data/*.sqlite.db-wal
 
 # Log files
-/src/RedAnts.Host/umbraco/Logs/
+/RedAnts-WebApp/src/RedAnts.Host/umbraco/Logs/
 
 # Media files
-/src/RedAnts.Host/wwwroot/media/
+/RedAnts-WebApp/src/RedAnts.Host/wwwroot/media/
 
 # uSync output: schema is created code-first by the seeder; uSync also exports content
 # (seed data, which can contain access secrets), so keep the whole folder out of git.
-/src/RedAnts.Host/uSync/
-src/RedAnts.Host/wwwroot/_framework/
+/RedAnts-WebApp/src/RedAnts.Host/uSync/
+RedAnts-WebApp/src/RedAnts.Host/wwwroot/_framework/
 
 # Never commit audio; sounds live in Azure Blob (container "show")
 *.mp3

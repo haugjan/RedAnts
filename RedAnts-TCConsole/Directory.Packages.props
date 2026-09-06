@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Diagnostics.Runtime" Version="4.0.732401" />
+  </ItemGroup>
+</Project>

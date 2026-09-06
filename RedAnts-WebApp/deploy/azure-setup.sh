@@ -11,7 +11,7 @@
 #
 # Run this yourself after logging in to the Red Ants tenant:
 #     az login --tenant redants.ch
-#     bash deploy/azure-setup.sh
+#     bash RedAnts-WebApp/deploy/azure-setup.sh
 #
 # It prompts only for the SQL admin password (never written to any file). Deployment auth uses
 # Entra OIDC (no basic auth / no publish password): the script disables SCM basic auth and creates
@@ -48,13 +48,13 @@ APP_REG_NAME="redants-github-deploy"  # Entra app registration used for OIDC dep
 # ─────────────────────────────────────────────────────────────────────────────
 
 # The SQL admin password comes from the env var if set, otherwise an interactive prompt.
-# Interactive form:   bash deploy/azure-setup.sh
-# Non-interactive:    SQL_PASS='...' bash deploy/azure-setup.sh
+# Interactive form:   bash RedAnts-WebApp/deploy/azure-setup.sh
+# Non-interactive:    SQL_PASS='...' bash RedAnts-WebApp/deploy/azure-setup.sh
 : "${SQL_PASS:=}"
 if [ -z "$SQL_PASS" ]; then read -rs -p "SQL admin password for '$SQL_ADMIN': " SQL_PASS || true; echo; fi
 if [ -z "$SQL_PASS" ]; then
   echo "ERROR: SQL admin password not provided. Run this in an interactive terminal, or pass it" >&2
-  echo "       as an environment variable: SQL_PASS='...' bash deploy/azure-setup.sh" >&2
+  echo "       as an environment variable: SQL_PASS='...' bash RedAnts-WebApp/deploy/azure-setup.sh" >&2
   exit 1
 fi
 

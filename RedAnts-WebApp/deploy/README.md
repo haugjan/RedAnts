@@ -22,7 +22,7 @@ tenant, and the SQL admin / backoffice passwords must be set by you.
 
 ```bash
 az login --tenant redants.ch
-bash deploy/azure-setup.sh
+bash RedAnts-WebApp/deploy/azure-setup.sh
 ```
 
 `azure-setup.sh` creates the App Service plan (Linux, .NET 10), the Web App, the Azure SQL

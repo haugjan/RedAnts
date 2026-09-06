@@ -38,7 +38,7 @@ So: one server, N boards, each `board <-> Companion` pair isolated by its room. 
 Requires Node 18+ and yarn.
 
 ```
-cd companion-module-redants-show
+cd RedAnts-Show-Companion
 yarn install
 yarn build        # produces pkg/ via @companion-module/tools
 ```

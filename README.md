@@ -2,6 +2,16 @@
 
 Public website and self-service ticketing application for Red Ants Winterthur, built on **Umbraco CMS 17 / .NET 10**.
 
+## Repository layout
+
+| Folder | Application |
+|---|---|
+| `RedAnts-WebApp/` | The Umbraco web app (`src/`, `tests/`, `RedAnts.slnx`, `docs/`, `deploy/`, `scripts/`). Only changes here (and to `.github/workflows/deploy.yml`) trigger a deployment. |
+| `RedAnts-Show-Companion/` | Bitfocus Companion module for the soundboard (npm package `companion-module-redants-show`). |
+| `RedAnts-TCConsole/` | WPF tool for the TCU console (.NET 8, Windows). |
+
+All commands below are meant to be run from the repository root.
+
 ## Environments
 
 Each surface has its own custom domain, routed by host in `Program.cs`:
@@ -17,22 +27,24 @@ App Services `app-redants-prod` / `app-redants-dev` (Switzerland North). Only `t
 ## Requirements
 
 - .NET 10 SDK
-- Access to the shared **Azure SQL dev database**. There is no local database file: a local run connects to the same Azure SQL dev database as the DEV app, through a user-secrets connection string. SQLite has been removed entirely.
+- Access to the shared **Azure SQL dev database**. There is no local database file: a local run connects to Azure SQL with your Entra identity (`Authentication=Active Directory Default`, taken from `az login`), so no password is stored anywhere. SQLite has been removed entirely.
 
-Set the dev connection string once as a user secret:
+The connection string carries no secret and can be set once as a user secret (or come from Key Vault, see `appsettings.Development.json`):
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:umbracoDbDSN" "<dev Azure SQL DSN>" --project src/RedAnts.Host
-dotnet user-secrets set "ConnectionStrings:umbracoDbDSN_ProviderName" "Microsoft.Data.SqlClient" --project src/RedAnts.Host
+dotnet user-secrets set "ConnectionStrings:umbracoDbDSN" "Server=tcp:sql-redants-ch.database.windows.net,1433;Database=sqldb-redants-dev;Authentication=Active Directory Default;Encrypt=True;" --project RedAnts-WebApp/src/RedAnts.Host
+dotnet user-secrets set "ConnectionStrings:umbracoDbDSN_ProviderName" "Microsoft.Data.SqlClient" --project RedAnts-WebApp/src/RedAnts.Host
 ```
+
+The `Agent` launch profile (`--launch-profile Agent`, port 5606) targets the `sqldb-redants-agent` copy instead and uses the classic backoffice login; see the "Agent test track" section in `CLAUDE.md`.
 
 ## Run locally
 
 ```bash
-dotnet run --project src/RedAnts.Host
+dotnet run --project RedAnts-WebApp/src/RedAnts.Host
 ```
 
-- Serves on the ports in `src/RedAnts.Host/Properties/launchSettings.json`; backoffice at `/umbraco`.
+- Serves on the ports in `RedAnts-WebApp/src/RedAnts.Host/Properties/launchSettings.json`; backoffice at `/umbraco`.
 - The Umbraco schema and an admin account already live in the shared dev database, so there is no installer step. Content types and sample content are (re)seeded in code on every boot, idempotently.
 - Local development runs with test Turnstile keys and empty Payrexx credentials, so captcha and payment are effectively stubbed until real secrets are supplied via user secrets.
 - A soft **site access gate** (HTTP Basic, `BasicAuth:Password`) fronts the public site in every environment. To browse locally without it, start with an empty password (`BasicAuth__Password=`) or unlock via `/__gate` (or append `?key=<password>` to any URL).
@@ -47,24 +59,24 @@ dotnet user-secrets set "BackOfficeAuth:ClientId" "<app registration client id>"
 dotnet user-secrets set "BackOfficeAuth:ClientSecret" "<client secret>"
 ```
 
-For DEV/PROD the same keys come from App Service app settings (`BackOfficeAuth__TenantId` / `__ClientId` / `__ClientSecret`). The provider only activates when all three are set: leave them empty (e.g. a fresh local run) and the classic Umbraco login stays active, which doubles as the **break-glass** access. The Entra app registration (single tenant, redirect URIs `/umbraco-entra-signin` for each admin host plus `http://localhost:5601/...`) is created with `docs/backoffice-entra-appreg.ps1`. Existing backoffice users must have their `@redants.ch` address set as their Umbraco user e-mail, otherwise linking fails.
+For DEV/PROD the same keys come from App Service app settings (`BackOfficeAuth__TenantId` / `__ClientId` / `__ClientSecret`). The provider only activates when all three are set: leave them empty (e.g. a fresh local run) and the classic Umbraco login stays active, which doubles as the **break-glass** access. The Entra app registration (single tenant, redirect URIs `/umbraco-entra-signin` for each admin host plus `http://localhost:5601/...`) is created with `RedAnts-WebApp/docs/backoffice-entra-appreg.ps1`. Existing backoffice users must have their `@redants.ch` address set as their Umbraco user e-mail, otherwise linking fails.
 
 ## Project layout
 
-The solution `RedAnts.slnx` is split per slice (details in `ARCHITECTURE.md`):
+The solution `RedAnts-WebApp/RedAnts.slnx` is split per slice (details in `ARCHITECTURE.md`):
 
 | Path | Purpose |
 |------|---------|
-| `src/RedAnts.Host/` | Web app (`AssemblyName=RedAnts`): `Program.cs`, Umbraco, `Infrastructure/Shared`, Website slice, Umbraco template views, shared `wwwroot/`, `uSync/`. |
-| `src/RedAnts.Ticketing/` | Razor class library: the whole ticketing slice (`Domain/`, `Features/Ticketing/`, `Infrastructure/Ticketing/`), compiled views, assets under `/_content/RedAnts.Ticketing/`. |
-| `src/RedAnts.Show/` | Razor class library: placeholder for the soundboard/light-control app (`/show`, backoffice section "Show", SQL schema `show`). |
-| `tests/` | One xunit project per slice: `RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.Show.Tests`. |
+| `RedAnts-WebApp/src/RedAnts.Host/` | Web app (`AssemblyName=RedAnts`): `Program.cs`, Umbraco, `Infrastructure/Shared`, Website slice, Umbraco template views, shared `wwwroot/`, `uSync/`. |
+| `RedAnts-WebApp/src/RedAnts.Ticketing/` | Razor class library: the whole ticketing slice (`Domain/`, `Features/Ticketing/`, `Infrastructure/Ticketing/`), compiled views, assets under `/_content/RedAnts.Ticketing/`. |
+| `RedAnts-WebApp/src/RedAnts.Show/` | Razor class library: placeholder for the soundboard/light-control app (`/show`, backoffice section "Show", SQL schema `show`). |
+| `RedAnts-WebApp/tests/` | One xunit project per slice (`RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.Show.Tests`) plus `RedAnts.BrowserTests` (Playwright, skipped unless `E2E_BASE_URL` is set). |
 
 Each src project layers internally as `Domain/` → `Features/` (with `Ports/`) → `Infrastructure/`.
 
 ## Data model (ticketing)
 
-Catalog entities (Season, Venue, Event) are **Umbraco Document Types**, not database tables. Sales, admissions, pricing, add-ons, the email outbox and the session cache live in NPoco tables, created by `CreateTicketingSchema` plus a chain of additive migrations in `Infrastructure/Ticketing/TicketingMigration.cs`. The build is **fully idempotent and re-runs on every boot**: `TicketingMigrationComponent` resets the recorded migration state to empty first, then each table is created only when missing (`EnsureTable`/`TableExists`) and each new column is gated by `ColumnExists`. A new table or column therefore appears on the next start with no database drop, and parallel branches sharing the dev database never desync.
+Catalog entities (Season, Venue, Event) are **Umbraco Document Types**, not database tables. Sales, admissions, pricing, add-ons, the email outbox and the session cache live in NPoco tables, created by `CreateTicketingSchema` plus a chain of additive migrations in `Infrastructure/Ticketing/TicketingMigration.cs`. Every step is idempotent: each table is created only when missing (`EnsureTable`/`TableExists`) and each new column is gated by `ColumnExists`, so a new table or column appears without a database drop. Umbraco records the reached plan state and skips the plan when nothing changed; `Migrations:ForceToken` replays it once per new token value. In Azure the plan runs as a pipeline step (`dotnet RedAnts.dll --migrate`) with the deploy identity, which is the only one holding DDL rights; locally it runs at boot (`Migrations:RunAtBoot`).
 
 Conventions:
 

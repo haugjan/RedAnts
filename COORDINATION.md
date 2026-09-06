@@ -14,7 +14,7 @@ Code (Rationale in `ARCHITECTURE.md`), Enums als int, keine Secrets im Code, kei
 Co-Authored-By. Admin-Bausteine wiederverwenden (`InlineSelectEdit`, `InlineNumberEdit`,
 `InlineDateEdit`, `ConfirmDialog`, `OrderLogOverlay`/`VisitsOverlay`-Muster, `AdminFormat`,
 `AdminIdentity`-CascadingParameter). Host-`.cshtml` durch Starten der App verifizieren
-(`dotnet run --project src/RedAnts.Host` mit `ASPNETCORE_ENVIRONMENT=Development`);
+(`dotnet run --project RedAnts-WebApp/src/RedAnts.Host` mit `ASPNETCORE_ENVIRONMENT=Development`);
 Ticketing/Show-Views und `.razor` kompilieren beim Build.
 
 ## Reihenfolge / Abhängigkeiten
