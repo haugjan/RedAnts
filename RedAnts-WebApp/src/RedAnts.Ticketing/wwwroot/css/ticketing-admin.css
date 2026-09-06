@@ -323,6 +323,7 @@
 .tp-preview { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .tp-side { min-height: 0; overflow-y: auto; padding-right: .3rem; }
 .tp-side .fp-grid { grid-template-columns: 1fr 1fr; }
+.tp-template-link { display: inline-block; margin: .3rem 0 0; font-size: .82rem; }
 @media (max-width: 780px) {
     .ta-modal-wide { max-width: 620px; height: calc(100dvh - 1.2rem); }
     .tp-main { grid-template-columns: 1fr; overflow-y: auto; }
