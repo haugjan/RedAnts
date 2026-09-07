@@ -6,7 +6,7 @@ namespace RedAnts.Features.Ticketing.CheckoutWorkflow;
 
 public static class ExpireDraftOrders
 {
-    public sealed record Command(DateTime CreatedBefore);
+    public sealed record Command(DateTime CreatedAfter, DateTime CreatedBefore);
 
     public sealed class Handler(IOrders orders, IOrderLog orderLog, CapacityReservation reservation, IPayrexxGateway payrexx,
         OrderFulfillment fulfillment, ILogger<Handler> logger)
@@ -14,7 +14,7 @@ public static class ExpireDraftOrders
         public async Task<int> HandleAsync(Command command)
         {
             var expired = 0;
-            foreach (var order in await orders.GetDraftsCreatedBeforeAsync(command.CreatedBefore))
+            foreach (var order in await orders.GetDraftsCreatedBetweenAsync(command.CreatedAfter, command.CreatedBefore))
             {
                 try
                 {

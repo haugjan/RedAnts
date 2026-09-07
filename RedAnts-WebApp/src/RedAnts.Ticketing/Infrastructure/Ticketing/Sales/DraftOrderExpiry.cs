@@ -11,6 +11,7 @@ public sealed class DraftOrderExpiry(IServiceScopeFactory scopes, ILogger<DraftO
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan MaxDraftAge = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan LookBack = TimeSpan.FromDays(2);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -21,7 +22,7 @@ public sealed class DraftOrderExpiry(IServiceScopeFactory scopes, ILogger<DraftO
             {
                 using var scope = scopes.CreateScope();
                 var expire = scope.ServiceProvider.GetRequiredService<ExpireDraftOrders.Handler>();
-                var expired = await expire.HandleAsync(new ExpireDraftOrders.Command(DateTime.UtcNow - MaxDraftAge));
+                var expired = await expire.HandleAsync(new ExpireDraftOrders.Command(DateTime.UtcNow - LookBack, DateTime.UtcNow - MaxDraftAge));
                 if (expired > 0)
                     logger.LogInformation("{Count} draft orders expired and their reservations released.", expired);
             }

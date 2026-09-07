@@ -82,11 +82,11 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
         return affected > 0;
     }
 
-    public async Task<IReadOnlyList<Order>> GetDraftsCreatedBeforeAsync(DateTime createdBefore)
+    public async Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTime createdAfter, DateTime createdBefore)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<OrderRecord>(
-            "WHERE Status = @0 AND CreatedAt < @1 ORDER BY Id", (int)OrderStatus.Draft, createdBefore);
+            "WHERE Status = @0 AND CreatedAt >= @1 AND CreatedAt < @2 ORDER BY Id", (int)OrderStatus.Draft, createdAfter, createdBefore);
         return rows.Select(Map).ToList();
     }
 

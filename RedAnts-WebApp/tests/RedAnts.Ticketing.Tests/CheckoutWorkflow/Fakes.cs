@@ -49,8 +49,8 @@ internal sealed class InMemoryOrders : IOrders
         return Task.FromResult(order is not null);
     }
 
-    public Task<IReadOnlyList<Order>> GetDraftsCreatedBeforeAsync(DateTime createdBefore) =>
-        Task.FromResult<IReadOnlyList<Order>>(Stored.Where(o => o.Status == OrderStatus.Draft && o.CreatedAt < createdBefore).ToList());
+    public Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTime createdAfter, DateTime createdBefore) =>
+        Task.FromResult<IReadOnlyList<Order>>(Stored.Where(o => o.Status == OrderStatus.Draft && o.CreatedAt >= createdAfter && o.CreatedAt < createdBefore).ToList());
 
     public Task CopyBillingToTicketsAsync(int orderId)
     {
