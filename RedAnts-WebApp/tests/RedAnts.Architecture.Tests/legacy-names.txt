@@ -8,7 +8,6 @@ RedAnts.Features.Ticketing.Admin.IOrderRefundService
 RedAnts.Features.Ticketing.Admin.IOrderStatusEditor
 RedAnts.Features.Ticketing.Admin.ISeasonStatusEditor
 RedAnts.Features.Ticketing.Admin.PersonEditor
-RedAnts.Features.Ticketing.Scanning.IAdmissionService
 RedAnts.Infrastructure.Show.IShowProfileStore
 RedAnts.Infrastructure.Show.IShowSettingsStore
 RedAnts.Infrastructure.Show.ShowProfileStore
@@ -27,7 +26,6 @@ RedAnts.Infrastructure.Ticketing.Admin.UmbracoOrderStatusEditor
 RedAnts.Infrastructure.Ticketing.Admin.UmbracoSeasonStatusEditor
 RedAnts.Infrastructure.Ticketing.Email.UmbracoEmailSenderAdapter
 RedAnts.Infrastructure.Ticketing.Sales.ConvertibleCardsAdapter
-RedAnts.Infrastructure.Ticketing.Scanning.AdmissionService
 RedAnts.Infrastructure.Ticketing.Tickets.MyTicketTokenService
 RedAnts.Infrastructure.Ticketing.Tickets.TicketPrintService
 RedAnts.Infrastructure.Ticketing.Tickets.TicketTokenService

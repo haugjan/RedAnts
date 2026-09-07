@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using RedAnts.Domain.Ticketing;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
-using RedAnts.Features.Ticketing.Scanning;
 using RedAnts.Features.Ticketing.Tickets;
 using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
@@ -26,7 +25,7 @@ public static class PlaceOrder
         IOrders orders,
         IOrderLog orderLog,
         IEventConversionRules conversionRules,
-        IAdmissionService admission,
+        IOccupancyReader occupancy,
         ISeasonAddOns seasonAddOns,
         IPayrexxGateway payrexx,
         IPublicBaseUrl publicUrl,
@@ -43,7 +42,7 @@ public static class PlaceOrder
             if (cart.IsEmpty) return new Result.Denied("Der Warenkorb ist leer.", true);
 
             foreach (var eventId in cart.EventIds)
-                if ((await admission.GetOccupancyAsync(eventId)).Full)
+                if ((await occupancy.GetAsync(eventId)).Full)
                     return new Result.Denied("Abendkasse geschlossen: Die Halle ist voll. Es können keine Tickets mehr gekauft werden.", true);
 
             foreach (var eventId in cart.EventIds.Where(cart.HasRegularTicketsFor))
