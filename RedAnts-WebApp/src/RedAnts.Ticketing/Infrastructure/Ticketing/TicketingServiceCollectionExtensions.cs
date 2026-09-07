@@ -1,5 +1,6 @@
 using RedAnts.Features.Ticketing;
-using RedAnts.Features.Ticketing.Checkout;
+using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Infrastructure.Ticketing.Sales;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
@@ -24,7 +25,7 @@ public static class TicketingServiceCollectionExtensions
             options.Cookie.IsEssential = true;
             options.IdleTimeout = TimeSpan.FromDays(7);
         });
-        services.AddScoped<ICartService, SessionCartService>();
+        services.AddScoped<ICartRepository, SessionCartRepository>();
         services.AddTicketingFeatures();
 
         return services;

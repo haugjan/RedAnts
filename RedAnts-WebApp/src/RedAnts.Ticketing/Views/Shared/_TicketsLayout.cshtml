@@ -1,4 +1,4 @@
-@inject RedAnts.Features.Ticketing.Checkout.ICartService Cart
+@inject RedAnts.Features.Ticketing.Ports.ICartRepository Cart
 @inject Umbraco.Cms.Core.IPublishedContentQuery ContentQuery
 @using System.Linq
 @using Umbraco.Cms.Core.Models.PublishedContent
@@ -9,7 +9,7 @@
 
     var roots = ContentQuery.ContentAtRoot().ToList();
     var home = roots.FirstOrDefault(c => c.ContentType.Alias == "flexPage");
-    var cartCount = Cart.Get().TotalQuantity;
+    var cartCount = Cart.Load().TotalQuantity;
     var navPages = home?.Children()?
         .Where(c => c.ContentType.Alias == "flexPage" && c.IsPublished())
         .ToList() ?? new List<IPublishedContent>();
