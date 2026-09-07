@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Features.Ticketing.CheckoutWorkflow;
@@ -13,8 +14,8 @@ public sealed record OrderSnapshotItem(
     int Kind, int EventId, int SeasonId, int TierId, decimal UnitPrice, int Quantity, string EventName, string CategoryName,
     int? OriginType = null, string? OriginCardUuid = null, int OriginCategory = 0)
 {
-    public bool IsSeasonPass => Kind == (int)CartLineKind.SeasonPass;
-    public bool IsConversion => OriginType is not null && !string.IsNullOrEmpty(OriginCardUuid);
+    [JsonIgnore] public bool IsSeasonPass => Kind == (int)CartLineKind.SeasonPass;
+    [JsonIgnore] public bool IsConversion => OriginType is not null && !string.IsNullOrEmpty(OriginCardUuid);
 }
 
 public sealed record OrderSnapshotAddOn(
@@ -40,9 +41,9 @@ public sealed record OrderSnapshot(
         return new OrderSnapshot(items, addOns, subscribeNewsletter, source.ToString());
     }
 
-    public IReadOnlyList<int> EventIds => Items.Where(i => !i.IsSeasonPass).Select(i => i.EventId).Distinct().ToList();
+    [JsonIgnore] public IReadOnlyList<int> EventIds => Items.Where(i => !i.IsSeasonPass).Select(i => i.EventId).Distinct().ToList();
 
-    public IReadOnlyList<int> SeasonIds => Items.Where(i => i.IsSeasonPass).Select(i => i.SeasonId).Distinct().ToList();
+    [JsonIgnore] public IReadOnlyList<int> SeasonIds => Items.Where(i => i.IsSeasonPass).Select(i => i.SeasonId).Distinct().ToList();
 
     public IReadOnlyList<TierDemand> EventDemand(int eventId) => Items
         .Where(i => !i.IsSeasonPass && i.EventId == eventId)
@@ -54,5 +55,5 @@ public sealed record OrderSnapshot(
         .Select(i => new TierDemand(i.TierId, i.Quantity))
         .ToList();
 
-    public bool IsQuickBuy => NewsletterSource == CheckoutSource.QuickBuy.ToString();
+    [JsonIgnore] public bool IsQuickBuy => NewsletterSource == CheckoutSource.QuickBuy.ToString();
 }
