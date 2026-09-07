@@ -4,7 +4,7 @@
 #pragma warning disable CS0618
 using Microsoft.Extensions.DependencyInjection;
 using RedAnts.Domain.Ticketing;
-using RedAnts.Features.Ticketing.Admin;
+using RedAnts.Features.Ticketing.Ports;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
@@ -13,7 +13,7 @@ using A = RedAnts.Infrastructure.Ticketing.Content.TicketingAliases;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-public sealed class UmbracoSeasonStatusEditor(IContentService contentService) : ISeasonStatusEditor
+public sealed class UmbracoSeasonStatusPublisher(IContentService contentService) : ISeasonStatusPublisher
 {
     private const int SuperUser = Constants.Security.SuperUserId;
 
@@ -33,8 +33,8 @@ public sealed class UmbracoSeasonStatusEditor(IContentService contentService) : 
     });
 }
 
-public sealed class SeasonStatusEditorComposer : IComposer
+public sealed class SeasonStatusPublisherComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<ISeasonStatusEditor, UmbracoSeasonStatusEditor>();
+        => builder.Services.AddScoped<ISeasonStatusPublisher, UmbracoSeasonStatusPublisher>();
 }

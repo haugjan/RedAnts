@@ -221,7 +221,7 @@
     <div class="ta-overlay" @onmousedown="CloseCreate">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Ticket erstellen</h2>
-            <PersonEditor Model="_newPerson" Prefix="newEt" EmailHint=" (optional, für den Ticketversand)" />
+            <PersonFields Model="_newPerson" Prefix="newEt" EmailHint=" (optional, für den Ticketversand)" />
             <div class="ta-field">
                 <label class="ta-label" for="newCategory">Kategorie</label>
                 <select id="newCategory" class="ta-select" @bind="_newCategory">
@@ -292,7 +292,7 @@
                 <p class="ta-field-hint">Ein storniertes Ticket kann nicht eingelöst sein.</p>
             </div>
 
-            <PersonEditor Model="_editPerson" Prefix="editEt" EmailHint=" (für den Ticketversand)" />
+            <PersonFields Model="_editPerson" Prefix="editEt" EmailHint=" (für den Ticketversand)" />
 
             @if (_editError is not null)
             {

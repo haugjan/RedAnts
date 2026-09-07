@@ -220,7 +220,7 @@
                 </datalist>
             </div>
 
-            <PersonEditor Model="_newPerson" Prefix="newMc" EmailHint=" (optional, für den Kartenversand)" />
+            <PersonFields Model="_newPerson" Prefix="newMc" EmailHint=" (optional, für den Kartenversand)" />
 
             @if (!string.IsNullOrEmpty(_createError))
             {
@@ -413,7 +413,7 @@
                 <input id="editReference" class="ta-input" type="text" maxlength="100" @bind="_editReference" />
             </div>
 
-            <PersonEditor Model="_editPerson" Prefix="editMc" EmailHint=" (optional, für den Kartenversand)" />
+            <PersonFields Model="_editPerson" Prefix="editMc" EmailHint=" (optional, für den Kartenversand)" />
 
             @if (!string.IsNullOrEmpty(_editError))
             {

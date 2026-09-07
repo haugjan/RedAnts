@@ -7,23 +7,25 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Admin;
 
-public sealed class FlexBundleTicketsAdapter(IScopeProvider scopeProvider) : IFlexBundleTickets
+public sealed class EventBundleTicketsReader(IScopeProvider scopeProvider) : IEventBundleTickets
 {
-    public async Task<IReadOnlyList<FlexBundleTicket>> GetByBundlesAsync(IReadOnlyCollection<int> bundleIds)
+    public Task<IReadOnlyList<EventBundleTicket>> GetByBundleAsync(int bundleId) => GetByBundlesAsync([bundleId]);
+
+    public async Task<IReadOnlyList<EventBundleTicket>> GetByBundlesAsync(IReadOnlyCollection<int> bundleIds)
     {
         if (bundleIds.Count == 0) return [];
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<Row>(
-            "SELECT t.Uuid, t.SeasonId, b.Reference, t.Category, " +
-            "t.BuyerType, t.BuyerFirstName, t.BuyerLastName, t.BuyerCompany, t.BuyerEmail, " +
+            "SELECT t.Uuid, t.EventId, b.Reference, t.Category, " +
+            "t.BuyerType, t.BuyerFirstName, t.BuyerLastName, t.BuyerCompany, t.Email AS BuyerEmail, " +
             "t.Salutation, t.Birthday, t.Street, t.AddressLine2, t.PostalCode, t.City, t.Country, t.Phone " +
-            "FROM SeasonSingleTickets t " +
-            "JOIN FlexTicketBundles b ON b.Id = t.BundleId " +
+            "FROM EventTickets t " +
+            "JOIN EventTicketBundles b ON b.Id = t.BundleId " +
             "WHERE t.BundleId IN (@0) ORDER BY b.Reference, t.Id",
             new object[] { bundleIds });
         return rows
-            .Select(r => new FlexBundleTicket(
-                Guid.TryParse(r.Uuid, out var g) ? g : Guid.Empty, r.SeasonId, r.Reference ?? "",
+            .Select(r => new EventBundleTicket(
+                Guid.TryParse(r.Uuid, out var g) ? g : Guid.Empty, r.EventId, r.Reference ?? "",
                 (TicketCategory)r.Category,
                 CardHolder.Create((BuyerType)(r.BuyerType ?? 0), r.Salutation, r.BuyerCompany,
                     r.BuyerFirstName, r.BuyerLastName, r.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
@@ -35,7 +37,7 @@ public sealed class FlexBundleTicketsAdapter(IScopeProvider scopeProvider) : IFl
     public sealed class Row
     {
         public string Uuid { get; set; } = "";
-        public int SeasonId { get; set; }
+        public int EventId { get; set; }
         public string Reference { get; set; } = "";
         public int Category { get; set; }
         public int? BuyerType { get; set; }
@@ -54,8 +56,8 @@ public sealed class FlexBundleTicketsAdapter(IScopeProvider scopeProvider) : IFl
     }
 }
 
-public sealed class FlexBundleTicketsComposer : IComposer
+public sealed class EventBundleTicketsComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IFlexBundleTickets, FlexBundleTicketsAdapter>();
+        => builder.Services.AddScoped<IEventBundleTickets, EventBundleTicketsReader>();
 }

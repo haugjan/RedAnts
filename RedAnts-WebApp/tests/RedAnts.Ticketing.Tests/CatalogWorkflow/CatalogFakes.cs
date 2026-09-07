@@ -75,7 +75,7 @@ internal sealed class RecordingFreeEntryQuotas : IFreeEntryRepository
     public Task SaveAsync(FreeEntry entry) => throw new NotSupportedException();
 }
 
-internal sealed class RecordingEventStatus : IEventStatusEditor
+internal sealed class RecordingEventStatus : IEventStatusPublisher
 {
     public List<(int EventId, EventStatus Status)> Changes { get; } = [];
 

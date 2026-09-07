@@ -108,7 +108,7 @@ internal sealed class RecordingSeasonAddOns : ISeasonAddOns
     }
 }
 
-internal sealed class RecordingSeasonStatus : ISeasonStatusEditor
+internal sealed class RecordingSeasonStatus : ISeasonStatusPublisher
 {
     public List<(int SeasonId, SeasonStatus Status)> Calls { get; } = [];
 

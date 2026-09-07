@@ -9,10 +9,10 @@ public sealed class TicketTokensComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
-        builder.Services.AddSingleton<ITicketTokens, TicketTokenService>();
+        builder.Services.AddSingleton<ITicketTokens, TicketTokenSigner>();
         builder.Services.AddSingleton<IQrCodeRenderer, QrCodeRenderer>();
         builder.Services.AddScoped<IIssuedTicketReader, IssuedTicketReader>();
-        builder.Services.AddSingleton<IMyTicketTokens, MyTicketTokenService>();
+        builder.Services.AddSingleton<IMyTicketTokens, MyTicketTokenSigner>();
         builder.Services.AddScoped<IMyTicketsReader, MyTicketsReader>();
     }
 }
