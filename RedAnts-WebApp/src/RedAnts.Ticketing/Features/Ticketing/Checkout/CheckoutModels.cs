@@ -1,4 +1,5 @@
 using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.CheckoutWorkflow;
 
 namespace RedAnts.Features.Ticketing.Checkout;
 
@@ -21,25 +22,16 @@ public sealed class CheckoutForm
 public sealed class CheckoutAddressView
 {
     public CheckoutForm Form { get; init; } = new();
-    public Cart Cart { get; init; } = new();
+    public Cart Cart { get; init; } = Cart.Empty();
     public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
     public bool MobileRequired { get; init; }
 }
 
-public sealed class CheckoutPaymentView
-{
-    public Cart Cart { get; init; } = new();
-    public CheckoutForm Form { get; init; } = new();
-    public bool PayrexxEnabled { get; init; }
-    public string? TurnstileSiteKey { get; init; }
-    public string? Error { get; init; }
-}
-
 public sealed class CheckoutExpressView
 {
-    public Cart Cart { get; init; } = new();
+    public Cart Cart { get; init; } = Cart.Empty();
     public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
@@ -56,31 +48,6 @@ public sealed class CheckoutProcessingView
     public bool AlreadyPaid { get; init; }
     public IReadOnlyList<ConfirmationTicket> Tickets { get; init; } = [];
     public IReadOnlyList<string> AddOnInfoTexts { get; init; } = [];
-}
-
-public sealed record FulfillmentItem(
-    int Kind, int EventId, int SeasonId, int TierId, decimal UnitPrice, int Quantity, string EventName, string CategoryName,
-    int? OriginType = null, string? OriginCardUuid = null, int OriginCategory = 0);
-
-public sealed record FulfillmentAddOn(
-    int Id, int SeasonId, string EventName, int TierId, string CategoryName, string Label, decimal Price, int Quantity);
-
-public sealed record FulfillmentSnapshot(
-    List<FulfillmentItem> Items,
-    List<FulfillmentAddOn> AddOns,
-    bool SubscribeNewsletter,
-    string NewsletterSource);
-
-public sealed record ConfirmationTicket(Guid Uuid, string EventName, string CategoryName, string Token, int Type = 0, string? DateText = null, string? VenueName = null, string? HolderName = null);
-
-public sealed class CheckoutPayrexxView
-{
-    public int OrderId { get; init; }
-    public string Token { get; init; } = "";
-    public string GatewayLink { get; init; } = "";
-    public string OrderNumber { get; init; } = "";
-    public decimal Total { get; init; }
-    public string CancelUrl { get; init; } = "/checkout";
 }
 
 public sealed class CheckoutConfirmationView
