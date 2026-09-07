@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
 
-namespace RedAnts.Features.Ticketing.Cart;
+namespace RedAnts.Features.Ticketing.Checkout;
 
 public sealed class CartController(
     ICartService cart, IEventPricing pricing, IEvents events,

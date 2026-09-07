@@ -10,7 +10,7 @@ using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Features.Ticketing.Tickets;
 using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
 
-namespace RedAnts.Features.Ticketing.Cart;
+namespace RedAnts.Features.Ticketing.Checkout;
 
 public sealed class CheckoutController(ICartService cart, IOrders orders, IEventTickets tickets, IOrderMailer mailer, IEventPricing pricing, ITicketTokens tokens, ICaptchaVerifier captcha, ISeasonPasses passes, ISeasonPassPricing passPricing, IPublicBaseUrl publicUrl, IOrderLog orderLog, INewsletterSignups newsletter, IOrderAddOns orderAddOns, IOrderItems orderItems, IAddOnNotifier addOnNotifier, ISeasonAddOns seasonAddOns, IPayrexxGateway payrexx, RedAnts.Features.Ticketing.Scanning.IAdmissionService admission, IEvents events, ISeasons seasons, IVenues venues, IIssuedTicketReader issuedTickets, IConvertibleCards convertibleCards, IEventConversionRules conversionRules, IDataProtectionProvider dataProtection, ILogger<CheckoutController> logger) : Controller
 {

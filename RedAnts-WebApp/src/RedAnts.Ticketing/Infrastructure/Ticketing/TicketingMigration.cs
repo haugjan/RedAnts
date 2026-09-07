@@ -60,6 +60,27 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddTicketPrintSettings>("ticket-print-settings");
         To<BackfillTicketHoldersFromOrders>("backfill-ticket-holders");
         To<AddSessionCacheTable>("session-cache-table");
+        To<AddCapacityReservations>("capacity-reservations");
+    }
+}
+
+public class AddCapacityReservations(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        AddCounter("EventPrices", "Reserved");
+        AddCounter("EventPrices", "Version");
+        AddCounter("EventPriceCategories", "Reserved");
+        AddCounter("SeasonPrices", "Reserved");
+        AddCounter("SeasonPrices", "Version");
+        AddCounter("SeasonPriceCategories", "Reserved");
+        return Task.CompletedTask;
+    }
+
+    private void AddCounter(string table, string column)
+    {
+        if (ColumnExists(table, column)) return;
+        Database.Execute($"ALTER TABLE [{table}] ADD [{column}] int NOT NULL CONSTRAINT [DF_{table}_{column}] DEFAULT 0");
     }
 }
 

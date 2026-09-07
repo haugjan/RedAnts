@@ -1,6 +1,6 @@
 using RedAnts.Domain.Ticketing.Sales;
 
-namespace RedAnts.Features.Ticketing.Cart;
+namespace RedAnts.Features.Ticketing.Checkout;
 
 public sealed class CheckoutForm
 {

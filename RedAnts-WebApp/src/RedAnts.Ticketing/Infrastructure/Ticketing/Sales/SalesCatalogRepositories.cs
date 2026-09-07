@@ -31,10 +31,11 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
             ConversionOnly = price.ConversionOnly
         };
         if (parent.Id == 0) await scope.Database.InsertAsync(parent);
-        else await scope.Database.UpdateAsync(parent);
+        else await scope.Database.UpdateAsync(parent, new[] { "EventId", "TotalSalesQuota", "AdmissionQuota", "ConversionOnly" });
 
-        var articles = ArticleGuids.ByTierAndCategory(await scope.Database.FetchAsync<EventPriceCategoryRecord>(
-            "WHERE EventPriceId = @0", parent.Id), r => r.TierId, r => r.Category, r => r.ArticleGuid);
+        var existing = await scope.Database.FetchAsync<EventPriceCategoryRecord>("WHERE EventPriceId = @0", parent.Id);
+        var articles = ArticleGuids.ByTierAndCategory(existing, r => r.TierId, r => r.Category, r => r.ArticleGuid);
+        var reserved = ReservedCounts.ByTierAndCategory(existing, r => r.TierId, r => r.Category, r => r.Reserved);
         await scope.Database.ExecuteAsync("DELETE FROM EventPriceCategories WHERE EventPriceId = @0", parent.Id);
         foreach (var c in price.Categories)
             await scope.Database.InsertAsync(new EventPriceCategoryRecord
@@ -45,12 +46,14 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
                 SalePrice = c.SalePrice,
                 Quota = c.Quota,
                 AvailableUntil = c.AvailableUntil?.ToDateTime(TimeOnly.MinValue),
-                ArticleGuid = articles.Keep(c.TierId, (int)c.Category)
+                ArticleGuid = articles.Keep(c.TierId, (int)c.Category),
+                Reserved = reserved.Keep(c.TierId, (int)c.Category)
             });
 
+        var stored = await scope.Database.SingleByIdAsync<EventPriceRecord>(parent.Id);
         var cats = await scope.Database.FetchAsync<EventPriceCategoryRecord>(
             "WHERE EventPriceId = @0 ORDER BY Category", parent.Id);
-        return Map(parent, cats);
+        return Map(stored, cats);
     }
 
     public async Task DeleteAsync(int eventPriceId)
@@ -60,13 +63,53 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
         await scope.Database.DeleteAsync(new EventPriceRecord { Id = eventPriceId });
     }
 
+    public async Task<CapacityUsage> GetUsageAsync(int eventId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var byTier = await scope.Database.FetchAsync<TierCountRow>(
+            "SELECT TierId AS TierId, COUNT(*) AS Cnt FROM EventTickets WHERE EventId = @0 AND Status = @1 AND TierId IS NOT NULL GROUP BY TierId",
+            eventId, (int)TicketStatus.Valid);
+        var total = await scope.Database.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM EventTickets WHERE EventId = @0 AND Status = @1", eventId, (int)TicketStatus.Valid);
+        return new CapacityUsage(total, byTier.ToDictionary(r => r.TierId, r => r.Cnt));
+    }
+
+    public async Task SaveReservationAsync(EventPrice price)
+    {
+        using var scope = scopeProvider.CreateScope();
+        var affected = await scope.Database.ExecuteAsync(
+            "UPDATE EventPrices SET Reserved = @0, Version = Version + 1 WHERE Id = @1 AND Version = @2",
+            price.Reserved, price.Id, price.Version);
+        if (affected == 0) throw new ConcurrencyException("Das Kontingent wurde gleichzeitig verändert.");
+        foreach (var c in price.Categories.Where(c => c.TierId is not null))
+            await scope.Database.ExecuteAsync(
+                "UPDATE EventPriceCategories SET Reserved = @0 WHERE EventPriceId = @1 AND TierId = @2 AND Category = @3",
+                c.Reserved, price.Id, c.TierId, (int)c.Category);
+        scope.Complete();
+    }
+
     private static EventPrice Map(EventPriceRecord p, IEnumerable<EventPriceCategoryRecord> cats) =>
         EventPrice.FromPersistence(p.Id, p.EventId, p.TotalSalesQuota, p.AdmissionQuota,
             cats.Select(c => CategoryPrice.FromPersistence(
-                (TicketCategory)c.Category, c.SalePrice, c.Quota, ToDateOnly(c.AvailableUntil), c.TierId)).ToList(),
-            p.ConversionOnly);
+                (TicketCategory)c.Category, c.SalePrice, c.Quota, ToDateOnly(c.AvailableUntil), c.TierId, c.Reserved)).ToList(),
+            p.ConversionOnly, p.Reserved, p.Version);
 
     private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
+}
+
+internal sealed class ReservedCounts(IReadOnlyDictionary<string, int> existing)
+{
+    public static ReservedCounts ByTierAndCategory<T>(IEnumerable<T> rows, Func<T, int?> tierId, Func<T, int> category, Func<T, int> reserved)
+    {
+        var map = new Dictionary<string, int>();
+        foreach (var row in rows)
+            map[Key(tierId(row), category(row))] = reserved(row);
+        return new ReservedCounts(map);
+    }
+
+    public int Keep(int? tierId, int category) => existing.TryGetValue(Key(tierId, category), out var value) ? value : 0;
+
+    private static string Key(int? tierId, int category) => $"{tierId ?? 0}:{category}";
 }
 
 public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeasonPrices
@@ -86,10 +129,11 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var parent = new SeasonPriceRecord { Id = price.Id, SeasonId = price.SeasonId, TotalSalesQuota = price.TotalSalesQuota, DefaultTicketSalesQuota = price.DefaultTicketSalesQuota };
         if (parent.Id == 0) await scope.Database.InsertAsync(parent);
-        else await scope.Database.UpdateAsync(parent);
+        else await scope.Database.UpdateAsync(parent, new[] { "SeasonId", "TotalSalesQuota", "DefaultTicketSalesQuota" });
 
-        var articles = ArticleGuids.ByTierAndCategory(await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
-            "WHERE SeasonPriceId = @0", parent.Id), r => r.TierId, r => r.Category, r => r.ArticleGuid);
+        var existing = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>("WHERE SeasonPriceId = @0", parent.Id);
+        var articles = ArticleGuids.ByTierAndCategory(existing, r => r.TierId, r => r.Category, r => r.ArticleGuid);
+        var reserved = ReservedCounts.ByTierAndCategory(existing, r => r.TierId, r => r.Category, r => r.Reserved);
         await scope.Database.ExecuteAsync("DELETE FROM SeasonPriceCategories WHERE SeasonPriceId = @0", parent.Id);
         foreach (var c in price.Categories)
             await scope.Database.InsertAsync(new SeasonPriceCategoryRecord
@@ -106,12 +150,14 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
                 PassAvailableFrom = c.PassAvailableFrom?.ToDateTime(TimeOnly.MinValue),
                 PassAvailableUntil = c.PassAvailableUntil?.ToDateTime(TimeOnly.MinValue),
                 TicketAvailableUntil = c.TicketAvailableUntil?.ToDateTime(TimeOnly.MinValue),
-                ArticleGuid = articles.Keep(c.TierId, (int)c.Category)
+                ArticleGuid = articles.Keep(c.TierId, (int)c.Category),
+                Reserved = reserved.Keep(c.TierId, (int)c.Category)
             });
 
+        var stored = await scope.Database.SingleByIdAsync<SeasonPriceRecord>(parent.Id);
         var cats = await scope.Database.FetchAsync<SeasonPriceCategoryRecord>(
             "WHERE SeasonPriceId = @0 ORDER BY Category", parent.Id);
-        return Map(parent, cats);
+        return Map(stored, cats);
     }
 
     public async Task DeleteAsync(int seasonPriceId)
@@ -121,13 +167,39 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
         await scope.Database.DeleteAsync(new SeasonPriceRecord { Id = seasonPriceId });
     }
 
+    public async Task<CapacityUsage> GetPassUsageAsync(int seasonId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var byTier = await scope.Database.FetchAsync<TierCountRow>(
+            "SELECT TierId AS TierId, COUNT(*) AS Cnt FROM SeasonPasses WHERE SeasonId = @0 AND Status = @1 AND TierId IS NOT NULL GROUP BY TierId",
+            seasonId, (int)TicketStatus.Valid);
+        var total = await scope.Database.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM SeasonPasses WHERE SeasonId = @0 AND Status = @1", seasonId, (int)TicketStatus.Valid);
+        return new CapacityUsage(total, byTier.ToDictionary(r => r.TierId, r => r.Cnt));
+    }
+
+    public async Task SaveReservationAsync(SeasonPrice price)
+    {
+        using var scope = scopeProvider.CreateScope();
+        var affected = await scope.Database.ExecuteAsync(
+            "UPDATE SeasonPrices SET Reserved = @0, Version = Version + 1 WHERE Id = @1 AND Version = @2",
+            price.Reserved, price.Id, price.Version);
+        if (affected == 0) throw new ConcurrencyException("Das Kontingent wurde gleichzeitig verändert.");
+        foreach (var c in price.Categories.Where(c => c.TierId is not null))
+            await scope.Database.ExecuteAsync(
+                "UPDATE SeasonPriceCategories SET Reserved = @0 WHERE SeasonPriceId = @1 AND TierId = @2 AND Category = @3",
+                c.Reserved, price.Id, c.TierId, (int)c.Category);
+        scope.Complete();
+    }
+
     private static SeasonPrice Map(SeasonPriceRecord p, IEnumerable<SeasonPriceCategoryRecord> cats) =>
         SeasonPrice.FromPersistence(p.Id, p.SeasonId, p.TotalSalesQuota,
             cats.Select(c => SeasonCategoryPrice.FromPersistence(
                 (TicketCategory)c.Category, c.SalePrice, c.Offered ?? true, c.Quota,
                 c.TicketPrice ?? 0m, c.TicketOffered ?? c.Offered ?? true, c.TicketQuota,
-                ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), ToDateOnly(c.TicketAvailableUntil), c.TierId)).ToList(),
-            p.DefaultTicketSalesQuota);
+                ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), ToDateOnly(c.TicketAvailableUntil), c.TierId,
+                c.Reserved)).ToList(),
+            p.DefaultTicketSalesQuota, p.Reserved, p.Version);
 
     private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
 }
@@ -293,14 +365,14 @@ public sealed class EventPricingReader(IScopeProvider scopeProvider) : IEventPri
 
         var soldByTier = await SoldByTierAsync(scope.Database, eventId);
         int? totalRemaining = parent.TotalSalesQuota is { } tq
-            ? Math.Max(0, tq - await SoldTotalAsync(scope.Database, eventId)) : null;
+            ? Math.Max(0, tq - await SoldTotalAsync(scope.Database, eventId) - parent.Reserved) : null;
 
         var rows = new List<TierRow>();
         foreach (var c in cats)
         {
             if (c.TierId is not { } tid || !tierById.TryGetValue(tid, out var t)) continue;
             rows.Add(new TierRow(tid, t.Name, t.PromoOfTierId, t.SortOrder, true,
-                c.SalePrice, c.Quota, null, ToDateOnly(c.AvailableUntil), soldByTier.GetValueOrDefault(tid),
+                c.SalePrice, c.Quota, null, ToDateOnly(c.AvailableUntil), soldByTier.GetValueOrDefault(tid) + c.Reserved,
                 t.MinAge, t.MaxAge));
         }
         return TierOffer.Resolve(rows, totalRemaining);
@@ -371,14 +443,14 @@ public sealed class SeasonPassPricingReader(IScopeProvider scopeProvider) : ISea
 
         var soldByTier = await SoldByTierAsync(scope.Database, seasonId);
         int? totalRemaining = parent.TotalSalesQuota is { } tq
-            ? Math.Max(0, tq - await SoldTotalAsync(scope.Database, seasonId)) : null;
+            ? Math.Max(0, tq - await SoldTotalAsync(scope.Database, seasonId) - parent.Reserved) : null;
 
         var rows = new List<TierRow>();
         foreach (var c in cats)
         {
             if (c.TierId is not { } tid || !tierById.TryGetValue(tid, out var t)) continue;
             rows.Add(new TierRow(tid, t.Name, t.PromoOfTierId, t.SortOrder, c.Offered ?? true,
-                c.SalePrice, c.Quota, ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), soldByTier.GetValueOrDefault(tid),
+                c.SalePrice, c.Quota, ToDateOnly(c.PassAvailableFrom), ToDateOnly(c.PassAvailableUntil), soldByTier.GetValueOrDefault(tid) + c.Reserved,
                 t.MinAge, t.MaxAge));
         }
         return TierOffer.Resolve(rows, totalRemaining);

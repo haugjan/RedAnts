@@ -40,6 +40,8 @@ public interface IEventPrices
     Task<EventPrice?> GetByEventAsync(int eventId);
     Task<EventPrice> SaveAsync(EventPrice price);
     Task DeleteAsync(int eventPriceId);
+    Task<CapacityUsage> GetUsageAsync(int eventId);
+    Task SaveReservationAsync(EventPrice price);
 }
 
 public interface ISeasonPrices
@@ -47,6 +49,8 @@ public interface ISeasonPrices
     Task<SeasonPrice?> GetBySeasonAsync(int seasonId);
     Task<SeasonPrice> SaveAsync(SeasonPrice price);
     Task DeleteAsync(int seasonPriceId);
+    Task<CapacityUsage> GetPassUsageAsync(int seasonId);
+    Task SaveReservationAsync(SeasonPrice price);
 }
 
 public sealed record TicketDemand(int EventId, int TierId, int Quantity, bool IsConversion = false);
@@ -93,6 +97,8 @@ public interface IOrders
     Task<Order?> GetByIdAsync(int id);
     Task<Order?> GetByNumberAsync(string orderNumber);
     Task<bool> TryMarkPaidAsync(int orderId);
+    Task<bool> TryCancelDraftAsync(int orderId);
+    Task<IReadOnlyList<Order>> GetDraftsCreatedBeforeAsync(DateTime createdBefore);
     Task CopyBillingToTicketsAsync(int orderId);
 }
 

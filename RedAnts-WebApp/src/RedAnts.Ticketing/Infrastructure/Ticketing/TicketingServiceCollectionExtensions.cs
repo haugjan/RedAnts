@@ -1,5 +1,5 @@
 using RedAnts.Features.Ticketing;
-using RedAnts.Features.Ticketing.Cart;
+using RedAnts.Features.Ticketing.Checkout;
 
 namespace RedAnts.Infrastructure.Ticketing;
 

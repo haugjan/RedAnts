@@ -1,4 +1,4 @@
-namespace RedAnts.Features.Ticketing.Cart;
+namespace RedAnts.Features.Ticketing.Checkout;
 
 public interface ICaptchaVerifier
 {

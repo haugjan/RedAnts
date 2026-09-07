@@ -13,6 +13,8 @@ public class EventPriceRecord
     [Column("TotalSalesQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? TotalSalesQuota { get; set; }
     [Column("AdmissionQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? AdmissionQuota { get; set; }
     [Column("ConversionOnly")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool ConversionOnly { get; set; }
+    [Column("Reserved")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Reserved { get; set; }
+    [Column("Version")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Version { get; set; }
 }
 
 [TableName("EventPriceCategories")]
@@ -28,6 +30,7 @@ public class EventPriceCategoryRecord
     [Column("Quota")] [NullSetting(NullSetting = NullSettings.Null)] public int? Quota { get; set; }
     [Column("AvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? AvailableUntil { get; set; }
     [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
+    [Column("Reserved")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Reserved { get; set; }
 }
 
 [TableName("SeasonPrices")]
@@ -39,6 +42,8 @@ public class SeasonPriceRecord
     [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public int SeasonId { get; set; }
     [Column("TotalSalesQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? TotalSalesQuota { get; set; }
     [Column("DefaultTicketSalesQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? DefaultTicketSalesQuota { get; set; }
+    [Column("Reserved")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Reserved { get; set; }
+    [Column("Version")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Version { get; set; }
 }
 
 [TableName("SeasonAddOns")]
@@ -96,4 +101,5 @@ public class SeasonPriceCategoryRecord
     [Column("PassAvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? PassAvailableUntil { get; set; }
     [Column("TicketAvailableUntil")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? TicketAvailableUntil { get; set; }
     [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
+    [Column("Reserved")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Reserved { get; set; }
 }

@@ -73,6 +73,23 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
         return affected > 0;
     }
 
+    public async Task<bool> TryCancelDraftAsync(int orderId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var affected = await scope.Database.ExecuteAsync(
+            "UPDATE Orders SET Status = @0 WHERE Id = @1 AND Status = @2",
+            (int)OrderStatus.Cancelled, orderId, (int)OrderStatus.Draft);
+        return affected > 0;
+    }
+
+    public async Task<IReadOnlyList<Order>> GetDraftsCreatedBeforeAsync(DateTime createdBefore)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<OrderRecord>(
+            "WHERE Status = @0 AND CreatedAt < @1 ORDER BY Id", (int)OrderStatus.Draft, createdBefore);
+        return rows.Select(Map).ToList();
+    }
+
     public async Task CopyBillingToTicketsAsync(int orderId)
     {
         if (orderId <= 0) return;

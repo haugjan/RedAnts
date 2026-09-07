@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.Cart;
+using RedAnts.Features.Ticketing.Checkout;
+using TicketType = RedAnts.Domain.Ticketing.Sales.TicketType;
 
 namespace RedAnts.Infrastructure.Ticketing;
 
