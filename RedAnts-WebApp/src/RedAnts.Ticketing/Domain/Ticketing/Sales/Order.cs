@@ -90,6 +90,31 @@ public sealed class Order
     public void Cancel() => Status = OrderStatus.Cancelled;
     public void Refund() => Status = OrderStatus.Refunded;
 
+    public bool ChangeStatus(OrderStatus target)
+    {
+        if (Status == target) return false;
+        switch (target)
+        {
+            case OrderStatus.Paid: MarkPaid(); break;
+            case OrderStatus.Draft: MarkUnpaid(); break;
+            case OrderStatus.Cancelled: Cancel(); break;
+            case OrderStatus.Refunded: Refund(); break;
+            default: throw new DomainException("Dieser Bezahlstatus kann nicht gesetzt werden.");
+        }
+        return true;
+    }
+
+    public bool DeactivatesTickets => Status is OrderStatus.Cancelled or OrderStatus.Refunded;
+
+    public bool IsRefundable => Status is OrderStatus.Paid or OrderStatus.PartiallyRefunded;
+
+    public void RequireRefundable()
+    {
+        if (!IsRefundable) throw new DomainException("Nur bezahlte Bestellungen können zurückerstattet werden.");
+    }
+
+    public bool PaidThroughPayrexx => !string.IsNullOrWhiteSpace(PayrexxGatewayId);
+
     public void ApplyRefundTotal(decimal confirmedRefundTotal)
     {
         if (Status is OrderStatus.Cancelled or OrderStatus.Draft)
