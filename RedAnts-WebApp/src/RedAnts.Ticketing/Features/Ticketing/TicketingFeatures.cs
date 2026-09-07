@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using RedAnts.Features.Ticketing.AdmissionWorkflow;
+using RedAnts.Features.Ticketing.CatalogWorkflow;
 using RedAnts.Features.Ticketing.CheckoutWorkflow;
 
 namespace RedAnts.Features.Ticketing;
@@ -25,7 +26,12 @@ public static class TicketingFeatures
         typeof(ScanCode.Handler),
         typeof(GrantFreeEntry.Handler),
         typeof(RevokeFreeEntry.Handler),
-        typeof(GetOccupancy.Handler)
+        typeof(GetOccupancy.Handler),
+        typeof(SetSeasonSalesStatus.Handler),
+        typeof(SetSeasonPassQuota.Handler),
+        typeof(SetSeasonTicketSalesQuota.Handler),
+        typeof(SetSeasonPricing.Handler),
+        typeof(SetSeasonAddOns.Handler)
     ];
 
     public static IReadOnlyList<Type> Steps { get; } =
