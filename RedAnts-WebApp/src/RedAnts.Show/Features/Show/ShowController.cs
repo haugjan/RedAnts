@@ -1,19 +1,20 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using RedAnts.Infrastructure.Show;
+using RedAnts.Domain.Show;
+using RedAnts.Features.Show.ShowWorkflow;
 
 namespace RedAnts.Features.Show;
 
 [Route("show")]
-public sealed class ShowController(IShowProfileStore store, IConfiguration config) : Controller
+public sealed class ShowController(GetShowProfiles.Handler profileQuery, IConfiguration config) : Controller
 {
     [HttpGet("companion")]
     public async Task<IActionResult> Companion(string? profile, int cols = 5, int rows = 3)
     {
         cols = Math.Clamp(cols, 1, 32);
         rows = Math.Clamp(rows, 1, 32);
-        var profiles = await store.GetAllAsync();
+        var profiles = await profileQuery.HandleAsync(new GetShowProfiles.Query());
         var sel = profiles.FirstOrDefault(p => p.Id == profile) ?? profiles.FirstOrDefault();
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var key = config["Show:ApiKey"] ?? config["Show:BoardPassword"] ?? "";
@@ -61,7 +62,7 @@ public sealed class ShowController(IShowProfileStore store, IConfiguration confi
     {
         cols = Math.Clamp(cols, 1, 32);
         rows = Math.Clamp(rows, 1, 32);
-        var profiles = await store.GetAllAsync();
+        var profiles = await profileQuery.HandleAsync(new GetShowProfiles.Query());
         var sel = profiles.FirstOrDefault(p => p.Id == profile) ?? profiles.FirstOrDefault();
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var key = config["Show:ApiKey"] ?? config["Show:BoardPassword"] ?? "";
@@ -78,7 +79,6 @@ public sealed class ShowController(IShowProfileStore store, IConfiguration confi
                 controls[$"{row}/{col}"] = Button(t.Label, ColorInt(t.Color), url);
             }
         }
-        // Letzte Taste unten rechts: Stopp.
         controls[$"{rows - 1}/{cols - 1}"] = Button("STOP", 0xC8102E, $"{baseUrl}/api/show/stop?key={Uri.EscapeDataString(key)}");
 
         var doc = new

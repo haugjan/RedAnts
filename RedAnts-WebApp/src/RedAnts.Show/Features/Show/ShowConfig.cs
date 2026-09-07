@@ -1,8 +1,7 @@
+using RedAnts.Domain.Show;
+
 namespace RedAnts.Features.Show;
 
-// Feste Prototyp-Konfiguration (portiert aus dem SPA-Prototyp). Wird in einer
-// späteren Phase durch einen Editor und Persistenz in der Datenbank ersetzt.
-// Sound-Refs sind relativ zur Blob-Basis-URL (Show:Storage:PublicBaseUrl).
 public static class ShowConfig
 {
     private static ShowButton Local(string id, string label, string icon, string color, string file, string? subtitle = null,

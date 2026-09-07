@@ -1,0 +1,38 @@
+using RedAnts.Domain.Show;
+
+namespace RedAnts.Features.Show.Ports;
+
+public interface IShowProfiles
+{
+    Task<IReadOnlyList<ShowProfile>> GetAllAsync();
+    Task SaveAllAsync(IReadOnlyList<ShowProfile> profiles);
+}
+
+public interface IShowSettings
+{
+    string? Get(string key);
+    Task SetAsync(string key, string? value);
+    Task LoadAsync();
+}
+
+public interface IShowRemote
+{
+    IDisposable Register(string? room, Func<ShowCommand, Task> handler);
+    Task<int> DispatchAsync(ShowCommand command);
+}
+
+public interface IShowSpotifySearch
+{
+    bool Configured { get; }
+    Task<IReadOnlyList<SpotifyTrack>> SearchAsync(string query, int limit = 10);
+    Task<SpotifyTrack?> GetTrackAsync(string idOrUri);
+    Task<SpotifyContext?> GetContextAsync(string idOrUri);
+    Task<string> TestCredentialsAsync(string clientId, string secret);
+}
+
+public interface IShowSoundUploader
+{
+    Task<string> UploadAsync(string fileName, Stream content, string? contentType);
+    Task UploadAtPathAsync(string blobPath, Stream content, string? contentType);
+    Task<byte[]?> DownloadAsync(string blobPath);
+}

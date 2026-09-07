@@ -45,21 +45,28 @@ public class HandlerRules
         Assert.True(offenders.Count == 0, "Slice namespaces must be RedAnts.Features.<Module>[.<Name>Workflow]:\n" + string.Join("\n", offenders));
     }
 
-    [Fact]
-    public void Slices_are_registered_exactly_once()
+    public static IEnumerable<object[]> Modules =>
+    [
+        ["Ticketing", RedAntsArchitecture.Ticketing, RedAnts.Features.Ticketing.TicketingFeatures.Handlers],
+        ["Show", RedAntsArchitecture.Show, RedAnts.Features.Show.ShowFeatures.Handlers]
+    ];
+
+    [Theory]
+    [MemberData(nameof(Modules))]
+    public void Slices_are_registered_exactly_once(string module, System.Reflection.Assembly assembly, IReadOnlyList<Type> handlers)
     {
-        var expected = RedAntsArchitecture.Ticketing.GetTypes()
+        var expected = assembly.GetTypes()
             .Where(t => t.IsClass && t.Name == "Handler" && t.Namespace is { } ns && ns.StartsWith("RedAnts.Features."))
             .Where(t => !t.GetInterfaces().Any(i => i.Name.StartsWith("INotification")))
             .ToHashSet();
-        var registered = RedAnts.Features.Ticketing.TicketingFeatures.Handlers.ToList();
+        var registered = handlers.ToList();
 
         var missing = expected.Except(registered).Select(t => t.FullName).ToList();
         var duplicates = registered.GroupBy(t => t).Where(g => g.Count() > 1).Select(g => g.Key.FullName).ToList();
         var unknown = registered.Except(expected).Select(t => t.FullName).ToList();
 
-        Assert.True(missing.Count == 0, "Handlers missing in TicketingFeatures.Handlers:\n" + string.Join("\n", missing));
-        Assert.True(duplicates.Count == 0, "Handlers registered twice:\n" + string.Join("\n", duplicates));
-        Assert.True(unknown.Count == 0, "Registered types that are no slice handlers:\n" + string.Join("\n", unknown));
+        Assert.True(missing.Count == 0, $"Handlers missing in {module}Features.Handlers:\n" + string.Join("\n", missing));
+        Assert.True(duplicates.Count == 0, $"{module} handlers registered twice:\n" + string.Join("\n", duplicates));
+        Assert.True(unknown.Count == 0, $"{module} registered types that are no slice handlers:\n" + string.Join("\n", unknown));
     }
 }

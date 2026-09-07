@@ -1,6 +1,1 @@
 # Types named before the naming rule; remove a line once the type is renamed.
-RedAnts.Features.Show.ShowAdminEditor
-RedAnts.Infrastructure.Show.IShowProfileStore
-RedAnts.Infrastructure.Show.IShowSettingsStore
-RedAnts.Infrastructure.Show.ShowProfileStore
-RedAnts.Infrastructure.Show.ShowSettingsStore

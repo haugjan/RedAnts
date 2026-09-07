@@ -1,12 +1,7 @@
+using RedAnts.Domain.Show;
+using RedAnts.Features.Show.Ports;
+
 namespace RedAnts.Infrastructure.Show;
-
-public sealed record ShowCommand(string Action, string? TileId = null, string? ProfileId = null, int? SongIndex = null, string? Room = null);
-
-public interface IShowRemote
-{
-    IDisposable Register(string? room, Func<ShowCommand, Task> handler);
-    Task<int> DispatchAsync(ShowCommand cmd);
-}
 
 public sealed class ShowRemote : IShowRemote
 {
@@ -20,16 +15,16 @@ public sealed class ShowRemote : IShowRemote
         return new Registration(this, entry);
     }
 
-    public async Task<int> DispatchAsync(ShowCommand cmd)
+    public async Task<int> DispatchAsync(ShowCommand command)
     {
-        var room = Normalize(cmd.Room);
+        var room = Normalize(command.Room);
         Entry[] handlers;
         lock (_lock) handlers = _handlers.ToArray();
         var reached = 0;
         foreach (var h in handlers)
         {
             if (room is not null && h.Room != room) continue;
-            try { await h.Handler(cmd); reached++; } catch { }
+            try { await h.Handler(command); reached++; } catch { }
         }
         return reached;
     }

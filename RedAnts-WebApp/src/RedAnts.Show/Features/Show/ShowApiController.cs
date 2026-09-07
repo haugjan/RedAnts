@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using RedAnts.Infrastructure.Show;
+using RedAnts.Domain.Show;
+using RedAnts.Features.Show.ShowWorkflow;
 
 namespace RedAnts.Features.Show;
 
 [ApiController]
 [Route("api/show")]
-public sealed class ShowApiController(IShowRemote remote, IShowProfileStore store, IConfiguration config) : ControllerBase
+public sealed class ShowApiController(DispatchShowCommand.Handler dispatch, GetShowProfiles.Handler profileQuery, IConfiguration config) : ControllerBase
 {
     private bool KeyOk()
     {
@@ -20,7 +21,7 @@ public sealed class ShowApiController(IShowRemote remote, IShowProfileStore stor
     public async Task<IActionResult> State()
     {
         if (!KeyOk()) return Unauthorized();
-        var profiles = await store.GetAllAsync();
+        var profiles = await profileQuery.HandleAsync(new GetShowProfiles.Query());
         var dto = profiles.Select(p => new
         {
             id = p.Id,
@@ -79,7 +80,7 @@ public sealed class ShowApiController(IShowRemote remote, IShowProfileStore stor
     private async Task<IActionResult> Cmd(ShowCommand cmd)
     {
         if (!KeyOk()) return Unauthorized();
-        var reached = await remote.DispatchAsync(cmd);
+        var reached = await dispatch.HandleAsync(new DispatchShowCommand.Command(cmd));
         return Ok(new { ok = true, boards = reached });
     }
 }

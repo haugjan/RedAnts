@@ -3,15 +3,10 @@ using System.Text.RegularExpressions;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Options;
+using RedAnts.Features.Show;
+using RedAnts.Features.Show.Ports;
 
 namespace RedAnts.Infrastructure.Show;
-
-public interface IShowSoundUploader
-{
-    Task<string> UploadAsync(string fileName, Stream content, string? contentType);
-    Task UploadAtPathAsync(string blobPath, Stream content, string? contentType);
-    Task<byte[]?> DownloadAsync(string blobPath);
-}
 
 public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> options) : IShowSoundUploader
 {

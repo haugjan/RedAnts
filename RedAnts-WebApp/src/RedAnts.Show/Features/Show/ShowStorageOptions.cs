@@ -1,4 +1,4 @@
-namespace RedAnts.Infrastructure.Show;
+namespace RedAnts.Features.Show;
 
 public sealed class ShowStorageOptions
 {

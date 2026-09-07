@@ -41,7 +41,7 @@ public class LayerRules
         Types().That().Are(TicketingAndWebsiteFeatures).Should().NotDependOnAny(Infrastructure)
             .Check(RedAntsArchitecture.Loaded);
 
-    [Fact(Skip = "Show still binds its pages to infrastructure classes; the rule becomes active with the NPoco rebuild of the Show module")]
+    [Fact]
     public void Show_features_do_not_depend_on_infrastructure() =>
         Types().That().Are(ShowFeatures).Should().NotDependOnAny(Infrastructure)
             .Check(RedAntsArchitecture.Loaded);
