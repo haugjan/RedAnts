@@ -355,7 +355,7 @@
     }
 
     private int PotentialAdmissions(Event e, EventAdmissionCounts c) =>
-        SalesQuota(e.Id) is { } sq ? c.ExpectedAdmissions + Math.Max(0, sq - c.SoldSingleTickets) : int.MaxValue;
+        ExpectedAdmissionsCalculator.Potential(c.ExpectedAdmissions, SalesQuota(e.Id), c.SoldSingleTickets);
 
     private string? _createEventUrl;
 

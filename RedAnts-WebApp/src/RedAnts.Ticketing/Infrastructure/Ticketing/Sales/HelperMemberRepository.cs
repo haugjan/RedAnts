@@ -90,11 +90,11 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
     {
         for (var attempt = 0; attempt < 100; attempt++)
         {
-            var candidate = HelperPassword.Generate();
+            var candidate = PasswordGenerator.Generate();
             if (attempt >= 40) candidate += Random.Shared.Next(10, 100);
             if (memberService.GetByUsername(candidate) is null) return candidate;
         }
-        return HelperPassword.Generate() + Random.Shared.Next(1000, 10000);
+        return PasswordGenerator.Generate() + Random.Shared.Next(1000, 10000);
     }
 
     private static Helper Map(IMember m) =>

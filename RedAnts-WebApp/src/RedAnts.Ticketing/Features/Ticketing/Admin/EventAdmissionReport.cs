@@ -1,3 +1,5 @@
+using RedAnts.Domain.Ticketing.Admission;
+
 namespace RedAnts.Features.Ticketing.Admin;
 
 public sealed record EventAdmissionCounts(
@@ -22,7 +24,7 @@ public sealed record EventAdmissionCounts(
         + RedeemedMemberCards + RedeemedFreeEntries;
 
     public int ExpectedAdmissions =>
-        SoldSingleTickets + SeasonPassHolders + MemberHolders + RedeemedFreeEntries;
+        ExpectedAdmissionsCalculator.Calculate(SoldSingleTickets, SeasonPassHolders, MemberHolders, RedeemedFreeEntries);
 
     public int TotalConversions => ConvertedSeasonPasses + ConvertedMemberCards + ConvertedFlex;
 }

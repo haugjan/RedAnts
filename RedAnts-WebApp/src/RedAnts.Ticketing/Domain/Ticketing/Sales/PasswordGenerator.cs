@@ -1,6 +1,6 @@
-namespace RedAnts.Infrastructure.Ticketing.Sales;
+namespace RedAnts.Domain.Ticketing.Sales;
 
-public static class HelperPassword
+public static class PasswordGenerator
 {
     private static readonly string[] MasculineAdjectives =
     [
