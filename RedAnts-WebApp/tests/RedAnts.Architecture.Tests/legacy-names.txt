@@ -1,6 +1,5 @@
 # Types named before the naming rule; remove a line once the type is renamed.
 RedAnts.Features.Show.ShowAdminEditor
-RedAnts.Features.Ticketing.Admin.IEventContentEditor
 RedAnts.Features.Ticketing.Admin.IEventStatusEditor
 RedAnts.Features.Ticketing.Admin.IFlexBundleEditor
 RedAnts.Features.Ticketing.Admin.IMemberCardEditor
@@ -12,15 +11,11 @@ RedAnts.Infrastructure.Show.IShowProfileStore
 RedAnts.Infrastructure.Show.IShowSettingsStore
 RedAnts.Infrastructure.Show.ShowProfileStore
 RedAnts.Infrastructure.Show.ShowSettingsStore
-RedAnts.Infrastructure.Ticketing.Admin.EventAdmissionQuotaEditor
 RedAnts.Infrastructure.Ticketing.Admin.EventBundleTicketsAdapter
-RedAnts.Infrastructure.Ticketing.Admin.EventSalesQuotaEditor
 RedAnts.Infrastructure.Ticketing.Admin.FlexBundleEditorAdapter
 RedAnts.Infrastructure.Ticketing.Admin.FlexBundleTicketsAdapter
-RedAnts.Infrastructure.Ticketing.Admin.FreeEntryQuotaStore
 RedAnts.Infrastructure.Ticketing.Admin.MemberCardEditorAdapter
 RedAnts.Infrastructure.Ticketing.Admin.OrderRefundService
-RedAnts.Infrastructure.Ticketing.Admin.UmbracoEventContentEditor
 RedAnts.Infrastructure.Ticketing.Admin.UmbracoEventStatusEditor
 RedAnts.Infrastructure.Ticketing.Admin.UmbracoOrderStatusEditor
 RedAnts.Infrastructure.Ticketing.Admin.UmbracoSeasonStatusEditor

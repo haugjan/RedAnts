@@ -13,13 +13,3 @@ public interface IFreeEntryAdminReport
 {
     Task<IReadOnlyList<FreeEntryListItem>> GetByEventAsync(int eventId);
 }
-
-public interface IFreeEntryQuota
-{
-    Task<IReadOnlyDictionary<FreeEntryType, int?>> GetAsync(int eventId);
-
-    Task<IReadOnlyDictionary<FreeEntryType, int?>> GetFixedAsync(int eventId);
-
-    Task SetAllAsync(int eventId, IReadOnlyDictionary<FreeEntryType, int?> quotas,
-        IReadOnlyDictionary<FreeEntryType, int?> fixedCounts);
-}

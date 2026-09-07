@@ -1,4 +1,5 @@
 @using RedAnts.Domain.Ticketing.Sales
+@using RedAnts.Features.Ticketing.CatalogWorkflow
 
 <section class="ta-page">
     <h1 class="ta-page-title">Anlässe</h1>
@@ -70,14 +71,8 @@
                     {
                         var c = Counts(e.Id);
                         <tr>
-                            <td class="ta-cell-name">
-                                <InlineTextEdit Value="@e.Name" FieldLabel="Bezeichnung" MaxLength="200"
-                                                Save="@(v => SaveNameAsync(e, v))" />
-                            </td>
-                            <td>
-                                <InlineDateEdit Value="@e.Date" FieldLabel="Datum"
-                                                Save="@(d => SaveDateAsync(e, d))" />
-                            </td>
+                            <td class="ta-cell-name">@e.Name</td>
+                            <td>@e.Date.ToString("dd.MM.yyyy")</td>
                             <td>
                                 @if (e.TimeUnknown)
                                 {
@@ -85,8 +80,7 @@
                                 }
                                 else
                                 {
-                                    <InlineTimeEdit Value="@e.StartTime" FieldLabel="Zeit"
-                                                    Save="@(t => SaveTimeAsync(e, t))" />
+                                    @e.StartTime.ToString("HH:mm")
                                 }
                             </td>
                             <td>
@@ -288,11 +282,14 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
-    [Inject] private IEventStatusEditor StatusEditor { get; set; } = default!;
-    [Inject] private IEventAdmissionQuota QuotaEditor { get; set; } = default!;
-    [Inject] private IEventSalesQuota SalesQuotaEditor { get; set; } = default!;
-    [Inject] private IEventContentEditor ContentEditor { get; set; } = default!;
-    [Inject] private IFreeEntryQuota FreeEntryQuota { get; set; } = default!;
+    [Inject] private SetEventSalesStatus.Handler SetSalesStatus { get; set; } = default!;
+    [Inject] private SetEventAdmissionQuota.Handler SetAdmissionQuota { get; set; } = default!;
+    [Inject] private SetEventSalesQuota.Handler SetSalesQuota { get; set; } = default!;
+    [Inject] private SetEventPricing.Handler SetPricing { get; set; } = default!;
+    [Inject] private SetEventConversionRules.Handler SetConversionRules { get; set; } = default!;
+    [Inject] private SetEventFreeEntryQuotas.Handler SetFreeEntryQuotas { get; set; } = default!;
+    [Inject] private IEventQuotasReader Quotas { get; set; } = default!;
+    [Inject] private IFreeEntryRepository FreeEntries { get; set; } = default!;
     [Inject] private IEventPrices Prices { get; set; } = default!;
     [Inject] private IPriceTiers PriceTiers { get; set; } = default!;
     [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
@@ -369,8 +366,8 @@
         {
             _events = await Events.GetBySeasonAsync(SelectedSeasonId);
             _counts = await AdmissionReport.GetCountsByEventAsync();
-            _quotas = await QuotaEditor.GetAllAsync();
-            _salesQuotas = await SalesQuotaEditor.GetAllAsync();
+            _quotas = await Quotas.GetAdmissionQuotasAsync();
+            _salesQuotas = await Quotas.GetSalesQuotasAsync();
             _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);
             _createEventUrl = await CreateLinks.CreateEventUrlAsync(SelectedSeasonId);
             _conversionRules = (await ConversionRules.GetAllAsync())
@@ -422,12 +419,9 @@
         _convError = null;
         try
         {
-            var id = _conversionEvent.Id;
-            await ConversionRules.SetAsync(id, TicketType.SeasonPass, _convSeasonRequired ? 0m : null);
-            await ConversionRules.SetAsync(id, TicketType.MemberCard, _convMemberRequired ? 0m : null);
-            await ConversionRules.SetAsync(id, TicketType.SeasonSingle,
-                _convFlexRequired ? Math.Max(0m, decimal.Round(_convFlexDiscount, 2)) : null);
-            await ConversionRules.SetConversionOnlyAsync(id, _convOnly);
+            await SetConversionRules.HandleAsync(new SetEventConversionRules.Command(
+                _conversionEvent.Id, _convSeasonRequired, _convMemberRequired,
+                _convFlexRequired ? _convFlexDiscount : null, _convOnly));
             await ReloadEventsAsync();
             _conversionEvent = null;
         }
@@ -492,41 +486,21 @@
 
     private static decimal? ToDecimal(int? value) => value;
 
-    private async Task SaveNameAsync(Event e, string name)
-    {
-        await ContentEditor.SetNameAsync(e.Id, name);
-        await ReloadEventsAsync();
-    }
-
-    private async Task SaveDateAsync(Event e, DateOnly? date)
-    {
-        if (date is null) throw new DomainException("Datum ist erforderlich.");
-        await ContentEditor.SetStartAsync(e.Id, date.Value, e.StartTime);
-        await ReloadEventsAsync();
-    }
-
-    private async Task SaveTimeAsync(Event e, TimeOnly? time)
-    {
-        if (time is null) throw new DomainException("Zeit ist erforderlich.");
-        await ContentEditor.SetStartAsync(e.Id, e.Date, time.Value);
-        await ReloadEventsAsync();
-    }
-
     private async Task SaveStatusAsync(Event e, EventStatus status)
     {
-        await StatusEditor.SetStatusAsync(e.Id, status);
+        await SetSalesStatus.HandleAsync(new SetEventSalesStatus.Command(e.Id, status));
         await ReloadEventsAsync();
     }
 
     private async Task SaveQuotaAsync(Event e, decimal? quota)
     {
-        await QuotaEditor.SetAsync(e.Id, quota is null ? null : (int)quota.Value);
+        await SetAdmissionQuota.HandleAsync(new SetEventAdmissionQuota.Command(e.Id, quota is null ? null : (int)quota.Value));
         await ReloadEventsAsync();
     }
 
     private async Task SaveSalesQuotaAsync(Event e, decimal? quota)
     {
-        await SalesQuotaEditor.SetAsync(e.Id, quota is null ? null : (int)quota.Value);
+        await SetSalesQuota.HandleAsync(new SetEventSalesQuota.Command(e.Id, quota is null ? null : (int)quota.Value));
         await ReloadEventsAsync();
     }
 
@@ -542,8 +516,9 @@
     private async Task OpenEdit(Event e)
     {
         _editing = e;
-        _editQuotas = new Dictionary<FreeEntryType, int?>(await FreeEntryQuota.GetAsync(e.Id));
-        _editFixed = new Dictionary<FreeEntryType, int?>(await FreeEntryQuota.GetFixedAsync(e.Id));
+        var quota = await FreeEntries.GetQuotaAsync(e.Id);
+        _editQuotas = Enum.GetValues<FreeEntryType>().ToDictionary(t => t, t => quota.QuotaFor(t));
+        _editFixed = Enum.GetValues<FreeEntryType>().ToDictionary(t => t, t => quota.FixedFor(t) is var fixedCount && fixedCount > 0 ? fixedCount : (int?)null);
         _editError = null;
     }
 
@@ -568,7 +543,7 @@
         _editError = null;
         try
         {
-            await FreeEntryQuota.SetAllAsync(_editing.Id, _editQuotas, _editFixed);
+            await SetFreeEntryQuotas.HandleAsync(new SetEventFreeEntryQuotas.Command(_editing.Id, _editQuotas, _editFixed));
             _editing = null;
             await ReloadEventsAsync();
         }
@@ -621,11 +596,9 @@
         {
             var categories = _priceRows
                 .Where(r => r.Enabled)
-                .Select(r => CategoryPrice.Create(default, decimal.Round(r.Price, 2), r.Quota, r.AvailableUntil, r.TierId))
+                .Select(r => new EventCategoryPriceInput(r.TierId, r.Price, r.Quota, r.AvailableUntil))
                 .ToList();
-            var price = _pricingExisting?.WithCategories(categories)
-                ?? EventPrice.Create(_pricingEvent.Id, null, null, categories);
-            await Prices.SaveAsync(price);
+            await SetPricing.HandleAsync(new SetEventPricing.Command(_pricingEvent.Id, categories));
             _pricingEvent = null;
         }
         catch (Exception ex) { _pricingError = ex.Message; }
