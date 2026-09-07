@@ -665,7 +665,7 @@
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
     [Inject] private IFlexBundleEditor BundleEditor { get; set; } = default!;
-    [Inject] private IAdmissionService Admission { get; set; } = default!;
+    [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
     [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -1197,7 +1197,7 @@
 
     private async Task ScanOrThrowAsync(FlexTicketView t, int eventId, ScanMode mode, string scannedBy)
     {
-        var outcome = await Admission.ScanTicketAsync(eventId, TicketType.SeasonSingle, t.Uuid, SelectedSeasonId, mode, scannedBy);
+        var outcome = await TicketScans.HandleAsync(new ScanTicket.Command(eventId, TicketType.SeasonSingle, t.Uuid, SelectedSeasonId, mode, scannedBy));
         if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
     }
 

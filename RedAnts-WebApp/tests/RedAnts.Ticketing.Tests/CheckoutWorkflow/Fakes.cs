@@ -174,22 +174,12 @@ internal sealed class StubConversionRules : IEventConversionRules
     public Task SetConversionOnlyAsync(int eventId, bool value) => Task.CompletedTask;
 }
 
-internal sealed class StubAdmission : IAdmissionService
+internal sealed class StubAdmission : IOccupancyReader
 {
     public Dictionary<int, Occupancy> Occupancies { get; } = new();
 
-    public Task<Occupancy> GetOccupancyAsync(int eventId) =>
+    public Task<Occupancy> GetAsync(int eventId) =>
         Task.FromResult(Occupancies.TryGetValue(eventId, out var occupancy) ? occupancy : new Occupancy(0, null));
-
-    public Task<ScanOutcome> ScanTicketAsync(int eventId, TicketType type, Guid uuid, int scopeId, ScanMode mode, string? scannedBy, bool test = false) =>
-        throw new NotSupportedException();
-
-    public Task<ScanOutcome> ScanCodeAsync(int eventId, string shortCode, ScanMode mode, string? scannedBy, bool test = false) =>
-        throw new NotSupportedException();
-
-    public Task<ScanOutcome> GrantFreeEntryAsync(int eventId, FreeEntryType type, string? scannedBy) => throw new NotSupportedException();
-
-    public Task<ScanOutcome> RevokeFreeEntryAsync(int eventId, FreeEntryType type, string? scannedBy) => throw new NotSupportedException();
 }
 
 internal sealed class StubSeasonAddOns : ISeasonAddOns

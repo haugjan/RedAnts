@@ -622,7 +622,8 @@
     [Inject] private IEventTickets Tickets { get; set; } = default!;
     [Inject] private IEventTicketBundles Bundles { get; set; } = default!;
     [Inject] private IVisitLogReader Visits { get; set; } = default!;
-    [Inject] private IAdmissionService Admission { get; set; } = default!;
+    [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
+    [Inject] private IOccupancyReader Occupancies { get; set; } = default!;
     [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -900,7 +901,7 @@
 
     private async Task ScanOrThrowAsync(EventTicket t, ScanMode mode, string scannedBy)
     {
-        var outcome = await Admission.ScanTicketAsync(t.EventId, TicketType.EventTicket, t.Uuid, t.EventId, mode, scannedBy);
+        var outcome = await TicketScans.HandleAsync(new ScanTicket.Command(t.EventId, TicketType.EventTicket, t.Uuid, t.EventId, mode, scannedBy));
         if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
     }
 
@@ -968,7 +969,7 @@
     {
         if (SelectedEventId <= 0) { _createError = "Es ist kein Anlass gewählt."; return; }
         if (_newPrice < 0) { _createError = "Der Abgabepreis darf nicht negativ sein."; return; }
-        if ((await Admission.GetOccupancyAsync(SelectedEventId)).Full)
+        if ((await Occupancies.GetAsync(SelectedEventId)).Full)
         { _createError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
         try
         {
@@ -1133,7 +1134,7 @@
         if (SelectedEventId <= 0) { _bundleError = "Es ist kein Anlass gewählt."; return; }
         if (reference.Length == 0) { _bundleError = "Bitte einen Bundlenamen angeben."; return; }
         if (_bundleQuantity < 1) { _bundleError = "Die Anzahl muss mindestens 1 sein."; return; }
-        if ((await Admission.GetOccupancyAsync(SelectedEventId)).Full)
+        if ((await Occupancies.GetAsync(SelectedEventId)).Full)
         { _bundleError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
 
         _bundleSaving = true;
