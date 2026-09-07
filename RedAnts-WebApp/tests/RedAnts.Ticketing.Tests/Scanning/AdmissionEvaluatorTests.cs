@@ -1,11 +1,10 @@
 using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.Scanning;
-using RedAnts.Infrastructure.Ticketing.Scanning;
+using RedAnts.Domain.Ticketing.Admission;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Scanning;
 
-public class AdmissionRulesTests
+public class AdmissionEvaluatorTests
 {
     private const int Event = 100;
     private const int OtherEvent = 200;
@@ -56,18 +55,18 @@ public class AdmissionRulesTests
             ? new ScannedTicketFacts(issuedType ?? type, issuedScope ?? scopeId, status)
             : null;
 
-        return AdmissionRules.Evaluate(
+        return AdmissionEvaluator.Evaluate(new ScanContext(
             eventId, type, scopeId, mode, test, empty, facts,
             eventSeasonId, redeemedEventId, visitExists && visitInside ? 1 : 0, 1,
-            requiresConversion: false, isBoxOfficeFlex: false);
+            RequiresConversion: false, IsBoxOfficeFlex: false));
     }
 
     private static AdmissionEvaluation RunMember(ScanMode mode, int admissionsInside, int admissionCap) =>
-        AdmissionRules.Evaluate(
-            Event, TicketType.MemberCard, Season, mode, test: false, isEmptyUuid: false,
+        AdmissionEvaluator.Evaluate(new ScanContext(
+            Event, TicketType.MemberCard, Season, mode, Test: false, IsEmptyUuid: false,
             new ScannedTicketFacts(TicketType.MemberCard, Season, TicketStatus.Valid),
-            eventSeasonId: Season, redeemedEventId: null, admissionsInside, admissionCap,
-            requiresConversion: false, isBoxOfficeFlex: false);
+            EventSeasonId: Season, RedeemedEventId: null, admissionsInside, admissionCap,
+            RequiresConversion: false, IsBoxOfficeFlex: false));
 
     private static AdmissionEvaluation RunValid(
         TicketType type,
@@ -103,7 +102,7 @@ public class AdmissionRulesTests
     {
         var (scope, season) = ScopeFor(type);
         AssertReject(Run(type: type, scopeId: scope, mode: mode, eventSeasonId: season, ticketFound: false),
-            AdmissionRules.UnknownTicket);
+            AdmissionEvaluator.UnknownTicket);
     }
 
     [Theory]
@@ -118,14 +117,14 @@ public class AdmissionRulesTests
     public void AlreadyInside_CheckIn_IsRejected_ForEveryTicketType(TicketType type)
     {
         AssertReject(RunValid(type, ScanMode.CheckIn, visitExists: true, visitInside: true),
-            AdmissionRules.AlreadyCheckedIn);
+            AdmissionEvaluator.AlreadyCheckedIn);
     }
 
     [Theory]
     [MemberData(nameof(ScannableTypes))]
     public void CheckOutWithoutCheckIn_IsRejected_ForEveryTicketType(TicketType type)
     {
-        AssertReject(RunValid(type, ScanMode.CheckOut), AdmissionRules.NotCheckedIn);
+        AssertReject(RunValid(type, ScanMode.CheckOut), AdmissionEvaluator.NotCheckedIn);
     }
 
     [Theory]
@@ -133,7 +132,7 @@ public class AdmissionRulesTests
     public void CheckOutWhenAlreadyOutside_IsRejected_ForEveryTicketType(TicketType type)
     {
         AssertReject(RunValid(type, ScanMode.CheckOut, visitExists: true, visitInside: false),
-            AdmissionRules.NotCheckedIn);
+            AdmissionEvaluator.NotCheckedIn);
     }
 
     [Theory]
@@ -163,14 +162,14 @@ public class AdmissionRulesTests
     [MemberData(nameof(ScannableTypesBothModes))]
     public void BlockedTicket_IsRejected_ForEveryTypeAndMode(TicketType type, ScanMode mode)
     {
-        AssertReject(RunValid(type, mode, status: TicketStatus.Blocked), AdmissionRules.Blocked);
+        AssertReject(RunValid(type, mode, status: TicketStatus.Blocked), AdmissionEvaluator.Blocked);
     }
 
     [Theory]
     [MemberData(nameof(ScannableTypesBothModes))]
     public void CancelledTicket_IsRejected_ForEveryTypeAndMode(TicketType type, ScanMode mode)
     {
-        AssertReject(RunValid(type, mode, status: TicketStatus.Cancelled), AdmissionRules.Cancelled);
+        AssertReject(RunValid(type, mode, status: TicketStatus.Cancelled), AdmissionEvaluator.Cancelled);
     }
 
     [Theory]
@@ -180,7 +179,7 @@ public class AdmissionRulesTests
         var wrong = type == TicketType.EventTicket ? TicketType.SeasonPass : TicketType.EventTicket;
         var (scope, season) = ScopeFor(type);
         AssertReject(Run(type: type, scopeId: scope, eventSeasonId: season, issuedType: wrong),
-            AdmissionRules.RecordMismatch);
+            AdmissionEvaluator.RecordMismatch);
     }
 
     [Theory]
@@ -189,21 +188,21 @@ public class AdmissionRulesTests
     {
         var (scope, season) = ScopeFor(type);
         AssertReject(Run(type: type, scopeId: scope, eventSeasonId: season, issuedScope: scope + 1),
-            AdmissionRules.RecordMismatch);
+            AdmissionEvaluator.RecordMismatch);
     }
 
     [Theory]
     [MemberData(nameof(SeasonScopedTypes))]
     public void SeasonTicket_ForWrongSeason_IsRejected(TicketType type)
     {
-        AssertReject(Run(type: type, scopeId: OtherSeason, eventSeasonId: Season), AdmissionRules.WrongSeason);
+        AssertReject(Run(type: type, scopeId: OtherSeason, eventSeasonId: Season), AdmissionEvaluator.WrongSeason);
     }
 
     [Theory]
     [MemberData(nameof(SeasonScopedTypes))]
     public void SeasonTicket_WhenEventIsUnknown_IsRejected(TicketType type)
     {
-        AssertReject(Run(type: type, scopeId: Season, eventSeasonId: null), AdmissionRules.UnknownEvent);
+        AssertReject(Run(type: type, scopeId: Season, eventSeasonId: null), AdmissionEvaluator.UnknownEvent);
     }
 
     [Theory]
@@ -214,7 +213,7 @@ public class AdmissionRulesTests
     public void EventTicket_ForWrongEvent_IsRejected(int eventId, int ticketEvent)
     {
         AssertReject(Run(type: TicketType.EventTicket, eventId: eventId, scopeId: ticketEvent),
-            AdmissionRules.WrongEvent);
+            AdmissionEvaluator.WrongEvent);
     }
 
     [Theory]
@@ -254,7 +253,7 @@ public class AdmissionRulesTests
     public void FlexTicket_RedeemedAtAnotherEvent_IsRejected(int redeemedAt)
     {
         AssertReject(RunValid(TicketType.SeasonSingle, eventId: Event, redeemedEventId: redeemedAt),
-            AdmissionRules.FlexRedeemedElsewhere);
+            AdmissionEvaluator.FlexRedeemedElsewhere);
     }
 
     [Fact]
@@ -262,7 +261,7 @@ public class AdmissionRulesTests
     {
         AssertReject(
             RunValid(TicketType.SeasonSingle, redeemedEventId: Event, visitExists: true, visitInside: true),
-            AdmissionRules.AlreadyCheckedIn);
+            AdmissionEvaluator.AlreadyCheckedIn);
     }
 
     [Theory]
@@ -285,21 +284,21 @@ public class AdmissionRulesTests
     public void RecordMismatch_TakesPrecedenceOverBlockedStatus()
     {
         var r = Run(type: TicketType.EventTicket, scopeId: Event, issuedScope: OtherEvent, status: TicketStatus.Blocked);
-        AssertReject(r, AdmissionRules.RecordMismatch);
+        AssertReject(r, AdmissionEvaluator.RecordMismatch);
     }
 
     [Fact]
     public void BlockedStatus_TakesPrecedenceOverWrongEvent()
     {
         var r = Run(type: TicketType.EventTicket, eventId: OtherEvent, scopeId: Event, status: TicketStatus.Blocked);
-        AssertReject(r, AdmissionRules.Blocked);
+        AssertReject(r, AdmissionEvaluator.Blocked);
     }
 
     [Fact]
     public void BlockedStatus_TakesPrecedenceOverWrongSeason()
     {
         var r = Run(type: TicketType.SeasonPass, scopeId: OtherSeason, eventSeasonId: Season, status: TicketStatus.Blocked);
-        AssertReject(r, AdmissionRules.Blocked);
+        AssertReject(r, AdmissionEvaluator.Blocked);
     }
 
     [Fact]
@@ -321,7 +320,7 @@ public class AdmissionRulesTests
     {
         var r = Run(type: TicketType.EventTicket, eventId: OtherEvent, scopeId: Event,
             visitExists: true, visitInside: true);
-        AssertReject(r, AdmissionRules.WrongEvent);
+        AssertReject(r, AdmissionEvaluator.WrongEvent);
     }
 
     [Fact]
@@ -329,7 +328,7 @@ public class AdmissionRulesTests
     {
         var r = Run(type: TicketType.SeasonPass, scopeId: OtherSeason, eventSeasonId: Season,
             visitExists: true, visitInside: true);
-        AssertReject(r, AdmissionRules.WrongSeason);
+        AssertReject(r, AdmissionEvaluator.WrongSeason);
     }
 
     [Fact]
@@ -337,7 +336,7 @@ public class AdmissionRulesTests
     {
         var r = Run(type: TicketType.SeasonSingle, eventId: Event, scopeId: OtherSeason, eventSeasonId: Season,
             redeemedEventId: OtherEvent);
-        AssertReject(r, AdmissionRules.WrongSeason);
+        AssertReject(r, AdmissionEvaluator.WrongSeason);
     }
 
     [Fact]
@@ -345,7 +344,7 @@ public class AdmissionRulesTests
     {
         var r = Run(type: TicketType.SeasonSingle, eventId: Event, scopeId: Season, eventSeasonId: Season,
             redeemedEventId: OtherEvent, visitExists: true, visitInside: true);
-        AssertReject(r, AdmissionRules.FlexRedeemedElsewhere);
+        AssertReject(r, AdmissionEvaluator.FlexRedeemedElsewhere);
     }
 
     [Fact]
@@ -353,7 +352,7 @@ public class AdmissionRulesTests
     {
         var r = Run(type: TicketType.SeasonSingle, eventId: Event, scopeId: OtherSeason, eventSeasonId: Season,
             ticketFound: false, redeemedEventId: OtherEvent, visitExists: true, visitInside: true);
-        AssertReject(r, AdmissionRules.UnknownTicket);
+        AssertReject(r, AdmissionEvaluator.UnknownTicket);
     }
 
     [Theory]
@@ -368,7 +367,7 @@ public class AdmissionRulesTests
     public void MultiAdmission_CheckIn_WhenAllSlotsUsed_IsRejected()
     {
         AssertReject(RunMember(ScanMode.CheckIn, admissionsInside: 5, admissionCap: 5),
-            AdmissionRules.AllAdmissionsUsed);
+            AdmissionEvaluator.AllAdmissionsUsed);
     }
 
     [Fact]
@@ -380,24 +379,24 @@ public class AdmissionRulesTests
     [Fact]
     public void MultiAdmission_CheckOut_WhenNobodyInside_IsRejected()
     {
-        AssertReject(RunMember(ScanMode.CheckOut, admissionsInside: 0, admissionCap: 5), AdmissionRules.NotCheckedIn);
+        AssertReject(RunMember(ScanMode.CheckOut, admissionsInside: 0, admissionCap: 5), AdmissionEvaluator.NotCheckedIn);
     }
 
     [Theory]
-    [InlineData(AdmissionRules.AlreadyCheckedIn, true)]
-    [InlineData(AdmissionRules.AllAdmissionsUsed, true)]
-    [InlineData(AdmissionRules.NotCheckedIn, true)]
-    [InlineData(AdmissionRules.UnknownTicket, false)]
-    [InlineData(AdmissionRules.RecordMismatch, false)]
-    [InlineData(AdmissionRules.Blocked, false)]
-    [InlineData(AdmissionRules.Cancelled, false)]
-    [InlineData(AdmissionRules.WrongEvent, false)]
-    [InlineData(AdmissionRules.UnknownEvent, false)]
-    [InlineData(AdmissionRules.WrongSeason, false)]
-    [InlineData(AdmissionRules.FlexRedeemedElsewhere, false)]
+    [InlineData(AdmissionEvaluator.AlreadyCheckedIn, true)]
+    [InlineData(AdmissionEvaluator.AllAdmissionsUsed, true)]
+    [InlineData(AdmissionEvaluator.NotCheckedIn, true)]
+    [InlineData(AdmissionEvaluator.UnknownTicket, false)]
+    [InlineData(AdmissionEvaluator.RecordMismatch, false)]
+    [InlineData(AdmissionEvaluator.Blocked, false)]
+    [InlineData(AdmissionEvaluator.Cancelled, false)]
+    [InlineData(AdmissionEvaluator.WrongEvent, false)]
+    [InlineData(AdmissionEvaluator.UnknownEvent, false)]
+    [InlineData(AdmissionEvaluator.WrongSeason, false)]
+    [InlineData(AdmissionEvaluator.FlexRedeemedElsewhere, false)]
     [InlineData(null, false)]
     public void CarriesHolder_OnlyForModeStageRejections(string? reason, bool expected)
     {
-        Assert.Equal(expected, AdmissionRules.CarriesHolder(reason));
+        Assert.Equal(expected, AdmissionEvaluator.CarriesHolder(reason));
     }
 }

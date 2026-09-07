@@ -1,41 +1,8 @@
+using RedAnts.Domain.Ticketing.Admission;
 using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.AdmissionWorkflow;
 
 namespace RedAnts.Features.Ticketing.Scanning;
-
-public enum AdmissionOutcome { CheckedIn, CheckedOut, Rejected, Test }
-
-public enum ScanMode { CheckIn, CheckOut }
-
-public sealed record FreeEntryTally(FreeEntryType Type, int Inside, int Out);
-
-public sealed record Occupancy(int Inside, int? Quota, int FreeInside = 0, IReadOnlyList<FreeEntryTally>? FreeTallies = null)
-{
-    public int? Remaining => Quota is { } q ? Math.Max(0, q - Inside) : null;
-    public bool Full => Quota is { } q && Inside >= q;
-    public IReadOnlyList<FreeEntryTally> Tallies => FreeTallies ?? [];
-
-    public FreeEntryTally TallyFor(FreeEntryType type) =>
-        Tallies.FirstOrDefault(t => t.Type == type) ?? new FreeEntryTally(type, 0, 0);
-}
-
-public sealed record PriorScan(DateTime At, string? By);
-
-public sealed record ScanOutcome(
-    AdmissionOutcome Outcome,
-    TicketType? Type,
-    string? Reference,
-    string? Reason,
-    Occupancy Occupancy,
-    string? CategoryLabel = null,
-    string? Holder = null,
-    DateTime? PriorAt = null,
-    string? PriorBy = null,
-    int? AdmissionsUsed = null,
-    int? AdmissionCap = null,
-    IReadOnlyList<PriorScan>? Priors = null)
-{
-    public bool Ok => Outcome != AdmissionOutcome.Rejected;
-}
 
 public interface IAdmissionService
 {

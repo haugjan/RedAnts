@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using NPoco;
 using RedAnts.Domain;
+using RedAnts.Domain.Ticketing.Admission;
+using RedAnts.Features.Ticketing.AdmissionWorkflow;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Features.Ticketing.Scanning;
@@ -79,9 +81,9 @@ public sealed class AdmissionService(
         }
 
         var facts = issued is null ? null : new ScannedTicketFacts(issued.Type, issued.ScopeId, issued.Status);
-        var evaluation = AdmissionRules.Evaluate(
+        var evaluation = AdmissionEvaluator.Evaluate(new ScanContext(
             eventId, type, scopeId, mode, test, isEmpty, facts,
-            eventSeasonId, redeemedEventId, admissionsInside, admissionCap, requiresConversion, isBoxOfficeFlex);
+            eventSeasonId, redeemedEventId, admissionsInside, admissionCap, requiresConversion, isBoxOfficeFlex));
 
         var categoryLabel = issued is null ? null : issued.CategoryName ?? issued.Category?.DisplayName();
         var holder = issued is null ? null : HolderLabel(issued);
@@ -98,7 +100,7 @@ public sealed class AdmissionService(
                 return new ScanOutcome(AdmissionOutcome.Test, type, Ref(uuid), null,
                     await OccAsync(db, eventId), categoryLabel, holder);
 
-            case AdmissionVerdict.Reject when evaluation.Reason is AdmissionRules.AlreadyCheckedIn or AdmissionRules.AllAdmissionsUsed:
+            case AdmissionVerdict.Reject when evaluation.Reason is AdmissionEvaluator.AlreadyCheckedIn or AdmissionEvaluator.AllAdmissionsUsed:
                 if (isMember)
                 {
                     var priors = await MemberPriorsAsync(db, eventId, key);
@@ -112,7 +114,7 @@ public sealed class AdmissionService(
                     await OccAsync(db, eventId), categoryLabel, holder, prior?.OccurredAt, prior?.ScannedBy);
 
             case AdmissionVerdict.Reject:
-                var carries = AdmissionRules.CarriesHolder(evaluation.Reason);
+                var carries = AdmissionEvaluator.CarriesHolder(evaluation.Reason);
                 return new ScanOutcome(AdmissionOutcome.Rejected, type, Ref(uuid), evaluation.Reason,
                     await OccAsync(db, eventId), carries ? categoryLabel : null, carries ? holder : null);
         }

@@ -1,5 +1,7 @@
 using RedAnts.Domain.Ticketing;
+using RedAnts.Domain.Ticketing.Admission;
 using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.AdmissionWorkflow;
 using RedAnts.Features.Ticketing.Email;
 using RedAnts.Features.Ticketing.Ports;
 using RedAnts.Features.Ticketing.Scanning;

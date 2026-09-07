@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using RedAnts.Domain.Ticketing;
+using RedAnts.Domain.Ticketing.Admission;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.CheckoutWorkflow;
 using RedAnts.Features.Ticketing.Scanning;

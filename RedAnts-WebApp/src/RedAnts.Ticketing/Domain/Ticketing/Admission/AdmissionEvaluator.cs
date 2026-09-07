@@ -1,15 +1,35 @@
 using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.Scanning;
 
-namespace RedAnts.Infrastructure.Ticketing.Scanning;
+namespace RedAnts.Domain.Ticketing.Admission;
 
-public enum AdmissionVerdict { TestEmpty, TestTicket, Admit, Reject }
+public enum AdmissionVerdict
+{
+    TestEmpty,
+    TestTicket,
+    Admit,
+    Reject
+}
 
 public sealed record ScannedTicketFacts(TicketType Type, int ScopeId, TicketStatus Status);
 
 public sealed record AdmissionEvaluation(AdmissionVerdict Verdict, string? Reason = null);
 
-public static class AdmissionRules
+public sealed record ScanContext(
+    int EventId,
+    TicketType RequestedType,
+    int RequestedScopeId,
+    ScanMode Mode,
+    bool Test,
+    bool IsEmptyUuid,
+    ScannedTicketFacts? Ticket,
+    int? EventSeasonId,
+    int? RedeemedEventId,
+    int AdmissionsInside,
+    int AdmissionCap,
+    bool RequiresConversion,
+    bool IsBoxOfficeFlex);
+
+public static class AdmissionEvaluator
 {
     public const string UnknownTicket = "Unbekanntes Ticket.";
     public const string RecordMismatch = "Ticket stimmt nicht mit dem Datensatz überein.";
@@ -27,68 +47,55 @@ public static class AdmissionRules
     public static bool CarriesHolder(string? reason) =>
         reason is AlreadyCheckedIn or AllAdmissionsUsed or NotCheckedIn;
 
-    public static AdmissionEvaluation Evaluate(
-        int eventId,
-        TicketType requestedType,
-        int requestedScopeId,
-        ScanMode mode,
-        bool test,
-        bool isEmptyUuid,
-        ScannedTicketFacts? ticket,
-        int? eventSeasonId,
-        int? redeemedEventId,
-        int admissionsInside,
-        int admissionCap,
-        bool requiresConversion,
-        bool isBoxOfficeFlex)
+    public static AdmissionEvaluation Evaluate(ScanContext context)
     {
-        if (isEmptyUuid)
+        if (context.IsEmptyUuid)
             return new AdmissionEvaluation(AdmissionVerdict.TestEmpty);
 
+        var ticket = context.Ticket;
         if (ticket is null)
             return Reject(UnknownTicket);
 
-        if (ticket.Type != requestedType || ticket.ScopeId != requestedScopeId)
+        if (ticket.Type != context.RequestedType || ticket.ScopeId != context.RequestedScopeId)
             return Reject(RecordMismatch);
 
         if (ticket.Status != TicketStatus.Valid)
             return Reject(ticket.Status == TicketStatus.Blocked ? Blocked : Cancelled);
 
-        if (test)
+        if (context.Test)
             return new AdmissionEvaluation(AdmissionVerdict.TestTicket);
 
-        if (requestedType == TicketType.EventTicket)
+        if (context.RequestedType == TicketType.EventTicket)
         {
-            if (requestedScopeId != eventId)
+            if (context.RequestedScopeId != context.EventId)
                 return Reject(WrongEvent);
         }
         else
         {
-            if (eventSeasonId is null)
+            if (context.EventSeasonId is null)
                 return Reject(UnknownEvent);
-            if (requestedScopeId != eventSeasonId)
+            if (context.RequestedScopeId != context.EventSeasonId)
                 return Reject(WrongSeason);
         }
 
-        if (requestedType == TicketType.SeasonSingle && redeemedEventId is { } bound && bound != eventId)
+        if (context.RequestedType == TicketType.SeasonSingle && context.RedeemedEventId is { } bound && bound != context.EventId)
             return Reject(FlexRedeemedElsewhere);
 
-        if (requiresConversion && requestedType != TicketType.EventTicket && !isBoxOfficeFlex)
+        if (context.RequiresConversion && context.RequestedType != TicketType.EventTicket && !context.IsBoxOfficeFlex)
             return Reject(ConversionRequired);
 
-        if (mode == ScanMode.CheckIn)
+        if (context.Mode == ScanMode.CheckIn)
         {
-            if (admissionsInside >= admissionCap)
-                return Reject(admissionCap > 1 ? AllAdmissionsUsed : AlreadyCheckedIn);
+            if (context.AdmissionsInside >= context.AdmissionCap)
+                return Reject(context.AdmissionCap > 1 ? AllAdmissionsUsed : AlreadyCheckedIn);
             return new AdmissionEvaluation(AdmissionVerdict.Admit);
         }
 
-        if (admissionsInside <= 0)
+        if (context.AdmissionsInside <= 0)
             return Reject(NotCheckedIn);
 
         return new AdmissionEvaluation(AdmissionVerdict.Admit);
     }
 
-    private static AdmissionEvaluation Reject(string reason) =>
-        new(AdmissionVerdict.Reject, reason);
+    private static AdmissionEvaluation Reject(string reason) => new(AdmissionVerdict.Reject, reason);
 }
