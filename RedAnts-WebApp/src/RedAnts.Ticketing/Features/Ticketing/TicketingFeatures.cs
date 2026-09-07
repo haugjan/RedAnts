@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using RedAnts.Features.Ticketing.AdmissionWorkflow;
 using RedAnts.Features.Ticketing.CheckoutWorkflow;
 
 namespace RedAnts.Features.Ticketing;
@@ -19,13 +20,19 @@ public static class TicketingFeatures
         typeof(CancelDraftOrder.Handler),
         typeof(ExpireDraftOrders.Handler),
         typeof(GetCheckoutStatus.Handler),
-        typeof(GetOrderConfirmation.Handler)
+        typeof(GetOrderConfirmation.Handler),
+        typeof(ScanTicket.Handler),
+        typeof(ScanCode.Handler),
+        typeof(GrantFreeEntry.Handler),
+        typeof(RevokeFreeEntry.Handler),
+        typeof(GetOccupancy.Handler)
     ];
 
     public static IReadOnlyList<Type> Steps { get; } =
     [
         typeof(CapacityReservation),
-        typeof(OrderFulfillment)
+        typeof(OrderFulfillment),
+        typeof(TicketScanning)
     ];
 
     public static IServiceCollection AddTicketingFeatures(this IServiceCollection services)
