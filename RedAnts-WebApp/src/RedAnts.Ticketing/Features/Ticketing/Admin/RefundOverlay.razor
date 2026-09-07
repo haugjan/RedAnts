@@ -137,7 +137,8 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<string> OnRefunded { get; set; }
 
-    [Inject] private IOrderRefundService Refunds { get; set; } = default!;
+    [Inject] private IOrderRefunds Refunds { get; set; } = default!;
+    [Inject] private RefundOrder.Handler RefundOrders { get; set; } = default!;
 
     private bool _loading = true;
     private bool _busy;
@@ -175,9 +176,9 @@
             if (_amount > _summary.Remaining)
                 throw new InvalidOperationException($"Betrag übersteigt den erstattbaren Restbetrag (CHF {_summary.Remaining:N2}).");
 
-            var input = new RefundInput(OrderId, _amount, _method, _method == RefundMethod.Payrexx,
+            var request = new RefundRequest(OrderId, _amount, _method, _method == RefundMethod.Payrexx,
                 _reference, _reason, _deactivate, ChangedBy);
-            var outcome = await Refunds.RefundAsync(input);
+            var outcome = await RefundOrders.HandleAsync(new RefundOrder.Command(request));
             await LoadAsync();
             await OnRefunded.InvokeAsync(outcome.RefundNumber);
         }

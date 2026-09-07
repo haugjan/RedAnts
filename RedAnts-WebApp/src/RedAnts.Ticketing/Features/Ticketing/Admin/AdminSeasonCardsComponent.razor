@@ -6,7 +6,7 @@
 @inject ISeasonPassAdminReport Report
 @inject ISeasonPasses Passes
 @inject IPriceTiers PriceTiers
-@inject IAdminOrderFactory OrderFactory
+@inject CreateAdminOrder.Handler OrderCreation
 @inject ISeasonPassMailer Mailer
 @inject IPublicBaseUrl PublicUrl
 @inject ITicketTokens Tokens
@@ -894,9 +894,9 @@
             var buyer = _newPerson.ToBuyer();
             if (buyer is null) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
             var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
-            var order = await OrderFactory.CreateAsync(buyer, Identity.Email,
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity.Email,
                 [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, lineCategory, tier.Name, 1, _newPrice)],
-                Identity.Name, paymentSource);
+                Identity.Name, paymentSource));
             var saved = await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newTierId, _newPrice, order.Id,
                 buyer, Identity.Name, Identity.Email,
                 reference: string.IsNullOrWhiteSpace(_newReference) ? null : _newReference.Trim(),

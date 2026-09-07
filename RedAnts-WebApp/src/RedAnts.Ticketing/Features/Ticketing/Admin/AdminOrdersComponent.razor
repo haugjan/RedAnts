@@ -178,7 +178,7 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
-    [Inject] private IOrderStatusEditor StatusEditor { get; set; } = default!;
+    [Inject] private ChangeOrderStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private enum OrderAction { MarkPaid, Cancel, Refund }
@@ -254,8 +254,8 @@
             var deactivated = 0;
             switch (_action)
             {
-                case OrderAction.MarkPaid: await StatusEditor.SetStatusAsync(order.OrderId, OrderStatus.Paid, Identity.Name); break;
-                case OrderAction.Cancel: deactivated = await StatusEditor.SetStatusAsync(order.OrderId, OrderStatus.Cancelled, Identity.Name); break;
+                case OrderAction.MarkPaid: await StatusChanges.HandleAsync(new ChangeOrderStatus.Command(order.OrderId, OrderStatus.Paid, Identity.Name)); break;
+                case OrderAction.Cancel: deactivated = (await StatusChanges.HandleAsync(new ChangeOrderStatus.Command(order.OrderId, OrderStatus.Cancelled, Identity.Name))).DeactivatedTickets; break;
             }
             _actionOrder = null;
             _flash = FlashFor(_action, order.OrderNumber, deactivated);

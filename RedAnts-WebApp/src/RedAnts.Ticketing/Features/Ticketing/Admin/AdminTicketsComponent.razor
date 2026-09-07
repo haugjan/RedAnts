@@ -624,7 +624,7 @@
     [Inject] private IVisitLogReader Visits { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
     [Inject] private IOccupancyReader Occupancies { get; set; } = default!;
-    [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
+    [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
@@ -976,9 +976,9 @@
             var buyer = _newPerson.ToBuyer();
             if (buyer is null) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
             var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
-            var order = await OrderFactory.CreateAsync(buyer, Identity?.Email,
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
-                Identity?.Name ?? AdminUser, paymentSource);
+                Identity?.Name ?? AdminUser, paymentSource));
             var saved = await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, order.Id, buyer,
                 Identity?.Name ?? AdminUser, Identity?.Email));
             await Tickets.SetHolderAsync(saved.Uuid, _newPerson.ToHolder());
@@ -1140,9 +1140,9 @@
         _bundleSaving = true;
         try
         {
-            var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _bundleCategory, $"Ticket-Bundle · {reference}", _bundleQuantity, 0m)],
-                Identity?.Name ?? AdminUser, _bundlePaymentSource);
+                Identity?.Name ?? AdminUser, _bundlePaymentSource));
             await Bundles.CreateAsync(SelectedEventId, _bundleCategory, reference, _bundleQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
             _showCreateBundle = false;
