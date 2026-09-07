@@ -32,7 +32,12 @@ public static class TicketingFeatures
         typeof(SetEventSalesQuota.Handler),
         typeof(SetEventPricing.Handler),
         typeof(SetEventConversionRules.Handler),
-        typeof(SetEventFreeEntryQuotas.Handler)
+        typeof(SetEventFreeEntryQuotas.Handler),
+        typeof(SetSeasonSalesStatus.Handler),
+        typeof(SetSeasonPassQuota.Handler),
+        typeof(SetSeasonTicketSalesQuota.Handler),
+        typeof(SetSeasonPricing.Handler),
+        typeof(SetSeasonAddOns.Handler)
     ];
 
     public static IReadOnlyList<Type> Steps { get; } =
