@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NPoco;
 using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.Admin;
+using RedAnts.Features.Ticketing.Ports;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.Scoping;

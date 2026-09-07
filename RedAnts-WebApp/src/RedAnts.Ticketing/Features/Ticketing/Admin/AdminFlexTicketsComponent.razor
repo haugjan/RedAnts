@@ -666,7 +666,7 @@
     [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
     [Inject] private IFlexBundleEditor BundleEditor { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
-    [Inject] private IAdminOrderFactory OrderFactory { get; set; } = default!;
+    [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
@@ -1246,9 +1246,9 @@
                 result = existing;
                 if (_newQuantity >= 1)
                 {
-                    var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                    var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                         [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
-                        Identity?.Name ?? AdminUser, _newPaymentSource);
+                        Identity?.Name ?? AdminUser, _newPaymentSource));
                     result = await Bundles.AddTicketsAsync(existing.Id, _newCategory, _newQuantity,
                         Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
                 }
@@ -1260,9 +1260,9 @@
             }
             else
             {
-                var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                     [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
-                    Identity?.Name ?? AdminUser, _newPaymentSource);
+                    Identity?.Name ?? AdminUser, _newPaymentSource));
                 result = await Bundles.CreateAsync(SelectedSeasonId, _newCategory, reference, _newQuantity,
                     Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
             }
@@ -1289,9 +1289,9 @@
         try
         {
             var reference = _confirmAddBundle.Reference;
-            var order = await OrderFactory.CreateAsync(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
                 [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
-                Identity?.Name ?? AdminUser, _newPaymentSource);
+                Identity?.Name ?? AdminUser, _newPaymentSource));
             var updated = await Bundles.AddTicketsAsync(_confirmAddBundle.Id, _newCategory, _newQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id);
             _confirmAddBundle = null;
