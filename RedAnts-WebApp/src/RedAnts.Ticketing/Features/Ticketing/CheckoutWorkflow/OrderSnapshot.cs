@@ -56,4 +56,11 @@ public sealed record OrderSnapshot(
         .ToList();
 
     [JsonIgnore] public bool IsQuickBuy => NewsletterSource == CheckoutSource.QuickBuy.ToString();
+
+    public static OrderSnapshot? Parse(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return System.Text.Json.JsonSerializer.Deserialize<OrderSnapshot>(json); }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
 }
