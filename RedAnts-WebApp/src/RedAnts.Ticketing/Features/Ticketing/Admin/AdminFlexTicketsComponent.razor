@@ -297,7 +297,7 @@
             <h2 class="ta-modal-title">Flexticket bearbeiten</h2>
             <p class="ta-modal-sub">Ticket-Nr. @AdminFormat.TicketNo(_editPersonFor.Uuid)</p>
 
-            <PersonEditor Model="_editPersonForm" Prefix="editFt" EmailHint=" (für den Ticketversand)" />
+            <PersonFields Model="_editPersonForm" Prefix="editFt" EmailHint=" (für den Ticketversand)" />
 
             @if (!string.IsNullOrEmpty(_editPersonError)) { <div class="ta-modal-error">@_editPersonError</div> }
 
@@ -384,7 +384,7 @@
 
             @if (_createSingle)
             {
-                <PersonEditor Model="_newPerson" Prefix="newFt" EmailHint=" (optional, für den Ticketversand)" />
+                <PersonFields Model="_newPerson" Prefix="newFt" EmailHint=" (optional, für den Ticketversand)" />
             }
             else
             {

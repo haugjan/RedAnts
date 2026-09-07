@@ -5,7 +5,7 @@ using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class MyTicketTokenService(IConfiguration config) : IMyTicketTokens
+public sealed class MyTicketTokenSigner(IConfiguration config) : IMyTicketTokens
 {
     public string Create(string email)
     {

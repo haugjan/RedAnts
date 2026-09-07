@@ -8,7 +8,7 @@ using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class TicketTokenService : ITicketTokens
+public sealed class TicketTokenSigner : ITicketTokens
 {
     private const string Scheme = "RA1";
     private const int SignatureBytes = 16;
@@ -18,7 +18,7 @@ public sealed class TicketTokenService : ITicketTokens
     private const int ShortSignatureBytes = 5;
     private readonly byte[] _key;
 
-    public TicketTokenService(IConfiguration config, IHostEnvironment environment, ILogger<TicketTokenService> logger)
+    public TicketTokenSigner(IConfiguration config, IHostEnvironment environment, ILogger<TicketTokenSigner> logger)
     {
         var configured = config["Tickets:QrSecret"];
         if (!string.IsNullOrWhiteSpace(configured))

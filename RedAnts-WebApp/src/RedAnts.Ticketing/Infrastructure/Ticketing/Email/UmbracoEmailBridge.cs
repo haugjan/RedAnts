@@ -5,7 +5,7 @@ using Umbraco.Cms.Core.Models.Email;
 
 namespace RedAnts.Infrastructure.Ticketing.Email;
 
-public sealed class UmbracoEmailSenderAdapter(
+public sealed class UmbracoEmailBridge(
     IServiceScopeFactory scopeFactory,
     IConfiguration config) : Umbraco.Cms.Core.Mail.IEmailSender
 {

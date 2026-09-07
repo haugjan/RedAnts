@@ -198,7 +198,7 @@
         <div class="ta-modal" @onmousedown:stopPropagation="true">
             <h2 class="ta-modal-title">Saisonkarte erstellen</h2>
 
-            <PersonEditor Model="_newPerson" Prefix="newSp" EmailHint=" (optional, für den Kartenversand)" />
+            <PersonFields Model="_newPerson" Prefix="newSp" EmailHint=" (optional, für den Kartenversand)" />
 
             <div class="ta-field">
                 <label class="ta-label" for="newSpCategory">Kategorie</label>
@@ -253,7 +253,7 @@
             <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
             <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
 
-            <PersonEditor Model="_editPerson" Prefix="editSp" />
+            <PersonFields Model="_editPerson" Prefix="editSp" />
 
             <div class="ta-field">
                 <label class="ta-label" for="editPrice">Preis (CHF)</label>

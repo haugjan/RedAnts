@@ -6,7 +6,7 @@ using RedAnts.Features.Ticketing.Tickets;
 
 namespace RedAnts.Infrastructure.Ticketing.Tickets;
 
-public sealed class TicketPrintService(ITicketTokens tokens, IPublicBaseUrl publicUrl) : ITicketPrinter
+public sealed class TicketPrinting(ITicketTokens tokens, IPublicBaseUrl publicUrl) : ITicketPrinter
 {
     private const double QuietZoneMm = 2;
     private const int QrBuiltInQuietModules = 4;

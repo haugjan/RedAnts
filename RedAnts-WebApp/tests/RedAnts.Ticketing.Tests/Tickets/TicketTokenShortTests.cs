@@ -11,10 +11,10 @@ namespace RedAnts.Ticketing.Tests.Tickets;
 
 public class TicketTokenShortTests
 {
-    private static TicketTokenService NewService(string secret = "unit-test-qr-secret-please-change")
+    private static TicketTokenSigner NewService(string secret = "unit-test-qr-secret-please-change")
     {
         var config = new StubConfig(new Dictionary<string, string?> { ["Tickets:QrSecret"] = secret });
-        return new TicketTokenService(config, new StubEnv(), NullLogger<TicketTokenService>.Instance);
+        return new TicketTokenSigner(config, new StubEnv(), NullLogger<TicketTokenSigner>.Instance);
     }
 
     [Fact]
