@@ -1,21 +1,17 @@
+using RedAnts.Features.Show.Ports;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.Services;
 
 namespace RedAnts.Infrastructure.Show;
 
-public class ShowMigrationComponent(IConfiguration config, IRuntimeState runtimeState, IShowSettingsStore settings) : IAsyncComponent
+public class ShowMigrationComponent(IConfiguration config, IRuntimeState runtimeState, IShowSettings settings, ShowDatabase database)
+    : IAsyncComponent
 {
     public async Task InitializeAsync(bool isMainDom, CancellationToken cancellationToken)
     {
         if (runtimeState.Level < Umbraco.Cms.Core.RuntimeLevel.Run) return;
-
-        var dsn = config.GetConnectionString("showDbDSN");
-        if (string.IsNullOrWhiteSpace(dsn)) dsn = config.GetConnectionString("umbracoDbDSN");
-        if (string.IsNullOrWhiteSpace(dsn)) return;
-
         var migrationsEnabled = config.GetValue<bool>("Migrations:RunAtBoot") || config.GetValue<bool>("Migrations:RunNow");
-        if (migrationsEnabled) ShowSchema.Ensure(dsn);
-
+        if (migrationsEnabled) await ShowSchema.EnsureAsync(database);
         await settings.LoadAsync();
     }
 
