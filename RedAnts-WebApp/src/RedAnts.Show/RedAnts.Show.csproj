@@ -18,6 +18,7 @@
     <Using Include="Microsoft.Extensions.DependencyInjection" />
     <Using Include="Microsoft.Extensions.Hosting" />
     <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="RedAnts.Domain" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace RedAnts.Features.Show;
+namespace RedAnts.Domain.Show;
 
 public enum TileSize { Normal, Wide, Tall, Big }
 
