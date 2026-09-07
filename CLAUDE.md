@@ -49,6 +49,7 @@ Catalog entities (Season/Venue/Event) are Umbraco Document Types; sales, admissi
 - **No FK constraints**; reference by id. `EventId`/`SeasonId` hold the Umbraco content node id.
 - Pricing: `EventPrices`/`SeasonPrices` are 0..1 per node with n category rows (`Category`, `SalePrice`, `Quota?`); `EventPrices` also holds `TotalSalesQuota` + `AdmissionQuota`.
 - Admissions: one `TicketEventVisits` row per `(event, ticket)` (no `CheckedOutAt`); in/out scans go to `TicketEventVisitsLogs`; free-entry persons use `TicketType = FreeEntry` + `TicketEventFreeEntries`.
+- Capacity: `EventPrices`/`SeasonPrices` carry `Reserved` and `Version`, the category tables carry `Reserved`; a `Draft` order holds its reservation until it is paid, cancelled or expired (30 min), and remaining = quota minus sold minus reserved. Change reservations only through `EventPrice.Reserve/Release` and `IEventPrices.SaveReservationAsync` (conditional on `Version`).
 - NPoco async calls (`FetchAsync`/`ExecuteAsync`) need `using NPoco;`.
 
 ## Content types are code-first
