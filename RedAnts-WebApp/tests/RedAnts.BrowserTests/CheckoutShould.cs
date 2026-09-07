@@ -22,9 +22,6 @@ public sealed class CheckoutShould(BrowserFixture browser)
         await Assertions.Expect(page.Locator("body")).Not.ToContainTextAsync("Warenkorb ist leer");
 
         await page.GotoAsync("/checkout");
-        if (await page.Locator(".cf-turnstile").CountAsync() > 0)
-            return;
-
         await page.FillAsync("input[name=FirstName]", "Agent");
         await page.FillAsync("input[name=LastName]", "Browser");
         await page.FillAsync("input[name=Street]", "Teststrasse 1");
