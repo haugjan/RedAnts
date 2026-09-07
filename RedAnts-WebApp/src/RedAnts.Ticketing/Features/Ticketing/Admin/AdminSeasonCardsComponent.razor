@@ -8,6 +8,18 @@
 @inject IPriceTiers PriceTiers
 @inject CreateAdminOrder.Handler OrderCreation
 @inject ISeasonPassMailer Mailer
+@inject CreateSeasonPass.Handler PassCreation
+@inject EditSeasonPass.Handler PassEdit
+@inject SetSeasonPassHolder.Handler PassHolder
+@inject DeleteSeasonPass.Handler PassDeletion
+@inject ImportSeasonPasses.Handler PassImport
+@inject SendSeasonPassMail.Handler PassMail
+ CreateSeasonPass.Handler PassCreation
+ EditSeasonPass.Handler PassEdit
+ SetSeasonPassHolder.Handler PassHolder
+ DeleteSeasonPass.Handler PassDeletion
+ ImportSeasonPasses.Handler PassImport
+ SendSeasonPassMail.Handler PassMail
 @inject IPublicBaseUrl PublicUrl
 @inject ITicketTokens Tokens
 
@@ -554,7 +566,6 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
-    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
 
     private bool _showPrint;
@@ -595,7 +606,7 @@
         _deleteError = null;
         try
         {
-            await Deletion.DeleteSeasonPassAsync(_deleteTarget.Uuid);
+            await PassDeletion.HandleAsync(new DeleteSeasonPass.Command(_deleteTarget.Uuid));
             _deleteTarget = null;
             await ReloadPassesAsync();
         }
@@ -683,8 +694,7 @@
     {
         var pass = await Passes.GetByUuidAsync(p.Uuid);
         if (pass is null) return;
-        pass.Edit(pass.Price, status);
-        await Passes.SaveAsync(pass);
+        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, pass.Price, status, null, null, null));
         await ReloadPassesAsync();
     }
 
@@ -698,8 +708,7 @@
     {
         var pass = await Passes.GetByUuidAsync(p.Uuid);
         if (pass is null) return;
-        pass.Edit(pass.Price, pass.Status, tierId);
-        await Passes.SaveAsync(pass);
+        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, pass.Price, pass.Status, tierId, null, null));
         await ReloadPassesAsync();
     }
 
@@ -817,8 +826,8 @@
         _importSaving = true;
         try
         {
-            await Passes.ImportUnifiedAsync(SelectedSeasonId, _importRows, _importReference.Trim(),
-                _importTierId > 0 ? _importTierId : null, Identity.Name, Identity.Email);
+            await PassImport.HandleAsync(new ImportSeasonPasses.Command(SelectedSeasonId, _importRows, _importReference.Trim(),
+                _importTierId > 0 ? _importTierId : null, Identity.Name, Identity.Email));
             _showImport = false;
             await ReloadPassesAsync();
         }
@@ -897,11 +906,10 @@
             var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity.Email,
                 [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, lineCategory, tier.Name, 1, _newPrice)],
                 Identity.Name, paymentSource));
-            var saved = await Passes.SaveAsync(SeasonPass.Create(SelectedSeasonId, _newTierId, _newPrice, order.Id,
-                buyer, Identity.Name, Identity.Email,
-                reference: string.IsNullOrWhiteSpace(_newReference) ? null : _newReference.Trim(),
-                email: string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim()));
-            await Passes.SetHolderAsync(saved.Uuid, _newPerson.ToHolder());
+            await PassCreation.HandleAsync(new CreateSeasonPass.Command(SelectedSeasonId, _newTierId, _newPrice, order.Id, buyer,
+                string.IsNullOrWhiteSpace(_newReference) ? null : _newReference.Trim(),
+                string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim(),
+                _newPerson.ToHolder(), Identity.Name, Identity.Email));
             _showCreate = false;
             await ReloadPassesAsync();
         }
@@ -937,9 +945,8 @@
             var pass = await Passes.GetByUuidAsync(_editing.Uuid);
             if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
 
-            pass.Edit(_editPrice, pass.Status);
-            await Passes.SaveAsync(pass);
-            await Passes.SetHolderAsync(_editing.Uuid, _editPerson.ToHolder());
+            await PassEdit.HandleAsync(new EditSeasonPass.Command(_editing.Uuid, _editPrice, pass.Status, null, null, null));
+            await PassHolder.HandleAsync(new SetSeasonPassHolder.Command(_editing.Uuid, _editPerson.ToHolder()));
 
             _editing = null;
             await ReloadPassesAsync();
@@ -996,7 +1003,7 @@
         var pass = await Passes.GetByUuidAsync(item.Uuid);
         if (pass is null) return new EmailSendResult(false, "Diese Saisonkarte wurde nicht gefunden.");
         if (string.IsNullOrWhiteSpace(pass.Email)) pass.SetEmail(item.Email);
-        return await Mailer.SendAsync(pass, item.CategoryName, subject, body);
+        return await PassMail.HandleAsync(new SendSeasonPassMail.Command(pass, item.CategoryName, subject, body));
     }
 
     private bool _showBulk;

@@ -60,6 +60,7 @@ public static class TicketingFeatures
         typeof(AssignHelperEvents.Handler),
         typeof(RemoveHelperFromSeason.Handler),
         typeof(InviteHelperByMail.Handler),
+        typeof(CreateSeasonPass.Handler),
         typeof(EditEventTicket.Handler),
         typeof(SetEventTicketHolder.Handler),
         typeof(DeleteEventTicket.Handler),

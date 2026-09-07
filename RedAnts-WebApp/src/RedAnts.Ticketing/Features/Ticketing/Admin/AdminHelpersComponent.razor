@@ -3,6 +3,16 @@
 @inject IHelpers Helpers
 @inject IHelperScanReport ScanReport
 @inject IHelperInviteMailer InviteMailer
+@inject AddHelperToSeason.Handler HelperAddition
+@inject SetHelperActive.Handler HelperActivation
+@inject AssignHelperEvents.Handler HelperAssignment
+@inject RemoveHelperFromSeason.Handler HelperRemoval
+@inject InviteHelperByMail.Handler HelperInvitation
+ AddHelperToSeason.Handler HelperAddition
+ SetHelperActive.Handler HelperActivation
+ AssignHelperEvents.Handler HelperAssignment
+ RemoveHelperFromSeason.Handler HelperRemoval
+ InviteHelperByMail.Handler HelperInvitation
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
@@ -444,7 +454,7 @@
         _addError = null;
         try
         {
-            await Helpers.AddAsync(SelectedSeasonId, _newFirst, _newLast, _newEmail);
+            await HelperAddition.HandleAsync(new AddHelperToSeason.Command(SelectedSeasonId, _newFirst, _newLast, _newEmail));
             _showCreate = false;
             await ReloadAsync();
         }
@@ -475,7 +485,7 @@
         try
         {
             var ids = _assignEventIds.Where(id => _eventById.ContainsKey(id)).ToList();
-            await Helpers.SetAssignmentAsync(_assignFor.Id, _assignAll, ids, _assignCanRebook);
+            await HelperAssignment.HandleAsync(new AssignHelperEvents.Command(_assignFor.Id, _assignAll, ids, _assignCanRebook));
             _assignFor = null;
             await ReloadAsync();
         }
@@ -514,7 +524,7 @@
         _mailSent = false;
         try
         {
-            var result = await InviteMailer.SendAsync(_mailFor, _mailSubject, _mailBody, LoginLink(_mailFor));
+            var result = await HelperInvitation.HandleAsync(new InviteHelperByMail.Command(_mailFor, _mailSubject, _mailBody, LoginLink(_mailFor)));
             if (!result.Success)
             {
                 _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
@@ -533,7 +543,7 @@
 
     private async Task ToggleActiveAsync(Helper h, bool active)
     {
-        await Helpers.SetActiveAsync(h.Id, active);
+        await HelperActivation.HandleAsync(new SetHelperActive.Command(h.Id, active));
         await ReloadAsync();
     }
 
@@ -553,7 +563,7 @@
         _deleteError = null;
         try
         {
-            await Helpers.DeleteAsync(_deleteFor.Id);
+            await HelperRemoval.HandleAsync(new RemoveHelperFromSeason.Command(_deleteFor.Id));
             _deleteFor = null;
             await ReloadAsync();
         }
