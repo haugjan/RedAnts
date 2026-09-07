@@ -18,7 +18,11 @@ public static class ConfirmPayment
             var order = await orders.GetByIdAsync(command.OrderId);
             if (order is null) return new Result(false, false, false);
             if (order.Status == OrderStatus.Paid) return new Result(true, true, false);
-            if (order.Status is OrderStatus.Cancelled or OrderStatus.Refunded) return new Result(true, false, true);
+            if (order.Status is OrderStatus.Cancelled or OrderStatus.Refunded)
+            {
+                await WarnWhenPaidAfterCancellationAsync(order);
+                return new Result(true, false, true);
+            }
             if (order.Status != OrderStatus.Draft || !payrexx.Enabled || string.IsNullOrEmpty(order.PayrexxGatewayId))
                 return new Result(true, false, false);
 
@@ -42,6 +46,20 @@ public static class ConfirmPayment
         {
             await fulfillment.FulfillAsync(order.Id);
             return new Result(true, true, false);
+        }
+
+        private async Task WarnWhenPaidAfterCancellationAsync(Order order)
+        {
+            if (order.Status != OrderStatus.Cancelled || !payrexx.Enabled || string.IsNullOrEmpty(order.PayrexxGatewayId)) return;
+            try
+            {
+                if (await payrexx.GetGatewayStatusAsync(order.PayrexxGatewayId) == PayrexxStatus.Confirmed)
+                    logger.LogError("Payrexx confirmed the payment for order {Order} after it was cancelled; refund it manually.", order.OrderNumber);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Payrexx status check for cancelled order {Order} failed.", order.OrderNumber);
+            }
         }
 
         private async Task<Result> CancelAsync(Order order)

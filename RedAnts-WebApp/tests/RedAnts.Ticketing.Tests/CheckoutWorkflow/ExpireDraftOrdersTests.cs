@@ -1,5 +1,6 @@
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.CheckoutWorkflow;
+using RedAnts.Features.Ticketing.Ports;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.CheckoutWorkflow;
@@ -35,6 +36,35 @@ public class ExpireDraftOrdersTests
         var expired = await fixture.ExpireDraftOrders.HandleAsync(new ExpireDraftOrders.Command(DateTime.UtcNow.AddHours(-1)));
 
         Assert.Equal(0, expired);
+    }
+
+    [Fact]
+    public async Task A_draft_that_Payrexx_confirmed_meanwhile_is_fulfilled_instead_of_expired()
+    {
+        var fixture = new CheckoutFixture();
+        var paidLate = await fixture.PlacedDraftAsync(CheckoutFixture.CartWithTickets(2));
+        fixture.Payrexx.Status = PayrexxStatus.Confirmed;
+
+        var expired = await fixture.ExpireDraftOrders.HandleAsync(new ExpireDraftOrders.Command(DateTime.UtcNow.AddHours(1)));
+
+        Assert.Equal(0, expired);
+        Assert.Equal(OrderStatus.Paid, paidLate.Status);
+        Assert.Equal(2, fixture.Tickets.Stored.Count);
+        Assert.Equal(0, fixture.EventReserved);
+    }
+
+    [Fact]
+    public async Task A_draft_whose_Payrexx_status_cannot_be_read_is_left_alone()
+    {
+        var fixture = new CheckoutFixture();
+        var unknown = await fixture.PlacedDraftAsync(CheckoutFixture.CartWithTickets(1));
+        fixture.Payrexx.ThrowOnStatus = true;
+
+        var expired = await fixture.ExpireDraftOrders.HandleAsync(new ExpireDraftOrders.Command(DateTime.UtcNow.AddHours(1)));
+
+        Assert.Equal(0, expired);
+        Assert.Equal(OrderStatus.Draft, unknown.Status);
+        Assert.Equal(1, fixture.EventReserved);
     }
 
     private static DateTime CreatedBefore(Order fresh, Order stale)

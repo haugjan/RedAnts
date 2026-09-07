@@ -8,7 +8,8 @@ public static class ExpireDraftOrders
 {
     public sealed record Command(DateTime CreatedBefore);
 
-    public sealed class Handler(IOrders orders, IOrderLog orderLog, CapacityReservation reservation, ILogger<Handler> logger)
+    public sealed class Handler(IOrders orders, IOrderLog orderLog, CapacityReservation reservation, IPayrexxGateway payrexx,
+        OrderFulfillment fulfillment, ILogger<Handler> logger)
     {
         public async Task<int> HandleAsync(Command command)
         {
@@ -17,6 +18,11 @@ public static class ExpireDraftOrders
             {
                 try
                 {
+                    if (await PaidMeanwhileAsync(order))
+                    {
+                        await fulfillment.FulfillAsync(order.Id);
+                        continue;
+                    }
                     if (!await orders.TryCancelDraftAsync(order.Id)) continue;
                     if (OrderSnapshot.Parse(order.FulfillmentPayload) is { } snapshot)
                         await reservation.ReleaseAsync(snapshot);
@@ -29,6 +35,12 @@ public static class ExpireDraftOrders
                 }
             }
             return expired;
+        }
+
+        private async Task<bool> PaidMeanwhileAsync(Order order)
+        {
+            if (!payrexx.Enabled || string.IsNullOrEmpty(order.PayrexxGatewayId)) return false;
+            return await payrexx.GetGatewayStatusAsync(order.PayrexxGatewayId) == PayrexxStatus.Confirmed;
         }
     }
 }

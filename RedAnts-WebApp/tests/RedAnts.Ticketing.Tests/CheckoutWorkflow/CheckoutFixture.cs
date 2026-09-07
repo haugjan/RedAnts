@@ -51,7 +51,7 @@ internal sealed class CheckoutFixture
 
     public CancelDraftOrder.Handler CancelDraftOrder => new(Orders, OrderLog, Reservation);
 
-    public ExpireDraftOrders.Handler ExpireDraftOrders => new(Orders, OrderLog, Reservation, NullLogger<ExpireDraftOrders.Handler>.Instance);
+    public ExpireDraftOrders.Handler ExpireDraftOrders => new(Orders, OrderLog, Reservation, Payrexx, Fulfillment, NullLogger<ExpireDraftOrders.Handler>.Instance);
 
     public static BillingAddress Billing(string? phone = null) => BillingAddress.Create(
         BuyerType.Private, "Anna", "Muster", null, "Bahnhofstrasse 1", null, "8400", "Winterthur", "Schweiz", "anna@example.ch", phone);

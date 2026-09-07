@@ -57,11 +57,20 @@ public static class PlaceOrder
             if (await reservation.TryReserveAsync(snapshot) is CheckResult.Denied denied)
                 return new Result.Denied(DeniedMessage(denied.Cause, cart), true);
 
-            var number = await orders.NextOrderNumberAsync();
-            var order = Order.Create(number, command.Billing, cart.TotalAmount, VatRate, PaymentMethod.Payrexx, sellerUid: null,
-                paymentSource: PaymentSource.Online);
-            order.SetFulfillmentPayload(JsonSerializer.Serialize(snapshot));
-            var saved = await orders.SaveAsync(order);
+            Order saved;
+            try
+            {
+                var number = await orders.NextOrderNumberAsync();
+                var order = Order.Create(number, command.Billing, cart.TotalAmount, VatRate, PaymentMethod.Payrexx, sellerUid: null,
+                    paymentSource: PaymentSource.Online);
+                order.SetFulfillmentPayload(JsonSerializer.Serialize(snapshot));
+                saved = await orders.SaveAsync(order);
+            }
+            catch
+            {
+                await reservation.ReleaseAsync(snapshot);
+                throw;
+            }
             await orderLog.AppendAsync(saved.Id, OrderStatus.Draft, "Online-Kauf", "Bestellung erstellt");
 
             if (payrexx.Enabled && saved.TotalGross > 0m)
