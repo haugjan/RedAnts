@@ -5,7 +5,7 @@ namespace RedAnts.Ticketing.Tests.Sales;
 
 public class EventPriceTests
 {
-    private static EventPrice Existing() => EventPrice.FromPersistence(7, 42, 100, 80,
+    private static EventPrice Existing() => EventPrice.FromPersistence(7, 42, 100, 200,
         [CategoryPrice.FromPersistence(TicketCategory.Adult, 25m, 10, tierId: 3)], conversionOnly: true);
 
     [Fact]
@@ -16,7 +16,7 @@ public class EventPriceTests
         Assert.Equal(150, updated.TotalSalesQuota);
         Assert.Equal(7, updated.Id);
         Assert.Equal(42, updated.EventId);
-        Assert.Equal(80, updated.AdmissionQuota);
+        Assert.Equal(200, updated.AdmissionQuota);
         Assert.True(updated.ConversionOnly);
         Assert.Single(updated.Categories);
     }
@@ -38,7 +38,7 @@ public class EventPriceTests
 
         Assert.False(updated.ConversionOnly);
         Assert.Equal(100, updated.TotalSalesQuota);
-        Assert.Equal(80, updated.AdmissionQuota);
+        Assert.Equal(200, updated.AdmissionQuota);
         Assert.Single(updated.Categories);
     }
 
@@ -49,7 +49,7 @@ public class EventPriceTests
 
         Assert.Empty(updated.Categories);
         Assert.Equal(100, updated.TotalSalesQuota);
-        Assert.Equal(80, updated.AdmissionQuota);
+        Assert.Equal(200, updated.AdmissionQuota);
         Assert.True(updated.ConversionOnly);
     }
 

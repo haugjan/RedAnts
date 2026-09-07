@@ -159,7 +159,7 @@ public class CapacityReservationRulesTests
         foreach (var copy in new[]
                  {
                      price.WithSalesQuota(50),
-                     price.WithAdmissionQuota(80),
+                     price.WithAdmissionQuota(120),
                      price.WithConversionOnly(true),
                      price.WithCategories(price.Categories)
                  })

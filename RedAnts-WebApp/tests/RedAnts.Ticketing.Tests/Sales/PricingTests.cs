@@ -52,7 +52,7 @@ public class PricingTests
     [Fact]
     public void EventPrice_Create_NullCategories_BecomesEmptyList()
     {
-        var price = EventPrice.Create(1, 500, 400, null!);
+        var price = EventPrice.Create(1, 400, 500, null!);
         Assert.Empty(price.Categories);
     }
 
