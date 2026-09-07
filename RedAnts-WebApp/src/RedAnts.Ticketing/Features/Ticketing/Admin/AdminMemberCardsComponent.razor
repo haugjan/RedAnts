@@ -566,10 +566,14 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IMemberCardAdminReport Report { get; set; } = default!;
-    [Inject] private IMemberCards Members { get; set; } = default!;
-    [Inject] private IMemberCardEditor MemberEditor { get; set; } = default!;
+    [Inject] private CreateMemberCard.Handler CardCreation { get; set; } = default!;
+    [Inject] private ImportMemberCards.Handler CardImport { get; set; } = default!;
+    [Inject] private EditMemberCard.Handler CardEdit { get; set; } = default!;
+    [Inject] private SetMemberCardStatus.Handler CardStatus { get; set; } = default!;
+    [Inject] private SetMemberCardCategory.Handler CardCategory { get; set; } = default!;
+    [Inject] private DeleteMemberCard.Handler CardDeletion { get; set; } = default!;
+    [Inject] private SendMemberCardMail.Handler CardMail { get; set; } = default!;
     [Inject] private IMemberCardMailer Mailer { get; set; } = default!;
-    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
 
@@ -611,7 +615,7 @@
         _deleteError = null;
         try
         {
-            await Deletion.DeleteMemberCardAsync(_deleteTarget.Uuid);
+            await CardDeletion.HandleAsync(new DeleteMemberCard.Command(_deleteTarget.Uuid));
             _deleteTarget = null;
             await ReloadCardsAsync();
         }
@@ -724,11 +728,10 @@
             var first = string.IsNullOrWhiteSpace(_newPerson.FirstName) ? null : _newPerson.FirstName;
             var last = string.IsNullOrWhiteSpace(_newPerson.LastName) ? null : _newPerson.LastName;
             var address = _newPerson.ToMemberAddress();
-            await Members.CreateAsync(SelectedSeasonId, _newCategory, first, last,
+            await CardCreation.HandleAsync(new CreateMemberCard.Command(SelectedSeasonId, _newCategory, first, last,
                 _newBirthday, _newReference.Trim(),
-                email: string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim(),
-                createdByName: Identity.Name, createdByEmail: Identity.Email, address: address,
-                admissions: _newAdmissions);
+                string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim(),
+                address, _newAdmissions, Identity.Name, Identity.Email));
             _showCreate = false;
             await ReloadCardsAsync();
         }
@@ -871,7 +874,7 @@
         try
         {
             var reference = _importReference.Trim();
-            await Members.ImportAsync(SelectedSeasonId, reference, _importCategory, _parsedRows, Identity.Name, Identity.Email);
+            await CardImport.HandleAsync(new ImportMemberCards.Command(SelectedSeasonId, reference, _importCategory, _parsedRows, Identity.Name, Identity.Email));
             _showImport = false;
             await ReloadCardsAsync();
         }
@@ -909,9 +912,9 @@
         _editError = null;
         try
         {
-            await MemberEditor.SetDetailsAsync(_editing.Uuid, _editPerson.FirstName, _editPerson.LastName, _editBirthday,
+            await CardEdit.HandleAsync(new EditMemberCard.Command(_editing.Uuid, _editPerson.FirstName, _editPerson.LastName, _editBirthday,
                 _editing.Category, _editing.Status, _editReference, _editPerson.Email, _editPerson.ToMemberAddress(),
-                _editAdmissions);
+                _editAdmissions));
             _editing = null;
             await ReloadCardsAsync();
         }
@@ -949,7 +952,7 @@
         _mailSent = false;
         try
         {
-            var result = await Mailer.SendAsync(ToDomain(_mailFor), _mailSubject, _mailBody);
+            var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(ToDomain(_mailFor), _mailSubject, _mailBody));
             if (!result.Success)
             {
                 _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
@@ -1016,9 +1019,9 @@
             {
                 try
                 {
-                    var result = await Mailer.SendAsync(ToDomain(c),
+                    var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(ToDomain(c),
                         Mailer.DefaultSubjectFor(c.Category, c.IsCompany),
-                        Mailer.DefaultBodyFor(c.Category, c.IsCompany));
+                        Mailer.DefaultBodyFor(c.Category, c.IsCompany)));
                     if (result.Success) enqueued++;
                     else failed++;
                 }
@@ -1066,13 +1069,13 @@
 
     private async Task SaveCategoryAsync(MemberCardListItem c, MemberCategory category)
     {
-        await MemberEditor.SetCategoryAsync(c.Uuid, category);
+        await CardCategory.HandleAsync(new SetMemberCardCategory.Command(c.Uuid, category));
         await ReloadCardsAsync();
     }
 
     private async Task SaveStatusAsync(MemberCardListItem c, TicketStatus status)
     {
-        await MemberEditor.SetStatusAsync(c.Uuid, status);
+        await CardStatus.HandleAsync(new SetMemberCardStatus.Command(c.Uuid, status));
         await ReloadCardsAsync();
     }
 }
