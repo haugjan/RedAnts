@@ -20,4 +20,6 @@ public interface IMemberCards
     Task<IReadOnlyList<string>> GetReferencesAsync();
 
     Task<IReadOnlyList<MemberCard>> GetByReferenceAsync(string reference);
+    Task<MemberCard?> GetByUuidAsync(Guid uuid);
+    Task SaveAsync(MemberCard card);
 }

@@ -8,6 +8,31 @@ namespace RedAnts.Infrastructure.Ticketing.Sales;
 
 public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMemberCards
 {
+    public async Task<MemberCard?> GetByUuidAsync(Guid uuid)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var row = await scope.Database.FirstOrDefaultAsync<MemberCardRecord>("WHERE Uuid = @0", uuid.ToString());
+        return row is null ? null : Map(row);
+    }
+
+    public async Task SaveAsync(MemberCard card)
+    {
+        if (card.Id <= 0) throw new DomainException("Die Mitgliederkarte ist noch nicht gespeichert.");
+        var a = card.Address;
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync(
+            "UPDATE MembershipCards SET FirstName = @0, LastName = @1, Birthday = @2, Category = @3, Status = @4, Reference = @5, Email = @6, " +
+            "Salutation = @7, Company = @8, Street = @9, AddressLine2 = @10, PostalCode = @11, City = @12, Country = @13, Phone = @14, Admissions = @15 " +
+            "WHERE Id = @16",
+            (object[])new object?[]
+            {
+                card.FirstName, card.LastName, card.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+                (int)card.Category, (int)card.Status, card.Reference, card.Email,
+                a.Salutation, a.Company, a.Street, a.AddressLine2, a.PostalCode, a.City, a.Country, a.Phone,
+                card.Admissions, card.Id
+            });
+    }
+
     public async Task<int> ImportAsync(int seasonId, string reference, MemberCategory category, IReadOnlyList<MemberImportRow> rows,
         string? createdByName = null, string? createdByEmail = null)
     {

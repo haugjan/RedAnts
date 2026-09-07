@@ -28,17 +28,24 @@ public sealed class FlexTicketBundle
         string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
-        reference = (reference ?? "").Trim();
-        if (reference.Length == 0) throw new DomainException("Ein Bundle muss angegeben werden.");
-        if (reference.Length > ReferenceMaxLength)
-            throw new DomainException($"Das Bundle darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
-        return new FlexTicketBundle(0, seasonId, category, reference, DateTime.UtcNow,
+        return new FlexTicketBundle(0, seasonId, category, CleanReference(reference), DateTime.UtcNow,
             Clean(createdByName), Clean(createdByEmail));
     }
 
     public static FlexTicketBundle FromPersistence(int id, int seasonId, TicketCategory category,
         string reference, DateTime createdAt, string? createdByName = null, string? createdByEmail = null) =>
         new(id, seasonId, category, reference, createdAt, Clean(createdByName), Clean(createdByEmail));
+
+    public void Rename(string reference) => Reference = CleanReference(reference);
+
+    private static string CleanReference(string? reference)
+    {
+        var value = (reference ?? "").Trim();
+        if (value.Length == 0) throw new DomainException("Ein Bundle muss angegeben werden.");
+        if (value.Length > ReferenceMaxLength)
+            throw new DomainException($"Das Bundle darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
+        return value;
+    }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

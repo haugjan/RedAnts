@@ -68,5 +68,23 @@ public sealed class MemberCard
             Clean(email), Clean(reference), Math.Max(1, admissions), Clean(createdByName), Clean(createdByEmail),
             address ?? MemberAddress.Empty);
 
+    public void Edit(string? firstName, string? lastName, DateOnly? birthday, MemberCategory category, TicketStatus status,
+        string? reference, string? email, MemberAddress? address, int admissions)
+    {
+        FirstName = Clean(firstName);
+        LastName = Clean(lastName);
+        Birthday = birthday;
+        Category = category;
+        Status = status;
+        Reference = Clean(reference);
+        Email = Clean(email);
+        Address = address ?? MemberAddress.Empty;
+        Admissions = Math.Max(1, admissions);
+    }
+
+    public void SetStatus(TicketStatus status) => Status = status;
+
+    public void SetCategory(MemberCategory category) => Category = category;
+
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

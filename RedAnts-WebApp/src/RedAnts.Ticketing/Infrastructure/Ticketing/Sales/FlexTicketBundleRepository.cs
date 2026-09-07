@@ -8,6 +8,24 @@ namespace RedAnts.Infrastructure.Ticketing.Sales;
 
 public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : IFlexTicketBundles
 {
+    public async Task<FlexTicketBundle?> GetByIdAsync(int bundleId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var record = await scope.Database.FirstOrDefaultAsync<FlexTicketBundleRecord>("WHERE Id = @0", bundleId);
+        return record is null
+            ? null
+            : FlexTicketBundle.FromPersistence(record.Id, record.SeasonId, (TicketCategory)record.Category, record.Reference,
+                record.CreatedAt, record.CreatedByName, record.CreatedByEmail);
+    }
+
+    public async Task SaveAsync(FlexTicketBundle bundle)
+    {
+        if (bundle.Id <= 0) throw new DomainException("Das Bundle ist noch nicht gespeichert.");
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await scope.Database.ExecuteAsync("UPDATE FlexTicketBundles SET Reference = @0, Category = @1 WHERE Id = @2",
+            bundle.Reference, (int)bundle.Category, bundle.Id);
+    }
+
     public const int MaxBundleSize = 2000;
 
     public async Task<IReadOnlyList<FlexTicketBundleView>> GetBySeasonAsync(int seasonId)

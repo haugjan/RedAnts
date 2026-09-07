@@ -92,5 +92,7 @@ public interface IFlexTicketBundles
     Task<Guid> CreateSingleAsync(int seasonId, TicketCategory category, string reference, CardHolder holder,
         string? createdByName = null, string? createdByEmail = null);
 
+    Task<FlexTicketBundle?> GetByIdAsync(int bundleId);
+    Task SaveAsync(FlexTicketBundle bundle);
     Task SetHolderAsync(Guid uuid, CardHolder holder);
 }
