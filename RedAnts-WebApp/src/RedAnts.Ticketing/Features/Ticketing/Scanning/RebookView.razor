@@ -2,6 +2,7 @@
 @implements IAsyncDisposable
 @inject ISeasons Seasons
 @inject IFlexTicketBundles Bundles
+@inject RebookFlexTicket.Handler Rebooking
 @inject ITicketTokens Tickets
 @inject IJSRuntime JS
 
@@ -234,9 +235,9 @@
         var scanned = ExtractToken(code);
         FlexRebookResult result;
         if (Tickets.TryVerify(scanned, out var data))
-            result = await Bundles.RebookByUuidAsync(SelectedBundleId, data.Uuid, Operator);
+            result = await Rebooking.HandleAsync(new RebookFlexTicket.Command(SelectedBundleId, data.Uuid, null, Operator));
         else if (Tickets.TryVerifyShort(scanned, out var shortCode))
-            result = await Bundles.RebookByCodeAsync(SelectedBundleId, shortCode, Operator);
+            result = await Rebooking.HandleAsync(new RebookFlexTicket.Command(SelectedBundleId, null, shortCode, Operator));
         else
             result = new FlexRebookResult(FlexRebookStatus.NotFound, Shorten(code));
 

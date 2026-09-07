@@ -1,7 +1,7 @@
 @using RedAnts.Domain.Ticketing.Sales
 @using RedAnts.Features.Ticketing.Ports
 @implements IAsyncDisposable
-@inject IFlexTicketBundles Bundles
+@inject ConvertFlexToBoxOffice.Handler BoxOfficeConversion
 @inject ITicketTokens Tickets
 @inject IJSRuntime JS
 
@@ -145,9 +145,9 @@
         var scanned = ExtractToken(code);
         FlexBoxOfficeResult result;
         if (Tickets.TryVerify(scanned, out var data))
-            result = await Bundles.ConvertToBoxOfficeByUuidAsync(data.Uuid, Operator);
+            result = await BoxOfficeConversion.HandleAsync(new ConvertFlexToBoxOffice.Command(data.Uuid, null, Operator));
         else if (Tickets.TryVerifyShort(scanned, out var shortCode))
-            result = await Bundles.ConvertToBoxOfficeByCodeAsync(shortCode, Operator);
+            result = await BoxOfficeConversion.HandleAsync(new ConvertFlexToBoxOffice.Command(null, shortCode, Operator));
         else
             result = new FlexBoxOfficeResult(FlexBoxOfficeStatus.NotFound, Shorten(code));
 
