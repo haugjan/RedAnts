@@ -16,6 +16,21 @@ public sealed class FreeEntryRepository(IScopeProvider scopeProvider) : IFreeEnt
         return record is null ? FreeEntryQuota.Unlimited : FreeEntryQuotaMapping.ToQuota(record);
     }
 
+    public async Task SaveQuotaAsync(int eventId, FreeEntryQuota quota)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        var existing = await db.FirstOrDefaultAsync<EventFreeEntryQuotaRecord>("WHERE EventId = @0", eventId);
+        var record = existing ?? new EventFreeEntryQuotaRecord { EventId = eventId };
+        foreach (var type in Enum.GetValues<FreeEntryType>())
+        {
+            FreeEntryQuotas.Set(record, type, quota.QuotaFor(type));
+            FreeEntryQuotas.SetFixed(record, type, quota.FixedFor(type) is var fixedCount && fixedCount > 0 ? fixedCount : null);
+        }
+        if (existing is null) await db.InsertAsync(record);
+        else await db.UpdateAsync(record);
+    }
+
     public async Task<int> CountGrantedAsync(int eventId, FreeEntryType type)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);

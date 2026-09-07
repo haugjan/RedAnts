@@ -64,12 +64,15 @@ public sealed class EventPrice
         Version = version;
     }
 
+    public const string SalesAboveAdmission = "Das Verkaufskontingent darf das Einlasskontingent nicht übersteigen.";
+
     public static EventPrice Create(int eventId, int? totalSalesQuota, int? admissionQuota, IReadOnlyList<CategoryPrice> categories,
         bool conversionOnly = false)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (totalSalesQuota is < 0) throw new DomainException("Verkaufskontingent darf nicht negativ sein.");
         if (admissionQuota is < 0) throw new DomainException("Einlasskontingent darf nicht negativ sein.");
+        RequireSalesWithinAdmission(totalSalesQuota, admissionQuota);
         return new EventPrice(0, eventId, totalSalesQuota, admissionQuota, conversionOnly, categories ?? [], 0, 0);
     }
 
@@ -80,13 +83,21 @@ public sealed class EventPrice
     public EventPrice WithSalesQuota(int? totalSalesQuota)
     {
         if (totalSalesQuota is < 0) throw new DomainException("Verkaufskontingent darf nicht negativ sein.");
+        RequireSalesWithinAdmission(totalSalesQuota, AdmissionQuota);
         return new EventPrice(Id, EventId, totalSalesQuota, AdmissionQuota, ConversionOnly, Categories, Reserved, Version);
     }
 
     public EventPrice WithAdmissionQuota(int? admissionQuota)
     {
         if (admissionQuota is < 0) throw new DomainException("Einlasskontingent darf nicht negativ sein.");
+        RequireSalesWithinAdmission(TotalSalesQuota, admissionQuota);
         return new EventPrice(Id, EventId, TotalSalesQuota, admissionQuota, ConversionOnly, Categories, Reserved, Version);
+    }
+
+    private static void RequireSalesWithinAdmission(int? totalSalesQuota, int? admissionQuota)
+    {
+        if (totalSalesQuota is { } sales && admissionQuota is { } admission && sales > admission)
+            throw new DomainException(SalesAboveAdmission);
     }
 
     public EventPrice WithConversionOnly(bool conversionOnly) =>
@@ -228,6 +239,21 @@ public sealed class SeasonPrice
     public static SeasonPrice FromPersistence(int id, int seasonId, int? totalSalesQuota, IReadOnlyList<SeasonCategoryPrice> categories,
         int? defaultTicketSalesQuota = null, int reserved = 0, int version = 0) =>
         new(id, seasonId, totalSalesQuota, defaultTicketSalesQuota, categories ?? [], reserved, version);
+
+    public SeasonPrice WithTotalSalesQuota(int? totalSalesQuota)
+    {
+        if (totalSalesQuota is < 0) throw new DomainException("Einlasskontingent darf nicht negativ sein.");
+        return new SeasonPrice(Id, SeasonId, totalSalesQuota, DefaultTicketSalesQuota, Categories, Reserved, Version);
+    }
+
+    public SeasonPrice WithDefaultTicketSalesQuota(int? defaultTicketSalesQuota)
+    {
+        if (defaultTicketSalesQuota is < 0) throw new DomainException("Verkaufskontingent darf nicht negativ sein.");
+        return new SeasonPrice(Id, SeasonId, TotalSalesQuota, defaultTicketSalesQuota, Categories, Reserved, Version);
+    }
+
+    public SeasonPrice WithCategories(IReadOnlyList<SeasonCategoryPrice> categories) =>
+        new(Id, SeasonId, TotalSalesQuota, DefaultTicketSalesQuota, categories ?? [], Reserved, Version);
 
     public int? RemainingTotal(CapacityUsage usage) =>
         TotalSalesQuota is { } q ? Math.Max(0, q - usage.SoldTotal - Reserved) : null;

@@ -15,6 +15,15 @@ public sealed record FreeEntryQuota(IReadOnlyDictionary<FreeEntryType, int?> Quo
 {
     public static FreeEntryQuota Unlimited { get; } = new(new Dictionary<FreeEntryType, int?>(), new Dictionary<FreeEntryType, int>());
 
+    public static FreeEntryQuota Create(IReadOnlyDictionary<FreeEntryType, int?> quotas, IReadOnlyDictionary<FreeEntryType, int?> fixedCounts)
+    {
+        if (quotas.Values.Any(q => q is < 0) || fixedCounts.Values.Any(f => f is < 0))
+            throw new DomainException("Kontingente und feste Anzahlen dürfen nicht negativ sein.");
+        return new FreeEntryQuota(
+            quotas.ToDictionary(p => p.Key, p => p.Value),
+            fixedCounts.Where(p => p.Value is { } f && f > 0).ToDictionary(p => p.Key, p => p.Value!.Value));
+    }
+
     public int? QuotaFor(FreeEntryType type) => Quotas.TryGetValue(type, out var quota) ? quota : null;
 
     public int FixedFor(FreeEntryType type) => Fixed.TryGetValue(type, out var count) ? count : 0;

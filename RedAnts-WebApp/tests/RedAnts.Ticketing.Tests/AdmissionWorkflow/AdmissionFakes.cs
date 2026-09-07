@@ -64,6 +64,14 @@ internal sealed class StubOccupancy : IOccupancyReader
 
 internal sealed class InMemoryFreeEntries : IFreeEntryRepository
 {
+    public Dictionary<int, FreeEntryQuota> SavedQuotas { get; } = new();
+
+    public Task SaveQuotaAsync(int eventId, FreeEntryQuota quota)
+    {
+        SavedQuotas[eventId] = quota;
+        return Task.CompletedTask;
+    }
+
     private long _nextVisitId = 500;
 
     public FreeEntryQuota Quota { get; set; } = FreeEntryQuota.Unlimited;
