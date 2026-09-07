@@ -1,3 +1,5 @@
+using RedAnts.Domain.Show;
+
 namespace RedAnts.Features.Show;
 
 public enum NodeKind { Sound, Folder, Random }

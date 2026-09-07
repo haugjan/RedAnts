@@ -1,12 +1,15 @@
 @using Microsoft.Extensions.Options
-@using RedAnts.Infrastructure.Show
 @using System.Text.Json
 @using System.IO.Compression
 @using Microsoft.JSInterop
-@inject IShowProfileStore Store
+@inject GetShowProfiles.Handler ProfilesQuery
+@inject SaveShowProfiles.Handler ProfilesSave
 @inject IShowSoundUploader Uploader
 @inject IShowSpotifySearch Search
-@inject IShowSettingsStore Settings
+@inject IShowSettings Settings
+@inject SetShowSetting.Handler SettingSave
+@inject SearchSpotify.Handler SpotifySearch
+@inject UploadShowSound.Handler SoundUpload
 @inject IOptions<ShowStorageOptions> Storage
 @inject IJSRuntime JS
 @implements IDisposable
@@ -496,7 +499,7 @@
     private bool _uploading;
     private string _uploadError = "";
     private readonly List<EditButton> _levelStack = new();
-    private DotNetObjectReference<ShowAdminEditor>? _gridRef;
+    private DotNetObjectReference<ShowAdminPage>? _gridRef;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -577,7 +580,7 @@
         try
         {
             await using var stream = file.OpenReadStream(50L * 1024 * 1024);
-            sound.Ref = await Uploader.UploadAsync(file.Name, stream, file.ContentType);
+            sound.Ref = await SoundUpload.HandleAsync(new UploadShowSound.Command(file.Name, stream, file.ContentType));
         }
         catch (Exception ex) { _uploadError = "Upload fehlgeschlagen: " + ex.Message; }
         finally { _uploading = false; }
@@ -591,7 +594,7 @@
 
     private async Task LoadAsync()
     {
-        var loaded = await Store.GetAllAsync();
+        var loaded = await ProfilesQuery.HandleAsync(new GetShowProfiles.Query());
         _profiles = loaded.Select(EditProfile.From).ToList();
         foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
         _profile = _profiles.FirstOrDefault();
@@ -603,7 +606,7 @@
     {
         try
         {
-            await Store.SaveAllAsync(_profiles.Select(p => p.ToModel()).ToList());
+            await ProfilesSave.HandleAsync(new SaveShowProfiles.Command(_profiles.Select(p => p.ToModel()).ToList()));
             _status = $"Gespeichert · {DateTime.Now:HH:mm:ss}";
         }
         catch (Exception ex) { _status = "Fehler: " + ex.Message; }
@@ -780,7 +783,7 @@
     private async Task ResetAsync()
     {
         if (!await JS.InvokeAsync<bool>("confirm", "Alle Profile auf die Standard-Vorlage zurücksetzen? Gespeicherte Änderungen gehen verloren.")) return;
-        await Store.SaveAllAsync(ShowConfig.Profiles);
+        await ProfilesSave.HandleAsync(new SaveShowProfiles.Command(ShowConfig.Profiles));
         await LoadAsync();
         _status = "Auf Vorlage zurückgesetzt.";
     }
@@ -1030,7 +1033,7 @@
             return;
         }
         _searching = true; _searchError = ""; _searchOpen = true; _results = [];
-        try { _results = await Search.SearchAsync(_query); }
+        try { _results = await SpotifySearch.HandleAsync(new SearchSpotify.Query(_query)); }
         catch (Exception ex) { _searchError = "Suche: " + ex.Message; _results = []; }
         finally { _searching = false; }
     }
@@ -1169,9 +1172,9 @@
         _spotifyBusy = true; _spotifyStatus = ""; _spotifyError = ""; _spotifyTestResult = "";
         try
         {
-            await Settings.SetAsync("Spotify:ClientId", _spotifyClientId.Trim());
+            await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientId", _spotifyClientId.Trim()));
             if (!string.IsNullOrWhiteSpace(_spotifyClientSecret))
-                await Settings.SetAsync("Spotify:ClientSecret", _spotifyClientSecret.Trim());
+                await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientSecret", _spotifyClientSecret.Trim()));
             _spotifyClientSecret = "";
             RefreshSpotifyState();
             _spotifyStatus = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";

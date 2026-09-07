@@ -1,13 +1,12 @@
 @using Microsoft.Extensions.Options
 @using Microsoft.AspNetCore.WebUtilities
-@using RedAnts.Infrastructure.Show
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IOptions<ShowStorageOptions> Storage
-@inject IShowProfileStore Store
+@inject GetShowProfiles.Handler ProfilesQuery
 @inject IShowRemote Remote
-@inject IShowSettingsStore Settings
+@inject IShowSettings Settings
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
 
 <div class="sb-app">
@@ -211,7 +210,7 @@
         if (query.TryGetValue("room", out var r) && !string.IsNullOrWhiteSpace(r))
             _room = r.ToString().Trim();
 
-        var loaded = await Store.GetAllAsync();
+        var loaded = await ProfilesQuery.HandleAsync(new GetShowProfiles.Query());
         var src = loaded.Count > 0 ? loaded : _profiles;
         _profiles = src.Select(p => p with { Root = p.Root.Where(b => !b.Panic).ToList() }).ToList();
         if (_profiles.All(p => p.Id != _profileId)) _profileId = _profiles[0].Id;
@@ -346,14 +345,11 @@
         }
         catch
         {
-            // Interop noch nicht bereit; nicht kritisch fürs lokale Board
         }
     }
 
     private void HandleButtonAsync(ShowButton node)
     {
-        // Ordner navigieren. Alle Sounds (lokal, Zufall, Spotify) laufen
-        // client-seitig direkt im Klick-Event (iOS-Nutzergeste), siehe soundboard.js.
         if (node.IsFolder) _path.Add(node.Id);
     }
 

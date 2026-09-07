@@ -1,3 +1,5 @@
+using RedAnts.Domain.Show;
+
 namespace RedAnts.Features.Show;
 
 public static class ShowLayout
