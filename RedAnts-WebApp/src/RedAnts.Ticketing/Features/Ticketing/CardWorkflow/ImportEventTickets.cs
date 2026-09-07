@@ -1,0 +1,17 @@
+using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Features.Ticketing.Ports;
+
+namespace RedAnts.Features.Ticketing.CardWorkflow;
+
+public static class ImportEventTickets
+{
+    public sealed record Command(int EventId, IReadOnlyList<TicketImportRow> Rows, string DefaultBundle, TicketCategory DefaultCategory,
+        string? CreatedByName, string? CreatedByEmail);
+
+    public sealed class Handler(IEventTicketBundles bundles)
+    {
+        public Task<(int Created, int Updated)> HandleAsync(Command command) =>
+            bundles.ImportUnifiedAsync(command.EventId, command.Rows, command.DefaultBundle, command.DefaultCategory,
+                command.CreatedByName, command.CreatedByEmail);
+    }
+}

@@ -59,7 +59,27 @@ public static class TicketingFeatures
         typeof(SetHelperActive.Handler),
         typeof(AssignHelperEvents.Handler),
         typeof(RemoveHelperFromSeason.Handler),
-        typeof(InviteHelperByMail.Handler)
+        typeof(InviteHelperByMail.Handler),
+        typeof(EditEventTicket.Handler),
+        typeof(SetEventTicketHolder.Handler),
+        typeof(DeleteEventTicket.Handler),
+        typeof(CreateEventTicketBundle.Handler),
+        typeof(ImportEventTickets.Handler),
+        typeof(CreateFlexBundle.Handler),
+        typeof(CreateEmptyFlexBundle.Handler),
+        typeof(AddFlexTickets.Handler),
+        typeof(RenameFlexBundle.Handler),
+        typeof(DeleteEmptyFlexBundle.Handler),
+        typeof(RebookFlexTicket.Handler),
+        typeof(ConvertFlexToBoxOffice.Handler),
+        typeof(SetFlexTicketStatus.Handler),
+        typeof(SetFlexTicketRedeemed.Handler),
+        typeof(SetFlexTicketCategory.Handler),
+        typeof(SetFlexTicketHolder.Handler),
+        typeof(CreateSingleFlexTicket.Handler),
+        typeof(DeleteFlexTicket.Handler),
+        typeof(ImportFlexTickets.Handler),
+        typeof(SendFlexTicketMail.Handler)
     ];
 
     public static IReadOnlyList<Type> Steps { get; } =
