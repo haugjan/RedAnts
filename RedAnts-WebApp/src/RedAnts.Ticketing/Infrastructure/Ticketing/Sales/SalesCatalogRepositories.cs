@@ -229,8 +229,6 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
 
         foreach (var e in existing.Where(e => !keptIds.Contains(e.Id)))
         {
-            if (await SoldCountAsync(db, e.Id) > 0)
-                throw new DomainException($"Die Stufe «{e.Name}» kann nicht gelöscht werden, weil bereits Karten verkauft wurden.");
             await db.ExecuteAsync("DELETE FROM EventPriceCategories WHERE TierId = @0", e.Id);
             await db.ExecuteAsync("DELETE FROM SeasonPriceCategories WHERE TierId = @0", e.Id);
             await db.DeleteAsync(e);
