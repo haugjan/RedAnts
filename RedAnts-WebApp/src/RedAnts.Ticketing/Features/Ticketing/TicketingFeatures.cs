@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using RedAnts.Features.Ticketing.AdmissionWorkflow;
+using RedAnts.Features.Ticketing.CardWorkflow;
 using RedAnts.Features.Ticketing.CatalogWorkflow;
 using RedAnts.Features.Ticketing.CheckoutWorkflow;
 using RedAnts.Features.Ticketing.OrderWorkflow;
@@ -41,7 +42,24 @@ public static class TicketingFeatures
         typeof(SetSeasonAddOns.Handler),
         typeof(ChangeOrderStatus.Handler),
         typeof(RefundOrder.Handler),
-        typeof(CreateAdminOrder.Handler)
+        typeof(CreateAdminOrder.Handler),
+        typeof(CreateMemberCard.Handler),
+        typeof(ImportMemberCards.Handler),
+        typeof(EditMemberCard.Handler),
+        typeof(SetMemberCardStatus.Handler),
+        typeof(SetMemberCardCategory.Handler),
+        typeof(DeleteMemberCard.Handler),
+        typeof(SendMemberCardMail.Handler),
+        typeof(EditSeasonPass.Handler),
+        typeof(SetSeasonPassHolder.Handler),
+        typeof(DeleteSeasonPass.Handler),
+        typeof(ImportSeasonPasses.Handler),
+        typeof(SendSeasonPassMail.Handler),
+        typeof(AddHelperToSeason.Handler),
+        typeof(SetHelperActive.Handler),
+        typeof(AssignHelperEvents.Handler),
+        typeof(RemoveHelperFromSeason.Handler),
+        typeof(InviteHelperByMail.Handler)
     ];
 
     public static IReadOnlyList<Type> Steps { get; } =
