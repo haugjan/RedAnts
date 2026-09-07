@@ -103,7 +103,7 @@ public class OrderSnapshotTests
         Assert.Empty(snapshot.PassDemand(10));
     }
 
-    [Fact(Skip = "OrderSnapshot serialises its computed members EventIds, SeasonIds, IsQuickBuy and the item members IsSeasonPass, IsConversion; they need [JsonIgnore] to keep the legacy payload shape")]
+    [Fact]
     public void Serialisation_uses_the_legacy_property_names()
     {
         var snapshot = OrderSnapshot.FromCart(FullCart(), true, CheckoutSource.Checkout);
