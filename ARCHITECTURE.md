@@ -229,3 +229,42 @@ The codebase carries no inline comments (the code is meant to speak for itself).
 - **`ArticleGuid` survives a price save.** The price repositories delete and re-insert their category rows; before the fix every save generated fresh `ArticleGuid`s, which broke the link to already issued tickets. `ArticleGuids` reads the existing rows first and reuses the GUID by tier and category (event and season prices) or by id, then by label (season add-ons).
 - **`EventPrice` copies must go through `With…`.** Quota, conversion-only and category edits used to rebuild the aggregate with `FromPersistence` and dropped `ConversionOnly` on the way. The `WithSalesQuota`/`WithAdmissionQuota`/`WithConversionOnly`/`WithCategories` methods validate the changed field and keep the rest, so a partial edit can no longer reset another one.
 - **Domain errors end in one place.** `DomainErrorFilter` is a global MVC exception filter in the Host: `/api` and `/payrexx` callers get a 400 problem document (with the field for `ValidationException`), HTML pages get the message in `TempData["DomainError"]` and a redirect to the referring page, which `_TicketsLayout` renders as a banner. Blazor components are not MVC actions, so they catch and show the message themselves.
+
+## Target architecture status and backlog
+
+Verified 2026-09-08 against main `5ac1ff4` (the "RedAnts Zielarchitektur" plan of 2026-09-04: 14 pillars, phases 0 to 9). Test baseline on that commit: Kernel 31, Show 12, Host 5, Ticketing 482, Architecture 20 (0 skipped), Browser 17 (local, against `sqldb-redants-agent`).
+
+### Pillars
+
+| # | Pillar | Status | Evidence and deviations |
+|---|---|---|---|
+| 1 | Hexagonal, names say what a class does | Done | `tests/RedAnts.Architecture.Tests/legacy-names.txt` is empty, the naming rule passes with no baseline. Controllers are the primary adapters, `Infrastructure/` holds the secondary ones. |
+| 2 | Slice kinds Command / Query / Check / Event / Job | Partial | 76 slices: Checkout 13, Admission 5, Catalog 11, Order 3, Card 38, Show 6 (70 commands, 6 queries). No `Check` slice exists yet; rules that need I/O live inside the commands (`PlaceOrder`, `RefundOrder`) and the Blazor components repeat some of them. Seeders stay notification handlers, jobs (`DraftOrderExpiry`, the page-view purge) are hosted services that call a command. |
+| 3 | One file per slice, nested `Handler` | Done | Enforced by `HandlerRules`; no handler outside a workflow folder. |
+| 4 | Ports `I<Aggregate>Repository` + narrow `I…Reader` | Partial | The ports created since Phase 2 follow the rule (`IAdmissionRepository`, `IFreeEntryRepository`, `ICartRepository`, `IOccupancyReader`, `IAdmissionFactsReader`, `IEventQuotasReader`, `IMyTicketsReader`). The older collection-style ports (`IEvents`, `ISeasons`, `IOrders`, `IEventTickets`, `ISeasonPasses`, `IMemberCards`, `IHelpers`, `IFlexTicketBundles`, `IEventTicketBundles`, `INewsletterSignups`, `IPriceTiers`, `IEventPrices`, `ISeasonPrices`) keep their names and mix load/save with query methods, and 33 port interfaces still live outside `Features/Ticketing/Ports` (Admin reports, Email, Tickets). |
+| 5 | Aggregates | Done with a split | Cart, Order (+items, refunds, log), PriceTier, EventPrice/SeasonPrice, EventTicket, SeasonSingleTicket, SeasonPass, MemberCard, FlexTicketBundle, EventTicketBundle, Admission (+visit log, cap invariant), FreeEntry (+quota), Helper, NewsletterSignup. Event and Season stay Umbraco content, so their sales rules live in `EventPrice`/`SeasonPrice` and the conversion rules and free-entry quota are separate roots instead of one `Event` aggregate. |
+| 6 | Transactions in handlers that write several tables | Open | No handler opens a scope or transaction. Multi-table writes rely on idempotent steps and compensations (`PlaceOrder` releases the reservation when the order save fails). |
+| 7 | Shared kernel + ArchUnitNET | Done | `RedAnts.Kernel` (SwissTime, CheckResult, DomainException, ValidationException, ConcurrencyException, EmailAddress, Money); 20 architecture tests (layering, module boundaries, handler rules, naming, smell report). |
+| 8 | Umbraco stays master for content, inline editing removed | Done | Phase 4 removed the inline name/date/period editors; only `SetEventSalesStatus`/`SetSeasonStatus` write to content through publishers. |
+| 9 | Format validation in value objects, rules in aggregates | Partial | `DomainException` is used in 46 files; `ValidationException` and `EmailAddress` in one file each, `Money` nowhere. Format validation still happens in components and controllers. |
+| 10 | MVC exception filter + Blazor try/catch per action | Mostly done | `DomainErrorFilter` covers MVC and the APIs. The admin components catch around most handler calls (for example 10 catches for 18 handler calls in `AdminFlexTicketsComponent`), not around all of them. |
+| 11 | Explicit handler registration + completeness test | Done | `TicketingFeatures.Handlers`, `ShowFeatures.Handlers`, theory over both assemblies. |
+| 12 | All modules on NPoco, no MediatR, no domain events, handlers never call handlers | Done | Show moved from raw SqlClient to NPoco with ports and slices; the handler rule is enforced. Integration tests against the agent copy exist only as browser tests (17); there is no NPoco-level `DbTest` fixture. |
+| 13 | Domain services named by activity | Partial | `AdmissionEvaluator`, `ExpectedAdmissionsCalculator`, `PasswordGenerator` exist. `TierOfferResolver` and `ConversionOfferResolver` were not extracted; offer resolution still lives in the checkout slices and `Pricing`. |
+| 14 | Coupling and size signals | Reported, not fixed | The smell report lists 23 files. Hotspots: `ShowAdminPage.razor` (1528 lines, 10 injections), `AdminFlexTicketsComponent` (1354), `AdminTicketsComponent` (1210), `AdminMemberCardsComponent` (1112), `AdminSeasonCardsComponent` (1058, 13 injections), `TicketingMigration.cs` (976), the two content-type seeders (665 and 501 lines, 15 usings each). |
+
+Cross-cutting decisions from the plan: capacity locking with `Reserved`/`Version` and one retry is live (deviation: `Sold` stays derived from ticket counts instead of a counter); migrations run only in the pipeline migrate step, replay via `Migrations:ForceToken`, Show via `show.SchemaInfo`; every Ticketing timestamp is `datetimeoffset` with the Swiss offset; Entra-only access to SQL and Blob with the agent test track. Phases 0 to 9 are all on prod as of 2026-09-08.
+
+### Assessment
+
+The structural goals are reached and guarded by tests: layering, slices with explicit registration, naming, the kernel, the workflow folders and the Show rebuild cannot regress silently. What is left sits inside the slices and the admin UI rather than in the structure: the four large card and ticket components and the Show admin page carry too many dialogs each, multi-table commands are not transactional, value objects are declared but hardly used, and rules that need I/O have no `Check` slices yet. None of these blocks a feature; they raise the cost of the next change in those files.
+
+### Backlog (recommended order)
+
+1. Split the four admin card and ticket components and `ShowAdminPage.razor` into one component per dialog with one command each (pillar 14, the largest smell and the source of the stray handler text of 2026-09-08).
+2. Open a scope in the handlers that write several tables (`PlaceOrder`/`OrderFulfillment`, `CreateAdminOrder`, `RefundOrder`, the imports) so a failure leaves no half-written order (pillar 6).
+3. Add `Check` slices for the I/O rules the components repeat (`CanCheckout`, `CanRefund`, `CanConvert`) and let the UI ask instead of re-implementing (pillar 2).
+4. Use `EmailAddress` and `Money` in `Buyer`, `Cart`, `Order` and pricing, and move format validation into the value objects (pillar 9).
+5. Rename the collection-style ports to `I<Aggregate>Repository` / `I…Reader` and move the 33 stray port interfaces into `Features/Ticketing/Ports` (pillar 4, mechanical but wide).
+6. Introduce a clock abstraction (`TimeProvider`) for the factories and expiry jobs, add an NPoco-level test fixture against `sqldb-redants-agent`, and replace the machine path in `TicketPdfRendererTests` with a relative one.
+7. Make the deploy-dev migrate step fail fast with a clear message when the stored plan state is unknown, so a shared-dev state conflict is visible in the run summary instead of an exit code 134 stack trace.
