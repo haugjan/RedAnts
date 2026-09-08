@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Features.Ticketing.Scanning;
 
 namespace RedAnts.Features.Ticketing.Public;
 
@@ -10,6 +11,8 @@ public sealed class WarmupController(
     IDataProtectionProvider dataProtection,
     ISeasons seasons,
     IEvents events,
+    IVenues venues,
+    IHelpers helpers,
     IContentUrls contentUrls) : Controller
 {
     private static readonly string[] CorePaths =
@@ -24,12 +27,17 @@ public sealed class WarmupController(
         foreach (var url in await Task.WhenAll(FirstSeasonUrlAsync(), FirstEventUrlAsync()))
             if (url is not null) paths.Add(url);
 
-        string? gateCookie = null;
+        var cookies = new List<string>();
         if (!string.IsNullOrEmpty(configuration["BasicAuth:Password"]))
+            cookies.Add($"RedAnts.Gate={dataProtection.CreateProtector("RedAnts.SiteGate.v1").Protect("ok")}");
+
+        var helperCookie = await HelperCookieAsync();
+        if (helperCookie is not null)
         {
-            var token = dataProtection.CreateProtector("RedAnts.SiteGate.v1").Protect("ok");
-            gateCookie = $"RedAnts.Gate={token}";
+            cookies.Add(helperCookie);
+            paths.Add("/scan");
         }
+        var cookieHeader = cookies.Count == 0 ? null : string.Join("; ", cookies);
 
         var client = httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(30);
@@ -40,7 +48,7 @@ public sealed class WarmupController(
             try
             {
                 using var req = new HttpRequestMessage(HttpMethod.Get, url);
-                if (gateCookie is not null) req.Headers.Add("Cookie", gateCookie);
+                if (cookieHeader is not null) req.Headers.Add("Cookie", cookieHeader);
                 using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseContentRead);
                 return $"{path} -> {(int)resp.StatusCode}";
             }
@@ -50,8 +58,33 @@ public sealed class WarmupController(
             }
         }
 
-        var lines = await Task.WhenAll(paths.Select(FetchAsync));
+        var scannerData = WarmScannerDataAsync();
+        var lines = (await Task.WhenAll(paths.Select(FetchAsync))).Append(await scannerData);
         return Content("warmup\n" + string.Join('\n', lines) + '\n', "text/plain; charset=utf-8");
+    }
+
+    private async Task<string?> HelperCookieAsync()
+    {
+        foreach (var season in await seasons.GetPublicOpenAsync())
+        {
+            var helper = (await helpers.GetBySeasonAsync(season.Id)).FirstOrDefault(h => h.Active);
+            if (helper is not null)
+                return $"{HelperSessionCookie.Name}={HelperSessionCookie.Protect(dataProtection, helper.Id)}";
+        }
+        return null;
+    }
+
+    private async Task<string> WarmScannerDataAsync()
+    {
+        try
+        {
+            await Task.WhenAll(venues.GetAllAsync(), events.GetUpcomingForScanningAsync());
+            return "scanner data -> ok";
+        }
+        catch (Exception ex)
+        {
+            return $"scanner data -> error {ex.GetType().Name}";
+        }
     }
 
     private async Task<string?> FirstSeasonUrlAsync()
