@@ -53,17 +53,16 @@
             {
                 foreach (var m in Model.Matches)
                 {
-                    <a class="wt-match" href="@m.Url">
+                    <div class="wt-match">
                         <span class="wt-match-logos">
-                            @if (!string.IsNullOrEmpty(m.HomeLogo)) { <img src="@m.HomeLogo" alt="" /> }
-                            @if (!string.IsNullOrEmpty(m.AwayLogo)) { <img src="@m.AwayLogo" alt="" /> }
+                            @if (!string.IsNullOrEmpty(m.HomeLogo)) { <img src="@m.HomeLogo" alt="" onerror="this.remove()" /> }
+                            @if (!string.IsNullOrEmpty(m.AwayLogo)) { <img src="@m.AwayLogo" alt="" onerror="this.remove()" /> }
                         </span>
                         <span class="wt-match-body">
                             <span class="wt-match-title">@m.Title@if (m.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
                             <span class="wt-match-meta">@m.DateText@(string.IsNullOrEmpty(m.VenueName) ? "" : $" · {m.VenueName}")</span>
                         </span>
-                        @if (!string.IsNullOrEmpty(m.Url)) { <span class="wt-chev">›</span> }
-                    </a>
+                    </div>
                 }
             }
         }

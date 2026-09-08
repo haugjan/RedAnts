@@ -46,7 +46,7 @@ public sealed class WebTicketController(
             Kicker: TicketDisplay.Kicker(data.Type),
             TypeLabel: DisplayTitle(data.Type, issued),
             ScopeName: scopeName,
-            DateText: dateText,
+            DateText: data.Type == TicketType.EventTicket ? dateText : null,
             CategoryLabel: CategoryLabel(issued),
             HolderName: displayName,
             TicketRef: TicketRef(data.Uuid),
@@ -236,6 +236,7 @@ public sealed class WebTicketController(
         foreach (var s in summaries)
         {
             var (scopeName, dateText) = await ResolveScopeAsync(s.Type, s.ScopeId);
+            if (s.Type != TicketType.EventTicket) dateText = null;
             var issued = await tickets.FindAsync(s.Uuid);
             var name = FirstNonEmpty(issued?.CustomName, issued?.HolderName ?? issued?.BuyerName);
             result.Add(new RelatedTicket(

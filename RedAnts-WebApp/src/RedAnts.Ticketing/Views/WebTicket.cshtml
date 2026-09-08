@@ -98,17 +98,16 @@
             {
                 <section class="wt-sec">
                     <h2>Nächstes Spiel</h2>
-                    <a class="wt-match wt-match--next" href="@next.Url">
+                    <div class="wt-match wt-match--next">
                         <span class="wt-match-logos">
-                            @if (!string.IsNullOrEmpty(next.HomeLogo)) { <img src="@next.HomeLogo" alt="" /> }
-                            @if (!string.IsNullOrEmpty(next.AwayLogo)) { <img src="@next.AwayLogo" alt="" /> }
+                            @if (!string.IsNullOrEmpty(next.HomeLogo)) { <img src="@next.HomeLogo" alt="" onerror="this.remove()" /> }
+                            @if (!string.IsNullOrEmpty(next.AwayLogo)) { <img src="@next.AwayLogo" alt="" onerror="this.remove()" /> }
                         </span>
                         <span class="wt-match-body">
                             <span class="wt-match-title">@next.Title@if (next.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
                             <span class="wt-match-meta">@next.DateText@(string.IsNullOrEmpty(next.VenueName) ? "" : $" · {next.VenueName}")</span>
                         </span>
-                        @if (!string.IsNullOrEmpty(next.Url)) { <span class="wt-chev">›</span> }
-                    </a>
+                    </div>
                     <a class="wt-more" href="/ticket/@Model.Token/events">Alle Spiele anzeigen →</a>
                 </section>
             }
