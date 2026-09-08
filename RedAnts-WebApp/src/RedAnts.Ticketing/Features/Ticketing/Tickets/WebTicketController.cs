@@ -172,7 +172,7 @@ public sealed class WebTicketController(
         TicketType.EventTicket => "spiel",
         TicketType.SeasonSingle => "flex",
         TicketType.SeasonPass => "saison",
-        TicketType.MemberCard => member == MemberCategory.Block4 ? "block4" : "member",
+        TicketType.MemberCard => member is { } m && m.IsBlock4() ? "block4" : "member",
         TicketType.FreeEntry => "free",
         _ => "spiel"
     };

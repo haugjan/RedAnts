@@ -34,16 +34,11 @@ public sealed class MemberCardMailer(
         "Vielen Dank für deine Unterstützung. Bis bald in der Halle!\n\n" +
         "Sportliche Grüsse";
 
-    public string DefaultSubjectFor(MemberCategory category, bool isCompany) =>
-        settings.Subject(KindFor(category, isCompany), FallbackSubject);
+    public string DefaultSubjectFor(MemberCategory category) =>
+        settings.Subject(MemberCardMailKinds.For(category), FallbackSubject);
 
-    public string DefaultBodyFor(MemberCategory category, bool isCompany) =>
-        settings.Body(KindFor(category, isCompany), FallbackBody);
-
-    private static TicketingMailKind KindFor(MemberCategory category, bool isCompany) =>
-        category == MemberCategory.Block4
-            ? (isCompany ? TicketingMailKind.MemberCardBlock4Company : TicketingMailKind.MemberCardBlock4Private)
-            : TicketingMailKind.MemberCardRedAnts;
+    public string DefaultBodyFor(MemberCategory category) =>
+        settings.Body(MemberCardMailKinds.For(category), FallbackBody);
 
     public async Task<EmailSendResult> SendAsync(MemberCard card, string subject, string body, CancellationToken cancellationToken = default)
     {

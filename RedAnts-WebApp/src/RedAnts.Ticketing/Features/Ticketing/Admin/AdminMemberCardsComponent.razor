@@ -453,7 +453,7 @@
                     <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
                 </div>
             }
-            else if (_references.Count == 0)
+            else if (_batches.Count == 0)
             {
                 <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
                 <div class="ta-modal-actions">
@@ -463,16 +463,24 @@
             else
             {
                 <div class="ta-field">
-                    <label class="ta-label" for="bulkReference">Bundle</label>
-                    <select id="bulkReference" class="ta-select" @bind="_bulkReference">
-                        @foreach (var r in _references)
+                    <label class="ta-label" for="bulkBatch">Bundle und Kategorie</label>
+                    <select id="bulkBatch" class="ta-select" @bind="_bulkBatchKey" @bind:after="ApplyBatchDefaults">
+                        @foreach (var b in _batches)
                         {
-                            <option value="@r">@r</option>
+                            <option value="@b.Key">@b.Label (@b.WithEmail mit E-Mail)</option>
                         }
                     </select>
                 </div>
                 <p class="ta-hint">@BundleWithEmail Karte@(BundleWithEmail == 1 ? "" : "n") mit E-Mail werden versendet · @BundleWithoutEmail ohne E-Mail werden übersprungen.</p>
-                <p class="ta-hint">Je Karte wird der hinterlegte Text der jeweiligen Mitgliedschaft verschickt (Red Ants, Block 4 Privat oder Block 4 Firma). Die Texte pflegst du unter „E-Mail-Texte" im Backoffice.</p>
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkSubject">Betreff</label>
+                    <input id="bulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkBody">Text</label>
+                    <textarea id="bulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
+                </div>
+                <p class="ta-hint">Vorbelegt ist der hinterlegte Text der Kategorie (Red Ants, Block 4 einzel oder Firma); Anpassungen gelten nur für diesen Versand. Die Standardtexte pflegst du unter „E-Mail-Texte" im Backoffice.</p>
 
                 @if (!string.IsNullOrEmpty(_bulkError))
                 {
@@ -936,8 +944,8 @@
     private void OpenMail(MemberCardListItem c)
     {
         _mailFor = c;
-        _mailSubject = Mailer.DefaultSubjectFor(c.Category, c.IsCompany);
-        _mailBody = Mailer.DefaultBodyFor(c.Category, c.IsCompany);
+        _mailSubject = Mailer.DefaultSubjectFor(c.Category);
+        _mailBody = Mailer.DefaultBodyFor(c.Category);
         _mailSent = false;
         _mailError = null;
     }
@@ -974,38 +982,62 @@
         c.FirstName, c.LastName, c.Birthday, c.Email, c.Reference, address: c.Address, admissions: c.Admissions);
 
     private bool _showBulk;
-    private string _bulkReference = "";
+    private string _bulkBatchKey = "";
+    private string _bulkSubject = "";
+    private string _bulkBody = "";
     private bool _bulkSending;
     private string? _bulkError;
     private BulkResult? _bulkResult;
+    private List<MailBatch> _batches = [];
 
     private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<MemberCardListItem> NoEmail);
 
-    private List<MemberCardListItem> BundleCards() =>
-        _cards.Where(c => !c.IsCancelled && c.Reference == _bulkReference).ToList();
+    private sealed record MailBatch(string Reference, MemberCategory Category, IReadOnlyList<MemberCardListItem> Cards)
+    {
+        public string Key => $"{Reference}|{(int)Category}";
+        public string Label => $"{Reference} – {Category.DisplayName()}";
+        public int WithEmail => Cards.Count(c => c.HasEmail);
+    }
+
+    private MailBatch? CurrentBatch => _batches.FirstOrDefault(b => b.Key == _bulkBatchKey);
+
+    private List<MemberCardListItem> BundleCards() => CurrentBatch?.Cards.ToList() ?? [];
 
     private int BundleWithEmail => BundleCards().Count(c => c.HasEmail);
     private int BundleWithoutEmail => BundleCards().Count(c => !c.HasEmail);
 
     private void OpenBulk()
     {
-        _references = _cards
-            .Where(c => !string.IsNullOrWhiteSpace(c.Reference))
-            .Select(c => c.Reference!)
-            .Distinct()
-            .OrderBy(r => r)
+        _batches = _cards
+            .Where(c => !c.IsCancelled && !string.IsNullOrWhiteSpace(c.Reference))
+            .GroupBy(c => (Reference: c.Reference!, c.Category))
+            .OrderBy(g => g.Key.Reference).ThenBy(g => g.Key.Category)
+            .Select(g => new MailBatch(g.Key.Reference, g.Key.Category, g.ToList()))
             .ToList();
-        _bulkReference = _references.FirstOrDefault() ?? "";
+        _bulkBatchKey = _batches.FirstOrDefault()?.Key ?? "";
+        ApplyBatchDefaults();
         _bulkResult = null;
         _bulkError = null;
         _showBulk = true;
+    }
+
+    private void ApplyBatchDefaults()
+    {
+        var category = CurrentBatch?.Category ?? MemberCategory.RedAnts;
+        _bulkSubject = Mailer.DefaultSubjectFor(category);
+        _bulkBody = Mailer.DefaultBodyFor(category);
     }
 
     private void CloseBulk() { if (!_bulkSending) { _showBulk = false; _bulkError = null; _bulkResult = null; } }
 
     private async Task SendBulk()
     {
-        if (_bulkSending || string.IsNullOrWhiteSpace(_bulkReference)) return;
+        if (_bulkSending || CurrentBatch is null) return;
+        if (string.IsNullOrWhiteSpace(_bulkSubject) || string.IsNullOrWhiteSpace(_bulkBody))
+        {
+            _bulkError = "Betreff und Text dürfen nicht leer sein.";
+            return;
+        }
         _bulkSending = true;
         _bulkError = null;
         _bulkResult = null;
@@ -1019,9 +1051,7 @@
             {
                 try
                 {
-                    var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(ToDomain(c),
-                        Mailer.DefaultSubjectFor(c.Category, c.IsCompany),
-                        Mailer.DefaultBodyFor(c.Category, c.IsCompany)));
+                    var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(ToDomain(c), _bulkSubject, _bulkBody));
                     if (result.Success) enqueued++;
                     else failed++;
                 }
@@ -1060,10 +1090,11 @@
     private static string CategoryBadgeClass(MemberCategory category) => category switch
     {
         MemberCategory.Block4 => "ta-badge-block4",
+        MemberCategory.Company => "ta-badge-firma",
         _ => "ta-badge-redants"
     };
 
-    private static readonly MemberCategory[] MemberCategoryOptions = [MemberCategory.RedAnts, MemberCategory.Block4];
+    private static readonly MemberCategory[] MemberCategoryOptions = [MemberCategory.RedAnts, MemberCategory.Block4, MemberCategory.Company];
     private static readonly TicketStatus[] MemberStatusOptions = [TicketStatus.Valid, TicketStatus.Cancelled];
     private static string StatusLabel(TicketStatus status) => status == TicketStatus.Cancelled ? "Storniert" : "Gültig";
 

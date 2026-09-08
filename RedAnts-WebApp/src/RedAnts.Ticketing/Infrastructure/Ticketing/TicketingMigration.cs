@@ -61,6 +61,17 @@ public class TicketingMigrationPlan : MigrationPlan
         To<BackfillTicketHoldersFromOrders>("backfill-ticket-holders");
         To<AddSessionCacheTable>("session-cache-table");
         To<AddCapacityReservations>("capacity-reservations");
+        To<SplitCompanyMemberCategory>("member-card-company-category");
+    }
+}
+
+public class SplitCompanyMemberCategory(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (TableExists("MembershipCards"))
+            Database.Execute("UPDATE MembershipCards SET Category = 2 WHERE Category = 1 AND Company IS NOT NULL AND LTRIM(RTRIM(Company)) <> ''");
+        return Task.CompletedTask;
     }
 }
 
