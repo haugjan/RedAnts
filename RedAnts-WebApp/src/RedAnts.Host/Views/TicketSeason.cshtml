@@ -1,7 +1,9 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Domain.Ticketing
+@using RedAnts.Features.Ticketing.Ports
 @using RedAnts.Features.Ticketing.Public
+@inject IEventPricing Pricing
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
@@ -24,6 +26,15 @@
             && c.Value<DateTime>("start") >= SwissTime.Now.Date)
         .OrderBy(c => c.Value<DateTime>("start"))
         .ToList();
+    var soldOutEvents = new HashSet<int>();
+    if (!blocked)
+    {
+        foreach (var candidate in events)
+        {
+            var cats = await Pricing.GetAvailableAsync(candidate.Id);
+            if (!cats.Any(c => c.Available) && cats.Any(c => c.Remaining == 0)) soldOutEvents.Add(candidate.Id);
+        }
+    }
 }
 
 @if (blocked)
@@ -68,8 +79,9 @@ else
                             var evImage = evt.Value<IPublishedContent>("eventImage")?.Url();
                             var evHome = evt.Value<IPublishedContent>("homeTeamLogo")?.Url();
                             var evAway = evt.Value<IPublishedContent>("awayTeamLogo")?.Url();
+                            var soldOut = soldOutEvents.Contains(evt.Id);
                             <li class="event-item">
-                                <a class="event-item-link" href="@evt.Url()">
+                                <a class="event-item-link @(soldOut ? "event-item-link--soldout" : "")" href="@(soldOut ? null : evt.Url())" aria-disabled="@(soldOut ? "true" : null)">
                                     @if (!string.IsNullOrEmpty(evHome) || !string.IsNullOrEmpty(evAway))
                                     {
                                         <span class="event-item-logos">
@@ -87,7 +99,7 @@ else
                                         <span class="event-item-name">@evt.Name</span>
                                         @if (venue != null) { <span class="event-item-venue">@venue.Name</span> }
                                     </span>
-                                    <span class="event-item-cta">Tickets →</span>
+                                    <span class="event-item-cta @(soldOut ? "event-item-cta--soldout" : "")">@(soldOut ? "Ausverkauft" : "Tickets →")</span>
                                 </a>
                             </li>
                         }
@@ -123,6 +135,10 @@ else
         .event-item-name { font-family: 'Oswald', sans-serif; font-size: 1.5rem; line-height: 1.1; color: #101010; }
         .event-item-venue { font-size: .9rem; color: #666; }
         .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
-        @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
+        .event-item-link--soldout { cursor: default; }
+        .event-item-link--soldout:hover { box-shadow: none; transform: none; }
+        .event-item-link--soldout .event-item-name, .event-item-link--soldout .event-item-logos, .event-item-link--soldout .event-item-thumb { opacity: .55; }
+        .event-item-cta--soldout { color: #666; text-transform: uppercase; letter-spacing: .4px; font-size: .85rem; }
+        @@media (max-width: 560px) { .event-item-cta:not(.event-item-cta--soldout) { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
     </style>
 }

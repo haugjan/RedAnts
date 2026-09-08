@@ -25,11 +25,12 @@
         .OrderBy(c => c.Value<DateTime>("start"))
         .ToList();
 
-    var buyableEvents = new List<IPublishedContent>();
+    var buyableEvents = new List<(IPublishedContent Event, bool SoldOut)>();
     foreach (var candidate in openEvents)
     {
-        var cats = (await Pricing.GetAvailableAsync(candidate.Id)).Where(c => c.Available).ToList();
-        if (cats.Count > 0) buyableEvents.Add(candidate);
+        var cats = await Pricing.GetAvailableAsync(candidate.Id);
+        if (cats.Any(c => c.Available)) buyableEvents.Add((candidate, false));
+        else if (cats.Any(c => c.Remaining == 0)) buyableEvents.Add((candidate, true));
     }
 
     var passOffers = new List<(IPublishedContent Season, List<AvailableTicketCategory> Categories)>();
@@ -106,7 +107,7 @@
             else
             {
                 <ul class="event-list-items">
-                    @foreach (var evt in buyableEvents)
+                    @foreach (var (evt, soldOut) in buyableEvents)
                     {
                         var evStart = evt.Value<DateTime>("start");
                         var venue = evt.Value<IPublishedContent>("venue");
@@ -114,7 +115,7 @@
                         var evHome = evt.Value<IPublishedContent>("homeTeamLogo")?.Url();
                         var evAway = evt.Value<IPublishedContent>("awayTeamLogo")?.Url();
                         <li class="event-item">
-                            <a class="event-item-link" href="@evt.Url()">
+                            <a class="event-item-link @(soldOut ? "event-item-link--soldout" : "")" href="@(soldOut ? null : evt.Url())" aria-disabled="@(soldOut ? "true" : null)">
                                 @if (!string.IsNullOrEmpty(evHome) || !string.IsNullOrEmpty(evAway))
                                 {
                                     <span class="event-item-logos">
@@ -134,7 +135,7 @@
                                         @if (venue != null) { <text>@venue.Name</text> }
                                     </span>
                                 </span>
-                                <span class="event-item-cta">Zu den Tickets →</span>
+                                <span class="event-item-cta @(soldOut ? "event-item-cta--soldout" : "")">@(soldOut ? "Ausverkauft" : "Zu den Tickets →")</span>
                             </a>
                         </li>
                     }
@@ -170,7 +171,12 @@
     .pass-teaser-age { font-family: 'Oswald', sans-serif; font-size: 1rem; color: #666; letter-spacing: .3px; }
     .event-item-venue { font-size: .9rem; color: #666; }
     .event-item-cta { flex: 0 0 auto; font-weight: 700; color: #C8102E; white-space: nowrap; }
-    @@media (max-width: 560px) { .event-item-cta { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
+    .event-item-link--soldout { cursor: default; }
+    .event-item-link--soldout:hover { background: none; box-shadow: none; border-bottom-color: #eee; border-radius: 0; }
+    .event-item-link--soldout:hover .event-item-name { color: #101010; }
+    .event-item-link--soldout .event-item-name, .event-item-link--soldout .event-item-logos, .event-item-link--soldout .event-item-thumb { opacity: .55; }
+    .event-item-cta--soldout { color: #666; text-transform: uppercase; letter-spacing: .4px; font-size: .85rem; }
+    @@media (max-width: 560px) { .event-item-cta:not(.event-item-cta--soldout) { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
 
     .pass-season-label { font-family: 'Oswald', sans-serif; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; margin: 4px 0 10px; }
     .pass-season-label:not(:first-of-type) { margin-top: 24px; }
