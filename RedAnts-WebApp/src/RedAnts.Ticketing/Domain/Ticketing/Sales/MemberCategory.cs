@@ -13,7 +13,7 @@ public static class MemberCategoryExtensions
     {
         MemberCategory.RedAnts => "Red Ants",
         MemberCategory.Block4 => "Block 4 einzel",
-        MemberCategory.Company => "Firma",
+        MemberCategory.Company => "Block 4 Firma",
         _ => category.ToString()
     };
 
