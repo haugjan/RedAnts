@@ -56,10 +56,10 @@
                             <td>@(string.IsNullOrWhiteSpace(s.Name) ? "—" : s.Name)</td>
                             <td>@s.Source</td>
                             <td>
-                                @s.SignedUpAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                @SwissTime.ToSwiss(s.SignedUpAt).ToString("dd.MM.yyyy HH:mm")
                                 @if (s.TransferredAt is { } at)
                                 {
-                                    <div class="ta-addr-sub">übertragen @at.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                                    <div class="ta-addr-sub">übertragen @SwissTime.ToSwiss(at).ToString("dd.MM.yyyy")</div>
                                 }
                             </td>
                             <td>

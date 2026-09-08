@@ -29,7 +29,7 @@
                         {
                             <tr>
                                 <td><code class="ta-uuid">@r.RefundNumber</code></td>
-                                <td>@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@SwissTime.ToSwiss(r.CreatedAt).ToString("dd.MM.yyyy HH:mm")</td>
                                 <td class="ta-num">CHF @r.Amount.ToString("N2")</td>
                                 <td>@r.Method.DisplayName()</td>
                                 <td><span class="ta-badge @RefundClass(r.Status)">@RefundLabel(r.Status)</span></td>

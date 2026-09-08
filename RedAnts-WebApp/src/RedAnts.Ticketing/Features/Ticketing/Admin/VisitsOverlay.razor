@@ -53,7 +53,7 @@
                                 }
                                 @if (v.ConvertedAt is { } ca)
                                 {
-                                    <span class="ta-visit-when">am @ca.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                    <span class="ta-visit-when">am @SwissTime.ToSwiss(ca).ToString("dd.MM.yyyy HH:mm")</span>
                                 }
                             </div>
                         </div>
@@ -93,7 +93,7 @@
                                     {
                                         <tr>
                                             <td>@(s.Type == VisitLogType.CheckIn ? "Eingescannt" : "Ausgescannt")</td>
-                                            <td>@s.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>@SwissTime.ToSwiss(s.OccurredAt).ToString("dd.MM.yyyy HH:mm")</td>
                                             <td>@(string.IsNullOrEmpty(s.ScannedBy) ? "—" : s.ScannedBy)</td>
                                         </tr>
                                     }
@@ -163,7 +163,7 @@
     private static string Summary(TicketVisitEntry v)
     {
         if (v.Scans.Count == 0) return "keine Scans";
-        var last = v.Scans.Max(s => s.OccurredAt).ToLocalTime();
+        var last = SwissTime.ToSwiss(v.Scans.Max(s => s.OccurredAt));
         return $"{v.Scans.Count} Scan{(v.Scans.Count == 1 ? "" : "s")} · zuletzt {last:dd.MM.yyyy HH:mm}";
     }
 

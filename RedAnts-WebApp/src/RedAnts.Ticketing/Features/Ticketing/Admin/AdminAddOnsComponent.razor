@@ -76,7 +76,7 @@
                                     <div class="ta-addr-name">@it.BuyerName</div>
                                     <div class="ta-addr-sub">@it.Email</div>
                                 </td>
-                                <td>@it.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@SwissTime.ToSwiss(it.CreatedAt).ToString("dd.MM.yyyy HH:mm")</td>
                                 <td><span class="ta-badge @StatusClass(it.OrderStatus)">@StatusLabel(it.OrderStatus)</span></td>
                                 <td>@it.Label</td>
                                 <td>@it.CategoryName</td>

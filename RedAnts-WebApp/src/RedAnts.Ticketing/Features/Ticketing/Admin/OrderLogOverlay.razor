@@ -25,7 +25,7 @@
                     {
                         <tr>
                             <td><span class="ta-badge @StatusClass(e.ToStatus)">@StatusLabel(e.ToStatus)</span></td>
-                            <td>@e.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@SwissTime.ToSwiss(e.OccurredAt).ToString("dd.MM.yyyy HH:mm")</td>
                             <td>@(string.IsNullOrEmpty(e.ChangedBy) ? "—" : e.ChangedBy)</td>
                             <td>@(string.IsNullOrEmpty(e.Note) ? "—" : e.Note)</td>
                         </tr>

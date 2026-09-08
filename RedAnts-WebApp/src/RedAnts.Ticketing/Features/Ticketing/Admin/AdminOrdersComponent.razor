@@ -79,7 +79,7 @@
                                     <div>@o.PostalCode @o.City@(IsSwitzerland(o.Country) ? "" : $", {o.Country}")</div>
                                     <div class="ta-addr-sub">@o.Email</div>
                                 </td>
-                                <td>@o.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@SwissTime.ToSwiss(o.CreatedAt).ToString("dd.MM.yyyy HH:mm")</td>
                                 <td>
                                     <span class="ta-badge @StatusClass(o.Status)">@StatusLabel(o.Status)</span>
                                     @if (o.Status == OrderStatus.PartiallyRefunded)
