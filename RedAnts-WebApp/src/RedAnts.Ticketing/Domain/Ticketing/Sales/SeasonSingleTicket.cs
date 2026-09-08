@@ -10,13 +10,13 @@ public sealed class SeasonSingleTicket
     public decimal Price { get; private set; }
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public int? RedeemedEventId { get; private set; }
     public bool Redeemed { get; private set; }
     public int? BundleId { get; private set; }
 
     private SeasonSingleTicket(int id, Guid uuid, int seasonId, TicketCategory category, int? tierId, decimal price,
-        int? orderId, TicketStatus status, DateTime createdAt, int? redeemedEventId, bool redeemed,
+        int? orderId, TicketStatus status, DateTimeOffset createdAt, int? redeemedEventId, bool redeemed,
         int? bundleId = null)
     {
         Id = id;
@@ -39,7 +39,7 @@ public sealed class SeasonSingleTicket
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         return new SeasonSingleTicket(0, Guid.NewGuid(), seasonId, category, tierId, decimal.Round(price, 2),
-            orderId, TicketStatus.Valid, DateTime.UtcNow, null, false);
+            orderId, TicketStatus.Valid, SwissTime.Timestamp, null, false);
     }
 
     public static SeasonSingleTicket CreateForBundle(int seasonId, TicketCategory category, decimal price, int bundleId,
@@ -49,11 +49,11 @@ public sealed class SeasonSingleTicket
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         if (bundleId <= 0) throw new DomainException("Ein Bundle muss zugewiesen sein.");
         return new SeasonSingleTicket(0, Guid.NewGuid(), seasonId, category, tierId, decimal.Round(price, 2),
-            orderId, TicketStatus.Valid, DateTime.UtcNow, null, false, bundleId);
+            orderId, TicketStatus.Valid, SwissTime.Timestamp, null, false, bundleId);
     }
 
     public static SeasonSingleTicket FromPersistence(int id, Guid uuid, int seasonId, TicketCategory category,
-        decimal price, int? orderId, TicketStatus status, DateTime createdAt, int? redeemedEventId, bool redeemed,
+        decimal price, int? orderId, TicketStatus status, DateTimeOffset createdAt, int? redeemedEventId, bool redeemed,
         int? bundleId = null, int? tierId = null) =>
         new(id, uuid, seasonId, category, tierId, price, orderId, status, createdAt, redeemedEventId, redeemed, bundleId);
 

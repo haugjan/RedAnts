@@ -31,7 +31,7 @@ public sealed class FreeEntryAdminReportReader(IScopeProvider scopeProvider) : I
     private sealed class FreeEntryRow
     {
         public string? Uuid { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public bool IsInside { get; set; }
         public string? GrantedBy { get; set; }
         public int? Category { get; set; }

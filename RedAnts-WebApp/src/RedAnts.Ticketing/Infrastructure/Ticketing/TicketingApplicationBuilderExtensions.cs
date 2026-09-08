@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Features.Ticketing.Scanning;
 using RedAnts.Infrastructure.Ticketing.Analytics;
 
 namespace RedAnts.Infrastructure.Ticketing;
@@ -67,7 +68,7 @@ public static class TicketingApplicationBuilderExtensions
 
             var ua = request.Headers.UserAgent.ToString();
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "";
-            var now = DateTime.UtcNow;
+            var now = SwissTime.Timestamp;
             var seed = $"{ip}|{ua}|{now:yyyyMMdd}|{pageViewSalt}";
             var visitorHash = Convert.ToHexString(
                 System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(seed)));
@@ -85,10 +86,10 @@ public static class TicketingApplicationBuilderExtensions
     {
         var cookieDomain = app.Configuration["BasicAuth:CookieDomain"];
 
-        const string helperCookie = "RedAnts.Helper";
+        const string helperCookie = HelperSessionCookie.Name;
         var helperProtector = app.Services
             .GetRequiredService<IDataProtectionProvider>()
-            .CreateProtector("RedAnts.HelperSession.v1");
+            .CreateProtector(HelperSessionCookie.Purpose);
 
         const string helperPageHtml =
             "<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\">" +

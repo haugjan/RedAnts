@@ -8,12 +8,12 @@ public sealed class FlexTicketBundle
     public int SeasonId { get; private set; }
     public TicketCategory Category { get; private set; }
     public string Reference { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public string? CreatedByName { get; private set; }
     public string? CreatedByEmail { get; private set; }
 
     private FlexTicketBundle(int id, int seasonId, TicketCategory category, string reference,
-        DateTime createdAt, string? createdByName, string? createdByEmail)
+        DateTimeOffset createdAt, string? createdByName, string? createdByEmail)
     {
         Id = id;
         SeasonId = seasonId;
@@ -28,12 +28,12 @@ public sealed class FlexTicketBundle
         string? createdByName = null, string? createdByEmail = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
-        return new FlexTicketBundle(0, seasonId, category, CleanReference(reference), DateTime.UtcNow,
+        return new FlexTicketBundle(0, seasonId, category, CleanReference(reference), SwissTime.Timestamp,
             Clean(createdByName), Clean(createdByEmail));
     }
 
     public static FlexTicketBundle FromPersistence(int id, int seasonId, TicketCategory category,
-        string reference, DateTime createdAt, string? createdByName = null, string? createdByEmail = null) =>
+        string reference, DateTimeOffset createdAt, string? createdByName = null, string? createdByEmail = null) =>
         new(id, seasonId, category, reference, createdAt, Clean(createdByName), Clean(createdByEmail));
 
     public void Rename(string reference) => Reference = CleanReference(reference);

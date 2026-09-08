@@ -13,7 +13,7 @@ public sealed class MyTicketsReader(IScopeProvider scopeProvider) : IMyTicketsRe
         public int TicketType { get; set; }
         public int ScopeId { get; set; }
         public int Status { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
     }
 
     public async Task<IReadOnlyList<string>> FindIdentityEmailsAsync(Guid uuid)

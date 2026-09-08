@@ -7,7 +7,7 @@ public sealed record SeasonPassListItem(
     string CategoryName,
     decimal Price,
     TicketStatus Status,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     int EventVisits,
     string? BuyerName,
     string? OrderNumber,

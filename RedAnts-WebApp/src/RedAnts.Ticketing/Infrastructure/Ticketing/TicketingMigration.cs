@@ -1,3 +1,4 @@
+using NPoco;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Migrations;
 using Umbraco.Cms.Core.Scoping;
@@ -62,6 +63,8 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSessionCacheTable>("session-cache-table");
         To<AddCapacityReservations>("capacity-reservations");
         To<SplitCompanyMemberCategory>("member-card-company-category");
+        To<AddPerformanceIndexes>("performance-indexes");
+        To<ConvertTimestampsToDateTimeOffset>("timestamps-datetimeoffset");
         To<AddTicketCustomName>("ticket-custom-name");
         To<AddTicketEmailIndexes>("ticket-email-indexes");
     }
@@ -71,7 +74,6 @@ public class AddTicketEmailIndexes(IMigrationContext context) : AsyncMigrationBa
 {
     protected override Task MigrateAsync()
     {
-        EnsureIndex("Orders", "BillingEmail");
         EnsureIndex("EventTickets", "Email");
         EnsureIndex("SeasonSingleTickets", "BuyerEmail");
         EnsureIndex("SeasonPasses", "BuyerEmail");
@@ -638,6 +640,35 @@ public class AddSalesFilterIndexes(IMigrationContext context) : AsyncMigrationBa
     }
 }
 
+public class AddPerformanceIndexes(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        // Sargable seek for the public "my tickets" lookup (Orders grows with every sale; the
+        // query filter was made sargable by dropping LOWER() and relying on the case-insensitive
+        // default collation).
+        EnsureIndex("Orders", "IX_Orders_BillingEmail", "BillingEmail");
+
+        // The outbox drain runs continuously: seek pending rows in due order in one step instead of
+        // filtering the low-cardinality Status index and sorting. The CreatedAt index serves the
+        // admin outbox list ordering.
+        EnsureIndex("OutboxEmails", "IX_OutboxEmails_Status_NextAttemptAt", "Status, NextAttemptAt");
+        EnsureIndex("OutboxEmails", "IX_OutboxEmails_CreatedAt", "CreatedAt");
+
+        // Reference (bundle) lookups on the two reference-carrying ticket tables.
+        EnsureIndex("MembershipCards", "IX_MembershipCards_Reference", "Reference");
+        EnsureIndex("SeasonPasses", "IX_SeasonPasses_Reference", "Reference");
+        return Task.CompletedTask;
+    }
+
+    private void EnsureIndex(string table, string indexName, string columns)
+    {
+        Execute.Sql(
+            $"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{indexName}' AND object_id = OBJECT_ID('{table}')) " +
+            $"CREATE NONCLUSTERED INDEX {indexName} ON {table} ({columns})").Do();
+    }
+}
+
 public class AddEventTicketBundles(IMigrationContext context) : AsyncMigrationBase(context)
 {
     protected override Task MigrateAsync()
@@ -887,4 +918,93 @@ public class TicketingMigrationComponent(
     }
 
     public Task TerminateAsync(bool isMainDom, CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+public class ConvertTimestampsToDateTimeOffset(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    private const string SwissZone = "W. Europe Standard Time";
+
+    private static readonly (string Table, string Column)[] Timestamps =
+    [
+        ("Orders", "CreatedAt"), ("Orders", "PaidAt"),
+        ("EventTickets", "CreatedAt"), ("SeasonSingleTickets", "CreatedAt"), ("SeasonPasses", "CreatedAt"),
+        ("MembershipCards", "CreatedAt"), ("Helpers", "CreatedAt"),
+        ("EventTicketBundles", "CreatedAt"), ("FlexTicketBundles", "CreatedAt"),
+        ("OrderRefunds", "CreatedAt"), ("AccountingJournal", "OccurredAt"), ("AccountingJournal", "CreatedAt"),
+        ("OrderStatusLogs", "OccurredAt"),
+        ("NewsletterSignups", "SignedUpAt"), ("NewsletterSignups", "TransferredAt"),
+        ("TicketEventVisits", "CreatedAt"), ("TicketEventVisitsLogs", "OccurredAt"),
+        ("OutboxEmails", "CreatedAt"), ("OutboxEmails", "NextAttemptAt"), ("OutboxEmails", "SentAt"),
+        ("PageViews", "OccurredAt")
+    ];
+
+    protected override Task MigrateAsync()
+    {
+        foreach (var (table, column) in Timestamps) Convert(table, column);
+        return Task.CompletedTask;
+    }
+
+    private void Convert(string table, string column)
+    {
+        if (!TableExists(table) || !ColumnExists(table, column)) return;
+        var current = Database.Fetch<ColumnRow>(
+            "SELECT TYPE_NAME(system_type_id) AS TypeName, is_nullable AS IsNullable FROM sys.columns WHERE object_id = OBJECT_ID(@0) AND name = @1",
+            table, column).FirstOrDefault();
+        if (current is null || string.Equals(current.TypeName, "datetimeoffset", StringComparison.OrdinalIgnoreCase)) return;
+
+        var indexes = IndexesIncluding(table, column);
+        foreach (var index in indexes)
+            Database.Execute($"DROP INDEX [{index.Name}] ON [{table}]");
+        foreach (var constraint in DefaultConstraintsOn(table, column))
+            Database.Execute($"ALTER TABLE [{table}] DROP CONSTRAINT [{constraint}]");
+
+        var nullability = current.IsNullable ? "NULL" : "NOT NULL";
+        Database.Execute($"ALTER TABLE [{table}] ALTER COLUMN [{column}] datetimeoffset(7) {nullability}");
+        Database.Execute($"UPDATE [{table}] SET [{column}] = [{column}] AT TIME ZONE '{SwissZone}' WHERE [{column}] IS NOT NULL");
+
+        foreach (var index in indexes)
+            Database.Execute(index.CreateSql(table));
+    }
+
+    private List<IndexRow> IndexesIncluding(string table, string column) =>
+        Database.Fetch<IndexRow>(@"
+            SELECT i.name AS Name, i.is_unique AS IsUnique,
+                   STRING_AGG(CASE WHEN ic.is_included_column = 0
+                       THEN QUOTENAME(c.name) + CASE WHEN ic.is_descending_key = 1 THEN ' DESC' ELSE '' END END, ', ')
+                       WITHIN GROUP (ORDER BY ic.key_ordinal) AS KeyColumns,
+                   STRING_AGG(CASE WHEN ic.is_included_column = 1 THEN QUOTENAME(c.name) END, ', ') AS IncludedColumns
+            FROM sys.indexes i
+            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+            JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+            WHERE i.object_id = OBJECT_ID(@0) AND i.type > 0 AND i.is_primary_key = 0 AND i.is_unique_constraint = 0
+              AND EXISTS (SELECT 1 FROM sys.index_columns x JOIN sys.columns xc ON xc.object_id = x.object_id AND xc.column_id = x.column_id
+                          WHERE x.object_id = i.object_id AND x.index_id = i.index_id AND xc.name = @1)
+            GROUP BY i.name, i.is_unique", table, column);
+
+    private List<string> DefaultConstraintsOn(string table, string column) =>
+        Database.Fetch<string>(@"
+            SELECT dc.name FROM sys.default_constraints dc
+            JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+            WHERE dc.parent_object_id = OBJECT_ID(@0) AND c.name = @1", table, column);
+
+    public class ColumnRow
+    {
+        public string TypeName { get; set; } = "";
+        public bool IsNullable { get; set; }
+    }
+
+    public class IndexRow
+    {
+        public string Name { get; set; } = "";
+        public bool IsUnique { get; set; }
+        public string KeyColumns { get; set; } = "";
+        public string? IncludedColumns { get; set; }
+
+        public string CreateSql(string table)
+        {
+            var unique = IsUnique ? "UNIQUE " : "";
+            var include = string.IsNullOrEmpty(IncludedColumns) ? "" : $" INCLUDE ({IncludedColumns})";
+            return $"CREATE {unique}NONCLUSTERED INDEX [{Name}] ON [{table}] ({KeyColumns}){include}";
+        }
+    }
 }

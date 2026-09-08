@@ -74,7 +74,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IPriceTie
                 Price = 0m,
                 OrderId = null,
                 Status = (int)TicketStatus.Valid,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = SwissTime.Timestamp,
                 BuyerType = buyerType,
                 BuyerFirstName = h.FirstName,
                 BuyerLastName = h.LastName,

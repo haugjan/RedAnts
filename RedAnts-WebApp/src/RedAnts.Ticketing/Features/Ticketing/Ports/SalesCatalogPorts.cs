@@ -98,7 +98,7 @@ public interface IOrders
     Task<Order?> GetByNumberAsync(string orderNumber);
     Task<bool> TryMarkPaidAsync(int orderId);
     Task<bool> TryCancelDraftAsync(int orderId);
-    Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTime createdAfter, DateTime createdBefore);
+    Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTimeOffset createdAfter, DateTimeOffset createdBefore);
     Task CopyBillingToTicketsAsync(int orderId);
 }
 

@@ -45,7 +45,7 @@ internal sealed class RecordingEventTicketBundles : IEventTicketBundles
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         Created.Add((eventId, category, reference, quantity, orderId));
-        return Task.FromResult(new EventTicketBundleView(Created.Count, eventId, category, reference, DateTime.UtcNow, quantity, 0));
+        return Task.FromResult(new EventTicketBundleView(Created.Count, eventId, category, reference, SwissTime.Timestamp, quantity, 0));
     }
 
     public Task<(int Created, int Updated)> ImportUnifiedAsync(int eventId, IReadOnlyList<TicketImportRow> rows, string defaultBundle,
@@ -119,21 +119,21 @@ internal sealed class RecordingFlexBundles : IFlexTicketBundles
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         Created.Add((seasonId, reference, quantity));
-        return Task.FromResult(new FlexTicketBundleView(Created.Count, seasonId, category, reference, DateTime.UtcNow, quantity, 0));
+        return Task.FromResult(new FlexTicketBundleView(Created.Count, seasonId, category, reference, SwissTime.Timestamp, quantity, 0));
     }
 
     public Task<FlexTicketBundleView> AddTicketsAsync(int bundleId, TicketCategory category, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         Calls.Add($"add:{bundleId}:{quantity}");
-        return Task.FromResult(new FlexTicketBundleView(bundleId, 1, category, "x", DateTime.UtcNow, quantity, 0));
+        return Task.FromResult(new FlexTicketBundleView(bundleId, 1, category, "x", SwissTime.Timestamp, quantity, 0));
     }
 
     public Task<FlexTicketBundleView> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
         string? createdByName = null, string? createdByEmail = null)
     {
         Created.Add((seasonId, reference, 0));
-        return Task.FromResult(new FlexTicketBundleView(Created.Count, seasonId, category, reference, DateTime.UtcNow, 0, 0));
+        return Task.FromResult(new FlexTicketBundleView(Created.Count, seasonId, category, reference, SwissTime.Timestamp, 0, 0));
     }
 
     public Task<bool> DeleteEmptyAsync(int bundleId)

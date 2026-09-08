@@ -37,8 +37,8 @@ public class OrderRecord
     [Column("PaymentMethod")] [NullSetting(NullSetting = NullSettings.NotNull)] public int PaymentMethod { get; set; }
     [Column("PaymentSource")] [NullSetting(NullSetting = NullSettings.Null)] public int? PaymentSource { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
-    [Column("PaidAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? PaidAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("PaidAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTimeOffset? PaidAt { get; set; }
 
     [Column("BillingType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BillingType { get; set; }
     [Column("BillingCompany")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BillingCompany { get; set; }
@@ -60,7 +60,7 @@ public class EventTicketRecord
     [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
     [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
     [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
     [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
@@ -107,7 +107,7 @@ public class SeasonSingleTicketRecord
     [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
     [Column("RedeemedEventId")] [NullSetting(NullSetting = NullSettings.Null)] public int? RedeemedEventId { get; set; }
     [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
     [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
@@ -142,7 +142,7 @@ public class SeasonPassRecord
     [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
     [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
     [Column("BuyerFirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerFirstName { get; set; }
     [Column("BuyerLastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerLastName { get; set; }
@@ -173,7 +173,7 @@ public class MemberCardRecord
     [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
     [Column("FirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? FirstName { get; set; }
     [Column("LastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? LastName { get; set; }
     [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
@@ -203,7 +203,7 @@ public class EventVisitRecord
     [Column("TicketType")] [NullSetting(NullSetting = NullSettings.NotNull)] public int TicketType { get; set; }
     [Column("TicketUuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] [Index(IndexTypes.NonClustered)] public string? TicketUuid { get; set; }
     [Column("IsInside")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool IsInside { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
     [Column("Uuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] public string? Uuid { get; set; }
     [Column("OriginType")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginType { get; set; }
     [Column("OriginCardUuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] [Index(IndexTypes.NonClustered)] public string? OriginCardUuid { get; set; }
@@ -217,7 +217,7 @@ public class EventVisitLogRecord
     [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
     [Column("VisitId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public long VisitId { get; set; }
     [Column("Type")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Type { get; set; }
-    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime OccurredAt { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset OccurredAt { get; set; }
     [Column("ScannedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? ScannedBy { get; set; }
 }
 
@@ -261,9 +261,9 @@ public class NewsletterSignupRecord
     [Column("Email")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] [Index(IndexTypes.NonClustered)] public string Email { get; set; } = "";
     [Column("Name")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Name { get; set; }
     [Column("Source")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(50)] public string Source { get; set; } = "";
-    [Column("SignedUpAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime SignedUpAt { get; set; }
+    [Column("SignedUpAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset SignedUpAt { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
-    [Column("TransferredAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? TransferredAt { get; set; }
+    [Column("TransferredAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTimeOffset? TransferredAt { get; set; }
 }
 
 [TableName("OrderStatusLogs")]
@@ -275,7 +275,7 @@ public class OrderStatusLogRecord
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
     [Column("ToStatus")] [NullSetting(NullSetting = NullSettings.NotNull)] public int ToStatus { get; set; }
     [Column("ChangedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? ChangedBy { get; set; }
-    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime OccurredAt { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset OccurredAt { get; set; }
     [Column("Note")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Note { get; set; }
 }
 
@@ -315,7 +315,7 @@ public class OrderRefundRecord
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Reference { get; set; }
     [Column("Reason")] [NullSetting(NullSetting = NullSettings.Null)] [Length(500)] public string? Reason { get; set; }
     [Column("CreatedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedBy { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
 }
 
 [TableName("AccountingJournal")]
@@ -335,8 +335,8 @@ public class AccountingJournalRecord
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Reference { get; set; }
     [Column("Description")] [NullSetting(NullSetting = NullSettings.Null)] [Length(500)] public string? Description { get; set; }
     [Column("CreatedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedBy { get; set; }
-    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime OccurredAt { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset OccurredAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
 }
 
 [TableName("OrderItems")]

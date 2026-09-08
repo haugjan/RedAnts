@@ -10,14 +10,14 @@ public class MemberAndPassTests
     private static MemberCard StoredCard(InMemoryMemberCards cards)
     {
         var card = MemberCard.FromPersistence(7, Guid.NewGuid(), 3, MemberCategory.RedAnts, null, TicketStatus.Valid,
-            DateTime.UtcNow, "Anna", "Muster", new DateOnly(1990, 5, 1), "anna@example.ch", "REF-1");
+            SwissTime.Timestamp, "Anna", "Muster", new DateOnly(1990, 5, 1), "anna@example.ch", "REF-1");
         cards.Stored.Add(card);
         return card;
     }
 
     private static SeasonPass StoredPass(InMemorySeasonPasses passes)
     {
-        var pass = SeasonPass.FromPersistence(5, Guid.NewGuid(), 3, 2, 300m, null, TicketStatus.Valid, DateTime.UtcNow);
+        var pass = SeasonPass.FromPersistence(5, Guid.NewGuid(), 3, 2, 300m, null, TicketStatus.Valid, SwissTime.Timestamp);
         passes.Stored.Add(pass);
         return pass;
     }

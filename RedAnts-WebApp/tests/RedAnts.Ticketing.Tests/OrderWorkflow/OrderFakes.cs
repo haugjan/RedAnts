@@ -31,7 +31,7 @@ internal sealed class RecordingOrderRefunds : IOrderRefunds
     {
         var id = _nextId++;
         var refund = OrderRefund.FromPersistence(id, $"R-{id:000}", orderId, amount, 0m, 0m, "CHF", method, initialStatus,
-            null, reference, reason, createdBy, DateTime.UtcNow);
+            null, reference, reason, createdBy, SwissTime.Timestamp);
         Stored.Add(refund);
         return Task.FromResult(refund);
     }

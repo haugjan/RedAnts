@@ -51,7 +51,7 @@ internal sealed class InMemoryOrders : IOrders
         return Task.FromResult(order is not null);
     }
 
-    public Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTime createdAfter, DateTime createdBefore) =>
+    public Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTimeOffset createdAfter, DateTimeOffset createdBefore) =>
         Task.FromResult<IReadOnlyList<Order>>(Stored.Where(o => o.Status == OrderStatus.Draft && o.CreatedAt >= createdAfter && o.CreatedAt < createdBefore).ToList());
 
     public Task CopyBillingToTicketsAsync(int orderId)
@@ -156,7 +156,7 @@ internal sealed class RecordingOrderLog : IOrderLog
 
     public Task<IReadOnlyList<OrderLogEntry>> GetByOrderAsync(int orderId) =>
         Task.FromResult<IReadOnlyList<OrderLogEntry>>(Entries.Where(e => e.OrderId == orderId)
-            .Select(e => new OrderLogEntry(e.Status, e.By, DateTime.UtcNow, e.Note)).ToList());
+            .Select(e => new OrderLogEntry(e.Status, e.By, SwissTime.Timestamp, e.Note)).ToList());
 }
 
 internal sealed class StubConversionRules : IEventConversionRules

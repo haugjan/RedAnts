@@ -10,7 +10,7 @@ public sealed class OutboxRepository(IScopeProvider scopeProvider, OutboxSignal 
 {
     public async Task EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
+        var now = SwissTime.Timestamp;
         using (var scope = scopeProvider.CreateScope(autoComplete: true))
         {
             await scope.Database.InsertAsync(new OutboxEmailRecord
@@ -35,7 +35,7 @@ public sealed class OutboxRepository(IScopeProvider scopeProvider, OutboxSignal 
         signal.Notify();
     }
 
-    public async Task<OutboxMessage?> ClaimNextDueAsync(DateTime now, CancellationToken cancellationToken = default)
+    public async Task<OutboxMessage?> ClaimNextDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var claimed = await scope.Database.FetchAsync<OutboxEmailRecord>(
@@ -54,7 +54,7 @@ public sealed class OutboxRepository(IScopeProvider scopeProvider, OutboxSignal 
             Deserialize(row.AttachmentsJson), row.Attempts, row.SentVia);
     }
 
-    public async Task MarkSentAsync(int id, string sentVia, DateTime sentAt)
+    public async Task MarkSentAsync(int id, string sentVia, DateTimeOffset sentAt)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await scope.Database.ExecuteAsync(
@@ -62,7 +62,7 @@ public sealed class OutboxRepository(IScopeProvider scopeProvider, OutboxSignal 
             id, sentVia, sentAt);
     }
 
-    public async Task RescheduleAsync(int id, string? sentVia, string lastError, DateTime nextAttemptAt)
+    public async Task RescheduleAsync(int id, string? sentVia, string lastError, DateTimeOffset nextAttemptAt)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await scope.Database.ExecuteAsync(
@@ -78,14 +78,14 @@ public sealed class OutboxRepository(IScopeProvider scopeProvider, OutboxSignal 
             id, sentVia, Trim(lastError));
     }
 
-    public async Task<int> PurgeSentBeforeAsync(DateTime cutoff)
+    public async Task<int> PurgeSentBeforeAsync(DateTimeOffset cutoff)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         return await scope.Database.ExecuteAsync(
             "DELETE FROM OutboxEmails WHERE Status = 2 AND SentAt IS NOT NULL AND SentAt < @0", cutoff);
     }
 
-    public async Task<IReadOnlyList<OutboxEntry>> ListAsync(bool includeSent, DateTime sentSince)
+    public async Task<IReadOnlyList<OutboxEntry>> ListAsync(bool includeSent, DateTimeOffset sentSince)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var where = includeSent
@@ -107,7 +107,7 @@ public sealed class OutboxRepository(IScopeProvider scopeProvider, OutboxSignal 
         {
             affected = await scope.Database.ExecuteAsync(
                 "UPDATE OutboxEmails SET Status = 0, NextAttemptAt = @1, LastError = NULL WHERE Id = @0 AND Status <> 2",
-                id, DateTime.UtcNow);
+                id, SwissTime.Timestamp);
         }
         if (affected > 0) signal.Notify();
         return affected > 0;

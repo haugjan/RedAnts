@@ -14,12 +14,12 @@ public sealed class AccountingJournalEntry
     public string? Reference { get; private set; }
     public string? Description { get; private set; }
     public string? CreatedBy { get; private set; }
-    public DateTime OccurredAt { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset OccurredAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
 
     private AccountingJournalEntry(long id, long entryNumber, JournalEntryType entryType, int orderId, int? refundId,
         decimal amount, decimal vatRate, decimal vatAmount, string currency, string? reference, string? description,
-        string? createdBy, DateTime occurredAt, DateTime createdAt)
+        string? createdBy, DateTimeOffset occurredAt, DateTimeOffset createdAt)
     {
         Id = id;
         EntryNumber = entryNumber;
@@ -39,7 +39,7 @@ public sealed class AccountingJournalEntry
 
     public static AccountingJournalEntry FromPersistence(long id, long entryNumber, JournalEntryType entryType,
         int orderId, int? refundId, decimal amount, decimal vatRate, decimal vatAmount, string currency,
-        string? reference, string? description, string? createdBy, DateTime occurredAt, DateTime createdAt) =>
+        string? reference, string? description, string? createdBy, DateTimeOffset occurredAt, DateTimeOffset createdAt) =>
         new(id, entryNumber, entryType, orderId, refundId, amount, vatRate, vatAmount,
             string.IsNullOrWhiteSpace(currency) ? "CHF" : currency, reference, description, createdBy, occurredAt, createdAt);
 }

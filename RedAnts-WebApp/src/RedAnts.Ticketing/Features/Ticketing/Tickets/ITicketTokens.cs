@@ -30,7 +30,7 @@ public sealed record IssuedTicket(
     int ScopeId,
     TicketCategory? Category,
     TicketStatus Status,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     string? HolderName,
     MemberCategory? MemberCategory = null,
     DateOnly? Birthday = null,

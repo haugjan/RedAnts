@@ -51,9 +51,9 @@ public sealed class FreeEntry
     public FreeEntryType Type { get; }
     public Guid Uuid { get; }
     public bool IsInside { get; private set; }
-    public DateTime CreatedAt { get; }
+    public DateTimeOffset CreatedAt { get; }
 
-    private FreeEntry(long visitId, int eventId, FreeEntryType type, Guid uuid, bool isInside, DateTime createdAt, List<VisitLog> logs)
+    private FreeEntry(long visitId, int eventId, FreeEntryType type, Guid uuid, bool isInside, DateTimeOffset createdAt, List<VisitLog> logs)
     {
         VisitId = visitId;
         EventId = eventId;
@@ -64,7 +64,7 @@ public sealed class FreeEntry
         _logs = logs;
     }
 
-    public static FreeEntry Grant(int eventId, FreeEntryType type, string? scannedBy, DateTime now)
+    public static FreeEntry Grant(int eventId, FreeEntryType type, string? scannedBy, DateTimeOffset now)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         var entry = new FreeEntry(0, eventId, type, Guid.NewGuid(), true, now, []);
@@ -72,7 +72,7 @@ public sealed class FreeEntry
         return entry;
     }
 
-    public static FreeEntry FromPersistence(long visitId, int eventId, FreeEntryType type, Guid uuid, bool isInside, DateTime createdAt,
+    public static FreeEntry FromPersistence(long visitId, int eventId, FreeEntryType type, Guid uuid, bool isInside, DateTimeOffset createdAt,
         IEnumerable<VisitLog> logs) =>
         new(visitId, eventId, type, uuid, isInside, createdAt, logs.OrderBy(l => l.OccurredAt).ThenBy(l => l.Id).ToList());
 
@@ -80,7 +80,7 @@ public sealed class FreeEntry
     public IReadOnlyList<VisitLog> Logs => _logs;
     public IReadOnlyList<VisitLog> NewLogs => _newLogs;
 
-    public void Revoke(string? scannedBy, DateTime now)
+    public void Revoke(string? scannedBy, DateTimeOffset now)
     {
         if (!IsInside) throw new DomainException($"Kein freier Einlass ({Type.DisplayName()}) zum Auschecken.");
         IsInside = false;
@@ -93,7 +93,7 @@ public sealed class FreeEntry
         _newLogs.Clear();
     }
 
-    private void AddLog(VisitLogType type, DateTime now, string? scannedBy)
+    private void AddLog(VisitLogType type, DateTimeOffset now, string? scannedBy)
     {
         var log = new VisitLog(0, type, now, scannedBy);
         _logs.Add(log);

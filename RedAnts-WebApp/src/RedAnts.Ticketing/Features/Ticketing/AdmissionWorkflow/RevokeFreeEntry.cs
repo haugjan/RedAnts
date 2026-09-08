@@ -16,7 +16,7 @@ public static class RevokeFreeEntry
                 return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, command.Type.DisplayName(),
                     $"Kein freier Einlass ({command.Type.DisplayName()}) zum Auschecken.", await occupancy.GetAsync(command.EventId));
 
-            entry.Revoke(command.ScannedBy, DateTime.UtcNow);
+            entry.Revoke(command.ScannedBy, SwissTime.Timestamp);
             await freeEntries.SaveAsync(entry);
             return new ScanOutcome(AdmissionOutcome.CheckedOut, TicketType.FreeEntry, command.Type.DisplayName(), null,
                 await occupancy.GetAsync(command.EventId));

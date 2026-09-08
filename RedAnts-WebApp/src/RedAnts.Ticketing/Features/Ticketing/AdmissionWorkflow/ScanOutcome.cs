@@ -11,7 +11,7 @@ public enum AdmissionOutcome
     Test
 }
 
-public sealed record PriorScan(DateTime At, string? By);
+public sealed record PriorScan(DateTimeOffset At, string? By);
 
 public sealed record ScanOutcome(
     AdmissionOutcome Outcome,
@@ -21,7 +21,7 @@ public sealed record ScanOutcome(
     Occupancy Occupancy,
     string? CategoryLabel = null,
     string? Holder = null,
-    DateTime? PriorAt = null,
+    DateTimeOffset? PriorAt = null,
     string? PriorBy = null,
     int? AdmissionsUsed = null,
     int? AdmissionCap = null,

@@ -25,7 +25,7 @@ public static class RedemptionStateExtensions
         : RedemptionState.Redeemed;
 }
 
-public sealed record TicketVisitScan(VisitLogType Type, DateTime OccurredAt, string? ScannedBy);
+public sealed record TicketVisitScan(VisitLogType Type, DateTimeOffset OccurredAt, string? ScannedBy);
 
 public enum TicketVisitKind { Visit, Conversion }
 
@@ -37,7 +37,7 @@ public sealed record TicketVisitEntry(
     bool IsInside,
     IReadOnlyList<TicketVisitScan> Scans,
     TicketVisitKind Kind = TicketVisitKind.Visit,
-    DateTime? ConvertedAt = null,
+    DateTimeOffset? ConvertedAt = null,
     bool ViaConversion = false,
     Guid? TicketUuid = null);
 

@@ -20,7 +20,7 @@ public class TicketRedemptionTests
     public void EventTicket_Redeem_WhenNotValid_Throws()
     {
         var ticket = EventTicket.FromPersistence(1, Guid.NewGuid(), 5, TicketCategory.Adult, 25m,
-            orderId: 1, TicketStatus.Blocked, DateTime.UtcNow, redeemed: false);
+            orderId: 1, TicketStatus.Blocked, SwissTime.Timestamp, redeemed: false);
 
         Assert.Throws<DomainException>(() => ticket.Redeem());
     }
@@ -75,7 +75,7 @@ public class TicketRedemptionTests
     public void SeasonSingleTicket_Redeem_WhenBlocked_Throws()
     {
         var ticket = SeasonSingleTicket.FromPersistence(1, Guid.NewGuid(), 3, TicketCategory.Youth, 10m,
-            orderId: 2, TicketStatus.Cancelled, DateTime.UtcNow, redeemedEventId: null, redeemed: false);
+            orderId: 2, TicketStatus.Cancelled, SwissTime.Timestamp, redeemedEventId: null, redeemed: false);
 
         Assert.Throws<DomainException>(() => ticket.Redeem(42));
     }

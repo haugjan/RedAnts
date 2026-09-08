@@ -9,7 +9,7 @@ public sealed record MemberCardListItem(
     DateOnly? Birthday,
     MemberCategory Category,
     TicketStatus Status,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     int EventVisits,
     string? Reference,
     string? Email = null,

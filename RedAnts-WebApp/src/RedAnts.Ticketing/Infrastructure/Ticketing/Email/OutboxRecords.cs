@@ -21,7 +21,7 @@ public class OutboxEmailRecord
     [Column("LastError")] [NullSetting(NullSetting = NullSettings.Null)] [Length(1000)] public string? LastError { get; set; }
     [Column("Source")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Source { get; set; }
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
-    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
-    [Column("NextAttemptAt")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public DateTime NextAttemptAt { get; set; }
-    [Column("SentAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? SentAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("NextAttemptAt")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public DateTimeOffset NextAttemptAt { get; set; }
+    [Column("SentAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTimeOffset? SentAt { get; set; }
 }

@@ -15,11 +15,11 @@ public sealed class OrderRefund
     public string? Reference { get; private set; }
     public string? Reason { get; private set; }
     public string? CreatedBy { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
 
     private OrderRefund(int id, string refundNumber, int orderId, decimal amount, decimal vatRate, decimal vatAmount,
         string currency, RefundMethod method, RefundStatus status, string? payrexxRefundId, string? reference,
-        string? reason, string? createdBy, DateTime createdAt)
+        string? reason, string? createdBy, DateTimeOffset createdAt)
     {
         Id = id;
         RefundNumber = refundNumber;
@@ -45,12 +45,12 @@ public sealed class OrderRefund
         var value = decimal.Round(amount, 2);
         var vat = vatRate <= 0 ? 0m : decimal.Round(value - value / (1 + vatRate), 2);
         return new OrderRefund(0, refundNumber.Trim(), orderId, value, vatRate, vat, currency, method, status,
-            null, Clean(reference), Clean(reason), Clean(createdBy), DateTime.UtcNow);
+            null, Clean(reference), Clean(reason), Clean(createdBy), SwissTime.Timestamp);
     }
 
     public static OrderRefund FromPersistence(int id, string refundNumber, int orderId, decimal amount, decimal vatRate,
         decimal vatAmount, string currency, RefundMethod method, RefundStatus status, string? payrexxRefundId,
-        string? reference, string? reason, string? createdBy, DateTime createdAt) =>
+        string? reference, string? reason, string? createdBy, DateTimeOffset createdAt) =>
         new(id, refundNumber ?? "", orderId, amount, vatRate, vatAmount,
             string.IsNullOrWhiteSpace(currency) ? "CHF" : currency, method, status, payrexxRefundId,
             reference, reason, createdBy, createdAt);

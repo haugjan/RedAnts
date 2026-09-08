@@ -14,14 +14,14 @@ public sealed class Order
     public PaymentMethod PaymentMethod { get; private set; }
     public PaymentSource? PaymentSource { get; private set; }
     public OrderStatus Status { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public DateTime? PaidAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
+    public DateTimeOffset? PaidAt { get; private set; }
     public string? PayrexxGatewayId { get; private set; }
     public string? FulfillmentPayload { get; private set; }
 
     private Order(int id, string orderNumber, BillingAddress billingAddress, string currency,
         decimal subtotalNet, decimal vatRate, decimal vatAmount, decimal totalGross, string? sellerUid,
-        PaymentMethod paymentMethod, PaymentSource? paymentSource, OrderStatus status, DateTime createdAt, DateTime? paidAt,
+        PaymentMethod paymentMethod, PaymentSource? paymentSource, OrderStatus status, DateTimeOffset createdAt, DateTimeOffset? paidAt,
         string? payrexxGatewayId, string? fulfillmentPayload)
     {
         Id = id;
@@ -55,14 +55,14 @@ public sealed class Order
 
         return new Order(0, orderNumber.Trim(), billingAddress, currency, net, vatRate, vatAmount, gross,
             string.IsNullOrWhiteSpace(sellerUid) ? null : sellerUid.Trim(),
-            paymentMethod, paymentSource, OrderStatus.Draft, DateTime.UtcNow, null, null, null);
+            paymentMethod, paymentSource, OrderStatus.Draft, SwissTime.Timestamp, null, null, null);
     }
 
     public void SetPaymentSource(PaymentSource? paymentSource) => PaymentSource = paymentSource;
 
     public static Order FromPersistence(int id, string orderNumber, BillingAddress billingAddress, string currency,
         decimal subtotalNet, decimal vatRate, decimal vatAmount, decimal totalGross, string? sellerUid,
-        PaymentMethod paymentMethod, OrderStatus status, DateTime createdAt, DateTime? paidAt,
+        PaymentMethod paymentMethod, OrderStatus status, DateTimeOffset createdAt, DateTimeOffset? paidAt,
         string? payrexxGatewayId = null, string? fulfillmentPayload = null, PaymentSource? paymentSource = null) =>
         new(id, orderNumber ?? "", billingAddress, string.IsNullOrWhiteSpace(currency) ? "CHF" : currency,
             subtotalNet, vatRate, vatAmount, totalGross, sellerUid, paymentMethod, paymentSource, status, createdAt, paidAt,
@@ -76,7 +76,7 @@ public sealed class Order
     {
         if (Status == OrderStatus.Cancelled) throw new DomainException("Stornierte Bestellung kann nicht bezahlt werden.");
         Status = OrderStatus.Paid;
-        PaidAt ??= DateTime.UtcNow;
+        PaidAt ??= SwissTime.Timestamp;
     }
 
     public void MarkUnpaid()

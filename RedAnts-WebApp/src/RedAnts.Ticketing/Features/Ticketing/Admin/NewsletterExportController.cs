@@ -13,7 +13,7 @@ public sealed class NewsletterExportController(INewsletterSignups signups) : Con
     public async Task<IActionResult> ExportCsv()
     {
         var pending = await signups.GetPendingAsync();
-        var stamp = DateTime.Now.ToString("yyyyMMdd");
+        var stamp = SwissTime.Now.ToString("yyyyMMdd");
         return File(NewsletterFairgateCsv.Build(pending), "text/csv; charset=utf-8", $"newsletter-fairgate-{stamp}.csv");
     }
 }

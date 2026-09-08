@@ -8,7 +8,7 @@ public class AdmissionTests
 {
     private const int Event = 100;
     private static readonly Guid Ticket = Guid.Parse("11111111-2222-3333-4444-555555555555");
-    private static readonly DateTime Now = new(2026, 9, 7, 18, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTimeOffset Now = new(2026, 9, 7, 18, 0, 0, TimeSpan.Zero);
 
     [Theory]
     [InlineData(0)]

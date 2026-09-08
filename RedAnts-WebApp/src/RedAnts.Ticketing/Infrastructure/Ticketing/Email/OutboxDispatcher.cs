@@ -18,7 +18,7 @@ public sealed class OutboxDispatcher(
     private static readonly TimeSpan FallbackPoll = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan PurgeInterval = TimeSpan.FromHours(1);
 
-    private DateTime _lastPurge = DateTime.MinValue;
+    private DateTimeOffset _lastPurge = DateTimeOffset.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -34,7 +34,7 @@ public sealed class OutboxDispatcher(
                 var outbox = scope.ServiceProvider.GetRequiredService<IEmailOutbox>();
                 var selector = scope.ServiceProvider.GetRequiredService<EmailTransportSelector>();
 
-                var message = await outbox.ClaimNextDueAsync(DateTime.UtcNow, stoppingToken);
+                var message = await outbox.ClaimNextDueAsync(SwissTime.Timestamp, stoppingToken);
                 if (message is null)
                 {
                     await signal.WaitAsync(FallbackPoll, stoppingToken);
@@ -63,7 +63,7 @@ public sealed class OutboxDispatcher(
         if (active.Count == 0)
         {
             await outbox.RescheduleAsync(message.Id, message.SentVia, "No e-mail transport configured.",
-                DateTime.UtcNow + BackoffFor(message.Attempts));
+                SwissTime.Timestamp + BackoffFor(message.Attempts));
             return;
         }
 
@@ -86,17 +86,17 @@ public sealed class OutboxDispatcher(
         var pending = active.Count(t => !sent.Contains(t.Name));
 
         if (pending == 0)
-            await outbox.MarkSentAsync(message.Id, sentVia ?? "", DateTime.UtcNow);
+            await outbox.MarkSentAsync(message.Id, sentVia ?? "", SwissTime.Timestamp);
         else if (message.Attempts >= MaxAttempts)
             await outbox.MarkFailedAsync(message.Id, sentVia, lastError ?? "Delivery failed.");
         else
             await outbox.RescheduleAsync(message.Id, sentVia, lastError ?? "Delivery failed.",
-                DateTime.UtcNow + BackoffFor(message.Attempts));
+                SwissTime.Timestamp + BackoffFor(message.Attempts));
     }
 
     private async Task PurgeIfDueAsync()
     {
-        var now = DateTime.UtcNow;
+        var now = SwissTime.Timestamp;
         if (now - _lastPurge < PurgeInterval) return;
         _lastPurge = now;
 
@@ -121,7 +121,7 @@ public sealed class OutboxDispatcher(
         if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)) return;
 
-        var days = (int)Math.Floor((expires.Date - DateTime.UtcNow.Date).TotalDays);
+        var days = (int)Math.Floor((expires.Date - SwissTime.Now.Date).TotalDays);
         if (days < 0)
             logger.LogError("Graph client secret expired on {Date:yyyy-MM-dd}. E-mail sending fails until it is renewed.", expires);
         else if (days <= 30)

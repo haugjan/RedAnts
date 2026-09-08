@@ -7,7 +7,7 @@ public sealed record EventTicketBundleView(
     int EventId,
     TicketCategory Category,
     string Reference,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     int TicketCount,
     int RedeemedCount,
     string? CreatedByName = null,

@@ -207,7 +207,7 @@ public sealed class SeasonVisitStatsReader(IScopeProvider scopeProvider) : ISeas
     public sealed class CountRow { public int Grp { get; set; } public int Cnt { get; set; } }
     public sealed class UuidCountRow { public string Uuid { get; set; } = ""; public int Cnt { get; set; } }
     public sealed class FunnelRow { public int Produced { get; set; } public int Redeemed { get; set; } public int OpenCnt { get; set; } public int Gifted { get; set; } }
-    public sealed class DateRow { public DateTime CreatedAt { get; set; } }
+    public sealed class DateRow { public DateTimeOffset CreatedAt { get; set; } }
     public sealed class RefRow { public string Reference { get; set; } = ""; public int Category { get; set; } public int Issued { get; set; } public int Redeemed { get; set; } }
 }
 
@@ -286,7 +286,7 @@ public sealed class EventVisitStatsReader(IScopeProvider scopeProvider) : IEvent
     {
         var inside = 0;
         var peak = 0;
-        DateTime? peakAt = null;
+        DateTimeOffset? peakAt = null;
         foreach (var log in logs)
         {
             inside += log.Type == (int)VisitLogType.CheckIn ? 1 : -1;
@@ -311,9 +311,9 @@ public sealed class EventVisitStatsReader(IScopeProvider scopeProvider) : IEvent
         var buckets = ArrivalWindows.Select(w => new ArrivalBucket(w.Label, 0)).ToArray();
         var minutesBefore = new List<int>();
 
-        foreach (var checkInUtc in firstCheckIn)
+        foreach (var checkIn in firstCheckIn)
         {
-            var before = (int)Math.Round((kickoffSwiss - SwissTime.ToSwiss(checkInUtc)).TotalMinutes);
+            var before = (int)Math.Round((kickoffSwiss - SwissTime.ToSwiss(checkIn)).TotalMinutes);
             minutesBefore.Add(before);
             for (var i = 0; i < ArrivalWindows.Length; i++)
             {
@@ -332,8 +332,8 @@ public sealed class EventVisitStatsReader(IScopeProvider scopeProvider) : IEvent
     }
 
     public sealed class CountRow { public int Grp { get; set; } public int Cnt { get; set; } }
-    public sealed class DateRow { public DateTime CreatedAt { get; set; } }
-    public sealed class LogRow { public long VisitId { get; set; } public DateTime OccurredAt { get; set; } public int Type { get; set; } }
+    public sealed class DateRow { public DateTimeOffset CreatedAt { get; set; } }
+    public sealed class LogRow { public long VisitId { get; set; } public DateTimeOffset OccurredAt { get; set; } public int Type { get; set; } }
 }
 
 public sealed class VisitStatsReadersComposer : IComposer

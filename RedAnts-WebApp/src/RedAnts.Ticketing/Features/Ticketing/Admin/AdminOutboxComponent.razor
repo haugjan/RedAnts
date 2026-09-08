@@ -65,7 +65,7 @@
                                 {
                                     <div class="ta-addr-sub">gesendet @SwissTime.ToSwiss(sent).ToString("dd.MM.yyyy HH:mm")</div>
                                 }
-                                else if (m.Status != OutboxStatus.Sent && m.NextAttemptAt > DateTime.UtcNow)
+                                else if (m.Status != OutboxStatus.Sent && m.NextAttemptAt > SwissTime.Timestamp)
                                 {
                                     <div class="ta-addr-sub">nächster Versuch @SwissTime.ToSwiss(m.NextAttemptAt).ToString("HH:mm")</div>
                                 }
@@ -145,7 +145,7 @@
         if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)) return;
 
-        var days = (int)Math.Floor((expires.Date - DateTime.UtcNow.Date).TotalDays);
+        var days = (int)Math.Floor((expires.Date - SwissTime.Now.Date).TotalDays);
         if (days < 0)
         {
             _secretExpired = true;
@@ -161,7 +161,7 @@
 
     private async Task ReloadAsync()
     {
-        _entries = await Report.ListAsync(_includeSent, DateTime.UtcNow.AddDays(-30));
+        _entries = await Report.ListAsync(_includeSent, SwissTime.Timestamp.AddDays(-30));
     }
 
     private async Task RequeueAsync(int id)
