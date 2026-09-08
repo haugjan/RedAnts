@@ -36,7 +36,8 @@ public class DisplayNameTests
 
     [Theory]
     [InlineData(MemberCategory.RedAnts, "Red Ants")]
-    [InlineData(MemberCategory.Block4, "Block 4")]
+    [InlineData(MemberCategory.Block4, "Block 4 einzel")]
+    [InlineData(MemberCategory.Company, "Block 4 Firma")]
     public void MemberCategory_DisplayName(MemberCategory category, string expected)
     {
         Assert.Equal(expected, category.DisplayName());
