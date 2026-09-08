@@ -3,6 +3,7 @@
 @{
     Layout = null;
     var title = Model.Found ? $"{Model.TypeLabel} – {Model.ScopeName}" : "Ticket";
+    var installable = Model.Found && Model.Valid;
     var card = Model.Found
         ? new TicketCardModel(
             Kicker: Model.Kicker,
@@ -17,6 +18,7 @@
             VenueName: Model.VenueName,
             Admissions: Model.Admissions)
         : null;
+    var related = Model.RelatedTickets ?? new List<RelatedTicket>();
 }
 <!DOCTYPE html>
 <html lang="de">
@@ -26,27 +28,19 @@
     <title>@title</title>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#C8102E" />
+    @if (installable)
+    {
+        <link rel="manifest" href="/ticket/@Model.Token/manifest.webmanifest" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Red Ants Ticket" />
+    }
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/_content/RedAnts.Ticketing/css/ticket-card.css" asp-append-version="true" />
-    <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; background: #f4f4f5; color: #14171A; font-family: Verdana, Geneva, Tahoma, sans-serif; display: flex; align-items: center; justify-content: center; padding: 1rem; -webkit-font-smoothing: antialiased; }
-        .wt-wrap { width: 100%; max-width: 340px; }
-        .wt-wrap .rtk-card { --rtk-notch: #f4f4f5; }
-        .wt-actions { display: flex; flex-direction: column; gap: .5rem; margin-top: 1rem; }
-        .wt-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; font-size: .92rem; padding: .62rem 1rem; border-radius: 10px; }
-        .wt-btn--pdf { background: #14171A; color: #fff; }
-        .wt-btn--pdf:hover { background: #2a2e33; }
-        .wt-btn--wa { background: #25D366; color: #fff; gap: .5rem; }
-        .wt-btn--wa:hover { background: #1ebe5b; }
-        .wt-btn--wa svg { width: 1.15rem; height: 1.15rem; }
-        .wt-empty { background: #fff; border: 1px solid #e6e8ec; border-radius: 16px; text-align: center; padding: 2.5rem 1.4rem; }
-        .wt-empty h1 { font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; font-size: 1.4rem; margin: 0 0 .5rem; }
-        .wt-empty p { color: #6b7178; margin: 0; font-size: .95rem; line-height: 1.5; }
-        @@media print { .wt-actions { display: none; } body { background: #fff; padding: 0; } }
-    </style>
+    <link rel="stylesheet" href="/_content/RedAnts.Ticketing/css/ticket-page.css" asp-append-version="true" />
 </head>
 <body>
     <div class="wt-wrap">
@@ -75,8 +69,92 @@
                     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.29-.15-1.7-.84-1.96-.93-.26-.1-.45-.15-.64.14-.19.29-.74.93-.9 1.12-.17.19-.33.22-.62.07-.29-.14-1.22-.45-2.33-1.44-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.59.13-.13.29-.34.43-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.14-.64-1.55-.88-2.13-.23-.56-.47-.48-.64-.49-.17-.01-.36-.01-.55-.01-.19 0-.51.07-.77.36-.26.29-1.01.99-1.01 2.4 0 1.41 1.03 2.78 1.18 2.97.14.19 2.03 3.1 4.92 4.35.69.3 1.22.47 1.64.61.69.22 1.32.19 1.81.12.55-.08 1.7-.69 1.94-1.37.24-.67.24-1.25.17-1.37-.07-.12-.26-.19-.55-.34zM12.04 21.5h-.01c-1.75 0-3.46-.47-4.95-1.36l-.36-.21-3.68.97.98-3.59-.23-.37a9.44 9.44 0 0 1-1.44-5.01c0-5.22 4.25-9.47 9.48-9.47 2.53 0 4.91.99 6.7 2.78a9.4 9.4 0 0 1 2.77 6.7c-.01 5.22-4.26 9.46-9.48 9.46zm8.06-17.52A11.36 11.36 0 0 0 12.04.5C5.77.5.67 5.6.67 11.87c0 2.02.53 3.99 1.53 5.73L.57 23.5l6.05-1.59a11.34 11.34 0 0 0 5.42 1.38h.01c6.27 0 11.37-5.1 11.37-11.37 0-3.04-1.18-5.9-3.32-8.05z"/></svg>
                     Per WhatsApp teilen
                 </a>
+                <button id="wtInstall" class="wt-btn wt-btn--install" type="button" hidden>Als App installieren</button>
             </div>
+
+            <details class="wt-namebar">
+                <summary>✎ Ticket umbenennen</summary>
+                <form method="post" action="/ticket/@Model.Token/name">
+                    @Html.AntiForgeryToken()
+                    <div class="wt-name-row">
+                        <input name="customName" type="text" maxlength="120" autocomplete="off"
+                               value="@Model.CustomName" placeholder="@(Model.HolderDefault ?? "Name eingeben")" />
+                        <button class="wt-btn wt-btn--pdf" type="submit">Speichern</button>
+                    </div>
+                    <p class="wt-hint">
+                        @if (!string.IsNullOrWhiteSpace(Model.HolderDefault))
+                        {
+                            <text>Standard: @Model.HolderDefault. Feld leer lassen für den Standard.</text>
+                        }
+                        else
+                        {
+                            <text>Gib dem Ticket einen Namen, damit du es leichter wiedererkennst.</text>
+                        }
+                    </p>
+                </form>
+            </details>
+
+            @if (Model.NextMatch is { } next)
+            {
+                <section class="wt-sec">
+                    <h2>Nächstes Spiel</h2>
+                    <a class="wt-match wt-match--next" href="@next.Url">
+                        <span class="wt-match-logos">
+                            @if (!string.IsNullOrEmpty(next.HomeLogo)) { <img src="@next.HomeLogo" alt="" /> }
+                            @if (!string.IsNullOrEmpty(next.AwayLogo)) { <img src="@next.AwayLogo" alt="" /> }
+                        </span>
+                        <span class="wt-match-body">
+                            <span class="wt-match-title">@next.Title@if (next.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
+                            <span class="wt-match-meta">@next.DateText@(string.IsNullOrEmpty(next.VenueName) ? "" : $" · {next.VenueName}")</span>
+                        </span>
+                        @if (!string.IsNullOrEmpty(next.Url)) { <span class="wt-chev">›</span> }
+                    </a>
+                    <a class="wt-more" href="/ticket/@Model.Token/events">Alle Spiele anzeigen →</a>
+                </section>
+            }
+
+            @if (related.Count > 0)
+            {
+                <section class="wt-sec">
+                    <h2>Weitere zugehörige Tickets</h2>
+                    @foreach (var t in related)
+                    {
+                        <a class="wt-rel" href="/ticket/@t.Token">
+                            <span class="wt-rel-dot" data-k="@t.TypeKey"></span>
+                            <span class="wt-rel-body">
+                                <span class="wt-rel-name">@(string.IsNullOrWhiteSpace(t.DisplayName) ? t.TypeLabel : t.DisplayName)</span>
+                                <span class="wt-rel-meta">@t.TypeLabel · @t.ScopeName@(string.IsNullOrEmpty(t.DateText) ? "" : $" · {t.DateText}")</span>
+                            </span>
+                            <span class="wt-chev">›</span>
+                        </a>
+                    }
+                </section>
+            }
         }
     </div>
+
+    @if (installable)
+    {
+        <script>
+            (function () {
+                var deferred = null;
+                var btn = document.getElementById('wtInstall');
+                window.addEventListener('beforeinstallprompt', function (e) {
+                    e.preventDefault();
+                    deferred = e;
+                    if (btn) btn.hidden = false;
+                });
+                if (btn) btn.addEventListener('click', function () {
+                    if (!deferred) return;
+                    deferred.prompt();
+                    deferred.userChoice.finally(function () { deferred = null; btn.hidden = true; });
+                });
+                window.addEventListener('appinstalled', function () { if (btn) btn.hidden = true; });
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/ticket-sw.js', { scope: '/ticket/' }).catch(function () { });
+                }
+            })();
+        </script>
+    }
 </body>
 </html>

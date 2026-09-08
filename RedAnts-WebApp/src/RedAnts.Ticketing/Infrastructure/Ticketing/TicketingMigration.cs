@@ -62,6 +62,18 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSessionCacheTable>("session-cache-table");
         To<AddCapacityReservations>("capacity-reservations");
         To<SplitCompanyMemberCategory>("member-card-company-category");
+        To<AddTicketCustomName>("ticket-custom-name");
+    }
+}
+
+public class AddTicketCustomName(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        foreach (var table in new[] { "EventTickets", "SeasonSingleTickets", "SeasonPasses", "MembershipCards" })
+            if (TableExists(table) && !ColumnExists(table, "CustomName"))
+                Alter.Table(table).AddColumn("CustomName").AsString(120).Nullable().Do();
+        return Task.CompletedTask;
     }
 }
 

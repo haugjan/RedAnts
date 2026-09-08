@@ -51,4 +51,17 @@ public sealed class MyTicketsReader(IScopeProvider scopeProvider) : IMyTicketsRe
                 r.CreatedAt))
             .ToList();
     }
+
+    public async Task<string?> FindBillingEmailAsync(Guid uuid)
+    {
+        var key = uuid.ToString();
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        return await scope.Database.ExecuteScalarAsync<string?>(
+            "SELECT TOP 1 Email FROM (" +
+            "SELECT o.BillingEmail AS Email FROM EventTickets x INNER JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0 " +
+            "UNION ALL SELECT o.BillingEmail FROM SeasonSingleTickets x INNER JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0 " +
+            "UNION ALL SELECT o.BillingEmail FROM SeasonPasses x INNER JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0 " +
+            "UNION ALL SELECT o.BillingEmail FROM MembershipCards x INNER JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0) t",
+            key);
+    }
 }

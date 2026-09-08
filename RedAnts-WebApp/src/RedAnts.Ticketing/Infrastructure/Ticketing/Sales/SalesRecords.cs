@@ -61,6 +61,7 @@ public class EventTicketRecord
     [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
     [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
     [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTime CreatedAt { get; set; }
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
     [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
     [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
     [Column("BuyerFirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerFirstName { get; set; }
@@ -111,6 +112,7 @@ public class SeasonSingleTicketRecord
     [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
     [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
     [Column("BoxOffice")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool BoxOffice { get; set; }
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
     [Column("OriginBundleId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginBundleId { get; set; }
     [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
     [Column("BuyerFirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerFirstName { get; set; }
@@ -148,6 +150,7 @@ public class SeasonPassRecord
     [Column("CreatedByName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByName { get; set; }
     [Column("CreatedByEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByEmail { get; set; }
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
     [Column("BuyerEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerEmail { get; set; }
     [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
     [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
@@ -177,6 +180,7 @@ public class MemberCardRecord
     [Column("Email")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Email { get; set; }
     [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
     [Column("Admissions")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Admissions { get; set; } = 1;
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
     [Column("CreatedByName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByName { get; set; }
     [Column("CreatedByEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByEmail { get; set; }
     [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }

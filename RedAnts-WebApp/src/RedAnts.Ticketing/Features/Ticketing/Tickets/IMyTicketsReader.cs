@@ -12,4 +12,6 @@ public sealed record MyTicketSummary(
 public interface IMyTicketsReader
 {
     Task<IReadOnlyList<MyTicketSummary>> GetByEmailAsync(string email);
+
+    Task<string?> FindBillingEmailAsync(Guid uuid);
 }

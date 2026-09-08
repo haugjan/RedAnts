@@ -12,7 +12,7 @@ public sealed class TicketTokensComposer : IComposer
         builder.Services.AddSingleton<ITicketTokens, TicketTokenSigner>();
         builder.Services.AddSingleton<IQrCodeRenderer, QrCodeRenderer>();
         builder.Services.AddScoped<IIssuedTicketReader, IssuedTicketReader>();
-        builder.Services.AddSingleton<IMyTicketTokens, MyTicketTokenSigner>();
+        builder.Services.AddScoped<ITicketCustomNames, TicketCustomNames>();
         builder.Services.AddScoped<IMyTicketsReader, MyTicketsReader>();
     }
 }
