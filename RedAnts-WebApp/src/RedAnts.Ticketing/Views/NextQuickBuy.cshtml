@@ -141,7 +141,7 @@ else
                         }
                         @if (cat.Remaining is { } rem)
                         {
-                            <span class="nq-cat__stock @(rem <= 10 ? "is-low" : "")">@(rem <= 10 ? $"Nur noch {rem} verfügbar" : $"Noch {rem} verfügbar")</span>
+                            <span class="nq-cat__stock @(rem <= 10 ? "is-low" : "")">@(rem <= 0 ? "Ausverkauft" : rem == 1 ? "Nur noch 1 verfügbar" : rem <= 10 ? $"Nur noch {rem} verfügbar" : $"Noch {rem} verfügbar")</span>
                         }
                     </div>
                     @if (cat.Available)
