@@ -63,6 +63,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddSessionCacheTable>("session-cache-table");
         To<AddCapacityReservations>("capacity-reservations");
         To<SplitCompanyMemberCategory>("member-card-company-category");
+        To<AddPerformanceIndexes>("performance-indexes");
         To<ConvertTimestampsToDateTimeOffset>("timestamps-datetimeoffset");
     }
 }
@@ -153,6 +154,8 @@ public class ConvertTimestampsToDateTimeOffset(IMigrationContext context) : Asyn
             var include = string.IsNullOrEmpty(IncludedColumns) ? "" : $" INCLUDE ({IncludedColumns})";
             return $"CREATE {unique}NONCLUSTERED INDEX [{Name}] ON [{table}] ({KeyColumns}){include}";
         }
+=======
+        To<AddPerformanceIndexes>("performance-indexes");
     }
 }
 
@@ -683,6 +686,35 @@ public class AddSalesFilterIndexes(IMigrationContext context) : AsyncMigrationBa
         EnsureIndex("SeasonSingleTickets", "IX_SeasonSingleTickets_SeasonId", "SeasonId");
         EnsureIndex("SeasonPasses", "IX_SeasonPasses_SeasonId", "SeasonId");
         EnsureIndex("MembershipCards", "IX_MembershipCards_SeasonId", "SeasonId");
+        return Task.CompletedTask;
+    }
+
+    private void EnsureIndex(string table, string indexName, string columns)
+    {
+        Execute.Sql(
+            $"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{indexName}' AND object_id = OBJECT_ID('{table}')) " +
+            $"CREATE NONCLUSTERED INDEX {indexName} ON {table} ({columns})").Do();
+    }
+}
+
+public class AddPerformanceIndexes(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        // Sargable seek for the public "my tickets" lookup (Orders grows with every sale; the
+        // query filter was made sargable by dropping LOWER() and relying on the case-insensitive
+        // default collation).
+        EnsureIndex("Orders", "IX_Orders_BillingEmail", "BillingEmail");
+
+        // The outbox drain runs continuously: seek pending rows in due order in one step instead of
+        // filtering the low-cardinality Status index and sorting. The CreatedAt index serves the
+        // admin outbox list ordering.
+        EnsureIndex("OutboxEmails", "IX_OutboxEmails_Status_NextAttemptAt", "Status, NextAttemptAt");
+        EnsureIndex("OutboxEmails", "IX_OutboxEmails_CreatedAt", "CreatedAt");
+
+        // Reference (bundle) lookups on the two reference-carrying ticket tables.
+        EnsureIndex("MembershipCards", "IX_MembershipCards_Reference", "Reference");
+        EnsureIndex("SeasonPasses", "IX_SeasonPasses_Reference", "Reference");
         return Task.CompletedTask;
     }
 
