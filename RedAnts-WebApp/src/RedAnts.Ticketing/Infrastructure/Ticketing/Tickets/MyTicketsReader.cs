@@ -48,19 +48,19 @@ public sealed class MyTicketsReader(IScopeProvider scopeProvider) : IMyTicketsRe
             "SELECT t.Uuid, t.TicketType, t.ScopeId, t.Status, t.CreatedAt FROM (" +
             "SELECT et.Uuid, 0 AS TicketType, et.EventId AS ScopeId, et.Status, et.CreatedAt " +
             "FROM EventTickets et LEFT JOIN Orders o ON et.OrderId = o.Id " +
-            "WHERE LOWER(o.BillingEmail) IN (@0) OR LOWER(et.Email) IN (@0) " +
+            "WHERE o.BillingEmail IN (@0) OR et.Email IN (@0) " +
             "UNION ALL " +
             "SELECT st.Uuid, 1, st.SeasonId, st.Status, st.CreatedAt " +
             "FROM SeasonSingleTickets st LEFT JOIN Orders o ON st.OrderId = o.Id " +
-            "WHERE LOWER(o.BillingEmail) IN (@0) OR LOWER(st.BuyerEmail) IN (@0) " +
+            "WHERE o.BillingEmail IN (@0) OR st.BuyerEmail IN (@0) " +
             "UNION ALL " +
             "SELECT sp.Uuid, 2, sp.SeasonId, sp.Status, sp.CreatedAt " +
             "FROM SeasonPasses sp LEFT JOIN Orders o ON sp.OrderId = o.Id " +
-            "WHERE LOWER(o.BillingEmail) IN (@0) OR LOWER(sp.BuyerEmail) IN (@0) " +
+            "WHERE o.BillingEmail IN (@0) OR sp.BuyerEmail IN (@0) " +
             "UNION ALL " +
             "SELECT mc.Uuid, 3, mc.SeasonId, mc.Status, mc.CreatedAt " +
             "FROM MembershipCards mc LEFT JOIN Orders o ON mc.OrderId = o.Id " +
-            "WHERE LOWER(o.BillingEmail) IN (@0) OR LOWER(mc.Email) IN (@0) " +
+            "WHERE o.BillingEmail IN (@0) OR mc.Email IN (@0) " +
             ") t ORDER BY t.CreatedAt DESC";
 
         var rows = await scope.Database.FetchAsync<TicketRow>(sql, list);

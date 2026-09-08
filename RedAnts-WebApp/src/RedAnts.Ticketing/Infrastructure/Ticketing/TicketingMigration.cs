@@ -63,6 +63,29 @@ public class TicketingMigrationPlan : MigrationPlan
         To<AddCapacityReservations>("capacity-reservations");
         To<SplitCompanyMemberCategory>("member-card-company-category");
         To<AddTicketCustomName>("ticket-custom-name");
+        To<AddTicketEmailIndexes>("ticket-email-indexes");
+    }
+}
+
+public class AddTicketEmailIndexes(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        EnsureIndex("Orders", "BillingEmail");
+        EnsureIndex("EventTickets", "Email");
+        EnsureIndex("SeasonSingleTickets", "BuyerEmail");
+        EnsureIndex("SeasonPasses", "BuyerEmail");
+        EnsureIndex("MembershipCards", "Email");
+        return Task.CompletedTask;
+    }
+
+    private void EnsureIndex(string table, string column)
+    {
+        if (!TableExists(table) || !ColumnExists(table, column)) return;
+        var index = $"IX_{table}_{column}";
+        Database.Execute(
+            $"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{index}' AND object_id = OBJECT_ID('{table}')) " +
+            $"CREATE NONCLUSTERED INDEX [{index}] ON [{table}] ([{column}])");
     }
 }
 
