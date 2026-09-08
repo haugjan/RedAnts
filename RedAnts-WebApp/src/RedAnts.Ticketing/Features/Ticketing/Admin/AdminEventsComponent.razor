@@ -237,7 +237,7 @@
                 <div class="ta-conv-flex">
                     <label class="ta-conv-toggle">
                         <input type="checkbox" @bind="_convFlexRequired" />
-                        <span>Umwandlung nötig, Rabatt (CHF)</span>
+                        <span>Umwandlung nötig, Rabatt CHF</span>
                     </label>
                     <input type="number" min="0" step="0.01" class="ta-input" placeholder="0.00"
                            @bind="_convFlexDiscount" @bind:after="() => _convFlexDiscount = Math.Max(0m, decimal.Round(_convFlexDiscount, 2))"
