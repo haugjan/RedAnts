@@ -224,11 +224,12 @@ public sealed class WebTicketController(
 
     private async Task<IReadOnlyList<RelatedTicket>> BuildRelatedAsync(Guid current)
     {
-        var email = await myTickets.FindBillingEmailAsync(current);
-        if (string.IsNullOrWhiteSpace(email)) return [];
+        var emails = await myTickets.FindIdentityEmailsAsync(current);
+        if (emails.Count == 0) return [];
 
-        var summaries = (await myTickets.GetByEmailAsync(email))
+        var summaries = (await myTickets.GetRelatedAsync(emails))
             .Where(s => s.Uuid != current && s.Status == TicketStatus.Valid)
+            .DistinctBy(s => s.Uuid)
             .Take(30)
             .ToList();
 
