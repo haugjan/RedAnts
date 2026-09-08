@@ -75,7 +75,7 @@ public class ConvertTimestampsToDateTimeOffset(IMigrationContext context) : Asyn
     [
         ("Orders", "CreatedAt"), ("Orders", "PaidAt"),
         ("EventTickets", "CreatedAt"), ("SeasonSingleTickets", "CreatedAt"), ("SeasonPasses", "CreatedAt"),
-        ("MembershipCards", "CreatedAt"),
+        ("MembershipCards", "CreatedAt"), ("Helpers", "CreatedAt"),
         ("EventTicketBundles", "CreatedAt"), ("FlexTicketBundles", "CreatedAt"),
         ("OrderRefunds", "CreatedAt"), ("AccountingJournal", "OccurredAt"), ("AccountingJournal", "CreatedAt"),
         ("OrderStatusLogs", "OccurredAt"),
