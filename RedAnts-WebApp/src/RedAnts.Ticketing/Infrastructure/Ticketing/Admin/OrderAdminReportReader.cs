@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NPoco;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Admin;
+using RedAnts.Features.Ticketing.CheckoutWorkflow;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.Scoping;
@@ -17,7 +18,7 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
         var orders = await scope.Database.FetchAsync<OrderRow>(@"
             SELECT Id, OrderNumber, CreatedAt, Status, TotalGross, PaymentMethod, PaymentSource,
                    BillingType, BillingFirstName, BillingLastName, BillingCompany,
-                   BillingStreet, BillingAddressLine2, BillingPostalCode, BillingCity, BillingCountry, BillingEmail
+                   BillingStreet, BillingAddressLine2, BillingPostalCode, BillingCity, BillingCountry, BillingEmail, FulfillmentPayload
             FROM Orders
             ORDER BY CreatedAt DESC");
 
@@ -59,7 +60,8 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
             var tickets = ticketsByOrder.GetValueOrDefault(o.Id) ?? [];
             var passes = passesByOrder.GetValueOrDefault(o.Id) ?? [];
             var flex = flexByOrder.GetValueOrDefault(o.Id) ?? [];
-            if (tickets.Count == 0 && passes.Count == 0 && flex.Count == 0) continue;
+            var planned = SnapshotItems(o.FulfillmentPayload, seasonId, eventIdSet);
+            if (tickets.Count == 0 && passes.Count == 0 && flex.Count == 0 && planned.Count == 0) continue;
 
             result.Add(new OrderListItem(
                 o.Id,
@@ -75,10 +77,10 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
                 o.BillingCity ?? "",
                 o.BillingCountry ?? "",
                 o.BillingEmail ?? "",
-                tickets.Count,
-                Summarize(tickets, tierNames),
-                passes.Count,
-                Summarize(passes, tierNames),
+                tickets.Count > 0 ? tickets.Count : planned.EventTickets,
+                tickets.Count > 0 ? Summarize(tickets, tierNames) : planned.EventSummary,
+                passes.Count > 0 ? passes.Count : planned.Passes,
+                passes.Count > 0 ? Summarize(passes, tierNames) : planned.PassSummary,
                 flex.Count,
                 Summarize(flex, tierNames),
                 ResolvePaymentSource(o),
@@ -86,6 +88,28 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
         }
         return result;
     }
+
+    private sealed record PlannedItems(int EventTickets, string EventSummary, int Passes, string PassSummary)
+    {
+        public static readonly PlannedItems None = new(0, "—", 0, "—");
+        public int Count => EventTickets + Passes;
+    }
+
+    private static PlannedItems SnapshotItems(string? payload, int seasonId, HashSet<int> eventIds)
+    {
+        if (OrderSnapshot.Parse(payload) is not { } snapshot) return PlannedItems.None;
+        var events = snapshot.Items.Where(i => !i.IsSeasonPass && eventIds.Contains(i.EventId)).ToList();
+        var passes = snapshot.Items.Where(i => i.IsSeasonPass && i.SeasonId == seasonId).ToList();
+        return new PlannedItems(events.Sum(i => i.Quantity), SummarizePlanned(events), passes.Sum(i => i.Quantity), SummarizePlanned(passes));
+    }
+
+    private static string SummarizePlanned(List<OrderSnapshotItem> items) =>
+        items.Count == 0
+            ? "—"
+            : string.Join(" · ", items
+                .GroupBy(i => string.IsNullOrWhiteSpace(i.CategoryName) ? "Ticket" : i.CategoryName)
+                .OrderBy(g => g.Key)
+                .Select(g => $"{g.Sum(i => i.Quantity)}× {g.Key}"));
 
     private static PaymentSource? ResolvePaymentSource(OrderRow o)
     {
@@ -130,6 +154,7 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
         public string? BillingCity { get; set; }
         public string? BillingCountry { get; set; }
         public string? BillingEmail { get; set; }
+        public string? FulfillmentPayload { get; set; }
     }
 
     public sealed class ItemRow
