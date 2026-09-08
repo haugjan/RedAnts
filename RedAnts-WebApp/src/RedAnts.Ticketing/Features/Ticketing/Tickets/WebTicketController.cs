@@ -117,10 +117,10 @@ public sealed class WebTicketController(
             lang = "de",
             icons = new object[]
             {
-                new { src = "/favicons/android-chrome-192x192.png", sizes = "192x192", type = "image/png", purpose = "any" },
-                new { src = "/favicons/android-chrome-384x384.png", sizes = "384x384", type = "image/png", purpose = "any" },
-                new { src = "/favicons/android-chrome-192x192.png", sizes = "192x192", type = "image/png", purpose = "maskable" },
-                new { src = "/favicons/android-chrome-384x384.png", sizes = "384x384", type = "image/png", purpose = "maskable" }
+                new { src = "/icons/ticket-192.png", sizes = "192x192", type = "image/png", purpose = "any" },
+                new { src = "/icons/ticket-512.png", sizes = "512x512", type = "image/png", purpose = "any" },
+                new { src = "/icons/ticket-192.png", sizes = "192x192", type = "image/png", purpose = "maskable" },
+                new { src = "/icons/ticket-512.png", sizes = "512x512", type = "image/png", purpose = "maskable" }
             }
         };
 
