@@ -139,7 +139,7 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
     {
         public int Id { get; set; }
         public string OrderNumber { get; set; } = "";
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public int Status { get; set; }
         public decimal TotalGross { get; set; }
         public int PaymentMethod { get; set; }

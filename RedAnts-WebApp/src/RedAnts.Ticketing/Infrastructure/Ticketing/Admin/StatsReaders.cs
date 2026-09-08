@@ -10,13 +10,15 @@ namespace RedAnts.Infrastructure.Ticketing.Admin;
 
 public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorStatsReport
 {
-    public async Task<VisitorOverview> GetAsync(DateTime fromUtc, DateTime toExclusiveUtc)
+    public async Task<VisitorOverview> GetAsync(DateOnly from, DateOnly toExclusive)
     {
-        if (toExclusiveUtc <= fromUtc) toExclusiveUtc = fromUtc.AddDays(1);
-        var bucket = (toExclusiveUtc - fromUtc).TotalDays <= 92 ? StatBucket.Day : StatBucket.Month;
+        if (toExclusive <= from) toExclusive = from.AddDays(1);
+        var bucket = toExclusive.DayNumber - from.DayNumber <= 92 ? StatBucket.Day : StatBucket.Month;
         var keyExpr = bucket == StatBucket.Day
             ? "CAST(OccurredAt AS date)"
             : "DATEFROMPARTS(YEAR(OccurredAt), MONTH(OccurredAt), 1)";
+        var fromStamp = SwissTime.StartOfDay(from);
+        var toStamp = SwissTime.StartOfDay(toExclusive);
 
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
@@ -25,29 +27,29 @@ public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorS
                 SUM(CASE WHEN IsBot = 0 THEN 1 ELSE 0 END) AS Views,
                 COUNT(DISTINCT CASE WHEN IsBot = 0 THEN VisitorHash END) AS Visitors,
                 SUM(CASE WHEN IsBot = 1 THEN 1 ELSE 0 END) AS Bots
-            FROM PageViews WHERE OccurredAt >= @0 AND OccurredAt < @1", fromUtc, toExclusiveUtc))
+            FROM PageViews WHERE OccurredAt >= @0 AND OccurredAt < @1", fromStamp, toStamp))
             .FirstOrDefault() ?? new TotalsRow();
 
         var bucketRows = await scope.Database.FetchAsync<DayRow>($@"
             SELECT {keyExpr} AS Day, COUNT(*) AS Views, COUNT(DISTINCT VisitorHash) AS Visitors
             FROM PageViews
             WHERE IsBot = 0 AND OccurredAt >= @0 AND OccurredAt < @1
-            GROUP BY {keyExpr}", fromUtc, toExclusiveUtc);
+            GROUP BY {keyExpr}", fromStamp, toStamp);
 
         var byKey = bucketRows.ToDictionary(r => DateOnly.FromDateTime(r.Day), r => r);
 
         var series = new List<VisitorBucket>();
-        var lastDay = DateOnly.FromDateTime(toExclusiveUtc.AddDays(-1).Date);
+        var lastDay = toExclusive.AddDays(-1);
         if (bucket == StatBucket.Day)
         {
-            for (var d = DateOnly.FromDateTime(fromUtc.Date); d <= lastDay; d = d.AddDays(1))
+            for (var d = from; d <= lastDay; d = d.AddDays(1))
                 series.Add(byKey.TryGetValue(d, out var row)
                     ? new VisitorBucket(d, row.Views, row.Visitors)
                     : new VisitorBucket(d, 0, 0));
         }
         else
         {
-            var m = new DateOnly(fromUtc.Year, fromUtc.Month, 1);
+            var m = new DateOnly(from.Year, from.Month, 1);
             var lastMonth = new DateOnly(lastDay.Year, lastDay.Month, 1);
             for (; m <= lastMonth; m = m.AddMonths(1))
                 series.Add(byKey.TryGetValue(m, out var row)
@@ -60,7 +62,7 @@ public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorS
             FROM PageViews
             WHERE IsBot = 0 AND OccurredAt >= @0 AND OccurredAt < @1
             GROUP BY Path
-            ORDER BY Views DESC", fromUtc, toExclusiveUtc))
+            ORDER BY Views DESC", fromStamp, toStamp))
             .Select(p => new VisitorPage(p.Path, p.Views, p.Visitors))
             .ToList();
 

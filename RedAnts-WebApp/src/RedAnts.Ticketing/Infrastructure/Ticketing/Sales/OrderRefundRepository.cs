@@ -119,7 +119,7 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
             Description = $"Rückzahlung {refund.Method.DisplayName()}",
             CreatedBy = changedBy,
             OccurredAt = refund.CreatedAt,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = SwissTime.Timestamp
         });
 
         await db.InsertAsync(new OrderStatusLogRecord
@@ -127,7 +127,7 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
             OrderId = orderId,
             ToStatus = (int)status,
             ChangedBy = string.IsNullOrWhiteSpace(changedBy) ? null : changedBy.Trim(),
-            OccurredAt = DateTime.UtcNow,
+            OccurredAt = SwissTime.Timestamp,
             Note = Truncate($"Rückzahlung CHF {refund.Amount:N2} ({refund.Method.DisplayName()}) · {refund.RefundNumber}", 200)
         });
     }

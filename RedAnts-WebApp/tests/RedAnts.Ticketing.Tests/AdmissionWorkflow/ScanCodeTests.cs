@@ -47,7 +47,7 @@ public class ScanCodeTests
     public async Task A_resolved_code_scans_the_ticket()
     {
         var uuid = Guid.NewGuid();
-        var issued = new IssuedTicket(TicketType.EventTicket, uuid, EventId, TicketCategory.Adult, TicketStatus.Valid, DateTime.UtcNow, null,
+        var issued = new IssuedTicket(TicketType.EventTicket, uuid, EventId, TicketCategory.Adult, TicketStatus.Valid, SwissTime.Timestamp, null,
             BuyerName: "Max Muster", CategoryName: "Erwachsene");
         _tickets.Tickets[uuid] = issued;
         _facts.Facts[uuid] = new AdmissionFacts(issued, null, null, false, false, null, null);

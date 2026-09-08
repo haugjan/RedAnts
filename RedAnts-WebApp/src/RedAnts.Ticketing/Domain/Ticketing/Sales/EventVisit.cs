@@ -7,9 +7,9 @@ public sealed class EventVisit
     public TicketType TicketType { get; private set; }
     public Guid? TicketUuid { get; private set; }
     public bool IsInside { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
 
-    private EventVisit(long id, int eventId, TicketType ticketType, Guid? ticketUuid, bool isInside, DateTime createdAt)
+    private EventVisit(long id, int eventId, TicketType ticketType, Guid? ticketUuid, bool isInside, DateTimeOffset createdAt)
     {
         Id = id;
         EventId = eventId;
@@ -23,17 +23,17 @@ public sealed class EventVisit
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (ticketType == TicketType.FreeEntry) throw new DomainException("Free-Entry hat kein Ticket.");
-        return new EventVisit(0, eventId, ticketType, ticketUuid, isInside: true, DateTime.UtcNow);
+        return new EventVisit(0, eventId, ticketType, ticketUuid, isInside: true, SwissTime.Timestamp);
     }
 
     public static EventVisit CreateForFreeEntry(int eventId)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
-        return new EventVisit(0, eventId, TicketType.FreeEntry, null, isInside: true, DateTime.UtcNow);
+        return new EventVisit(0, eventId, TicketType.FreeEntry, null, isInside: true, SwissTime.Timestamp);
     }
 
     public static EventVisit FromPersistence(long id, int eventId, TicketType ticketType, Guid? ticketUuid,
-        bool isInside, DateTime createdAt) =>
+        bool isInside, DateTimeOffset createdAt) =>
         new(id, eventId, ticketType, ticketUuid, isInside, createdAt);
 
     public void SetInside(bool inside) => IsInside = inside;
@@ -44,10 +44,10 @@ public sealed class EventVisitLog
     public long Id { get; private set; }
     public long VisitId { get; private set; }
     public VisitLogType Type { get; private set; }
-    public DateTime OccurredAt { get; private set; }
+    public DateTimeOffset OccurredAt { get; private set; }
     public string? ScannedBy { get; private set; }
 
-    private EventVisitLog(long id, long visitId, VisitLogType type, DateTime occurredAt, string? scannedBy)
+    private EventVisitLog(long id, long visitId, VisitLogType type, DateTimeOffset occurredAt, string? scannedBy)
     {
         Id = id;
         VisitId = visitId;
@@ -57,9 +57,9 @@ public sealed class EventVisitLog
     }
 
     public static EventVisitLog Create(long visitId, VisitLogType type, string? scannedBy) =>
-        new(0, visitId, type, DateTime.UtcNow, scannedBy);
+        new(0, visitId, type, SwissTime.Timestamp, scannedBy);
 
-    public static EventVisitLog FromPersistence(long id, long visitId, VisitLogType type, DateTime occurredAt, string? scannedBy) =>
+    public static EventVisitLog FromPersistence(long id, long visitId, VisitLogType type, DateTimeOffset occurredAt, string? scannedBy) =>
         new(id, visitId, type, occurredAt, scannedBy);
 }
 

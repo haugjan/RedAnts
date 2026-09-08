@@ -65,7 +65,7 @@ public sealed class OrderAddOnAdminReportReader(IScopeProvider scopeProvider) : 
         public decimal Price { get; set; }
         public bool Delivered { get; set; }
         public string OrderNumber { get; set; } = "";
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public int Status { get; set; }
         public int? BillingType { get; set; }
         public string? BillingFirstName { get; set; }

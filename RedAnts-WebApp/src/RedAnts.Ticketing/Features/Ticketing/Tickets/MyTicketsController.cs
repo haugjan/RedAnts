@@ -70,5 +70,5 @@ public sealed record MyTicketEntry(
     string TypeLabel,
     string Kicker,
     TicketStatus Status,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     string? DateText);

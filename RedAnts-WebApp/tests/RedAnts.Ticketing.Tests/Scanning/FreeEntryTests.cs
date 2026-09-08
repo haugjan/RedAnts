@@ -7,7 +7,7 @@ namespace RedAnts.Ticketing.Tests.Scanning;
 public class FreeEntryTests
 {
     private const int Event = 100;
-    private static readonly DateTime Now = new(2026, 9, 7, 18, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTimeOffset Now = new(2026, 9, 7, 18, 0, 0, TimeSpan.Zero);
 
     private static readonly Occupancy Open = new(10, 100);
     private static readonly Occupancy Full = new(100, 100);

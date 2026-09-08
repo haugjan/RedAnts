@@ -49,7 +49,7 @@ public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : I
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         await scope.Database.ExecuteAsync(
             "UPDATE NewsletterSignups SET Status = @0, TransferredAt = @1 WHERE Status = @2 AND Id IN (@3)",
-            (int)NewsletterTransferStatus.Transferred, DateTime.UtcNow, (int)NewsletterTransferStatus.Pending, list);
+            (int)NewsletterTransferStatus.Transferred, SwissTime.Timestamp, (int)NewsletterTransferStatus.Pending, list);
     }
 
     public async Task SetTransferStatusAsync(int id, NewsletterTransferStatus status)
@@ -58,7 +58,7 @@ public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : I
         var row = await scope.Database.SingleOrDefaultByIdAsync<NewsletterSignupRecord>(id);
         if (row is null) return;
         var signup = Map(row);
-        if (status == NewsletterTransferStatus.Transferred) signup.MarkTransferred(DateTime.UtcNow);
+        if (status == NewsletterTransferStatus.Transferred) signup.MarkTransferred(SwissTime.Timestamp);
         else signup.MarkPending();
         row.Status = (int)signup.Status;
         row.TransferredAt = signup.TransferredAt;

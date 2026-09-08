@@ -8,7 +8,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Infrastructure.Ticketing.Analytics;
 
-public readonly record struct PageView(DateTime OccurredAt, string Path, string? VisitorHash, bool IsBot);
+public readonly record struct PageView(DateTimeOffset OccurredAt, string Path, string? VisitorHash, bool IsBot);
 
 public interface IPageViewTracker
 {

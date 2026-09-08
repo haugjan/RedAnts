@@ -71,7 +71,7 @@ public class FlexTests
     public async Task Rename_rejects_a_reference_that_is_already_taken()
     {
         var bundles = new RecordingFlexBundles();
-        bundles.Bundles[1] = FlexTicketBundle.FromPersistence(1, SeasonId, TicketCategory.Adult, "Alt", DateTime.UtcNow);
+        bundles.Bundles[1] = FlexTicketBundle.FromPersistence(1, SeasonId, TicketCategory.Adult, "Alt", SwissTime.Timestamp);
         bundles.Existing.Add("Neu");
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => new RenameFlexBundle.Handler(bundles).HandleAsync(new RenameFlexBundle.Command(1, "Neu")));
@@ -84,7 +84,7 @@ public class FlexTests
     public async Task Rename_to_the_same_reference_saves_nothing()
     {
         var bundles = new RecordingFlexBundles();
-        bundles.Bundles[1] = FlexTicketBundle.FromPersistence(1, SeasonId, TicketCategory.Adult, "Alt", DateTime.UtcNow);
+        bundles.Bundles[1] = FlexTicketBundle.FromPersistence(1, SeasonId, TicketCategory.Adult, "Alt", SwissTime.Timestamp);
 
         await new RenameFlexBundle.Handler(bundles).HandleAsync(new RenameFlexBundle.Command(1, " Alt "));
 
@@ -95,7 +95,7 @@ public class FlexTests
     public async Task Rename_saves_the_renamed_bundle()
     {
         var bundles = new RecordingFlexBundles();
-        bundles.Bundles[1] = FlexTicketBundle.FromPersistence(1, SeasonId, TicketCategory.Adult, "Alt", DateTime.UtcNow);
+        bundles.Bundles[1] = FlexTicketBundle.FromPersistence(1, SeasonId, TicketCategory.Adult, "Alt", SwissTime.Timestamp);
 
         await new RenameFlexBundle.Handler(bundles).HandleAsync(new RenameFlexBundle.Command(1, " Neu "));
 

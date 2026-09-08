@@ -22,7 +22,7 @@ public sealed class DraftOrderExpiry(IServiceScopeFactory scopes, ILogger<DraftO
             {
                 using var scope = scopes.CreateScope();
                 var expire = scope.ServiceProvider.GetRequiredService<ExpireDraftOrders.Handler>();
-                var expired = await expire.HandleAsync(new ExpireDraftOrders.Command(DateTime.UtcNow - LookBack, DateTime.UtcNow - MaxDraftAge));
+                var expired = await expire.HandleAsync(new ExpireDraftOrders.Command(SwissTime.Timestamp - LookBack, SwissTime.Timestamp - MaxDraftAge));
                 if (expired > 0)
                     logger.LogInformation("{Count} draft orders expired and their reservations released.", expired);
             }

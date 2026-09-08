@@ -67,7 +67,7 @@ public static class TicketingApplicationBuilderExtensions
 
             var ua = request.Headers.UserAgent.ToString();
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "";
-            var now = DateTime.UtcNow;
+            var now = SwissTime.Timestamp;
             var seed = $"{ip}|{ua}|{now:yyyyMMdd}|{pageViewSalt}";
             var visitorHash = Convert.ToHexString(
                 System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(seed)));

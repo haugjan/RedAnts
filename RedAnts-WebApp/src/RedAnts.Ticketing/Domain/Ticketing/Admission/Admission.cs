@@ -2,7 +2,7 @@ using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Domain.Ticketing.Admission;
 
-public sealed record VisitLog(long Id, VisitLogType Type, DateTime OccurredAt, string? ScannedBy);
+public sealed record VisitLog(long Id, VisitLogType Type, DateTimeOffset OccurredAt, string? ScannedBy);
 
 public sealed class AdmissionVisit
 {
@@ -11,12 +11,12 @@ public sealed class AdmissionVisit
 
     public long Id { get; private set; }
     public bool IsInside { get; private set; }
-    public DateTime CreatedAt { get; }
+    public DateTimeOffset CreatedAt { get; }
     public int? OriginType { get; }
     public string? OriginCardUuid { get; }
     public bool Changed { get; private set; }
 
-    private AdmissionVisit(long id, bool isInside, DateTime createdAt, int? originType, string? originCardUuid, List<VisitLog> logs)
+    private AdmissionVisit(long id, bool isInside, DateTimeOffset createdAt, int? originType, string? originCardUuid, List<VisitLog> logs)
     {
         Id = id;
         IsInside = isInside;
@@ -26,11 +26,11 @@ public sealed class AdmissionVisit
         _logs = logs;
     }
 
-    public static AdmissionVisit FromPersistence(long id, bool isInside, DateTime createdAt, int? originType, string? originCardUuid,
+    public static AdmissionVisit FromPersistence(long id, bool isInside, DateTimeOffset createdAt, int? originType, string? originCardUuid,
         IEnumerable<VisitLog> logs) =>
         new(id, isInside, createdAt, originType, originCardUuid, logs.OrderBy(l => l.OccurredAt).ThenBy(l => l.Id).ToList());
 
-    internal static AdmissionVisit Start(DateTime now, string? scannedBy, int? originType, string? originCardUuid)
+    internal static AdmissionVisit Start(DateTimeOffset now, string? scannedBy, int? originType, string? originCardUuid)
     {
         var visit = new AdmissionVisit(0, true, now, originType, originCardUuid, []) { Changed = true };
         visit.AddLog(VisitLogType.CheckIn, now, scannedBy);
@@ -42,14 +42,14 @@ public sealed class AdmissionVisit
     public IReadOnlyList<VisitLog> NewLogs => _newLogs;
     public IEnumerable<VisitLog> CheckIns => _logs.Where(l => l.Type == VisitLogType.CheckIn);
 
-    internal void Enter(DateTime now, string? scannedBy)
+    internal void Enter(DateTimeOffset now, string? scannedBy)
     {
         IsInside = true;
         Changed = true;
         AddLog(VisitLogType.CheckIn, now, scannedBy);
     }
 
-    internal void Leave(DateTime now, string? scannedBy)
+    internal void Leave(DateTimeOffset now, string? scannedBy)
     {
         IsInside = false;
         Changed = true;
@@ -63,7 +63,7 @@ public sealed class AdmissionVisit
         _newLogs.Clear();
     }
 
-    private void AddLog(VisitLogType type, DateTime now, string? scannedBy)
+    private void AddLog(VisitLogType type, DateTimeOffset now, string? scannedBy)
     {
         var log = new VisitLog(0, type, now, scannedBy);
         _logs.Add(log);
@@ -103,7 +103,7 @@ public sealed class Admission
     public IReadOnlyList<VisitLog> CheckIns => _visits.SelectMany(v => v.CheckIns).OrderBy(l => l.OccurredAt).ToList();
     public VisitLog? LastCheckIn => CheckIns.LastOrDefault();
 
-    public AdmissionVisit CheckIn(int admissionCap, string? scannedBy, DateTime now, int? originType = null, string? originCardUuid = null)
+    public AdmissionVisit CheckIn(int admissionCap, string? scannedBy, DateTimeOffset now, int? originType = null, string? originCardUuid = null)
     {
         var cap = Math.Max(1, admissionCap);
         if (InsideCount >= cap)
@@ -120,7 +120,7 @@ public sealed class Admission
         return visit;
     }
 
-    public AdmissionVisit CheckOut(string? scannedBy, DateTime now)
+    public AdmissionVisit CheckOut(string? scannedBy, DateTimeOffset now)
     {
         var inside = _visits.LastOrDefault(v => v.IsInside)
             ?? throw new DomainException(AdmissionEvaluator.NotCheckedIn);

@@ -19,7 +19,7 @@ public sealed class OrderLogRepository(IScopeProvider scopeProvider) : IOrderLog
             OrderId = orderId,
             ToStatus = (int)toStatus,
             ChangedBy = string.IsNullOrWhiteSpace(changedBy) ? null : changedBy.Trim(),
-            OccurredAt = DateTime.UtcNow,
+            OccurredAt = SwissTime.Timestamp,
             Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim()
         });
     }

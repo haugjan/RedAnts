@@ -7,7 +7,7 @@ public sealed record MyTicketSummary(
     Guid Uuid,
     int ScopeId,
     TicketStatus Status,
-    DateTime CreatedAt);
+    DateTimeOffset CreatedAt);
 
 public interface IMyTicketsReader
 {

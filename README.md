@@ -150,8 +150,8 @@ erDiagram
         int Status "enum OrderStatus"
         string PayrexxGatewayId "null; Payrexx gateway id"
         string FulfillmentPayload "null; JSON snapshot for the webhook"
-        datetime CreatedAt
-        datetime PaidAt "null"
+        datetimeoffset CreatedAt
+        datetimeoffset PaidAt "null"
     }
 
     EventTickets {
@@ -164,7 +164,7 @@ erDiagram
         int OrderId FK "null"
         int BundleId FK "null; EventTicketBundles"
         int Status "enum TicketStatus"
-        datetime CreatedAt
+        datetimeoffset CreatedAt
         bool Redeemed
         int BuyerType "null; enum BuyerType"
         string CreatedByName "null; admin creator"
@@ -180,7 +180,7 @@ erDiagram
         int OrderId FK "null"
         int BundleId FK "null; FlexTicketBundles"
         int Status "enum TicketStatus"
-        datetime CreatedAt
+        datetimeoffset CreatedAt
         int RedeemedEventId "null; the event it was consumed at"
         bool Redeemed
     }
@@ -194,7 +194,7 @@ erDiagram
         decimal Price
         int OrderId FK "null"
         int Status "enum TicketStatus"
-        datetime CreatedAt
+        datetimeoffset CreatedAt
         string Reference "null"
         string BuyerEmail "null"
         int BuyerType "null; enum BuyerType"
@@ -207,7 +207,7 @@ erDiagram
         int Category "enum MemberCategory"
         int OrderId FK "null"
         int Status "enum TicketStatus"
-        datetime CreatedAt
+        datetimeoffset CreatedAt
         string FirstName "null"
         string LastName "null"
         datetime Birthday "null"
@@ -221,14 +221,14 @@ erDiagram
         int TicketType "enum TicketType"
         string TicketUuid "null for FreeEntry; else ticket Uuid"
         bool IsInside "current presence"
-        datetime CreatedAt
+        datetimeoffset CreatedAt
     }
 
     TicketEventVisitsLogs {
         long Id PK
         long VisitId FK
         int Type "enum VisitLogType (CheckIn/CheckOut)"
-        datetime OccurredAt
+        datetimeoffset OccurredAt
         string ScannedBy "null"
     }
 
@@ -334,7 +334,7 @@ erDiagram
         int OrderId FK
         int ToStatus "enum OrderStatus"
         string ChangedBy "null"
-        datetime OccurredAt
+        datetimeoffset OccurredAt
         string Note "null"
     }
 
@@ -343,7 +343,7 @@ erDiagram
         int EventId "Umbraco event node"
         int Category "enum TicketCategory"
         string Reference
-        datetime CreatedAt
+        datetimeoffset CreatedAt
     }
 
     FlexTicketBundles {
@@ -351,7 +351,7 @@ erDiagram
         int SeasonId "Umbraco season node"
         int Category "enum TicketCategory"
         string Reference
-        datetime CreatedAt
+        datetimeoffset CreatedAt
     }
 
     TicketEventFreeEntryQuotas {
@@ -366,9 +366,9 @@ erDiagram
         string Email
         string Name "null"
         string Source
-        datetime SignedUpAt
+        datetimeoffset SignedUpAt
         int Status "enum NewsletterTransferStatus"
-        datetime TransferredAt "null"
+        datetimeoffset TransferredAt "null"
     }
 ```
 

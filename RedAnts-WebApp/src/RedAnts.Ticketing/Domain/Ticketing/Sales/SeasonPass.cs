@@ -9,7 +9,7 @@ public sealed class SeasonPass
     public decimal Price { get; private set; }
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public Buyer? Buyer { get; private set; }
     public string? CreatedByName { get; private set; }
     public string? CreatedByEmail { get; private set; }
@@ -17,7 +17,7 @@ public sealed class SeasonPass
     public string? Email { get; private set; }
 
     private SeasonPass(int id, Guid uuid, int seasonId, int? tierId, decimal price,
-        int? orderId, TicketStatus status, DateTime createdAt, Buyer? buyer,
+        int? orderId, TicketStatus status, DateTimeOffset createdAt, Buyer? buyer,
         string? createdByName, string? createdByEmail, string? reference, string? email)
     {
         Id = id;
@@ -42,12 +42,12 @@ public sealed class SeasonPass
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         return new SeasonPass(0, Guid.NewGuid(), seasonId, tierId, decimal.Round(price, 2),
-            orderId, TicketStatus.Valid, DateTime.UtcNow, buyer, Clean(createdByName), Clean(createdByEmail),
+            orderId, TicketStatus.Valid, SwissTime.Timestamp, buyer, Clean(createdByName), Clean(createdByEmail),
             Clean(reference), Clean(email));
     }
 
     public static SeasonPass FromPersistence(int id, Guid uuid, int seasonId, int? tierId,
-        decimal price, int? orderId, TicketStatus status, DateTime createdAt,
+        decimal price, int? orderId, TicketStatus status, DateTimeOffset createdAt,
         Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, string? reference = null,
         string? email = null) =>
         new(id, uuid, seasonId, tierId, price, orderId, status, createdAt, buyer,

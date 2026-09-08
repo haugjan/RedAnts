@@ -18,7 +18,7 @@ public static class GrantFreeEntry
             if (quota.Allows(command.Type, granted, before) is CheckResult.Denied denied)
                 return new ScanOutcome(AdmissionOutcome.Rejected, TicketType.FreeEntry, null, denied.Cause.Message, before);
 
-            var entry = FreeEntry.Grant(command.EventId, command.Type, command.ScannedBy, DateTime.UtcNow);
+            var entry = FreeEntry.Grant(command.EventId, command.Type, command.ScannedBy, SwissTime.Timestamp);
             await freeEntries.SaveAsync(entry);
             return new ScanOutcome(AdmissionOutcome.CheckedIn, TicketType.FreeEntry, command.Type.DisplayName(), null,
                 await occupancy.GetAsync(command.EventId));

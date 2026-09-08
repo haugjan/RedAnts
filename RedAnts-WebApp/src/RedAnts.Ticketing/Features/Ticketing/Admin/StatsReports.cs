@@ -16,7 +16,7 @@ public sealed record VisitorOverview(
 
 public interface IVisitorStatsReport
 {
-    Task<VisitorOverview> GetAsync(DateTime fromUtc, DateTime toExclusiveUtc);
+    Task<VisitorOverview> GetAsync(DateOnly from, DateOnly toExclusive);
 }
 
 public sealed class SalesStats

@@ -8,7 +8,7 @@ public sealed class MemberCard
     public MemberCategory Category { get; private set; }
     public int? OrderId { get; private set; }
     public TicketStatus Status { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public string? FirstName { get; private set; }
     public string? LastName { get; private set; }
     public DateOnly? Birthday { get; private set; }
@@ -26,7 +26,7 @@ public sealed class MemberCard
     public string HolderDisplay => IsCompany ? Address.Company!.Trim() : HolderName;
 
     private MemberCard(int id, Guid uuid, int seasonId, MemberCategory category,
-        int? orderId, TicketStatus status, DateTime createdAt, string? firstName, string? lastName,
+        int? orderId, TicketStatus status, DateTimeOffset createdAt, string? firstName, string? lastName,
         DateOnly? birthday, string? email, string? reference, int admissions, string? createdByName,
         string? createdByEmail, MemberAddress address)
     {
@@ -55,13 +55,13 @@ public sealed class MemberCard
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         return new MemberCard(0, Guid.NewGuid(), seasonId, category,
-            orderId, TicketStatus.Valid, DateTime.UtcNow, Clean(firstName), Clean(lastName), birthday,
+            orderId, TicketStatus.Valid, SwissTime.Timestamp, Clean(firstName), Clean(lastName), birthday,
             Clean(email), Clean(reference), Math.Max(1, admissions), Clean(createdByName), Clean(createdByEmail),
             address ?? MemberAddress.Empty);
     }
 
     public static MemberCard FromPersistence(int id, Guid uuid, int seasonId, MemberCategory category,
-        int? orderId, TicketStatus status, DateTime createdAt, string? firstName, string? lastName,
+        int? orderId, TicketStatus status, DateTimeOffset createdAt, string? firstName, string? lastName,
         DateOnly? birthday, string? email, string? reference, string? createdByName = null,
         string? createdByEmail = null, MemberAddress? address = null, int admissions = 1) =>
         new(id, uuid, seasonId, category, orderId, status, createdAt, firstName, lastName, birthday,

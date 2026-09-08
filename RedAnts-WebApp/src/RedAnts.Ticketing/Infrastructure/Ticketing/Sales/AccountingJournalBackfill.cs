@@ -61,7 +61,7 @@ WHERE j.Id IS NULL AND (o.Status IN (@1, @2, @3) OR o.PaidAt IS NOT NULL)",
                 Description = "Verkauf",
                 CreatedBy = null,
                 OccurredAt = o.PaidAt ?? o.CreatedAt,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = SwissTime.Timestamp
             });
         }
         return orders.Count;
@@ -78,7 +78,7 @@ WHERE o.Status = @0 AND r.Id IS NULL AND o.TotalGross > 0",
 
         foreach (var o in orders)
         {
-            var when = await db.ExecuteScalarAsync<DateTime?>(
+            var when = await db.ExecuteScalarAsync<DateTimeOffset?>(
                 "SELECT MAX(OccurredAt) FROM OrderStatusLogs WHERE OrderId = @0 AND ToStatus = @1", o.Id, (int)OrderStatus.Refunded)
                 ?? o.PaidAt ?? o.CreatedAt;
             var currency = string.IsNullOrWhiteSpace(o.Currency) ? "CHF" : o.Currency;
@@ -117,7 +117,7 @@ WHERE o.Status = @0 AND r.Id IS NULL AND o.TotalGross > 0",
                 Description = "Rückzahlung (rückwirkend)",
                 CreatedBy = null,
                 OccurredAt = when,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = SwissTime.Timestamp
             });
         }
         return orders.Count;
@@ -131,7 +131,7 @@ WHERE o.Status = @0 AND r.Id IS NULL AND o.TotalGross > 0",
         public decimal VatRate { get; set; }
         public decimal VatAmount { get; set; }
         public string Currency { get; set; } = "CHF";
-        public DateTime CreatedAt { get; set; }
-        public DateTime? PaidAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset? PaidAt { get; set; }
     }
 }

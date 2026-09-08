@@ -151,7 +151,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             SeasonId = seasonId,
             Category = (int)TicketCategory.Adult,
             Reference = BoxOfficeBundleReference,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = SwissTime.Timestamp,
             CreatedByName = null,
             CreatedByEmail = null
         };
@@ -556,7 +556,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         public int Status { get; set; }
         public bool Redeemed { get; set; }
         public int? RedeemedEventId { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public bool? InsideFlag { get; set; }
         public int Converted { get; set; }
         public bool BoxOffice { get; set; }

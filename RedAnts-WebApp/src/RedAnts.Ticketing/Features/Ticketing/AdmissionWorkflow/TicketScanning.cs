@@ -57,7 +57,7 @@ public sealed class TicketScanning(
                     await occupancy.GetAsync(eventId), carries ? categoryLabel : null, carries ? holder : null);
         }
 
-        var now = DateTime.UtcNow;
+        var now = SwissTime.Timestamp;
         if (mode == ScanMode.CheckIn)
         {
             admission.CheckIn(cap, scannedBy, now, known.OriginType, known.OriginCardUuid);

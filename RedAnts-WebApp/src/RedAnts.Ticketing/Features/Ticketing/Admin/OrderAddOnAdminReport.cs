@@ -7,7 +7,7 @@ public sealed class AddOnDeliveryItem
     public int Id { get; init; }
     public int OrderId { get; init; }
     public string OrderNumber { get; init; } = "";
-    public DateTime CreatedAt { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
     public OrderStatus OrderStatus { get; init; }
     public string BuyerName { get; init; } = "";
     public string Email { get; init; } = "";

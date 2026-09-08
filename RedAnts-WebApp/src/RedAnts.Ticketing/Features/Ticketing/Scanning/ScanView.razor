@@ -527,16 +527,7 @@
         _ => type.ToString()
     };
 
-    private static string FmtTime(DateTime utc)
-    {
-        try
-        {
-            var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Zurich");
-            var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), tz);
-            return local.ToString("dd.MM.yyyy HH:mm");
-        }
-        catch { return utc.ToString("dd.MM.yyyy HH:mm"); }
-    }
+    private static string FmtTime(DateTimeOffset at) => SwissTime.ToSwiss(at).ToString("dd.MM.yyyy HH:mm");
 
     private static string Shorten(string? s) =>
         string.IsNullOrEmpty(s) ? "" : (s.Length <= 40 ? s : s[..40] + "…");

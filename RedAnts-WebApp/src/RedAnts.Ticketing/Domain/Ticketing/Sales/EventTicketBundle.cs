@@ -8,12 +8,12 @@ public sealed class EventTicketBundle
     public int EventId { get; private set; }
     public TicketCategory Category { get; private set; }
     public string Reference { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public string? CreatedByName { get; private set; }
     public string? CreatedByEmail { get; private set; }
 
     private EventTicketBundle(int id, int eventId, TicketCategory category, string reference,
-        DateTime createdAt, string? createdByName, string? createdByEmail)
+        DateTimeOffset createdAt, string? createdByName, string? createdByEmail)
     {
         Id = id;
         EventId = eventId;
@@ -32,12 +32,12 @@ public sealed class EventTicketBundle
         if (reference.Length == 0) throw new DomainException("Ein Bundlename muss angegeben werden.");
         if (reference.Length > ReferenceMaxLength)
             throw new DomainException($"Der Bundlename darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
-        return new EventTicketBundle(0, eventId, category, reference, DateTime.UtcNow,
+        return new EventTicketBundle(0, eventId, category, reference, SwissTime.Timestamp,
             Clean(createdByName), Clean(createdByEmail));
     }
 
     public static EventTicketBundle FromPersistence(int id, int eventId, TicketCategory category,
-        string reference, DateTime createdAt, string? createdByName = null, string? createdByEmail = null) =>
+        string reference, DateTimeOffset createdAt, string? createdByName = null, string? createdByEmail = null) =>
         new(id, eventId, category, reference, createdAt, Clean(createdByName), Clean(createdByEmail));
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

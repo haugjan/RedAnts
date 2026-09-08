@@ -69,7 +69,7 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var affected = await scope.Database.ExecuteAsync(
             "UPDATE Orders SET Status = @0, PaidAt = @1 WHERE Id = @2 AND Status = @3",
-            (int)OrderStatus.Paid, DateTime.UtcNow, orderId, (int)OrderStatus.Draft);
+            (int)OrderStatus.Paid, SwissTime.Timestamp, orderId, (int)OrderStatus.Draft);
         return affected > 0;
     }
 
@@ -82,7 +82,7 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
         return affected > 0;
     }
 
-    public async Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTime createdAfter, DateTime createdBefore)
+    public async Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTimeOffset createdAfter, DateTimeOffset createdBefore)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<OrderRecord>(

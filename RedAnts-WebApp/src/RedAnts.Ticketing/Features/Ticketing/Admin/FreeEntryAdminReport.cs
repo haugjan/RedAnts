@@ -4,7 +4,7 @@ namespace RedAnts.Features.Ticketing.Admin;
 
 public sealed record FreeEntryListItem(
     Guid Uuid,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     string? GrantedBy,
     bool IsInside,
     FreeEntryType? Category);

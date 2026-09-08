@@ -555,7 +555,7 @@
     private async Task ReloadSeasonAsync()
     {
         var ids = _events.Select(e => e.Id).ToList();
-        var seasonStart = CurrentSeasonObj?.StartDate.ToDateTime(TimeOnly.MinValue) ?? DateTime.UtcNow;
+        var seasonStart = CurrentSeasonObj?.StartDate.ToDateTime(TimeOnly.MinValue) ?? SwissTime.Now;
         _season = await SeasonReport.GetAsync(SelectedSeasonId, ids, seasonStart);
         _sales = await SalesReport.GetSeasonAsync(SelectedSeasonId, ids);
     }
@@ -569,22 +569,22 @@
 
     private async Task ReloadVisitorsAsync()
     {
-        var (fromUtc, toExclusiveUtc) = ResolveVisitorRange();
-        _visitors = await VisitorReport.GetAsync(fromUtc, toExclusiveUtc);
+        var (from, toExclusive) = ResolveVisitorRange();
+        _visitors = await VisitorReport.GetAsync(from, toExclusive);
     }
 
-    private (DateTime FromUtc, DateTime ToExclusiveUtc) ResolveVisitorRange()
+    private (DateOnly From, DateOnly ToExclusive) ResolveVisitorRange()
     {
-        var todayUtc = DateTime.UtcNow.Date;
+        var today = SwissTime.Today;
         var range = VisitorRange ?? "d30";
         if (range.StartsWith('s') && int.TryParse(range[1..], out var seasonId))
         {
             var season = _seasons.FirstOrDefault(s => s.Id == seasonId);
             if (season is not null)
-                return (season.StartDate.ToDateTime(TimeOnly.MinValue), season.EndDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
+                return (season.StartDate, season.EndDate.AddDays(1));
         }
         var days = range.StartsWith('d') && int.TryParse(range[1..], out var d) ? Math.Clamp(d, 1, 365) : 30;
-        return (todayUtc.AddDays(-(days - 1)), todayUtc.AddDays(1));
+        return (today.AddDays(-(days - 1)), today.AddDays(1));
     }
 
     private string BarTitle(VisitorBucket b) => _visitors?.Bucket == StatBucket.Month

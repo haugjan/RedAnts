@@ -107,7 +107,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         public int? TierId { get; set; }
         public decimal Price { get; set; }
         public int Status { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public int? BuyerType { get; set; }
         public string? BuyerFirstName { get; set; }
         public string? BuyerLastName { get; set; }

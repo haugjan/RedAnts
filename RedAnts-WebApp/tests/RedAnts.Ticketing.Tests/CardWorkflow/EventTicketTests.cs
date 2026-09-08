@@ -12,7 +12,7 @@ public class EventTicketTests
     private static EventTicket Stored(InMemoryEventTickets tickets, TicketStatus status = TicketStatus.Valid, bool redeemed = false)
     {
         var ticket = EventTicket.FromPersistence(5, Guid.NewGuid(), EventId, TicketCategory.Adult, 20m, 7, status,
-            new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Utc), redeemed, Buyer.Create(BuyerType.Private, "Anna", "Muster", null),
+            new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero), redeemed, Buyer.Create(BuyerType.Private, "Anna", "Muster", null),
             "admin", "admin@redants.ch", 3, tierId: 2);
         tickets.Stored.Add(ticket);
         return ticket;

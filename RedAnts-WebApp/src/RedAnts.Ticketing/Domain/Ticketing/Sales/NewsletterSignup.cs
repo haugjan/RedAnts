@@ -12,12 +12,12 @@ public sealed class NewsletterSignup
     public string Email { get; }
     public string? Name { get; }
     public string Source { get; }
-    public DateTime SignedUpAt { get; }
+    public DateTimeOffset SignedUpAt { get; }
     public NewsletterTransferStatus Status { get; private set; }
-    public DateTime? TransferredAt { get; private set; }
+    public DateTimeOffset? TransferredAt { get; private set; }
 
     private NewsletterSignup(int id, string email, string? name, string source,
-        DateTime signedUpAt, NewsletterTransferStatus status, DateTime? transferredAt)
+        DateTimeOffset signedUpAt, NewsletterTransferStatus status, DateTimeOffset? transferredAt)
     {
         Id = id;
         Email = email;
@@ -37,14 +37,14 @@ public sealed class NewsletterSignup
         return new NewsletterSignup(0, address,
             string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
             string.IsNullOrWhiteSpace(source) ? "Onlineshop" : source.Trim(),
-            DateTime.UtcNow, NewsletterTransferStatus.Pending, null);
+            SwissTime.Timestamp, NewsletterTransferStatus.Pending, null);
     }
 
     public static NewsletterSignup FromPersistence(int id, string email, string? name, string source,
-        DateTime signedUpAt, int status, DateTime? transferredAt) =>
+        DateTimeOffset signedUpAt, int status, DateTimeOffset? transferredAt) =>
         new(id, email, name, source, signedUpAt, (NewsletterTransferStatus)status, transferredAt);
 
-    public void MarkTransferred(DateTime at)
+    public void MarkTransferred(DateTimeOffset at)
     {
         Status = NewsletterTransferStatus.Transferred;
         TransferredAt = at;

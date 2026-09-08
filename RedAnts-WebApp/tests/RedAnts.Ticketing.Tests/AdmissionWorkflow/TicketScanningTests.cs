@@ -23,7 +23,7 @@ public class TicketScanningTests
         string? buyerName = "Max Muster", string? holderName = null, DateOnly? birthday = null, int? redeemedEventId = null)
     {
         var uuid = Guid.NewGuid();
-        var issued = new IssuedTicket(type, uuid, scopeId, TicketCategory.Adult, status, DateTime.UtcNow, holderName,
+        var issued = new IssuedTicket(type, uuid, scopeId, TicketCategory.Adult, status, SwissTime.Timestamp, holderName,
             Birthday: birthday, BuyerName: buyerName, CategoryName: "Erwachsene", Admissions: admissions);
         var seasonId = type == TicketType.EventTicket ? (int?)null : SeasonId;
         _facts.Facts[uuid] = new AdmissionFacts(issued, seasonId, redeemedEventId, false, false, null, null);

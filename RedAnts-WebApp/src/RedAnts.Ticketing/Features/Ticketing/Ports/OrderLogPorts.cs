@@ -2,7 +2,7 @@ using RedAnts.Domain.Ticketing.Sales;
 
 namespace RedAnts.Features.Ticketing.Ports;
 
-public sealed record OrderLogEntry(OrderStatus ToStatus, string? ChangedBy, DateTime OccurredAt, string? Note);
+public sealed record OrderLogEntry(OrderStatus ToStatus, string? ChangedBy, DateTimeOffset OccurredAt, string? Note);
 
 public interface IOrderLog
 {

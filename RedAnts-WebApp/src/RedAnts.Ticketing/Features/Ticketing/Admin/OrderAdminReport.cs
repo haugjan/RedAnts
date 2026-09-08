@@ -5,7 +5,7 @@ namespace RedAnts.Features.Ticketing.Admin;
 public sealed record OrderListItem(
     int OrderId,
     string OrderNumber,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     OrderStatus Status,
     decimal TotalGross,
     BuyerType BuyerType,

@@ -38,9 +38,9 @@ public sealed record OutboxEntry(
     string? LastError,
     string? Source,
     string? Reference,
-    DateTime CreatedAt,
-    DateTime NextAttemptAt,
-    DateTime? SentAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset NextAttemptAt,
+    DateTimeOffset? SentAt);
 
 public interface IEmailTransport
 {
@@ -58,15 +58,15 @@ public interface IEmailTransport
 public interface IEmailOutbox
 {
     Task EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default);
-    Task<OutboxMessage?> ClaimNextDueAsync(DateTime now, CancellationToken cancellationToken = default);
-    Task MarkSentAsync(int id, string sentVia, DateTime sentAt);
-    Task RescheduleAsync(int id, string? sentVia, string lastError, DateTime nextAttemptAt);
+    Task<OutboxMessage?> ClaimNextDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
+    Task MarkSentAsync(int id, string sentVia, DateTimeOffset sentAt);
+    Task RescheduleAsync(int id, string? sentVia, string lastError, DateTimeOffset nextAttemptAt);
     Task MarkFailedAsync(int id, string? sentVia, string lastError);
-    Task<int> PurgeSentBeforeAsync(DateTime cutoff);
+    Task<int> PurgeSentBeforeAsync(DateTimeOffset cutoff);
 }
 
 public interface IOutboxAdminReport
 {
-    Task<IReadOnlyList<OutboxEntry>> ListAsync(bool includeSent, DateTime sentSince);
+    Task<IReadOnlyList<OutboxEntry>> ListAsync(bool includeSent, DateTimeOffset sentSince);
     Task<bool> RequeueAsync(int id);
 }

@@ -19,16 +19,16 @@ public static class AdminFormat
         };
     }
 
-    public static string CreatedShort(DateTime createdAtUtc, string? createdByName, int? orderId)
+    public static string CreatedShort(DateTimeOffset createdAt, string? createdByName, int? orderId)
     {
-        var date = SwissTime.ToSwiss(createdAtUtc).ToString("dd.MM.yy");
+        var date = SwissTime.ToSwiss(createdAt).ToString("dd.MM.yy");
         var by = orderId.HasValue ? "online" : createdByName is null ? "—" : Initials(createdByName);
         return $"{date} / {by}";
     }
 
-    public static string CreatedTooltip(DateTime createdAtUtc, string? createdByName, string? createdByEmail, int? orderId)
+    public static string CreatedTooltip(DateTimeOffset createdAt, string? createdByName, string? createdByEmail, int? orderId)
     {
-        var stamp = SwissTime.ToSwiss(createdAtUtc).ToString("dd.MM.yyyy HH:mm");
+        var stamp = SwissTime.ToSwiss(createdAt).ToString("dd.MM.yyyy HH:mm");
         if (orderId.HasValue) return $"{stamp} — Onlinekauf";
         var who = createdByEmail ?? createdByName;
         return who is null ? stamp : $"{stamp} — {who}";
