@@ -140,9 +140,9 @@ internal sealed class RecordingMemberCardMailer : IMemberCardMailer
 {
     public List<(MemberCard Card, string Subject, string Body)> Sent { get; } = [];
 
-    public string DefaultSubjectFor(MemberCategory category, bool isCompany) => "Betreff";
+    public string DefaultSubjectFor(MemberCategory category) => "Betreff";
 
-    public string DefaultBodyFor(MemberCategory category, bool isCompany) => "Text";
+    public string DefaultBodyFor(MemberCategory category) => "Text";
 
     public Task<EmailSendResult> SendAsync(MemberCard card, string subject, string body, CancellationToken cancellationToken = default)
     {
