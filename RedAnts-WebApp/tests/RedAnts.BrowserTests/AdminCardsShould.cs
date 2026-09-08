@@ -18,6 +18,7 @@ public sealed class AdminCardsShould(BrowserFixture browser)
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
         await Assertions.Expect(page.Locator("h1")).ToContainTextAsync(heading, new() { Timeout = 30_000 });
         await Assertions.Expect(page.Locator(".ta-modal-error, .blazor-error-boundary")).ToHaveCountAsync(0);
+        await Assertions.Expect(page.Locator("body")).Not.ToContainTextAsync(".Handler ");
         await browser.ShotAsync(page, $"admin-{tab}");
     }
 
