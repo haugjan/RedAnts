@@ -261,6 +261,8 @@ The structural goals are reached and guarded by tests: layering, slices with exp
 
 ### Backlog (recommended order)
 
+The phased plan for these items (scope, steps, verification per phase) is `ARCHITECTURE-PLAN.md`; item 5 below is not part of that plan.
+
 1. Split the four admin card and ticket components and `ShowAdminPage.razor` into one component per dialog with one command each (pillar 14, the largest smell and the source of the stray handler text of 2026-09-08).
 2. Open a scope in the handlers that write several tables (`PlaceOrder`/`OrderFulfillment`, `CreateAdminOrder`, `RefundOrder`, the imports) so a failure leaves no half-written order (pillar 6).
 3. Add `Check` slices for the I/O rules the components repeat (`CanCheckout`, `CanRefund`, `CanConvert`) and let the UI ask instead of re-implementing (pillar 2).

@@ -33,7 +33,7 @@ Each project layers internally as Domain → Features (ports) → Infrastructure
 
 `RedAnts-WebApp/tests/RedAnts.Architecture.Tests` (ArchUnitNET) enforces the layering, the module boundaries, the naming rule (no `Service`/`Manager`/`Adapter`/`Editor`/`Store`/`Helper` suffix outside `Domain`; the existing names are listed in `legacy-names.txt`, remove the line when you rename one) and the slice conventions (`Handler` nested once in its slice class, sealed, namespace `RedAnts.Features.<Module>[.<Name>Workflow]`, registered in `TicketingFeatures.Handlers`, never calling another handler; existing workflows: `CheckoutWorkflow`, `AdmissionWorkflow`, `CatalogWorkflow`, `OrderWorkflow`, `CardWorkflow`). Run `dotnet test RedAnts-WebApp/tests/RedAnts.Architecture.Tests` after structural changes; the smell report in its output lists long files, many usings and many injections without failing.
 
-The verified status against the target architecture (pillar by pillar) and the recommended backlog live in ARCHITECTURE.md, section "Target architecture status and backlog"; update that section when a backlog item lands.
+The verified status against the target architecture (pillar by pillar) and the recommended backlog live in ARCHITECTURE.md, section "Target architecture status and backlog"; the phased plan for the open items is `ARCHITECTURE-PLAN.md`. Update both when a phase or backlog item lands.
 
 The slices must stay decoupled:
 
