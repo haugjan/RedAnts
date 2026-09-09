@@ -396,16 +396,7 @@
 
                 @if (_chooseKind)
                 {
-                    <div class="se-choosewrap" @onclick="CancelNewTile">
-                        <div class="se-choosecard" @onclick:stopPropagation="true">
-                            <h3>Neue Kachel</h3>
-                            <div class="se-choosebtns">
-                                <button class="se-btn" @onclick="() => CommitNewTile(NodeKind.Folder)">📁 Ordner</button>
-                                <button class="se-btn primary" @onclick="() => CommitNewTile(NodeKind.Sound)">🔊 Song</button>
-                            </div>
-                            <button class="se-btn sm se-choosecancel" @onclick="CancelNewTile">Abbrechen</button>
-                        </div>
-                    </div>
+                    <NewTileDialog OnChosen="CommitNewTile" OnCancelled="CancelNewTile" />
                 }
             </div>
         </div>
