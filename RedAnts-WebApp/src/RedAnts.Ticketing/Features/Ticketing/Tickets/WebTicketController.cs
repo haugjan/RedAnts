@@ -230,13 +230,14 @@ public sealed class WebTicketController(
         var summaries = (await myTickets.GetRelatedAsync(emails))
             .Where(s => s.Uuid != current && s.Status == TicketStatus.Valid)
             .DistinctBy(s => s.Uuid)
-            .Take(30)
             .ToList();
 
-        var result = new List<RelatedTicket>(summaries.Count);
+        var result = new List<RelatedTicket>();
         foreach (var s in summaries)
         {
-            var (scopeName, dateText) = await ResolveScopeAsync(s.Type, s.ScopeId);
+            if (result.Count >= 30) break;
+            var (scopeName, dateText, valid) = await ResolveScopeAsync(s.Type, s.ScopeId);
+            if (!valid) continue;
             if (s.Type != TicketType.EventTicket) dateText = null;
             var issued = await tickets.FindAsync(s.Uuid);
             var name = FirstNonEmpty(issued?.CustomName, issued?.HolderName ?? issued?.BuyerName);
@@ -252,17 +253,17 @@ public sealed class WebTicketController(
         return result;
     }
 
-    private async Task<(string ScopeName, string? DateText)> ResolveScopeAsync(TicketType type, int scopeId)
+    private async Task<(string ScopeName, string? DateText, bool Valid)> ResolveScopeAsync(TicketType type, int scopeId)
     {
         if (type == TicketType.EventTicket)
         {
             var ev = await events.FindByIdAsync(scopeId);
-            return ev is null ? ("Anlass", null) : (ev.Name, EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown));
+            if (ev is null) return ("Anlass", null, false);
+            return (ev.Name, EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown), ev.Date >= SwissTime.Today);
         }
         var season = await seasons.FindByIdAsync(scopeId);
-        return season is null
-            ? ("Saison", null)
-            : (season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}");
+        if (season is null) return ("Saison", null, false);
+        return (season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}", season.EndDate >= SwissTime.Today);
     }
 
     private async Task<(string ScopeName, string? DateText, string? VenueName, string? HomeLogo, string? AwayLogo)> ResolveContextAsync(TicketTokenData data)
