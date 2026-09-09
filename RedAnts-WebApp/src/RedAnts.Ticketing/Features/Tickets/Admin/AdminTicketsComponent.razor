@@ -68,7 +68,7 @@
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_result.Tickets.Count == 0)" @onclick="() => _showBulk = true"
                         title="Die aktuell gefilterten Tickets mit E-Mail versenden">Tickets versenden</button>
-                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreateBundle">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="() => _showCreateBundle = true">
                     Bundle erstellen
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenImport">
@@ -247,51 +247,11 @@
 
 @if (_showCreateBundle)
 {
-    <div class="ta-overlay" @onmousedown="CloseCreateBundle">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Ticket-Bundle erstellen</h2>
-            <div class="ta-field">
-                <label class="ta-label">Anlass</label>
-                <div class="ta-readonly">@_selectedEventName</div>
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="bundleCategory">Ticketkategorie</label>
-                <select id="bundleCategory" class="ta-select" @bind="_bundleCategory">
-                    @foreach (var cat in AllCategories)
-                    {
-                        <option value="@cat">@cat.DisplayName()</option>
-                    }
-                </select>
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="bundleReference">Bundlename</label>
-                <input id="bundleReference" class="ta-input" type="text" maxlength="50" placeholder="z. B. Sponsoren 2026" @bind="_bundleReference" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="bundleQuantity">Anzahl Tickets</label>
-                <input id="bundleQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_bundleQuantity" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="bundlePaymentSource">Zahlart</label>
-                <select id="bundlePaymentSource" class="ta-select" @bind="_bundlePaymentSource">
-                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
-                    {
-                        <option value="@ps">@ps.DisplayName()</option>
-                    }
-                </select>
-            </div>
-            @if (_bundleError is not null)
-            {
-                <p class="ta-modal-error">@_bundleError</p>
-            }
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreateBundle" disabled="@_bundleSaving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_bundleSaving">
-                    @(_bundleSaving ? "Wird erstellt …" : "Bundle erstellen")
-                </button>
-            </div>
-        </div>
-    </div>
+    <CreateEventTicketBundleDialog EventId="SelectedEventId"
+                                   EventName="@_selectedEventName"
+                                   AdminUser="@AdminUser"
+                                   OnSaved="BundleCreatedAsync"
+                                   OnClosed="() => _showCreateBundle = false" />
 }
 
 @if (_showImport)
@@ -479,13 +439,10 @@
     [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
     [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
     [Inject] private GetEventTicketsForAdmin.Handler TicketList { get; set; } = default!;
-    [Inject] private GetOccupancy.Handler Occupancy { get; set; } = default!;
     [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
-    [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
     [Inject] private EditEventTicket.Handler TicketEdits { get; set; } = default!;
     [Inject] private DeleteEventTicket.Handler TicketDeletions { get; set; } = default!;
-    [Inject] private CreateEventTicketBundle.Handler BundleCreation { get; set; } = default!;
     [Inject] private ImportEventTickets.Handler TicketImports { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
@@ -703,23 +660,12 @@
     private EventTicketRow? _visitsFor;
 
     private bool _showCreateBundle;
-    private bool _bundleSaving;
-    private TicketCategory _bundleCategory = TicketCategory.Adult;
-    private string _bundleReference = "";
-    private int _bundleQuantity = 1;
-    private PaymentSource _bundlePaymentSource = PaymentSource.Sponsoring;
-    private string? _bundleError;
 
-    private void OpenCreateBundle()
+    private async Task BundleCreatedAsync()
     {
-        _bundleCategory = TicketCategory.Adult;
-        _bundleReference = "";
-        _bundleQuantity = 1;
-        _bundlePaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
-        _bundleError = null;
-        _showCreateBundle = true;
+        _showCreateBundle = false;
+        await ReloadTicketsAsync();
     }
-    private void CloseCreateBundle() => _showCreateBundle = false;
 
     private bool _showImport;
     private bool _importSaving;
@@ -833,31 +779,6 @@
         }
         catch (DomainException ex) { _importError = ex.Message; }
         finally { _importSaving = false; }
-    }
-
-    private async Task CreateBundleAsync()
-    {
-        _bundleError = null;
-        var reference = (_bundleReference ?? "").Trim();
-        if (SelectedEventId <= 0) { _bundleError = "Es ist kein Anlass gewählt."; return; }
-        if (reference.Length == 0) { _bundleError = "Bitte einen Bundlenamen angeben."; return; }
-        if (_bundleQuantity < 1) { _bundleError = "Die Anzahl muss mindestens 1 sein."; return; }
-        if ((await Occupancy.HandleAsync(new GetOccupancy.Query(SelectedEventId))).Full)
-        { _bundleError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
-
-        _bundleSaving = true;
-        try
-        {
-            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _bundleCategory, $"Ticket-Bundle · {reference}", _bundleQuantity, 0m)],
-                Identity?.Name ?? AdminUser, _bundlePaymentSource));
-            await BundleCreation.HandleAsync(new CreateEventTicketBundle.Command(SelectedEventId, _bundleCategory, reference, _bundleQuantity,
-                Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
-            _showCreateBundle = false;
-            await ReloadTicketsAsync();
-        }
-        catch (DomainException ex) { _bundleError = ex.Message; }
-        finally { _bundleSaving = false; }
     }
 
     private bool _showExport;
