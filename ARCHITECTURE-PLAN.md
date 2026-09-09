@@ -4,6 +4,8 @@ Follow-up plan to the target architecture of 2026-09-04 (see `ARCHITECTURE.md`, 
 
 ## Phase A: feature folders, ports and views inside the slices, project-aligned namespaces
 
+**Done 2026-09-09**, commits `d77c31e` (flatten and rename), `e2b2fae` (capability folders), `db14a68` (views into the features) and the fourth commit of branch `feature/s6-architecture-plan` (architecture tests and docs). Deviations from the tree below: `IEventPricing` sits in `Checkout` (its slices use it), `MyTicketsController` and `MyTicketTokenSigner` never existed, `WebTicketEvents.cshtml` joined `Tickets/Views`, the Show admin view is `Features/Admin/Views/ShowAdmin.cshtml` because two libraries cannot compile a view on the same path, and the Show module carries its own copy of `FeatureViewLocationExpander` because the modules share no ASP.NET assembly.
+
 **Goal.** Each class library holds exactly one module, so the folder level `Domain/Ticketing`, `Features/Ticketing`, `Infrastructure/Ticketing` (and `…/Show`) disappears. Inside `Features/` the code is cut vertically by capability instead of by technical kind: one folder per capability holding its slices, its ports (one interface per file, no `Ports` folder), its admin UI, its MVC views and its adapters. Very large folders are split into sub-features; `Admin` (71 files) and `CardWorkflow` (38 files) dissolve into the capabilities they serve, and the admin shell keeps only the frame and the shared widgets. Namespaces follow project plus path (`RedAnts.Ticketing.Features.Checkout`), so the module stays in the namespace and Ticketing and Show never share one. The Host keeps `Features/Website`, `Infrastructure/Website` and `Infrastructure/Shared`.
 
 **Target tree (Ticketing).**

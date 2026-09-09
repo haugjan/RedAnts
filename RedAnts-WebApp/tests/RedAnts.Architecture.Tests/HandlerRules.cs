@@ -8,6 +8,9 @@ public class HandlerRules
 {
     private static readonly Regex SliceNamespace = new(@"^RedAnts\.(Ticketing|Show)\.Features(\.|$)");
 
+    private static readonly Regex SliceHome =
+        new(@"^RedAnts\.(Ticketing|Show)\.Features\.(?!Shared\b)[A-Za-z]+(\.(?!Admin\b|Views\b|Infrastructure\b|Shared\b)[A-Za-z]+)?$");
+
     private static IEnumerable<IType> Handlers => RedAntsArchitecture.OwnTypes.Where(IsHandler);
 
     private static bool IsHandler(IType type) =>
@@ -37,14 +40,14 @@ public class HandlerRules
     }
 
     [Fact]
-    public void Slices_live_directly_in_a_module_or_a_workflow_folder()
+    public void Slices_live_in_a_capability_or_one_of_its_sub_features()
     {
         var offenders = Handlers
             .Select(h => h.Namespace.FullName)
-            .Where(ns => !Regex.IsMatch(ns, @"^RedAnts\.(Ticketing|Show)\.Features\.[A-Za-z]+$"))
+            .Where(ns => !SliceHome.IsMatch(ns))
             .Distinct()
             .ToList();
-        Assert.True(offenders.Count == 0, "Slice namespaces must be RedAnts.<Module>.Features.<Feature>:\n" + string.Join("\n", offenders));
+        Assert.True(offenders.Count == 0, "Slice namespaces must be RedAnts.<Module>.Features.<Capability>[.<SubFeature>], never Admin, Views, Infrastructure or Shared:\n" + string.Join("\n", offenders));
     }
 
     public static IEnumerable<object[]> Modules =>

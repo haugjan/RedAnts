@@ -68,15 +68,15 @@ The solution `RedAnts-WebApp/RedAnts.slnx` is split per slice (details in `ARCHI
 | Path | Purpose |
 |------|---------|
 | `RedAnts-WebApp/src/RedAnts.Host/` | Web app (`AssemblyName=RedAnts`): `Program.cs`, Umbraco, `Infrastructure/Shared`, Website slice, Umbraco template views, shared `wwwroot/`, `uSync/`. |
-| `RedAnts-WebApp/src/RedAnts.Ticketing/` | Razor class library: the whole ticketing slice (`Domain/`, `Features/Ticketing/`, `Infrastructure/Ticketing/`), compiled views, assets under `/_content/RedAnts.Ticketing/`. |
-| `RedAnts-WebApp/src/RedAnts.Show/` | Razor class library: placeholder for the soundboard/light-control app (`/show`, backoffice section "Show", SQL schema `show`). |
+| `RedAnts-WebApp/src/RedAnts.Ticketing/` | Razor class library: the whole ticketing slice cut into capability folders (`Domain/`, `Features/<Capability>/` with slices, ports, `Admin/`, `Views/` and `Infrastructure/` adapters, top-level `Infrastructure/` for boot and migrations), compiled views, assets under `/_content/RedAnts.Ticketing/`. |
+| `RedAnts-WebApp/src/RedAnts.Show/` | Razor class library: the soundboard (`/show`, backoffice section "Show", SQL schema `show`) with the capabilities `Features/Board`, `Admin`, `Remote` and `Sounds`. |
 | `RedAnts-WebApp/tests/` | One xunit project per slice (`RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.Show.Tests`) plus `RedAnts.BrowserTests` (Playwright, skipped unless `E2E_BASE_URL` is set). |
 
-Each src project layers internally as `Domain/` → `Features/` (with `Ports/`) → `Infrastructure/`.
+Each module layers internally as `Domain/` → `Features/<Capability>/` (slices and ports at the root, `Admin/` UI, `Views/`, `Infrastructure/` adapters) → top-level `Infrastructure/` (boot, migrations, content seeding). MVC views are resolved per capability by `FeatureViewLocationExpander`.
 
 ## Data model (ticketing)
 
-Catalog entities (Season, Venue, Event) are **Umbraco Document Types**, not database tables. Sales, admissions, pricing, add-ons, the email outbox and the session cache live in NPoco tables, created by `CreateTicketingSchema` plus a chain of additive migrations in `Infrastructure/Ticketing/TicketingMigration.cs`. Every step is idempotent: each table is created only when missing (`EnsureTable`/`TableExists`) and each new column is gated by `ColumnExists`, so a new table or column appears without a database drop. Umbraco records the reached plan state and skips the plan when nothing changed; `Migrations:ForceToken` replays it once per new token value. In Azure the plan runs as a pipeline step (`dotnet RedAnts.dll --migrate`) with the deploy identity, which is the only one holding DDL rights; locally it runs at boot (`Migrations:RunAtBoot`).
+Catalog entities (Season, Venue, Event) are **Umbraco Document Types**, not database tables. Sales, admissions, pricing, add-ons, the email outbox and the session cache live in NPoco tables, created by `CreateTicketingSchema` plus a chain of additive migrations in `RedAnts-WebApp/src/RedAnts.Ticketing/Infrastructure/TicketingMigration.cs`. Every step is idempotent: each table is created only when missing (`EnsureTable`/`TableExists`) and each new column is gated by `ColumnExists`, so a new table or column appears without a database drop. Umbraco records the reached plan state and skips the plan when nothing changed; `Migrations:ForceToken` replays it once per new token value. In Azure the plan runs as a pipeline step (`dotnet RedAnts.dll --migrate`) with the deploy identity, which is the only one holding DDL rights; locally it runs at boot (`Migrations:RunAtBoot`).
 
 Conventions:
 
