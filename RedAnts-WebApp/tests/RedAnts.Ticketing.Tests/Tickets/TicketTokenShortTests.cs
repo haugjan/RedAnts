@@ -3,6 +3,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.Time.Testing;
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Tickets.Infrastructure;
 using Xunit;
@@ -14,7 +15,7 @@ public class TicketTokenShortTests
     private static TicketTokenSigner NewService(string secret = "unit-test-qr-secret-please-change")
     {
         var config = new StubConfig(new Dictionary<string, string?> { ["Tickets:QrSecret"] = secret });
-        return new TicketTokenSigner(config, new StubEnv(), NullLogger<TicketTokenSigner>.Instance);
+        return new TicketTokenSigner(config, new StubEnv(), TimeProvider.System, NullLogger<TicketTokenSigner>.Instance);
     }
 
     [Fact]
@@ -51,6 +52,17 @@ public class TicketTokenShortTests
     {
         var token = NewService("secret-one").CreateShort(Guid.NewGuid());
         Assert.False(NewService("secret-two").TryVerifyShort(token, out _));
+    }
+
+    [Fact]
+    public void The_issue_time_of_a_full_token_comes_from_the_injected_clock()
+    {
+        var instant = new DateTimeOffset(2026, 7, 15, 12, 0, 0, TimeSpan.Zero);
+        var config = new StubConfig(new Dictionary<string, string?> { ["Tickets:QrSecret"] = "unit-test-qr-secret-please-change" });
+        var svc = new TicketTokenSigner(config, new StubEnv(), new FakeTimeProvider(instant), NullLogger<TicketTokenSigner>.Instance);
+
+        Assert.True(svc.TryVerify(svc.Create(TicketType.EventTicket, Guid.NewGuid(), 42), out var data));
+        Assert.Equal(instant, data.IssuedAt);
     }
 
     [Fact]

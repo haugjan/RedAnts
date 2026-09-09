@@ -39,13 +39,13 @@ public sealed class OrderRefund
 
     public static OrderRefund Create(string refundNumber, int orderId, decimal amount, decimal vatRate,
         RefundMethod method, RefundStatus status, string? reference, string? reason, string? createdBy,
-        string currency = "CHF")
+        string currency = "CHF", TimeProvider? time = null)
     {
         if (amount <= 0) throw new DomainException("Rückzahlungsbetrag muss grösser als 0 sein.");
         var value = decimal.Round(amount, 2);
         var vat = vatRate <= 0 ? 0m : decimal.Round(value - value / (1 + vatRate), 2);
         return new OrderRefund(0, refundNumber.Trim(), orderId, value, vatRate, vat, currency, method, status,
-            null, Clean(reference), Clean(reason), Clean(createdBy), SwissTime.Timestamp);
+            null, Clean(reference), Clean(reason), Clean(createdBy), SwissTime.TimestampOf(time));
     }
 
     public static OrderRefund FromPersistence(int id, string refundNumber, int orderId, decimal amount, decimal vatRate,

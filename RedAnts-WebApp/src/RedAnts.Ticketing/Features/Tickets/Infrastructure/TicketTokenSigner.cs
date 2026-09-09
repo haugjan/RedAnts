@@ -15,9 +15,11 @@ public sealed class TicketTokenSigner : ITicketTokens
     private const int ShortCodeBytes = 4;
     private const int ShortSignatureBytes = 5;
     private readonly byte[] _key;
+    private readonly TimeProvider _time;
 
-    public TicketTokenSigner(IConfiguration config, IHostEnvironment environment, ILogger<TicketTokenSigner> logger)
+    public TicketTokenSigner(IConfiguration config, IHostEnvironment environment, TimeProvider time, ILogger<TicketTokenSigner> logger)
     {
+        _time = time;
         var configured = config["Tickets:QrSecret"];
         if (!string.IsNullOrWhiteSpace(configured))
         {
@@ -39,7 +41,7 @@ public sealed class TicketTokenSigner : ITicketTokens
 
     public string Create(TicketType type, Guid uuid, int scopeId)
     {
-        var iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var iat = _time.GetUtcNow().ToUnixTimeSeconds();
         var payload = $"{(int)type}|{uuid:N}|{scopeId}|{iat}";
         var payloadB64 = Base64Url(Encoding.UTF8.GetBytes(payload));
         var sig = Base64Url(Sign(Scheme + "." + payloadB64).AsSpan(0, SignatureBytes).ToArray());

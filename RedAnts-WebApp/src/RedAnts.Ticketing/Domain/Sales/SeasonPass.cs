@@ -37,12 +37,12 @@ public sealed class SeasonPass
 
     public static SeasonPass Create(int seasonId, int? tierId, decimal price, int? orderId,
         Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, string? reference = null,
-        string? email = null)
+        string? email = null, TimeProvider? time = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         return new SeasonPass(0, Guid.NewGuid(), seasonId, tierId, decimal.Round(price, 2),
-            orderId, TicketStatus.Valid, SwissTime.Timestamp, buyer, Clean(createdByName), Clean(createdByEmail),
+            orderId, TicketStatus.Valid, SwissTime.TimestampOf(time), buyer, Clean(createdByName), Clean(createdByEmail),
             Clean(reference), Clean(email));
     }
 

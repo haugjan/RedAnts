@@ -5,7 +5,17 @@ namespace RedAnts.Ticketing.Features.Checkout;
 
 public static class ExpireDraftOrders
 {
-    public sealed record Command(DateTimeOffset CreatedAfter, DateTimeOffset CreatedBefore);
+    public static readonly TimeSpan MaxDraftAge = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan LookBack = TimeSpan.FromDays(2);
+
+    public sealed record Command(DateTimeOffset CreatedAfter, DateTimeOffset CreatedBefore)
+    {
+        public static Command Due(TimeProvider time)
+        {
+            var now = SwissTime.TimestampOf(time);
+            return new Command(now - LookBack, now - MaxDraftAge);
+        }
+    }
 
     public sealed class Handler(IOrderRepository orders, IDraftOrdersReader drafts, IOrderLog orderLog, CapacityReservation reservation,
         IPayrexxGateway payrexx, OrderFulfillment fulfillment, ILogger<Handler> logger)

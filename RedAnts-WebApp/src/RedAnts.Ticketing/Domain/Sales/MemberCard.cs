@@ -51,11 +51,11 @@ public sealed class MemberCard
     public static MemberCard Create(int seasonId, MemberCategory category, string? firstName, string? lastName,
         DateOnly? birthday, string? email = null, string? reference = null, int? orderId = null,
         string? createdByName = null, string? createdByEmail = null, MemberAddress? address = null,
-        int admissions = 1)
+        int admissions = 1, TimeProvider? time = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         return new MemberCard(0, Guid.NewGuid(), seasonId, category,
-            orderId, TicketStatus.Valid, SwissTime.Timestamp, Clean(firstName), Clean(lastName), birthday,
+            orderId, TicketStatus.Valid, SwissTime.TimestampOf(time), Clean(firstName), Clean(lastName), birthday,
             Clean(email), Clean(reference), Math.Max(1, admissions), Clean(createdByName), Clean(createdByEmail),
             address ?? MemberAddress.Empty);
     }

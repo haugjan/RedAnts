@@ -25,10 +25,10 @@ public sealed class FlexTicketBundle
     }
 
     public static FlexTicketBundle Create(int seasonId, TicketCategory category, string reference,
-        string? createdByName = null, string? createdByEmail = null)
+        string? createdByName = null, string? createdByEmail = null, TimeProvider? time = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
-        return new FlexTicketBundle(0, seasonId, category, CleanReference(reference), SwissTime.Timestamp,
+        return new FlexTicketBundle(0, seasonId, category, CleanReference(reference), SwissTime.TimestampOf(time),
             Clean(createdByName), Clean(createdByEmail));
     }
 

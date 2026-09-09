@@ -28,7 +28,7 @@ public sealed class NewsletterSignup
         TransferredAt = transferredAt;
     }
 
-    public static NewsletterSignup Create(string email, string? name, string source)
+    public static NewsletterSignup Create(string email, string? name, string source, TimeProvider? time = null)
     {
         var address = (email ?? "").Trim();
         if (address.Length < 5 || !address.Contains('@') || !address.Contains('.'))
@@ -37,7 +37,7 @@ public sealed class NewsletterSignup
         return new NewsletterSignup(0, address,
             string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
             string.IsNullOrWhiteSpace(source) ? "Onlineshop" : source.Trim(),
-            SwissTime.Timestamp, NewsletterTransferStatus.Pending, null);
+            SwissTime.TimestampOf(time), NewsletterTransferStatus.Pending, null);
     }
 
     public static NewsletterSignup FromPersistence(int id, string email, string? name, string source,

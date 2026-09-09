@@ -44,7 +44,7 @@ public sealed class Order
 
     public static Order Create(string orderNumber, BillingAddress billingAddress, decimal totalGross,
         decimal vatRate, PaymentMethod paymentMethod, string? sellerUid, string currency = "CHF",
-        PaymentSource? paymentSource = null)
+        PaymentSource? paymentSource = null, TimeProvider? time = null)
     {
         if (string.IsNullOrWhiteSpace(orderNumber)) throw new DomainException("Bestellnummer ist erforderlich.");
         if (totalGross < 0) throw new DomainException("Betrag darf nicht negativ sein.");
@@ -55,7 +55,7 @@ public sealed class Order
 
         return new Order(0, orderNumber.Trim(), billingAddress, currency, net, vatRate, vatAmount, gross,
             string.IsNullOrWhiteSpace(sellerUid) ? null : sellerUid.Trim(),
-            paymentMethod, paymentSource, OrderStatus.Draft, SwissTime.Timestamp, null, null, null);
+            paymentMethod, paymentSource, OrderStatus.Draft, SwissTime.TimestampOf(time), null, null, null);
     }
 
     public void SetPaymentSource(PaymentSource? paymentSource) => PaymentSource = paymentSource;
@@ -72,11 +72,11 @@ public sealed class Order
 
     public void SetPayrexxGatewayId(string? gatewayId) => PayrexxGatewayId = gatewayId;
 
-    public void MarkPaid()
+    public void MarkPaid(TimeProvider? time = null)
     {
         if (Status == OrderStatus.Cancelled) throw new DomainException("Stornierte Bestellung kann nicht bezahlt werden.");
         Status = OrderStatus.Paid;
-        PaidAt ??= SwissTime.Timestamp;
+        PaidAt ??= SwissTime.TimestampOf(time);
     }
 
     public void MarkUnpaid()
@@ -90,12 +90,12 @@ public sealed class Order
     public void Cancel() => Status = OrderStatus.Cancelled;
     public void Refund() => Status = OrderStatus.Refunded;
 
-    public bool ChangeStatus(OrderStatus target)
+    public bool ChangeStatus(OrderStatus target, TimeProvider? time = null)
     {
         if (Status == target) return false;
         switch (target)
         {
-            case OrderStatus.Paid: MarkPaid(); break;
+            case OrderStatus.Paid: MarkPaid(time); break;
             case OrderStatus.Draft: MarkUnpaid(); break;
             case OrderStatus.Cancelled: Cancel(); break;
             case OrderStatus.Refunded: Refund(); break;

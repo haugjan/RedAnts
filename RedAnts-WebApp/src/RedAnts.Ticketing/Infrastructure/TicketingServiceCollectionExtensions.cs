@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using RedAnts.Ticketing.Features;
 using RedAnts.Ticketing.Features.Checkout;
 using RedAnts.Ticketing.Features.Checkout.Infrastructure;
@@ -9,6 +10,8 @@ public static class TicketingServiceCollectionExtensions
 {
     public static IServiceCollection AddTicketing(this IServiceCollection services, IConfiguration config)
     {
+        services.TryAddSingleton(TimeProvider.System);
+
         var sessionCacheConnectionString = config.GetConnectionString("umbracoDbDSN");
         if (!string.IsNullOrWhiteSpace(sessionCacheConnectionString))
         {

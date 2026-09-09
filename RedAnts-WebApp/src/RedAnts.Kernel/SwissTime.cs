@@ -4,11 +4,18 @@ public static class SwissTime
 {
     private static readonly TimeZoneInfo Zone = ResolveZone();
 
-    public static DateTime Now => ToSwiss(DateTime.UtcNow);
+    public static DateTime Now => NowOf(null);
 
-    public static DateOnly Today => DateOnly.FromDateTime(Now);
+    public static DateOnly Today => TodayOf(null);
 
-    public static DateTimeOffset Timestamp => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, Zone);
+    public static DateTimeOffset Timestamp => TimestampOf(null);
+
+    public static DateTimeOffset TimestampOf(TimeProvider? time) =>
+        TimeZoneInfo.ConvertTime((time ?? TimeProvider.System).GetUtcNow(), Zone);
+
+    public static DateTime NowOf(TimeProvider? time) => TimestampOf(time).DateTime;
+
+    public static DateOnly TodayOf(TimeProvider? time) => DateOnly.FromDateTime(NowOf(time));
 
     public static DateTime ToSwiss(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone);

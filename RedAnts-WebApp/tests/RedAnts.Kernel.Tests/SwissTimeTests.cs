@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace RedAnts.Kernel.Tests;
@@ -82,5 +83,30 @@ public class SwissTimeTests
         var summer = SwissTime.StartOfDay(new DateOnly(2026, 7, 15));
         Assert.Equal(new DateTime(2026, 7, 15, 0, 0, 0), summer.DateTime);
         Assert.Equal(TimeSpan.FromHours(2), summer.Offset);
+    }
+
+    [Fact]
+    public void A_fake_time_provider_fixes_the_swiss_timestamp()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 7, 15, 12, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal(new DateTimeOffset(2026, 7, 15, 14, 0, 0, TimeSpan.FromHours(2)), SwissTime.TimestampOf(time));
+        Assert.Equal(new DateTime(2026, 7, 15, 14, 0, 0), SwissTime.NowOf(time));
+        Assert.Equal(new DateOnly(2026, 7, 15), SwissTime.TodayOf(time));
+    }
+
+    [Fact]
+    public void A_fake_time_provider_just_after_swiss_midnight_belongs_to_the_new_day()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 7, 31, 22, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal(new DateOnly(2026, 8, 1), SwissTime.TodayOf(time));
+        Assert.Equal(TimeSpan.FromHours(2), SwissTime.TimestampOf(time).Offset);
+    }
+
+    [Fact]
+    public void No_time_provider_falls_back_to_the_system_clock()
+    {
+        Assert.InRange((SwissTime.TimestampOf(null) - SwissTime.Timestamp).Duration().TotalSeconds, 0, 5);
     }
 }

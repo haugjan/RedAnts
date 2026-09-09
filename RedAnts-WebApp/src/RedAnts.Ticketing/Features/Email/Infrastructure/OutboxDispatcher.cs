@@ -8,6 +8,7 @@ public sealed class OutboxDispatcher(
     IServiceScopeFactory scopeFactory,
     OutboxSignal signal,
     IConfiguration config,
+    TimeProvider time,
     ILogger<OutboxDispatcher> logger) : BackgroundService
 {
     private const int MaxAttempts = 6;
@@ -31,7 +32,7 @@ public sealed class OutboxDispatcher(
                 var outbox = scope.ServiceProvider.GetRequiredService<IEmailOutbox>();
                 var selector = scope.ServiceProvider.GetRequiredService<EmailTransportSelector>();
 
-                var message = await outbox.ClaimNextDueAsync(SwissTime.Timestamp, stoppingToken);
+                var message = await outbox.ClaimNextDueAsync(SwissTime.TimestampOf(time), stoppingToken);
                 if (message is null)
                 {
                     await signal.WaitAsync(FallbackPoll, stoppingToken);
@@ -60,7 +61,7 @@ public sealed class OutboxDispatcher(
         if (active.Count == 0)
         {
             await outbox.RescheduleAsync(message.Id, message.SentVia, "No e-mail transport configured.",
-                SwissTime.Timestamp + BackoffFor(message.Attempts));
+                SwissTime.TimestampOf(time) + BackoffFor(message.Attempts));
             return;
         }
 
@@ -83,17 +84,17 @@ public sealed class OutboxDispatcher(
         var pending = active.Count(t => !sent.Contains(t.Name));
 
         if (pending == 0)
-            await outbox.MarkSentAsync(message.Id, sentVia ?? "", SwissTime.Timestamp);
+            await outbox.MarkSentAsync(message.Id, sentVia ?? "", SwissTime.TimestampOf(time));
         else if (message.Attempts >= MaxAttempts)
             await outbox.MarkFailedAsync(message.Id, sentVia, lastError ?? "Delivery failed.");
         else
             await outbox.RescheduleAsync(message.Id, sentVia, lastError ?? "Delivery failed.",
-                SwissTime.Timestamp + BackoffFor(message.Attempts));
+                SwissTime.TimestampOf(time) + BackoffFor(message.Attempts));
     }
 
     private async Task PurgeIfDueAsync()
     {
-        var now = SwissTime.Timestamp;
+        var now = SwissTime.TimestampOf(time);
         if (now - _lastPurge < PurgeInterval) return;
         _lastPurge = now;
 
@@ -118,7 +119,7 @@ public sealed class OutboxDispatcher(
         if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)) return;
 
-        var days = (int)Math.Floor((expires.Date - SwissTime.Now.Date).TotalDays);
+        var days = (int)Math.Floor((expires.Date - SwissTime.NowOf(time).Date).TotalDays);
         if (days < 0)
             logger.LogError("Graph client secret expired on {Date:yyyy-MM-dd}. E-mail sending fails until it is renewed.", expires);
         else if (days <= 30)

@@ -34,7 +34,7 @@ public sealed class Helper
         CreatedAt = createdAt;
     }
 
-    public static Helper Create(int seasonId, string firstName, string lastName, string email, string code)
+    public static Helper Create(int seasonId, string firstName, string lastName, string email, string code, TimeProvider? time = null)
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         var fn = (firstName ?? "").Trim();
@@ -43,7 +43,7 @@ public sealed class Helper
         var mail = (email ?? "").Trim();
         if (!IsValidEmail(mail)) throw new DomainException("Eine gültige E-Mail-Adresse ist erforderlich.");
         if (string.IsNullOrWhiteSpace(code)) throw new DomainException("Ein Zugangscode ist erforderlich.");
-        return new Helper(0, seasonId, fn, ln, mail, code, true, [], false, true, SwissTime.Timestamp);
+        return new Helper(0, seasonId, fn, ln, mail, code, true, [], false, true, SwissTime.TimestampOf(time));
     }
 
     public static Helper FromPersistence(int id, int seasonId, string firstName, string lastName, string email,

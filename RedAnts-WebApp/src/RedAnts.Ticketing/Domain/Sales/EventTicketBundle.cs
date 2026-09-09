@@ -25,14 +25,14 @@ public sealed class EventTicketBundle
     }
 
     public static EventTicketBundle Create(int eventId, TicketCategory category, string reference,
-        string? createdByName = null, string? createdByEmail = null)
+        string? createdByName = null, string? createdByEmail = null, TimeProvider? time = null)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         reference = (reference ?? "").Trim();
         if (reference.Length == 0) throw new DomainException("Ein Bundlename muss angegeben werden.");
         if (reference.Length > ReferenceMaxLength)
             throw new DomainException($"Der Bundlename darf höchstens {ReferenceMaxLength} Zeichen lang sein.");
-        return new EventTicketBundle(0, eventId, category, reference, SwissTime.Timestamp,
+        return new EventTicketBundle(0, eventId, category, reference, SwissTime.TimestampOf(time),
             Clean(createdByName), Clean(createdByEmail));
     }
 

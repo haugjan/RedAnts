@@ -19,17 +19,17 @@ public sealed class EventVisit
         CreatedAt = createdAt;
     }
 
-    public static EventVisit CreateForTicket(int eventId, TicketType ticketType, Guid ticketUuid)
+    public static EventVisit CreateForTicket(int eventId, TicketType ticketType, Guid ticketUuid, TimeProvider? time = null)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
         if (ticketType == TicketType.FreeEntry) throw new DomainException("Free-Entry hat kein Ticket.");
-        return new EventVisit(0, eventId, ticketType, ticketUuid, isInside: true, SwissTime.Timestamp);
+        return new EventVisit(0, eventId, ticketType, ticketUuid, isInside: true, SwissTime.TimestampOf(time));
     }
 
-    public static EventVisit CreateForFreeEntry(int eventId)
+    public static EventVisit CreateForFreeEntry(int eventId, TimeProvider? time = null)
     {
         if (eventId <= 0) throw new DomainException("Ein Anlass muss zugewiesen sein.");
-        return new EventVisit(0, eventId, TicketType.FreeEntry, null, isInside: true, SwissTime.Timestamp);
+        return new EventVisit(0, eventId, TicketType.FreeEntry, null, isInside: true, SwissTime.TimestampOf(time));
     }
 
     public static EventVisit FromPersistence(long id, int eventId, TicketType ticketType, Guid? ticketUuid,
@@ -56,8 +56,8 @@ public sealed class EventVisitLog
         ScannedBy = scannedBy;
     }
 
-    public static EventVisitLog Create(long visitId, VisitLogType type, string? scannedBy) =>
-        new(0, visitId, type, SwissTime.Timestamp, scannedBy);
+    public static EventVisitLog Create(long visitId, VisitLogType type, string? scannedBy, TimeProvider? time = null) =>
+        new(0, visitId, type, SwissTime.TimestampOf(time), scannedBy);
 
     public static EventVisitLog FromPersistence(long id, long visitId, VisitLogType type, DateTimeOffset occurredAt, string? scannedBy) =>
         new(id, visitId, type, occurredAt, scannedBy);
