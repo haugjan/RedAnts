@@ -30,11 +30,11 @@ public class EventBundleTests
     {
         var bundles = new RecordingEventTicketBundles();
 
-        var view = await new CreateEventTicketBundle.Handler(bundles).HandleAsync(
+        var bundleId = await new CreateEventTicketBundle.Handler(bundles).HandleAsync(
             new CreateEventTicketBundle.Command(EventId, TicketCategory.Youth, " Sponsor B ", 3, "admin", "admin@redants.ch", 42));
 
         var created = Assert.Single(bundles.Created);
         Assert.Equal(("Sponsor B", 3, 42), (created.Reference, created.Quantity, created.OrderId));
-        Assert.Equal("Sponsor B", view.Reference);
+        Assert.Equal(1, bundleId);
     }
 }

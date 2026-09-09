@@ -13,7 +13,7 @@ namespace RedAnts.Ticketing.Features.Tickets.Admin;
 public sealed class TicketPrintController(
     ITicketPrinter printer,
     ITicketPrintSettings settings,
-    IEventBundleTickets eventBundles,
+    GetEventBundleTickets.Handler eventBundles,
     GetFlexBundlesForExport.Handler flexTickets,
     GetSeasonPassesForExport.Handler seasonPasses,
     GetMemberCardsForExport.Handler memberCards,
@@ -79,7 +79,7 @@ public sealed class TicketPrintController(
         return type switch
         {
             TicketType.EventTicket when bundleId is { } bid =>
-                (await eventBundles.GetByBundleAsync(bid))
+                (await eventBundles.HandleAsync(new GetEventBundleTickets.Query(bid)))
                     .Select(t => new TicketPrintItem(t.Uuid, t.Holder?.DisplayName)).ToList(),
             TicketType.SeasonSingle when bundleId is { } bid =>
                 (await flexTickets.HandleAsync(new GetFlexBundlesForExport.Query([bid])))
