@@ -6,6 +6,8 @@ namespace RedAnts.BrowserTests;
 [Collection(BrowserCollection.Name)]
 public sealed class AdminCardsShould(BrowserFixture browser)
 {
+    private static readonly Regex BundleTicketCount = new(@"(\d+)\s*Stk\.", RegexOptions.CultureInvariant);
+
     [E2ETheory]
     [InlineData("seasoncards", "Saisonkarten")]
     [InlineData("membercards", "Mitglieder")]
@@ -13,13 +15,97 @@ public sealed class AdminCardsShould(BrowserFixture browser)
     [InlineData("helper", "Helfer")]
     public async Task RenderTheTab(string tab, string heading)
     {
-        var page = await LoginAsync();
-        await page.GotoAsync($"/admin/ticketing?tab={tab}");
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        var page = await OpenTabAsync(tab);
         await Assertions.Expect(page.Locator("h1")).ToContainTextAsync(heading, new() { Timeout = 30_000 });
         await Assertions.Expect(page.Locator(".ta-modal-error, .blazor-error-boundary")).ToHaveCountAsync(0);
         await Assertions.Expect(page.Locator("body")).Not.ToContainTextAsync(".Handler ");
         await browser.ShotAsync(page, $"admin-{tab}");
+    }
+
+    [E2ETheory]
+    [InlineData("tickets", "Ticket erstellen", "Ticket erstellen")]
+    [InlineData("tickets", "Bundle erstellen", "Ticket-Bundle erstellen")]
+    [InlineData("tickets", "Import CSV", "Spieltickets importieren")]
+    [InlineData("tickets", "Export CSV", "Spieltickets exportieren")]
+    [InlineData("tickets", "Tickets versenden", "Spieltickets versenden")]
+    [InlineData("flextickets", "Einzelticket erstellen", "Flexticket erstellen")]
+    [InlineData("flextickets", "Bundle erstellen", "Flexticket-Bundle erstellen")]
+    [InlineData("flextickets", "Import CSV", "Flextickets importieren")]
+    [InlineData("flextickets", "Export CSV", "Bundles exportieren")]
+    [InlineData("flextickets", "Tickets versenden", "Flextickets versenden")]
+    [InlineData("flextickets", "Bundle bearbeiten", "Bundle bearbeiten")]
+    [InlineData("flextickets", "PDF drucken", "Flextickets als PDF drucken")]
+    public async Task OpenTheToolbarDialogAndCancelWithEscape(string tab, string button, string heading)
+    {
+        var page = await OpenTabAsync(tab);
+        await page.Locator(".ta-toolbar-actions").GetByRole(AriaRole.Button, new() { Name = button, Exact = true }).ClickAsync();
+        await ExpectDialogAsync(page, heading);
+        await browser.ShotAsync(page, $"dialog-{tab}-{Slug(button)}");
+        await CancelWithEscapeAsync(page);
+    }
+
+    [E2ETheory]
+    [InlineData("tickets", "E-Mail senden", "Spielticket senden")]
+    [InlineData("tickets", "Bearbeiten", "Ticket bearbeiten")]
+    [InlineData("tickets", "Als PDF drucken", "Spieltickets als PDF drucken")]
+    [InlineData("tickets", "Löschen", "Ticket löschen")]
+    [InlineData("flextickets", "E-Mail senden", "Flexticket senden")]
+    [InlineData("flextickets", "Personendaten bearbeiten", "Flexticket bearbeiten")]
+    [InlineData("flextickets", "Als PDF drucken", "Flextickets als PDF drucken")]
+    [InlineData("flextickets", "Löschen", "Flexticket löschen")]
+    [InlineData("flextickets", "Einlösung ändern", "Einlösung ändern")]
+    public async Task OpenTheRowDialogAndCancelWithEscape(string tab, string title, string heading)
+    {
+        var page = await OpenTabAsync(tab);
+        await page.Locator($"tbody [title='{title}']").First.ClickAsync();
+        await ExpectDialogAsync(page, heading);
+        await browser.ShotAsync(page, $"dialog-{tab}-row-{Slug(title)}");
+        await CancelWithEscapeAsync(page);
+    }
+
+    private static string Slug(string text) => Regex.Replace(text.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+
+    private static async Task ExpectDialogAsync(IPage page, string heading)
+    {
+        await Assertions.Expect(page.Locator(".ta-overlay .ta-modal-title")).ToHaveTextAsync(heading, new() { Timeout = 60_000 });
+        await Assertions.Expect(page.Locator(".blazor-error-boundary")).ToHaveCountAsync(0);
+    }
+
+    private static async Task CancelWithEscapeAsync(IPage page)
+    {
+        await page.Keyboard.PressAsync("Escape");
+        await Assertions.Expect(page.Locator(".ta-overlay")).ToHaveCountAsync(0, new() { Timeout = 30_000 });
+    }
+
+    private async Task<IPage> OpenTabAsync(string tab)
+    {
+        var page = await LoginAsync();
+        await page.GotoAsync($"/admin/ticketing?tab={tab}");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Assertions.Expect(page.Locator(".ta-page-title")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await SelectSmallestBundleAsync(page);
+        return page;
+    }
+
+    private static async Task SelectSmallestBundleAsync(IPage page)
+    {
+        var select = page.Locator("#bundleSelect");
+        if (await select.CountAsync() == 0) return;
+
+        var smallestValue = "";
+        var smallestCount = int.MaxValue;
+        foreach (var option in await select.Locator("option").AllAsync())
+        {
+            var value = await option.GetAttributeAsync("value") ?? "";
+            var match = BundleTicketCount.Match(await option.InnerTextAsync());
+            if (value == "0" || !match.Success) continue;
+            var count = int.Parse(match.Groups[1].Value);
+            if (count > 0 && count < smallestCount) { smallestCount = count; smallestValue = value; }
+        }
+        if (smallestValue.Length == 0) return;
+
+        await select.SelectOptionAsync(new SelectOptionValue { Value = smallestValue });
+        await Assertions.Expect(page.Locator("tbody tr")).ToHaveCountAsync(smallestCount, new() { Timeout = 60_000 });
     }
 
     private async Task<IPage> LoginAsync()

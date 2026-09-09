@@ -276,6 +276,11 @@
                              OnClosed="() => _showPrint = false" />
 }
 
+@if (_mailFor is not null)
+{
+    <SendEventTicketMailDialog Ticket="_mailFor" OnClosed="() => _mailFor = null" />
+}
+
 @if (_showBulk)
 {
     <SendEventTicketMailsDialog Tickets="_result.Tickets"
