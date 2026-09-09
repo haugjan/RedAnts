@@ -298,8 +298,14 @@ internal sealed class InMemorySeasonPasses : ISeasonPassRepository
 internal sealed class StubConvertibleCards : IConvertibleCards
 {
     public List<(Guid FlexUuid, int EventId)> Converted { get; } = [];
+    public List<(int EventId, string CardNumber, int? TierId)> Resolutions { get; } = [];
+    public ConversionResolution? Resolution { get; set; }
 
-    public Task<ConversionResolution> ResolveAsync(int eventId, string cardNumber, int? chosenTierId = null) => throw new NotSupportedException();
+    public Task<ConversionResolution> ResolveAsync(int eventId, string cardNumber, int? chosenTierId = null)
+    {
+        Resolutions.Add((eventId, cardNumber, chosenTierId));
+        return Task.FromResult(Resolution ?? throw new NotSupportedException());
+    }
 
     public Task MarkFlexConvertedAsync(Guid flexUuid, int eventId)
     {

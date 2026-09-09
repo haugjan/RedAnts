@@ -23,6 +23,7 @@ public static class TicketingFeatures
         typeof(AddEventTicketsToCart.Handler),
         typeof(AddSeasonPassesToCart.Handler),
         typeof(AddConversionToCart.Handler),
+        typeof(CanConvert.Handler),
         typeof(ChangeCartLineQuantity.Handler),
         typeof(RemoveOrderAddOnFromCart.Handler),
         typeof(ClearCart.Handler),

@@ -48,6 +48,10 @@ internal sealed class CheckoutFixture
 
     public CanCheckout.Handler CanCheckout => new(Carts, Eligibility);
 
+    public CanConvert.Handler CanConvert => new(Carts, ConvertibleCards);
+
+    public AddConversionToCart.Handler AddConversion => new(Carts, ConvertibleCards);
+
     public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, SeasonAddOns,
         Mailer, new StubPublicBaseUrl(), OrderItems, Newsletter, new EmptyIssuedTickets(), UnitOfWork, Reservation, NullLogger<OrderFulfillment>.Instance);
 

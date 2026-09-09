@@ -75,6 +75,15 @@ public sealed record CheckoutContext(IReadOnlySet<int> FullEvents, IReadOnlySet<
     public static CheckoutContext None { get; } = new(new HashSet<int>(), new HashSet<int>(), false);
 }
 
+public static class ConversionDenied
+{
+    public sealed record EventSoldOut() : CheckResult.Denied.Reason(
+        "Für diesen Anlass sind keine Tickets mehr verfügbar (Kontingent ausgeschöpft).");
+
+    public sealed record CardExhausted() : CheckResult.Denied.Reason(
+        "Für diese Karte sind bereits alle Umwandlungen im Warenkorb.");
+}
+
 public static class CheckoutDenied
 {
     public sealed record CartEmpty() : CheckResult.Denied.Reason("Der Warenkorb ist leer.");
@@ -119,6 +128,15 @@ public sealed class Cart
     public IReadOnlyList<int> EventIds => _items.Where(i => i.Kind == CartLineKind.EventTicket).Select(i => i.EventId).Distinct().ToList();
     public IReadOnlyList<int> SeasonIds => _items.Where(i => i.Kind == CartLineKind.SeasonPass).Select(i => i.SeasonId).Distinct().ToList();
     public bool HasRegularTicketsFor(int eventId) => _items.Any(i => i.Kind == CartLineKind.EventTicket && i.EventId == eventId && !i.IsConversion);
+
+    public CheckResult ConversionBlocker(int eventId, Guid cardUuid, int cap, int? eventRemaining)
+    {
+        if (eventRemaining is { } remaining && TicketsFor(eventId) >= remaining)
+            return CheckResult.Deny(new ConversionDenied.EventSoldOut());
+        if (ConversionsFor(eventId, cardUuid) >= Math.Min(cap, MaxQuantityPerLine))
+            return CheckResult.Deny(new ConversionDenied.CardExhausted());
+        return CheckResult.Allow();
+    }
 
     public CheckResult CheckoutBlocker(CheckoutContext context)
     {
@@ -227,6 +245,14 @@ public sealed class Cart
         var seasonsWithPass = _items.Where(i => i.Kind == CartLineKind.SeasonPass).Select(i => i.SeasonId).ToHashSet();
         _orderAddOns.RemoveAll(a => !seasonsWithPass.Contains(a.SeasonId));
     }
+
+    private int TicketsFor(int eventId) => _items
+        .Where(i => i.Kind == CartLineKind.EventTicket && i.EventId == eventId)
+        .Sum(i => i.Quantity);
+
+    private int ConversionsFor(int eventId, Guid cardUuid) => _items
+        .Where(i => i.Kind == CartLineKind.EventTicket && i.EventId == eventId && i.Origin?.CardUuid == cardUuid)
+        .Sum(i => i.Quantity);
 
     private static void RequirePositive(int quantity)
     {
