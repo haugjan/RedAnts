@@ -127,5 +127,5 @@ public sealed class ShowController(GetShowProfiles.Handler profileQuery, IConfig
 
     [HttpGet("")]
     [HttpGet("{**path}")]
-    public IActionResult Index() => View("~/Features/Views/Index.cshtml");
+    public IActionResult Index() => View("Index");
 }

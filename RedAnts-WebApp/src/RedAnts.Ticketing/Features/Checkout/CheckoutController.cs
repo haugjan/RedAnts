@@ -120,7 +120,7 @@ public sealed class CheckoutController(
         var json = HttpContext.Session.GetString(ConfirmationKey);
         if (string.IsNullOrEmpty(json)) return Redirect("/");
         var view = JsonSerializer.Deserialize<CheckoutConfirmationView>(json);
-        return view is null ? Redirect("/") : View("~/Views/Checkout/Confirmation.cshtml", view);
+        return view is null ? Redirect("/") : View("Confirmation", view);
     }
 
     [HttpGet("/checkout/success")]
@@ -141,7 +141,7 @@ public sealed class CheckoutController(
             HttpContext.Session.Remove(FormKey);
         }
 
-        return View("~/Views/Checkout/Processing.cshtml", new CheckoutProcessingView
+        return View("Processing", new CheckoutProcessingView
         {
             OrderId = orderId,
             Token = tokens.Protect(orderId),
@@ -188,13 +188,13 @@ public sealed class CheckoutController(
     [HttpGet("/checkout/cancel")]
     public async Task<IActionResult> Cancelled(string? t = null)
     {
-        if (tokens.Unprotect(t) is not { } orderId) return View("~/Views/Checkout/Cancelled.cshtml");
+        if (tokens.Unprotect(t) is not { } orderId) return View("Cancelled");
 
         var payment = await confirmPayment.HandleAsync(new ConfirmPayment.Command(orderId));
         if (payment.Paid) return Redirect($"/checkout/success?t={Uri.EscapeDataString(t!)}");
         if (payment.Found && !payment.Cancelled)
             await cancelDraft.HandleAsync(new CancelDraftOrder.Command(orderId, "Zahlung abgebrochen"));
-        return View("~/Views/Checkout/Cancelled.cshtml");
+        return View("Cancelled");
     }
 
     private async Task<IActionResult> FinishAsync(PlaceOrder.Result result, Func<string, IActionResult> showError)
@@ -236,7 +236,7 @@ public sealed class CheckoutController(
     private IActionResult CheckoutView(CheckoutForm form, string? error)
     {
         var current = carts.Load();
-        return View("~/Views/Checkout/Address.cshtml", new CheckoutAddressView
+        return View("Address", new CheckoutAddressView
         {
             Form = form,
             Cart = current,
@@ -248,7 +248,7 @@ public sealed class CheckoutController(
     }
 
     private IActionResult ExpressView(Cart current, string? error, string email, string name) =>
-        View("~/Views/Checkout/Express.cshtml", new CheckoutExpressView
+        View("Express", new CheckoutExpressView
         {
             Cart = current,
             PayrexxEnabled = payrexx.Enabled,

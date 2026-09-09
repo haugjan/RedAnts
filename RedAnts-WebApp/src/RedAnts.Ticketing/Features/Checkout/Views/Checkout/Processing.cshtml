@@ -3,7 +3,7 @@
 @using RedAnts.Ticketing.Features.Tickets
 @using RedAnts.Ticketing.Domain.Sales
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    Layout = "_TicketsLayout";
     ViewData["Title"] = "Zahlung wird verarbeitet";
 }
 
@@ -49,7 +49,7 @@
                     QrMarkup: $"<img src=\"/ticket/{t.Token}/qr.png\" alt=\"Ticket-QR\" />",
                     VenueName: t.VenueName);
                 <div class="ra-ticket-cell">
-                    <partial name="~/Views/Partials/_TicketCard.cshtml" model="card" />
+                    <partial name="~/Features/Tickets/Views/Partials/_TicketCard.cshtml" model="card" />
                     <a class="btn btn-sm btn-outline-danger mt-2" href="/ticket/@t.Token" target="_blank" rel="noopener">Ticket anzeigen</a>
                 </div>
             }

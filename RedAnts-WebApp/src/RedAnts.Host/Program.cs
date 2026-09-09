@@ -43,7 +43,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
@@ -583,7 +582,6 @@ app.UseStaticFiles();
 app.UseSession();
 
 app.MapBlazorHub();
-app.MapRazorPages();
 
 app.UseUmbraco()
     .WithMiddleware(u =>

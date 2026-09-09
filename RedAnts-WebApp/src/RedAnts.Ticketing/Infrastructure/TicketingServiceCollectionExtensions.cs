@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.Razor;
 using RedAnts.Ticketing.Features;
 using RedAnts.Ticketing.Features.Checkout;
 using RedAnts.Ticketing.Features.Checkout.Infrastructure;
@@ -26,6 +27,11 @@ public static class TicketingServiceCollectionExtensions
             options.IdleTimeout = TimeSpan.FromDays(7);
         });
         services.AddScoped<ICartRepository, SessionCartRepository>();
+        services.Configure<RazorViewEngineOptions>(o =>
+        {
+            if (!o.ViewLocationExpanders.Any(e => e.GetType().Name == nameof(FeatureViewLocationExpander)))
+                o.ViewLocationExpanders.Add(new FeatureViewLocationExpander());
+        });
         services.AddTicketingFeatures();
 
         return services;

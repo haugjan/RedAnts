@@ -60,7 +60,7 @@
         }
         else
         {
-            <partial name="~/Views/Partials/_TicketCard.cshtml" model="card!" />
+            <partial name="~/Features/Tickets/Views/Partials/_TicketCard.cshtml" model="card!" />
             var shareUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/ticket/{Model.Token}";
             var waHref = "https://wa.me/?text=" + Uri.EscapeDataString($"{Model.TypeLabel} – {Model.ScopeName}\n{shareUrl}");
             <div class="wt-actions">

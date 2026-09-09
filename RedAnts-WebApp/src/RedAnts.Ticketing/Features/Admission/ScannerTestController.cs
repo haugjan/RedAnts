@@ -20,7 +20,7 @@ public sealed class ScannerTestController(
             var svg = qr.RenderSvg($"{baseUrl}/ticket/{token}", 8);
             return ExampleCard(type, svg);
         }).ToList();
-        return View("~/Views/ScannerTest.cshtml", new ScannerTestViewModel(cards));
+        return View("ScannerTest", new ScannerTestViewModel(cards));
     }
 
     private static TicketCardModel ExampleCard(TicketType type, string qrMarkup) => type switch

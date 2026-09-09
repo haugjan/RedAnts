@@ -1,7 +1,7 @@
 @using RedAnts.Ticketing.Domain.Sales
 @model RedAnts.Ticketing.Features.Checkout.CheckoutAddressView
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    Layout = "_TicketsLayout";
     ViewData["Title"] = "Kasse";
     var f = Model.Form;
     var isCompany = f.Type == BuyerType.Company;
@@ -112,7 +112,7 @@
         </form>
     </div>
     <div class="col-lg-5">
-        @await Html.PartialAsync("~/Views/Checkout/_Summary.cshtml", Model.Cart)
+        @await Html.PartialAsync("~/Features/Checkout/Views/Checkout/_Summary.cshtml", Model.Cart)
     </div>
 </div>
 

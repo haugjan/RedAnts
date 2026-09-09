@@ -4,7 +4,7 @@
 @using RedAnts.Ticketing.Features.Tickets
 @using RedAnts.Ticketing.Domain.Sales
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    Layout = "_TicketsLayout";
     ViewData["Title"] = "Bestellung bestätigt";
 }
 
@@ -56,7 +56,7 @@
             var shareUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/ticket/{t.Token}";
             var waHref = "https://wa.me/?text=" + Uri.EscapeDataString($"{TicketDisplay.TypeLabel((TicketType)t.Type)} – {t.EventName}\n{shareUrl}");
             <div class="ra-ticket-cell">
-                <partial name="~/Views/Partials/_TicketCard.cshtml" model="card" />
+                <partial name="~/Features/Tickets/Views/Partials/_TicketCard.cshtml" model="card" />
                 <div class="rc-actions">
                     <a class="rc-btn rc-btn--open" href="/ticket/@t.Token" target="_blank" rel="noopener">Online-Karte öffnen</a>
                     <a class="rc-btn rc-btn--pdf" href="/ticket/@t.Token/pdf">Als PDF herunterladen</a>

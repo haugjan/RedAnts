@@ -1,7 +1,7 @@
 ﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.PublishedContent
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    Layout = "~/Features/Shared/Views/_TicketsLayout.cshtml";
     ViewData["Title"] = Model.Name;
     ViewData["PlainLayout"] = true;
     var image = Model.Value<IPublishedContent>("image")?.Url();

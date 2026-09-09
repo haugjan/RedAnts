@@ -20,7 +20,7 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
         var siteKey = captcha.Enabled ? captcha.SiteKey : null;
 
         if (target is null)
-            return View("~/Views/NextQuickBuy.cshtml",
+            return View("NextQuickBuy",
                 NextQuickBuyModel.None with { Error = error, Email = email, Name = name, TurnstileSiteKey = siteKey });
 
         var cats = await pricing.GetAvailableAsync(target.Id);
@@ -31,7 +31,7 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
             target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,
             target.Date, target.StartTime, target.TimeUnknown,
             venue?.Name, cats, error, email, name, siteKey, eventUrl);
-        return View("~/Views/NextQuickBuy.cshtml", model);
+        return View("NextQuickBuy", model);
     }
 
     [HttpGet("/next/embed")]
@@ -45,7 +45,7 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
 
         var target = upcoming.FirstOrDefault(e => e.Date == today) ?? upcoming.FirstOrDefault();
         if (target is null)
-            return View("~/Views/NextEventEmbed.cshtml", NextEventEmbedModel.None);
+            return View("NextEventEmbed", NextEventEmbedModel.None);
 
         var url = contentUrls.GetUrl(target.Id, absolute: true);
         var ticketsUrl = !string.IsNullOrEmpty(url) ? url : "/ticketing/";
@@ -53,7 +53,7 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
         var model = new NextEventEmbedModel(
             target.Name, target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,
             target.Date, target.StartTime, target.TimeUnknown, ticketsUrl);
-        return View("~/Views/NextEventEmbed.cshtml", model);
+        return View("NextEventEmbed", model);
     }
 }
 

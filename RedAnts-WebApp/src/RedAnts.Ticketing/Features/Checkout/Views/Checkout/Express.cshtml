@@ -1,6 +1,6 @@
 @model RedAnts.Ticketing.Features.Checkout.CheckoutExpressView
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    Layout = "_TicketsLayout";
     ViewData["Title"] = "Express-Kasse";
 }
 
@@ -52,7 +52,7 @@
         </form>
     </div>
     <div class="col-lg-5">
-        @await Html.PartialAsync("~/Views/Checkout/_Summary.cshtml", Model.Cart)
+        @await Html.PartialAsync("~/Features/Checkout/Views/Checkout/_Summary.cshtml", Model.Cart)
     </div>
 </div>
 

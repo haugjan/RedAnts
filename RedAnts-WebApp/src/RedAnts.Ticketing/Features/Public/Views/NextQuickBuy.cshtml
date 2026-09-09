@@ -2,7 +2,7 @@
 @using RedAnts.Ticketing.Features.Shared
 @using RedAnts.Ticketing.Infrastructure
 @{
-    Layout = "~/Views/Shared/_TicketsLayout.cshtml";
+    Layout = "_TicketsLayout";
     ViewData["Title"] = Model.HasEvent ? Model.Title : "Direktkauf";
     ViewData["HeaderImage"] = Model.HasEvent ? Model.ImageUrl : null;
     var culture = DisplayCulture.From(Context.Request);

@@ -27,7 +27,7 @@ public sealed class WebTicketController(
     {
         var data = await ResolveAsync(token);
         if (data is null)
-            return View("~/Views/WebTicket.cshtml", WebTicketViewModel.Invalid());
+            return View("WebTicket", WebTicketViewModel.Invalid());
 
         var issued = await tickets.FindAsync(data.Uuid);
         var (scopeName, dateText, venueName, homeLogo, awayLogo) = await ResolveContextAsync(data);
@@ -61,7 +61,7 @@ public sealed class WebTicketController(
             NextMatch: next,
             RelatedTickets: related);
 
-        return View("~/Views/WebTicket.cshtml", model);
+        return View("WebTicket", model);
     }
 
     [HttpGet("/ticket/{token}/events")]
@@ -69,13 +69,13 @@ public sealed class WebTicketController(
     {
         var data = await ResolveAsync(token);
         if (data is null)
-            return View("~/Views/WebTicketEvents.cshtml", TicketEventsViewModel.Invalid());
+            return View("WebTicketEvents", TicketEventsViewModel.Invalid());
 
         var issued = await tickets.FindAsync(data.Uuid);
         var holder = FirstNonEmpty(issued?.CustomName, issued?.HolderName ?? issued?.BuyerName);
         var matches = await BuildUpcomingAsync(20);
 
-        return View("~/Views/WebTicketEvents.cshtml", new TicketEventsViewModel(
+        return View("WebTicketEvents", new TicketEventsViewModel(
             Found: true,
             Token: token,
             HolderName: holder,
