@@ -68,7 +68,7 @@
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenImport">
                     Import CSV
                 </button>
-                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_tickets.Count == 0)" @onclick="OpenBulk"
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_tickets.Count == 0)" @onclick="() => _showBulk = true"
                         title="Die aktuell gefilterten Flextickets mit E-Mail versenden">Tickets versenden</button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreateBundle">
                     Bundle erstellen
@@ -283,46 +283,7 @@
 
 @if (_showBulk)
 {
-    <div class="ta-overlay" @onmousedown="CloseBulk">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Flextickets versenden</h2>
-
-            @if (_bulkResult is not null)
-            {
-                <div class="ta-flash">@_bulkResult.Enqueued Ticket@(_bulkResult.Enqueued == 1 ? "" : "s") eingereiht@(_bulkResult.Failed > 0 ? $", {_bulkResult.Failed} fehlgeschlagen" : "").</div>
-                @if (_bulkResult.NoEmail > 0)
-                {
-                    <p class="ta-hint">@_bulkResult.NoEmail Ticket@(_bulkResult.NoEmail == 1 ? "" : "s") ohne E-Mail übersprungen.</p>
-                }
-                <div class="ta-modal-actions">
-                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
-                </div>
-            }
-            else
-            {
-                <p class="ta-hint">@BulkWithEmail Ticket@(BulkWithEmail == 1 ? "" : "s") mit E-Mail werden versendet · @BulkWithoutEmail ohne E-Mail werden übersprungen. Grundlage ist die aktuelle Filterung.</p>
-
-                <div class="ta-field">
-                    <label class="ta-label" for="ftBulkSubject">Betreff</label>
-                    <input id="ftBulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
-                </div>
-                <div class="ta-field">
-                    <label class="ta-label" for="ftBulkBody">Text</label>
-                    <textarea id="ftBulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
-                    <p class="ta-hint">Platzhalter: {Name}, {Saison}. Markdown wird unterstützt. QR-Code, Online-Ticket und PDF-Link werden je Ticket angehängt.</p>
-                </div>
-
-                @if (!string.IsNullOrEmpty(_bulkError)) { <div class="ta-modal-error">@_bulkError</div> }
-
-                <div class="ta-modal-actions">
-                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk" disabled="@_bulkSending">Abbrechen</button>
-                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendBulk" disabled="@(_bulkSending || BulkWithEmail == 0)">
-                        @(_bulkSending ? "Sendet …" : $"{BulkWithEmail} Tickets senden")
-                    </button>
-                </div>
-            }
-        </div>
-    </div>
+    <SendFlexTicketMailsDialog Tickets="_tickets" SeasonId="SelectedSeasonId" OnClosed="() => _showBulk = false" />
 }
 
 @if (_showCreate)
@@ -649,10 +610,8 @@
     [Inject] private SetFlexTicketCategory.Handler CategoryChanges { get; set; } = default!;
     [Inject] private SetFlexTicketHolder.Handler HolderChanges { get; set; } = default!;
     [Inject] private DeleteFlexTicket.Handler TicketDeletions { get; set; } = default!;
-    [Inject] private SendFlexTicketMail.Handler MailSending { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
-    [Inject] private GetFlexTicketMailTemplate.Handler MailTemplate { get; set; } = default!;
 
     private bool _showPrint;
     private int _printBundleId;
@@ -713,50 +672,7 @@
 
     private FlexTicketRow? _mailFor;
 
-    private Task<EmailSendResult> SendOneAsync(FlexTicketRow t, string subject, string body) =>
-        MailSending.HandleAsync(new SendFlexTicketMail.Command(new FlexMailTicket(t.Uuid, t.Holder?.Email, t.Holder?.DisplayName, SelectedSeasonId,
-            t.Category.DisplayName()), subject, body));
-
     private bool _showBulk;
-    private bool _bulkSending;
-    private string _bulkSubject = "";
-    private string _bulkBody = "";
-    private string? _bulkError;
-    private BulkResult? _bulkResult;
-    private sealed record BulkResult(int Enqueued, int Failed, int NoEmail);
-
-    private int BulkWithEmail => _tickets.Count(HasEmail);
-    private int BulkWithoutEmail => _tickets.Count(t => !HasEmail(t));
-
-    private async Task OpenBulk()
-    {
-        var template = await MailTemplate.HandleAsync(new GetFlexTicketMailTemplate.Query());
-        _bulkSubject = template.Subject;
-        _bulkBody = template.Body;
-        _bulkResult = null;
-        _bulkError = null;
-        _showBulk = true;
-    }
-
-    private void CloseBulk() { if (!_bulkSending) _showBulk = false; }
-
-    private async Task SendBulk()
-    {
-        _bulkSending = true;
-        _bulkError = null;
-        try
-        {
-            int enqueued = 0, failed = 0, noEmail = 0;
-            foreach (var t in _tickets.ToList())
-            {
-                if (!HasEmail(t)) { noEmail++; continue; }
-                var r = await SendOneAsync(t, _bulkSubject, _bulkBody);
-                if (r.Success) enqueued++; else failed++;
-            }
-            _bulkResult = new BulkResult(enqueued, failed, noEmail);
-        }
-        finally { _bulkSending = false; }
-    }
 
     private FlexTicketRow? _deleteTarget;
     private bool _deleteBusy;

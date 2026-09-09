@@ -1,0 +1,96 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+@if (_ready)
+{
+    <div class="ta-overlay" @onmousedown="CloseAsync">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Flextickets versenden</h2>
+
+            @if (_result is not null)
+            {
+                <div class="ta-flash">@_result.Enqueued Ticket@(_result.Enqueued == 1 ? "" : "s") eingereiht@(_result.Failed > 0 ? $", {_result.Failed} fehlgeschlagen" : "").</div>
+                @if (_result.NoEmail > 0)
+                {
+                    <p class="ta-hint">@_result.NoEmail Ticket@(_result.NoEmail == 1 ? "" : "s") ohne E-Mail übersprungen.</p>
+                }
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseAsync">Schliessen</button>
+                </div>
+            }
+            else
+            {
+                <p class="ta-hint">@WithEmail Ticket@(WithEmail == 1 ? "" : "s") mit E-Mail werden versendet · @WithoutEmail ohne E-Mail werden übersprungen. Grundlage ist die aktuelle Filterung.</p>
+
+                <div class="ta-field">
+                    <label class="ta-label" for="ftBulkSubject">Betreff</label>
+                    <input id="ftBulkSubject" class="ta-input" type="text" maxlength="200" @bind="_subject" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="ftBulkBody">Text</label>
+                    <textarea id="ftBulkBody" class="ta-input ta-textarea" @bind="_body"></textarea>
+                    <p class="ta-hint">Platzhalter: {Name}, {Saison}. Markdown wird unterstützt. QR-Code, Online-Ticket und PDF-Link werden je Ticket angehängt.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_error)) { <div class="ta-modal-error">@_error</div> }
+
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_sending">Abbrechen</button>
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendAsync" disabled="@(_sending || WithEmail == 0)">
+                        @(_sending ? "Sendet …" : $"{WithEmail} Tickets senden")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<FlexTicketRow> Tickets { get; set; } = [];
+    [Parameter] public int SeasonId { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private GetFlexTicketMailTemplate.Handler MailTemplate { get; set; } = default!;
+    [Inject] private SendFlexTicketMail.Handler MailSending { get; set; } = default!;
+
+    private bool _ready;
+    private string _subject = "";
+    private string _body = "";
+    private bool _sending;
+    private string? _error;
+    private BulkResult? _result;
+
+    private sealed record BulkResult(int Enqueued, int Failed, int NoEmail);
+
+    private int WithEmail => Tickets.Count(t => t.HasEmail);
+    private int WithoutEmail => Tickets.Count(t => !t.HasEmail);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var template = await MailTemplate.HandleAsync(new GetFlexTicketMailTemplate.Query());
+        _subject = template.Subject;
+        _body = template.Body;
+        _ready = true;
+    }
+
+    private Task CloseAsync() => _sending ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task SendAsync()
+    {
+        _sending = true;
+        _error = null;
+        try
+        {
+            int enqueued = 0, failed = 0, noEmail = 0;
+            foreach (var t in Tickets.ToList())
+            {
+                if (!t.HasEmail) { noEmail++; continue; }
+                var result = await MailSending.HandleAsync(new SendFlexTicketMail.Command(
+                    new FlexMailTicket(t.Uuid, t.Holder?.Email, t.Holder?.DisplayName, SeasonId, t.Category.DisplayName()),
+                    _subject, _body));
+                if (result.Success) enqueued++; else failed++;
+            }
+            _result = new BulkResult(enqueued, failed, noEmail);
+        }
+        finally { _sending = false; }
+    }
+}
