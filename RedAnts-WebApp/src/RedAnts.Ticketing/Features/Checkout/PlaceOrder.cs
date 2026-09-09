@@ -23,7 +23,7 @@ public static class PlaceOrder
     }
 
     public sealed class Handler(
-        IOrders orders,
+        IOrderRepository orders,
         IOrderLog orderLog,
         IEventConversionRules conversionRules,
         IOccupancyReader occupancy,

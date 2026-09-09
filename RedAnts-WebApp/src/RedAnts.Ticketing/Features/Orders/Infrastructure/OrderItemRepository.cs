@@ -25,14 +25,4 @@ public sealed class OrderItemRepository(IScopeProvider scopeProvider) : IOrderIt
             });
         }
     }
-
-    public async Task<IReadOnlyList<OrderItem>> GetByOrderAsync(int orderId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<OrderItemRecord>(
-            "WHERE OrderId = @0 ORDER BY Id", orderId);
-        return rows.Select(r => OrderItem.FromPersistence(
-            r.Id, r.OrderId, (OrderItemKind)r.Kind, r.ArticleGuid, r.RefId,
-            (TicketCategory)r.Category, r.Label, r.Quantity, r.UnitPrice)).ToList();
-    }
 }

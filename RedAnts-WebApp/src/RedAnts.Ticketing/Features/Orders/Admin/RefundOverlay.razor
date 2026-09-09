@@ -12,19 +12,19 @@
         else
         {
             <div class="ta-refund-kpis">
-                <div><span>Bestellbetrag</span><b>CHF @_summary.TotalGross.ToString("N2")</b></div>
-                <div><span>Bereits erstattet</span><b>CHF @_summary.RefundedConfirmed.ToString("N2")</b></div>
-                <div><span>Noch erstattbar</span><b class="ta-refund-remaining">CHF @_summary.Remaining.ToString("N2")</b></div>
+                <div><span>Bestellbetrag</span><b>CHF @_detail.TotalGross.ToString("N2")</b></div>
+                <div><span>Bereits erstattet</span><b>CHF @_detail.RefundedConfirmed.ToString("N2")</b></div>
+                <div><span>Noch erstattbar</span><b class="ta-refund-remaining">CHF @_detail.Remaining.ToString("N2")</b></div>
             </div>
 
-            @if (_refunds.Count > 0)
+            @if (_detail.Refunds.Count > 0)
             {
                 <table class="ta-subtable">
                     <thead>
                         <tr><th>Nr.</th><th>Datum</th><th class="ta-num">Betrag</th><th>Methode</th><th>Status</th><th>Von</th><th>Referenz</th></tr>
                     </thead>
                     <tbody>
-                        @foreach (var r in _refunds)
+                        @foreach (var r in _detail.Refunds)
                         {
                             <tr>
                                 <td><code class="ta-uuid">@r.RefundNumber</code></td>
@@ -40,16 +40,16 @@
                 </table>
             }
 
-            @if (_summary.Remaining > 0m)
+            @if (_detail.Remaining > 0m)
             {
                 <div class="ta-refund-form">
                     <div class="ta-field">
                         <label class="ta-label" for="refAmount">Betrag (CHF)</label>
                         <div class="ta-refund-amount">
-                            <input id="refAmount" type="number" step="0.05" min="0" max="@_summary.Remaining"
+                            <input id="refAmount" type="number" step="0.05" min="0" max="@_detail.Remaining"
                                    class="ta-input" @bind="_amount" />
-                            <button type="button" class="ta-link-btn" @onclick="() => _amount = decimal.Round(_summary.Remaining, 2)">
-                                Vollständig (@_summary.Remaining.ToString("N2"))
+                            <button type="button" class="ta-link-btn" @onclick="() => _amount = decimal.Round(_detail.Remaining, 2)">
+                                Vollständig (@_detail.Remaining.ToString("N2"))
                             </button>
                         </div>
                     </div>
@@ -107,7 +107,7 @@
 
         <div class="ta-modal-actions">
             <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
-            @if (!_loading && _summary.Remaining > 0m)
+            @if (!_loading && _detail.Remaining > 0m)
             {
                 <button type="button" class="ta-btn ta-btn-danger" disabled="@_busy" @onclick="SubmitAsync">
                     @(_busy ? "Wird gebucht …" : "Rückzahlung buchen")
@@ -136,14 +136,13 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<string> OnRefunded { get; set; }
 
-    [Inject] private IOrderRefunds Refunds { get; set; } = default!;
+    [Inject] private GetOrderDetail.Handler Details { get; set; } = default!;
     [Inject] private RefundOrder.Handler RefundOrders { get; set; } = default!;
 
     private bool _loading = true;
     private bool _busy;
     private bool _deactivate;
-    private RefundSummary _summary = new(0, 0m, 0m, 0m, 0m);
-    private IReadOnlyList<OrderRefund> _refunds = [];
+    private OrderDetail _detail = OrderDetail.Empty(0);
     private decimal _amount;
     private RefundMethod _method;
     private string? _reference;
@@ -158,11 +157,10 @@
 
     private async Task LoadAsync()
     {
-        _summary = await Refunds.GetSummaryAsync(OrderId);
-        _refunds = await Refunds.GetByOrderAsync(OrderId);
-        _amount = decimal.Round(_summary.Remaining, 2);
+        _detail = await Details.HandleAsync(new GetOrderDetail.Query(OrderId));
+        _amount = decimal.Round(_detail.Remaining, 2);
         _method = OnlineAvailable ? RefundMethod.Payrexx : RefundMethod.Cash;
-        _deactivate = _summary.RefundedConfirmed == 0m && _amount >= _summary.TotalGross;
+        _deactivate = _detail.RefundedConfirmed == 0m && _amount >= _detail.TotalGross;
     }
 
     private async Task SubmitAsync()
@@ -172,8 +170,8 @@
         try
         {
             if (_amount <= 0m) throw new InvalidOperationException("Betrag muss grösser als 0 sein.");
-            if (_amount > _summary.Remaining)
-                throw new InvalidOperationException($"Betrag übersteigt den erstattbaren Restbetrag (CHF {_summary.Remaining:N2}).");
+            if (_amount > _detail.Remaining)
+                throw new InvalidOperationException($"Betrag übersteigt den erstattbaren Restbetrag (CHF {_detail.Remaining:N2}).");
 
             var request = new RefundRequest(OrderId, _amount, _method, _method == RefundMethod.Payrexx,
                 _reference, _reason, _deactivate, ChangedBy);

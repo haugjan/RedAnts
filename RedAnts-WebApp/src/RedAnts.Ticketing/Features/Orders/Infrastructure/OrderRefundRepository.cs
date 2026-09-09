@@ -2,7 +2,6 @@ using NPoco;
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
 using System.Globalization;
-using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Orders.Infrastructure;
@@ -17,13 +16,6 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
         var confirmed = await SumAsync(db, orderId, RefundStatus.Confirmed);
         var reserved = await ReservedAsync(db, orderId);
         return new RefundSummary(orderId, total, confirmed, reserved, total - reserved);
-    }
-
-    public async Task<IReadOnlyList<OrderRefund>> GetByOrderAsync(int orderId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<OrderRefundRecord>("WHERE OrderId = @0 ORDER BY Id", orderId);
-        return rows.Select(Map).ToList();
     }
 
     public async Task<OrderRefund> CreateAsync(int orderId, decimal amount, RefundMethod method, RefundStatus initialStatus,
@@ -174,10 +166,4 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
         public int Status { get; set; }
         public decimal VatRate { get; set; }
     }
-}
-
-public sealed class OrderRefundRepositoryComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IOrderRefunds, OrderRefundRepository>();
 }

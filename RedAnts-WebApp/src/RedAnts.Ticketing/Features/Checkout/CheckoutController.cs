@@ -8,7 +8,7 @@ namespace RedAnts.Ticketing.Features.Checkout;
 
 public sealed class CheckoutController(
     ICartRepository carts,
-    IOrders orders,
+    IOrderRepository orders,
     IOrderTokens tokens,
     ICaptchaVerifier captcha,
     IPayrexxGateway payrexx,

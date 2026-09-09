@@ -6,7 +6,7 @@ using PaymentMethod = RedAnts.Ticketing.Domain.Sales.PaymentMethod;
 
 namespace RedAnts.Ticketing.Features.Orders.Infrastructure;
 
-public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration config) : IOrders
+public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration config) : IOrderRepository
 {
     public async Task<Order> SaveAsync(Order order)
     {
@@ -77,14 +77,6 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
             "UPDATE Orders SET Status = @0 WHERE Id = @1 AND Status = @2",
             (int)OrderStatus.Cancelled, orderId, (int)OrderStatus.Draft);
         return affected > 0;
-    }
-
-    public async Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTimeOffset createdAfter, DateTimeOffset createdBefore)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<OrderRecord>(
-            "WHERE Status = @0 AND CreatedAt >= @1 AND CreatedAt < @2 ORDER BY Id", (int)OrderStatus.Draft, createdAfter, createdBefore);
-        return rows.Select(Map).ToList();
     }
 
     public async Task CopyBillingToTicketsAsync(int orderId)

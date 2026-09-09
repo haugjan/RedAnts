@@ -7,7 +7,7 @@ public static class CancelDraftOrder
 {
     public sealed record Command(int OrderId, string Reason);
 
-    public sealed class Handler(IOrders orders, IOrderLog orderLog, CapacityReservation reservation)
+    public sealed class Handler(IOrderRepository orders, IOrderLog orderLog, CapacityReservation reservation)
     {
         public async Task<bool> HandleAsync(Command command)
         {

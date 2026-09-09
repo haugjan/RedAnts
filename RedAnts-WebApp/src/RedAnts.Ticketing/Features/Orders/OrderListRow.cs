@@ -1,8 +1,8 @@
 using RedAnts.Ticketing.Domain.Sales;
 
-namespace RedAnts.Ticketing.Features.Orders.Admin;
+namespace RedAnts.Ticketing.Features.Orders;
 
-public sealed record OrderListItem(
+public sealed record OrderListRow(
     int OrderId,
     string OrderNumber,
     DateTimeOffset CreatedAt,
@@ -24,3 +24,8 @@ public sealed record OrderListItem(
     string FlexTicketSummary,
     PaymentSource? PaymentSource,
     decimal RefundedAmount);
+
+public sealed record OrdersForAdmin(int Total, IReadOnlyList<OrderListRow> Orders)
+{
+    public static readonly OrdersForAdmin Empty = new(0, []);
+}

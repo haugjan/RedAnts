@@ -10,7 +10,7 @@ using RedAnts.Ticketing.Features.Tickets;
 namespace RedAnts.Ticketing.Features.Checkout;
 
 public sealed class OrderFulfillment(
-    IOrders orders,
+    IOrderRepository orders,
     IOrderLog orderLog,
     IEventTickets tickets,
     ISeasonPasses passes,

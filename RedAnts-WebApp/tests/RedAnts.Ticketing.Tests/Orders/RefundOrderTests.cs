@@ -8,7 +8,7 @@ namespace RedAnts.Ticketing.Tests.Orders;
 
 public class RefundOrderTests
 {
-    private readonly InMemoryOrders _orders = new();
+    private readonly InMemoryOrderRepository _orders = new();
     private readonly RecordingOrderRefunds _refunds = new();
     private readonly RefundingPayrexx _payrexx = new();
     private readonly RecordingOrderTickets _tickets = new();

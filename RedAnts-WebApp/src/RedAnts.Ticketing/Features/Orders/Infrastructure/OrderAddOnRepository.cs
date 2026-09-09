@@ -1,5 +1,4 @@
 using NPoco;
-using RedAnts.Ticketing.Domain.Sales;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Orders.Infrastructure;
@@ -25,12 +24,10 @@ public sealed class OrderAddOnRepository(IScopeProvider scopeProvider) : IOrderA
             });
     }
 
-    public async Task<IReadOnlyList<OrderAddOnLine>> GetByOrderAsync(int orderId)
+    public async Task SetDeliveredAsync(int orderAddOnId, bool delivered)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<OrderAddOnRecord>(
-            "WHERE OrderId = @0 ORDER BY Id", orderId);
-        return rows.Select(r => new OrderAddOnLine(
-            r.SeasonId, r.SeasonName, (TicketCategory)r.Category, r.CategoryName, r.Label, r.Price, r.Quantity, r.TierId)).ToList();
+        await scope.Database.ExecuteAsync(
+            "UPDATE OrderAddOns SET Delivered = @0 WHERE Id = @1", delivered, orderAddOnId);
     }
 }

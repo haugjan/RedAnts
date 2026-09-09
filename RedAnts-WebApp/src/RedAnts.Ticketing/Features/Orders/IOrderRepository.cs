@@ -2,7 +2,7 @@ using RedAnts.Ticketing.Domain.Sales;
 
 namespace RedAnts.Ticketing.Features.Orders;
 
-public interface IOrders
+public interface IOrderRepository
 {
     Task<Order> SaveAsync(Order order);
     Task<string> NextOrderNumberAsync();
@@ -10,6 +10,5 @@ public interface IOrders
     Task<Order?> GetByNumberAsync(string orderNumber);
     Task<bool> TryMarkPaidAsync(int orderId);
     Task<bool> TryCancelDraftAsync(int orderId);
-    Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTimeOffset createdAfter, DateTimeOffset createdBefore);
     Task CopyBillingToTicketsAsync(int orderId);
 }

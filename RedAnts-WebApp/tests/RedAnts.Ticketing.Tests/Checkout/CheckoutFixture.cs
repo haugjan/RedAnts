@@ -14,7 +14,7 @@ internal sealed class CheckoutFixture
     public const int AdultTier = 1;
     public const int PassTier = 7;
 
-    public InMemoryOrders Orders { get; } = new();
+    public InMemoryOrderRepository Orders { get; } = new();
     public RecordingOrderLog OrderLog { get; } = new();
     public StubConversionRules ConversionRules { get; } = new();
     public StubAdmission Admission { get; } = new();
@@ -51,7 +51,7 @@ internal sealed class CheckoutFixture
 
     public CancelDraftOrder.Handler CancelDraftOrder => new(Orders, OrderLog, Reservation);
 
-    public ExpireDraftOrders.Handler ExpireDraftOrders => new(Orders, OrderLog, Reservation, Payrexx, Fulfillment, NullLogger<ExpireDraftOrders.Handler>.Instance);
+    public ExpireDraftOrders.Handler ExpireDraftOrders => new(Orders, new InMemoryDraftOrdersReader(Orders), OrderLog, Reservation, Payrexx, Fulfillment, NullLogger<ExpireDraftOrders.Handler>.Instance);
 
     public static BillingAddress Billing(string? phone = null) => BillingAddress.Create(
         BuyerType.Private, "Anna", "Muster", null, "Bahnhofstrasse 1", null, "8400", "Winterthur", "Schweiz", "anna@example.ch", phone);

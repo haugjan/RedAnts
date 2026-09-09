@@ -1,15 +1,13 @@
 using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Checkout;
-using RedAnts.Ticketing.Features.Orders.Admin;
-using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Orders.Infrastructure;
 
-public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrderAdminReport
+public sealed class OrderListReader(IScopeProvider scopeProvider) : IOrderListReader
 {
-    public async Task<IReadOnlyList<OrderListItem>> GetBySeasonAsync(int seasonId, IReadOnlyCollection<int> eventIds)
+    public async Task<IReadOnlyList<OrderListRow>> GetBySeasonAsync(int seasonId, IReadOnlyCollection<int> eventIds)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
@@ -52,7 +50,7 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
             .GroupBy(f => f.OrderId!.Value)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var result = new List<OrderListItem>();
+        var result = new List<OrderListRow>();
         foreach (var o in orders)
         {
             var tickets = ticketsByOrder.GetValueOrDefault(o.Id) ?? [];
@@ -61,7 +59,7 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
             var planned = SnapshotItems(o.FulfillmentPayload, seasonId, eventIdSet);
             if (tickets.Count == 0 && passes.Count == 0 && flex.Count == 0 && planned.Count == 0) continue;
 
-            result.Add(new OrderListItem(
+            result.Add(new OrderListRow(
                 o.Id,
                 o.OrderNumber,
                 o.CreatedAt,
@@ -174,10 +172,4 @@ public sealed class OrderAdminReportReader(IScopeProvider scopeProvider) : IOrde
         public int OrderId { get; set; }
         public decimal Amount { get; set; }
     }
-}
-
-public sealed class OrderAdminReportComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IOrderAdminReport, OrderAdminReportReader>();
 }

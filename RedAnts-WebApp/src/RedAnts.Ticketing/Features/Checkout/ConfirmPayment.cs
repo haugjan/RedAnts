@@ -9,7 +9,7 @@ public static class ConfirmPayment
 
     public sealed record Result(bool Found, bool Paid, bool Cancelled);
 
-    public sealed class Handler(IOrders orders, IPayrexxGateway payrexx, OrderFulfillment fulfillment, CapacityReservation reservation,
+    public sealed class Handler(IOrderRepository orders, IPayrexxGateway payrexx, OrderFulfillment fulfillment, CapacityReservation reservation,
         IOrderLog orderLog, ILogger<Handler> logger)
     {
         public async Task<Result> HandleAsync(Command command)

@@ -5,6 +5,4 @@ namespace RedAnts.Ticketing.Features.Orders;
 public interface IOrderItems
 {
     Task SaveAsync(int orderId, IReadOnlyList<OrderItem> items);
-
-    Task<IReadOnlyList<OrderItem>> GetByOrderAsync(int orderId);
 }

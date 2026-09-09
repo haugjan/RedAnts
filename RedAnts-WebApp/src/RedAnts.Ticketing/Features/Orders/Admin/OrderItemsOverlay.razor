@@ -51,15 +51,15 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public EventCallback OnClose { get; set; }
 
-    [Inject] private IOrderItems Items { get; set; } = default!;
+    [Inject] private GetOrderDetail.Handler Details { get; set; } = default!;
 
     private bool _loading = true;
-    private IReadOnlyList<OrderItem> _items = [];
+    private IReadOnlyList<OrderItemRow> _items = [];
 
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
-        _items = await Items.GetByOrderAsync(OrderId);
+        _items = (await Details.HandleAsync(new GetOrderDetail.Query(OrderId))).Items;
         _loading = false;
     }
 

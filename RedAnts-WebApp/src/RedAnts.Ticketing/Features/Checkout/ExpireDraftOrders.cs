@@ -7,14 +7,16 @@ public static class ExpireDraftOrders
 {
     public sealed record Command(DateTimeOffset CreatedAfter, DateTimeOffset CreatedBefore);
 
-    public sealed class Handler(IOrders orders, IOrderLog orderLog, CapacityReservation reservation, IPayrexxGateway payrexx,
-        OrderFulfillment fulfillment, ILogger<Handler> logger)
+    public sealed class Handler(IOrderRepository orders, IDraftOrdersReader drafts, IOrderLog orderLog, CapacityReservation reservation,
+        IPayrexxGateway payrexx, OrderFulfillment fulfillment, ILogger<Handler> logger)
     {
         public async Task<int> HandleAsync(Command command)
         {
             var expired = 0;
-            foreach (var order in await orders.GetDraftsCreatedBetweenAsync(command.CreatedAfter, command.CreatedBefore))
+            foreach (var orderId in await drafts.GetIdsCreatedBetweenAsync(command.CreatedAfter, command.CreatedBefore))
             {
+                var order = await orders.GetByIdAsync(orderId);
+                if (order is null) continue;
                 try
                 {
                     if (await PaidMeanwhileAsync(order))

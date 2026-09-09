@@ -9,5 +9,5 @@ public sealed record OrderAddOnLine(
 public interface IOrderAddOns
 {
     Task SaveAsync(int orderId, IReadOnlyList<OrderAddOnLine> lines);
-    Task<IReadOnlyList<OrderAddOnLine>> GetByOrderAsync(int orderId);
+    Task SetDeliveredAsync(int orderAddOnId, bool delivered);
 }

@@ -1,14 +1,12 @@
 using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Orders.Admin;
-using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Orders.Infrastructure;
 
-public sealed class OrderAddOnAdminReportReader(IScopeProvider scopeProvider) : IOrderAddOnAdminReport
+public sealed class OrderAddOnListReader(IScopeProvider scopeProvider) : IOrderAddOnListReader
 {
-    public async Task<IReadOnlyList<AddOnDeliveryItem>> GetBySeasonAsync(int seasonId)
+    public async Task<IReadOnlyList<OrderAddOnRow>> GetBySeasonAsync(int seasonId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
@@ -21,28 +19,19 @@ public sealed class OrderAddOnAdminReportReader(IScopeProvider scopeProvider) : 
             WHERE a.SeasonId = @0
             ORDER BY a.Delivered, o.CreatedAt DESC", seasonId);
 
-        return rows.Select(r => new AddOnDeliveryItem
-        {
-            Id = r.Id,
-            OrderId = r.OrderId,
-            OrderNumber = r.OrderNumber,
-            CreatedAt = r.CreatedAt,
-            OrderStatus = (OrderStatus)r.Status,
-            BuyerName = BuyerName(r),
-            Email = r.BillingEmail ?? "",
-            Label = r.Label,
-            CategoryName = r.CategoryName,
-            Quantity = r.Quantity,
-            Price = r.Price,
-            Delivered = r.Delivered
-        }).ToList();
-    }
-
-    public async Task SetDeliveredAsync(int orderAddOnId, bool delivered)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        await scope.Database.ExecuteAsync(
-            "UPDATE OrderAddOns SET Delivered = @0 WHERE Id = @1", delivered, orderAddOnId);
+        return rows.Select(r => new OrderAddOnRow(
+            r.Id,
+            r.OrderId,
+            r.OrderNumber,
+            r.CreatedAt,
+            (OrderStatus)r.Status,
+            BuyerName(r),
+            r.BillingEmail ?? "",
+            r.Label,
+            r.CategoryName,
+            r.Quantity,
+            r.Price,
+            r.Delivered)).ToList();
     }
 
     private static string BuyerName(AddOnRow r)
@@ -71,10 +60,4 @@ public sealed class OrderAddOnAdminReportReader(IScopeProvider scopeProvider) : 
         public string? BillingCompany { get; set; }
         public string? BillingEmail { get; set; }
     }
-}
-
-public sealed class OrderAddOnAdminReportComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IOrderAddOnAdminReport, OrderAddOnAdminReportReader>();
 }

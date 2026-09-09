@@ -8,8 +8,6 @@ public interface IOrderRefunds
 {
     Task<RefundSummary> GetSummaryAsync(int orderId);
 
-    Task<IReadOnlyList<OrderRefund>> GetByOrderAsync(int orderId);
-
     Task<OrderRefund> CreateAsync(int orderId, decimal amount, RefundMethod method, RefundStatus initialStatus,
         string? reference, string? reason, string? createdBy);
 

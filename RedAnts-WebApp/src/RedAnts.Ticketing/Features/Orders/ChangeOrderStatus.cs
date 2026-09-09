@@ -8,7 +8,7 @@ public static class ChangeOrderStatus
 
     public sealed record Result(bool Changed, int DeactivatedTickets);
 
-    public sealed class Handler(IOrders orders, IOrderLog log, IOrderTickets orderTickets)
+    public sealed class Handler(IOrderRepository orders, IOrderLog log, IOrderTickets orderTickets)
     {
         public async Task<Result> HandleAsync(Command command)
         {

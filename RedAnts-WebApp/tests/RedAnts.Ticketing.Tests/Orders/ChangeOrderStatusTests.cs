@@ -7,7 +7,7 @@ namespace RedAnts.Ticketing.Tests.Orders;
 
 public class ChangeOrderStatusTests
 {
-    private readonly InMemoryOrders _orders = new();
+    private readonly InMemoryOrderRepository _orders = new();
     private readonly RecordingOrderLog _log = new();
     private readonly RecordingOrderTickets _tickets = new();
 
