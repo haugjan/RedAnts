@@ -214,6 +214,7 @@
     private readonly List<string> _path = new();
     private string[] _activeLocalIds = [];
     private NowPlaying? _nowPlaying;
+    private (string Title, string Sub)? _songInfo;
     private int? _remainingSec;
     private double _volume = 0.9;
 
@@ -261,8 +262,14 @@
         string? id = _nowPlaying?.ButtonId ?? (_activeLocalIds.Length > 0 ? _activeLocalIds[^1] : null);
         if (id is null) return null;
         var n = FindNode(id);
-        if (n is not null) return (n.Icon ?? "🎵", n.Label, n.Subtitle);
-        return ("🎵", _nowPlaying?.Label ?? "", null);
+        if (n is not null) return (n.Icon ?? "🎵", n.Label, SongLine() ?? n.Subtitle);
+        return ("🎵", _nowPlaying?.Label ?? "", SongLine());
+    }
+
+    private string? SongLine()
+    {
+        if (_songInfo is not { } s) return null;
+        return s.Sub.Length > 0 ? $"♪ {s.Title} · {s.Sub}" : $"♪ {s.Title}";
     }
 
     private ShowButton? FindNode(string id)
@@ -387,6 +394,13 @@
     }
 
     [JSInvokable]
+    public Task OnSongInfo(string title, string sub)
+    {
+        _songInfo = string.IsNullOrWhiteSpace(title) ? null : (title.Trim(), (sub ?? "").Trim());
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
     public Task OnSpotifyStarted(string id, string label, double? durationSec)
     {
         _paused = false;
@@ -399,6 +413,7 @@
     public Task OnSpotifyStopped()
     {
         _nowPlaying = null;
+        _songInfo = null;
         _remainingSec = null;
         _paused = false;
         return InvokeAsync(StateHasChanged);
@@ -446,12 +461,13 @@
     private async Task PauseAsync() { _paused = true; await JS.InvokeVoidAsync("showBoard.pause"); }
     private async Task ResumeAsync() { _paused = false; await JS.InvokeVoidAsync("showBoard.resume"); }
     private Task TogglePauseAsync() => _paused ? ResumeAsync() : PauseAsync();
-    private async Task StopAllAsync() { _paused = false; _nowPlaying = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.stopAll"); }
-    private async Task FadeOutAsync() { _paused = false; _nowPlaying = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.fadeOut"); }
+    private async Task StopAllAsync() { _paused = false; _nowPlaying = null; _songInfo = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.stopAll"); }
+    private async Task FadeOutAsync() { _paused = false; _nowPlaying = null; _songInfo = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.fadeOut"); }
 
     private async Task StopSpotifyAsync(bool fade)
     {
         _nowPlaying = null;
+        _songInfo = null;
         _remainingSec = null;
         StateHasChanged();
         try { await JS.InvokeVoidAsync("showBoard.stopSpotify", fade); } catch { }
@@ -578,6 +594,7 @@
             sh = x.Shuffle,
         }).ToArray();
         _nowPlaying = null;
+        _songInfo = null;
         _paused = false;
         await JS.InvokeVoidAsync("showBoard.playSongs", id, arr, n.SongsRandom && songIndex is null);
     }
