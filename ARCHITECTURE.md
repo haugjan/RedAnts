@@ -263,7 +263,7 @@ The structural goals are reached and guarded by tests: layering, slices with exp
 
 ### Backlog (recommended order)
 
-The phased plan for these items (scope, steps, verification per phase) is `ARCHITECTURE-PLAN.md`; item 5 below is not part of that plan.
+The phased plan for these items (scope, steps, verification per phase) is `ARCHITECTURE-PLAN.md`; item 5 below is not a phase of its own, it falls out of the CQRS split in Phase B.
 
 1. Split the four admin card and ticket components and `ShowAdminPage.razor` into one component per dialog with one command each (pillar 14, the largest smell and the source of the stray handler text of 2026-09-08).
 2. Open a scope in the handlers that write several tables (`PlaceOrder`/`OrderFulfillment`, `CreateAdminOrder`, `RefundOrder`, the imports) so a failure leaves no half-written order (pillar 6).
