@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace RedAnts.Ticketing.Features.Checkout;
 
 public sealed class CartController(
-    ICartRepository carts,
+    GetCart.Handler getCart,
     AddEventTicketsToCart.Handler addEventTickets,
     AddSeasonPassesToCart.Handler addSeasonPasses,
     AddConversionToCart.Handler addConversion,
@@ -12,7 +12,7 @@ public sealed class CartController(
     ClearCart.Handler clearCart) : Controller
 {
     [HttpGet("/cart")]
-    public IActionResult Index() => View(carts.Load());
+    public async Task<IActionResult> Index() => View(await getCart.HandleAsync(new GetCart.Query()));
 
     [HttpPost("/cart/convert")]
     [ValidateAntiForgeryToken]

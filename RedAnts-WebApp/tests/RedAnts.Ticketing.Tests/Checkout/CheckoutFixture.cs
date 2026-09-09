@@ -14,6 +14,7 @@ internal sealed class CheckoutFixture
     public const int AdultTier = 1;
     public const int PassTier = 7;
 
+    public InMemoryCart Carts { get; } = new();
     public InMemoryOrders Orders { get; } = new();
     public RecordingOrderLog OrderLog { get; } = new();
     public StubConversionRules ConversionRules { get; } = new();
@@ -45,7 +46,7 @@ internal sealed class CheckoutFixture
     public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, SeasonAddOns,
         Mailer, new StubPublicBaseUrl(), OrderItems, Newsletter, new EmptyIssuedTickets(), Reservation, NullLogger<OrderFulfillment>.Instance);
 
-    public PlaceOrder.Handler PlaceOrder => new(Orders, OrderLog, ConversionRules, Admission, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
+    public PlaceOrder.Handler PlaceOrder => new(Carts, Orders, OrderLog, ConversionRules, Admission, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
         new StubOrderTokens(), Reservation, Fulfillment, NullLogger<PlaceOrder.Handler>.Instance);
 
     public ConfirmPayment.Handler ConfirmPayment => new(Orders, Payrexx, Fulfillment, Reservation, OrderLog, NullLogger<ConfirmPayment.Handler>.Instance);

@@ -12,6 +12,17 @@ using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Tests.Checkout;
 
+internal sealed class InMemoryCart : ICartRepository
+{
+    private Cart _cart = Cart.Empty();
+
+    public Cart Load() => _cart;
+
+    public void Save(Cart cart) => _cart = cart;
+
+    public void Clear() => _cart = Cart.Empty();
+}
+
 internal sealed class InMemoryOrders : IOrders
 {
     private int _nextId = 1;

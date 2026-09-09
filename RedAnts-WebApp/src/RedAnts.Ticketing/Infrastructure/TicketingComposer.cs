@@ -52,6 +52,7 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<IPriceTierRepository, PriceTierRepository>();
         builder.Services.AddScoped<ITierSalesReader, TierSalesReader>();
         builder.Services.AddScoped<ICapacityUsageReader, CapacityUsageReader>();
+        builder.Services.AddScoped<ICheckoutOrderReader, CheckoutOrderReader>();
         builder.Services.AddScoped<IEventPricing, EventPricingReader>();
         builder.Services.AddScoped<ISeasonPassPricing, SeasonPassPricingReader>();
         builder.Services.AddScoped<IEventTickets, EventTicketRepository>();

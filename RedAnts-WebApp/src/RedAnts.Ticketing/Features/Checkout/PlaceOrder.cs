@@ -11,7 +11,11 @@ namespace RedAnts.Ticketing.Features.Checkout;
 
 public static class PlaceOrder
 {
-    public sealed record Command(Cart Cart, BillingAddress Billing, bool SubscribeNewsletter, CheckoutSource Source);
+    public sealed record Command(Cart? Cart, BillingAddress Billing, bool SubscribeNewsletter, CheckoutSource Source)
+    {
+        public static Command FromSessionCart(BillingAddress billing, bool subscribeNewsletter, CheckoutSource source) =>
+            new(null, billing, subscribeNewsletter, source);
+    }
 
     public abstract record Result
     {
@@ -23,6 +27,7 @@ public static class PlaceOrder
     }
 
     public sealed class Handler(
+        ICartRepository carts,
         IOrders orders,
         IOrderLog orderLog,
         IEventConversionRuleRepository conversionRules,
@@ -39,7 +44,7 @@ public static class PlaceOrder
 
         public async Task<Result> HandleAsync(Command command)
         {
-            var cart = command.Cart;
+            var cart = command.Cart ?? carts.Load();
             if (cart.IsEmpty) return new Result.Denied("Der Warenkorb ist leer.", true);
 
             foreach (var eventId in cart.EventIds)
