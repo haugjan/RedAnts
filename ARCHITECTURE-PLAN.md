@@ -183,6 +183,8 @@ Show follows the same rules with the capabilities `Board/` (ShowController, Show
 
 **Verification.** The new tests green locally and in CI (CI skips the database fixture).
 
+**Done 2026-09-09.** Commits `e1f9e8e` (TimeProvider in `AddTicketing`, `SwissTime.TimestampOf/NowOf/TodayOf`, the sales factories, `DraftOrderExpiry`, `ExpireDraftOrders.Command.Due`, `OutboxDispatcher`, `TicketTokenSigner`), `4b1f0a9` (`Database/AgentDatabaseFixture.cs` with `AgentScopeProvider`, `AgentDatabase`, `[DatabaseFact]` and twelve repository and reader tests) and `96e7ffa` (the ticket PDF web root resolved from the test assembly). Deviations from the steps above: the overloads are named `TimestampOf`/`NowOf`/`TodayOf` because C# forbids a method and a property of the same name, the factories take a trailing optional `TimeProvider? time = null` so no call site in the checkout and import handlers had to change while Phases C and D were running, and `IOrderTokens` has no expiry to inject a clock into. The covered readers are the order list reader and the season pass list reader (the stats readers need seeded Umbraco content, which the fixture does not create). Test state: Kernel 34, Show 19, Host 5, Ticketing 603 with the agent database and 591 with 12 skipped without it, Architecture 27, Browser 25 (not run in this phase).
+
 ## Phase H: fail fast in the deploy-time migration
 
 **Goal.** When the stored plan state of a database is unknown to the deployed plan, the migrate step reports one clear line (database, stored state, last known state) and fails, instead of an exit code 134 and a stack trace, and the deploy summary shows it.
