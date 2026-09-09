@@ -113,7 +113,7 @@ public sealed class ShowSpotifySearch(
 
         var endpoint = v.Kind switch
         {
-            "playlist" => $"https://api.spotify.com/v1/playlists/{v.Id}?fields=name,owner(display_name),images,tracks(total)",
+            "playlist" => $"https://api.spotify.com/v1/playlists/{v.Id}",
             "album" => $"https://api.spotify.com/v1/albums/{v.Id}",
             "artist" => $"https://api.spotify.com/v1/artists/{v.Id}",
             _ => null,
@@ -126,7 +126,7 @@ public sealed class ShowSpotifySearch(
             var name = json.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
             var cover = FirstImage(json);
             var owner = json.TryGetProperty("owner", out var o) && o.TryGetProperty("display_name", out var dn) ? dn.GetString() ?? "" : "";
-            var count = json.TryGetProperty("tracks", out var tr) && tr.TryGetProperty("total", out var tot) ? tot.GetInt32() : 0;
+            var count = TrackTotal(json);
             return new SpotifyContext($"spotify:{v.Kind}:{v.Id}", v.Kind, name, owner, cover, count);
         }
         catch { return new SpotifyContext($"spotify:{v.Kind}:{v.Id}", v.Kind, "", "", "", 0); }
@@ -155,25 +155,61 @@ public sealed class ShowSpotifySearch(
 
         var tracks = new List<SpotifyTrack>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        const string fields = "items(is_local,track(uri,name,type,is_playable,duration_ms,preview_url,artists(name),album(name,images))),next";
-        var url = $"https://api.spotify.com/v1/playlists/{id}/tracks?market=CH&limit=100&fields={Uri.EscapeDataString(fields)}";
+        var url = $"https://api.spotify.com/v1/playlists/{id}?market=CH";
+        var firstPage = true;
 
         while (url.Length > 0 && tracks.Count < max)
         {
-            var json = await GetAsync(url);
-            foreach (var item in json.GetProperty("items").EnumerateArray())
+            JsonElement json;
+            try { json = await GetAsync(url); }
+            catch (HttpRequestException) when (!firstPage) { break; }
+            firstPage = false;
+
+            var (items, next) = ReadTrackPage(json);
+            if (items.ValueKind != JsonValueKind.Array) break;
+
+            foreach (var item in items.EnumerateArray())
             {
                 if (item.TryGetProperty("is_local", out var loc) && loc.ValueKind == JsonValueKind.True) continue;
-                if (!item.TryGetProperty("track", out var t) || t.ValueKind != JsonValueKind.Object) continue;
+                if (EntryTrack(item) is not { } t) continue;
                 if (t.TryGetProperty("type", out var ty) && ty.GetString() != "track") continue;
                 if (MapTrack(t) is not { } track || !track.Uri.StartsWith("spotify:track:", StringComparison.Ordinal)) continue;
                 if (!seen.Add(track.Uri)) continue;
                 tracks.Add(track);
                 if (tracks.Count >= max) break;
             }
-            url = json.TryGetProperty("next", out var nx) && nx.ValueKind == JsonValueKind.String ? nx.GetString() ?? "" : "";
+            url = next;
         }
         return tracks;
+    }
+
+    private static int TrackTotal(JsonElement json)
+    {
+        foreach (var key in new[] { "tracks", "items" })
+        {
+            if (json.TryGetProperty(key, out var node) && node.ValueKind == JsonValueKind.Object
+                && node.TryGetProperty("total", out var total) && total.ValueKind == JsonValueKind.Number)
+                return total.GetInt32();
+        }
+        return 0;
+    }
+
+    private static (JsonElement Items, string Next) ReadTrackPage(JsonElement json)
+    {
+        var node = json;
+        if (json.TryGetProperty("tracks", out var tracks) && tracks.ValueKind == JsonValueKind.Object) node = tracks;
+        else if (json.TryGetProperty("items", out var embedded) && embedded.ValueKind == JsonValueKind.Object) node = embedded;
+
+        var items = node.TryGetProperty("items", out var arr) && arr.ValueKind == JsonValueKind.Array ? arr : default;
+        var next = node.TryGetProperty("next", out var nx) && nx.ValueKind == JsonValueKind.String ? nx.GetString() ?? "" : "";
+        return (items, next);
+    }
+
+    private static JsonElement? EntryTrack(JsonElement item)
+    {
+        if (item.TryGetProperty("track", out var t) && t.ValueKind == JsonValueKind.Object) return t;
+        if (item.TryGetProperty("item", out var i) && i.ValueKind == JsonValueKind.Object) return i;
+        return item.TryGetProperty("uri", out _) ? item : null;
     }
 
     private async Task<IReadOnlyList<SpotifyTrack>> AlbumTracksAsync(string id, int max)
