@@ -87,6 +87,11 @@ public static class TicketingFeatures
         typeof(CreateSeasonPass.Handler),
         typeof(EditEventTicket.Handler),
         typeof(SetEventTicketHolder.Handler),
+        typeof(GetWebTicket.Handler),
+        typeof(GetMyTickets.Handler),
+        typeof(GetWebTicketPdf.Handler),
+        typeof(GetWebTicketLink.Handler),
+        typeof(SetTicketCustomName.Handler),
         typeof(DeleteEventTicket.Handler),
         typeof(CreateEventTicketBundle.Handler),
         typeof(ImportEventTickets.Handler),
@@ -111,7 +116,8 @@ public static class TicketingFeatures
     [
         typeof(CapacityReservation),
         typeof(OrderFulfillment),
-        typeof(TicketScanning)
+        typeof(TicketScanning),
+        typeof(WebTicketResolution)
     ];
 
     public static IServiceCollection AddTicketingFeatures(this IServiceCollection services)
