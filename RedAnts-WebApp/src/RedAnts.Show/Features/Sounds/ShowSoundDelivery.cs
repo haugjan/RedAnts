@@ -11,11 +11,9 @@ public static class ShowSoundDelivery
     private const string CachePolicy = "private, max-age=31536000, immutable";
 
     public static async Task<IActionResult> StreamShowSoundAsync(
-        this ControllerBase controller, IShowSoundUploader sounds, string? path)
+        this ControllerBase controller, OpenShowSound.Handler sounds, string? path)
     {
-        if (!IsWithinContainer(path)) return controller.NotFound();
-
-        var sound = await sounds.OpenReadAsync(path!);
+        var sound = await sounds.HandleAsync(new OpenShowSound.Query(path));
         if (sound is null) return controller.NotFound();
 
         controller.Response.Headers.CacheControl = CachePolicy;
@@ -25,10 +23,4 @@ public static class ShowSoundDelivery
             : controller.File(sound.Content, sound.ContentType, sound.LastModified,
                 new EntityTagHeaderValue($"\"{sound.ETag.Trim('"')}\""), enableRangeProcessing: true);
     }
-
-    private static bool IsWithinContainer(string? path) =>
-        !string.IsNullOrWhiteSpace(path)
-        && !path.StartsWith('/')
-        && !path.Contains('\\')
-        && !path.Split('/').Any(segment => segment is "." or "..");
 }

@@ -34,8 +34,6 @@ internal sealed class RecordingConversionRules : IEventConversionRuleRepository
     public List<(int EventId, TicketType CardType, decimal? Discount)> Rules { get; } = [];
     public Dictionary<int, bool> ConversionOnly { get; } = new();
 
-    public Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId) => throw new NotSupportedException();
-
     public Task SetAsync(int eventId, TicketType cardType, decimal? discount)
     {
         Rules.Add((eventId, cardType, discount));

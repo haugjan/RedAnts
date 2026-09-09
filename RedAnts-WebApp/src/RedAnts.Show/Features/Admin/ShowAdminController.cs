@@ -7,7 +7,7 @@ namespace RedAnts.Show.Features.Admin;
 
 [Route("admin/show")]
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
-public sealed class ShowAdminController(IShowSoundUploader sounds) : Controller
+public sealed class ShowAdminController(OpenShowSound.Handler sounds) : Controller
 {
     [HttpGet("")]
     public IActionResult Index() => View("ShowAdmin");

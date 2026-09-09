@@ -7,7 +7,7 @@ public static class GetQuickBuyCart
 {
     public sealed record Query(int EventId, int TierId);
 
-    public sealed class Handler(IEventPricing pricing, IEventReader events, IEventConversionRuleRepository conversionRules)
+    public sealed class Handler(IEventPricing pricing, IEventReader events, IEventConversionRuleReader conversionRules)
     {
         public async Task<Cart?> HandleAsync(Query query)
         {

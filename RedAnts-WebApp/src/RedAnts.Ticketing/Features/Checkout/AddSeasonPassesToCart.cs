@@ -37,10 +37,9 @@ public static class AddSeasonPassesToCart
             var selectedIds = (command.AddOnIds ?? []).ToHashSet();
             if (selectedIds.Count == 0) return [];
 
-            var baseByTier = (await priceTiers.GetBySeasonAsync(command.SeasonId)).ToDictionary(t => t.Id, t => t.PromoOfTierId ?? t.Id);
-            var baseTierId = baseByTier.GetValueOrDefault(available.TierId, available.TierId);
+            var baseTierId = (await priceTiers.LoadSeasonAsync(command.SeasonId)).BaseTierIdOf(available.TierId);
             var isPromoOffer = baseTierId != available.TierId;
-            return (await seasonAddOns.GetBySeasonAsync(command.SeasonId))
+            return (await seasonAddOns.LoadSeasonAsync(command.SeasonId)).AddOns
                 .Where(a => a.Active && selectedIds.Contains(a.Id)
                     && (a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId))
                     && (!a.PromoOnly || isPromoOffer))

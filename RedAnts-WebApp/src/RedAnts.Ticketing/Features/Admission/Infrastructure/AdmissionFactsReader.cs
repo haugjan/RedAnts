@@ -11,7 +11,7 @@ public sealed class AdmissionFactsReader(
     IScopeProvider scopeProvider,
     IIssuedTicketReader tickets,
     IEventReader events,
-    IEventConversionRuleRepository conversionRules) : IAdmissionFactsReader
+    IEventConversionRuleReader conversionRules) : IAdmissionFactsReader
 {
     public async Task<AdmissionFacts> ReadAsync(int eventId, TicketType ticketType, Guid ticketUuid)
     {

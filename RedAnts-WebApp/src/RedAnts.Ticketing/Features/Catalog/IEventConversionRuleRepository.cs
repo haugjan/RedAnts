@@ -6,8 +6,6 @@ public sealed record EventConversionRule(int EventId, TicketType CardType, decim
 
 public interface IEventConversionRuleRepository
 {
-    Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId);
-
     Task SetAsync(int eventId, TicketType cardType, decimal? discount);
 
     Task<bool> GetConversionOnlyAsync(int eventId);

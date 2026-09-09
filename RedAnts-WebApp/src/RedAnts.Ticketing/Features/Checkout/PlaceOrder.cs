@@ -98,7 +98,7 @@ public static class PlaceOrder
             foreach (var group in addOnIdsBySeason)
             {
                 var ids = group.ToHashSet();
-                var definitions = await seasonAddOns.GetBySeasonAsync(group.Key);
+                var definitions = (await seasonAddOns.LoadSeasonAsync(group.Key)).AddOns;
                 if (definitions.Any(d => ids.Contains(d.Id) && d.RequireMobileNumber)) return true;
             }
             return false;

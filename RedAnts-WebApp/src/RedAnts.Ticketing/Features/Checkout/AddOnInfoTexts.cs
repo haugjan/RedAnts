@@ -9,7 +9,7 @@ internal static class AddOnInfoTexts
         var infos = new List<string>();
         foreach (var group in snapshot.AddOns.GroupBy(a => a.SeasonId))
         {
-            var byId = (await seasonAddOns.GetBySeasonAsync(group.Key)).ToDictionary(a => a.Id);
+            var byId = (await seasonAddOns.LoadSeasonAsync(group.Key)).AddOns.ToDictionary(a => a.Id);
             foreach (var addOn in group)
                 if (byId.TryGetValue(addOn.Id, out var definition) && !string.IsNullOrWhiteSpace(definition.InfoAfterPurchase))
                     infos.Add(definition.InfoAfterPurchase!);

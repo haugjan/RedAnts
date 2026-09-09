@@ -42,8 +42,8 @@ public sealed class SeasonForSaleReader(
         var categories = (await passPricing.GetAvailableAsync(seasonId)).Where(c => c.Available).ToList();
         if (categories.Count == 0) return [];
 
-        var activeAddOns = (await addOns.GetBySeasonAsync(seasonId)).Where(a => a.Active).ToList();
-        var baseTierIds = (await tiers.GetBySeasonAsync(seasonId)).ToDictionary(t => t.Id, t => t.PromoOfTierId ?? t.Id);
+        var activeAddOns = (await addOns.LoadSeasonAsync(seasonId)).Active.ToList();
+        var baseTierIds = (await tiers.LoadSeasonAsync(seasonId)).Tiers.ToDictionary(t => t.Id, t => t.PromoOfTierId ?? t.Id);
         return categories.Select(c => new PassOffer(c, AddOnsFor(c, activeAddOns, baseTierIds))).ToList();
     }
 

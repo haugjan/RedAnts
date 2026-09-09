@@ -22,10 +22,7 @@ public static class SetSeasonAddOns
     {
         public async Task HandleAsync(Command command)
         {
-            var validTierIds = (await tiers.GetBySeasonAsync(command.SeasonId))
-                .Where(t => t.PromoOfTierId is null)
-                .Select(t => t.Id)
-                .ToHashSet();
+            var validTierIds = (await tiers.LoadSeasonAsync(command.SeasonId)).MainTiers.Select(t => t.Id).ToHashSet();
 
             var options = command.AddOns
                 .Where(a => !string.IsNullOrWhiteSpace(a.Label))

@@ -14,9 +14,6 @@ internal sealed class InMemorySeasonPasses : ISeasonPassRepository
 
     public Task<SeasonPass?> GetByUuidAsync(Guid uuid) => Task.FromResult(Stored.FirstOrDefault(p => p.Uuid == uuid));
 
-    public Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId) =>
-        Task.FromResult<IReadOnlyList<SeasonPass>>(Stored.Where(p => p.OrderId == orderId).ToList());
-
     public Task<SeasonPass> SaveAsync(SeasonPass pass)
     {
         Saved.Add(pass);

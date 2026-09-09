@@ -3,7 +3,7 @@
 @using RedAnts.Ticketing.Domain.Sales
 @inject GetSeasonPasses.Handler PassList
 @inject GetSeasonPassMailTemplate.Handler MailTemplate
-@inject IPriceTierRepository PriceTiers
+@inject GetPriceTiers.Handler PriceTiers
 @inject CreateAdminOrder.Handler OrderCreation
 @inject CreateSeasonPass.Handler PassCreation
 @inject EditSeasonPass.Handler PassEdit
@@ -553,9 +553,9 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
-    [Inject] private ISeasonReader Seasons { get; set; } = default!;
+    [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
-    [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
+    [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
 
     private bool _showPrint;
     private TicketPrintLayout _printLayout = TicketPrintLayout.Default;
@@ -568,7 +568,7 @@
         _printUuid = null;
         var count = _passes.Count(p => string.Equals(p.Reference, _bundleFilter, StringComparison.Ordinal));
         _printSubtitle = $"{_bundleFilter} · {count} Karten · eine Seite pro Karte";
-        _printLayout = await PrintSettings.GetAsync(TicketType.SeasonPass);
+        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.SeasonPass));
         _showPrint = true;
     }
 
@@ -576,7 +576,7 @@
     {
         _printUuid = uuid;
         _printSubtitle = $"Karten-Nr. {AdminFormat.TicketNo(uuid)}";
-        _printLayout = await PrintSettings.GetAsync(TicketType.SeasonPass);
+        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.SeasonPass));
         _showPrint = true;
     }
 
@@ -604,7 +604,7 @@
     }
 
     private bool _loading = true;
-    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<SeasonChoice> _seasons = [];
     private IReadOnlyList<SeasonPassRow> _passes = [];
     private IReadOnlyList<string> _bundles = [];
     private int _total;
@@ -617,10 +617,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _seasons = await SeasonChoices.HandleAsync(new GetSeasonChoices.Query());
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
-            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+            : _seasons.FirstOrDefault(s => s.IsCurrent)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await ReloadPassesAsync();
         _loading = false;
     }
@@ -634,7 +634,7 @@
         _passes = result.Passes;
         _bundles = result.Bundles;
         _total = result.Total;
-        _tiers = SelectedSeasonId > 0 ? await PriceTiers.GetBySeasonAsync(SelectedSeasonId) : [];
+        _tiers = SelectedSeasonId > 0 ? await PriceTiers.HandleAsync(new GetPriceTiers.Query(SelectedSeasonId)) : [];
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
@@ -656,13 +656,6 @@
     }
 
     private string _bundleFilter = "";
-
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
-    {
-        var today = SwissTime.Today;
-        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
-            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
-    }
 
     private static int? OnlineMarker(SeasonPassRow p) => p.OrderNumber is null ? null : 0;
 
@@ -823,7 +816,7 @@
         _ => status.ToString()
     };
 
-    private IReadOnlyList<PriceTier> _tiers = [];
+    private IReadOnlyList<PriceTierRow> _tiers = [];
     private bool _showCreate;
     private bool _creating;
     private int _newTierId;

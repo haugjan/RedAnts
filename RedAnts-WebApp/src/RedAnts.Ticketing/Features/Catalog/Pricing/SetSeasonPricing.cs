@@ -41,8 +41,8 @@ public static class SetSeasonPricing
                 .ToList();
             var saved = await tiers.SaveForSeasonAsync(command.SeasonId, tierInputs);
 
-            var savedNormals = saved.Where(t => t.PromoOfTierId is null).OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList();
-            var savedPromoByParent = saved.Where(t => t.PromoOfTierId is not null).ToDictionary(t => t.PromoOfTierId!.Value);
+            var savedNormals = saved.Tiers.Where(t => t.PromoOfTierId is null).OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList();
+            var savedPromoByParent = saved.Tiers.Where(t => t.PromoOfTierId is not null).ToDictionary(t => t.PromoOfTierId!.Value);
 
             var categories = new List<SeasonCategoryPrice>();
             for (var i = 0; i < ordered.Count && i < savedNormals.Count; i++)
@@ -68,7 +68,7 @@ public static class SetSeasonPricing
                 if (t.HasPromo && t.PromoTierId > 0) kept.Add(t.PromoTierId);
             }
 
-            foreach (var tier in await tiers.GetBySeasonAsync(seasonId))
+            foreach (var tier in (await tiers.LoadSeasonAsync(seasonId)).Tiers)
             {
                 if (kept.Contains(tier.Id)) continue;
                 if (await sales.GetSoldCountAsync(tier.Id) > 0)

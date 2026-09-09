@@ -4,8 +4,8 @@ namespace RedAnts.Ticketing.Features.Catalog;
 
 public interface IPriceTierRepository
 {
-    Task<IReadOnlyList<PriceTier>> GetBySeasonAsync(int seasonId);
-    Task<IReadOnlyList<PriceTier>> SaveForSeasonAsync(int seasonId, IReadOnlyList<PriceTierInput> tiers);
+    Task<SeasonPriceTiers> LoadSeasonAsync(int seasonId);
+    Task<SeasonPriceTiers> SaveForSeasonAsync(int seasonId, IReadOnlyList<PriceTierInput> tiers);
 }
 
 public sealed record PriceTierInput(int Id, string Name, int? MinAge, int? MaxAge, int SortOrder, PriceTierPromoInput? Promo);

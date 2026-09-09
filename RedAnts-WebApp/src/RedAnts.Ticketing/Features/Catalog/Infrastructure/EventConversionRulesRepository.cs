@@ -18,13 +18,6 @@ public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider,
         await eventPrices.SaveAsync(updated);
     }
 
-    public async Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<EventConversionRuleRecord>("WHERE EventId = @0", eventId);
-        return rows.Select(Map).ToList();
-    }
-
     public async Task SetAsync(int eventId, TicketType cardType, decimal? discount)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -39,13 +32,26 @@ public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider,
                 Discount = Math.Max(0m, decimal.Round(d, 2))
             });
     }
+}
 
-    private static EventConversionRule Map(EventConversionRuleRecord r) =>
-        new(r.EventId, (TicketType)r.CardType, r.Discount);
+public sealed class EventConversionRuleReader(IScopeProvider scopeProvider, IEventPriceRepository eventPrices) : IEventConversionRuleReader
+{
+    public async Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId)
+    {
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var rows = await scope.Database.FetchAsync<EventConversionRuleRecord>("WHERE EventId = @0", eventId);
+        return rows.Select(r => new EventConversionRule(r.EventId, (TicketType)r.CardType, r.Discount)).ToList();
+    }
+
+    public async Task<bool> GetConversionOnlyAsync(int eventId) =>
+        (await eventPrices.GetByEventAsync(eventId))?.ConversionOnly ?? false;
 }
 
 public sealed class EventConversionRulesComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IEventConversionRuleRepository, EventConversionRulesRepository>();
+    {
+        builder.Services.AddScoped<IEventConversionRuleRepository, EventConversionRulesRepository>();
+        builder.Services.AddScoped<IEventConversionRuleReader, EventConversionRuleReader>();
+    }
 }

@@ -46,7 +46,7 @@ public sealed class SeasonsForAdminReader(
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<SeasonPriceTierRecord>("WHERE SeasonId = @0 ORDER BY SortOrder, Id", seasonId);
-        return rows.Select(t => new PriceTierRow(t.Id, t.Name, t.MinAge, t.MaxAge, t.SortOrder, t.PromoOfTierId)).ToList();
+        return rows.Select(t => new PriceTierRow(t.Id, t.Name, t.MinAge, t.MaxAge, t.SortOrder, t.PromoOfTierId, t.LegacyCategory)).ToList();
     }
 
     public async Task<IReadOnlyList<SeasonTierPrice>> GetTierPricesAsync(int seasonId)

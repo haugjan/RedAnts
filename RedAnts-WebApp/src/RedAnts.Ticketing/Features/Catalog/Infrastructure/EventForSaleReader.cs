@@ -12,7 +12,7 @@ public sealed class EventForSaleReader(
     IPublishedContentQuery query,
     IUmbracoContextFactory contextFactory,
     IEventPricing pricing,
-    IEventConversionRuleRepository conversionRules,
+    IEventConversionRuleReader conversionRules,
     IContentUrls urls) : IEventForSaleReader
 {
     private readonly CatalogContentSource _src = new(query, contextFactory);

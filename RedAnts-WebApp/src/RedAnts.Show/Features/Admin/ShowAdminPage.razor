@@ -3,9 +3,11 @@
 @using Microsoft.JSInterop
 @inject GetShowProfiles.Handler ProfilesQuery
 @inject SaveShowProfiles.Handler ProfilesSave
-@inject IShowSoundUploader Uploader
-@inject IShowSpotifySearch Search
-@inject IShowSettings Settings
+@inject DownloadShowSound.Handler SoundDownload
+@inject RestoreShowSound.Handler SoundRestore
+@inject LookupSpotifyReference.Handler SpotifyLookup
+@inject TestSpotifyCredentials.Handler SpotifyTest
+@inject GetSpotifySettings.Handler SpotifySettings
 @inject SetShowSetting.Handler SettingSave
 @inject SearchSpotify.Handler SpotifySearch
 @inject UploadShowSound.Handler SoundUpload
@@ -19,7 +21,7 @@
             <button class="se-btn primary" @onclick="SaveAsync">💾 Speichern</button>
             <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
-            <button class="se-btn" @onclick="OpenSpotifySettings">🟢 Spotify</button>
+            <button class="se-btn" @onclick="OpenSpotifySettingsAsync">🟢 Spotify</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
@@ -293,7 +295,7 @@
                         }
                         else
                         {
-                            @if (Search.Configured)
+                            @if (_spotifyConfigured)
                             {
                                 <div class="se-search">
                                     <input class="se-search-in" @bind="_query" @bind:event="oninput" @onkeyup="OnSearchKey" placeholder="Song auf Spotify suchen …" />
@@ -304,7 +306,7 @@
                                 <input value="@song.Ref" @onchange="e => ApplyPaste(e, song)"
                                        placeholder="https://open.spotify.com/… · spotify:track:… · oder nur die ID" />
                             </label>
-                            @if (!Search.Configured)
+                            @if (!_spotifyConfigured)
                             {
                                 <p class="se-muted">Suche inaktiv (Client-ID + Secret hinterlegen). Link einfügen geht trotzdem.</p>
                             }
@@ -596,6 +598,7 @@
         _profile = _profiles.FirstOrDefault();
         _selected = null;
         _status = "";
+        await RefreshSpotifyStateAsync();
     }
 
     private async Task SaveAsync()
@@ -1080,12 +1083,12 @@
     private async Task RefreshSpotifyInfoAsync(EditSound s)
     {
         _trackInfo = null; _ctxInfo = null;
-        if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref) || !Search.Configured) { StateHasChanged(); return; }
+        if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref) || !_spotifyConfigured) { StateHasChanged(); return; }
         try
         {
-            var p = ShowSpotifyLink.Parse(s.Ref);
-            if (p?.Kind == "track") _trackInfo = await Search.GetTrackAsync(s.Ref);
-            else if (p is not null) _ctxInfo = await Search.GetContextAsync(s.Ref);
+            var found = await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref));
+            _trackInfo = found.Track;
+            _ctxInfo = found.Context;
         }
         catch { }
         StateHasChanged();
@@ -1121,19 +1124,22 @@
 
     private string _savedClientId = "";
     private bool _hasSecret;
+    private bool _spotifyConfigured;
 
-    private void RefreshSpotifyState()
+    private async Task RefreshSpotifyStateAsync()
     {
-        _savedClientId = Settings.Get("Spotify:ClientId") ?? "";
-        _hasSecret = !string.IsNullOrWhiteSpace(Settings.Get("Spotify:ClientSecret"));
+        var spotify = await SpotifySettings.HandleAsync(new GetSpotifySettings.Query());
+        _savedClientId = spotify.SavedClientId;
+        _hasSecret = spotify.HasSecret;
+        _spotifyConfigured = spotify.Configured;
     }
 
-    private void OpenSpotifySettings()
+    private async Task OpenSpotifySettingsAsync()
     {
         _showSpotify = !_showSpotify;
         if (_showSpotify)
         {
-            RefreshSpotifyState();
+            await RefreshSpotifyStateAsync();
             _spotifyClientId = _savedClientId;
             _spotifyClientSecret = "";
             _spotifyStatus = "";
@@ -1150,10 +1156,7 @@
         _spotifyBusy = true; _spotifyTestResult = ""; _spotifyStatus = ""; _spotifyError = "";
         try
         {
-            var secret = string.IsNullOrWhiteSpace(_spotifyClientSecret)
-                ? (Settings.Get("Spotify:ClientSecret") ?? "")
-                : _spotifyClientSecret.Trim();
-            var r = await Search.TestCredentialsAsync(_spotifyClientId.Trim(), secret);
+            var r = await SpotifyTest.HandleAsync(new TestSpotifyCredentials.Command(_spotifyClientId, _spotifyClientSecret));
             _spotifyTestOk = r == "ok";
             _spotifyTestResult = _spotifyTestOk
                 ? "✓ Client-ID + Secret gültig (die Suche funktioniert). Für die Wiedergabe braucht es zusätzlich Login + Premium auf dem Board."
@@ -1172,7 +1175,7 @@
             if (!string.IsNullOrWhiteSpace(_spotifyClientSecret))
                 await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientSecret", _spotifyClientSecret.Trim()));
             _spotifyClientSecret = "";
-            RefreshSpotifyState();
+            await RefreshSpotifyStateAsync();
             _spotifyStatus = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
         }
         catch (Exception ex) { _spotifyError = "Fehler: " + ex.Message; }
@@ -1228,7 +1231,7 @@
 
                 foreach (var r in refs)
                 {
-                    var bytes = await Uploader.DownloadAsync(r);
+                    var bytes = await SoundDownload.HandleAsync(new DownloadShowSound.Query(r));
                     if (bytes is null) { missing++; continue; }
                     var e = zip.CreateEntry(r);
                     await using var s = e.Open();
@@ -1264,7 +1267,7 @@
             {
                 if (!entry.FullName.StartsWith("sounds/") || entry.FullName.EndsWith("/")) continue;
                 await using var es = entry.Open();
-                await Uploader.UploadAtPathAsync(entry.FullName, es, ContentTypeFor(entry.FullName));
+                await SoundRestore.HandleAsync(new RestoreShowSound.Command(entry.FullName, es, ContentTypeFor(entry.FullName)));
                 uploaded++;
             }
 

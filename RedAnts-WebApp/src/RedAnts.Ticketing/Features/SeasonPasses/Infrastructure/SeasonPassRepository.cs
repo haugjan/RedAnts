@@ -16,7 +16,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IPriceTie
         var fallbackBundle = (defaultBundle ?? "").Trim();
         if (rows.Count == 0) return (0, 0);
 
-        var tiers = await priceTiers.GetBySeasonAsync(seasonId);
+        var tiers = (await priceTiers.LoadSeasonAsync(seasonId)).Tiers;
         var mainTiers = tiers.Where(t => !t.IsPromo).ToList();
         var fallbackTierId = mainTiers.FirstOrDefault(t => t.Id == defaultTierId)?.Id ?? mainTiers.FirstOrDefault()?.Id;
         int? ResolveTier(string? category)
@@ -122,14 +122,6 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IPriceTie
         var row = await scope.Database.FirstOrDefaultAsync<SeasonPassRecord>(
             "WHERE Uuid = @0", uuid.ToString());
         return row is null ? null : Map(row);
-    }
-
-    public async Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<SeasonPassRecord>(
-            "WHERE OrderId = @0 ORDER BY CreatedAt, Id", orderId);
-        return rows.Select(Map).ToList();
     }
 
     public async Task<SeasonPass> SaveAsync(SeasonPass pass)

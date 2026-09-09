@@ -37,6 +37,7 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<ITierSalesReader, TierSalesReader>();
         builder.Services.AddScoped<ICapacityUsageReader, CapacityUsageReader>();
         builder.Services.AddScoped<ICheckoutOrderReader, CheckoutOrderReader>();
+        builder.Services.AddScoped<IOrderConfirmationReader, OrderConfirmationReader>();
         builder.Services.AddScoped<IEventPricing, EventPricingReader>();
         builder.Services.AddScoped<ISeasonAddOnRepository, SeasonAddOnRepository>();
     }

@@ -1,0 +1,2 @@
+# UI types (Razor components, controllers, compiled views) that may still inject a port.
+# One line per type: <full type name> <reason>. Goal: this file stays empty.

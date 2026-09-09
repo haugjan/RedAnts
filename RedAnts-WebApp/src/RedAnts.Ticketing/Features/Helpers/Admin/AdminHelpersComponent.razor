@@ -332,16 +332,16 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
-    [Inject] private ISeasonReader Seasons { get; set; } = default!;
-    [Inject] private IEventReader Events { get; set; } = default!;
+    [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
+    [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;
-    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<SeasonChoice> _seasons = [];
     private IReadOnlyList<HelperRow> _helpers = [];
     private IReadOnlyList<HelperScanRow> _scanRows = [];
-    private IReadOnlyList<Event> _events = [];
-    private Dictionary<int, Event> _eventById = new();
+    private IReadOnlyList<EventForAdmin> _events = [];
+    private Dictionary<int, EventForAdmin> _eventById = new();
 
     public int SelectedSeasonId { get; set; }
     private string _selectedSeasonName = "";
@@ -380,10 +380,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _seasons = await SeasonChoices.HandleAsync(new GetSeasonChoices.Query());
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
-            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+            : _seasons.FirstOrDefault(s => s.IsCurrent)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await ReloadAsync();
         _loading = false;
     }
@@ -401,7 +401,7 @@
             return;
         }
         _helpers = await HelperList.HandleAsync(new GetHelpers.Query(SelectedSeasonId));
-        _events = (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderByDescending(e => e.Date).ToList();
+        _events = (await EventsForAdmin.HandleAsync(new GetEventsForAdmin.Query(SelectedSeasonId))).Events.OrderByDescending(e => e.Date).ToList();
         _eventById = _events.ToDictionary(e => e.Id);
         _scanRows = await ScanReport.HandleAsync(new GetHelperScanReport.Query(_events.Select(e => e.Id).ToList()));
     }
@@ -587,12 +587,5 @@
             StateHasChanged();
         }
         catch { }
-    }
-
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
-    {
-        var today = SwissTime.Today;
-        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
-            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
 }

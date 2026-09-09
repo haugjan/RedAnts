@@ -183,8 +183,6 @@ internal sealed class StubConversionRules : IEventConversionRuleRepository
 {
     public HashSet<int> ConversionOnlyEvents { get; } = [];
 
-    public Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId) => Task.FromResult<IReadOnlyList<EventConversionRule>>([]);
-
     public Task SetAsync(int eventId, TicketType cardType, decimal? discount) => Task.CompletedTask;
 
     public Task<bool> GetConversionOnlyAsync(int eventId) => Task.FromResult(ConversionOnlyEvents.Contains(eventId));
@@ -204,8 +202,8 @@ internal sealed class StubSeasonAddOns : ISeasonAddOnRepository
 {
     public List<SeasonAddOn> AddOns { get; } = [];
 
-    public Task<IReadOnlyList<SeasonAddOn>> GetBySeasonAsync(int seasonId) =>
-        Task.FromResult<IReadOnlyList<SeasonAddOn>>(AddOns.Where(a => a.SeasonId == seasonId).ToList());
+    public Task<SeasonAddOnSet> LoadSeasonAsync(int seasonId) =>
+        Task.FromResult(new SeasonAddOnSet(seasonId, AddOns.Where(a => a.SeasonId == seasonId).ToList()));
 
     public Task ReplaceForSeasonAsync(int seasonId, IReadOnlyList<SeasonAddOn> options) => Task.CompletedTask;
 }
@@ -259,9 +257,6 @@ internal sealed class InMemoryEventTicketRepository : IEventTicketRepository
 
     public Task<EventTicket?> GetByUuidAsync(Guid uuid) => Task.FromResult(Stored.FirstOrDefault(t => t.Uuid == uuid));
 
-    public Task<IReadOnlyList<EventTicket>> GetByOrderAsync(int orderId) =>
-        Task.FromResult<IReadOnlyList<EventTicket>>(Stored.Where(t => t.OrderId == orderId).ToList());
-
     public Task<EventTicket> SaveAsync(EventTicket ticket)
     {
         Stored.RemoveAll(t => t.Uuid == ticket.Uuid);
@@ -281,9 +276,6 @@ internal sealed class InMemorySeasonPasses : ISeasonPassRepository
     public List<SeasonPass> Stored { get; } = [];
 
     public Task<SeasonPass?> GetByUuidAsync(Guid uuid) => Task.FromResult(Stored.FirstOrDefault(p => p.Uuid == uuid));
-
-    public Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId) =>
-        Task.FromResult<IReadOnlyList<SeasonPass>>(Stored.Where(p => p.OrderId == orderId).ToList());
 
     public Task<SeasonPass> SaveAsync(SeasonPass pass)
     {

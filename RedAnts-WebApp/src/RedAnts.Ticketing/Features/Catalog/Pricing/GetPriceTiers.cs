@@ -1,6 +1,9 @@
 namespace RedAnts.Ticketing.Features.Catalog.Pricing;
 
-public sealed record PriceTierRow(int Id, string Name, int? MinAge, int? MaxAge, int SortOrder, int? PromoOfTierId);
+public sealed record PriceTierRow(int Id, string Name, int? MinAge, int? MaxAge, int SortOrder, int? PromoOfTierId, int? LegacyCategory = null)
+{
+    public bool IsPromo => PromoOfTierId is not null;
+}
 
 public static class GetPriceTiers
 {

@@ -23,5 +23,7 @@
 
   <ItemGroup>
     <None Include="legacy-names.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="ui-port-exceptions.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="repository-collection-methods.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

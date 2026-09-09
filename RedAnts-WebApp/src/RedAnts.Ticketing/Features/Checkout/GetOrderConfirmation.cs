@@ -1,7 +1,6 @@
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Orders;
-using RedAnts.Ticketing.Features.SeasonPasses;
 using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Features.Checkout;
@@ -16,7 +15,7 @@ public static class GetOrderConfirmation
     public sealed record Result(int OrderId, string OrderNumber, string Email, decimal Total, bool Paid, bool IsQuickBuy,
         IReadOnlyList<ConfirmationTicket> Tickets, IReadOnlyList<string> AddOnInfoTexts);
 
-    public sealed class Handler(IOrderRepository orders, IEventTicketRepository tickets, ISeasonPassRepository passes, ITicketTokens tokens, IIssuedTicketReader issuedTickets,
+    public sealed class Handler(IOrderRepository orders, IOrderConfirmationReader confirmation, ITicketTokens tokens, IIssuedTicketReader issuedTickets,
         IEventReader events, ISeasonReader seasons, IVenueReader venues, ISeasonAddOnRepository seasonAddOns)
     {
         public async Task<Result?> HandleAsync(Query query)
@@ -42,14 +41,14 @@ public static class GetOrderConfirmation
             var holderName = string.IsNullOrWhiteSpace(displayName) ? null : displayName;
 
             var result = new List<ConfirmationTicket>();
-            foreach (var ticket in await tickets.GetByOrderAsync(order.Id))
+            foreach (var ticket in await confirmation.GetEventTicketsAsync(order.Id))
             {
                 names.TryGetValue(((int)CartLineKind.EventTicket, ticket.EventId, ticket.TierId ?? 0), out var known);
                 result.Add(new ConfirmationTicket(ticket.Uuid, known.EventName ?? "", await CategoryNameAsync(ticket.Uuid, known.CategoryName ?? ""),
                     tokens.CreateShort(ticket.Uuid), (int)TicketType.EventTicket, await EventDateTextAsync(ticket.EventId),
                     await EventVenueNameAsync(ticket.EventId), holderName));
             }
-            foreach (var pass in await passes.GetByOrderAsync(order.Id))
+            foreach (var pass in await confirmation.GetSeasonPassesAsync(order.Id))
             {
                 names.TryGetValue(((int)CartLineKind.SeasonPass, pass.SeasonId, pass.TierId ?? 0), out var known);
                 result.Add(new ConfirmationTicket(pass.Uuid, known.EventName ?? "", await CategoryNameAsync(pass.Uuid, known.CategoryName ?? ""),

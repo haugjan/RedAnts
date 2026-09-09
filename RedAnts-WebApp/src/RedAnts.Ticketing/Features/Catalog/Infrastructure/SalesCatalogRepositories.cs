@@ -182,15 +182,15 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
 
 public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTierRepository
 {
-    public async Task<IReadOnlyList<PriceTier>> GetBySeasonAsync(int seasonId)
+    public async Task<SeasonPriceTiers> LoadSeasonAsync(int seasonId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<SeasonPriceTierRecord>(
             "WHERE SeasonId = @0 ORDER BY SortOrder, Id", seasonId);
-        return rows.Select(Map).ToList();
+        return new SeasonPriceTiers(seasonId, rows.Select(Map).ToList());
     }
 
-    public async Task<IReadOnlyList<PriceTier>> SaveForSeasonAsync(int seasonId, IReadOnlyList<PriceTierInput> tiers)
+    public async Task<SeasonPriceTiers> SaveForSeasonAsync(int seasonId, IReadOnlyList<PriceTierInput> tiers)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var db = scope.Database;
@@ -218,7 +218,7 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
         }
 
         var saved = await db.FetchAsync<SeasonPriceTierRecord>("WHERE SeasonId = @0 ORDER BY SortOrder, Id", seasonId);
-        return saved.Select(Map).ToList();
+        return new SeasonPriceTiers(seasonId, saved.Select(Map).ToList());
     }
 
     private static async Task<SeasonPriceTierRecord> UpsertAsync(IDatabase db, int seasonId, int id, string name,
@@ -318,12 +318,12 @@ internal sealed class TierCountRow
 
 public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeasonAddOnRepository
 {
-    public async Task<IReadOnlyList<SeasonAddOn>> GetBySeasonAsync(int seasonId)
+    public async Task<SeasonAddOnSet> LoadSeasonAsync(int seasonId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var rows = await scope.Database.FetchAsync<SeasonAddOnRecord>(
             "WHERE SeasonId = @0 ORDER BY SortOrder, Id", seasonId);
-        return rows.Select(Map).ToList();
+        return new SeasonAddOnSet(seasonId, rows.Select(Map).ToList());
     }
 
     public async Task ReplaceForSeasonAsync(int seasonId, IReadOnlyList<SeasonAddOn> options)

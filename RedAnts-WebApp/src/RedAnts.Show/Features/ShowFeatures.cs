@@ -14,7 +14,14 @@ public static class ShowFeatures
         typeof(SetShowSetting.Handler),
         typeof(DispatchShowCommand.Handler),
         typeof(SearchSpotify.Handler),
-        typeof(UploadShowSound.Handler)
+        typeof(UploadShowSound.Handler),
+        typeof(GetSpotifySettings.Handler),
+        typeof(TestSpotifyCredentials.Handler),
+        typeof(LookupSpotifyReference.Handler),
+        typeof(DownloadShowSound.Handler),
+        typeof(RestoreShowSound.Handler),
+        typeof(ListenForShowCommands.Handler),
+        typeof(OpenShowSound.Handler)
     ];
 
     public static IServiceCollection AddShowFeatures(this IServiceCollection services)

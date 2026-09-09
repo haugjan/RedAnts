@@ -6,7 +6,6 @@ namespace RedAnts.Ticketing.Features.SeasonPasses;
 public interface ISeasonPassRepository
 {
     Task<SeasonPass?> GetByUuidAsync(Guid uuid);
-    Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId);
     Task<SeasonPass> SaveAsync(SeasonPass pass);
     Task SetHolderAsync(Guid uuid, CardHolder holder);
     Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,

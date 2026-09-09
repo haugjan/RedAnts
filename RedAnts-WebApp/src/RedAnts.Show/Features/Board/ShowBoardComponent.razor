@@ -3,9 +3,8 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject GetShowProfiles.Handler ProfilesQuery
-@inject IShowRemote Remote
-@inject IShowSettings Settings
-@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject ListenForShowCommands.Handler RemoteListener
+@inject GetSpotifySettings.Handler SpotifySettings
 
 <div class="sb-app">
     <header class="sb-header">
@@ -323,13 +322,13 @@
     {
         if (!firstRender) return;
         _ref = DotNetObjectReference.Create(this);
-        _remoteReg = Remote.Register(_room, HandleRemoteAsync);
+        _remoteReg = await RemoteListener.HandleAsync(new ListenForShowCommands.Command(_room, HandleRemoteAsync));
         _timer = new System.Timers.Timer(500) { AutoReset = true };
         _timer.Elapsed += (_, _) => _ = TickAsync();
         _timer.Start();
         try
         {
-            var configuredId = (Settings.Get("Spotify:ClientId") ?? Config["Spotify:ClientId"] ?? "").Trim();
+            var configuredId = (await SpotifySettings.HandleAsync(new GetSpotifySettings.Query())).EffectiveClientId.Trim();
             if (configuredId.Length > 0)
             {
                 await JS.InvokeVoidAsync("showBoard.setClientId", configuredId);

@@ -656,8 +656,8 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
-    [Inject] private ISeasonReader Seasons { get; set; } = default!;
-    [Inject] private IEventReader Events { get; set; } = default!;
+    [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
+    [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
     [Inject] private GetFlexBundles.Handler BundleList { get; set; } = default!;
     [Inject] private GetFlexBundleTickets.Handler TicketList { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
@@ -676,7 +676,7 @@
     [Inject] private DeleteFlexTicket.Handler TicketDeletions { get; set; } = default!;
     [Inject] private SendFlexTicketMail.Handler MailSending { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
-    [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
+    [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
     [Inject] private GetFlexTicketMailTemplate.Handler MailTemplate { get; set; } = default!;
 
     private bool _showPrint;
@@ -691,7 +691,7 @@
         _printBundleId = SelectedBundle.Id;
         _printUuid = null;
         _printSubtitle = $"{SelectedBundle.Reference} · {SelectedBundle.TicketCount} Karten · eine Seite pro Karte";
-        _printLayout = await PrintSettings.GetAsync(TicketType.SeasonSingle);
+        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.SeasonSingle));
         _showPrint = true;
     }
 
@@ -699,7 +699,7 @@
     {
         _printUuid = uuid;
         _printSubtitle = $"Ticket-Nr. {AdminFormat.TicketNo(uuid)}";
-        _printLayout = await PrintSettings.GetAsync(TicketType.SeasonSingle);
+        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.SeasonSingle));
         _showPrint = true;
     }
 
@@ -873,7 +873,7 @@
         [TicketCategory.Adult, TicketCategory.Youth, TicketCategory.Child];
 
     private bool _loading = true;
-    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<SeasonChoice> _seasons = [];
     private IReadOnlyList<FlexBundleRow> _bundles = [];
     private IReadOnlyList<FlexTicketRow> _tickets = [];
     private int _total;
@@ -1056,10 +1056,10 @@
     protected override async Task OnInitializedAsync()
     {
         var restoreBundleId = AdminState.SelectedBundleId;
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _seasons = await SeasonChoices.HandleAsync(new GetSeasonChoices.Query());
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
-            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+            : _seasons.FirstOrDefault(s => s.IsCurrent)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await OnSeasonChangedAsync();
         if (restoreBundleId is int bid && bid != SelectedBundleId && _bundles.Any(b => b.Id == bid))
         {
@@ -1135,12 +1135,12 @@
     private int _redeemEventId;
     private bool _redeemBusy;
     private string? _redeemError;
-    private IReadOnlyList<Event> _seasonEvents = [];
+    private IReadOnlyList<EventForAdmin> _seasonEvents = [];
 
     private async Task OpenRedeem(FlexTicketRow t)
     {
         _seasonEvents = SelectedSeasonId > 0
-            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
+            ? (await EventsForAdmin.HandleAsync(new GetEventsForAdmin.Query(SelectedSeasonId))).Events
             : [];
         _redeemFor = t;
         _redeemTarget = StateOf(t);
@@ -1193,7 +1193,7 @@
         if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
     }
 
-    private static Event? NextEvent(IReadOnlyList<Event> events)
+    private static EventForAdmin? NextEvent(IReadOnlyList<EventForAdmin> events)
     {
         var today = SwissTime.Today;
         return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
@@ -1324,12 +1324,5 @@
         }
         catch (DomainException ex) { _editError = ex.Message; }
         finally { _saving = false; }
-    }
-
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
-    {
-        var today = SwissTime.Today;
-        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
-            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
 }

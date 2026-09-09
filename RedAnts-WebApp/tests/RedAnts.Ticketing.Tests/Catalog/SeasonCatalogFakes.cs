@@ -52,10 +52,10 @@ internal sealed class InMemoryPriceTiers : IPriceTierRepository
         return tier;
     }
 
-    public Task<IReadOnlyList<PriceTier>> GetBySeasonAsync(int seasonId) =>
-        Task.FromResult<IReadOnlyList<PriceTier>>(Stored.Where(t => t.SeasonId == seasonId).OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList());
+    public Task<SeasonPriceTiers> LoadSeasonAsync(int seasonId) =>
+        Task.FromResult(new SeasonPriceTiers(seasonId, Stored.Where(t => t.SeasonId == seasonId).OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList()));
 
-    public Task<IReadOnlyList<PriceTier>> SaveForSeasonAsync(int seasonId, IReadOnlyList<PriceTierInput> tiers)
+    public Task<SeasonPriceTiers> SaveForSeasonAsync(int seasonId, IReadOnlyList<PriceTierInput> tiers)
     {
         SaveCalls++;
         LastInputs = tiers;
@@ -73,7 +73,7 @@ internal sealed class InMemoryPriceTiers : IPriceTierRepository
             if (t.Promo is { } promo)
                 Upsert(seasonId, promo.Id, promo.Name, null, null, normal.Id, t.SortOrder);
         }
-        return GetBySeasonAsync(seasonId);
+        return LoadSeasonAsync(seasonId);
     }
 
     private PriceTier Upsert(int seasonId, int id, string name, int? minAge, int? maxAge, int? promoOfTierId, int sortOrder)
@@ -98,8 +98,8 @@ internal sealed class RecordingSeasonAddOns : ISeasonAddOnRepository
     public int? ReplacedSeasonId { get; private set; }
     public IReadOnlyList<SeasonAddOn>? Replaced { get; private set; }
 
-    public Task<IReadOnlyList<SeasonAddOn>> GetBySeasonAsync(int seasonId) =>
-        Task.FromResult<IReadOnlyList<SeasonAddOn>>(Existing.Where(a => a.SeasonId == seasonId).ToList());
+    public Task<SeasonAddOnSet> LoadSeasonAsync(int seasonId) =>
+        Task.FromResult(new SeasonAddOnSet(seasonId, Existing.Where(a => a.SeasonId == seasonId).ToList()));
 
     public Task ReplaceForSeasonAsync(int seasonId, IReadOnlyList<SeasonAddOn> options)
     {

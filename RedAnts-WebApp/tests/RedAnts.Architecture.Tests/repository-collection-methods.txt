@@ -1,0 +1,2 @@
+# Repository methods that still return a collection (IReadOnlyList, IEnumerable, IList, List, ICollection, array).
+# One line per method: <full interface name>.<method> <reason>. Goal: this file stays empty.
