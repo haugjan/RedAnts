@@ -185,52 +185,8 @@
 
 @if (_showCreate)
 {
-    <div class="ta-overlay" @onmousedown="CloseCreate">
-        <div class="ta-modal ta-modal--members" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Mitgliederkarte erstellen</h2>
-            <p class="ta-modal-sub">@_selectedSeasonName</p>
-
-            <div class="ta-field">
-                <label class="ta-label" for="newMcCategory">Kategorie</label>
-                <select id="newMcCategory" class="ta-select" @bind="_newCategory">
-                    @foreach (var cat in Categories)
-                    {
-                        <option value="@cat">@cat.DisplayName()</option>
-                    }
-                </select>
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcAdmissions">Anzahl Einlässe pro Event</label>
-                <input id="newMcAdmissions" class="ta-input" type="number" min="1" step="1" @bind="_newAdmissions" />
-                <p class="ta-field-hint">Wie oft diese Karte pro Anlass eingelassen wird (z. B. Block 4 = mehrere Personen). Standard: 1.</p>
-            </div>
-            <div class="ta-field">
-                <label class="ta-label">Geburtsdatum (optional)</label>
-                <DateBox @bind-Value="_newBirthday" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="newMcReference">Bundle</label>
-                <input id="newMcReference" class="ta-input" type="text" maxlength="100" list="mcBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_newReference" />
-                <datalist id="mcBundleOptions">
-                    @foreach (var b in _bundles) { <option value="@b" /> }
-                </datalist>
-            </div>
-
-            <PersonFields Model="_newPerson" Prefix="newMc" EmailHint=" (optional, für den Kartenversand)" />
-
-            @if (!string.IsNullOrEmpty(_createError))
-            {
-                <p class="ta-modal-error">@_createError</p>
-            }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate" disabled="@_creating">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateCardAsync" disabled="@_creating">
-                    @(_creating ? "Erstellt …" : "Erstellen")
-                </button>
-            </div>
-        </div>
-    </div>
+    <CreateMemberCardDialog SeasonId="SelectedSeasonId" SeasonName="@_selectedSeasonName" Bundles="_bundles"
+                            OnSaved="CardCreatedAsync" OnClosed="CloseCreate" />
 }
 
 @if (_showExport)
@@ -392,7 +348,6 @@
 
     [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
     [Inject] private GetMemberCards.Handler CardList { get; set; } = default!;
-    [Inject] private CreateMemberCard.Handler CardCreation { get; set; } = default!;
     [Inject] private ImportMemberCards.Handler CardImport { get; set; } = default!;
     [Inject] private SetMemberCardStatus.Handler CardStatus { get; set; } = default!;
     [Inject] private SetMemberCardCategory.Handler CardCategory { get; set; } = default!;
@@ -488,50 +443,15 @@
     private string _bundleFilter = "";
 
     private bool _showCreate;
-    private bool _creating;
-    private MemberCategory _newCategory = MemberCategory.RedAnts;
-    private DateOnly? _newBirthday;
-    private int _newAdmissions = 1;
-    private string _newReference = "";
-    private PersonForm _newPerson = new();
-    private string? _createError;
 
-    private void OpenCreate()
-    {
-        _newCategory = MemberCategory.RedAnts;
-        _newReference = "";
-        _newPerson = new PersonForm();
-        _newBirthday = null;
-        _newAdmissions = 1;
-        _createError = null;
-        _showCreate = true;
-    }
-    private void CloseCreate() { if (!_creating) { _showCreate = false; _createError = null; } }
+    private void OpenCreate() => _showCreate = true;
 
-    private async Task CreateCardAsync()
+    private void CloseCreate() => _showCreate = false;
+
+    private async Task CardCreatedAsync()
     {
-        if (_creating) return;
-        if (SelectedSeasonId <= 0) { _createError = "Bitte zuerst eine Saison wählen."; return; }
-        if (string.IsNullOrWhiteSpace(_newReference)) { _createError = "Bitte ein Bundle angeben."; return; }
-        if (_newAdmissions < 1) { _createError = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
-        var contactError = ValidateContact(_newPerson.Email, _newBirthday);
-        if (contactError is not null) { _createError = contactError; return; }
-        _creating = true;
-        _createError = null;
-        try
-        {
-            var first = string.IsNullOrWhiteSpace(_newPerson.FirstName) ? null : _newPerson.FirstName;
-            var last = string.IsNullOrWhiteSpace(_newPerson.LastName) ? null : _newPerson.LastName;
-            var address = _newPerson.ToMemberAddress();
-            await CardCreation.HandleAsync(new CreateMemberCard.Command(SelectedSeasonId, _newCategory, first, last,
-                _newBirthday, _newReference.Trim(),
-                string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim(),
-                address, _newAdmissions, Identity.Name, Identity.Email));
-            _showCreate = false;
-            await ReloadCardsAsync();
-        }
-        catch (DomainException ex) { _createError = ex.Message; }
-        finally { _creating = false; }
+        _showCreate = false;
+        await ReloadCardsAsync();
     }
 
     private bool _showExport;
