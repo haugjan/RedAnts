@@ -5,13 +5,20 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.MemberCards.Infrastructure;
 
-public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMemberCards
+public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMemberCardRepository
 {
     public async Task<MemberCard?> GetByUuidAsync(Guid uuid)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var row = await scope.Database.FirstOrDefaultAsync<MemberCardRecord>("WHERE Uuid = @0", uuid.ToString());
         return row is null ? null : Map(row);
+    }
+
+    public async Task AddAsync(MemberCard card)
+    {
+        if (card.Id != 0) throw new DomainException("Die Mitgliederkarte ist bereits gespeichert.");
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        await InsertAsync(scope.Database, card);
     }
 
     public async Task SaveAsync(MemberCard card)
@@ -87,57 +94,11 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    public async Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName,
-        DateOnly? birthday, string reference, string? email = null, string? createdByName = null,
-        string? createdByEmail = null, MemberAddress? address = null, int admissions = 1)
-    {
-        if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
-        var reff = (reference ?? "").Trim();
-        if (reff.Length == 0) throw new DomainException("Ein Bundle muss angegeben werden.");
-
-        var card = MemberCard.Create(seasonId, category, firstName, lastName, birthday,
-            email: email, reference: reff, createdByName: createdByName, createdByEmail: createdByEmail,
-            address: address, admissions: admissions);
-
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        await InsertAsync(scope.Database, card);
-    }
-
     private static async Task InsertAsync(IDatabase db, MemberCard card)
     {
         var record = ToRecord(card);
         record.Uuid = (await TicketCode.AllocateAsync(db, card.Uuid)).ToString();
         await db.InsertAsync(record);
-    }
-
-    public async Task<bool> ReferenceExistsAsync(int seasonId, string reference)
-    {
-        var reff = (reference ?? "").Trim();
-        if (reff.Length == 0) return false;
-
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var count = await scope.Database.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM MembershipCards WHERE SeasonId = @0 AND Reference = @1", seasonId, reff);
-        return count > 0;
-    }
-
-    public async Task<IReadOnlyList<string>> GetReferencesAsync()
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        return await scope.Database.FetchAsync<string>(
-            "SELECT DISTINCT Reference FROM MembershipCards " +
-            "WHERE Reference IS NOT NULL AND Reference <> '' ORDER BY Reference");
-    }
-
-    public async Task<IReadOnlyList<MemberCard>> GetByReferenceAsync(string reference)
-    {
-        var reff = (reference ?? "").Trim();
-        if (reff.Length == 0) return [];
-
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var records = await scope.Database.FetchAsync<MemberCardRecord>(
-            "SELECT * FROM MembershipCards WHERE Reference = @0 ORDER BY LastName, FirstName", reff);
-        return records.Select(Map).ToList();
     }
 
     private static MemberCard Map(MemberCardRecord r) => MemberCard.FromPersistence(

@@ -16,7 +16,7 @@ public sealed class TicketPrintController(
     IEventBundleTickets eventBundles,
     IFlexBundleTickets flexBundles,
     GetSeasonPassesForExport.Handler seasonPasses,
-    IMemberCardAdminReport memberReport,
+    GetMemberCardsForExport.Handler memberCards,
     IIssuedTicketReader issued) : Controller
 {
     [HttpPost("/admin/tickets/print")]
@@ -88,8 +88,7 @@ public sealed class TicketPrintController(
                 (await seasonPasses.HandleAsync(new GetSeasonPassesForExport.Query(sid, reff.Length == 0 ? [] : [reff])))
                     .Select(p => new TicketPrintItem(p.Uuid, p.Holder?.DisplayName ?? p.BuyerName)).ToList(),
             TicketType.MemberCard when seasonId is { } sid =>
-                (await memberReport.GetBySeasonAsync(sid))
-                    .Where(c => reff.Length == 0 || string.Equals(c.Reference ?? "", reff, StringComparison.Ordinal))
+                (await memberCards.HandleAsync(new GetMemberCardsForExport.Query(sid, reff.Length == 0 ? [] : [reff])))
                     .Select(c => new TicketPrintItem(c.Uuid, c.HolderName)).ToList(),
             _ => []
         };

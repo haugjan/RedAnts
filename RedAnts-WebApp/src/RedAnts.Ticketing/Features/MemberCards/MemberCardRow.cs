@@ -1,9 +1,9 @@
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Admin;
 
-namespace RedAnts.Ticketing.Features.MemberCards.Admin;
+namespace RedAnts.Ticketing.Features.MemberCards;
 
-public sealed record MemberCardListItem(
+public sealed record MemberCardRow(
     Guid Uuid,
     string? FirstName,
     string? LastName,
@@ -13,17 +13,20 @@ public sealed record MemberCardListItem(
     DateTimeOffset CreatedAt,
     int EventVisits,
     string? Reference,
+    string TicketUrl,
     string? Email = null,
     string? CreatedByName = null,
     MemberAddress? Address = null,
     int Admissions = 1,
     int Conversions = 0)
 {
+    public string CardNo => AdminFormat.TicketNo(Uuid);
     public string HolderName => $"{FirstName} {LastName}".Trim();
     public bool HasName => !string.IsNullOrWhiteSpace(FirstName) || !string.IsNullOrWhiteSpace(LastName);
     public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
     public string CategoryLabel => Category.DisplayName();
     public bool IsCancelled => Status == TicketStatus.Cancelled;
+    public string StatusLabel => IsCancelled ? "Storniert" : "Gültig";
     public bool IsCompany => !string.IsNullOrWhiteSpace(Address?.Company);
     public string? BuyerDisplay => AdminName.Display(Address?.Company, FirstName, LastName);
     public string SortKey => AdminName.SortKey(Address?.Company, FirstName, LastName);

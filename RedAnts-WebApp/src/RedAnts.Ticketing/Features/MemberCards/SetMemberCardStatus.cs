@@ -6,7 +6,7 @@ public static class SetMemberCardStatus
 {
     public sealed record Command(Guid Uuid, TicketStatus Status);
 
-    public sealed class Handler(IMemberCards cards)
+    public sealed class Handler(IMemberCardRepository cards)
     {
         public async Task HandleAsync(Command command)
         {

@@ -73,7 +73,8 @@ public class MemberCardTests
         var imported = await new ImportMemberCards.Handler(cards).HandleAsync(new ImportMemberCards.Command(3, "IMPORT", MemberCategory.Block4,
             [new MemberImportRow("Muster", "Anna", null), new MemberImportRow("Beispiel", "Ben", null)], "Admin", "admin@redants.ch"));
 
-        Assert.Equal((3, MemberCategory.RedAnts, "REF-9", 2), Assert.Single(cards.Created));
+        var created = Assert.Single(cards.Added);
+        Assert.Equal((3, MemberCategory.RedAnts, "REF-9", 2, "Anna"), (created.SeasonId, created.Category, created.Reference, created.Admissions, created.FirstName));
         Assert.Equal(2, imported);
         Assert.Equal((3, "IMPORT", MemberCategory.Block4, 2), Assert.Single(cards.Imports));
     }
@@ -87,10 +88,11 @@ public class MemberCardTests
         var card = StoredCard(cards);
 
         await new DeleteMemberCard.Handler(deletion).HandleAsync(new DeleteMemberCard.Command(card.Uuid));
-        var result = await new SendMemberCardMail.Handler(mailer).HandleAsync(new SendMemberCardMail.Command(card, "Betreff", "Text"));
+        var result = await new SendMemberCardMail.Handler(cards, mailer).HandleAsync(new SendMemberCardMail.Command(card.Uuid, "Betreff", "Text"));
 
         Assert.Equal(("member", card.Uuid), Assert.Single(deletion.Deleted));
         Assert.True(result.Success);
         Assert.Equal("Betreff", Assert.Single(mailer.Sent).Subject);
+        Assert.Same(card, mailer.Sent[0].Card);
     }
 }

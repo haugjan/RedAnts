@@ -1,13 +1,12 @@
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.MemberCards.Admin;
-using Umbraco.Cms.Core.Composing;
+using RedAnts.Ticketing.Features.Tickets;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.MemberCards.Infrastructure;
 
-public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : IMemberCardAdminReport
+public sealed class MemberCardListReader(IScopeProvider scopeProvider, ITicketTokens tokens, IPublicBaseUrl publicUrl) : IMemberCardListReader
 {
-    public async Task<IReadOnlyList<MemberCardListItem>> GetBySeasonAsync(int seasonId)
+    public async Task<IReadOnlyList<MemberCardRow>> GetBySeasonAsync(int seasonId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
@@ -28,22 +27,27 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
         var conversions = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var v in convRows) conversions[v.Uuid] = v.Cnt;
 
-        return cards.Select(c => new MemberCardListItem(
-            Guid.TryParse(c.Uuid, out var g) ? g : Guid.Empty,
-            c.FirstName,
-            c.LastName,
-            c.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
-            (MemberCategory)c.Category,
-            (TicketStatus)c.Status,
-            c.CreatedAt,
-            visits.GetValueOrDefault(c.Uuid ?? ""),
-            c.Reference,
-            c.Email,
-            c.CreatedByName,
-            MemberAddress.Create(c.Salutation, c.Company, c.Street, c.AddressLine2,
-                c.PostalCode, c.City, c.Country, c.Phone),
-            c.Admissions,
-            conversions.GetValueOrDefault(c.Uuid ?? ""))).ToList();
+        return cards.Select(c =>
+        {
+            var uuid = Guid.TryParse(c.Uuid, out var g) ? g : Guid.Empty;
+            return new MemberCardRow(
+                uuid,
+                c.FirstName,
+                c.LastName,
+                c.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
+                (MemberCategory)c.Category,
+                (TicketStatus)c.Status,
+                c.CreatedAt,
+                visits.GetValueOrDefault(c.Uuid ?? ""),
+                c.Reference,
+                uuid == Guid.Empty ? "" : publicUrl.TicketUrl(tokens.CreateShort(uuid)),
+                c.Email,
+                c.CreatedByName,
+                MemberAddress.Create(c.Salutation, c.Company, c.Street, c.AddressLine2,
+                    c.PostalCode, c.City, c.Country, c.Phone),
+                c.Admissions,
+                conversions.GetValueOrDefault(c.Uuid ?? ""));
+        }).ToList();
     }
 
     public sealed class UuidCountRow
@@ -51,10 +55,4 @@ public sealed class MemberCardAdminReportReader(IScopeProvider scopeProvider) : 
         public string Uuid { get; set; } = "";
         public int Cnt { get; set; }
     }
-}
-
-public sealed class MemberCardAdminReportComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IMemberCardAdminReport, MemberCardAdminReportReader>();
 }
