@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using RedAnts.Ticketing.Features.Admission.Infrastructure;
 using RedAnts.Ticketing.Features.Catalog.Infrastructure;
 using RedAnts.Ticketing.Features.Email.Infrastructure;
@@ -900,7 +901,8 @@ public class TicketingMigrationComponent(
     IMigrationPlanExecutor migrationPlanExecutor,
     IKeyValueService keyValueService,
     IRuntimeState runtimeState,
-    IConfiguration config) : IAsyncComponent
+    IConfiguration config,
+    ILogger<TicketingMigrationComponent> logger) : IAsyncComponent
 {
     private const string ForceTokenKey = "RedAnts.Ticketing.Migrations.ForceToken";
 
@@ -911,6 +913,7 @@ public class TicketingMigrationComponent(
 
         var upgrader = new Upgrader(new TicketingMigrationPlan());
         ResetStateWhenForced(upgrader);
+        new MigrationStateCheck(keyValueService, logger).EnsureStoredStateIsKnown(upgrader, DatabaseName());
         await upgrader.ExecuteAsync(migrationPlanExecutor, scopeProvider, keyValueService);
     }
 
@@ -922,6 +925,12 @@ public class TicketingMigrationComponent(
 
         keyValueService.SetValue(upgrader.StateValueKey, string.Empty);
         keyValueService.SetValue(ForceTokenKey, forceToken);
+    }
+
+    private string DatabaseName()
+    {
+        var dsn = new SqlConnectionStringBuilder(config.GetConnectionString(Constants.System.UmbracoConnectionName));
+        return dsn.InitialCatalog is { Length: > 0 } name ? name : dsn.DataSource;
     }
 
     public Task TerminateAsync(bool isMainDom, CancellationToken cancellationToken) => Task.CompletedTask;

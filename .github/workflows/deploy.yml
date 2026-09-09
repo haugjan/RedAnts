@@ -89,6 +89,7 @@ jobs:
         with:
           dotnet-version: '10.x'
       - name: Run database migrations (deploy identity holds DDL, the web app does not)
+        id: migrate
         if: vars.SQL_DSN != ''
         env:
           ConnectionStrings__umbracoDbDSN: ${{ vars.SQL_DSN }}
@@ -98,8 +99,19 @@ jobs:
           Umbraco__CMS__Runtime__Mode: BackofficeDevelopment
           Migrations__RunAtBoot: 'true'
         run: |
+          set -o pipefail
           mkdir -p migrate && unzip -q app.zip -d migrate
-          cd migrate && dotnet RedAnts.dll --migrate
+          cd migrate && dotnet RedAnts.dll --migrate 2>&1 | tee ../migrate.log
+      - name: Report the failed migration in the job summary
+        if: failure() && steps.migrate.outcome == 'failure'
+        run: |
+          {
+            echo "## Migration failed"
+            echo
+            echo '```'
+            tail -n 40 migrate.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Deploy (az webapp deploy over ARM)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -212,6 +224,7 @@ jobs:
         with:
           dotnet-version: '10.x'
       - name: Run database migrations (deploy identity holds DDL, the web app does not)
+        id: migrate
         if: vars.SQL_DSN != ''
         env:
           ConnectionStrings__umbracoDbDSN: ${{ vars.SQL_DSN }}
@@ -221,8 +234,19 @@ jobs:
           Umbraco__CMS__Runtime__Mode: BackofficeDevelopment
           Migrations__RunAtBoot: 'true'
         run: |
+          set -o pipefail
           mkdir -p migrate && unzip -q app.zip -d migrate
-          cd migrate && dotnet RedAnts.dll --migrate
+          cd migrate && dotnet RedAnts.dll --migrate 2>&1 | tee ../migrate.log
+      - name: Report the failed migration in the job summary
+        if: failure() && steps.migrate.outcome == 'failure'
+        run: |
+          {
+            echo "## Migration failed"
+            echo
+            echo '```'
+            tail -n 40 migrate.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Deploy (az webapp deploy over ARM)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
