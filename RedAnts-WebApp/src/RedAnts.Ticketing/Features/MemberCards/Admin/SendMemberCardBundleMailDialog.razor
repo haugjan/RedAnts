@@ -1,0 +1,138 @@
+@using RedAnts.Ticketing.Domain.Sales
+@inject GetMemberCardMailTemplate.Handler MailTemplate
+@inject SendMemberCardMail.Handler CardMail
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Karten versenden</h2>
+
+        @if (_result is not null)
+        {
+            <div class="ta-flash">@_result.Enqueued Karte@(_result.Enqueued == 1 ? "" : "n") eingereiht@(_result.Failed > 0 ? $", {_result.Failed} fehlgeschlagen" : "").</div>
+            @if (_result.NoEmail.Count > 0)
+            {
+                <p class="ta-hint">@_result.NoEmail.Count Karte@(_result.NoEmail.Count == 1 ? "" : "n") ohne E-Mail übersprungen:</p>
+                <ul class="ta-warnings">
+                    @foreach (var c in _result.NoEmail)
+                    {
+                        <li>@(c.HasName ? c.HolderName : "(ohne Name)") · @AdminFormat.TicketNo(c.Uuid)</li>
+                    }
+                </ul>
+            }
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="Close">Schliessen</button>
+            </div>
+        }
+        else if (Batches.Count == 0)
+        {
+            <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
+            </div>
+        }
+        else
+        {
+            <div class="ta-field">
+                <label class="ta-label" for="bulkBatch">Bundle und Kategorie</label>
+                <select id="bulkBatch" class="ta-select" @bind="_batchKey" @bind:after="ApplyBatchDefaults">
+                    @foreach (var b in Batches)
+                    {
+                        <option value="@b.Key">@b.Label (@b.WithEmail mit E-Mail)</option>
+                    }
+                </select>
+            </div>
+            <p class="ta-hint">@WithEmail Karte@(WithEmail == 1 ? "" : "n") mit E-Mail werden versendet · @WithoutEmail ohne E-Mail werden übersprungen.</p>
+            <div class="ta-field">
+                <label class="ta-label" for="bulkSubject">Betreff</label>
+                <input id="bulkSubject" class="ta-input" type="text" maxlength="200" @bind="_subject" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bulkBody">Text</label>
+                <textarea id="bulkBody" class="ta-input ta-textarea" @bind="_body"></textarea>
+            </div>
+            <p class="ta-hint">Vorbelegt ist der hinterlegte Text der Kategorie (Red Ants, Block 4 einzel oder Block 4 Firma); Anpassungen gelten nur für diesen Versand. Die Standardtexte pflegst du unter „E-Mail-Texte" im Backoffice.</p>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="ta-modal-error">@_error</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close" disabled="@_sending">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendAsync" disabled="@(_sending || WithEmail == 0)">
+                    @(_sending ? "Sendet …" : $"{WithEmail} Karten senden")
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<MemberCardMailBatch> Batches { get; set; } = [];
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private string _batchKey = "";
+    private string _subject = "";
+    private string _body = "";
+    private bool _sending;
+    private string? _error;
+    private BundleMailResult? _result;
+
+    private sealed record BundleMailResult(int Enqueued, int Failed, IReadOnlyList<MemberCardRow> NoEmail);
+
+    private MemberCardMailBatch? CurrentBatch => Batches.FirstOrDefault(b => b.Key == _batchKey);
+
+    private List<MemberCardRow> BatchCards() => CurrentBatch?.Cards.ToList() ?? [];
+
+    private int WithEmail => BatchCards().Count(c => c.HasEmail);
+    private int WithoutEmail => BatchCards().Count(c => !c.HasEmail);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _batchKey = Batches.FirstOrDefault()?.Key ?? "";
+        await ApplyBatchDefaults();
+    }
+
+    private async Task ApplyBatchDefaults()
+    {
+        var category = CurrentBatch?.Category ?? MemberCategory.RedAnts;
+        var template = await MailTemplate.HandleAsync(new GetMemberCardMailTemplate.Query(category));
+        _subject = template.Subject;
+        _body = template.Body;
+    }
+
+    private async Task SendAsync()
+    {
+        if (_sending || CurrentBatch is null) return;
+        if (string.IsNullOrWhiteSpace(_subject) || string.IsNullOrWhiteSpace(_body))
+        {
+            _error = "Betreff und Text dürfen nicht leer sein.";
+            return;
+        }
+        _sending = true;
+        _error = null;
+        _result = null;
+        try
+        {
+            var targets = BatchCards();
+            var noEmail = targets.Where(c => !c.HasEmail).ToList();
+            var enqueued = 0;
+            var failed = 0;
+            foreach (var c in targets.Where(c => c.HasEmail))
+            {
+                try
+                {
+                    var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(c.Uuid, _subject, _body));
+                    if (result.Success) enqueued++;
+                    else failed++;
+                }
+                catch { failed++; }
+            }
+            _result = new BundleMailResult(enqueued, failed, noEmail);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _sending = false; }
+    }
+
+    private Task Close() => _sending ? Task.CompletedTask : OnClosed.InvokeAsync();
+}

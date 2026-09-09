@@ -1,0 +1,96 @@
+@using RedAnts.Ticketing.Domain.Sales
+@inject CreateMemberCard.Handler CardCreation
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal ta-modal--members" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Mitgliederkarte erstellen</h2>
+        <p class="ta-modal-sub">@SeasonName</p>
+
+        <div class="ta-field">
+            <label class="ta-label" for="newMcCategory">Kategorie</label>
+            <select id="newMcCategory" class="ta-select" @bind="_category">
+                @foreach (var cat in Categories)
+                {
+                    <option value="@cat">@cat.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newMcAdmissions">Anzahl Einlässe pro Event</label>
+            <input id="newMcAdmissions" class="ta-input" type="number" min="1" step="1" @bind="_admissions" />
+            <p class="ta-field-hint">Wie oft diese Karte pro Anlass eingelassen wird (z. B. Block 4 = mehrere Personen). Standard: 1.</p>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label">Geburtsdatum (optional)</label>
+            <DateBox @bind-Value="_birthday" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newMcReference">Bundle</label>
+            <input id="newMcReference" class="ta-input" type="text" maxlength="100" list="mcBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_reference" />
+            <datalist id="mcBundleOptions">
+                @foreach (var b in Bundles) { <option value="@b" /> }
+            </datalist>
+        </div>
+
+        <PersonFields Model="_person" Prefix="newMc" EmailHint=" (optional, für den Kartenversand)" />
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <p class="ta-modal-error">@_error</p>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close" disabled="@_creating">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateAsync" disabled="@_creating">
+                @(_creating ? "Erstellt …" : "Erstellen")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
+
+    [Parameter] public int SeasonId { get; set; }
+    [Parameter] public string SeasonName { get; set; } = "";
+    [Parameter] public IReadOnlyList<string> Bundles { get; set; } = [];
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private static readonly MemberCategory[] Categories = Enum.GetValues<MemberCategory>();
+
+    private MemberCategory _category = MemberCategory.RedAnts;
+    private DateOnly? _birthday;
+    private int _admissions = 1;
+    private string _reference = "";
+    private PersonForm _person = new();
+    private bool _creating;
+    private string? _error;
+
+    private async Task CreateAsync()
+    {
+        if (_creating) return;
+        if (SeasonId <= 0) { _error = "Bitte zuerst eine Saison wählen."; return; }
+        if (string.IsNullOrWhiteSpace(_reference)) { _error = "Bitte ein Bundle angeben."; return; }
+        if (_admissions < 1) { _error = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
+        var contactError = MemberContactRules.FirstError(_person.Email, _birthday);
+        if (contactError is not null) { _error = contactError; return; }
+        _creating = true;
+        _error = null;
+        try
+        {
+            var first = string.IsNullOrWhiteSpace(_person.FirstName) ? null : _person.FirstName;
+            var last = string.IsNullOrWhiteSpace(_person.LastName) ? null : _person.LastName;
+            var address = _person.ToMemberAddress();
+            await CardCreation.HandleAsync(new CreateMemberCard.Command(SeasonId, _category, first, last,
+                _birthday, _reference.Trim(),
+                string.IsNullOrWhiteSpace(_person.Email) ? null : _person.Email!.Trim(),
+                address, _admissions, Identity.Name, Identity.Email));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _creating = false; }
+    }
+
+    private Task Close() => _creating ? Task.CompletedTask : OnClosed.InvokeAsync();
+}

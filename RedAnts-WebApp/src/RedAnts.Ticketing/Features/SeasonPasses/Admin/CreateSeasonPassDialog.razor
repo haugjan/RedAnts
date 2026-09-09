@@ -1,0 +1,122 @@
+@using RedAnts.Ticketing.Domain.Sales
+@inject CreateAdminOrder.Handler OrderCreation
+@inject CreateSeasonPass.Handler PassCreation
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Saisonkarte erstellen</h2>
+
+        <PersonFields Model="_person" Prefix="newSp" EmailHint=" (optional, für den Kartenversand)" />
+
+        <div class="ta-field">
+            <label class="ta-label" for="newSpCategory">Kategorie</label>
+            <select id="newSpCategory" class="ta-select" @bind="_tierId">
+                @foreach (var t in Tiers)
+                {
+                    <option value="@t.Id">@t.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="ta-field">
+            <label class="ta-label" for="newSpPrice">Preis (CHF)</label>
+            <input id="newSpPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_price" @bind:after="OnPriceChanged" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newSpPaymentSource">Zahlart</label>
+            <select id="newSpPaymentSource" class="ta-select" @bind="_paymentSource">
+                @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(_price))
+                {
+                    <option value="@ps">@ps.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newSpReference">Bundle (optional)</label>
+            <input id="newSpReference" class="ta-input" type="text" maxlength="100" list="spBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_reference" />
+            <datalist id="spBundleOptions">
+                @foreach (var b in Bundles) { <option value="@b" /> }
+            </datalist>
+        </div>
+
+        @if (_error is not null)
+        {
+            <p class="ta-modal-error">@_error</p>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close" disabled="@_creating">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateAsync" disabled="@_creating">
+                @(_creating ? "Erstellt …" : "Erstellen")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
+
+    [Parameter] public int SeasonId { get; set; }
+    [Parameter] public IReadOnlyList<PriceTierRow> Tiers { get; set; } = [];
+    [Parameter] public IReadOnlyList<string> Bundles { get; set; } = [];
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private int _tierId;
+    private decimal _price;
+    private PaymentSource _paymentSource = PaymentSource.Sponsoring;
+    private PersonForm _person = new();
+    private string _reference = "";
+    private bool _creating;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _tierId = Tiers.FirstOrDefault(t => !t.IsPromo)?.Id ?? Tiers.FirstOrDefault()?.Id ?? 0;
+        _paymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
+    }
+
+    private void OnPriceChanged()
+    {
+        _price = decimal.Round(_price, 2);
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(_price);
+        if (!choices.Contains(_paymentSource)) _paymentSource = choices[0];
+    }
+
+    private static PaymentSource ClampPaymentSource(PaymentSource source, decimal price)
+    {
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(price);
+        return choices.Contains(source) ? source : choices[0];
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_creating) return;
+        if (SeasonId <= 0) { _error = "Es ist keine Saison gewählt."; return; }
+        if (_tierId <= 0) { _error = "Es ist keine Stufe gewählt."; return; }
+        if (_price < 0) { _error = "Der Preis darf nicht negativ sein."; return; }
+        _creating = true;
+        _error = null;
+        try
+        {
+            var tier = Tiers.FirstOrDefault(t => t.Id == _tierId);
+            if (tier is null) { _error = "Die gewählte Stufe wurde nicht gefunden."; return; }
+            var lineCategory = tier.LegacyCategory is { } lc ? (TicketCategory)lc : TicketCategory.Adult;
+            var buyer = _person.ToBuyer();
+            if (buyer is null) { _error = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
+            var paymentSource = ClampPaymentSource(_paymentSource, _price);
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity.Email,
+                [new AdminOrderLine(OrderItemKind.SeasonPass, SeasonId, lineCategory, tier.Name, 1, _price)],
+                Identity.Name, paymentSource));
+            await PassCreation.HandleAsync(new CreateSeasonPass.Command(SeasonId, _tierId, _price, order.Id, buyer,
+                string.IsNullOrWhiteSpace(_reference) ? null : _reference.Trim(),
+                string.IsNullOrWhiteSpace(_person.Email) ? null : _person.Email!.Trim(),
+                _person.ToHolder(), Identity.Name, Identity.Email));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _creating = false; }
+    }
+
+    private Task Close() => OnClosed.InvokeAsync();
+}

@@ -1,0 +1,80 @@
+@inject GetSeasonPassMailTemplate.Handler MailTemplate
+@inject SendSeasonPassMail.Handler PassMail
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Saisonkarte senden</h2>
+        <p class="ta-modal-sub">@(Pass.BuyerName ?? AdminFormat.TicketNo(Pass.Uuid)) · @Pass.Email</p>
+
+        <div class="ta-field">
+            <label class="ta-label" for="spMailSubject">Betreff</label>
+            <input id="spMailSubject" class="ta-input" type="text" maxlength="200" @bind="_subject" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="spMailBody">Text</label>
+            <textarea id="spMailBody" class="ta-input ta-textarea" @bind="_body"></textarea>
+            <p class="ta-hint">Platzhalter: {Name}, {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt (**fett**, Listen mit -, [Links](https://…)). QR-Code, Online-Karte und PDF-Link werden automatisch angehängt.</p>
+        </div>
+
+        @if (_sent)
+        {
+            <div class="ta-flash">E-Mail wurde in den Versand gegeben.</div>
+        }
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="ta-modal-error">@_error</div>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close" disabled="@_sending">Schliessen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="SendAsync" disabled="@(_sending || _sent)">
+                @(_sent ? "Gesendet ✓" : _sending ? "Sendet …" : "Senden")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SeasonPassRow Pass { get; set; } = default!;
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private string _subject = "";
+    private string _body = "";
+    private bool _sending;
+    private bool _sent;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var template = await MailTemplate.HandleAsync(new GetSeasonPassMailTemplate.Query());
+        _subject = template.Subject;
+        _body = template.Body;
+    }
+
+    private async Task SendAsync()
+    {
+        if (_sending || _sent) return;
+        _sending = true;
+        _error = null;
+        _sent = false;
+        try
+        {
+            var result = await PassMail.HandleAsync(
+                new SendSeasonPassMail.Command(Pass.Uuid, Pass.CategoryName, Pass.Email, _subject, _body));
+            if (!result.Success)
+            {
+                _error = result.Error ?? "E-Mail konnte nicht versendet werden.";
+                return;
+            }
+            _sent = true;
+            _sending = false;
+            StateHasChanged();
+            await Task.Delay(1400);
+            await OnClosed.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _sending = false; }
+    }
+
+    private Task Close() => _sending ? Task.CompletedTask : OnClosed.InvokeAsync();
+}

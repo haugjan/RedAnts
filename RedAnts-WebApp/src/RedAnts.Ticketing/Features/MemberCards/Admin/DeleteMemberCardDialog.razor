@@ -1,0 +1,28 @@
+@inject DeleteMemberCard.Handler CardDeletion
+
+<ConfirmDialog Title="Mitgliederkarte löschen"
+               Message="@($"Mitgliederkarte {AdminFormat.TicketNo(Card.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+               ConfirmLabel="Löschen" Danger="true" Busy="_busy" Error="@_error"
+               OnConfirm="DeleteAsync" OnCancel="OnClosed" />
+
+@code {
+    [Parameter, EditorRequired] public MemberCardRow Card { get; set; } = default!;
+    [Parameter] public EventCallback OnDeleted { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private bool _busy;
+    private string? _error;
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await CardDeletion.HandleAsync(new DeleteMemberCard.Command(Card.Uuid));
+            await OnDeleted.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}

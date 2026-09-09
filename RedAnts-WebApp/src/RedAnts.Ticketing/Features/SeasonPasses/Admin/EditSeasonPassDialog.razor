@@ -1,0 +1,63 @@
+@inject EditSeasonPass.Handler PassEdit
+@inject SetSeasonPassHolder.Handler PassHolder
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
+        <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(Pass.Uuid)</p>
+
+        <PersonFields Model="_person" Prefix="editSp" />
+
+        <div class="ta-field">
+            <label class="ta-label" for="editPrice">Preis (CHF)</label>
+            <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_price" @bind:after="() => _price = decimal.Round(_price, 2)" />
+        </div>
+
+        @if (_error is not null)
+        {
+            <p class="ta-modal-error">@_error</p>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                @(_saving ? "Speichert …" : "Speichern")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SeasonPassRow Pass { get; set; } = default!;
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private decimal _price;
+    private PersonForm _person = new();
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _price = decimal.Round(Pass.Price, 2);
+        _person = PersonForm.From(Pass.Holder);
+        if (string.IsNullOrWhiteSpace(_person.Email)) _person.Email = Pass.Email;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_saving) return;
+        _saving = true;
+        _error = null;
+        try
+        {
+            await PassEdit.HandleAsync(new EditSeasonPass.Command(Pass.Uuid, _price, Pass.Status, null, null, null));
+            await PassHolder.HandleAsync(new SetSeasonPassHolder.Command(Pass.Uuid, _person.ToHolder()));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private Task Close() => OnClosed.InvokeAsync();
+}
