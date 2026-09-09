@@ -329,10 +329,9 @@
 
 @if (_deleteTarget is not null)
 {
-    <ConfirmDialog Title="Flexticket löschen"
-                   Message="@($"Flexticket {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
-                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
-                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+    <DeleteFlexTicketDialog Ticket="_deleteTarget"
+                            OnDeleted="TicketDeletedAsync"
+                            OnClosed="() => _deleteTarget = null" />
 }
 
 @if (_deleteBundleTarget is not null)
@@ -361,7 +360,6 @@
     [Inject] private DeleteEmptyFlexBundle.Handler BundleDeletions { get; set; } = default!;
     [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private SetFlexTicketCategory.Handler CategoryChanges { get; set; } = default!;
-    [Inject] private DeleteFlexTicket.Handler TicketDeletions { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
 
@@ -406,10 +404,12 @@
     private bool _showBulk;
 
     private FlexTicketRow? _deleteTarget;
-    private bool _deleteBusy;
-    private string? _deleteError;
 
-    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+    private async Task TicketDeletedAsync()
+    {
+        _deleteTarget = null;
+        await ReloadTicketsAsync();
+    }
 
     private FlexBundleRow? _deleteBundleTarget;
     private bool _deleteBundleBusy;
@@ -442,21 +442,6 @@
         }
         catch (Exception ex) { _deleteBundleError = ex.Message; }
         finally { _deleteBundleBusy = false; }
-    }
-
-    private async Task DeleteConfirmedAsync()
-    {
-        if (_deleteTarget is null) return;
-        _deleteBusy = true;
-        _deleteError = null;
-        try
-        {
-            await TicketDeletions.HandleAsync(new DeleteFlexTicket.Command(_deleteTarget.Uuid));
-            _deleteTarget = null;
-            await ReloadTicketsAsync();
-        }
-        catch (Exception ex) { _deleteError = ex.Message; }
-        finally { _deleteBusy = false; }
     }
 
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
