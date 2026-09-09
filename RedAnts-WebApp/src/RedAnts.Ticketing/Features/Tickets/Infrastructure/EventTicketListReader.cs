@@ -1,6 +1,6 @@
 using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Admission.Admin;
+using RedAnts.Ticketing.Features.Admission;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Tickets.Infrastructure;

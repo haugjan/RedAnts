@@ -1,7 +1,7 @@
 @using RedAnts.Ticketing.Domain.Sales
 @implements IAsyncDisposable
 @inject ConvertFlexToBoxOffice.Handler BoxOfficeConversion
-@inject ITicketTokens Tickets
+@inject ResolveScannedCode.Handler CodeResolution
 @inject IJSRuntime JS
 
 <div class="boxoffice">
@@ -143,9 +143,10 @@
     {
         var scanned = ExtractToken(code);
         FlexBoxOfficeResult result;
-        if (Tickets.TryVerify(scanned, out var data))
+        var resolved = await CodeResolution.HandleAsync(new ResolveScannedCode.Query(scanned));
+        if (resolved.Token is { } data)
             result = await BoxOfficeConversion.HandleAsync(new ConvertFlexToBoxOffice.Command(data.Uuid, null, Operator));
-        else if (Tickets.TryVerifyShort(scanned, out var shortCode))
+        else if (resolved.ShortCode is { } shortCode)
             result = await BoxOfficeConversion.HandleAsync(new ConvertFlexToBoxOffice.Command(null, shortCode, Operator));
         else
             result = new FlexBoxOfficeResult(FlexBoxOfficeStatus.NotFound, Shorten(code));

@@ -280,7 +280,7 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
-    [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
+    [Inject] private GetEventAdmissionReport.Handler AdmissionReport { get; set; } = default!;
     [Inject] private SetEventSalesStatus.Handler SetSalesStatus { get; set; } = default!;
     [Inject] private SetEventAdmissionQuota.Handler SetAdmissionQuota { get; set; } = default!;
     [Inject] private SetEventSalesQuota.Handler SetSalesQuota { get; set; } = default!;
@@ -364,7 +364,7 @@
         if (SelectedSeasonId > 0)
         {
             _events = await Events.GetBySeasonAsync(SelectedSeasonId);
-            _counts = await AdmissionReport.GetCountsByEventAsync();
+            _counts = await AdmissionReport.HandleAsync(new GetEventAdmissionReport.Query());
             _quotas = await Quotas.GetAdmissionQuotasAsync();
             _salesQuotas = await Quotas.GetSalesQuotasAsync();
             _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);

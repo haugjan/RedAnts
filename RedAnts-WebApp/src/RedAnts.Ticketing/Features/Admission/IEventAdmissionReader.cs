@@ -1,8 +1,6 @@
-using RedAnts.Ticketing.Features.Admission.Admin;
-
 namespace RedAnts.Ticketing.Features.Admission;
 
-public interface IEventAdmissionReport
+public interface IEventAdmissionReader
 {
     Task<IReadOnlyDictionary<int, EventAdmissionCounts>> GetCountsByEventAsync();
 }

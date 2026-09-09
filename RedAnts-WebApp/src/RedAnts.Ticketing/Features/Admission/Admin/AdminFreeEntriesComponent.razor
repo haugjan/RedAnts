@@ -120,18 +120,18 @@
 
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
-    [Inject] private IEvents Events { get; set; } = default!;
-    [Inject] private IFreeEntryAdminReport Report { get; set; } = default!;
-    [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
+    [Inject] private GetSeasonsForAdmin.Handler Seasons { get; set; } = default!;
+    [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
+    [Inject] private GetFreeEntries.Handler FreeEntries { get; set; } = default!;
+    [Inject] private DeleteFreeEntry.Handler Deletions { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;
-    private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<Event> _events = [];
-    private IReadOnlyList<FreeEntryListItem> _entries = [];
+    private IReadOnlyList<SeasonForAdmin> _seasons = [];
+    private IReadOnlyList<EventForAdmin> _events = [];
+    private IReadOnlyList<FreeEntryRow> _entries = [];
 
-    private FreeEntryListItem? _deleteTarget;
+    private FreeEntryRow? _deleteTarget;
     private string? _deleteError;
     private bool _deleteBusy;
 
@@ -144,7 +144,7 @@
     protected override async Task OnInitializedAsync()
     {
         var restoreEventId = AdminState.SelectedEventId;
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _seasons = await Seasons.HandleAsync(new GetSeasonsForAdmin.Query());
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
             : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
@@ -160,9 +160,7 @@
     private async Task OnSeasonChangedAsync()
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
-        _events = SelectedSeasonId > 0
-            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
-            : [];
+        _events = await EventsForAdmin.HandleAsync(new GetEventsForAdmin.Query(SelectedSeasonId));
         SelectedEventId = DefaultEvent(_events)?.Id ?? 0;
         await ReloadEntriesAsync();
     }
@@ -170,14 +168,14 @@
     private async Task ReloadEntriesAsync()
     {
         AdminState.SelectedEventId = SelectedEventId > 0 ? SelectedEventId : null;
-        _entries = SelectedEventId > 0 ? await Report.GetByEventAsync(SelectedEventId) : [];
+        _entries = await FreeEntries.HandleAsync(new GetFreeEntries.Query(SelectedEventId));
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private IEnumerable<FreeEntryListItem> Sorted()
+    private IEnumerable<FreeEntryRow> Sorted()
     {
-        IEnumerable<FreeEntryListItem> q = _sortCol switch
+        IEnumerable<FreeEntryRow> q = _sortCol switch
         {
             "inside" => _entries.OrderBy(e => e.IsInside),
             "category" => _entries.OrderBy(e => e.Category),
@@ -195,7 +193,7 @@
         _deleteError = null;
         try
         {
-            await Deletion.DeleteFreeEntryAsync(_deleteTarget.Uuid);
+            await Deletions.HandleAsync(new DeleteFreeEntry.Command(_deleteTarget.Uuid));
             _deleteTarget = null;
             await ReloadEntriesAsync();
         }
@@ -206,14 +204,14 @@
         finally { _deleteBusy = false; }
     }
 
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    private static SeasonForAdmin? CurrentSeason(IReadOnlyList<SeasonForAdmin> seasons)
     {
         var today = SwissTime.Today;
         return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
 
-    private static Event? DefaultEvent(IReadOnlyList<Event> events)
+    private static EventForAdmin? DefaultEvent(IReadOnlyList<EventForAdmin> events)
     {
         var today = SwissTime.Today;
         return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);

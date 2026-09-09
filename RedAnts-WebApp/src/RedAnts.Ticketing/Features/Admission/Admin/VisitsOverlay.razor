@@ -136,7 +136,7 @@
     [Parameter] public string EmptyText { get; set; } = "Noch keine Eventbesuche.";
     [Parameter] public EventCallback OnClose { get; set; }
 
-    [Inject] private IVisitLogReader Visits { get; set; } = default!;
+    [Inject] private GetVisits.Handler Visits { get; set; } = default!;
 
     private bool _loading = true;
     private IReadOnlyList<TicketVisitEntry> _visits = [];
@@ -144,7 +144,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _visits = await Visits.GetByTicketUuidAsync(Uuid);
+        _visits = await Visits.HandleAsync(new GetVisits.Query(Uuid));
         if (_visits.Count == 1) _expanded.Add(0);
         _loading = false;
     }

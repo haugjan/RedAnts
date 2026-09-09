@@ -57,6 +57,8 @@ internal sealed class RecordingConversionRules : IEventConversionRules
 
 internal sealed class RecordingFreeEntryQuotas : IFreeEntryRepository
 {
+    public Task DeleteAsync(Guid uuid) => Task.CompletedTask;
+
     public Dictionary<int, FreeEntryQuota> Saved { get; } = new();
 
     public Task<FreeEntryQuota> GetQuotaAsync(int eventId) =>

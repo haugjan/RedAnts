@@ -1,6 +1,6 @@
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Admin;
-using RedAnts.Ticketing.Features.Admission.Admin;
+using RedAnts.Ticketing.Features.Admission;
 using RedAnts.Ticketing.Features.Shared;
 
 namespace RedAnts.Ticketing.Features.Tickets;

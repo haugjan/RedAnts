@@ -10,4 +10,5 @@ public interface IFreeEntryRepository
     Task<int> CountGrantedAsync(int eventId, FreeEntryType type);
     Task<FreeEntry?> FindLatestInsideAsync(int eventId, FreeEntryType type);
     Task SaveAsync(FreeEntry entry);
+    Task DeleteAsync(Guid uuid);
 }

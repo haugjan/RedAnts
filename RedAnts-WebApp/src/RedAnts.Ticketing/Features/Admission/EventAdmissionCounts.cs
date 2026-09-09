@@ -1,6 +1,6 @@
 using RedAnts.Ticketing.Domain.Admission;
 
-namespace RedAnts.Ticketing.Features.Admission.Admin;
+namespace RedAnts.Ticketing.Features.Admission;
 
 public sealed record EventAdmissionCounts(
     int SoldSingleTickets,

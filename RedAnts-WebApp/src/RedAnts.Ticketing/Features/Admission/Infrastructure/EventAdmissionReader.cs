@@ -1,12 +1,10 @@
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Admission.Admin;
 using RedAnts.Ticketing.Features.Catalog;
-using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Admission.Infrastructure;
 
-public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEvents events) : IEventAdmissionReport
+public sealed class EventAdmissionReader(IScopeProvider scopeProvider, IEvents events) : IEventAdmissionReader
 {
     public async Task<IReadOnlyDictionary<int, EventAdmissionCounts>> GetCountsByEventAsync()
     {
@@ -129,10 +127,4 @@ public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEv
         public int PaidCnt { get; set; }
         public decimal Revenue { get; set; }
     }
-}
-
-public sealed class EventAdmissionReportComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IEventAdmissionReport, EventAdmissionReportReader>();
 }

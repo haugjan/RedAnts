@@ -1,5 +1,5 @@
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Admission.Admin;
+using RedAnts.Ticketing.Features.Admission;
 using RedAnts.Ticketing.Features.Email;
 using RedAnts.Ticketing.Features.EventBundles;
 using RedAnts.Ticketing.Features.EventBundles.Admin;
@@ -15,7 +15,6 @@ internal sealed class RecordingTicketDeletion : IAdminTicketDeletion
     public Task DeleteFlexTicketAsync(Guid uuid) => Record("flex", uuid);
     public Task DeleteSeasonPassAsync(Guid uuid) => Record("pass", uuid);
     public Task DeleteMemberCardAsync(Guid uuid) => Record("member", uuid);
-    public Task DeleteFreeEntryAsync(Guid uuid) => Record("free", uuid);
 
     private Task Record(string kind, Guid uuid)
     {
