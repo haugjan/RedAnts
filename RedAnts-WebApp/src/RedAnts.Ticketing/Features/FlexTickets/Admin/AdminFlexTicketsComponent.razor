@@ -62,7 +62,7 @@
                         <button type="button" class="ta-btn ta-btn-ghost ta-btn-danger"
                                 disabled="@(SelectedBundle.TicketCount > 0)"
                                 title="@(SelectedBundle.TicketCount > 0 ? "Nur leere Bundles können gelöscht werden – bitte zuerst die Flextickets entfernen" : "Bundle löschen")"
-                                @onclick="OpenDeleteBundle">Bundle löschen</button>
+                                @onclick="() => _deleteBundleTarget = SelectedBundle">Bundle löschen</button>
                     }
                 }
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="() => _showImport = true">
@@ -336,10 +336,9 @@
 
 @if (_deleteBundleTarget is not null)
 {
-    <ConfirmDialog Title="Bundle löschen"
-                   Message="@($"Bundle „{_deleteBundleTarget.Reference}“ endgültig löschen?")"
-                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBundleBusy" Error="@_deleteBundleError"
-                   OnConfirm="DeleteBundleConfirmedAsync" OnCancel="CancelDeleteBundle" />
+    <DeleteFlexBundleDialog Bundle="_deleteBundleTarget"
+                            OnDeleted="BundleDeletedAsync"
+                            OnClosed="() => _deleteBundleTarget = null" />
 }
 
 <style>
@@ -357,7 +356,6 @@
     [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
     [Inject] private GetFlexBundles.Handler BundleList { get; set; } = default!;
     [Inject] private GetFlexBundleTickets.Handler TicketList { get; set; } = default!;
-    [Inject] private DeleteEmptyFlexBundle.Handler BundleDeletions { get; set; } = default!;
     [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private SetFlexTicketCategory.Handler CategoryChanges { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -412,36 +410,13 @@
     }
 
     private FlexBundleRow? _deleteBundleTarget;
-    private bool _deleteBundleBusy;
-    private string? _deleteBundleError;
 
-    private void OpenDeleteBundle()
+    private async Task BundleDeletedAsync()
     {
-        _deleteBundleTarget = SelectedBundle;
-        _deleteBundleError = null;
-    }
-
-    private void CancelDeleteBundle() { _deleteBundleTarget = null; _deleteBundleError = null; }
-
-    private async Task DeleteBundleConfirmedAsync()
-    {
-        if (_deleteBundleTarget is null) return;
-        _deleteBundleBusy = true;
-        _deleteBundleError = null;
-        try
-        {
-            if (!await BundleDeletions.HandleAsync(new DeleteEmptyFlexBundle.Command(_deleteBundleTarget.Id)))
-            {
-                _deleteBundleError = "Nur leere Bundles können gelöscht werden. Bitte zuerst die Flextickets entfernen.";
-                return;
-            }
-            _deleteBundleTarget = null;
-            _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
-            SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
-            await ReloadTicketsAsync();
-        }
-        catch (Exception ex) { _deleteBundleError = ex.Message; }
-        finally { _deleteBundleBusy = false; }
+        _deleteBundleTarget = null;
+        _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
+        SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
+        await ReloadTicketsAsync();
     }
 
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();

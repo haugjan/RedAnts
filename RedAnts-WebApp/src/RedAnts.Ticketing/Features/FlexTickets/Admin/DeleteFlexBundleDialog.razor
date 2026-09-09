@@ -1,0 +1,32 @@
+<ConfirmDialog Title="Bundle löschen"
+               Message="@($"Bundle „{Bundle.Reference}“ endgültig löschen?")"
+               ConfirmLabel="Löschen" Danger="true" Busy="_busy" Error="@_error"
+               OnConfirm="DeleteAsync" OnCancel="OnClosed" />
+
+@code {
+    [Parameter, EditorRequired] public FlexBundleRow Bundle { get; set; } = default!;
+    [Parameter] public EventCallback OnDeleted { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private DeleteEmptyFlexBundle.Handler BundleDeletions { get; set; } = default!;
+
+    private bool _busy;
+    private string? _error;
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (!await BundleDeletions.HandleAsync(new DeleteEmptyFlexBundle.Command(Bundle.Id)))
+            {
+                _error = "Nur leere Bundles können gelöscht werden. Bitte zuerst die Flextickets entfernen.";
+                return;
+            }
+            await OnDeleted.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}
