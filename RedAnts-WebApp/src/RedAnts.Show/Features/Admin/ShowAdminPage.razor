@@ -4,7 +4,6 @@
 @inject SaveShowProfiles.Handler ProfilesSave
 @inject LookupSpotifyReference.Handler SpotifyLookup
 @inject GetSpotifySettings.Handler SpotifySettings
-@inject SearchSpotify.Handler SpotifySearch
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
 @implements IDisposable
@@ -349,49 +348,7 @@
 
                 @if (_searchOpen)
                 {
-                    <div class="se-searchwrap" @onclick="CloseSearch">
-                        <div class="se-searchcard" @onclick:stopPropagation="true">
-                            <div class="se-searchhead">
-                                <input class="se-search-in" @bind="_query" @bind:event="oninput" @onkeyup="OnSearchKey" placeholder="Song auf Spotify suchen …" />
-                                <button class="se-btn primary" @onclick="DoSearch">🔍 Suchen</button>
-                                <button class="se-editclose" @onclick="CloseSearch">✕</button>
-                            </div>
-                            @if (_searching)
-                            {
-                                <p class="se-muted">Suche …</p>
-                            }
-                            @if (_searchError is { Length: > 0 })
-                            {
-                                <p class="se-err">@_searchError</p>
-                            }
-                            <div class="se-reslist">
-                                @foreach (var t in _results)
-                                {
-                                    <div class="se-resrow">
-                                        <img class="se-cover sm" src="@t.CoverUrl" alt="" />
-                                        <div class="se-resmeta">
-                                            <div class="se-trackname">@t.Name</div>
-                                            <div class="se-trackartist">@t.Artist</div>
-                                            <div class="se-trackalbum">@t.Album@(t.DurationMs > 0 ? $" · {Mmss(t.DurationMs / 1000)}" : "")</div>
-                                        </div>
-                                        @if (!string.IsNullOrEmpty(t.PreviewUrl))
-                                        {
-                                            <button class="se-btn sm" title="Vorschau anhören" @onclick="() => PreviewAsync(t)">▶</button>
-                                        }
-                                        else
-                                        {
-                                            <span class="se-nopreview" title="Keine Vorschau verfügbar">–</span>
-                                        }
-                                        <button class="se-btn sm primary" @onclick="() => PickTrack(t)">Wählen</button>
-                                    </div>
-                                }
-                                @if (!_searching && _results.Count == 0 && _searchError.Length == 0)
-                                {
-                                    <p class="se-muted">Keine Treffer.</p>
-                                }
-                            </div>
-                        </div>
-                    </div>
+                    <SpotifySearchDialog Term="@_query" OnPicked="PickTrackAsync" OnLink="ApplySpotifyLinkAsync" OnClosed="CloseSearch" />
                 }
 
                 @if (_chooseKind)
@@ -926,10 +883,7 @@
     private void CancelNewTile() { _newRect = null; _chooseKind = false; }
 
     private string _query = "";
-    private IReadOnlyList<SpotifyTrack> _results = [];
-    private bool _searching;
     private bool _searchOpen;
-    private string _searchError = "";
     private SpotifyTrack? _trackInfo;
     private SpotifyContext? _ctxInfo;
 
@@ -939,17 +893,11 @@
         var link = ShowSpotifyLink.ToUri(_query);
         if (link is not null && _editSong is not null)
         {
-            _editSong.Kind = SoundKind.Spotify;
-            _editSong.Ref = link;
-            await RefreshSpotifyInfoAsync(_editSong);
-            _selectedIsNew = false;
+            await ApplySpotifyLinkAsync(link);
             _query = "";
             return;
         }
-        _searching = true; _searchError = ""; _searchOpen = true; _results = [];
-        try { _results = await SpotifySearch.HandleAsync(new SearchSpotify.Query(_query)); }
-        catch (Exception ex) { _searchError = "Suche: " + ex.Message; _results = []; }
-        finally { _searching = false; }
+        _searchOpen = true;
     }
 
     private async Task OnSearchKey(KeyboardEventArgs e)
@@ -957,7 +905,16 @@
         if (e.Key == "Enter") await DoSearch();
     }
 
-    private async Task PickTrack(SpotifyTrack t)
+    private async Task ApplySpotifyLinkAsync(string link)
+    {
+        if (_editSong is null) return;
+        _editSong.Kind = SoundKind.Spotify;
+        _editSong.Ref = link;
+        await RefreshSpotifyInfoAsync(_editSong);
+        _selectedIsNew = false;
+    }
+
+    private async Task PickTrackAsync(SpotifyTrack t)
     {
         if (_editSong is null) return;
         _editSong.Kind = SoundKind.Spotify;
@@ -970,7 +927,6 @@
         _trackInfo = t; _ctxInfo = null;
         _selectedIsNew = false;
         _searchOpen = false;
-        _results = [];
         _query = "";
         await JS.InvokeVoidAsync("showPreviewStop");
     }
@@ -987,12 +943,6 @@
         _selected = null;
         _selectedIsNew = false;
         _ = JS.InvokeVoidAsync("showEditStop");
-    }
-
-    private async Task PreviewAsync(SpotifyTrack t)
-    {
-        if (string.IsNullOrEmpty(t.PreviewUrl)) return;
-        await JS.InvokeVoidAsync("showPreviewToggle", t.PreviewUrl);
     }
 
     private async Task RefreshSpotifyInfoAsync(EditSound s)

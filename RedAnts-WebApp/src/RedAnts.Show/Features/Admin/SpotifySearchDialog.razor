@@ -1,0 +1,95 @@
+@inject SearchSpotify.Handler SpotifySearch
+@inject IJSRuntime JS
+
+<div class="se-searchwrap" @onclick="CloseAsync">
+    <div class="se-searchcard" @onclick:stopPropagation="true">
+        <div class="se-searchhead">
+            <input class="se-search-in" @bind="_term" @bind:event="oninput" @onkeyup="OnKeyAsync" placeholder="Song auf Spotify suchen …" />
+            <button class="se-btn primary" @onclick="SearchAsync">🔍 Suchen</button>
+            <button class="se-editclose" @onclick="CloseAsync">✕</button>
+        </div>
+        @if (_searching)
+        {
+            <p class="se-muted">Suche …</p>
+        }
+        @if (_error is { Length: > 0 })
+        {
+            <p class="se-err">@_error</p>
+        }
+        <div class="se-reslist">
+            @foreach (var t in _results)
+            {
+                <div class="se-resrow">
+                    <img class="se-cover sm" src="@t.CoverUrl" alt="" />
+                    <div class="se-resmeta">
+                        <div class="se-trackname">@t.Name</div>
+                        <div class="se-trackartist">@t.Artist</div>
+                        <div class="se-trackalbum">@t.Album@(t.DurationMs > 0 ? $" · {Mmss(t.DurationMs / 1000)}" : "")</div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(t.PreviewUrl))
+                    {
+                        <button class="se-btn sm" title="Vorschau anhören" @onclick="() => PreviewAsync(t)">▶</button>
+                    }
+                    else
+                    {
+                        <span class="se-nopreview" title="Keine Vorschau verfügbar">–</span>
+                    }
+                    <button class="se-btn sm primary" @onclick="() => OnPicked.InvokeAsync(t)">Wählen</button>
+                </div>
+            }
+            @if (!_searching && _results.Count == 0 && _error.Length == 0)
+            {
+                <p class="se-muted">Keine Treffer.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Term { get; set; } = "";
+    [Parameter] public EventCallback<SpotifyTrack> OnPicked { get; set; }
+    [Parameter] public EventCallback<string> OnLink { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private string _term = "";
+    private IReadOnlyList<SpotifyTrack> _results = [];
+    private bool _searching;
+    private string _error = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _term = Term;
+        await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_term)) return;
+        if (ShowSpotifyLink.ToUri(_term) is { } link)
+        {
+            await OnLink.InvokeAsync(link);
+            _term = "";
+            return;
+        }
+        _searching = true; _error = ""; _results = [];
+        try { _results = await SpotifySearch.HandleAsync(new SearchSpotify.Query(_term)); }
+        catch (DomainException ex) { _error = ex.Message; _results = []; }
+        catch (Exception ex) { _error = "Suche: " + ex.Message; _results = []; }
+        finally { _searching = false; }
+    }
+
+    private async Task OnKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SearchAsync();
+    }
+
+    private async Task PreviewAsync(SpotifyTrack t)
+    {
+        if (string.IsNullOrEmpty(t.PreviewUrl)) return;
+        await JS.InvokeVoidAsync("showPreviewToggle", t.PreviewUrl);
+    }
+
+    private Task CloseAsync() => OnClosed.InvokeAsync();
+
+    private static string Mmss(int s) => $"{s / 60}:{s % 60:00}";
+}
