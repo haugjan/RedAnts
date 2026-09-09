@@ -1,0 +1,87 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Ticket erstellen</h2>
+        <PersonFields Model="_person" Prefix="newEt" EmailHint=" (optional, für den Ticketversand)" />
+        <div class="ta-field">
+            <label class="ta-label" for="newCategory">Kategorie</label>
+            <select id="newCategory" class="ta-select" @bind="_category">
+                @foreach (var cat in Enum.GetValues<TicketCategory>())
+                {
+                    <option value="@cat">@cat.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newPrice">Abgabepreis (CHF)</label>
+            <input id="newPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_price" @bind:after="OnPriceChanged" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newTicketPaymentSource">Zahlart</label>
+            <select id="newTicketPaymentSource" class="ta-select" @bind="_paymentSource">
+                @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(_price))
+                {
+                    <option value="@ps">@ps.DisplayName()</option>
+                }
+            </select>
+        </div>
+        @if (_error is not null)
+        {
+            <p class="ta-modal-error">@_error</p>
+        }
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateAsync">Erstellen</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int EventId { get; set; }
+    [Parameter] public string AdminUser { get; set; } = "";
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
+
+    [Inject] private GetOccupancy.Handler Occupancy { get; set; } = default!;
+    [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
+    [Inject] private CreateEventTicket.Handler TicketCreation { get; set; } = default!;
+
+    private TicketCategory _category = TicketCategory.Adult;
+    private decimal _price;
+    private PaymentSource _paymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
+    private PersonForm _person = new();
+    private string? _error;
+
+    private void OnPriceChanged()
+    {
+        _price = decimal.Round(_price, 2);
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(_price);
+        if (!choices.Contains(_paymentSource)) _paymentSource = choices[0];
+    }
+
+    private Task CloseAsync() => OnClosed.InvokeAsync();
+
+    private async Task CreateAsync()
+    {
+        if (EventId <= 0) { _error = "Es ist kein Anlass gewählt."; return; }
+        if (_price < 0) { _error = "Der Abgabepreis darf nicht negativ sein."; return; }
+        if ((await Occupancy.HandleAsync(new GetOccupancy.Query(EventId))).Full)
+        { _error = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
+        try
+        {
+            var buyer = _person.ToBuyer();
+            if (buyer is null) { _error = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
+            var choices = PaymentSourceExtensions.AdminChoicesForPrice(_price);
+            var paymentSource = choices.Contains(_paymentSource) ? _paymentSource : choices[0];
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.EventTicket, EventId, _category, _category.DisplayName(), 1, _price)],
+                Identity?.Name ?? AdminUser, paymentSource));
+            await TicketCreation.HandleAsync(new CreateEventTicket.Command(EventId, _category, _price, order.Id, buyer,
+                Identity?.Name ?? AdminUser, Identity?.Email, _person.ToHolder()));
+        }
+        catch (DomainException ex) { _error = ex.Message; return; }
+        await OnSaved.InvokeAsync();
+    }
+}

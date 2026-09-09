@@ -1,0 +1,47 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Spieltickets exportieren</h2>
+        <p class="ta-modal-sub">Bundle wählen (Mehrfachauswahl möglich).</p>
+        @if (Bundles.Count == 0)
+        {
+            <p class="ta-muted-text">Für diesen Anlass sind keine Bundles erfasst.</p>
+        }
+        else
+        {
+            <div class="ta-export-list">
+                @foreach (var b in Bundles)
+                {
+                    <label class="ta-export-item">
+                        <input type="checkbox" checked="@_selection.Contains(b.Id)"
+                               @onchange="e => Toggle(b.Id, (bool)(e.Value ?? false))" />
+                        @b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.
+                    </label>
+                }
+            </div>
+        }
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync">Schliessen</button>
+            @if (_selection.Count > 0)
+            {
+                <a class="ta-btn ta-btn-primary" href="/admin/event-tickets/tickets.csv?ids=@string.Join(",", _selection)"
+                   target="_blank" rel="noopener" @onclick="CloseAsync">Herunterladen</a>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<EventTicketBundleRow> Bundles { get; set; } = [];
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private readonly HashSet<int> _selection = [];
+
+    private Task CloseAsync() => OnClosed.InvokeAsync();
+
+    private void Toggle(int bundleId, bool on)
+    {
+        if (on) _selection.Add(bundleId); else _selection.Remove(bundleId);
+    }
+}

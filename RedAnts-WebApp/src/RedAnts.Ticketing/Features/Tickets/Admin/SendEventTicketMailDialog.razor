@@ -1,0 +1,72 @@
+@if (_ready)
+{
+    <div class="ta-overlay" @onmousedown="CloseAsync">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Spielticket senden</h2>
+            <p class="ta-modal-sub">@(Ticket.Holder?.DisplayName ?? AdminFormat.TicketNo(Ticket.Uuid)) · @Ticket.Holder?.Email</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="etMailSubject">Betreff</label>
+                <input id="etMailSubject" class="ta-input" type="text" maxlength="200" @bind="_subject" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="etMailBody">Text</label>
+                <textarea id="etMailBody" class="ta-input ta-textarea" @bind="_body"></textarea>
+                <p class="ta-hint">Platzhalter: {Name}, {Anlass}, {Datum}. Markdown wird unterstützt. QR-Code, Online-Ticket und PDF-Link werden automatisch angehängt.</p>
+            </div>
+
+            @if (_sent) { <div class="ta-flash">E-Mail wurde in den Versand gegeben.</div> }
+            @if (!string.IsNullOrEmpty(_error)) { <div class="ta-modal-error">@_error</div> }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_sending">Schliessen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendAsync" disabled="@(_sending || _sent)">
+                    @(_sent ? "Gesendet ✓" : _sending ? "Sendet …" : "Senden")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public EventTicketRow Ticket { get; set; } = default!;
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private GetEventTicketMailDefaults.Handler MailDefaults { get; set; } = default!;
+    [Inject] private SendEventTicketMail.Handler Mails { get; set; } = default!;
+
+    private bool _ready;
+    private string _subject = "";
+    private string _body = "";
+    private bool _sending;
+    private bool _sent;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var defaults = await MailDefaults.HandleAsync(new GetEventTicketMailDefaults.Query());
+        _subject = defaults.Subject;
+        _body = defaults.Body;
+        _ready = true;
+    }
+
+    private Task CloseAsync() => _sending ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task SendAsync()
+    {
+        _sending = true;
+        _error = null;
+        try
+        {
+            var result = await Mails.HandleAsync(new SendEventTicketMail.Command(Ticket.Uuid, _subject, _body));
+            if (result.Success)
+            {
+                _sent = true;
+                await Task.Delay(1400);
+                await OnClosed.InvokeAsync();
+            }
+            else _error = result.Error;
+        }
+        finally { _sending = false; }
+    }
+}

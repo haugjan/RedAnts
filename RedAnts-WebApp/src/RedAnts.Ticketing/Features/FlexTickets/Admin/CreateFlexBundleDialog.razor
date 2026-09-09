@@ -1,0 +1,133 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Flexticket-Bundle erstellen</h2>
+
+        <div class="ta-field">
+            <label class="ta-label">Saison</label>
+            <div class="ta-readonly">@SeasonName</div>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newCategory">Ticketkategorie</label>
+            <select id="newCategory" class="ta-select" @bind="_category">
+                @foreach (var c in Categories)
+                {
+                    <option value="@c">@c.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newReference">Bundle</label>
+            <input id="newReference" class="ta-input" type="text" maxlength="50" list="flexBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_reference" />
+            <datalist id="flexBundleOptions">
+                @foreach (var b in Bundles) { <option value="@b.Reference" /> }
+            </datalist>
+        </div>
+
+        <div class="ta-field">
+            <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
+            <input id="newQuantity" class="ta-input" type="number" min="0" max="2000" @bind="_quantity" />
+            <p class="ta-field-hint">0 = leeres Bundle (nur als Umbuchungsziel, ohne Tickets).</p>
+        </div>
+        @if (_quantity > 0)
+        {
+            <div class="ta-field">
+                <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
+                <select id="newFlexPaymentSource" class="ta-select" @bind="_paymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="ta-error">@_error</div>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateAsync" disabled="@_saving">
+                @(_saving ? "Wird erstellt …" : "Bundle erstellen")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int SeasonId { get; set; }
+    [Parameter] public string SeasonName { get; set; } = "";
+    [Parameter] public IReadOnlyList<FlexBundleRow> Bundles { get; set; } = [];
+    [Parameter] public string AdminUser { get; set; } = "";
+    [Parameter] public EventCallback<int> OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
+
+    [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
+    [Inject] private CreateFlexBundle.Handler BundleCreation { get; set; } = default!;
+    [Inject] private CreateEmptyFlexBundle.Handler EmptyBundleCreation { get; set; } = default!;
+    [Inject] private AddFlexTickets.Handler TicketAdditions { get; set; } = default!;
+
+    private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
+
+    private TicketCategory _category = TicketCategory.Adult;
+    private string _reference = "";
+    private int _quantity = 1;
+    private PaymentSource _paymentSource = PaymentSource.Sponsoring;
+    private bool _saving;
+    private string? _error;
+
+    private Task CloseAsync() => _saving ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+        var reference = (_reference ?? "").Trim();
+
+        if (SeasonId <= 0) { _error = "Bitte zuerst eine Saison wählen."; return; }
+        if (reference.Length == 0) { _error = "Bitte ein Bundle angeben."; return; }
+        if (reference.Length > FlexTicketBundle.ReferenceMaxLength)
+        { _error = $"Das Bundle darf höchstens {FlexTicketBundle.ReferenceMaxLength} Zeichen lang sein."; return; }
+        if (_quantity < 0) { _error = "Die Anzahl darf nicht negativ sein."; return; }
+
+        _saving = true;
+        try
+        {
+            var existing = Bundles.FirstOrDefault(b =>
+                string.Equals(b.Reference, reference, StringComparison.OrdinalIgnoreCase));
+            int result;
+            if (existing is not null)
+            {
+                result = existing.Id;
+                if (_quantity >= 1)
+                {
+                    var order = await CreateOrderAsync(reference);
+                    result = await TicketAdditions.HandleAsync(new AddFlexTickets.Command(existing.Id, _category, _quantity,
+                        Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
+                }
+            }
+            else if (_quantity == 0)
+            {
+                result = await EmptyBundleCreation.HandleAsync(new CreateEmptyFlexBundle.Command(SeasonId, _category, reference,
+                    Identity?.Name ?? AdminUser, Identity?.Email));
+            }
+            else
+            {
+                var order = await CreateOrderAsync(reference);
+                result = await BundleCreation.HandleAsync(new CreateFlexBundle.Command(SeasonId, _category, reference, _quantity,
+                    Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
+            }
+            await OnSaved.InvokeAsync(result);
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private Task<Order> CreateOrderAsync(string reference) =>
+        OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+            [new AdminOrderLine(OrderItemKind.SeasonSingle, SeasonId, _category, $"Flexticket · {reference}", _quantity, 0m)],
+            Identity?.Name ?? AdminUser, _paymentSource));
+}

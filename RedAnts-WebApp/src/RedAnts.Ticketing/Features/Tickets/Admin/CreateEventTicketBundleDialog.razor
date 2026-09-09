@@ -1,0 +1,95 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Ticket-Bundle erstellen</h2>
+        <div class="ta-field">
+            <label class="ta-label">Anlass</label>
+            <div class="ta-readonly">@EventName</div>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="bundleCategory">Ticketkategorie</label>
+            <select id="bundleCategory" class="ta-select" @bind="_category">
+                @foreach (var cat in Categories)
+                {
+                    <option value="@cat">@cat.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="bundleReference">Bundlename</label>
+            <input id="bundleReference" class="ta-input" type="text" maxlength="50" placeholder="z. B. Sponsoren 2026" @bind="_reference" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="bundleQuantity">Anzahl Tickets</label>
+            <input id="bundleQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_quantity" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="bundlePaymentSource">Zahlart</label>
+            <select id="bundlePaymentSource" class="ta-select" @bind="_paymentSource">
+                @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                {
+                    <option value="@ps">@ps.DisplayName()</option>
+                }
+            </select>
+        </div>
+        @if (_error is not null)
+        {
+            <p class="ta-modal-error">@_error</p>
+        }
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateAsync" disabled="@_saving">
+                @(_saving ? "Wird erstellt …" : "Bundle erstellen")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int EventId { get; set; }
+    [Parameter] public string EventName { get; set; } = "";
+    [Parameter] public string AdminUser { get; set; } = "";
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
+
+    [Inject] private GetOccupancy.Handler Occupancy { get; set; } = default!;
+    [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
+    [Inject] private CreateEventTicketBundle.Handler BundleCreation { get; set; } = default!;
+
+    private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
+
+    private TicketCategory _category = TicketCategory.Adult;
+    private string _reference = "";
+    private int _quantity = 1;
+    private PaymentSource _paymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
+    private bool _saving;
+    private string? _error;
+
+    private Task CloseAsync() => OnClosed.InvokeAsync();
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+        var reference = (_reference ?? "").Trim();
+        if (EventId <= 0) { _error = "Es ist kein Anlass gewählt."; return; }
+        if (reference.Length == 0) { _error = "Bitte einen Bundlenamen angeben."; return; }
+        if (_quantity < 1) { _error = "Die Anzahl muss mindestens 1 sein."; return; }
+        if ((await Occupancy.HandleAsync(new GetOccupancy.Query(EventId))).Full)
+        { _error = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
+
+        _saving = true;
+        try
+        {
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.EventTicket, EventId, _category, $"Ticket-Bundle · {reference}", _quantity, 0m)],
+                Identity?.Name ?? AdminUser, _paymentSource));
+            await BundleCreation.HandleAsync(new CreateEventTicketBundle.Command(EventId, _category, reference, _quantity,
+                Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+}

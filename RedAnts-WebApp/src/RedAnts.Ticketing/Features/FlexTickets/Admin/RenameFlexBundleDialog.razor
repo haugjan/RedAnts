@@ -1,0 +1,57 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Bundle bearbeiten</h2>
+        <p class="ta-modal-sub">@Bundle.Category.DisplayName() · @Bundle.TicketCount Flextickets</p>
+
+        <div class="ta-field">
+            <label class="ta-label" for="editReference">Bundle</label>
+            <input id="editReference" class="ta-input" type="text" maxlength="50" @bind="_reference" />
+            <p class="ta-field-hint">Kategorie und Anzahl eines ausgestellten Bundles sind nicht änderbar.</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="ta-modal-error">@_error</div>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                @(_saving ? "Speichert …" : "Speichern")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FlexBundleRow Bundle { get; set; } = default!;
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private RenameFlexBundle.Handler BundleRenames { get; set; } = default!;
+
+    private string _reference = "";
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized() => _reference = Bundle.Reference;
+
+    private Task CloseAsync() => _saving ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task SaveAsync()
+    {
+        var reference = (_reference ?? "").Trim();
+        if (reference == Bundle.Reference) { await OnClosed.InvokeAsync(); return; }
+        _saving = true;
+        _error = null;
+        try
+        {
+            await BundleRenames.HandleAsync(new RenameFlexBundle.Command(Bundle.Id, reference));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+}

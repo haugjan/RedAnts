@@ -1,0 +1,46 @@
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Flexticket bearbeiten</h2>
+        <p class="ta-modal-sub">Ticket-Nr. @AdminFormat.TicketNo(Ticket.Uuid)</p>
+
+        <PersonFields Model="_person" Prefix="editFt" EmailHint=" (für den Ticketversand)" />
+
+        @if (!string.IsNullOrEmpty(_error)) { <div class="ta-modal-error">@_error</div> }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                @(_saving ? "Speichert …" : "Speichern")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FlexTicketRow Ticket { get; set; } = default!;
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private SetFlexTicketHolder.Handler HolderChanges { get; set; } = default!;
+
+    private PersonForm _person = new();
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized() => _person = PersonForm.From(Ticket.Holder);
+
+    private Task CloseAsync() => _saving ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            await HolderChanges.HandleAsync(new SetFlexTicketHolder.Command(Ticket.Uuid, _person.ToHolder()));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+}

@@ -1,0 +1,94 @@
+@if (_ready)
+{
+    <div class="ta-overlay" @onmousedown="CloseAsync">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Spieltickets versenden</h2>
+
+            @if (_result is not null)
+            {
+                <div class="ta-flash">@_result.Enqueued Ticket@(_result.Enqueued == 1 ? "" : "s") eingereiht@(_result.Failed > 0 ? $", {_result.Failed} fehlgeschlagen" : "").</div>
+                @if (_result.NoEmail > 0)
+                {
+                    <p class="ta-hint">@_result.NoEmail Ticket@(_result.NoEmail == 1 ? "" : "s") ohne E-Mail übersprungen.</p>
+                }
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseAsync">Schliessen</button>
+                </div>
+            }
+            else
+            {
+                <p class="ta-hint">@WithEmail Ticket@(WithEmail == 1 ? "" : "s") mit E-Mail werden versendet · @WithoutEmail ohne E-Mail werden übersprungen. Grundlage ist die aktuelle Filterung (@(BundleSelected ? "gewähltes Bundle" : "alle Bundles")).</p>
+
+                <div class="ta-field">
+                    <label class="ta-label" for="etBulkSubject">Betreff</label>
+                    <input id="etBulkSubject" class="ta-input" type="text" maxlength="200" @bind="_subject" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="etBulkBody">Text</label>
+                    <textarea id="etBulkBody" class="ta-input ta-textarea" @bind="_body"></textarea>
+                    <p class="ta-hint">Platzhalter: {Name}, {Anlass}, {Datum}. Markdown wird unterstützt. QR-Code, Online-Ticket und PDF-Link werden je Ticket angehängt.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_error)) { <div class="ta-modal-error">@_error</div> }
+
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_sending">Abbrechen</button>
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendAsync" disabled="@(_sending || WithEmail == 0)">
+                        @(_sending ? "Sendet …" : $"{WithEmail} Tickets senden")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<EventTicketRow> Tickets { get; set; } = [];
+    [Parameter] public bool BundleSelected { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private GetEventTicketMailDefaults.Handler MailDefaults { get; set; } = default!;
+    [Inject] private SendEventTicketMail.Handler Mails { get; set; } = default!;
+
+    private bool _ready;
+    private string _subject = "";
+    private string _body = "";
+    private bool _sending;
+    private string? _error;
+    private BulkResult? _result;
+
+    private sealed record BulkResult(int Enqueued, int Failed, int NoEmail);
+
+    private int WithEmail => Tickets.Count(HasEmail);
+    private int WithoutEmail => Tickets.Count(t => !HasEmail(t));
+
+    private static bool HasEmail(EventTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var defaults = await MailDefaults.HandleAsync(new GetEventTicketMailDefaults.Query());
+        _subject = defaults.Subject;
+        _body = defaults.Body;
+        _ready = true;
+    }
+
+    private Task CloseAsync() => _sending ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task SendAsync()
+    {
+        _sending = true;
+        _error = null;
+        try
+        {
+            int enqueued = 0, failed = 0, noEmail = 0;
+            foreach (var t in Tickets.ToList())
+            {
+                if (!HasEmail(t)) { noEmail++; continue; }
+                var result = await Mails.HandleAsync(new SendEventTicketMail.Command(t.Uuid, _subject, _body));
+                if (result.Success) enqueued++; else failed++;
+            }
+            _result = new BulkResult(enqueued, failed, noEmail);
+        }
+        finally { _sending = false; }
+    }
+}

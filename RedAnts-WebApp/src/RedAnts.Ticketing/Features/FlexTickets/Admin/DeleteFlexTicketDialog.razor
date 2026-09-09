@@ -1,0 +1,28 @@
+<ConfirmDialog Title="Flexticket löschen"
+               Message="@($"Flexticket {AdminFormat.TicketNo(Ticket.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+               ConfirmLabel="Löschen" Danger="true" Busy="_busy" Error="@_error"
+               OnConfirm="DeleteAsync" OnCancel="OnClosed" />
+
+@code {
+    [Parameter, EditorRequired] public FlexTicketRow Ticket { get; set; } = default!;
+    [Parameter] public EventCallback OnDeleted { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private DeleteFlexTicket.Handler TicketDeletions { get; set; } = default!;
+
+    private bool _busy;
+    private string? _error;
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await TicketDeletions.HandleAsync(new DeleteFlexTicket.Command(Ticket.Uuid));
+            await OnDeleted.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}

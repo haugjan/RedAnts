@@ -1,0 +1,79 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Bundles exportieren</h2>
+        <p class="ta-modal-sub">@SeasonName · Karten-Nr, Bundle und Ticketlink je Karte</p>
+
+        @if (Bundles.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Bundles erfasst.</div>
+        }
+        else
+        {
+            <div class="ta-export-tools">
+                <button type="button" class="ta-linkish" @onclick="SelectAll">Alle</button>
+                <button type="button" class="ta-linkish" @onclick="ClearAll">Keine</button>
+            </div>
+            <div class="ta-export-list">
+                @foreach (var b in Bundles)
+                {
+                    <label class="ta-export-item">
+                        <input type="checkbox" checked="@_selection.Contains(b.Id)"
+                               @onchange="@(e => Toggle(b.Id, e.Value is true))" />
+                        <span>@b.Reference <span class="ta-muted">· @b.Category.DisplayName() · @b.TicketCount Stk.</span></span>
+                    </label>
+                }
+            </div>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync">Schliessen</button>
+            @if (_selection.Count > 0)
+            {
+                <a class="ta-btn ta-btn-primary" href="@ExportUrl()" target="_blank" rel="noopener" @onclick="CloseAsync">
+                    Export CSV (@_selection.Count)
+                </a>
+            }
+            else
+            {
+                <button type="button" class="ta-btn ta-btn-primary" disabled>Export CSV</button>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .ta-export-tools { display: flex; gap: 1rem; margin: 0 0 .5rem; }
+    .ta-linkish { background: none; border: 0; padding: 0; color: var(--ta-accent); font-size: .85rem; cursor: pointer; text-decoration: underline; }
+    .ta-export-list { display: flex; flex-direction: column; gap: .35rem; max-height: 320px; overflow-y: auto; padding: .2rem 0; }
+    .ta-export-item { display: flex; align-items: center; gap: .5rem; }
+    .ta-export-item .ta-muted { color: var(--ta-muted); }
+</style>
+
+@code {
+    [Parameter] public IReadOnlyList<FlexBundleRow> Bundles { get; set; } = [];
+    [Parameter] public string SeasonName { get; set; } = "";
+    [Parameter] public int SelectedBundleId { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private readonly HashSet<int> _selection = [];
+
+    protected override void OnInitialized()
+    {
+        if (SelectedBundleId > 0) _selection.Add(SelectedBundleId);
+    }
+
+    private Task CloseAsync() => OnClosed.InvokeAsync();
+
+    private void Toggle(int bundleId, bool on)
+    {
+        if (on) _selection.Add(bundleId); else _selection.Remove(bundleId);
+    }
+
+    private void SelectAll() { foreach (var b in Bundles) _selection.Add(b.Id); }
+
+    private void ClearAll() => _selection.Clear();
+
+    private string ExportUrl() => $"/admin/flex-tickets/bundles.csv?ids={string.Join(',', _selection)}";
+}
