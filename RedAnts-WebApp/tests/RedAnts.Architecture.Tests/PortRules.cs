@@ -28,11 +28,11 @@ public class PortRules
     public void Only_composers_and_registrations_reach_into_infrastructure()
     {
         var offenders = RedAntsArchitecture.OwnTypes
-            .Where(t => !InfrastructureNamespace.IsMatch(t.Namespace.FullName))
+            .Where(t => !InfrastructureNamespace.IsMatch(t.Namespace?.FullName ?? ""))
             .Where(t => !AllowedToUseInfrastructure.Any(s => t.Name.EndsWith(s, StringComparison.Ordinal)))
             .SelectMany(t => t.Dependencies
                 .Select(d => d.Target)
-                .Where(target => target.Namespace.FullName.StartsWith("RedAnts.") && InfrastructureNamespace.IsMatch(target.Namespace.FullName))
+                .Where(target => (target.Namespace?.FullName ?? "").StartsWith("RedAnts.") && InfrastructureNamespace.IsMatch(target.Namespace?.FullName ?? ""))
                 .Select(target => $"{t.FullName} -> {target.FullName}"))
             .Distinct()
             .Order()
