@@ -201,7 +201,7 @@
                     </div>
 
                     <div class="se-editbody">
-                    <div class="se-col">
+                    <div class="se-col se-col-a">
                     <div class="se-grid">
                         <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
                         <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
@@ -238,13 +238,10 @@
                             }
                         </div>
                     </div>
-                    </div>
-                    <div class="se-col">
-
                     @if (n.Kind == NodeKind.Sound)
                     {
                         var song = CurrentSong(n);
-                        <h3>Songs (@n.Songs.Count)</h3>
+                        <h3 class="se-songh2">Songs (@n.Songs.Count)</h3>
                         @if (n.Songs.Count > 1)
                         {
                             <div class="se-fieldcol">
@@ -276,8 +273,13 @@
                                 </div>
                             }
                         </div>
-                        <button type="button" class="se-btn sm" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
-
+                        <button type="button" class="se-btn sm se-addsong" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
+                    }
+                    </div>
+                    <div class="se-col se-col-b">
+                    @if (n.Kind == NodeKind.Sound)
+                    {
+                        var song = CurrentSong(n);
                         <h4 class="se-songh">Song @(n.Songs.IndexOf(song) + 1) bearbeiten</h4>
                         <div class="se-src-tabs">
                             <button type="button" class="@(song.Kind == SoundKind.Local ? "active" : "")" @onclick="() => song.Kind = SoundKind.Local">🎵 Datei</button>
@@ -1456,7 +1458,7 @@
     .se-ct-open { position: absolute; bottom: 2px; left: 3px; appearance: none; border: none; background: rgba(0,0,0,0.35); color: #fff; border-radius: 5px; font-size: min(14cqmin, 0.6rem); padding: 0 4px; cursor: pointer; }
 
     .se-editwrap { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
-    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 22px; width: min(96vw, 1180px); max-height: 90vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
+    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 22px; width: min(96vw, 1240px); height: min(90vh, 900px); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
     .se-editclose { position: absolute; top: 14px; right: 14px; appearance: none; border: none; background: var(--ra-panel2); color: var(--ra-text); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
     .se-editclose:hover { background: #3a3a45; }
     .se-editdel { margin-top: 18px; width: 100%; }
@@ -1522,7 +1524,8 @@
     .se-resrow .se-resmeta { flex: 1; }
     .se-nopreview { width: 34px; text-align: center; color: var(--ra-muted); }
 
-    .se-editfoot { display: flex; gap: 8px; margin-top: 18px; }
+    .se-editfoot { display: flex; gap: 8px; margin-top: 18px; flex: 0 0 auto; }
+    .se-editcard > .se-preview, .se-editcard > .se-warn { flex: 0 0 auto; }
     .se-editfoot .se-editdel { margin-top: 0; flex: 1; }
     .se-warn { color: #ffd166; font-weight: 700; font-size: 0.9rem; margin: 8px 0 0; }
 
@@ -1537,9 +1540,17 @@
     .se-prof-btns { display: flex; gap: 8px; margin-bottom: 12px; }
     .se-prof-btns .se-btn { flex: 1; }
 
-    .se-editbody { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 18px; align-items: start; }
-    .se-editbody .se-col { min-width: 0; }
-    @@media (max-width: 720px) { .se-editbody { grid-template-columns: 1fr; } }
+    .se-editbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: stretch; flex: 1 1 auto; min-height: 0; }
+    .se-editbody .se-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+    .se-col-a { overflow: hidden; }
+    .se-col-b { overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; }
+    @@media (max-width: 720px) {
+        .se-editbody { grid-template-columns: 1fr; }
+        .se-editcard { height: auto; max-height: 90vh; overflow: auto; }
+        .se-col-a { overflow: visible; }
+        .se-col-b { overflow: visible; padding-right: 0; }
+        .se-songlist { flex: 0 0 auto; max-height: 260px; }
+    }
 
     .se-tl-track { cursor: pointer; }
 
@@ -1552,7 +1563,7 @@
     .se-redirects { margin: 6px 0 0; padding-left: 1.1rem; }
     .se-redirects code { background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 6px; padding: 0.1rem 0.4rem; word-break: break-all; }
 
-    .se-songlist { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+    .se-songlist { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
     .se-songrow { display: flex; align-items: center; gap: 6px; }
     .se-songrow.sel .se-songrow-main { border-color: var(--ra-red); background: var(--ra-panel2); }
     .se-songrow-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; appearance: none; cursor: pointer; background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.5rem 0.7rem; color: var(--ra-text); font: inherit; }
@@ -1560,5 +1571,8 @@
     .se-songrow-cover { flex: 0 0 auto; width: 1.75rem; height: 1.75rem; border-radius: 4px; object-fit: cover; }
     .se-songrow-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; text-transform: none; }
     .se-songrow-cue { flex: 0 0 auto; color: var(--ra-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
-    .se-songh { margin: 16px 0 8px; }
+    .se-songh { margin: 0 0 10px; }
+    .se-songh2 { margin: 18px 0 6px; }
+    .se-addsong { flex: 0 0 auto; align-self: flex-start; margin-top: 2px; }
+    .se-songrow { flex: 0 0 auto; }
 </style>
