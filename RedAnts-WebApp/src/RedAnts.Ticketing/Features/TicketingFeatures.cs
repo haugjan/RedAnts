@@ -78,6 +78,7 @@ public static class TicketingFeatures
         typeof(GetSeasonAddOns.Handler),
         typeof(ChangeOrderStatus.Handler),
         typeof(RefundOrder.Handler),
+        typeof(CanRefund.Handler),
         typeof(CreateAdminOrder.Handler),
         typeof(GetOrdersForAdmin.Handler),
         typeof(GetOrderDetail.Handler),

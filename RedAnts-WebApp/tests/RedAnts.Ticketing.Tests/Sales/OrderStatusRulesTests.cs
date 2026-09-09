@@ -65,7 +65,39 @@ public class OrderStatusRulesTests
         partial.ApplyRefundTotal(10m);
         Assert.True(partial.IsRefundable);
         Assert.False(Draft().IsRefundable);
-        Assert.Throws<DomainException>(() => Draft().RequireRefundable());
+        Assert.IsType<RefundDenied.NotPaid>(Assert.IsType<CheckResult.Denied>(Draft().RefundBlocker(100m)).Cause);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void A_refund_needs_a_positive_amount(decimal amount) =>
+        Assert.IsType<RefundDenied.AmountNotPositive>(Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(100m, amount)).Cause);
+
+    [Fact]
+    public void A_refund_stays_below_the_remaining_amount()
+    {
+        var denied = Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(30m, 40m));
+
+        Assert.IsType<RefundDenied.AmountAboveRemaining>(denied.Cause);
+        Assert.Contains("30.00", denied.Cause.Message);
+    }
+
+    [Fact]
+    public void A_fully_refunded_order_has_nothing_left()
+    {
+        var order = Paid();
+        order.ApplyRefundTotal(10m);
+
+        Assert.IsType<RefundDenied.NothingLeft>(Assert.IsType<CheckResult.Denied>(order.RefundBlocker(0m)).Cause);
+    }
+
+    [Fact]
+    public void A_payrexx_refund_needs_an_online_payment()
+    {
+        Assert.IsType<RefundDenied.NotPaidOnline>(
+            Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(100m, 10m, viaPayrexx: true)).Cause);
+        Assert.True(Paid().RefundBlocker(100m, 10m).IsAllowed);
     }
 
     [Fact]

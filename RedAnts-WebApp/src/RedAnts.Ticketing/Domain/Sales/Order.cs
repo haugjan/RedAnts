@@ -1,5 +1,22 @@
 namespace RedAnts.Ticketing.Domain.Sales;
 
+public static class RefundDenied
+{
+    public sealed record OrderUnknown() : CheckResult.Denied.Reason("Bestellung wurde nicht gefunden.");
+
+    public sealed record NotPaid() : CheckResult.Denied.Reason("Nur bezahlte Bestellungen können zurückerstattet werden.");
+
+    public sealed record NothingLeft() : CheckResult.Denied.Reason("Diese Bestellung ist vollständig zurückerstattet.");
+
+    public sealed record AmountNotPositive() : CheckResult.Denied.Reason("Betrag muss grösser als 0 sein.");
+
+    public sealed record AmountAboveRemaining(decimal Remaining)
+        : CheckResult.Denied.Reason($"Der Betrag übersteigt den noch offenen Rest von CHF {Remaining:0.00}.");
+
+    public sealed record NotPaidOnline() : CheckResult.Denied.Reason(
+        "Diese Bestellung wurde nicht online über Payrexx bezahlt und kann nicht über Payrexx zurückerstattet werden.");
+}
+
 public sealed class Order
 {
     public int Id { get; private set; }
@@ -108,9 +125,17 @@ public sealed class Order
 
     public bool IsRefundable => Status is OrderStatus.Paid or OrderStatus.PartiallyRefunded;
 
-    public void RequireRefundable()
+    public CheckResult RefundBlocker(decimal remaining, decimal? amount = null, bool viaPayrexx = false, bool payrexxEnabled = true)
     {
-        if (!IsRefundable) throw new DomainException("Nur bezahlte Bestellungen können zurückerstattet werden.");
+        if (!IsRefundable) return CheckResult.Deny(new RefundDenied.NotPaid());
+        if (remaining <= 0m) return CheckResult.Deny(new RefundDenied.NothingLeft());
+        if (amount is { } value)
+        {
+            if (value <= 0m) return CheckResult.Deny(new RefundDenied.AmountNotPositive());
+            if (value > remaining) return CheckResult.Deny(new RefundDenied.AmountAboveRemaining(remaining));
+        }
+        if (viaPayrexx && (!PaidThroughPayrexx || !payrexxEnabled)) return CheckResult.Deny(new RefundDenied.NotPaidOnline());
+        return CheckResult.Allow();
     }
 
     public bool PaidThroughPayrexx => !string.IsNullOrWhiteSpace(PayrexxGatewayId);
