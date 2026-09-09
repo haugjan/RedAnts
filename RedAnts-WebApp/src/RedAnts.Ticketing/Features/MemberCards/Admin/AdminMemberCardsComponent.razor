@@ -537,10 +537,7 @@
 
 @if (_deleteTarget is not null)
 {
-    <ConfirmDialog Title="Mitgliederkarte löschen"
-                   Message="@($"Mitgliederkarte {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
-                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
-                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+    <DeleteMemberCardDialog Card="_deleteTarget" OnDeleted="CardDeletedAsync" OnClosed="CloseDelete" />
 }
 
 @if (_showPrint)
@@ -575,7 +572,6 @@
     [Inject] private EditMemberCard.Handler CardEdit { get; set; } = default!;
     [Inject] private SetMemberCardStatus.Handler CardStatus { get; set; } = default!;
     [Inject] private SetMemberCardCategory.Handler CardCategory { get; set; } = default!;
-    [Inject] private DeleteMemberCard.Handler CardDeletion { get; set; } = default!;
     [Inject] private SendMemberCardMail.Handler CardMail { get; set; } = default!;
     [Inject] private GetMemberCardMailTemplate.Handler MailTemplate { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -607,24 +603,13 @@
     private void ClosePrint() => _showPrint = false;
 
     private MemberCardRow? _deleteTarget;
-    private bool _deleteBusy;
-    private string? _deleteError;
 
-    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+    private void CloseDelete() => _deleteTarget = null;
 
-    private async Task DeleteConfirmedAsync()
+    private async Task CardDeletedAsync()
     {
-        if (_deleteTarget is null) return;
-        _deleteBusy = true;
-        _deleteError = null;
-        try
-        {
-            await CardDeletion.HandleAsync(new DeleteMemberCard.Command(_deleteTarget.Uuid));
-            _deleteTarget = null;
-            await ReloadCardsAsync();
-        }
-        catch (Exception ex) { _deleteError = ex.Message; }
-        finally { _deleteBusy = false; }
+        _deleteTarget = null;
+        await ReloadCardsAsync();
     }
 
     private static readonly MemberCategory[] Categories = Enum.GetValues<MemberCategory>();
