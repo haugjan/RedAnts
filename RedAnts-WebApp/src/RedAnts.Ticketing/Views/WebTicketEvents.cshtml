@@ -1,0 +1,71 @@
+@model RedAnts.Features.Ticketing.Tickets.TicketEventsViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Die nächsten Spiele</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/ticket-180.png" />
+    <meta name="theme-color" content="#C8102E" />
+    @if (Model.Found)
+    {
+        <link rel="manifest" href="/ticket/@Model.Token/manifest.webmanifest" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Red Ants Ticket" />
+    }
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/_content/RedAnts.Ticketing/css/ticket-page.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="wt-wrap">
+        @if (!Model.Found)
+        {
+            <div class="wt-empty">
+                <h1>Nicht gefunden</h1>
+                <p>Dieser Link ist ungültig oder abgelaufen.</p>
+            </div>
+        }
+        else
+        {
+            <a class="wt-back" href="/ticket/@Model.Token">‹ Zurück zum Ticket</a>
+            <div class="wt-events-head">
+                <h1>Die nächsten Spiele</h1>
+                @if (!string.IsNullOrWhiteSpace(Model.HolderName))
+                {
+                    <p>@Model.HolderName · @Model.TypeLabel</p>
+                }
+            </div>
+
+            @if (Model.Matches.Count == 0)
+            {
+                <div class="wt-empty">
+                    <p>Aktuell sind keine kommenden Spiele ausgeschrieben.</p>
+                </div>
+            }
+            else
+            {
+                foreach (var m in Model.Matches)
+                {
+                    <div class="wt-match">
+                        <span class="wt-match-logos">
+                            @if (!string.IsNullOrEmpty(m.HomeLogo)) { <img src="@m.HomeLogo" alt="" onerror="this.remove()" /> }
+                            @if (!string.IsNullOrEmpty(m.AwayLogo)) { <img src="@m.AwayLogo" alt="" onerror="this.remove()" /> }
+                        </span>
+                        <span class="wt-match-body">
+                            <span class="wt-match-title">@m.Title@if (m.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
+                            <span class="wt-match-meta">@m.DateText@(string.IsNullOrEmpty(m.VenueName) ? "" : $" · {m.VenueName}")</span>
+                        </span>
+                    </div>
+                }
+            }
+        }
+    </div>
+</body>
+</html>

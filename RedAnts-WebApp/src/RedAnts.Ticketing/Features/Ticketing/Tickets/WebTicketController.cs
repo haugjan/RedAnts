@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using RedAnts.Domain;
 using RedAnts.Domain.Ticketing.Sales;
 using RedAnts.Features.Ticketing.Ports;
 using Umbraco.Cms.Core;
@@ -11,9 +13,12 @@ public sealed class WebTicketController(
     ITicketTokens tokens,
     IQrCodeRenderer qr,
     IIssuedTicketReader tickets,
+    ITicketCustomNames customNames,
+    IMyTicketsReader myTickets,
     IEvents events,
     ISeasons seasons,
     IVenues venues,
+    IContentUrls contentUrls,
     IPublicBaseUrl publicUrl,
     ITicketPdf pdf,
     ILogger<WebTicketController> logger) : Controller
@@ -29,6 +34,11 @@ public sealed class WebTicketController(
         var (scopeName, dateText, venueName, homeLogo, awayLogo) = await ResolveContextAsync(data);
 
         var svg = qr.RenderSvg(QrUrl(data.Uuid));
+        var holderDefault = issued?.HolderName ?? issued?.BuyerName;
+        var displayName = FirstNonEmpty(issued?.CustomName, holderDefault);
+
+        var next = (await BuildUpcomingAsync(1)).FirstOrDefault();
+        var related = await BuildRelatedAsync(data.Uuid);
 
         var model = new WebTicketViewModel(
             Found: issued is not null,
@@ -36,9 +46,9 @@ public sealed class WebTicketController(
             Kicker: TicketDisplay.Kicker(data.Type),
             TypeLabel: DisplayTitle(data.Type, issued),
             ScopeName: scopeName,
-            DateText: dateText,
+            DateText: data.Type == TicketType.EventTicket ? dateText : null,
             CategoryLabel: CategoryLabel(issued),
-            HolderName: issued?.HolderName ?? issued?.BuyerName,
+            HolderName: displayName,
             TicketRef: TicketRef(data.Uuid),
             QrSvg: svg,
             HomeLogo: homeLogo,
@@ -46,9 +56,76 @@ public sealed class WebTicketController(
             TypeKey: TypeKey(data.Type, issued?.MemberCategory),
             Token: token,
             VenueName: venueName,
-            Admissions: issued?.Admissions ?? 1);
+            Admissions: issued?.Admissions ?? 1,
+            CustomName: issued?.CustomName,
+            HolderDefault: holderDefault,
+            NextMatch: next,
+            RelatedTickets: related);
 
         return View("~/Views/WebTicket.cshtml", model);
+    }
+
+    [HttpGet("/ticket/{token}/events")]
+    public async Task<IActionResult> Events(string token)
+    {
+        var data = await ResolveAsync(token);
+        if (data is null)
+            return View("~/Views/WebTicketEvents.cshtml", TicketEventsViewModel.Invalid());
+
+        var issued = await tickets.FindAsync(data.Uuid);
+        var holder = FirstNonEmpty(issued?.CustomName, issued?.HolderName ?? issued?.BuyerName);
+        var matches = await BuildUpcomingAsync(20);
+
+        return View("~/Views/WebTicketEvents.cshtml", new TicketEventsViewModel(
+            Found: true,
+            Token: token,
+            HolderName: holder,
+            TypeLabel: DisplayTitle(data.Type, issued),
+            Matches: matches));
+    }
+
+    [HttpPost("/ticket/{token}/name")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetName(string token, string? customName)
+    {
+        var data = await ResolveAsync(token);
+        if (data is null) return NotFound();
+        var issued = await tickets.FindAsync(data.Uuid);
+        if (issued is not { Status: TicketStatus.Valid }) return NotFound();
+
+        await customNames.SetAsync(data.Type, data.Uuid, customName);
+        return RedirectToAction(nameof(Show), new { token });
+    }
+
+    [HttpGet("/ticket/{token}/manifest.webmanifest")]
+    public async Task<IActionResult> Manifest(string token)
+    {
+        var data = await ResolveAsync(token);
+        if (data is null) return NotFound();
+
+        var manifest = new
+        {
+            name = "Red Ants Ticket",
+            short_name = "Red Ants",
+            description = "Dein Red Ants Online-Ticket.",
+            start_url = $"/ticket/{token}",
+            scope = "/ticket/",
+            display = "standalone",
+            orientation = "portrait",
+            background_color = "#f4f4f5",
+            theme_color = "#C8102E",
+            lang = "de",
+            icons = new object[]
+            {
+                new { src = "/icons/ticket-192.png", sizes = "192x192", type = "image/png", purpose = "any" },
+                new { src = "/icons/ticket-512.png", sizes = "512x512", type = "image/png", purpose = "any" },
+                new { src = "/icons/ticket-192.png", sizes = "192x192", type = "image/png", purpose = "maskable" },
+                new { src = "/icons/ticket-512.png", sizes = "512x512", type = "image/png", purpose = "maskable" }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(manifest);
+        return Content(json, "application/manifest+json");
     }
 
     [HttpGet("/ticket/{token}/qr.png")]
@@ -79,7 +156,7 @@ public sealed class WebTicketController(
                 ScopeName: scopeName,
                 DateText: dateText,
                 CategoryLabel: CategoryLabel(issued),
-                HolderName: issued?.HolderName ?? issued?.BuyerName,
+                HolderName: FirstNonEmpty(issued?.CustomName, issued?.HolderName ?? issued?.BuyerName),
                 TicketRef: TicketRef(data.Uuid),
                 AccentHex: TypeAccentHex(data.Type),
                 QrPng: qr.RenderPng(QrUrl(data.Uuid), 10),
@@ -120,13 +197,81 @@ public sealed class WebTicketController(
 
     private string QrUrl(Guid uuid) => publicUrl.TicketUrl(tokens.CreateShort(uuid));
 
+    private async Task<IReadOnlyList<UpcomingMatch>> BuildUpcomingAsync(int limit)
+    {
+        var today = SwissTime.Today;
+        var upcoming = (await events.GetPublicOpenAsync())
+            .OrderBy(e => e.Date).ThenBy(e => e.StartTime)
+            .Take(limit)
+            .ToList();
+
+        var result = new List<UpcomingMatch>(upcoming.Count);
+        foreach (var ev in upcoming)
+        {
+            var venueName = ev.VenueId > 0 ? (await venues.FindByIdAsync(ev.VenueId))?.Name : null;
+            var url = contentUrls.GetUrl(ev.Id);
+            result.Add(new UpcomingMatch(
+                Title: ev.Name,
+                DateText: EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown),
+                VenueName: venueName,
+                Url: string.IsNullOrEmpty(url) ? null : url,
+                HomeLogo: ev.HomeTeamLogoUrl,
+                AwayLogo: ev.AwayTeamLogoUrl,
+                IsToday: ev.Date == today));
+        }
+        return result;
+    }
+
+    private async Task<IReadOnlyList<RelatedTicket>> BuildRelatedAsync(Guid current)
+    {
+        var emails = await myTickets.FindIdentityEmailsAsync(current);
+        if (emails.Count == 0) return [];
+
+        var summaries = (await myTickets.GetRelatedAsync(emails))
+            .Where(s => s.Uuid != current && s.Status == TicketStatus.Valid)
+            .DistinctBy(s => s.Uuid)
+            .Take(30)
+            .ToList();
+
+        var result = new List<RelatedTicket>(summaries.Count);
+        foreach (var s in summaries)
+        {
+            var (scopeName, dateText) = await ResolveScopeAsync(s.Type, s.ScopeId);
+            if (s.Type != TicketType.EventTicket) dateText = null;
+            var issued = await tickets.FindAsync(s.Uuid);
+            var name = FirstNonEmpty(issued?.CustomName, issued?.HolderName ?? issued?.BuyerName);
+            result.Add(new RelatedTicket(
+                Token: tokens.CreateShort(s.Uuid),
+                Kicker: TicketDisplay.Kicker(s.Type),
+                TypeLabel: TicketDisplay.TypeLabel(s.Type),
+                ScopeName: scopeName,
+                DateText: dateText,
+                DisplayName: name,
+                TypeKey: TypeKey(s.Type, issued?.MemberCategory)));
+        }
+        return result;
+    }
+
+    private async Task<(string ScopeName, string? DateText)> ResolveScopeAsync(TicketType type, int scopeId)
+    {
+        if (type == TicketType.EventTicket)
+        {
+            var ev = await events.FindByIdAsync(scopeId);
+            return ev is null ? ("Anlass", null) : (ev.Name, EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown));
+        }
+        var season = await seasons.FindByIdAsync(scopeId);
+        return season is null
+            ? ("Saison", null)
+            : (season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}");
+    }
+
     private async Task<(string ScopeName, string? DateText, string? VenueName, string? HomeLogo, string? AwayLogo)> ResolveContextAsync(TicketTokenData data)
     {
         if (data.Type == TicketType.EventTicket)
         {
             var ev = await events.FindByIdAsync(data.ScopeId);
             if (ev is null) return ("Anlass", null, null, null, null);
-            var dateText = ev.TimeUnknown ? $"{ev.Date:dd.MM.yyyy}" : $"{ev.Date:dd.MM.yyyy}, {ev.StartTime:HH:mm} Uhr";
+            var dateText = EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown);
             var venueName = ev.VenueId > 0 ? (await venues.FindByIdAsync(ev.VenueId))?.Name : null;
             return (ev.Name, dateText, venueName, ev.HomeTeamLogoUrl, ev.AwayTeamLogoUrl);
         }
@@ -136,6 +281,12 @@ public sealed class WebTicketController(
             ? ("Saison", null, null, null, null)
             : (season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}", null, null, null);
     }
+
+    private static string EventDateText(DateOnly date, TimeOnly start, bool timeUnknown) =>
+        timeUnknown ? $"{date:dd.MM.yyyy}" : $"{date:dd.MM.yyyy}, {start:HH:mm} Uhr";
+
+    private static string? FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
 
     private static string? CategoryLabel(IssuedTicket? issued) =>
         issued is null ? null : (issued.CategoryName ?? issued.Category?.DisplayName() ?? issued.MemberCategory?.DisplayName());
@@ -178,6 +329,24 @@ public sealed class WebTicketController(
     };
 }
 
+public sealed record UpcomingMatch(
+    string Title,
+    string DateText,
+    string? VenueName,
+    string? Url,
+    string? HomeLogo,
+    string? AwayLogo,
+    bool IsToday);
+
+public sealed record RelatedTicket(
+    string Token,
+    string Kicker,
+    string TypeLabel,
+    string ScopeName,
+    string? DateText,
+    string? DisplayName,
+    string TypeKey);
+
 public sealed record WebTicketViewModel(
     bool Found,
     bool Valid,
@@ -194,8 +363,23 @@ public sealed record WebTicketViewModel(
     string TypeKey = "spiel",
     string Token = "",
     string? VenueName = null,
-    int Admissions = 1)
+    int Admissions = 1,
+    string? CustomName = null,
+    string? HolderDefault = null,
+    UpcomingMatch? NextMatch = null,
+    IReadOnlyList<RelatedTicket>? RelatedTickets = null)
 {
     public static WebTicketViewModel Invalid() =>
         new(false, false, "", "Ticket", "", null, null, null, "", "");
+}
+
+public sealed record TicketEventsViewModel(
+    bool Found,
+    string Token,
+    string? HolderName,
+    string TypeLabel,
+    IReadOnlyList<UpcomingMatch> Matches)
+{
+    public static TicketEventsViewModel Invalid() =>
+        new(false, "", null, "Ticket", []);
 }

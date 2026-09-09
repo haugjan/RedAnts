@@ -19,20 +19,23 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
             return new IssuedTicket(TicketType.EventTicket, uuid, eventTicket.EventId,
                 (TicketCategory)eventTicket.Category, (TicketStatus)eventTicket.Status, eventTicket.CreatedAt, null,
                 BuyerName: BuyerLabel(eventTicket.BuyerType, eventTicket.BuyerFirstName, eventTicket.BuyerLastName, eventTicket.BuyerCompany),
-                CategoryName: await CategoryLabel(db, eventTicket.TierId, eventTicket.Category));
+                CategoryName: await CategoryLabel(db, eventTicket.TierId, eventTicket.Category),
+                CustomName: eventTicket.CustomName);
 
         var single = await db.FirstOrDefaultAsync<SeasonSingleTicketRecord>("WHERE Uuid = @0", key);
         if (single is not null)
             return new IssuedTicket(TicketType.SeasonSingle, uuid, single.SeasonId,
                 (TicketCategory)single.Category, (TicketStatus)single.Status, single.CreatedAt, null,
-                CategoryName: await CategoryLabel(db, single.TierId, single.Category));
+                CategoryName: await CategoryLabel(db, single.TierId, single.Category),
+                CustomName: single.CustomName);
 
         var pass = await db.FirstOrDefaultAsync<SeasonPassRecord>("WHERE Uuid = @0", key);
         if (pass is not null)
             return new IssuedTicket(TicketType.SeasonPass, uuid, pass.SeasonId,
                 (TicketCategory)pass.Category, (TicketStatus)pass.Status, pass.CreatedAt, null,
                 BuyerName: BuyerLabel(pass.BuyerType, pass.BuyerFirstName, pass.BuyerLastName, pass.BuyerCompany),
-                CategoryName: await CategoryLabel(db, pass.TierId, pass.Category));
+                CategoryName: await CategoryLabel(db, pass.TierId, pass.Category),
+                CustomName: pass.CustomName);
 
         var card = await db.FirstOrDefaultAsync<MemberCardRecord>("WHERE Uuid = @0", key);
         if (card is not null)
@@ -46,7 +49,8 @@ public sealed class IssuedTicketReader(IScopeProvider scopeProvider) : IIssuedTi
                 string.IsNullOrWhiteSpace(holder) ? null : holder,
                 (MemberCategory)card.Category,
                 Birthday: card.Birthday is { } b ? DateOnly.FromDateTime(b) : null,
-                Admissions: card.Admissions);
+                Admissions: card.Admissions,
+                CustomName: card.CustomName);
         }
 
         return null;

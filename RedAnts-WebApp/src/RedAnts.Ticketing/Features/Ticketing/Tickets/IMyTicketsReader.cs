@@ -11,5 +11,7 @@ public sealed record MyTicketSummary(
 
 public interface IMyTicketsReader
 {
-    Task<IReadOnlyList<MyTicketSummary>> GetByEmailAsync(string email);
+    Task<IReadOnlyList<string>> FindIdentityEmailsAsync(Guid uuid);
+
+    Task<IReadOnlyList<MyTicketSummary>> GetRelatedAsync(IReadOnlyCollection<string> emails);
 }
