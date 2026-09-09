@@ -11,6 +11,7 @@ public static class ShowFeatures
         typeof(SetShowSetting.Handler),
         typeof(DispatchShowCommand.Handler),
         typeof(SearchSpotify.Handler),
+        typeof(ImportSpotifyContext.Handler),
         typeof(UploadShowSound.Handler)
     ];
 

@@ -8,6 +8,7 @@
 @inject IShowSettings Settings
 @inject SetShowSetting.Handler SettingSave
 @inject SearchSpotify.Handler SpotifySearch
+@inject ImportSpotifyContext.Handler SpotifyImport
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
 @implements IDisposable
@@ -242,6 +243,10 @@
                     {
                         var song = CurrentSong(n);
                         <h3 class="se-songh2">Songs (@n.Songs.Count)</h3>
+                        @if (_importNote is { Length: > 0 })
+                        {
+                            <p class="se-ok">@_importNote</p>
+                        }
                         @if (n.Songs.Count > 1)
                         {
                             <div class="se-fieldcol">
@@ -345,6 +350,19 @@
 
                             @if (IsContextRef(song.Ref))
                             {
+                                <div class="se-fieldcol">
+                                    <span class="se-lbl">Alle Songs auf diese Kachel übernehmen</span>
+                                    <div class="se-importrow">
+                                        <button type="button" class="se-btn primary" @onclick="() => ImportContextAsync(n, song)" disabled="@_importing">
+                                            @(_importing ? "Importiert …" : "⬇ Songs einzeln importieren")
+                                        </button>
+                                        <span class="se-muted">Ersetzt diesen Eintrag durch je einen Song pro Titel.</span>
+                                    </div>
+                                    @if (_importError is { Length: > 0 })
+                                    {
+                                        <p class="se-err">@_importError</p>
+                                    }
+                                </div>
                                 <div class="se-fieldcol">
                                     <span class="se-lbl">Playlist-Reihenfolge</span>
                                     <div class="se-src-tabs">
@@ -1006,7 +1024,75 @@
     {
         s.Kind = SoundKind.Spotify;
         s.Ref = ShowSpotifyLink.ToUri(e.Value?.ToString()) ?? (e.Value?.ToString()?.Trim() ?? "");
+        _importNote = ""; _importError = "";
         await RefreshSpotifyInfoAsync(s);
+    }
+
+    private const int MaxContextImport = 200;
+    private bool _importing;
+    private string _importNote = "";
+    private string _importError = "";
+
+    private async Task ImportContextAsync(EditButton n, EditSound song)
+    {
+        if (_importing || !IsContextRef(song.Ref)) return;
+        _importing = true; _importNote = ""; _importError = "";
+        var listName = _ctxInfo?.Name ?? "";
+        try
+        {
+            var tracks = await SpotifyImport.HandleAsync(new ImportSpotifyContext.Query(song.Ref, MaxContextImport));
+            if (tracks.Count == 0)
+            {
+                _importError = "Keine Songs gefunden. Ist die Liste privat oder leer?";
+                return;
+            }
+
+            var at = n.Songs.IndexOf(song);
+            if (at < 0) at = n.Songs.Count - 1;
+            var existing = n.Songs
+                .Where(s => s != song && s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref))
+                .Select(s => s.Ref)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var added = new List<EditSound>();
+            foreach (var t in tracks)
+            {
+                if (!existing.Add(t.Uri)) continue;
+                _songTracks[t.Uri] = t;
+                added.Add(new EditSound { Kind = SoundKind.Spotify, Ref = t.Uri });
+            }
+
+            if (added.Count == 0)
+            {
+                _importError = "Alle Songs dieser Liste sind bereits auf der Kachel.";
+                return;
+            }
+
+            n.Songs.RemoveAt(at);
+            n.Songs.InsertRange(at, added);
+
+            if (string.IsNullOrWhiteSpace(n.Label) || n.Label == "Neu")
+            {
+                if (!string.IsNullOrWhiteSpace(listName)) n.Label = listName;
+                if (string.IsNullOrWhiteSpace(n.Subtitle)) n.Subtitle = $"{added.Count} Songs";
+            }
+
+            _selectedIsNew = false;
+            var skipped = tracks.Count - added.Count;
+            _importNote = $"{added.Count} Songs importiert"
+                + (skipped > 0 ? $", {skipped} bereits vorhanden" : "")
+                + (tracks.Count >= MaxContextImport ? $" (Limit {MaxContextImport})" : "")
+                + ".";
+            SelectSong(added[0]);
+        }
+        catch (Exception ex)
+        {
+            _importError = "Import: " + ex.Message;
+        }
+        finally
+        {
+            _importing = false;
+        }
     }
 
     private (int X, int Y, int W, int H)? _newRect;
@@ -1378,6 +1464,8 @@
     .se-btn.danger { color: #ff8a97; border-color: rgba(255,138,151,0.4); }
     .se-status { color: #62e39b; font-weight: 800; font-size: 0.9rem; }
     .se-err { color: #ff8a97; font-weight: 800; font-size: 0.9rem; }
+    .se-ok { color: #7ddc9a; font-weight: 700; font-size: 0.85rem; margin: 0 0 4px; }
+    .se-importrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; }
     .se-muted { color: var(--ra-muted); }
 
     .se-io { margin: 14px 0; }

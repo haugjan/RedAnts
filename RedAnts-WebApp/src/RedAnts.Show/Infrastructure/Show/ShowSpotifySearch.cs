@@ -127,6 +127,81 @@ public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfigura
         catch { return new SpotifyContext($"spotify:{v.Kind}:{v.Id}", v.Kind, "", "", "", 0); }
     }
 
+    public async Task<IReadOnlyList<SpotifyTrack>> GetContextTracksAsync(string idOrUri, int max = 200)
+    {
+        if (!Configured) return [];
+        if (ShowSpotifyLink.Parse(idOrUri) is not { } v || v.Kind == "track") return [];
+        max = Math.Clamp(max, 1, 500);
+
+        return v.Kind switch
+        {
+            "playlist" => await PlaylistTracksAsync(v.Id, max),
+            "album" => await AlbumTracksAsync(v.Id, max),
+            "artist" => await ArtistTopTracksAsync(v.Id, max),
+            _ => [],
+        };
+    }
+
+    private async Task<IReadOnlyList<SpotifyTrack>> PlaylistTracksAsync(string id, int max)
+    {
+        var tracks = new List<SpotifyTrack>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        const string fields = "items(is_local,track(uri,name,type,is_playable,duration_ms,preview_url,artists(name),album(name,images))),next";
+        var url = $"https://api.spotify.com/v1/playlists/{id}/tracks?market=CH&limit=100&fields={Uri.EscapeDataString(fields)}";
+
+        while (url.Length > 0 && tracks.Count < max)
+        {
+            var json = await GetAsync(url);
+            foreach (var item in json.GetProperty("items").EnumerateArray())
+            {
+                if (item.TryGetProperty("is_local", out var loc) && loc.ValueKind == JsonValueKind.True) continue;
+                if (!item.TryGetProperty("track", out var t) || t.ValueKind != JsonValueKind.Object) continue;
+                if (t.TryGetProperty("type", out var ty) && ty.GetString() != "track") continue;
+                if (MapTrack(t) is not { } track || !track.Uri.StartsWith("spotify:track:", StringComparison.Ordinal)) continue;
+                if (!seen.Add(track.Uri)) continue;
+                tracks.Add(track);
+                if (tracks.Count >= max) break;
+            }
+            url = json.TryGetProperty("next", out var nx) && nx.ValueKind == JsonValueKind.String ? nx.GetString() ?? "" : "";
+        }
+        return tracks;
+    }
+
+    private async Task<IReadOnlyList<SpotifyTrack>> AlbumTracksAsync(string id, int max)
+    {
+        var album = await GetAsync($"https://api.spotify.com/v1/albums/{id}?market=CH");
+        var albumName = album.TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
+        var cover = FirstImage(album);
+
+        var tracks = new List<SpotifyTrack>();
+        var url = $"https://api.spotify.com/v1/albums/{id}/tracks?market=CH&limit=50";
+        while (url.Length > 0 && tracks.Count < max)
+        {
+            var json = await GetAsync(url);
+            foreach (var t in json.GetProperty("items").EnumerateArray())
+            {
+                if (MapTrack(t) is not { } track || !track.Uri.StartsWith("spotify:track:", StringComparison.Ordinal)) continue;
+                tracks.Add(track with { Album = albumName, CoverUrl = cover });
+                if (tracks.Count >= max) break;
+            }
+            url = json.TryGetProperty("next", out var nx) && nx.ValueKind == JsonValueKind.String ? nx.GetString() ?? "" : "";
+        }
+        return tracks;
+    }
+
+    private async Task<IReadOnlyList<SpotifyTrack>> ArtistTopTracksAsync(string id, int max)
+    {
+        var json = await GetAsync($"https://api.spotify.com/v1/artists/{id}/top-tracks?market=CH");
+        var tracks = new List<SpotifyTrack>();
+        foreach (var t in json.GetProperty("tracks").EnumerateArray())
+        {
+            if (MapTrack(t) is not { } track) continue;
+            tracks.Add(track);
+            if (tracks.Count >= max) break;
+        }
+        return tracks;
+    }
+
     private static SpotifyTrack? MapTrack(JsonElement t)
     {
         var uri = t.TryGetProperty("uri", out var u) ? u.GetString() ?? "" : "";
