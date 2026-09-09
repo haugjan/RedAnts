@@ -542,23 +542,8 @@
 
 @if (_showPrint)
 {
-    <TicketPrintDialog Type="TicketType.MemberCard"
-                       Title="Mitgliederkarten als PDF drucken"
-                       Subtitle="@_printSubtitle"
-                       Layout="_printLayout"
-                       OnClose="ClosePrint">
-        <HiddenInputs>
-            @if (_printUuid is { } u)
-            {
-                <input type="hidden" name="uuid" value="@u" />
-            }
-            else
-            {
-                <input type="hidden" name="seasonId" value="@SelectedSeasonId" />
-                <input type="hidden" name="reference" value="@_bundleFilter" />
-            }
-        </HiddenInputs>
-    </TicketPrintDialog>
+    <PrintMemberCardsDialog Uuid="_printUuid" SeasonId="SelectedSeasonId" Bundle="@_bundleFilter"
+                            BundleCount="BundleCount" OnClosed="ClosePrint" />
 }
 
 @code {
@@ -575,28 +560,22 @@
     [Inject] private SendMemberCardMail.Handler CardMail { get; set; } = default!;
     [Inject] private GetMemberCardMailTemplate.Handler MailTemplate { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
-    [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
 
     private bool _showPrint;
-    private TicketPrintLayout _printLayout = TicketPrintLayout.Default;
     private Guid? _printUuid;
-    private string _printSubtitle = "";
 
-    private async Task OpenBundlePrint()
+    private int BundleCount => _cards.Count(c => string.Equals(c.Reference, _bundleFilter, StringComparison.Ordinal));
+
+    private void OpenBundlePrint()
     {
         if (string.IsNullOrEmpty(_bundleFilter)) return;
         _printUuid = null;
-        var count = _cards.Count(c => string.Equals(c.Reference, _bundleFilter, StringComparison.Ordinal));
-        _printSubtitle = $"{_bundleFilter} · {count} Karten · eine Seite pro Karte";
-        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.MemberCard));
         _showPrint = true;
     }
 
-    private async Task OpenSinglePrint(Guid uuid)
+    private void OpenSinglePrint(Guid uuid)
     {
         _printUuid = uuid;
-        _printSubtitle = $"Karten-Nr. {AdminFormat.TicketNo(uuid)}";
-        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.MemberCard));
         _showPrint = true;
     }
 
