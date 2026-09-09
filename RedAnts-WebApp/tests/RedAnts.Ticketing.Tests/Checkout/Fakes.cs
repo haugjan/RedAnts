@@ -239,23 +239,28 @@ internal sealed class StubOrderTokens : IOrderTokens
         token is { Length: > 3 } && token.StartsWith("tok") && int.TryParse(token[3..], out var id) ? id : null;
 }
 
-internal sealed class InMemoryEventTickets : IEventTickets
+internal sealed class InMemoryEventTicketRepository : IEventTicketRepository
 {
     public List<EventTicket> Stored { get; } = [];
+    public List<(Guid Uuid, CardHolder Holder)> Holders { get; } = [];
 
-    public Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId) =>
-        Task.FromResult<IReadOnlyList<EventTicket>>(Stored.Where(t => t.EventId == eventId).ToList());
+    public Task<EventTicket?> GetByUuidAsync(Guid uuid) => Task.FromResult(Stored.FirstOrDefault(t => t.Uuid == uuid));
 
     public Task<IReadOnlyList<EventTicket>> GetByOrderAsync(int orderId) =>
         Task.FromResult<IReadOnlyList<EventTicket>>(Stored.Where(t => t.OrderId == orderId).ToList());
 
     public Task<EventTicket> SaveAsync(EventTicket ticket)
     {
+        Stored.RemoveAll(t => t.Uuid == ticket.Uuid);
         Stored.Add(ticket);
         return Task.FromResult(ticket);
     }
 
-    public Task SetHolderAsync(Guid uuid, CardHolder holder) => Task.CompletedTask;
+    public Task SetHolderAsync(Guid uuid, CardHolder holder)
+    {
+        Holders.Add((uuid, holder));
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class InMemorySeasonPasses : ISeasonPasses

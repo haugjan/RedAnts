@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Tickets;
 using RedAnts.Ticketing.Features.Tickets.Admin;
 using Umbraco.Cms.Core;
@@ -8,10 +7,7 @@ using Umbraco.Cms.Core;
 namespace RedAnts.Ticketing.Features.EventBundles.Admin;
 
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
-public sealed class EventBundleExportController(
-    IEventBundleTickets bundleTickets,
-    ITicketTokens tokens,
-    IPublicBaseUrl publicUrl) : Controller
+public sealed class EventBundleExportController(GetTicketsForExport.Handler export) : Controller
 {
     [HttpGet("/admin/event-tickets/tickets.csv")]
     public async Task<IActionResult> Export([FromQuery] string? ids)
@@ -23,10 +19,7 @@ public sealed class EventBundleExportController(
             .Distinct()
             .ToList();
 
-        var tickets = await bundleTickets.GetByBundlesAsync(bundleIds);
-        var rows = tickets.Select(t => new TicketExportRow(
-            t.Uuid.ToString("N")[..8].ToUpperInvariant(), t.Reference, t.Category.DisplayName(),
-            t.Holder ?? CardHolder.Empty, null, publicUrl.TicketUrl(tokens.CreateShort(t.Uuid))));
+        var rows = await export.HandleAsync(new GetTicketsForExport.Query(bundleIds));
 
         var name = bundleIds.Count == 1 ? $"spieltickets-bundle-{bundleIds[0]}.csv" : "spieltickets-bundles.csv";
         return File(TicketExportCsv.Build(rows), "text/csv; charset=utf-8", name);

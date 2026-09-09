@@ -22,7 +22,7 @@ internal sealed class CheckoutFixture
     public StubPayrexx Payrexx { get; } = new();
     public InMemoryEventPrices EventPrices { get; } = new();
     public InMemorySeasonPrices SeasonPrices { get; } = new();
-    public InMemoryEventTickets Tickets { get; } = new();
+    public InMemoryEventTicketRepository Tickets { get; } = new();
     public InMemorySeasonPasses Passes { get; } = new();
     public StubConvertibleCards ConvertibleCards { get; } = new();
     public RecordingOrderAddOns OrderAddOns { get; } = new();

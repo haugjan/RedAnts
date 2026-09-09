@@ -4,14 +4,13 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Tickets.Infrastructure;
 
-public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEventTickets
+public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEventTicketRepository
 {
-    public async Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId)
+    public async Task<EventTicket?> GetByUuidAsync(Guid uuid)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<EventTicketRecord>(
-            "WHERE EventId = @0 ORDER BY CreatedAt", eventId);
-        return rows.Select(Map).ToList();
+        var row = await scope.Database.FirstOrDefaultAsync<EventTicketRecord>("WHERE Uuid = @0", uuid.ToString());
+        return row is null ? null : Map(row);
     }
 
     public async Task<IReadOnlyList<EventTicket>> GetByOrderAsync(int orderId)

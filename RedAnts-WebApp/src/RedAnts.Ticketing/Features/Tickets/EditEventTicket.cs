@@ -6,12 +6,12 @@ public static class EditEventTicket
 {
     public sealed record Command(Guid Uuid, int EventId, TicketCategory Category, decimal Price, TicketStatus Status, bool Redeemed, Buyer? Buyer);
 
-    public sealed class Handler(IEventTickets tickets)
+    public sealed class Handler(IEventTicketRepository tickets)
     {
         public async Task HandleAsync(Command command)
         {
             if (command.Price < 0) throw new DomainException("Der Abgabepreis darf nicht leer oder negativ sein.");
-            var ticket = (await tickets.GetByEventAsync(command.EventId)).FirstOrDefault(t => t.Uuid == command.Uuid)
+            var ticket = await tickets.GetByUuidAsync(command.Uuid)
                 ?? throw new DomainException("Ticket wurde nicht gefunden.");
             var redeemed = command.Status == TicketStatus.Valid && command.Redeemed;
             await tickets.SaveAsync(EventTicket.FromPersistence(ticket.Id, ticket.Uuid, ticket.EventId, command.Category,

@@ -12,7 +12,7 @@ namespace RedAnts.Ticketing.Features.Checkout;
 public sealed class OrderFulfillment(
     IOrderRepository orders,
     IOrderLog orderLog,
-    IEventTickets tickets,
+    IEventTicketRepository tickets,
     ISeasonPasses passes,
     IConvertibleCards convertibleCards,
     IOrderAddOns orderAddOns,
