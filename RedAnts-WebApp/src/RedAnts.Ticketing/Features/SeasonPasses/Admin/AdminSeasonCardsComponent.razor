@@ -2,14 +2,12 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using RedAnts.Ticketing.Domain.Sales
 @inject GetSeasonPasses.Handler PassList
-@inject GetSeasonPassMailTemplate.Handler MailTemplate
 @inject GetPriceTiers.Handler PriceTiers
 @inject CreateAdminOrder.Handler OrderCreation
 @inject CreateSeasonPass.Handler PassCreation
 @inject EditSeasonPass.Handler PassEdit
 @inject SetSeasonPassHolder.Handler PassHolder
 @inject ImportSeasonPasses.Handler PassImport
-@inject SendSeasonPassMail.Handler PassMail
 
 <section class="ta-page">
     <h1 class="ta-page-title">Saisonkarten</h1>
@@ -391,71 +389,7 @@
 
 @if (_showBulk)
 {
-    <div class="ta-overlay" @onmousedown="CloseBulk">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Karten versenden</h2>
-
-            @if (_bulkResult is not null)
-            {
-                <div class="ta-flash">@_bulkResult.Enqueued Karte@(_bulkResult.Enqueued == 1 ? "" : "n") eingereiht@(_bulkResult.Failed > 0 ? $", {_bulkResult.Failed} fehlgeschlagen" : "").</div>
-                @if (_bulkResult.NoEmail.Count > 0)
-                {
-                    <p class="ta-hint">@_bulkResult.NoEmail.Count Karte@(_bulkResult.NoEmail.Count == 1 ? "" : "n") ohne E-Mail übersprungen:</p>
-                    <ul class="ta-warnings">
-                        @foreach (var p in _bulkResult.NoEmail)
-                        {
-                            <li>@(p.BuyerName ?? "(ohne Name)") · @AdminFormat.TicketNo(p.Uuid)</li>
-                        }
-                    </ul>
-                }
-                <div class="ta-modal-actions">
-                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
-                </div>
-            }
-            else if (_bundles.Count == 0)
-            {
-                <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
-                <div class="ta-modal-actions">
-                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk">Schliessen</button>
-                </div>
-            }
-            else
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="bulkBundle">Bundle</label>
-                    <select id="bulkBundle" class="ta-select" @bind="_bulkBundle" @bind:after="LoadBulkCardsAsync">
-                        @foreach (var b in _bundles)
-                        {
-                            <option value="@b">@b</option>
-                        }
-                    </select>
-                </div>
-                <p class="ta-hint">@BundleWithEmail Karte@(BundleWithEmail == 1 ? "" : "n") mit E-Mail werden versendet · @BundleWithoutEmail ohne E-Mail werden übersprungen.</p>
-
-                <div class="ta-field">
-                    <label class="ta-label" for="bulkSubject">Betreff</label>
-                    <input id="bulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
-                </div>
-                <div class="ta-field">
-                    <label class="ta-label" for="bulkBody">Text</label>
-                    <textarea id="bulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
-                    <p class="ta-hint">Platzhalter: {Name}, {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt. QR-Code, Online-Karte und PDF-Link werden je Karte angehängt.</p>
-                </div>
-
-                @if (!string.IsNullOrEmpty(_bulkError))
-                {
-                    <div class="ta-modal-error">@_bulkError</div>
-                }
-
-                <div class="ta-modal-actions">
-                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk" disabled="@_bulkSending">Abbrechen</button>
-                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendBulk" disabled="@(_bulkSending || BundleWithEmail == 0)">
-                        @(_bulkSending ? "Sendet …" : $"{BundleWithEmail} Karten senden")
-                    </button>
-                </div>
-            }
-        </div>
-    </div>
+    <SendSeasonPassBundleMailDialog SeasonId="SelectedSeasonId" Bundles="_bundles" OnClosed="CloseBulk" />
 }
 
 @if (_mailFor is not null)
@@ -820,71 +754,9 @@
 
     private void CloseMail() => _mailFor = null;
 
-    private Task<EmailSendResult> SendToAsync(SeasonPassRow item, string subject, string body) =>
-        PassMail.HandleAsync(new SendSeasonPassMail.Command(item.Uuid, item.CategoryName, item.Email, subject, body));
-
     private bool _showBulk;
-    private string _bulkBundle = "";
-    private string _bulkSubject = "";
-    private string _bulkBody = "";
-    private bool _bulkSending;
-    private string? _bulkError;
-    private BulkResult? _bulkResult;
 
-    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<SeasonPassRow> NoEmail);
+    private void OpenBulk() => _showBulk = true;
 
-    private IReadOnlyList<SeasonPassRow> _bulkCards = [];
-
-    private int BundleWithEmail => _bulkCards.Count(p => p.HasEmail);
-    private int BundleWithoutEmail => _bulkCards.Count(p => !p.HasEmail);
-
-    private async Task OpenBulk()
-    {
-        _bulkBundle = _bundles.FirstOrDefault() ?? "";
-        var template = await MailTemplate.HandleAsync(new GetSeasonPassMailTemplate.Query());
-        _bulkSubject = template.Subject;
-        _bulkBody = template.Body;
-        _bulkResult = null;
-        _bulkError = null;
-        await LoadBulkCardsAsync();
-        _showBulk = true;
-    }
-
-    private async Task LoadBulkCardsAsync()
-    {
-        var result = string.IsNullOrWhiteSpace(_bulkBundle)
-            ? null
-            : await PassList.HandleAsync(new GetSeasonPasses.Query(SelectedSeasonId, _bulkBundle));
-        _bulkCards = result?.Passes.Where(p => p.Status != TicketStatus.Cancelled).ToList() ?? [];
-    }
-
-    private void CloseBulk() { if (!_bulkSending) { _showBulk = false; _bulkError = null; _bulkResult = null; } }
-
-    private async Task SendBulk()
-    {
-        if (_bulkSending || string.IsNullOrWhiteSpace(_bulkBundle)) return;
-        _bulkSending = true;
-        _bulkError = null;
-        _bulkResult = null;
-        try
-        {
-            var targets = _bulkCards;
-            var noEmail = targets.Where(p => !p.HasEmail).ToList();
-            var enqueued = 0;
-            var failed = 0;
-            foreach (var p in targets.Where(p => p.HasEmail))
-            {
-                try
-                {
-                    var result = await SendToAsync(p, _bulkSubject, _bulkBody);
-                    if (result.Success) enqueued++;
-                    else failed++;
-                }
-                catch { failed++; }
-            }
-            _bulkResult = new BulkResult(enqueued, failed, noEmail);
-        }
-        catch (Exception ex) { _bulkError = ex.Message; }
-        finally { _bulkSending = false; }
-    }
+    private void CloseBulk() => _showBulk = false;
 }
