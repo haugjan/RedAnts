@@ -1,0 +1,95 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Ticket bearbeiten</h2>
+        <p class="ta-modal-sub">Ticket-Nr. @AdminFormat.TicketNo(Ticket.Uuid)</p>
+
+        <div class="ta-field">
+            <label class="ta-label" for="editCategory">Kategorie</label>
+            <select id="editCategory" class="ta-select" @bind="_category">
+                @foreach (var cat in Enum.GetValues<TicketCategory>())
+                {
+                    <option value="@cat">@cat.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="editPrice">Preis (CHF)</label>
+            <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_price" @bind:after="() => _price = decimal.Round(_price, 2)" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="editStatus">Status</label>
+            <select id="editStatus" class="ta-select" @bind="_status">
+                <option value="@TicketStatus.Valid">Gültig</option>
+                <option value="@TicketStatus.Cancelled">Storniert</option>
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="editRedeemed">Eingelöst</label>
+            <select id="editRedeemed" class="ta-select" @bind="_redeemed" disabled="@(_status == TicketStatus.Cancelled)">
+                <option value="false">Offen</option>
+                <option value="true">Eingelöst</option>
+            </select>
+            <p class="ta-field-hint">Ein storniertes Ticket kann nicht eingelöst sein.</p>
+        </div>
+
+        <PersonFields Model="_person" Prefix="editEt" EmailHint=" (für den Ticketversand)" />
+
+        @if (_error is not null)
+        {
+            <p class="ta-modal-error">@_error</p>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                @(_saving ? "Speichert …" : "Speichern")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EventTicketRow Ticket { get; set; } = default!;
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private EditEventTicket.Handler TicketEdits { get; set; } = default!;
+    [Inject] private SetEventTicketHolder.Handler HolderChanges { get; set; } = default!;
+
+    private TicketCategory _category;
+    private decimal _price;
+    private TicketStatus _status;
+    private bool _redeemed;
+    private PersonForm _person = new();
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _category = Ticket.Category;
+        _price = decimal.Round(Ticket.Price, 2);
+        _status = Ticket.Status;
+        _redeemed = Ticket.Redeemed;
+        _person = PersonForm.From(Ticket.Holder);
+    }
+
+    private Task CloseAsync() => OnClosed.InvokeAsync();
+
+    private async Task SaveAsync()
+    {
+        if (_price < 0) { _error = "Der Preis darf nicht negativ sein."; return; }
+        _saving = true;
+        _error = null;
+        try
+        {
+            await TicketEdits.HandleAsync(new EditEventTicket.Command(Ticket.Uuid, Ticket.EventId, _category,
+                decimal.Round(_price, 2), _status, _redeemed, null));
+            await HolderChanges.HandleAsync(new SetEventTicketHolder.Command(Ticket.Uuid, _person.ToHolder()));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+}
