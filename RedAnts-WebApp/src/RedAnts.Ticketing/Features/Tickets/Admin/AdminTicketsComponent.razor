@@ -270,27 +270,10 @@
 
 @if (_showPrint)
 {
-    <TicketPrintDialog Type="TicketType.EventTicket"
-                       Title="Spieltickets als PDF drucken"
-                       Subtitle="@_printSubtitle"
-                       Layout="_printLayout"
-                       OnClose="ClosePrint">
-        <HiddenInputs>
-            @if (_printUuid is { } u)
-            {
-                <input type="hidden" name="uuid" value="@u" />
-            }
-            else if (_printBundleId is { } b)
-            {
-                <input type="hidden" name="bundleId" value="@b" />
-            }
-        </HiddenInputs>
-    </TicketPrintDialog>
-}
-
-@if (_mailFor is not null)
-{
-    <SendEventTicketMailDialog Ticket="_mailFor" OnClosed="() => _mailFor = null" />
+    <PrintEventTicketsDialog Uuid="_printUuid"
+                             BundleId="_printBundleId"
+                             Subtitle="@_printSubtitle"
+                             OnClosed="() => _showPrint = false" />
 }
 
 @if (_showBulk)
@@ -307,7 +290,6 @@
     [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
     [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
     [Inject] private GetEventTicketsForAdmin.Handler TicketList { get; set; } = default!;
-    [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
     [Inject] private EditEventTicket.Handler TicketEdits { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -319,32 +301,27 @@
     private bool _showBulk;
 
     private bool _showPrint;
-    private TicketPrintLayout _printLayout = TicketPrintLayout.Default;
     private int? _printBundleId;
     private Guid? _printUuid;
     private string _printSubtitle = "";
 
-    private async Task OpenBundlePrint()
+    private void OpenBundlePrint()
     {
         if (_bundleFilter <= 0) return;
         var bundle = _result.Bundles.FirstOrDefault(b => b.Id == _bundleFilter);
         _printBundleId = _bundleFilter;
         _printUuid = null;
         _printSubtitle = bundle is null ? "" : $"{bundle.Reference} · {bundle.TicketCount} Tickets · eine Seite pro Ticket";
-        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.EventTicket));
         _showPrint = true;
     }
 
-    private async Task OpenSinglePrint(Guid uuid)
+    private void OpenSinglePrint(Guid uuid)
     {
         _printUuid = uuid;
         _printBundleId = null;
         _printSubtitle = $"Ticket-Nr. {AdminFormat.TicketNo(uuid)}";
-        _printLayout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.EventTicket));
         _showPrint = true;
     }
-
-    private void ClosePrint() => _showPrint = false;
 
     private EventTicketRow? _deleteTarget;
 

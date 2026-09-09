@@ -1,0 +1,39 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+@if (_ready)
+{
+    <TicketPrintDialog Type="TicketType.EventTicket"
+                       Title="Spieltickets als PDF drucken"
+                       Subtitle="@Subtitle"
+                       Layout="_layout"
+                       OnClose="OnClosed">
+        <HiddenInputs>
+            @if (Uuid is { } u)
+            {
+                <input type="hidden" name="uuid" value="@u" />
+            }
+            else if (BundleId is { } b)
+            {
+                <input type="hidden" name="bundleId" value="@b" />
+            }
+        </HiddenInputs>
+    </TicketPrintDialog>
+}
+
+@code {
+    [Parameter] public Guid? Uuid { get; set; }
+    [Parameter] public int? BundleId { get; set; }
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
+
+    private bool _ready;
+    private TicketPrintLayout _layout = TicketPrintLayout.Default;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _layout = await PrintSettings.HandleAsync(new GetTicketPrintSettings.Query(TicketType.EventTicket));
+        _ready = true;
+    }
+}
