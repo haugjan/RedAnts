@@ -357,39 +357,7 @@
 
 @if (_editing is not null)
 {
-    <div class="ta-overlay" @onmousedown="CancelEdit">
-        <div class="ta-modal ta-modal--members" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Mitglied bearbeiten</h2>
-            <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
-
-            <div class="ta-field">
-                <label class="ta-label">Geburtsdatum (optional)</label>
-                <DateBox @bind-Value="_editBirthday" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editAdmissions">Anzahl Einlässe pro Event</label>
-                <input id="editAdmissions" class="ta-input" type="number" min="1" step="1" @bind="_editAdmissions" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="editReference">Bundle</label>
-                <input id="editReference" class="ta-input" type="text" maxlength="100" @bind="_editReference" />
-            </div>
-
-            <PersonFields Model="_editPerson" Prefix="editMc" EmailHint=" (optional, für den Kartenversand)" />
-
-            @if (!string.IsNullOrEmpty(_editError))
-            {
-                <div class="ta-modal-error">@_editError</div>
-            }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_savingEdit">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEditAsync" disabled="@_savingEdit">
-                    @(_savingEdit ? "Speichert …" : "Speichern")
-                </button>
-            </div>
-        </div>
-    </div>
+    <EditMemberCardDialog Card="_editing" OnSaved="CardSavedAsync" OnClosed="CancelEdit" />
 }
 
 @if (_showBulk)
@@ -426,7 +394,6 @@
     [Inject] private GetMemberCards.Handler CardList { get; set; } = default!;
     [Inject] private CreateMemberCard.Handler CardCreation { get; set; } = default!;
     [Inject] private ImportMemberCards.Handler CardImport { get; set; } = default!;
-    [Inject] private EditMemberCard.Handler CardEdit { get; set; } = default!;
     [Inject] private SetMemberCardStatus.Handler CardStatus { get; set; } = default!;
     [Inject] private SetMemberCardCategory.Handler CardCategory { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -699,43 +666,15 @@
     }
 
     private MemberCardRow? _editing;
-    private DateOnly? _editBirthday;
-    private int _editAdmissions = 1;
-    private string _editReference = "";
-    private PersonForm _editPerson = new();
-    private bool _savingEdit;
-    private string? _editError;
 
-    private void OpenEdit(MemberCardRow c)
+    private void OpenEdit(MemberCardRow c) => _editing = c;
+
+    private void CancelEdit() => _editing = null;
+
+    private async Task CardSavedAsync()
     {
-        _editing = c;
-        _editBirthday = c.Birthday;
-        _editAdmissions = c.Admissions;
-        _editReference = c.Reference ?? "";
-        _editPerson = PersonForm.From(c.Holder);
-        _editError = null;
-    }
-
-    private void CancelEdit() { if (!_savingEdit) { _editing = null; _editError = null; } }
-
-    private async Task SaveEditAsync()
-    {
-        if (_editing is null) return;
-        if (_editAdmissions < 1) { _editError = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
-        var contactError = ValidateContact(_editPerson.Email, _editBirthday);
-        if (contactError is not null) { _editError = contactError; return; }
-        _savingEdit = true;
-        _editError = null;
-        try
-        {
-            await CardEdit.HandleAsync(new EditMemberCard.Command(_editing.Uuid, _editPerson.FirstName, _editPerson.LastName, _editBirthday,
-                _editing.Category, _editing.Status, _editReference, _editPerson.Email, _editPerson.ToMemberAddress(),
-                _editAdmissions));
-            _editing = null;
-            await ReloadCardsAsync();
-        }
-        catch (Exception ex) { _editError = ex.Message; }
-        finally { _savingEdit = false; }
+        _editing = null;
+        await ReloadCardsAsync();
     }
 
     private MemberCardRow? _visitsCard;

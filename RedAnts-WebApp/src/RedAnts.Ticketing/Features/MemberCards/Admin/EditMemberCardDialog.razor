@@ -1,0 +1,76 @@
+@inject EditMemberCard.Handler CardEdit
+
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal ta-modal--members" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Mitglied bearbeiten</h2>
+        <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(Card.Uuid)</p>
+
+        <div class="ta-field">
+            <label class="ta-label">Geburtsdatum (optional)</label>
+            <DateBox @bind-Value="_birthday" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="editAdmissions">Anzahl Einlässe pro Event</label>
+            <input id="editAdmissions" class="ta-input" type="number" min="1" step="1" @bind="_admissions" />
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="editReference">Bundle</label>
+            <input id="editReference" class="ta-input" type="text" maxlength="100" @bind="_reference" />
+        </div>
+
+        <PersonFields Model="_person" Prefix="editMc" EmailHint=" (optional, für den Kartenversand)" />
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="ta-modal-error">@_error</div>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                @(_saving ? "Speichert …" : "Speichern")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public MemberCardRow Card { get; set; } = default!;
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private DateOnly? _birthday;
+    private int _admissions = 1;
+    private string _reference = "";
+    private PersonForm _person = new();
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _birthday = Card.Birthday;
+        _admissions = Card.Admissions;
+        _reference = Card.Reference ?? "";
+        _person = PersonForm.From(Card.Holder);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_admissions < 1) { _error = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
+        var contactError = MemberContactRules.FirstError(_person.Email, _birthday);
+        if (contactError is not null) { _error = contactError; return; }
+        _saving = true;
+        _error = null;
+        try
+        {
+            await CardEdit.HandleAsync(new EditMemberCard.Command(Card.Uuid, _person.FirstName, _person.LastName, _birthday,
+                Card.Category, Card.Status, _reference, _person.Email, _person.ToMemberAddress(),
+                _admissions));
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private Task Close() => _saving ? Task.CompletedTask : OnClosed.InvokeAsync();
+}
