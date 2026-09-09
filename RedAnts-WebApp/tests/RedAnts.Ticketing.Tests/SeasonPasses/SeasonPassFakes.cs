@@ -5,7 +5,7 @@ using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Tests.SeasonPasses;
 
-internal sealed class InMemorySeasonPasses : ISeasonPasses
+internal sealed class InMemorySeasonPasses : ISeasonPassRepository
 {
     public List<SeasonPass> Stored { get; } = [];
     public List<SeasonPass> Saved { get; } = [];
@@ -34,6 +34,18 @@ internal sealed class InMemorySeasonPasses : ISeasonPasses
     {
         Imports.Add((seasonId, rows.Count, defaultBundle, defaultTierId));
         return Task.FromResult((rows.Count, 0));
+    }
+}
+
+internal sealed class FakeSeasonPassListReader : ISeasonPassListReader
+{
+    public List<SeasonPassRow> Rows { get; } = [];
+    public List<int> Requested { get; } = [];
+
+    public Task<IReadOnlyList<SeasonPassRow>> GetBySeasonAsync(int seasonId)
+    {
+        Requested.Add(seasonId);
+        return Task.FromResult<IReadOnlyList<SeasonPassRow>>(Rows);
     }
 }
 

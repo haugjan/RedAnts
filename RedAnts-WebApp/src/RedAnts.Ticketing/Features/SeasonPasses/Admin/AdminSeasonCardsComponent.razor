@@ -1,19 +1,16 @@
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
 @using RedAnts.Ticketing.Domain.Sales
-@inject ISeasonPassAdminReport Report
-@inject ISeasonPasses Passes
+@inject GetSeasonPasses.Handler PassList
+@inject GetSeasonPassMailTemplate.Handler MailTemplate
 @inject IPriceTiers PriceTiers
 @inject CreateAdminOrder.Handler OrderCreation
-@inject ISeasonPassMailer Mailer
 @inject CreateSeasonPass.Handler PassCreation
 @inject EditSeasonPass.Handler PassEdit
 @inject SetSeasonPassHolder.Handler PassHolder
 @inject DeleteSeasonPass.Handler PassDeletion
 @inject ImportSeasonPasses.Handler PassImport
 @inject SendSeasonPassMail.Handler PassMail
-@inject IPublicBaseUrl PublicUrl
-@inject ITicketTokens Tokens
 
 <section class="ta-page">
     <h1 class="ta-page-title">Saisonkarten</h1>
@@ -41,9 +38,9 @@
                 </div>
                 <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="spBundleFilter">Bundle</label>
-                    <select id="spBundleFilter" class="ta-select" @bind="_bundleFilter">
+                    <select id="spBundleFilter" class="ta-select" @bind="_bundleFilter" @bind:after="ReloadPassesAsync">
                         <option value="">Alle anzeigen</option>
-                        @foreach (var b in Bundles())
+                        @foreach (var b in _bundles)
                         {
                             <option value="@b">@b</option>
                         }
@@ -53,17 +50,17 @@
                     <label class="ta-label" for="spSearch">Suche</label>
                     <input id="spSearch" type="search" class="ta-input"
                            placeholder="Name, E-Mail, Bundle …"
-                           @bind="_search" @bind:event="oninput" />
+                           @bind="_search" @bind:event="oninput" @bind:after="ReloadPassesAsync" />
                 </div>
             </div>
             <div class="ta-toolbar-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenExport">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_total == 0)" @onclick="OpenExport">
                     Export CSV
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenImport">
                     Import CSV
                 </button>
-                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenBulk"
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_total == 0)" @onclick="OpenBulk"
                         title="Alle Karten eines Bundles per E-Mail versenden">Karten versenden</button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(string.IsNullOrEmpty(_bundleFilter))"
                         title="@(string.IsNullOrEmpty(_bundleFilter) ? "Zum Drucken zuerst ein Bundle wählen" : "Alle Karten dieses Bundles als PDF drucken")"
@@ -74,7 +71,7 @@
             </div>
         </div>
 
-        @if (_passes.Count == 0)
+        @if (_total == 0)
         {
             <div class="ta-placeholder">Für diese Saison sind keine Saisonkarten ausgestellt.</div>
         }
@@ -103,7 +100,7 @@
                             <tr>
                                 <td>
                                     <span class="ta-ticketno">@AdminFormat.TicketNo(p.Uuid)</span>
-                                    <a class="ta-qr-link" href="@PublicUrl.TicketUrl(Tokens.CreateShort(p.Uuid))" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                    <a class="ta-qr-link" href="@p.TicketUrl" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
                                     </a>
                                 </td>
@@ -219,7 +216,7 @@
                 <label class="ta-label" for="newSpReference">Bundle (optional)</label>
                 <input id="newSpReference" class="ta-input" type="text" maxlength="100" list="spBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_newReference" />
                 <datalist id="spBundleOptions">
-                    @foreach (var b in Bundles()) { <option value="@b" /> }
+                    @foreach (var b in _bundles) { <option value="@b" /> }
                 </datalist>
             </div>
 
@@ -305,7 +302,7 @@
                 <label class="ta-label" for="impSpReference">Bundle</label>
                 <input id="impSpReference" class="ta-input" type="text" maxlength="100" list="spImportBundleOptions" placeholder="z. B. Sponsoren 2026" @bind="_importReference" />
                 <datalist id="spImportBundleOptions">
-                    @foreach (var b in Bundles()) { <option value="@b" /> }
+                    @foreach (var b in _bundles) { <option value="@b" /> }
                 </datalist>
                 <p class="ta-hint">Gilt für Zeilen ohne eigene Bundle-Spalte; eine Bundle-Spalte in der Datei hat Vorrang.</p>
             </div>
@@ -400,14 +397,14 @@
 
             <div class="ta-field">
                 <label class="ta-label">Bundle</label>
-                @if (!Bundles().Any())
+                @if (_bundles.Count == 0)
                 {
                     <p class="ta-muted-text">Keine Bundles vorhanden – es werden alle Saisonkarten exportiert.</p>
                 }
                 else
                 {
                     <div class="ta-export-list">
-                        @foreach (var b in Bundles())
+                        @foreach (var b in _bundles)
                         {
                             <label class="ta-export-item">
                                 <input type="checkbox" checked="@_exportSel.Contains(b)"
@@ -449,7 +446,7 @@
                     <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
                 </div>
             }
-            else if (!Bundles().Any())
+            else if (_bundles.Count == 0)
             {
                 <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
                 <div class="ta-modal-actions">
@@ -460,8 +457,8 @@
             {
                 <div class="ta-field">
                     <label class="ta-label" for="bulkBundle">Bundle</label>
-                    <select id="bulkBundle" class="ta-select" @bind="_bulkBundle">
-                        @foreach (var b in Bundles())
+                    <select id="bulkBundle" class="ta-select" @bind="_bulkBundle" @bind:after="LoadBulkCardsAsync">
+                        @foreach (var b in _bundles)
                         {
                             <option value="@b">@b</option>
                         }
@@ -585,7 +582,7 @@
 
     private void ClosePrint() => _showPrint = false;
 
-    private SeasonPassListItem? _deleteTarget;
+    private SeasonPassRow? _deleteTarget;
     private bool _deleteBusy;
     private string? _deleteError;
 
@@ -608,7 +605,9 @@
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<SeasonPassListItem> _passes = [];
+    private IReadOnlyList<SeasonPassRow> _passes = [];
+    private IReadOnlyList<string> _bundles = [];
+    private int _total;
 
     public int SelectedSeasonId { get; set; }
 
@@ -629,16 +628,21 @@
     private async Task ReloadPassesAsync()
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
-        _passes = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
+        var result = SelectedSeasonId > 0
+            ? await PassList.HandleAsync(new GetSeasonPasses.Query(SelectedSeasonId, _bundleFilter, _search))
+            : new GetSeasonPasses.Result([], [], 0);
+        _passes = result.Passes;
+        _bundles = result.Bundles;
+        _total = result.Total;
         _tiers = SelectedSeasonId > 0 ? await PriceTiers.GetBySeasonAsync(SelectedSeasonId) : [];
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private IEnumerable<SeasonPassListItem> Sorted()
+    private IEnumerable<SeasonPassRow> Sorted()
     {
-        var src = Filtered();
-        IEnumerable<SeasonPassListItem> q = _sortCol switch
+        var src = _passes;
+        IEnumerable<SeasonPassRow> q = _sortCol switch
         {
             "category" => src.OrderBy(p => p.CategoryName),
             "price" => src.OrderBy(p => p.Price),
@@ -653,24 +657,6 @@
 
     private string _bundleFilter = "";
 
-    private IEnumerable<SeasonPassListItem> Filtered()
-    {
-        var src = string.IsNullOrEmpty(_bundleFilter)
-            ? _passes
-            : _passes.Where(p => string.Equals(p.Reference, _bundleFilter, StringComparison.Ordinal));
-        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return terms.Length == 0
-            ? src
-            : src.Where(p => terms.All(t => Haystack(p).Contains(t, StringComparison.OrdinalIgnoreCase)));
-    }
-
-    private static string Haystack(SeasonPassListItem p) => string.Join(' ', new[]
-    {
-        AdminFormat.TicketNo(p.Uuid), p.BuyerName ?? "", p.Email ?? "", p.Reference ?? "",
-        p.CategoryName, StatusLabel(p.Status), p.PaymentState ?? "",
-        p.OrderNumber ?? "", p.Price.ToString("N2")
-    });
-
     private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
     {
         var today = SwissTime.Today;
@@ -678,40 +664,33 @@
             ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
 
-    private static int? OnlineMarker(SeasonPassListItem p) => p.OrderNumber is null ? null : 0;
+    private static int? OnlineMarker(SeasonPassRow p) => p.OrderNumber is null ? null : 0;
 
     private static readonly TicketStatus[] StatusOptions = [TicketStatus.Valid, TicketStatus.Cancelled];
 
-    private async Task SaveStatusAsync(SeasonPassListItem p, TicketStatus status)
+    private async Task SaveStatusAsync(SeasonPassRow p, TicketStatus status)
     {
-        var pass = await Passes.GetByUuidAsync(p.Uuid);
-        if (pass is null) return;
-        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, pass.Price, status, null, null, null));
+        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, p.Price, status, null, null, null));
         await ReloadPassesAsync();
     }
 
     private IReadOnlyList<int> MainTierIds => _tiers.Where(t => !t.IsPromo).Select(t => t.Id).ToList();
     private string TierName(int id) => _tiers.FirstOrDefault(t => t.Id == id)?.Name ?? "–";
-    private int MainTierId(SeasonPassListItem p) =>
+    private int MainTierId(SeasonPassRow p) =>
         _tiers.FirstOrDefault(t => !t.IsPromo && t.Name == p.CategoryName)?.Id
         ?? (p.TierId is { } tid ? (_tiers.FirstOrDefault(t => t.Id == tid)?.PromoOfTierId ?? tid) : MainTierIds.FirstOrDefault());
 
-    private async Task SaveTierAsync(SeasonPassListItem p, int tierId)
+    private async Task SaveTierAsync(SeasonPassRow p, int tierId)
     {
-        var pass = await Passes.GetByUuidAsync(p.Uuid);
-        if (pass is null) return;
-        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, pass.Price, pass.Status, tierId, null, null));
+        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, p.Price, p.Status, tierId, null, null));
         await ReloadPassesAsync();
     }
 
-    private SeasonPassListItem? _visitsPass;
-    private void OpenVisits(SeasonPassListItem p) => _visitsPass = p;
+    private SeasonPassRow? _visitsPass;
+    private void OpenVisits(SeasonPassRow p) => _visitsPass = p;
     private void CloseVisits() => _visitsPass = null;
 
     private string SelectedSeasonName => _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
-
-    private IEnumerable<string> Bundles() =>
-        _passes.Where(p => !string.IsNullOrEmpty(p.Reference)).Select(p => p.Reference!).Distinct().OrderBy(r => r);
 
     private bool _showImport;
     private bool _importSaving;
@@ -909,13 +888,13 @@
         finally { _creating = false; }
     }
 
-    private SeasonPassListItem? _editing;
+    private SeasonPassRow? _editing;
     private decimal _editPrice;
     private PersonForm _editPerson = new();
     private bool _saving;
     private string? _editError;
 
-    private Task OpenEdit(SeasonPassListItem pass)
+    private Task OpenEdit(SeasonPassRow pass)
     {
         _editing = pass;
         _editPrice = decimal.Round(pass.Price, 2);
@@ -934,10 +913,7 @@
         _editError = null;
         try
         {
-            var pass = await Passes.GetByUuidAsync(_editing.Uuid);
-            if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
-
-            await PassEdit.HandleAsync(new EditSeasonPass.Command(_editing.Uuid, _editPrice, pass.Status, null, null, null));
+            await PassEdit.HandleAsync(new EditSeasonPass.Command(_editing.Uuid, _editPrice, _editing.Status, null, null, null));
             await PassHolder.HandleAsync(new SetSeasonPassHolder.Command(_editing.Uuid, _editPerson.ToHolder()));
 
             _editing = null;
@@ -947,18 +923,19 @@
         finally { _saving = false; }
     }
 
-    private SeasonPassListItem? _mailFor;
+    private SeasonPassRow? _mailFor;
     private string _mailSubject = "";
     private string _mailBody = "";
     private bool _mailSending;
     private bool _mailSent;
     private string? _mailError;
 
-    private void OpenMail(SeasonPassListItem p)
+    private async Task OpenMail(SeasonPassRow p)
     {
         _mailFor = p;
-        _mailSubject = Mailer.DefaultSubject;
-        _mailBody = Mailer.DefaultBody;
+        var template = await MailTemplate.HandleAsync(new GetSeasonPassMailTemplate.Query());
+        _mailSubject = template.Subject;
+        _mailBody = template.Body;
         _mailSent = false;
         _mailError = null;
     }
@@ -990,13 +967,8 @@
         finally { _mailSending = false; }
     }
 
-    private async Task<EmailSendResult> SendToAsync(SeasonPassListItem item, string subject, string body)
-    {
-        var pass = await Passes.GetByUuidAsync(item.Uuid);
-        if (pass is null) return new EmailSendResult(false, "Diese Saisonkarte wurde nicht gefunden.");
-        if (string.IsNullOrWhiteSpace(pass.Email)) pass.SetEmail(item.Email);
-        return await PassMail.HandleAsync(new SendSeasonPassMail.Command(pass, item.CategoryName, subject, body));
-    }
+    private Task<EmailSendResult> SendToAsync(SeasonPassRow item, string subject, string body) =>
+        PassMail.HandleAsync(new SendSeasonPassMail.Command(item.Uuid, item.CategoryName, item.Email, subject, body));
 
     private bool _showBulk;
     private string _bulkBundle = "";
@@ -1006,22 +978,31 @@
     private string? _bulkError;
     private BulkResult? _bulkResult;
 
-    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<SeasonPassListItem> NoEmail);
+    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<SeasonPassRow> NoEmail);
 
-    private List<SeasonPassListItem> BundleCards() =>
-        _passes.Where(p => p.Status != TicketStatus.Cancelled && p.Reference == _bulkBundle).ToList();
+    private IReadOnlyList<SeasonPassRow> _bulkCards = [];
 
-    private int BundleWithEmail => BundleCards().Count(p => p.HasEmail);
-    private int BundleWithoutEmail => BundleCards().Count(p => !p.HasEmail);
+    private int BundleWithEmail => _bulkCards.Count(p => p.HasEmail);
+    private int BundleWithoutEmail => _bulkCards.Count(p => !p.HasEmail);
 
-    private void OpenBulk()
+    private async Task OpenBulk()
     {
-        _bulkBundle = Bundles().FirstOrDefault() ?? "";
-        _bulkSubject = Mailer.DefaultSubject;
-        _bulkBody = Mailer.DefaultBody;
+        _bulkBundle = _bundles.FirstOrDefault() ?? "";
+        var template = await MailTemplate.HandleAsync(new GetSeasonPassMailTemplate.Query());
+        _bulkSubject = template.Subject;
+        _bulkBody = template.Body;
         _bulkResult = null;
         _bulkError = null;
+        await LoadBulkCardsAsync();
         _showBulk = true;
+    }
+
+    private async Task LoadBulkCardsAsync()
+    {
+        var result = string.IsNullOrWhiteSpace(_bulkBundle)
+            ? null
+            : await PassList.HandleAsync(new GetSeasonPasses.Query(SelectedSeasonId, _bulkBundle));
+        _bulkCards = result?.Passes.Where(p => p.Status != TicketStatus.Cancelled).ToList() ?? [];
     }
 
     private void CloseBulk() { if (!_bulkSending) { _showBulk = false; _bulkError = null; _bulkResult = null; } }
@@ -1034,7 +1015,7 @@
         _bulkResult = null;
         try
         {
-            var targets = BundleCards();
+            var targets = _bulkCards;
             var noEmail = targets.Where(p => !p.HasEmail).ToList();
             var enqueued = 0;
             var failed = 0;
