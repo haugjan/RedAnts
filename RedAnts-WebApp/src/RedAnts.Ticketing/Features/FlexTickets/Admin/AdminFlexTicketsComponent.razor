@@ -169,7 +169,7 @@
                                 </td>
                                 <td class="ta-col-actions">
                                     <button type="button" class="ta-icon-btn" title="@(HasEmail(t) ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!HasEmail(t))" @onclick="() => _mailFor = t">✉</button>
-                                    <button type="button" class="ta-icon-btn" title="Personendaten bearbeiten" @onclick="() => OpenEditPerson(t)">✎</button>
+                                    <button type="button" class="ta-icon-btn" title="Personendaten bearbeiten" @onclick="() => _editPersonFor = t">✎</button>
                                     <button type="button" class="ta-icon-btn" title="Als PDF drucken" @onclick="() => OpenSinglePrint(t.Uuid)">🖨</button>
                                     @if (Identity?.IsAdmin == true)
                                     {
@@ -262,23 +262,9 @@
 
 @if (_editPersonFor is not null)
 {
-    <div class="ta-overlay" @onmousedown="CloseEditPerson">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Flexticket bearbeiten</h2>
-            <p class="ta-modal-sub">Ticket-Nr. @AdminFormat.TicketNo(_editPersonFor.Uuid)</p>
-
-            <PersonFields Model="_editPersonForm" Prefix="editFt" EmailHint=" (für den Ticketversand)" />
-
-            @if (!string.IsNullOrEmpty(_editPersonError)) { <div class="ta-modal-error">@_editPersonError</div> }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseEditPerson" disabled="@_editPersonSaving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEditPerson" disabled="@_editPersonSaving">
-                    @(_editPersonSaving ? "Speichert …" : "Speichern")
-                </button>
-            </div>
-        </div>
-    </div>
+    <EditFlexTicketHolderDialog Ticket="_editPersonFor"
+                                OnSaved="HolderSavedAsync"
+                                OnClosed="() => _editPersonFor = null" />
 }
 
 @if (_showBulk)
@@ -608,7 +594,6 @@
     [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private SetFlexTicketRedeemed.Handler RedemptionChanges { get; set; } = default!;
     [Inject] private SetFlexTicketCategory.Handler CategoryChanges { get; set; } = default!;
-    [Inject] private SetFlexTicketHolder.Handler HolderChanges { get; set; } = default!;
     [Inject] private DeleteFlexTicket.Handler TicketDeletions { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
@@ -642,32 +627,11 @@
     private static bool HasEmail(FlexTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
 
     private FlexTicketRow? _editPersonFor;
-    private PersonForm _editPersonForm = new();
-    private bool _editPersonSaving;
-    private string? _editPersonError;
 
-    private void OpenEditPerson(FlexTicketRow t)
+    private async Task HolderSavedAsync()
     {
-        _editPersonFor = t;
-        _editPersonForm = PersonForm.From(t.Holder);
-        _editPersonError = null;
-    }
-
-    private void CloseEditPerson() { if (!_editPersonSaving) { _editPersonFor = null; _editPersonError = null; } }
-
-    private async Task SaveEditPerson()
-    {
-        if (_editPersonFor is null) return;
-        _editPersonSaving = true;
-        _editPersonError = null;
-        try
-        {
-            await HolderChanges.HandleAsync(new SetFlexTicketHolder.Command(_editPersonFor.Uuid, _editPersonForm.ToHolder()));
-            _editPersonFor = null;
-            await ReloadTicketsAsync();
-        }
-        catch (DomainException ex) { _editPersonError = ex.Message; }
-        finally { _editPersonSaving = false; }
+        _editPersonFor = null;
+        await ReloadTicketsAsync();
     }
 
     private FlexTicketRow? _mailFor;
