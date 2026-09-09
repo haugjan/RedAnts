@@ -11,8 +11,9 @@ public class CreateAdminOrderTests
     private readonly InMemoryOrderRepository _orders = new();
     private readonly RecordingOrderItems _items = new();
     private readonly RecordingOrderLog _log = new();
+    private readonly RecordingUnitOfWork _unitOfWork = new();
 
-    private CreateAdminOrder.Handler Handler => new(_orders, _items, _log);
+    private CreateAdminOrder.Handler Handler => new(_orders, _items, _log, _unitOfWork);
 
     [Fact]
     public async Task Creates_a_paid_manual_order_with_items_and_two_log_entries()
@@ -58,4 +59,32 @@ public class CreateAdminOrderTests
         Assert.Equal(0m, order.TotalGross);
         Assert.Empty(_items.Saved[order.Id]);
     }
+
+    [Fact]
+    public async Task Order_items_and_log_are_written_in_one_unit_of_work()
+    {
+        var order = await Handler.HandleAsync(Command());
+
+        Assert.Equal(1, _unitOfWork.Committed);
+        Assert.Equal(0, _unitOfWork.RolledBack);
+        Assert.True(_items.Saved.ContainsKey(order.Id));
+        Assert.Equal(2, _log.Entries.Count);
+    }
+
+    [Fact]
+    public async Task A_failing_log_write_rolls_the_whole_order_back()
+    {
+        _log.Throws = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Handler.HandleAsync(Command()));
+
+        Assert.Equal(1, _unitOfWork.RolledBack);
+        Assert.Equal(0, _unitOfWork.Committed);
+        Assert.Empty(_log.Entries);
+    }
+
+    private static CreateAdminOrder.Command Command() =>
+        new(Buyer.Create(BuyerType.Private, "Anna", "Muster", null), "anna@example.ch",
+            [new AdminOrderLine(OrderItemKind.EventTicket, 42, TicketCategory.Adult, "Spiel · Erwachsen", 1, 20m)],
+            "kassier", PaymentSource.Cash);
 }
