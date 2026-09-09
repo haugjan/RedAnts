@@ -306,7 +306,7 @@ else
     {
         if (_askDiscard) _askDiscard = false;
         else if (_searchOpen) CloseSearch();
-        else { await AttemptCloseAsync(); return; }
+        else if (!AsksForDiscard()) { await OnClosed.InvokeAsync(); return; }
         await InvokeAsync(StateHasChanged);
     }
 
@@ -549,17 +549,20 @@ else
         return double.TryParse(t, num, inv, out var v) ? v : null;
     }
 
-    private void OnWrapClick()
+    private async Task OnWrapClick()
     {
-        if (_downOnBackdrop) _ = AttemptCloseAsync();
+        if (_downOnBackdrop) await AttemptCloseAsync();
         _downOnBackdrop = false;
     }
 
-    private Task AttemptCloseAsync()
+    private bool AsksForDiscard()
     {
-        if (_isNew && !IsTileValid(Node)) { _askDiscard = true; return Task.CompletedTask; }
-        return OnClosed.InvokeAsync();
+        if (!_isNew || IsTileValid(Node)) return false;
+        _askDiscard = true;
+        return true;
     }
+
+    private Task AttemptCloseAsync() => AsksForDiscard() ? Task.CompletedTask : OnClosed.InvokeAsync();
 
     private Task DiscardTile()
     {
