@@ -75,6 +75,12 @@
                     <div class="se-muted">Client-Secret: @(_hasSecret ? "gesetzt ✓" : "nicht gesetzt")</div>
                 </div>
 
+                <p class="se-spotifyhelp">
+                    Client-ID und Secret kommen aus dem
+                    <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify Developer Dashboard</a>:
+                    App öffnen, dann „Settings" und „View client secret".
+                </p>
+
                 <label class="se-full">Client-ID
                     <input @bind="_spotifyClientId" placeholder="z. B. 20dc00b2e3db4ab790fad325e510897d" />
                 </label>
@@ -1465,6 +1471,8 @@
     .se-status { color: #62e39b; font-weight: 800; font-size: 0.9rem; }
     .se-err { color: #ff8a97; font-weight: 800; font-size: 0.9rem; }
     .se-ok { color: #7ddc9a; font-weight: 700; font-size: 0.85rem; margin: 0 0 4px; }
+    .se-spotifyhelp { color: var(--ra-muted); font-size: 0.9rem; margin: 0 0 12px; }
+    .se-spotifyhelp a { color: #1ed760; font-weight: 800; }
     .se-importrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; }
     .se-muted { color: var(--ra-muted); }
 
