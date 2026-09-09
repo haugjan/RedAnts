@@ -6,9 +6,7 @@
 @inject DownloadShowSound.Handler SoundDownload
 @inject RestoreShowSound.Handler SoundRestore
 @inject LookupSpotifyReference.Handler SpotifyLookup
-@inject TestSpotifyCredentials.Handler SpotifyTest
 @inject GetSpotifySettings.Handler SpotifySettings
-@inject SetShowSetting.Handler SettingSave
 @inject SearchSpotify.Handler SpotifySearch
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
@@ -21,7 +19,7 @@
             <button class="se-btn primary" @onclick="SaveAsync">💾 Speichern</button>
             <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
-            <button class="se-btn" @onclick="OpenSpotifySettingsAsync">🟢 Spotify</button>
+            <button class="se-btn" @onclick="ToggleSpotifySettings">🟢 Spotify</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
@@ -65,50 +63,7 @@
 
     @if (_showSpotify)
     {
-        <div class="se-editwrap" @onclick="() => _showSpotify = false">
-            <div class="se-editcard se-spotifycard" @onclick:stopPropagation="true">
-                <button class="se-editclose" @onclick="() => _showSpotify = false">✕</button>
-                <h3 class="se-spotifyh">🟢 Spotify-Zugang</h3>
-
-                <div class="se-spotifycur">
-                    <div>Aktuell gespeicherte Client-ID</div>
-                    <strong>@(string.IsNullOrWhiteSpace(_savedClientId) ? "— keine hinterlegt —" : _savedClientId)</strong>
-                    <div class="se-muted">Client-Secret: @(_hasSecret ? "gesetzt ✓" : "nicht gesetzt")</div>
-                </div>
-
-                <label class="se-full">Client-ID
-                    <input @bind="_spotifyClientId" placeholder="z. B. 20dc00b2e3db4ab790fad325e510897d" />
-                </label>
-                <label class="se-full">Client-Secret (nur für die Suche; leer lassen = unverändert)
-                    <input type="password" @bind="_spotifyClientSecret" placeholder="leer lassen = unverändert" />
-                </label>
-
-                <div class="se-testrow">
-                    <button class="se-btn primary" @onclick="SaveSpotifyAsync" disabled="@_spotifyBusy">💾 Speichern</button>
-                    <button class="se-btn" @onclick="TestSpotifyAsync" disabled="@_spotifyBusy">🔍 Testen</button>
-                    <button class="se-btn" @onclick="() => _showSpotify = false">Schliessen</button>
-                </div>
-                @if (_spotifyTestResult is { Length: > 0 })
-                {
-                    <p class="@(_spotifyTestOk ? "se-savedbanner" : "se-err")">@_spotifyTestResult</p>
-                }
-                @if (_spotifyStatus is { Length: > 0 })
-                {
-                    <p class="se-savedbanner">✓ @_spotifyStatus</p>
-                }
-                @if (_spotifyError is { Length: > 0 })
-                {
-                    <p class="se-err">@_spotifyError</p>
-                }
-
-                <p class="se-muted" style="margin-top:14px">Wird zentral in der Datenbank gespeichert und gilt für alle Geräte dieser Umgebung (dev und prod haben getrennte Datenbanken). In deiner Spotify-App müssen diese Redirect-URIs eingetragen sein:</p>
-                <ul class="se-redirects">
-                    <li><code>https://show.redants.ch/show/callback</code></li>
-                    <li><code>https://show-dev.redants.ch/show/callback</code></li>
-                    <li><code>http://127.0.0.1:5603/show/callback</code></li>
-                </ul>
-            </div>
-        </div>
+        <SpotifySettingsDialog OnClosed="() => _showSpotify = false" OnSaved="RefreshSpotifyStateAsync" />
     }
 
     @if (_profile is null)
@@ -923,6 +878,7 @@
         else if (_searchOpen) CloseSearch();
         else if (_chooseKind) CancelNewTile();
         else if (_selected is not null) AttemptClose();
+        else if (_showSpotify) _showSpotify = false;
         else return Task.CompletedTask;
         return InvokeAsync(StateHasChanged);
     }
@@ -1116,71 +1072,15 @@
     }
 
     private bool _showSpotify;
-    private string _spotifyClientId = "";
-    private string _spotifyClientSecret = "";
-    private bool _spotifyBusy;
-    private string _spotifyStatus = "";
-    private string _spotifyError = "";
-
-    private string _savedClientId = "";
-    private bool _hasSecret;
     private bool _spotifyConfigured;
 
     private async Task RefreshSpotifyStateAsync()
     {
         var spotify = await SpotifySettings.HandleAsync(new GetSpotifySettings.Query());
-        _savedClientId = spotify.SavedClientId;
-        _hasSecret = spotify.HasSecret;
         _spotifyConfigured = spotify.Configured;
     }
 
-    private async Task OpenSpotifySettingsAsync()
-    {
-        _showSpotify = !_showSpotify;
-        if (_showSpotify)
-        {
-            await RefreshSpotifyStateAsync();
-            _spotifyClientId = _savedClientId;
-            _spotifyClientSecret = "";
-            _spotifyStatus = "";
-            _spotifyError = "";
-            _spotifyTestResult = "";
-        }
-    }
-
-    private string _spotifyTestResult = "";
-    private bool _spotifyTestOk;
-
-    private async Task TestSpotifyAsync()
-    {
-        _spotifyBusy = true; _spotifyTestResult = ""; _spotifyStatus = ""; _spotifyError = "";
-        try
-        {
-            var r = await SpotifyTest.HandleAsync(new TestSpotifyCredentials.Command(_spotifyClientId, _spotifyClientSecret));
-            _spotifyTestOk = r == "ok";
-            _spotifyTestResult = _spotifyTestOk
-                ? "✓ Client-ID + Secret gültig (die Suche funktioniert). Für die Wiedergabe braucht es zusätzlich Login + Premium auf dem Board."
-                : "✗ Test fehlgeschlagen: " + r;
-        }
-        catch (Exception ex) { _spotifyTestOk = false; _spotifyTestResult = "✗ Fehler: " + ex.Message; }
-        finally { _spotifyBusy = false; }
-    }
-
-    private async Task SaveSpotifyAsync()
-    {
-        _spotifyBusy = true; _spotifyStatus = ""; _spotifyError = ""; _spotifyTestResult = "";
-        try
-        {
-            await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientId", _spotifyClientId.Trim()));
-            if (!string.IsNullOrWhiteSpace(_spotifyClientSecret))
-                await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientSecret", _spotifyClientSecret.Trim()));
-            _spotifyClientSecret = "";
-            await RefreshSpotifyStateAsync();
-            _spotifyStatus = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
-        }
-        catch (Exception ex) { _spotifyError = "Fehler: " + ex.Message; }
-        finally { _spotifyBusy = false; }
-    }
+    private void ToggleSpotifySettings() => _showSpotify = !_showSpotify;
 
     private bool _ioBusy;
     private string _ioStatus = "";
