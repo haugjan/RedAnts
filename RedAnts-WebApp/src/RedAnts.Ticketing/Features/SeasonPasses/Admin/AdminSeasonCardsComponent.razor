@@ -6,7 +6,6 @@
 @inject CreateAdminOrder.Handler OrderCreation
 @inject CreateSeasonPass.Handler PassCreation
 @inject EditSeasonPass.Handler PassEdit
-@inject SetSeasonPassHolder.Handler PassHolder
 @inject ImportSeasonPasses.Handler PassImport
 
 <section class="ta-page">
@@ -234,31 +233,7 @@
 
 @if (_editing is not null)
 {
-    <div class="ta-overlay" @onmousedown="CancelEdit">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
-            <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
-
-            <PersonFields Model="_editPerson" Prefix="editSp" />
-
-            <div class="ta-field">
-                <label class="ta-label" for="editPrice">Preis (CHF)</label>
-                <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_editPrice" @bind:after="() => _editPrice = decimal.Round(_editPrice, 2)" />
-            </div>
-
-            @if (_editError is not null)
-            {
-                <p class="ta-modal-error">@_editError</p>
-            }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
-                    @(_saving ? "Speichert …" : "Speichern")
-                </button>
-            </div>
-        </div>
-    </div>
+    <EditSeasonPassDialog Pass="_editing" OnSaved="PassSavedAsync" OnClosed="CancelEdit" />
 }
 
 @if (_visitsPass is not null)
@@ -714,38 +689,15 @@
     }
 
     private SeasonPassRow? _editing;
-    private decimal _editPrice;
-    private PersonForm _editPerson = new();
-    private bool _saving;
-    private string? _editError;
 
-    private Task OpenEdit(SeasonPassRow pass)
+    private void OpenEdit(SeasonPassRow pass) => _editing = pass;
+
+    private void CancelEdit() => _editing = null;
+
+    private async Task PassSavedAsync()
     {
-        _editing = pass;
-        _editPrice = decimal.Round(pass.Price, 2);
-        _editPerson = PersonForm.From(pass.Holder);
-        if (string.IsNullOrWhiteSpace(_editPerson.Email)) _editPerson.Email = pass.Email;
-        _editError = null;
-        return Task.CompletedTask;
-    }
-
-    private void CancelEdit() { _editing = null; _editError = null; }
-
-    private async Task SaveEdit()
-    {
-        if (_editing is null || _saving) return;
-        _saving = true;
-        _editError = null;
-        try
-        {
-            await PassEdit.HandleAsync(new EditSeasonPass.Command(_editing.Uuid, _editPrice, _editing.Status, null, null, null));
-            await PassHolder.HandleAsync(new SetSeasonPassHolder.Command(_editing.Uuid, _editPerson.ToHolder()));
-
-            _editing = null;
-            await ReloadPassesAsync();
-        }
-        catch (DomainException ex) { _editError = ex.Message; }
-        finally { _saving = false; }
+        _editing = null;
+        await ReloadPassesAsync();
     }
 
     private SeasonPassRow? _mailFor;
