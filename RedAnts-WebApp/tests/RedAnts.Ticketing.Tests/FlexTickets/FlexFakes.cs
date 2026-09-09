@@ -84,9 +84,12 @@ internal sealed class RecordingFlexBundles : IFlexTicketBundleRepository
         return Task.FromResult(true);
     }
 
+    public bool ImportThrows { get; set; }
+
     public Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows, string defaultBundle,
         TicketCategory defaultCategory, string? createdByName = null, string? createdByEmail = null)
     {
+        if (ImportThrows) throw new InvalidOperationException("flex ticket table unavailable");
         Calls.Add($"import:{seasonId}:{defaultBundle}");
         return Task.FromResult((rows.Count, 0));
     }

@@ -2,6 +2,7 @@ using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.SeasonPasses;
 using RedAnts.Ticketing.Features.Tickets;
 using RedAnts.Ticketing.Tests.MemberCards;
+using RedAnts.Ticketing.Tests.Checkout;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.SeasonPasses;
@@ -71,7 +72,7 @@ public class SeasonPassTests
 
         await new SetSeasonPassHolder.Handler(passes).HandleAsync(new SetSeasonPassHolder.Command(pass.Uuid, holder));
         await new DeleteSeasonPass.Handler(deletion).HandleAsync(new DeleteSeasonPass.Command(pass.Uuid));
-        var imported = await new ImportSeasonPasses.Handler(passes).HandleAsync(new ImportSeasonPasses.Command(3,
+        var imported = await new ImportSeasonPasses.Handler(passes, new RecordingUnitOfWork()).HandleAsync(new ImportSeasonPasses.Command(3,
             [new TicketImportRow(null, null, null, null, holder)], "BUNDLE", 4, "Admin", "admin@redants.ch"));
         var mail = await new SendSeasonPassMail.Handler(passes, mailer).HandleAsync(new SendSeasonPassMail.Command(pass.Uuid, "Erwachsen", "anna@example.ch", "Betreff", "Text"));
 
@@ -83,4 +84,35 @@ public class SeasonPassTests
         Assert.Equal("Erwachsen", Assert.Single(mailer.Sent).CategoryLabel);
         Assert.Equal("anna@example.ch", pass.Email);
     }
+
+    [Fact]
+    public async Task The_pass_import_runs_in_one_unit_of_work()
+    {
+        var passes = new InMemorySeasonPasses();
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await new ImportSeasonPasses.Handler(passes, unitOfWork).HandleAsync(ImportCommand());
+
+        Assert.Equal(1, unitOfWork.Committed);
+        Assert.Single(passes.Imports);
+    }
+
+    [Fact]
+    public async Task A_failing_pass_import_rolls_the_unit_of_work_back()
+    {
+        var passes = new InMemorySeasonPasses { ImportThrows = true };
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ImportSeasonPasses.Handler(passes, unitOfWork).HandleAsync(ImportCommand()));
+
+        Assert.Equal(1, unitOfWork.RolledBack);
+        Assert.Equal(0, unitOfWork.Committed);
+        Assert.Empty(passes.Imports);
+    }
+
+    private static ImportSeasonPasses.Command ImportCommand() =>
+        new(3, [new TicketImportRow(null, null, null, null,
+            CardHolder.Create(BuyerType.Private, null, null, "Anna", "Muster", null, null, null, null, null, null, null, null))],
+            "BUNDLE", 4, "Admin", "admin@redants.ch");
 }

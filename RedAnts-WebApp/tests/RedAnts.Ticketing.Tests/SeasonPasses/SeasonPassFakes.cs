@@ -26,9 +26,12 @@ internal sealed class InMemorySeasonPasses : ISeasonPassRepository
         return Task.CompletedTask;
     }
 
+    public bool ImportThrows { get; set; }
+
     public Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows, string defaultBundle,
         int? defaultTierId = null, string? createdByName = null, string? createdByEmail = null)
     {
+        if (ImportThrows) throw new InvalidOperationException("season pass table unavailable");
         Imports.Add((seasonId, rows.Count, defaultBundle, defaultTierId));
         return Task.FromResult((rows.Count, 0));
     }

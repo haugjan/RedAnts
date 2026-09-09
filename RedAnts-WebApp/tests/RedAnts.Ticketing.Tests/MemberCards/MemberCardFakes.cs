@@ -12,9 +12,12 @@ internal sealed class InMemoryMemberCards : IMemberCardRepository
     public List<MemberCard> Added { get; } = [];
     public List<(int SeasonId, string Reference, MemberCategory Category, int Rows)> Imports { get; } = [];
 
+    public bool ImportThrows { get; set; }
+
     public Task<int> ImportAsync(int seasonId, string reference, MemberCategory category, IReadOnlyList<MemberImportRow> rows,
         string? createdByName = null, string? createdByEmail = null)
     {
+        if (ImportThrows) throw new InvalidOperationException("member card table unavailable");
         Imports.Add((seasonId, reference, category, rows.Count));
         return Task.FromResult(rows.Count);
     }

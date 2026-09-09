@@ -1,5 +1,6 @@
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.MemberCards;
+using RedAnts.Ticketing.Tests.Checkout;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.MemberCards;
@@ -70,7 +71,7 @@ public class MemberCardTests
 
         await new CreateMemberCard.Handler(cards).HandleAsync(new CreateMemberCard.Command(3, MemberCategory.RedAnts, "Anna", "Muster",
             null, "REF-9", null, null, 2, "Admin", "admin@redants.ch"));
-        var imported = await new ImportMemberCards.Handler(cards).HandleAsync(new ImportMemberCards.Command(3, "IMPORT", MemberCategory.Block4,
+        var imported = await new ImportMemberCards.Handler(cards, new RecordingUnitOfWork()).HandleAsync(new ImportMemberCards.Command(3, "IMPORT", MemberCategory.Block4,
             [new MemberImportRow("Muster", "Anna", null), new MemberImportRow("Beispiel", "Ben", null)], "Admin", "admin@redants.ch"));
 
         var created = Assert.Single(cards.Added);
@@ -95,4 +96,33 @@ public class MemberCardTests
         Assert.Equal("Betreff", Assert.Single(mailer.Sent).Subject);
         Assert.Same(card, mailer.Sent[0].Card);
     }
+
+    [Fact]
+    public async Task The_member_card_import_runs_in_one_unit_of_work()
+    {
+        var cards = new InMemoryMemberCards();
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await new ImportMemberCards.Handler(cards, unitOfWork).HandleAsync(ImportCommand());
+
+        Assert.Equal(1, unitOfWork.Committed);
+        Assert.Single(cards.Imports);
+    }
+
+    [Fact]
+    public async Task A_failing_member_card_import_rolls_the_unit_of_work_back()
+    {
+        var cards = new InMemoryMemberCards { ImportThrows = true };
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ImportMemberCards.Handler(cards, unitOfWork).HandleAsync(ImportCommand()));
+
+        Assert.Equal(1, unitOfWork.RolledBack);
+        Assert.Equal(0, unitOfWork.Committed);
+        Assert.Empty(cards.Imports);
+    }
+
+    private static ImportMemberCards.Command ImportCommand() =>
+        new(3, "IMPORT", MemberCategory.Block4, [new MemberImportRow("Muster", "Anna", null)], "Admin", "admin@redants.ch");
 }

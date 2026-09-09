@@ -2,6 +2,7 @@ using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.FlexTickets;
 using RedAnts.Ticketing.Features.Tickets;
 using RedAnts.Ticketing.Tests.Tickets;
+using RedAnts.Ticketing.Tests.Checkout;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.FlexTickets;
@@ -154,7 +155,7 @@ public class FlexTests
         var uuid = Guid.NewGuid();
         var rows = new List<TicketImportRow> { new(null, null, null, null, Holder()) };
 
-        var imported = await new ImportFlexTickets.Handler(bundles).HandleAsync(new ImportFlexTickets.Command(SeasonId, rows, "Import", TicketCategory.Adult, null, null));
+        var imported = await new ImportFlexTickets.Handler(bundles, new RecordingUnitOfWork()).HandleAsync(new ImportFlexTickets.Command(SeasonId, rows, "Import", TicketCategory.Adult, null, null));
         await new DeleteFlexTicket.Handler(deletion).HandleAsync(new DeleteFlexTicket.Command(uuid));
         var sent = await new SendFlexTicketMail.Handler(mailer).HandleAsync(
             new SendFlexTicketMail.Command(new FlexMailTicket(uuid, "a@b.ch", "Anna", SeasonId, "Erwachsen"), "Betreff", "Text"));
@@ -165,4 +166,33 @@ public class FlexTests
         Assert.True(sent.Success);
         Assert.Equal("Betreff", Assert.Single(mailer.Sent).Subject);
     }
+
+    [Fact]
+    public async Task The_flex_import_runs_in_one_unit_of_work()
+    {
+        var bundles = new RecordingFlexBundles();
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await new ImportFlexTickets.Handler(bundles, unitOfWork).HandleAsync(ImportCommand());
+
+        Assert.Equal(1, unitOfWork.Committed);
+        Assert.Single(bundles.Calls);
+    }
+
+    [Fact]
+    public async Task A_failing_flex_import_rolls_the_unit_of_work_back()
+    {
+        var bundles = new RecordingFlexBundles { ImportThrows = true };
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ImportFlexTickets.Handler(bundles, unitOfWork).HandleAsync(ImportCommand()));
+
+        Assert.Equal(1, unitOfWork.RolledBack);
+        Assert.Equal(0, unitOfWork.Committed);
+        Assert.Empty(bundles.Calls);
+    }
+
+    private static ImportFlexTickets.Command ImportCommand() =>
+        new(SeasonId, [new TicketImportRow(null, null, null, null, Holder())], "Import", TicketCategory.Adult, null, null);
 }
