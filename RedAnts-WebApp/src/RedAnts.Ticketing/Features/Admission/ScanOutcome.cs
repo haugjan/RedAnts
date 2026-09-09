@@ -1,0 +1,31 @@
+using RedAnts.Ticketing.Domain.Admission;
+using RedAnts.Ticketing.Domain.Sales;
+
+namespace RedAnts.Ticketing.Features.Admission;
+
+public enum AdmissionOutcome
+{
+    CheckedIn,
+    CheckedOut,
+    Rejected,
+    Test
+}
+
+public sealed record PriorScan(DateTimeOffset At, string? By);
+
+public sealed record ScanOutcome(
+    AdmissionOutcome Outcome,
+    TicketType? Type,
+    string? Reference,
+    string? Reason,
+    Occupancy Occupancy,
+    string? CategoryLabel = null,
+    string? Holder = null,
+    DateTimeOffset? PriorAt = null,
+    string? PriorBy = null,
+    int? AdmissionsUsed = null,
+    int? AdmissionCap = null,
+    IReadOnlyList<PriorScan>? Priors = null)
+{
+    public bool Ok => Outcome != AdmissionOutcome.Rejected;
+}

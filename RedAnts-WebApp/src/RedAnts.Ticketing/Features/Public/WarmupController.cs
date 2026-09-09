@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
-using RedAnts.Ticketing.Features.Ports;
-using RedAnts.Ticketing.Features.Scanning;
+using RedAnts.Ticketing.Features.Admission;
+using RedAnts.Ticketing.Features.Catalog;
+using RedAnts.Ticketing.Features.Helpers;
 
 namespace RedAnts.Ticketing.Features.Public;
 

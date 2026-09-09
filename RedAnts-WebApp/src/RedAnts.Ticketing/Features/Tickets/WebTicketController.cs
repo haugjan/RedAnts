@@ -1,10 +1,9 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using RedAnts.Domain;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Ports;
+using RedAnts.Ticketing.Features.Catalog;
+using System.Text.Json;
 using Umbraco.Cms.Core;
 
 namespace RedAnts.Ticketing.Features.Tickets;

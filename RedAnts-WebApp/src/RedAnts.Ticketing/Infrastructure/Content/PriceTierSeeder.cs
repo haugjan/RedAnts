@@ -1,6 +1,6 @@
 using NPoco;
-using RedAnts.Ticketing.Features.Ports;
-using RedAnts.Ticketing.Infrastructure.Sales;
+using RedAnts.Ticketing.Features.Catalog;
+using RedAnts.Ticketing.Features.Catalog.Infrastructure;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;

@@ -1,9 +1,12 @@
 ﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.PublishedContent
-@using RedAnts.Ticketing.Features.Ports
+@using RedAnts.Ticketing.Features.Catalog
+@using RedAnts.Ticketing.Features.Checkout
+@using RedAnts.Ticketing.Features.SeasonPasses
+@using RedAnts.Ticketing.Features.Shared
 @using RedAnts.Ticketing.Domain.Sales
 @inject ISeasonPassPricing PassPricing
-@inject RedAnts.Ticketing.Features.Ports.ISeasons Seasons
+@inject RedAnts.Ticketing.Features.Catalog.ISeasons Seasons
 @inject ISeasonAddOns SeasonAddOns
 @inject IPriceTiers PriceTiers
 @{

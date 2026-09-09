@@ -41,10 +41,10 @@ public class HandlerRules
     {
         var offenders = Handlers
             .Select(h => h.Namespace.FullName)
-            .Where(ns => !Regex.IsMatch(ns, @"^RedAnts\.(Ticketing|Show)\.Features(\.[A-Za-z]+Workflow)?$"))
+            .Where(ns => !Regex.IsMatch(ns, @"^RedAnts\.(Ticketing|Show)\.Features\.[A-Za-z]+$"))
             .Distinct()
             .ToList();
-        Assert.True(offenders.Count == 0, "Slice namespaces must be RedAnts.<Module>.Features[.<Name>Workflow]:\n" + string.Join("\n", offenders));
+        Assert.True(offenders.Count == 0, "Slice namespaces must be RedAnts.<Module>.Features.<Feature>:\n" + string.Join("\n", offenders));
     }
 
     public static IEnumerable<object[]> Modules =>

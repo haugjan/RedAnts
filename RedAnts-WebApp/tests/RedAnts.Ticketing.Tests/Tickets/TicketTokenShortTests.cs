@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Infrastructure.Tickets;
+using RedAnts.Ticketing.Features.Tickets.Infrastructure;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Tickets;

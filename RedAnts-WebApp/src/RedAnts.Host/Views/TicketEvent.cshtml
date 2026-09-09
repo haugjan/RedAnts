@@ -1,10 +1,10 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
-@inject RedAnts.Ticketing.Features.Ports.IEventPricing Pricing
-@inject RedAnts.Ticketing.Features.Ports.IEventConversionRules ConversionRules
+@inject RedAnts.Ticketing.Features.Checkout.IEventPricing Pricing
+@inject RedAnts.Ticketing.Features.Catalog.IEventConversionRules ConversionRules
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Ticketing.Domain
-@using RedAnts.Ticketing.Features.Public
+@using RedAnts.Ticketing.Features.Shared
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
     var status = Model.Value<string>("status");
@@ -25,7 +25,7 @@
     var text = Model.Value<string>("text");
     var backHref = "/ticketing/";
     var conversionRules = blocked
-        ? (IReadOnlyList<RedAnts.Ticketing.Features.Ports.EventConversionRule>)Array.Empty<RedAnts.Ticketing.Features.Ports.EventConversionRule>()
+        ? (IReadOnlyList<RedAnts.Ticketing.Features.Catalog.EventConversionRule>)Array.Empty<RedAnts.Ticketing.Features.Catalog.EventConversionRule>()
         : await ConversionRules.GetByEventAsync(Model.Id);
     var conversionOnly = !blocked && await ConversionRules.GetConversionOnlyAsync(Model.Id);
 }

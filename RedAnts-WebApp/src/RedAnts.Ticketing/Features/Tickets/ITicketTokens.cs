@@ -14,39 +14,3 @@ public interface ITicketTokens
 
     bool TryVerifyShort(string token, out string code);
 }
-
-public interface IQrCodeRenderer
-{
-    string RenderSvg(string content, int pixelsPerModule = 6);
-
-    string RenderPngDataUri(string content, int pixelsPerModule = 6);
-
-    byte[] RenderPng(string content, int pixelsPerModule = 6);
-}
-
-public sealed record IssuedTicket(
-    TicketType Type,
-    Guid Uuid,
-    int ScopeId,
-    TicketCategory? Category,
-    TicketStatus Status,
-    DateTimeOffset CreatedAt,
-    string? HolderName,
-    MemberCategory? MemberCategory = null,
-    DateOnly? Birthday = null,
-    string? BuyerName = null,
-    string? CategoryName = null,
-    int Admissions = 1,
-    string? CustomName = null);
-
-public interface IIssuedTicketReader
-{
-    Task<IssuedTicket?> FindAsync(Guid uuid);
-
-    Task<IssuedTicket?> FindByCodeAsync(string codePrefix);
-}
-
-public interface ITicketCustomNames
-{
-    Task SetAsync(TicketType type, Guid uuid, string? customName);
-}

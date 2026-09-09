@@ -1,11 +1,8 @@
-using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.CheckoutWorkflow;
-using RedAnts.Ticketing.Features.Ports;
+using RedAnts.Ticketing.Features.Orders;
+using System.Text.Json;
 
 namespace RedAnts.Ticketing.Features.Checkout;
 

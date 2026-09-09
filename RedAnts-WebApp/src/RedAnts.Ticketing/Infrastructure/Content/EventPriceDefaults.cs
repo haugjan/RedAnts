@@ -1,5 +1,5 @@
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Ports;
+using RedAnts.Ticketing.Features.Catalog;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;

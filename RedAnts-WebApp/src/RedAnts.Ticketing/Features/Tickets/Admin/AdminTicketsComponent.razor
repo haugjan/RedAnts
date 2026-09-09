@@ -1,0 +1,1207 @@
+@using RedAnts.Ticketing.Domain
+@using RedAnts.Ticketing.Domain.Sales
+@inject IPublicBaseUrl PublicUrl
+@inject ITicketTokens Tokens
+
+<section class="ta-page">
+    <h1 class="ta-page-title">@TicketType.EventTicket.DisplayName()</h1>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="seasonSelect">Saison</label>
+                    <select id="seasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="OnSeasonChangedAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="eventSelect">Anlass</label>
+                    <select id="eventSelect" class="ta-select" disabled="@(_events.Count == 0)"
+                            @bind="SelectedEventId" @bind:after="ReloadTicketsAsync">
+                        @if (_events.Count == 0)
+                        {
+                            <option value="0">— keine Anlässe —</option>
+                        }
+                        else
+                        {
+                            @foreach (var e in _events)
+                            {
+                                <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="ticketBundleFilter">Bundle</label>
+                    <select id="ticketBundleFilter" class="ta-select" @bind="_bundleFilter">
+                        <option value="0">Alle anzeigen</option>
+                        @foreach (var b in _bundles)
+                        {
+                            <option value="@b.Id">@b.Reference</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="ticketSearch">Suche</label>
+                    <input id="ticketSearch" class="ta-input" type="search" placeholder="Name, E-Mail …" @bind="_search" @bind:event="oninput" />
+                </div>
+            </div>
+            <div class="ta-toolbar-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_bundles.Count == 0)" @onclick="OpenExport">
+                    Export CSV
+                </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_bundleFilter <= 0)"
+                        title="@(_bundleFilter <= 0 ? "Zum Drucken zuerst ein Bundle wählen" : "Alle Tickets dieses Bundles als PDF drucken")"
+                        @onclick="OpenBundlePrint">
+                    PDF drucken
+                </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_tickets.Count == 0)" @onclick="OpenBulk"
+                        title="Die aktuell gefilterten Tickets mit E-Mail versenden">Tickets versenden</button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreateBundle">
+                    Bundle erstellen
+                </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedEventId <= 0)" @onclick="OpenImport">
+                    Import CSV
+                </button>
+                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedEventId <= 0)" @onclick="OpenCreate">
+                    Ticket erstellen
+                </button>
+            </div>
+        </div>
+
+        @if (SelectedEventId <= 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Anlässe erfasst.</div>
+        }
+        else if (_tickets.Count == 0)
+        {
+            <div class="ta-placeholder">Für diesen Anlass sind keine Tickets erfasst.</div>
+        }
+        else
+        {
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket-Nr.</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Person <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th>Bundle</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("redeemed")'>Eingelöst <span class="ta-sort-ind">@Ind("redeemed")</span></th>
+                            <th>Event&shy;besuche</th>
+                            <th class="ta-col-actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Sorted())
+                        {
+                            <tr>
+                                <td>
+                                    <span class="ta-ticketno">
+                                        <span class="ta-no">@AdminFormat.TicketNo(t.Uuid)</span>
+                                        <a class="ta-qr-link" href="@PublicUrl.TicketUrl(Tokens.CreateShort(t.Uuid))" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                        </a>
+                                    </span>
+                                </td>
+                                <td class="ta-cell-name">
+                                    <PersonCell Holder="t.Holder" />
+                                    @if (t.OriginType is { } ot)
+                                    {
+                                        <div class="ta-conv-badge" title="Dieses Ticket entstand durch Kartenumwandlung.">↔ Umwandlung: @OriginLabel(ot)@(t.OriginCardUuid is { } cu ? " " + cu.ToString("N")[..8].ToUpperInvariant() : "")</div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (t.BundleId is { } bundleId && _bundleRefById.TryGetValue(bundleId, out var bundleRef))
+                                    {
+                                        <span class="ta-badge ta-badge-buyer">@bundleRef</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">—</span>
+                                    }
+                                </td>
+                                <td class="ta-created" title="@AdminFormat.CreatedTooltip(t.CreatedAt, t.CreatedByName, t.CreatedByEmail, t.OrderId)">
+                                    @AdminFormat.CreatedShort(t.CreatedAt, t.CreatedByName, t.OrderId)
+                                </td>
+                                <td>
+                                    <InlineSelectEdit TValue="TicketCategory"
+                                                      Value="@t.Category"
+                                                      Options="@AllCategories"
+                                                      Label="@(c => c.DisplayName())"
+                                                      FieldLabel="Kategorie"
+                                                      Save="@(c => SaveCategoryAsync(t, c))" />
+                                </td>
+                                <td class="ta-num">
+                                    <InlineNumberEdit Value="@t.Price"
+                                                      Decimals="2"
+                                                      Min="0"
+                                                      Prefix="CHF"
+                                                      FieldLabel="Abgabepreis"
+                                                      Save="@(p => SavePriceAsync(t, p))" />
+                                </td>
+                                <td>
+                                    <InlineSelectEdit TValue="TicketStatus"
+                                                      Value="@t.Status"
+                                                      Options="@AllStatuses"
+                                                      Label="@(s => s.DisplayName())"
+                                                      FieldLabel="Status"
+                                                      Save="@(s => SaveStatusAsync(t, s))">
+                                        <Display Context="status">
+                                            <span class="ta-badge ta-badge-@status.ToString().ToLowerInvariant()">@status.DisplayName()</span>
+                                        </Display>
+                                    </InlineSelectEdit>
+                                </td>
+                                <td>
+                                    @if (t.Status == TicketStatus.Valid)
+                                    {
+                                        <InlineSelectEdit TValue="RedemptionState"
+                                                          Value="@StateOf(t)"
+                                                          Options="@AllRedemptionStates"
+                                                          Label="@RedemptionLabel"
+                                                          FieldLabel="Eingelöst"
+                                                          Save="@(s => SaveRedemptionAsync(t, s))">
+                                            <Display Context="state">
+                                                <span class="ta-badge @RedemptionBadge(state)">@RedemptionLabel(state)</span>
+                                            </Display>
+                                        </InlineSelectEdit>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-badge ta-badge-draft">Offen</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuche</button>
+                                </td>
+                                <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="@(HasEmail(t) ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!HasEmail(t))" @onclick="() => OpenMail(t)">✉</button>
+                                    <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(t)">✎</button>
+                                    <button type="button" class="ta-icon-btn" title="Als PDF drucken" @onclick="() => OpenSinglePrint(t.Uuid)">🖨</button>
+                                    @if (Identity?.IsAdmin == true)
+                                    {
+                                        <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = t">🗑</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="ta-summary">
+                @_tickets.Count Tickets · @_tickets.Count(t => StateOf(t) == RedemptionState.Redeemed) eingelöst
+                · @_tickets.Count(t => StateOf(t) == RedemptionState.Outside) draussen
+                · @_tickets.Count(t => StateOf(t) == RedemptionState.Open) offen
+            </p>
+        }
+    }
+</section>
+
+@if (_showCreate)
+{
+    <div class="ta-overlay" @onmousedown="CloseCreate">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Ticket erstellen</h2>
+            <PersonFields Model="_newPerson" Prefix="newEt" EmailHint=" (optional, für den Ticketversand)" />
+            <div class="ta-field">
+                <label class="ta-label" for="newCategory">Kategorie</label>
+                <select id="newCategory" class="ta-select" @bind="_newCategory">
+                    @foreach (var cat in Enum.GetValues<TicketCategory>())
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newPrice">Abgabepreis (CHF)</label>
+                <input id="newPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" @bind:after="OnNewPriceChanged" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newTicketPaymentSource">Zahlart</label>
+                <select id="newTicketPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(_newPrice))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            @if (_createError is not null)
+            {
+                <p class="ta-modal-error">@_createError</p>
+            }
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateTicketAsync">Erstellen</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_editing is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Ticket bearbeiten</h2>
+            <p class="ta-modal-sub">Ticket-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="editCategory">Kategorie</label>
+                <select id="editCategory" class="ta-select" @bind="_editCategory">
+                    @foreach (var cat in Enum.GetValues<TicketCategory>())
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editPrice">Preis (CHF)</label>
+                <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_editPrice" @bind:after="() => _editPrice = decimal.Round(_editPrice, 2)" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editStatus">Status</label>
+                <select id="editStatus" class="ta-select" @bind="_editStatus">
+                    <option value="@TicketStatus.Valid">Gültig</option>
+                    <option value="@TicketStatus.Cancelled">Storniert</option>
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="editRedeemed">Eingelöst</label>
+                <select id="editRedeemed" class="ta-select" @bind="_editRedeemed" disabled="@(_editStatus == TicketStatus.Cancelled)">
+                    <option value="false">Offen</option>
+                    <option value="true">Eingelöst</option>
+                </select>
+                <p class="ta-field-hint">Ein storniertes Ticket kann nicht eingelöst sein.</p>
+            </div>
+
+            <PersonFields Model="_editPerson" Prefix="editEt" EmailHint=" (für den Ticketversand)" />
+
+            @if (_editError is not null)
+            {
+                <p class="ta-modal-error">@_editError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                    @(_saving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_visitsFor is not null)
+{
+    <VisitsOverlay Uuid="@_visitsFor.Uuid"
+                   Title="@($"Spielticket {AdminFormat.TicketNo(_visitsFor.Uuid)}")"
+                   OnClose="() => _visitsFor = null" />
+}
+
+@if (_deleteTarget is not null)
+{
+    <ConfirmDialog Title="Ticket löschen"
+                   Message="@($"Ticket {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
+                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+}
+
+@if (_showCreateBundle)
+{
+    <div class="ta-overlay" @onmousedown="CloseCreateBundle">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Ticket-Bundle erstellen</h2>
+            <div class="ta-field">
+                <label class="ta-label">Anlass</label>
+                <div class="ta-readonly">@_selectedEventName</div>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundleCategory">Ticketkategorie</label>
+                <select id="bundleCategory" class="ta-select" @bind="_bundleCategory">
+                    @foreach (var cat in AllCategories)
+                    {
+                        <option value="@cat">@cat.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundleReference">Bundlename</label>
+                <input id="bundleReference" class="ta-input" type="text" maxlength="50" placeholder="z. B. Sponsoren 2026" @bind="_bundleReference" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundleQuantity">Anzahl Tickets</label>
+                <input id="bundleQuantity" class="ta-input" type="number" min="1" max="1000" @bind="_bundleQuantity" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="bundlePaymentSource">Zahlart</label>
+                <select id="bundlePaymentSource" class="ta-select" @bind="_bundlePaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            @if (_bundleError is not null)
+            {
+                <p class="ta-modal-error">@_bundleError</p>
+            }
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreateBundle" disabled="@_bundleSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_bundleSaving">
+                    @(_bundleSaving ? "Wird erstellt …" : "Bundle erstellen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showImport)
+{
+    <div class="ta-overlay" @onmousedown="CloseImport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Spieltickets importieren</h2>
+
+            <div class="ta-field">
+                <label class="ta-label">Anlass</label>
+                <div class="ta-readonly">@_selectedEventName</div>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impEventCategory">Kategorie (Vorauswahl, Datei kann überschreiben)</label>
+                <select id="impEventCategory" class="ta-select" @bind="_importCategory">
+                    @foreach (var c in MainCategories)
+                    {
+                        <option value="@c">@c.DisplayName()</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impEventReference">Bundle</label>
+                <input id="impEventReference" class="ta-input" type="text" maxlength="50" list="eventImportBundleOptions" placeholder="z. B. Sponsoren 2026" @bind="_importReference" />
+                <datalist id="eventImportBundleOptions">
+                    @foreach (var b in _bundles) { <option value="@b.Reference" /> }
+                </datalist>
+                <p class="ta-hint">Gilt für Zeilen ohne eigene Bundle-Spalte; eine Bundle-Spalte in der Datei hat Vorrang.</p>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label">Datei (CSV oder Excel)</label>
+                <InputFile OnChange="OnImportFileAsync" accept=".csv,.xlsx,text/csv" />
+                <p class="ta-hint">
+                    Spalten (alle optional): Karten-Nr, Bundle, Kategorie, Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
+                    Die Spalten werden automatisch erkannt; passt die Zuordnung nicht, unten von Hand anpassen.
+                    Zeilen mit bestehender Ticket-Nr werden aktualisiert.
+                    <a href="/admin/event-tickets/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
+                </p>
+            </div>
+
+            @if (_importTable is not null && _importTable.Columns.Count > 0)
+            {
+                <div class="ta-field">
+                    @if (!_showMapping)
+                    {
+                        <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => _showMapping = true">Spaltenzuordnung anpassen</button>
+                    }
+                    else
+                    {
+                        <label class="ta-label">Spaltenzuordnung</label>
+                        <p class="ta-hint">Ordne jeder benötigten Spalte eine Spalte aus deiner Datei zu.</p>
+                        <table class="ta-map">
+                            @foreach (var field in TicketImportCsv.Fields)
+                            {
+                                <tr>
+                                    <td class="ta-map-label">@field.Label</td>
+                                    <td>
+                                        <select class="ta-select" value="@MapValue(field.Key)" @onchange="e => SetMap(field.Key, e.Value?.ToString())">
+                                            <option value="-1">(nicht zuordnen)</option>
+                                            @for (var i = 0; i < _importTable.Columns.Count; i++)
+                                            {
+                                                var idx = i;
+                                                <option value="@idx">@_importTable.Columns[idx]</option>
+                                            }
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </table>
+                        <div class="ta-modal-actions">
+                            <button type="button" class="ta-btn ta-btn-primary" @onclick="ApplyMapping">Zuordnung übernehmen</button>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (_importFileName is not null)
+            {
+                <div class="ta-parse">
+                    <strong>@_importFileName</strong>: @_importRows.Count gültige Zeile@(_importRows.Count == 1 ? "" : "n") erkannt.
+                    @if (_importWarnings.Count > 0)
+                    {
+                        <ul class="ta-warnings">
+                            @foreach (var w in _importWarnings) { <li>@w</li> }
+                        </ul>
+                    }
+                </div>
+                @if (_importErrors.Count > 0)
+                {
+                    <div class="ta-error">
+                        @_importErrors.Count Fehler, bitte in der Datei korrigieren:
+                        <ul class="ta-warnings">
+                            @foreach (var er in _importErrors) { <li>@er</li> }
+                        </ul>
+                    </div>
+                }
+            }
+
+            @if (!string.IsNullOrEmpty(_importError)) { <div class="ta-error">@_importError</div> }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_importSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="RunImportAsync" disabled="@(_importSaving || _importRows.Count == 0 || _importErrors.Count > 0)">
+                    @(_importSaving ? "Wird importiert …" : _importErrors.Count > 0 ? "Bitte Fehler beheben" : $"{_importRows.Count} Spieltickets importieren")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showExport)
+{
+    <div class="ta-overlay" @onmousedown="CloseExport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Spieltickets exportieren</h2>
+            <p class="ta-modal-sub">Bundle wählen (Mehrfachauswahl möglich).</p>
+            @if (_bundles.Count == 0)
+            {
+                <p class="ta-muted-text">Für diesen Anlass sind keine Bundles erfasst.</p>
+            }
+            else
+            {
+                <div class="ta-export-list">
+                    @foreach (var b in _bundles)
+                    {
+                        <label class="ta-export-item">
+                            <input type="checkbox" checked="@_exportSel.Contains(b.Id)"
+                                   @onchange="e => ToggleExport(b.Id, (bool)(e.Value ?? false))" />
+                            @b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.
+                        </label>
+                    }
+                </div>
+            }
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
+                @if (_exportSel.Count > 0)
+                {
+                    <a class="ta-btn ta-btn-primary" href="/admin/event-tickets/tickets.csv?ids=@string.Join(",", _exportSel)"
+                       target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showPrint)
+{
+    <TicketPrintDialog Type="TicketType.EventTicket"
+                       Title="Spieltickets als PDF drucken"
+                       Subtitle="@_printSubtitle"
+                       Layout="_printLayout"
+                       OnClose="ClosePrint">
+        <HiddenInputs>
+            @if (_printUuid is { } u)
+            {
+                <input type="hidden" name="uuid" value="@u" />
+            }
+            else if (_printBundleId is { } b)
+            {
+                <input type="hidden" name="bundleId" value="@b" />
+            }
+        </HiddenInputs>
+    </TicketPrintDialog>
+}
+
+@if (_mailFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseMail">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Spielticket senden</h2>
+            <p class="ta-modal-sub">@(_mailFor.Holder?.DisplayName ?? AdminFormat.TicketNo(_mailFor.Uuid)) · @_mailFor.Holder?.Email</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="etMailSubject">Betreff</label>
+                <input id="etMailSubject" class="ta-input" type="text" maxlength="200" @bind="_mailSubject" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="etMailBody">Text</label>
+                <textarea id="etMailBody" class="ta-input ta-textarea" @bind="_mailBody"></textarea>
+                <p class="ta-hint">Platzhalter: {Name}, {Anlass}, {Datum}. Markdown wird unterstützt. QR-Code, Online-Ticket und PDF-Link werden automatisch angehängt.</p>
+            </div>
+
+            @if (_mailSent) { <div class="ta-flash">E-Mail wurde in den Versand gegeben.</div> }
+            @if (!string.IsNullOrEmpty(_mailError)) { <div class="ta-modal-error">@_mailError</div> }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseMail" disabled="@_mailSending">Schliessen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@(_mailSending || _mailSent)">
+                    @(_mailSent ? "Gesendet ✓" : _mailSending ? "Sendet …" : "Senden")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showBulk)
+{
+    <div class="ta-overlay" @onmousedown="CloseBulk">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Spieltickets versenden</h2>
+
+            @if (_bulkResult is not null)
+            {
+                <div class="ta-flash">@_bulkResult.Enqueued Ticket@(_bulkResult.Enqueued == 1 ? "" : "s") eingereiht@(_bulkResult.Failed > 0 ? $", {_bulkResult.Failed} fehlgeschlagen" : "").</div>
+                @if (_bulkResult.NoEmail > 0)
+                {
+                    <p class="ta-hint">@_bulkResult.NoEmail Ticket@(_bulkResult.NoEmail == 1 ? "" : "s") ohne E-Mail übersprungen.</p>
+                }
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
+                </div>
+            }
+            else
+            {
+                <p class="ta-hint">@BulkWithEmail Ticket@(BulkWithEmail == 1 ? "" : "s") mit E-Mail werden versendet · @BulkWithoutEmail ohne E-Mail werden übersprungen. Grundlage ist die aktuelle Filterung (@(_bundleFilter > 0 ? "gewähltes Bundle" : "alle Bundles")).</p>
+
+                <div class="ta-field">
+                    <label class="ta-label" for="etBulkSubject">Betreff</label>
+                    <input id="etBulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="etBulkBody">Text</label>
+                    <textarea id="etBulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
+                    <p class="ta-hint">Platzhalter: {Name}, {Anlass}, {Datum}. Markdown wird unterstützt. QR-Code, Online-Ticket und PDF-Link werden je Ticket angehängt.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_bulkError)) { <div class="ta-modal-error">@_bulkError</div> }
+
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk" disabled="@_bulkSending">Abbrechen</button>
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendBulk" disabled="@(_bulkSending || BulkWithEmail == 0)">
+                        @(_bulkSending ? "Sendet …" : $"{BulkWithEmail} Tickets senden")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private IEventTickets Tickets { get; set; } = default!;
+    [Inject] private IEventTicketBundles Bundles { get; set; } = default!;
+    [Inject] private IVisitLogReader Visits { get; set; } = default!;
+    [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
+    [Inject] private IOccupancyReader Occupancies { get; set; } = default!;
+    [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
+    [Inject] private EditEventTicket.Handler TicketEdits { get; set; } = default!;
+    [Inject] private SetEventTicketHolder.Handler HolderChanges { get; set; } = default!;
+    [Inject] private DeleteEventTicket.Handler TicketDeletions { get; set; } = default!;
+    [Inject] private CreateEventTicketBundle.Handler BundleCreation { get; set; } = default!;
+    [Inject] private ImportEventTickets.Handler TicketImports { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+    [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
+    [Inject] private IEventTicketMailer Mailer { get; set; } = default!;
+
+    private EventTicket? _mailFor;
+    private string _mailSubject = "";
+    private string _mailBody = "";
+    private bool _mailSending;
+    private bool _mailSent;
+    private string? _mailError;
+
+    private static bool HasEmail(EventTicket t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
+
+    private void OpenMail(EventTicket t)
+    {
+        _mailFor = t;
+        _mailSubject = Mailer.DefaultSubject;
+        _mailBody = Mailer.DefaultBody;
+        _mailSent = false;
+        _mailError = null;
+    }
+
+    private void CloseMail() { if (!_mailSending) { _mailFor = null; _mailError = null; } }
+
+    private async Task SendMail()
+    {
+        if (_mailFor is null) return;
+        _mailSending = true;
+        _mailError = null;
+        try
+        {
+            var result = await SendOneAsync(_mailFor, _mailSubject, _mailBody);
+            if (result.Success) { _mailSent = true; await Task.Delay(1400); _mailFor = null; }
+            else _mailError = result.Error;
+        }
+        finally { _mailSending = false; }
+    }
+
+    private Task<EmailSendResult> SendOneAsync(EventTicket t, string subject, string body) =>
+        Mailer.SendAsync(new EventMailTicket(t.Uuid, t.Holder?.Email, t.Holder?.DisplayName, t.EventId,
+            t.Category.DisplayName()), subject, body);
+
+    private bool _showBulk;
+    private bool _bulkSending;
+    private string _bulkSubject = "";
+    private string _bulkBody = "";
+    private string? _bulkError;
+    private BulkResult? _bulkResult;
+    private sealed record BulkResult(int Enqueued, int Failed, int NoEmail);
+
+    private int BulkWithEmail => Filtered().Count(HasEmail);
+    private int BulkWithoutEmail => Filtered().Count(t => !HasEmail(t));
+
+    private void OpenBulk()
+    {
+        _bulkSubject = Mailer.DefaultSubject;
+        _bulkBody = Mailer.DefaultBody;
+        _bulkResult = null;
+        _bulkError = null;
+        _showBulk = true;
+    }
+
+    private void CloseBulk() { if (!_bulkSending) _showBulk = false; }
+
+    private async Task SendBulk()
+    {
+        _bulkSending = true;
+        _bulkError = null;
+        try
+        {
+            int enqueued = 0, failed = 0, noEmail = 0;
+            foreach (var t in Filtered().ToList())
+            {
+                if (!HasEmail(t)) { noEmail++; continue; }
+                var r = await SendOneAsync(t, _bulkSubject, _bulkBody);
+                if (r.Success) enqueued++; else failed++;
+            }
+            _bulkResult = new BulkResult(enqueued, failed, noEmail);
+        }
+        finally { _bulkSending = false; }
+    }
+
+    private bool _showPrint;
+    private TicketPrintLayout _printLayout = TicketPrintLayout.Default;
+    private int? _printBundleId;
+    private Guid? _printUuid;
+    private string _printSubtitle = "";
+
+    private async Task OpenBundlePrint()
+    {
+        if (_bundleFilter <= 0) return;
+        var bundle = _bundles.FirstOrDefault(b => b.Id == _bundleFilter);
+        _printBundleId = _bundleFilter;
+        _printUuid = null;
+        _printSubtitle = bundle is null ? "" : $"{bundle.Reference} · {bundle.TicketCount} Tickets · eine Seite pro Ticket";
+        _printLayout = await PrintSettings.GetAsync(TicketType.EventTicket);
+        _showPrint = true;
+    }
+
+    private async Task OpenSinglePrint(Guid uuid)
+    {
+        _printUuid = uuid;
+        _printBundleId = null;
+        _printSubtitle = $"Ticket-Nr. {AdminFormat.TicketNo(uuid)}";
+        _printLayout = await PrintSettings.GetAsync(TicketType.EventTicket);
+        _showPrint = true;
+    }
+
+    private void ClosePrint() => _showPrint = false;
+
+    private EventTicket? _deleteTarget;
+    private bool _deleteBusy;
+    private string? _deleteError;
+
+    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_deleteTarget is null) return;
+        _deleteBusy = true;
+        _deleteError = null;
+        try
+        {
+            await TicketDeletions.HandleAsync(new DeleteEventTicket.Command(_deleteTarget.Uuid));
+            _deleteTarget = null;
+            await ReloadTicketsAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleteBusy = false; }
+    }
+
+    private static readonly TicketCategory[] AllCategories = Enum.GetValues<TicketCategory>();
+    private static readonly TicketCategory[] MainCategories =
+        [TicketCategory.Adult, TicketCategory.Youth, TicketCategory.Child];
+    private static readonly TicketStatus[] AllStatuses = [TicketStatus.Valid, TicketStatus.Cancelled];
+    private static readonly RedemptionState[] AllRedemptionStates = Enum.GetValues<RedemptionState>();
+    private static readonly Func<RedemptionState, string> RedemptionLabel = s => s.DisplayName();
+
+    private IReadOnlyDictionary<Guid, bool> _inside = new Dictionary<Guid, bool>();
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<Event> _events = [];
+    private IReadOnlyList<EventTicket> _tickets = [];
+    private IReadOnlyList<EventTicketBundleView> _bundles = [];
+    private IReadOnlyDictionary<int, string> _bundleRefById = new Dictionary<int, string>();
+    private string _selectedEventName = "";
+
+    public int SelectedSeasonId { get; set; }
+    public int SelectedEventId { get; set; }
+
+    private string _sortCol = "category";
+    private bool _sortAsc = true;
+
+    private bool _showCreate;
+    private TicketCategory _newCategory = TicketCategory.Adult;
+    private decimal _newPrice;
+    private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
+    private PersonForm _newPerson = new();
+    private string? _createError;
+
+    private void OnNewPriceChanged()
+    {
+        _newPrice = decimal.Round(_newPrice, 2);
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(_newPrice);
+        if (!choices.Contains(_newPaymentSource)) _newPaymentSource = choices[0];
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var restoreEventId = AdminState.SelectedEventId;
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await OnSeasonChangedAsync();
+        if (restoreEventId is int eid && eid != SelectedEventId && _events.Any(e => e.Id == eid))
+        {
+            SelectedEventId = eid;
+            await ReloadTicketsAsync();
+        }
+        _loading = false;
+    }
+
+    private async Task OnSeasonChangedAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        _events = SelectedSeasonId > 0
+            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
+            : [];
+        SelectedEventId = DefaultEvent(_events)?.Id ?? 0;
+        await ReloadTicketsAsync();
+    }
+
+    private async Task ReloadTicketsAsync()
+    {
+        AdminState.SelectedEventId = SelectedEventId > 0 ? SelectedEventId : null;
+        _selectedEventName = _events.FirstOrDefault(e => e.Id == SelectedEventId)?.Name ?? "";
+        _tickets = SelectedEventId > 0
+            ? (await Tickets.GetByEventAsync(SelectedEventId)).OrderBy(t => t.CreatedAt).ToList()
+            : [];
+        _bundles = SelectedEventId > 0
+            ? await Bundles.GetByEventAsync(SelectedEventId)
+            : [];
+        _bundleRefById = _bundles.ToDictionary(b => b.Id, b => b.Reference);
+        _inside = SelectedEventId > 0
+            ? await Visits.GetInsideByEventAsync(SelectedEventId)
+            : new Dictionary<Guid, bool>();
+    }
+
+    private RedemptionState StateOf(EventTicket t) =>
+        RedemptionStateExtensions.Derive(t.Redeemed, _inside.TryGetValue(t.Uuid, out var inside) ? inside : null);
+
+    private static string RedemptionBadge(RedemptionState state) => state switch
+    {
+        RedemptionState.Redeemed => "ta-badge-redeemed",
+        RedemptionState.Outside => "ta-badge-blocked",
+        _ => "ta-badge-draft"
+    };
+
+    private static string OriginLabel(TicketType type) => type switch
+    {
+        TicketType.SeasonPass => "Saisonkarte",
+        TicketType.MemberCard => "Mitgliederkarte",
+        TicketType.SeasonSingle => "Flexticket",
+        _ => "Karte"
+    };
+
+    private async Task SaveCategoryAsync(EventTicket t, TicketCategory category)
+    {
+        await EditAsync(t, category, t.Price, t.Status, t.Redeemed);
+        await ReloadTicketsAsync();
+    }
+
+    private async Task SavePriceAsync(EventTicket t, decimal? price)
+    {
+        if (price is not { } p || p < 0) throw new DomainException("Der Abgabepreis darf nicht leer oder negativ sein.");
+        await EditAsync(t, t.Category, p, t.Status, t.Redeemed);
+        await ReloadTicketsAsync();
+    }
+
+    private async Task SaveStatusAsync(EventTicket t, TicketStatus status)
+    {
+        await EditAsync(t, t.Category, t.Price, status, t.Redeemed);
+        await ReloadTicketsAsync();
+    }
+
+    private Task EditAsync(EventTicket t, TicketCategory category, decimal price, TicketStatus status, bool redeemed) =>
+        TicketEdits.HandleAsync(new EditEventTicket.Command(t.Uuid, t.EventId, category, price, status, redeemed, null));
+
+    private async Task SaveRedemptionAsync(EventTicket t, RedemptionState target)
+    {
+        var scannedBy = Identity?.Name ?? AdminUser;
+        var current = StateOf(t);
+
+        switch (target)
+        {
+            case RedemptionState.Redeemed:
+                await ScanOrThrowAsync(t, ScanMode.CheckIn, scannedBy);
+                break;
+            case RedemptionState.Outside:
+                if (current == RedemptionState.Open)
+                    throw new DomainException("Ein offenes Ticket war nie drin und kann nicht auf „Draussen“ gesetzt werden.");
+                await ScanOrThrowAsync(t, ScanMode.CheckOut, scannedBy);
+                break;
+            case RedemptionState.Open:
+                if (current == RedemptionState.Redeemed && _inside.GetValueOrDefault(t.Uuid))
+                    await ScanOrThrowAsync(t, ScanMode.CheckOut, scannedBy);
+                await EditAsync(t, t.Category, t.Price, t.Status, false);
+                break;
+        }
+        await ReloadTicketsAsync();
+    }
+
+    private async Task ScanOrThrowAsync(EventTicket t, ScanMode mode, string scannedBy)
+    {
+        var outcome = await TicketScans.HandleAsync(new ScanTicket.Command(t.EventId, TicketType.EventTicket, t.Uuid, t.EventId, mode, scannedBy));
+        if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
+    }
+
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private string _search = "";
+    private int _bundleFilter;
+
+    private IEnumerable<EventTicket> Filtered()
+    {
+        var src = _bundleFilter > 0 ? _tickets.Where(t => t.BundleId == _bundleFilter) : _tickets;
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return terms.Length == 0
+            ? src
+            : src.Where(t => terms.All(term => Haystack(t).Contains(term, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private string Haystack(EventTicket t)
+    {
+        var h = t.Holder;
+        var bundle = t.BundleId is { } b && _bundleRefById.TryGetValue(b, out var r) ? r : "";
+        return string.Join(' ', new[]
+        {
+            AdminFormat.TicketNo(t.Uuid), h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email ?? "",
+            t.Category.DisplayName(), t.Status.DisplayName(), bundle, t.Price.ToString("N2")
+        });
+    }
+
+    private IEnumerable<EventTicket> Sorted()
+    {
+        IEnumerable<EventTicket> q = _sortCol switch
+        {
+            "buyer" => Filtered().OrderBy(t => t.Buyer?.DisplayName ?? "", StringComparer.OrdinalIgnoreCase),
+            "created" => Filtered().OrderBy(t => t.CreatedAt),
+            "price" => Filtered().OrderBy(t => t.Price),
+            "status" => Filtered().OrderBy(t => t.Status),
+            "redeemed" => Filtered().OrderBy(t => t.Redeemed),
+            _ => Filtered().OrderBy(t => t.Category),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
+    private EventTicket? _visitsFor;
+
+    private void OpenCreate()
+    {
+        _newCategory = TicketCategory.Adult;
+        _newPrice = 0m;
+        _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
+        _newPerson = new PersonForm();
+        _createError = null;
+        _showCreate = true;
+    }
+    private void CloseCreate() => _showCreate = false;
+
+    private async Task CreateTicketAsync()
+    {
+        if (SelectedEventId <= 0) { _createError = "Es ist kein Anlass gewählt."; return; }
+        if (_newPrice < 0) { _createError = "Der Abgabepreis darf nicht negativ sein."; return; }
+        if ((await Occupancies.GetAsync(SelectedEventId)).Full)
+        { _createError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
+        try
+        {
+            var buyer = _newPerson.ToBuyer();
+            if (buyer is null) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
+            var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
+                Identity?.Name ?? AdminUser, paymentSource));
+            var saved = await Tickets.SaveAsync(EventTicket.Create(SelectedEventId, _newCategory, _newPrice, order.Id, buyer,
+                Identity?.Name ?? AdminUser, Identity?.Email));
+            await HolderChanges.HandleAsync(new SetEventTicketHolder.Command(saved.Uuid, _newPerson.ToHolder()));
+        }
+        catch (DomainException ex) { _createError = ex.Message; return; }
+        _showCreate = false;
+        await ReloadTicketsAsync();
+    }
+
+    private bool _showCreateBundle;
+    private bool _bundleSaving;
+    private TicketCategory _bundleCategory = TicketCategory.Adult;
+    private string _bundleReference = "";
+    private int _bundleQuantity = 1;
+    private PaymentSource _bundlePaymentSource = PaymentSource.Sponsoring;
+    private string? _bundleError;
+
+    private static PaymentSource ClampPaymentSource(PaymentSource source, decimal price)
+    {
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(price);
+        return choices.Contains(source) ? source : choices[0];
+    }
+
+    private void OpenCreateBundle()
+    {
+        _bundleCategory = TicketCategory.Adult;
+        _bundleReference = "";
+        _bundleQuantity = 1;
+        _bundlePaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
+        _bundleError = null;
+        _showCreateBundle = true;
+    }
+    private void CloseCreateBundle() => _showCreateBundle = false;
+
+    private bool _showImport;
+    private bool _importSaving;
+    private string? _importFileName;
+    private string? _importError;
+    private string _importReference = "";
+    private TicketCategory _importCategory = TicketCategory.Adult;
+    private IReadOnlyList<TicketImportRow> _importRows = [];
+    private IReadOnlyList<string> _importWarnings = [];
+    private IReadOnlyList<string> _importErrors = [];
+    private TicketImportTable? _importTable;
+    private Dictionary<string, int> _map = new();
+    private bool _showMapping;
+
+    private void OpenImport()
+    {
+        _importFileName = null;
+        _importReference = "";
+        _importCategory = TicketCategory.Adult;
+        _importRows = [];
+        _importWarnings = [];
+        _importErrors = [];
+        _importError = null;
+        _importTable = null;
+        _map = new();
+        _showMapping = false;
+        _showImport = true;
+    }
+    private void CloseImport() { if (!_importSaving) _showImport = false; }
+
+    private async Task OnImportFileAsync(InputFileChangeEventArgs e)
+    {
+        _importError = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+
+            var table = TicketImportCsv.ReadTable(buffer.ToArray(), e.File.Name);
+            _importFileName = e.File.Name;
+            _importTable = table;
+            _map = new Dictionary<string, int>(table.AutoMap);
+
+            if (table.Columns.Count == 0 || table.Rows.Count == 0)
+            {
+                _importRows = [];
+                _importWarnings = [];
+                _importErrors = ["Keine Datenzeilen gefunden. Bitte prüfe die Datei."];
+                _showMapping = false;
+                return;
+            }
+
+            if (TicketImportCsv.EssentialMapped(_map))
+            {
+                ApplyMapping();
+            }
+            else
+            {
+                _importRows = [];
+                _importWarnings = [];
+                _importErrors = [];
+                _importError = "Spalten konnten nicht automatisch erkannt werden. Bitte unten von Hand zuordnen.";
+                _showMapping = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _importFileName = null;
+            _importTable = null;
+            _importRows = [];
+            _importWarnings = [];
+            _importErrors = [];
+            _importError = $"Datei konnte nicht gelesen werden: {ex.Message}";
+        }
+    }
+
+    private int MapValue(string key) => _map.TryGetValue(key, out var idx) ? idx : -1;
+
+    private void SetMap(string key, string? value)
+    {
+        if (int.TryParse(value, out var idx) && idx >= 0) _map[key] = idx;
+        else _map.Remove(key);
+    }
+
+    private void ApplyMapping()
+    {
+        if (_importTable is null) return;
+        _importError = null;
+        var result = TicketImportCsv.BuildRows(_importTable, _map);
+        _importRows = result.Rows;
+        _importWarnings = result.Warnings;
+        _importErrors = result.Errors;
+        _showMapping = false;
+    }
+
+    private async Task RunImportAsync()
+    {
+        _importError = null;
+        if (SelectedEventId <= 0) { _importError = "Bitte zuerst einen Anlass wählen."; return; }
+        if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte ein Bundle angeben."; return; }
+        if (_importErrors.Count > 0) { _importError = "Bitte zuerst die Fehler in der Datei beheben."; return; }
+        if (_importRows.Count == 0) { _importError = "Bitte eine Datei mit mindestens einer Zeile wählen."; return; }
+        _importSaving = true;
+        try
+        {
+            await TicketImports.HandleAsync(new ImportEventTickets.Command(SelectedEventId, _importRows, _importReference.Trim(),
+                _importCategory, Identity?.Name ?? AdminUser, Identity?.Email));
+            _showImport = false;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _importError = ex.Message; }
+        finally { _importSaving = false; }
+    }
+
+    private async Task CreateBundleAsync()
+    {
+        _bundleError = null;
+        var reference = (_bundleReference ?? "").Trim();
+        if (SelectedEventId <= 0) { _bundleError = "Es ist kein Anlass gewählt."; return; }
+        if (reference.Length == 0) { _bundleError = "Bitte einen Bundlenamen angeben."; return; }
+        if (_bundleQuantity < 1) { _bundleError = "Die Anzahl muss mindestens 1 sein."; return; }
+        if ((await Occupancies.GetAsync(SelectedEventId)).Full)
+        { _bundleError = "Halle voll: Es können keine Tickets mehr erstellt werden."; return; }
+
+        _bundleSaving = true;
+        try
+        {
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
+                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _bundleCategory, $"Ticket-Bundle · {reference}", _bundleQuantity, 0m)],
+                Identity?.Name ?? AdminUser, _bundlePaymentSource));
+            await BundleCreation.HandleAsync(new CreateEventTicketBundle.Command(SelectedEventId, _bundleCategory, reference, _bundleQuantity,
+                Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
+            _showCreateBundle = false;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _bundleError = ex.Message; }
+        finally { _bundleSaving = false; }
+    }
+
+    private bool _showExport;
+    private readonly HashSet<int> _exportSel = [];
+    private void OpenExport() { _exportSel.Clear(); _showExport = true; }
+    private void CloseExport() => _showExport = false;
+    private void ToggleExport(int bundleId, bool on) { if (on) _exportSel.Add(bundleId); else _exportSel.Remove(bundleId); }
+
+    private EventTicket? _editing;
+    private TicketCategory _editCategory;
+    private decimal _editPrice;
+    private TicketStatus _editStatus;
+    private bool _editRedeemed;
+    private PersonForm _editPerson = new();
+    private bool _saving;
+    private string? _editError;
+
+    private void OpenEdit(EventTicket t)
+    {
+        _editing = t;
+        _editCategory = t.Category;
+        _editPrice = decimal.Round(t.Price, 2);
+        _editStatus = t.Status;
+        _editRedeemed = t.Redeemed;
+        _editPerson = PersonForm.From(t.Holder);
+        _editError = null;
+    }
+
+    private void CancelEdit() { _editing = null; _editError = null; }
+
+    private async Task SaveEdit()
+    {
+        if (_editing is null) return;
+        if (_editPrice < 0) { _editError = "Der Preis darf nicht negativ sein."; return; }
+        _saving = true;
+        _editError = null;
+        try
+        {
+            var uuid = _editing.Uuid;
+            await EditAsync(_editing, _editCategory, decimal.Round(_editPrice, 2), _editStatus, _editRedeemed);
+            await HolderChanges.HandleAsync(new SetEventTicketHolder.Command(uuid, _editPerson.ToHolder()));
+            _editing = null;
+            await ReloadTicketsAsync();
+        }
+        catch (DomainException ex) { _editError = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = SwissTime.Today;
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static Event? DefaultEvent(IReadOnlyList<Event> events)
+    {
+        var today = SwissTime.Today;
+        return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
+    }
+}

@@ -109,7 +109,6 @@ public static class PasswordGenerator
         "Baby", "Kind",
     ];
 
-
     private static readonly (string Word, char Gender)[] Nouns =
         MasculineNouns.Select(n => (Word: n, Gender: 'm'))
             .Concat(FeminineNouns.Select(n => (Word: n, Gender: 'f')))

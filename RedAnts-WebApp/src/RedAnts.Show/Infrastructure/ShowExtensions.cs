@@ -1,4 +1,4 @@
-using RedAnts.Show.Features;
+using RedAnts.Show.Features.Sounds;
 
 namespace RedAnts.Show.Infrastructure;
 

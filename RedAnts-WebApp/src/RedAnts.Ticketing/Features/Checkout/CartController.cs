@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using RedAnts.Ticketing.Features.CheckoutWorkflow;
-using RedAnts.Ticketing.Features.Ports;
 
 namespace RedAnts.Ticketing.Features.Checkout;
 

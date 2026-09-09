@@ -1,14 +1,21 @@
-using NPoco;
+using RedAnts.Ticketing.Features.Admission.Infrastructure;
+using RedAnts.Ticketing.Features.Catalog.Infrastructure;
+using RedAnts.Ticketing.Features.Email.Infrastructure;
+using RedAnts.Ticketing.Features.EventBundles.Infrastructure;
+using RedAnts.Ticketing.Features.FlexTickets.Infrastructure;
+using RedAnts.Ticketing.Features.MemberCards.Infrastructure;
+using RedAnts.Ticketing.Features.Newsletter.Infrastructure;
+using RedAnts.Ticketing.Features.Orders.Infrastructure;
+using RedAnts.Ticketing.Features.Public.Infrastructure;
+using RedAnts.Ticketing.Features.SeasonPasses.Infrastructure;
+using RedAnts.Ticketing.Features.Tickets.Infrastructure;
 using Umbraco.Cms.Core;
+using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.Migrations;
 using Umbraco.Cms.Core.Scoping;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Infrastructure.Migrations;
 using Umbraco.Cms.Infrastructure.Migrations.Upgrade;
-using Umbraco.Cms.Core.Composing;
-using RedAnts.Ticketing.Infrastructure.Sales;
-using RedAnts.Ticketing.Infrastructure.Email;
-using RedAnts.Ticketing.Infrastructure.Analytics;
 
 namespace RedAnts.Ticketing.Infrastructure;
 

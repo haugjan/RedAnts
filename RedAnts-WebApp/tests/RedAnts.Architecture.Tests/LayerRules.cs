@@ -12,13 +12,13 @@ public class LayerRules
         Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|(Ticketing|Show)\.Domain)(\..*)?$").As("Domain");
 
     private static readonly IObjectProvider<IType> TicketingAndWebsiteFeatures =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Ticketing\.Features|Features\.Website)(\..*)?$").As("Features");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Ticketing\.Features(\.(?!Infrastructure\b)\w+)*$|^RedAnts\.Features\.Website(\..*)?$").As("Features");
 
     private static readonly IObjectProvider<IType> ShowFeatures =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Show\.Features(\..*)?$").As("Show features");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Show\.Features(\.(?!Infrastructure\b)\w+)*$").As("Show features");
 
     private static readonly IObjectProvider<IType> Infrastructure =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Infrastructure|(Ticketing|Show)\.Infrastructure)(\..*)?$").As("Infrastructure");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(\w+\.)*Infrastructure(\.\w+)*$").As("Infrastructure");
 
     [Fact]
     public void Domain_depends_on_nothing_above_it() =>

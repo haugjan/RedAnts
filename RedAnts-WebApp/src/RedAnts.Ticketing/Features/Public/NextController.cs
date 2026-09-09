@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using RedAnts.Domain;
+using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Checkout;
-using RedAnts.Ticketing.Features.Ports;
 
 namespace RedAnts.Ticketing.Features.Public;
 

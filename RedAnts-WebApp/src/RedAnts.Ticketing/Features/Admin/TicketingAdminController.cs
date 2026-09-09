@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Umbraco.Cms.Core;
 
 namespace RedAnts.Ticketing.Features.Admin;

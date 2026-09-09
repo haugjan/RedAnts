@@ -39,7 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Infrastructure\Tickets\Fonts\TicketSans.ttf" />
+    <EmbeddedResource Include="Features\Tickets\Infrastructure\Fonts\TicketSans.ttf" />
   </ItemGroup>
 
   <ItemGroup>

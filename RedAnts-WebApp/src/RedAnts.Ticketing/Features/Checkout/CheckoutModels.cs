@@ -1,5 +1,4 @@
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.CheckoutWorkflow;
 
 namespace RedAnts.Ticketing.Features.Checkout;
 

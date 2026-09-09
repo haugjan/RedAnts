@@ -1,6 +1,6 @@
 using RedAnts.Ticketing.Features;
-using RedAnts.Ticketing.Features.Ports;
-using RedAnts.Ticketing.Infrastructure.Sales;
+using RedAnts.Ticketing.Features.Checkout;
+using RedAnts.Ticketing.Features.Checkout.Infrastructure;
 
 namespace RedAnts.Ticketing.Infrastructure;
 

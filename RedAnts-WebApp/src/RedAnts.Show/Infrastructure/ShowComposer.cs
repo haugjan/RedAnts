@@ -1,7 +1,11 @@
 using RedAnts.Show.Features;
-using RedAnts.Show.Features.Ports;
+using RedAnts.Show.Features.Admin;
+using RedAnts.Show.Features.Board;
+using RedAnts.Show.Features.Remote;
+using RedAnts.Show.Features.Remote.Infrastructure;
+using RedAnts.Show.Features.Sounds;
+using RedAnts.Show.Features.Sounds.Infrastructure;
 using Umbraco.Cms.Core.Composing;
-using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.Manifest;
 
 namespace RedAnts.Show.Infrastructure;
