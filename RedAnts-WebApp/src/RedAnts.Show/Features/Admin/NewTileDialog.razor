@@ -1,0 +1,17 @@
+<div class="se-choosewrap" @onclick="CancelAsync">
+    <div class="se-choosecard" @onclick:stopPropagation="true">
+        <h3>Neue Kachel</h3>
+        <div class="se-choosebtns">
+            <button class="se-btn" @onclick="() => OnChosen.InvokeAsync(NodeKind.Folder)">📁 Ordner</button>
+            <button class="se-btn primary" @onclick="() => OnChosen.InvokeAsync(NodeKind.Sound)">🔊 Song</button>
+        </div>
+        <button class="se-btn sm se-choosecancel" @onclick="CancelAsync">Abbrechen</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<NodeKind> OnChosen { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    private Task CancelAsync() => OnCancelled.InvokeAsync();
+}

@@ -1,0 +1,164 @@
+@using System.Text.Json
+@using System.IO.Compression
+@inject DownloadShowSound.Handler SoundDownload
+@inject RestoreShowSound.Handler SoundRestore
+@inject IJSRuntime JS
+
+<div class="se-io">
+    <div class="se-io-actions">
+        <button class="se-btn primary" @onclick="ExportBundleAsync" disabled="@_busy">⬇ Bundle exportieren (ZIP mit Dateien)</button>
+        <label class="se-btn @(_busy ? "disabled" : "")">⬆ Bundle importieren (ZIP)
+            <InputFile OnChange="ImportBundleAsync" accept=".zip" style="display:none" disabled="@_busy" />
+        </label>
+        @if (_busy)
+        {
+            <span class="se-muted">Arbeite …</span>
+        }
+        @if (_status is { Length: > 0 })
+        {
+            <span class="se-status">@_status</span>
+        }
+        @if (_error is { Length: > 0 })
+        {
+            <span class="se-err">@_error</span>
+        }
+    </div>
+    <details class="se-io-json">
+        <summary>Nur JSON (ohne Dateien)</summary>
+        <textarea @bind="_text" spellcheck="false" placeholder="JSON hier einfügen und &quot;Importieren&quot; klicken"></textarea>
+        <div class="se-io-actions">
+            <button class="se-btn" @onclick="ExportJson">Export → Textfeld</button>
+            <button class="se-btn" @onclick="ImportJsonAsync">Importieren</button>
+        </div>
+    </details>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<EditProfile> Profiles { get; set; } = new();
+    [Parameter] public EventCallback<List<ShowProfile>> OnImported { get; set; }
+
+    private bool _busy;
+    private string _text = "";
+    private string _status = "";
+    private string _error = "";
+
+    private List<ShowProfile> Snapshot() => Profiles.Select(p => p.ToModel()).ToList();
+
+    private void ExportJson()
+    {
+        _text = JsonSerializer.Serialize(Snapshot(), ShowJson.Options);
+        _error = "";
+    }
+
+    private async Task ImportJsonAsync()
+    {
+        try
+        {
+            var list = JsonSerializer.Deserialize<List<ShowProfile>>(_text, ShowJson.Options);
+            if (list is null || list.Count == 0) { _error = "Kein gültiges Profil-JSON."; return; }
+            await OnImported.InvokeAsync(list);
+            _error = "Importiert (noch nicht gespeichert).";
+        }
+        catch (Exception ex) { _error = "Fehler: " + ex.Message; }
+    }
+
+    private List<string> CollectLocalRefs()
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Walk(List<EditButton> nodes)
+        {
+            foreach (var n in nodes)
+            {
+                foreach (var s in n.Songs)
+                    if (s.Kind == SoundKind.Local && s.Ref.StartsWith("sounds/")) set.Add(s.Ref);
+                if (n.Children.Count > 0) Walk(n.Children);
+            }
+        }
+        foreach (var pr in Profiles) Walk(pr.Root);
+        return set.ToList();
+    }
+
+    private static string ContentTypeFor(string path)
+    {
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext switch
+        {
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            ".ogg" => "audio/ogg",
+            ".m4a" or ".aac" => "audio/mp4",
+            ".flac" => "audio/flac",
+            _ => "application/octet-stream",
+        };
+    }
+
+    private async Task ExportBundleAsync()
+    {
+        _busy = true; _error = ""; _status = "";
+        try
+        {
+            var refs = CollectLocalRefs();
+            var missing = 0;
+            var ms = new MemoryStream();
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+            {
+                var json = JsonSerializer.Serialize(Snapshot(), ShowJson.Options);
+                var je = zip.CreateEntry("profiles.json");
+                await using (var w = new StreamWriter(je.Open())) { await w.WriteAsync(json); }
+
+                foreach (var r in refs)
+                {
+                    var bytes = await SoundDownload.HandleAsync(new DownloadShowSound.Query(r));
+                    if (bytes is null) { missing++; continue; }
+                    var e = zip.CreateEntry(r);
+                    await using var s = e.Open();
+                    await s.WriteAsync(bytes);
+                }
+            }
+            ms.Position = 0;
+            using var streamRef = new DotNetStreamReference(ms);
+            await JS.InvokeVoidAsync("showDownloadBytes", "soundboard-bundle.zip", streamRef);
+            _status = $"Exportiert: {refs.Count - missing} Datei(en)" + (missing > 0 ? $", {missing} fehlten im Blob" : "") + ".";
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = "Export fehlgeschlagen: " + ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ImportBundleAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        _busy = true; _error = ""; _status = "";
+        try
+        {
+            using var buffer = new MemoryStream();
+            await file.OpenReadStream(200L * 1024 * 1024).CopyToAsync(buffer);
+            buffer.Position = 0;
+            using var zip = new ZipArchive(buffer, ZipArchiveMode.Read);
+
+            var jsonEntry = zip.GetEntry("profiles.json");
+            if (jsonEntry is null) { _error = "Kein profiles.json im ZIP gefunden."; return; }
+
+            var uploaded = 0;
+            foreach (var entry in zip.Entries)
+            {
+                if (!entry.FullName.StartsWith("sounds/") || entry.FullName.EndsWith("/")) continue;
+                await using var es = entry.Open();
+                await SoundRestore.HandleAsync(new RestoreShowSound.Command(entry.FullName, es, ContentTypeFor(entry.FullName)));
+                uploaded++;
+            }
+
+            string text;
+            using (var r = new StreamReader(jsonEntry.Open())) text = await r.ReadToEndAsync();
+            var list = JsonSerializer.Deserialize<List<ShowProfile>>(text, ShowJson.Options);
+            if (list is null || list.Count == 0) { _error = "profiles.json im ZIP ist ungültig."; return; }
+
+            await OnImported.InvokeAsync(list);
+            _status = $"Bundle importiert: {uploaded} Datei(en) hochgeladen. Jetzt 💾 Speichern klicken.";
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = "Import fehlgeschlagen: " + ex.Message; }
+        finally { _busy = false; }
+    }
+}

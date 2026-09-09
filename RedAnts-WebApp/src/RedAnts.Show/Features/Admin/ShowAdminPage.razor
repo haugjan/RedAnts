@@ -1,16 +1,8 @@
 @using System.Text.Json
-@using System.IO.Compression
 @using Microsoft.JSInterop
 @inject GetShowProfiles.Handler ProfilesQuery
 @inject SaveShowProfiles.Handler ProfilesSave
-@inject DownloadShowSound.Handler SoundDownload
-@inject RestoreShowSound.Handler SoundRestore
-@inject LookupSpotifyReference.Handler SpotifyLookup
-@inject TestSpotifyCredentials.Handler SpotifyTest
-@inject GetSpotifySettings.Handler SpotifySettings
-@inject SetShowSetting.Handler SettingSave
-@inject SearchSpotify.Handler SpotifySearch
-@inject UploadShowSound.Handler SoundUpload
+@inject GetSpotifySettings.Handler SpotifyState
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -21,7 +13,7 @@
             <button class="se-btn primary" @onclick="SaveAsync">💾 Speichern</button>
             <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
-            <button class="se-btn" @onclick="OpenSpotifySettingsAsync">🟢 Spotify</button>
+            <button class="se-btn" @onclick="ToggleSpotifySettings">🟢 Spotify</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
@@ -33,82 +25,12 @@
 
     @if (_showIo)
     {
-        <div class="se-io">
-            <div class="se-io-actions">
-                <button class="se-btn primary" @onclick="ExportBundleAsync" disabled="@_ioBusy">⬇ Bundle exportieren (ZIP mit Dateien)</button>
-                <label class="se-btn @(_ioBusy ? "disabled" : "")">⬆ Bundle importieren (ZIP)
-                    <InputFile OnChange="ImportBundleAsync" accept=".zip" style="display:none" disabled="@_ioBusy" />
-                </label>
-                @if (_ioBusy)
-                {
-                    <span class="se-muted">Arbeite …</span>
-                }
-                @if (_ioStatus is { Length: > 0 })
-                {
-                    <span class="se-status">@_ioStatus</span>
-                }
-                @if (_ioError is { Length: > 0 })
-                {
-                    <span class="se-err">@_ioError</span>
-                }
-            </div>
-            <details class="se-io-json">
-                <summary>Nur JSON (ohne Dateien)</summary>
-                <textarea @bind="_ioText" spellcheck="false" placeholder="JSON hier einfügen und &quot;Importieren&quot; klicken"></textarea>
-                <div class="se-io-actions">
-                    <button class="se-btn" @onclick="ExportJson">Export → Textfeld</button>
-                    <button class="se-btn" @onclick="ImportJson">Importieren</button>
-                </div>
-            </details>
-        </div>
+        <ProfileBundlePanel Profiles="_profiles" OnImported="ApplyImportedAsync" />
     }
 
     @if (_showSpotify)
     {
-        <div class="se-editwrap" @onclick="() => _showSpotify = false">
-            <div class="se-editcard se-spotifycard" @onclick:stopPropagation="true">
-                <button class="se-editclose" @onclick="() => _showSpotify = false">✕</button>
-                <h3 class="se-spotifyh">🟢 Spotify-Zugang</h3>
-
-                <div class="se-spotifycur">
-                    <div>Aktuell gespeicherte Client-ID</div>
-                    <strong>@(string.IsNullOrWhiteSpace(_savedClientId) ? "— keine hinterlegt —" : _savedClientId)</strong>
-                    <div class="se-muted">Client-Secret: @(_hasSecret ? "gesetzt ✓" : "nicht gesetzt")</div>
-                </div>
-
-                <label class="se-full">Client-ID
-                    <input @bind="_spotifyClientId" placeholder="z. B. 20dc00b2e3db4ab790fad325e510897d" />
-                </label>
-                <label class="se-full">Client-Secret (nur für die Suche; leer lassen = unverändert)
-                    <input type="password" @bind="_spotifyClientSecret" placeholder="leer lassen = unverändert" />
-                </label>
-
-                <div class="se-testrow">
-                    <button class="se-btn primary" @onclick="SaveSpotifyAsync" disabled="@_spotifyBusy">💾 Speichern</button>
-                    <button class="se-btn" @onclick="TestSpotifyAsync" disabled="@_spotifyBusy">🔍 Testen</button>
-                    <button class="se-btn" @onclick="() => _showSpotify = false">Schliessen</button>
-                </div>
-                @if (_spotifyTestResult is { Length: > 0 })
-                {
-                    <p class="@(_spotifyTestOk ? "se-savedbanner" : "se-err")">@_spotifyTestResult</p>
-                }
-                @if (_spotifyStatus is { Length: > 0 })
-                {
-                    <p class="se-savedbanner">✓ @_spotifyStatus</p>
-                }
-                @if (_spotifyError is { Length: > 0 })
-                {
-                    <p class="se-err">@_spotifyError</p>
-                }
-
-                <p class="se-muted" style="margin-top:14px">Wird zentral in der Datenbank gespeichert und gilt für alle Geräte dieser Umgebung (dev und prod haben getrennte Datenbanken). In deiner Spotify-App müssen diese Redirect-URIs eingetragen sein:</p>
-                <ul class="se-redirects">
-                    <li><code>https://show.redants.ch/show/callback</code></li>
-                    <li><code>https://show-dev.redants.ch/show/callback</code></li>
-                    <li><code>http://127.0.0.1:5603/show/callback</code></li>
-                </ul>
-            </div>
-        </div>
+        <SpotifySettingsDialog OnClosed="() => _showSpotify = false" OnSaved="RefreshSpotifyStateAsync" />
     }
 
     @if (_profile is null)
@@ -187,300 +109,15 @@
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Ordner</button>
                 </div>
 
-                @if (_selected is not null)
+                @if (_selected is { } sel)
                 {
-                    var n = _selected;
-                    <div class="se-editwrap" @onmousedown="() => _downOnBackdrop = true" @onclick="OnWrapClick">
-                    <div class="se-editcard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
-                    <button class="se-editclose" @onclick="AttemptClose">✕</button>
-                    <div class="se-preview" style="--c:@n.Color">
-                        <span class="se-pv-icon">@(string.IsNullOrEmpty(n.Icon) ? "🔊" : n.Icon)</span>
-                        <span class="se-pv-label">@n.Label</span>
-                        @if (!string.IsNullOrEmpty(n.Subtitle))
-                        {
-                            <span class="se-pv-sub">@n.Subtitle</span>
-                        }
-                    </div>
-
-                    <div class="se-editbody">
-                    <div class="se-col">
-                    <div class="se-grid">
-                        <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
-                        <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
-                        <div class="se-fieldcol">
-                            <span class="se-lbl">Icon</span>
-                            <button type="button" class="se-emoji-btn" @onclick="() => _emojiOpen = !_emojiOpen">
-                                <span>@(string.IsNullOrEmpty(n.Icon) ? "＋" : n.Icon)</span> auswählen
-                            </button>
-                            @if (_emojiOpen)
-                            {
-                                <div class="se-emoji-pop">
-                                    @foreach (var e in Emojis)
-                                    {
-                                        <button type="button" @onclick="@(() => { n.Icon = e; _emojiOpen = false; })">@e</button>
-                                    }
-                                    <button type="button" class="clear" @onclick="@(() => { n.Icon = null; _emojiOpen = false; })">✕</button>
-                                </div>
-                            }
-                        </div>
-                        <div class="se-fieldcol">
-                            <span class="se-lbl">Farbe</span>
-                            <button type="button" class="se-color-btn" @onclick="() => _colorOpen = !_colorOpen">
-                                <span class="se-color-chip" style="background:@n.Color"></span> auswählen
-                            </button>
-                            @if (_colorOpen)
-                            {
-                                <div class="se-color-pop">
-                                    @foreach (var c in Palette)
-                                    {
-                                        <button type="button" class="se-swatch @(string.Equals(n.Color, c, StringComparison.OrdinalIgnoreCase) ? "sel" : "")"
-                                                style="background:@c" title="@c" @onclick="@(() => { n.Color = c; _colorOpen = false; })"></button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                    </div>
-                    <div class="se-col">
-
-                    @if (n.Kind == NodeKind.Sound)
-                    {
-                        var song = CurrentSong(n);
-                        <h3>Songs (@n.Songs.Count)</h3>
-                        @if (n.Songs.Count > 1)
-                        {
-                            <div class="se-fieldcol">
-                                <span class="se-lbl">Wiedergabe · Endlos-Loop bis Stopp</span>
-                                <div class="se-src-tabs">
-                                    <button type="button" class="@(!n.SongsRandom ? "active" : "")" @onclick="() => n.SongsRandom = false">🔁 Der Reihe nach</button>
-                                    <button type="button" class="@(n.SongsRandom ? "active" : "")" @onclick="() => n.SongsRandom = true">🔀 Zufällig</button>
-                                </div>
-                            </div>
-                        }
-                        <div class="se-songlist">
-                            @for (var i = 0; i < n.Songs.Count; i++)
-                            {
-                                var idx = i;
-                                var sg = n.Songs[idx];
-                                <div class="se-songrow @(sg == song ? "sel" : "")">
-                                    <button type="button" class="se-songrow-main" @onclick="() => SelectSong(sg)">
-                                        <span class="se-songrow-nr">@(idx + 1)</span>
-                                        <span class="se-songrow-name">@SongEditLabel(sg)</span>
-                                        <span class="se-songrow-cue">@Clock(sg.StartSec)@(sg.DurationSec is { } d ? " – " + Clock(d) : "")</span>
-                                    </button>
-                                    <button type="button" class="se-btn sm" title="hoch" @onclick="() => MoveSong(n, idx, -1)" disabled="@(idx == 0)">↑</button>
-                                    <button type="button" class="se-btn sm" title="runter" @onclick="() => MoveSong(n, idx, 1)" disabled="@(idx == n.Songs.Count - 1)">↓</button>
-                                    <button type="button" class="se-btn sm danger" title="entfernen" @onclick="() => RemoveSong(n, idx)" disabled="@(n.Songs.Count <= 1)">🗑</button>
-                                </div>
-                            }
-                        </div>
-                        <button type="button" class="se-btn sm" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
-
-                        <h4 class="se-songh">Song @(n.Songs.IndexOf(song) + 1) bearbeiten</h4>
-                        <div class="se-src-tabs">
-                            <button type="button" class="@(song.Kind == SoundKind.Local ? "active" : "")" @onclick="() => song.Kind = SoundKind.Local">🎵 Datei</button>
-                            <button type="button" class="@(song.Kind == SoundKind.Spotify ? "active" : "")" @onclick="() => song.Kind = SoundKind.Spotify">🟢 Spotify</button>
-                        </div>
-
-                        @if (song.Kind == SoundKind.Local)
-                        {
-                            <div class="se-full">
-                                <span class="se-lbl">Aktuelle Datei</span>
-                                <div class="se-current">@FriendlyName(song.Ref)</div>
-                            </div>
-                            <label class="se-drop @(_uploading ? "busy" : "")">
-                                <InputFile OnChange="e => OnUploadAsync(e, song)" accept="audio/*" />
-                                <span>@(_uploading ? "Lädt hoch …" : "Datei ziehen oder klicken – ersetzt sofort")</span>
-                            </label>
-                        }
-                        else
-                        {
-                            @if (_spotifyConfigured)
-                            {
-                                <div class="se-search">
-                                    <input class="se-search-in" @bind="_query" @bind:event="oninput" @onkeyup="OnSearchKey" placeholder="Song auf Spotify suchen …" />
-                                    <button class="se-btn primary" @onclick="DoSearch">🔍 Suchen</button>
-                                </div>
-                            }
-                            <label class="se-full">Spotify-Link, URL oder ID einfügen
-                                <input value="@song.Ref" @onchange="e => ApplyPaste(e, song)"
-                                       placeholder="https://open.spotify.com/… · spotify:track:… · oder nur die ID" />
-                            </label>
-                            @if (!_spotifyConfigured)
-                            {
-                                <p class="se-muted">Suche inaktiv (Client-ID + Secret hinterlegen). Link einfügen geht trotzdem.</p>
-                            }
-
-                            @if (_trackInfo is { } ti && ShowSpotifyLink.Parse(song.Ref)?.Kind == "track")
-                            {
-                                <div class="se-trackcard">
-                                    @if (!string.IsNullOrEmpty(ti.CoverUrl))
-                                    {
-                                        <img class="se-cover" src="@ti.CoverUrl" alt="" />
-                                    }
-                                    <div class="se-trackmeta">
-                                        <div class="se-trackname">@ti.Name</div>
-                                        <div class="se-trackartist">@ti.Artist</div>
-                                        <div class="se-trackalbum">@ti.Album@(ti.DurationMs > 0 ? $" · {Mmss(ti.DurationMs / 1000)}" : "")</div>
-                                    </div>
-                                </div>
-                            }
-                            @if (_ctxInfo is { } ci)
-                            {
-                                <div class="se-trackcard">
-                                    @if (!string.IsNullOrEmpty(ci.CoverUrl))
-                                    {
-                                        <img class="se-cover" src="@ci.CoverUrl" alt="" />
-                                    }
-                                    <div class="se-trackmeta">
-                                        <div class="se-trackname">@(string.IsNullOrEmpty(ci.Name) ? ci.Kind : ci.Name)</div>
-                                        <div class="se-trackartist">@(ci.Kind == "playlist" ? $"Playlist · {ci.TrackCount} Songs" : ci.Kind)@(string.IsNullOrEmpty(ci.Owner) ? "" : " · " + ci.Owner)</div>
-                                    </div>
-                                </div>
-                            }
-
-                            @if (IsContextRef(song.Ref))
-                            {
-                                <div class="se-fieldcol">
-                                    <span class="se-lbl">Playlist-Reihenfolge</span>
-                                    <div class="se-src-tabs">
-                                        <button type="button" class="@(!song.Shuffle ? "active" : "")" @onclick="() => song.Shuffle = false">➡ Der Reihe nach</button>
-                                        <button type="button" class="@(song.Shuffle ? "active" : "")" @onclick="() => song.Shuffle = true">🔀 Zufällig</button>
-                                    </div>
-                                </div>
-                            }
-                        }
-
-                        <div class="se-timeline">
-                            <div class="se-tl-track" title="Klicken/ziehen zum Einspringen">
-                                <div class="se-tl-sel" style="left:@Pct(song.StartSec, TrackMax)%; width:@Pct(song.DurationSec ?? 0, TrackMax)%;"></div>
-                                <div class="se-tl-mark start" style="left:@Pct(song.StartSec, TrackMax)%;" title="Cue"></div>
-                                @if (song.DurationSec is { } dsec)
-                                {
-                                    <div class="se-tl-mark end" style="left:@Pct(song.StartSec + dsec, TrackMax)%;" title="Ende"></div>
-                                }
-                                <div class="se-tl-head @(_playing ? "on" : "")" style="left:@Pct(_playPos, TrackMax)%;"></div>
-                            </div>
-                            <div class="se-tl-times"><span>@Clock(_playPos)</span><span>@Mmss(TrackMax)</span></div>
-                        </div>
-
-                        <div class="se-grid">
-                            <label>Cue-Start (m:ss.mmm)
-                                <input value="@Clock(song.StartSec)" @onchange="e => SetCueText(e, song)" placeholder="0:00.000" />
-                            </label>
-                            <label>Länge (leer = ganzer Song)
-                                <input value="@(song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, song)" placeholder="ganzer Song" />
-                            </label>
-                        </div>
-
-                        <div class="se-testrow">
-                            <button class="se-btn primary" @onclick="() => PlayFullAsync(song)">▶ Abspielen</button>
-                            <button class="se-btn" @onclick="() => PlayFromCueAsync(song)">▶ Abschnitt</button>
-                            <button class="se-btn" @onclick="StopTest">⏹ Stopp</button>
-                        </div>
-                        <div class="se-testrow">
-                            <button class="se-btn" @onclick="() => SetCueFromPos(song)">⤓ Position als Cue</button>
-                            <button class="se-btn" @onclick="() => SetEndFromPos(song)">⤒ Position als Ende</button>
-                        </div>
-                        @if (_uploadError is { Length: > 0 })
-                        {
-                            <p class="se-err">@_uploadError</p>
-                        }
-                    }
-                    else
-                    {
-                        <p class="se-muted">Ordner: mit „öffnen" (Raster) oder links reingehen, dann darin Kacheln anlegen.</p>
-                    }
-                    </div>
-                    </div>
-                    @if (_selectedIsNew && !IsTileValid(n))
-                    {
-                        <p class="se-warn">Bitte einen Song/eine Datei wählen. „Abbrechen" verwirft die neue Kachel.</p>
-                    }
-                    <div class="se-editfoot">
-                        @if (_selectedIsNew)
-                        {
-                            <button class="se-btn sm" @onclick="CancelTile">Abbrechen</button>
-                        }
-                        <button class="se-btn sm danger se-editdel" @onclick="DeleteSelected">🗑 Kachel löschen</button>
-                    </div>
-                    </div>
-                    </div>
-                }
-
-                @if (_askDiscard)
-                {
-                    <div class="se-choosewrap" @onclick="KeepEditing">
-                        <div class="se-choosecard" @onclick:stopPropagation="true">
-                            <h3>Kein Song gewählt</h3>
-                            <p class="se-muted" style="margin:0 0 14px">Diese Kachel hat noch keinen Song/keine Datei.</p>
-                            <div class="se-choosebtns">
-                                <button class="se-btn" @onclick="DiscardTile">Verwerfen</button>
-                                <button class="se-btn primary" @onclick="KeepEditing">Weiterbearbeiten</button>
-                            </div>
-                        </div>
-                    </div>
-                }
-
-                @if (_searchOpen)
-                {
-                    <div class="se-searchwrap" @onclick="CloseSearch">
-                        <div class="se-searchcard" @onclick:stopPropagation="true">
-                            <div class="se-searchhead">
-                                <input class="se-search-in" @bind="_query" @bind:event="oninput" @onkeyup="OnSearchKey" placeholder="Song auf Spotify suchen …" />
-                                <button class="se-btn primary" @onclick="DoSearch">🔍 Suchen</button>
-                                <button class="se-editclose" @onclick="CloseSearch">✕</button>
-                            </div>
-                            @if (_searching)
-                            {
-                                <p class="se-muted">Suche …</p>
-                            }
-                            @if (_searchError is { Length: > 0 })
-                            {
-                                <p class="se-err">@_searchError</p>
-                            }
-                            <div class="se-reslist">
-                                @foreach (var t in _results)
-                                {
-                                    <div class="se-resrow">
-                                        <img class="se-cover sm" src="@t.CoverUrl" alt="" />
-                                        <div class="se-resmeta">
-                                            <div class="se-trackname">@t.Name</div>
-                                            <div class="se-trackartist">@t.Artist</div>
-                                            <div class="se-trackalbum">@t.Album@(t.DurationMs > 0 ? $" · {Mmss(t.DurationMs / 1000)}" : "")</div>
-                                        </div>
-                                        @if (!string.IsNullOrEmpty(t.PreviewUrl))
-                                        {
-                                            <button class="se-btn sm" title="Vorschau anhören" @onclick="() => PreviewAsync(t)">▶</button>
-                                        }
-                                        else
-                                        {
-                                            <span class="se-nopreview" title="Keine Vorschau verfügbar">–</span>
-                                        }
-                                        <button class="se-btn sm primary" @onclick="() => PickTrack(t)">Wählen</button>
-                                    </div>
-                                }
-                                @if (!_searching && _results.Count == 0 && _searchError.Length == 0)
-                                {
-                                    <p class="se-muted">Keine Treffer.</p>
-                                }
-                            </div>
-                        </div>
-                    </div>
+                    <TileEditorDialog @ref="_editor" @key="sel" Node="sel" IsNew="_selectedIsNew" SpotifyConfigured="_spotifyConfigured"
+                                      OnClosed="CloseEditor" OnRemoved="RemoveSelected" />
                 }
 
                 @if (_chooseKind)
                 {
-                    <div class="se-choosewrap" @onclick="CancelNewTile">
-                        <div class="se-choosecard" @onclick:stopPropagation="true">
-                            <h3>Neue Kachel</h3>
-                            <div class="se-choosebtns">
-                                <button class="se-btn" @onclick="() => CommitNewTile(NodeKind.Folder)">📁 Ordner</button>
-                                <button class="se-btn primary" @onclick="() => CommitNewTile(NodeKind.Sound)">🔊 Song</button>
-                            </div>
-                            <button class="se-btn sm se-choosecancel" @onclick="CancelNewTile">Abbrechen</button>
-                        </div>
-                    </div>
+                    <NewTileDialog OnChosen="CommitNewTile" OnCancelled="CancelNewTile" />
                 }
             </div>
         </div>
@@ -491,15 +128,20 @@
     private List<EditProfile> _profiles = new();
     private EditProfile? _profile;
     private EditButton? _selected;
+    private bool _selectedIsNew;
     private string _status = "";
     private bool _showIo;
-    private string _ioText = "";
-    private string _ioError = "";
-    private bool _emojiOpen;
-    private bool _uploading;
-    private string _uploadError = "";
+    private bool _showSpotify;
+    private bool _spotifyConfigured;
+    private bool _chooseKind;
+    private (int X, int Y, int W, int H)? _newRect;
     private readonly List<EditButton> _levelStack = new();
     private DotNetObjectReference<ShowAdminPage>? _gridRef;
+    private TileEditorDialog? _editor;
+
+    private TileEditorDialog? Editor => _selected is null ? null : _editor;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -509,86 +151,6 @@
     }
 
     public void Dispose() => _gridRef?.Dispose();
-
-    [JSInvokable]
-    public Task SetRect(string id, int x, int y, int w, int h)
-    {
-        var level = CurrentLevel();
-        var n = level.FirstOrDefault(b => b.Id == id);
-        if (n is null) return Task.CompletedTask;
-        x = Math.Clamp(x, 0, ShowLayout.Cols - 1);
-        y = Math.Clamp(y, 0, ShowLayout.Rows - 1);
-        if (ShowLayout.IsReserved(x, y, _levelStack.Count > 0)) return Task.CompletedTask;
-        if (Overlaps(level, n, x, y, 1, 1)) return Task.CompletedTask;
-        if (n.X == x && n.Y == y) return Task.CompletedTask;
-        n.X = x; n.Y = y; n.W = 1; n.H = 1;
-        return InvokeAsync(StateHasChanged);
-    }
-
-    private static bool Overlaps(List<EditButton> level, EditButton self, int x, int y, int w, int h)
-    {
-        foreach (var o in level)
-        {
-            if (o == self) continue;
-            int ox = Math.Max(0, o.X), oy = Math.Max(0, o.Y);
-            int ow = o.W <= 0 ? 1 : o.W, oh = o.H <= 0 ? 1 : o.H;
-            if (x < ox + ow && x + w > ox && y < oy + oh && y + h > oy) return true;
-        }
-        return false;
-    }
-
-    private static string FriendlyName(string? r)
-    {
-        if (string.IsNullOrWhiteSpace(r)) return "— keine —";
-        return r.StartsWith("sounds/") ? r["sounds/".Length..] : r;
-    }
-
-    private List<EditButton> CurrentLevel()
-    {
-        if (_profile is null) return new();
-        while (_levelStack.Count > 0 && !Contains(_profile.Root, _levelStack[^1]))
-            _levelStack.RemoveAt(_levelStack.Count - 1);
-        return _levelStack.Count > 0 ? _levelStack[^1].Children : _profile.Root;
-    }
-
-    private static bool Contains(List<EditButton> nodes, EditButton target)
-    {
-        foreach (var n in nodes)
-        {
-            if (n == target) return true;
-            if (n.Kind == NodeKind.Folder && Contains(n.Children, target)) return true;
-        }
-        return false;
-    }
-
-    private void GoLevel(int depth) { while (_levelStack.Count > depth) _levelStack.RemoveAt(_levelStack.Count - 1); }
-    private void EnterLevel(EditButton folder) { if (folder.Kind == NodeKind.Folder) { _levelStack.Add(folder); _selected = null; } }
-
-    private static readonly string[] Emojis =
-    [
-        "🥅", "🏒", "⚽", "🏆", "🏅", "🎯", "💪", "🙌", "👏", "📣", "📢", "🚨", "⏱️", "🔔",
-        "🎵", "🎶", "🎤", "🥁", "🎸", "🎺", "🎬", "🎉", "🎲", "🔥", "⭐", "⚡", "💥", "🌪️",
-        "🐯", "🦗", "💰", "🪙", "😇", "🛝", "💿", "😬", "😱", "😄", "🕺", "🎧",
-    ];
-
-    private async Task OnUploadAsync(InputFileChangeEventArgs e, EditSound sound)
-    {
-        var file = e.File;
-        if (file is null) return;
-        _uploading = true;
-        _uploadError = "";
-        try
-        {
-            await using var stream = file.OpenReadStream(50L * 1024 * 1024);
-            sound.Ref = await SoundUpload.HandleAsync(new UploadShowSound.Command(file.Name, stream, file.ContentType));
-        }
-        catch (Exception ex) { _uploadError = "Upload fehlgeschlagen: " + ex.Message; }
-        finally { _uploading = false; }
-    }
-
-    private const string SoundBase = ShowSoundDelivery.AdminBase;
-
-    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
@@ -608,8 +170,31 @@
             await ProfilesSave.HandleAsync(new SaveShowProfiles.Command(_profiles.Select(p => p.ToModel()).ToList()));
             _status = $"Gespeichert · {DateTime.Now:HH:mm:ss}";
         }
+        catch (DomainException ex) { _status = ex.Message; }
         catch (Exception ex) { _status = "Fehler: " + ex.Message; }
     }
+
+    private async Task ResetAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Alle Profile auf die Standard-Vorlage zurücksetzen? Gespeicherte Änderungen gehen verloren.")) return;
+        await ProfilesSave.HandleAsync(new SaveShowProfiles.Command(ShowConfig.Profiles));
+        await LoadAsync();
+        _status = "Auf Vorlage zurückgesetzt.";
+    }
+
+    private Task ApplyImportedAsync(List<ShowProfile> imported)
+    {
+        _profiles = imported.Select(EditProfile.From).ToList();
+        foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
+        _profile = _profiles.First();
+        _selected = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshSpotifyStateAsync() =>
+        _spotifyConfigured = (await SpotifyState.HandleAsync(new GetSpotifySettings.Query())).Configured;
+
+    private void ToggleSpotifySettings() => _showSpotify = !_showSpotify;
 
     private void SelectProfile(EditProfile p) { _profile = p; _selected = null; }
 
@@ -642,102 +227,26 @@
         _selected = null;
     }
 
-    private void Select(EditButton node)
+    private List<EditButton> CurrentLevel()
     {
-        _selected = node;
-        _selectedIsNew = false;
-        _colorOpen = false; _emojiOpen = false;
-        _playPos = 0; _playDur = 0; _playing = false;
-        _trackInfo = null; _ctxInfo = null;
-        _editSong = node.Songs.Count > 0 ? node.Songs[0] : null;
-        _ = JS.InvokeVoidAsync("showEditStop");
-        if (_editSong is { } s0) _ = RefreshSpotifyInfoAsync(s0);
+        if (_profile is null) return new();
+        while (_levelStack.Count > 0 && !Contains(_profile.Root, _levelStack[^1]))
+            _levelStack.RemoveAt(_levelStack.Count - 1);
+        return _levelStack.Count > 0 ? _levelStack[^1].Children : _profile.Root;
     }
 
-    private static bool IsTileValid(EditButton n) =>
-        n.Kind == NodeKind.Folder || n.Songs.Any(s => !string.IsNullOrWhiteSpace(s.Ref));
-
-    private EditSound? _editSong;
-
-    private EditSound CurrentSong(EditButton n)
+    private static bool Contains(List<EditButton> nodes, EditButton target)
     {
-        if (n.Songs.Count == 0) n.Songs.Add(new EditSound());
-        if (_editSong is null || !n.Songs.Contains(_editSong)) _editSong = n.Songs[0];
-        return _editSong;
-    }
-
-    private void SelectSong(EditSound s)
-    {
-        _editSong = s;
-        _trackInfo = null; _ctxInfo = null;
-        _playPos = 0; _playDur = 0; _playing = false;
-        _ = JS.InvokeVoidAsync("showEditStop");
-        _ = RefreshSpotifyInfoAsync(s);
-    }
-
-    private void AddSong(EditButton n)
-    {
-        var s = new EditSound();
-        n.Songs.Add(s);
-        SelectSong(s);
-    }
-
-    private void RemoveSong(EditButton n, int idx)
-    {
-        if (n.Songs.Count <= 1 || idx < 0 || idx >= n.Songs.Count) return;
-        var removed = n.Songs[idx];
-        n.Songs.RemoveAt(idx);
-        if (_editSong == removed) _editSong = n.Songs[Math.Min(idx, n.Songs.Count - 1)];
-    }
-
-    private void MoveSong(EditButton n, int idx, int delta)
-    {
-        var j = idx + delta;
-        if (j < 0 || j >= n.Songs.Count) return;
-        (n.Songs[idx], n.Songs[j]) = (n.Songs[j], n.Songs[idx]);
-    }
-
-    private static string SongEditLabel(EditSound s)
-    {
-        if (string.IsNullOrWhiteSpace(s.Ref)) return "— leer —";
-        if (s.Kind == SoundKind.Spotify)
+        foreach (var n in nodes)
         {
-            var p = ShowSpotifyLink.Parse(s.Ref);
-            return p is { } v ? $"Spotify · {v.Kind}" : "Spotify";
+            if (n == target) return true;
+            if (n.Kind == NodeKind.Folder && Contains(n.Children, target)) return true;
         }
-        var r = s.Ref;
-        if (r.StartsWith("sounds/")) r = r["sounds/".Length..];
-        var slash = r.LastIndexOf('/');
-        if (slash >= 0) r = r[(slash + 1)..];
-        return r;
+        return false;
     }
 
-    private void AddChild(List<EditButton> list, NodeKind kind)
-    {
-        var b = new EditButton { Kind = kind, Label = kind == NodeKind.Folder ? "Ordner" : "Neu", Icon = kind == NodeKind.Folder ? "📁" : "🔊" };
-        list.Add(b);
-        _selected = b;
-        _selectedIsNew = true;
-        _colorOpen = false; _emojiOpen = false; _trackInfo = null; _ctxInfo = null;
-    }
-
-    private void Move(EditButton node, List<EditButton> list, int delta)
-    {
-        var i = list.IndexOf(node);
-        var j = i + delta;
-        if (i < 0 || j < 0 || j >= list.Count) return;
-        (list[i], list[j]) = (list[j], list[i]);
-    }
-
-    private async Task Delete(EditButton node, List<EditButton> list)
-    {
-        var what = node.Kind == NodeKind.Folder && node.Children.Count > 0
-            ? $"Ordner „{node.Label}“ samt {node.Children.Count} Einträgen löschen?"
-            : $"„{node.Label}“ löschen?";
-        if (!await JS.InvokeAsync<bool>("confirm", what)) return;
-        list.Remove(node);
-        if (_selected == node) _selected = null;
-    }
+    private void GoLevel(int depth) { while (_levelStack.Count > depth) _levelStack.RemoveAt(_levelStack.Count - 1); }
+    private void EnterLevel(EditButton folder) { if (folder.Kind == NodeKind.Folder) { _levelStack.Add(folder); _selected = null; } }
 
     private void NavigateTo(EditButton folder)
     {
@@ -767,26 +276,6 @@
         return false;
     }
 
-    private async Task DeleteSelected()
-    {
-        if (_selected is null || _profile is null) return;
-        var s = _selected;
-        var what = s.Kind == NodeKind.Folder && s.Children.Count > 0
-            ? $"Ordner „{s.Label}“ samt {s.Children.Count} Einträgen löschen?"
-            : $"„{s.Label}“ löschen?";
-        if (!await JS.InvokeAsync<bool>("confirm", what)) return;
-        RemoveFrom(_profile.Root, s);
-        _selected = null;
-    }
-
-    private async Task ResetAsync()
-    {
-        if (!await JS.InvokeAsync<bool>("confirm", "Alle Profile auf die Standard-Vorlage zurücksetzen? Gespeicherte Änderungen gehen verloren.")) return;
-        await ProfilesSave.HandleAsync(new SaveShowProfiles.Command(ShowConfig.Profiles));
-        await LoadAsync();
-        _status = "Auf Vorlage zurückgesetzt.";
-    }
-
     private RenderFragment RenderFolders(List<EditButton> nodes, int depth) =>
     @<text>
         @foreach (var f in nodes.Where(n => n.Kind == NodeKind.Folder))
@@ -799,184 +288,61 @@
         }
     </text>;
 
-    private double _playPos;
-    private double _playDur;
-    private bool _playing;
-    private int TrackMax => _playDur > 1 ? (int)Math.Ceiling(_playDur) : 480;
-
-    private static string Pct(double v, double max) =>
-        (max <= 0 ? 0 : Math.Clamp(v / max * 100.0, 0, 100)).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-
-    [JSInvokable]
-    public Task OnEditPosition(double pos, double dur)
+    private void Select(EditButton node)
     {
-        _playPos = pos;
-        if (dur > 0) _playDur = dur;
-        _playing = true;
-        return InvokeAsync(StateHasChanged);
+        _selected = node;
+        _selectedIsNew = false;
+        _ = JS.InvokeVoidAsync("showEditStop");
     }
 
-    [JSInvokable]
-    public Task OnEditStopped()
+    private void AddChild(List<EditButton> list, NodeKind kind)
     {
-        _playing = false;
-        return InvokeAsync(StateHasChanged);
-    }
-
-    private async Task TestAsync(EditSound s)
-    {
-        if (s.Kind == SoundKind.Local)
-        {
-            if (string.IsNullOrWhiteSpace(s.Ref)) { await JS.InvokeVoidAsync("alert", "Noch keine Datei hinterlegt."); return; }
-            var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
-            await JS.InvokeVoidAsync("showEditPlay", url, s.StartSec, s.DurationSec);
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("showEditPlaySpotify", s.Ref, s.StartSec, s.Shuffle);
-        }
-        _playing = true;
-    }
-
-    private Task PlayFromCueAsync(EditSound s) => TestAsync(s);
-
-    private async Task PlayFullAsync(EditSound s)
-    {
-        if (s.Kind == SoundKind.Local)
-        {
-            if (string.IsNullOrWhiteSpace(s.Ref)) { await JS.InvokeVoidAsync("alert", "Noch keine Datei hinterlegt."); return; }
-            var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
-            await JS.InvokeVoidAsync("showEditPlay", url, 0, (int?)null);
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("showEditPlaySpotify", s.Ref, 0, s.Shuffle);
-        }
-        _playing = true;
-    }
-
-    private async Task StopTest()
-    {
-        await JS.InvokeVoidAsync("showEditStop");
-        _playing = false;
-    }
-
-    private void SetCueFromPos(EditSound s) => s.StartSec = Math.Round(_playPos, 3);
-
-    private void SetEndFromPos(EditSound s)
-    {
-        var dur = Math.Round(_playPos - s.StartSec, 3);
-        s.DurationSec = dur > 0 ? dur : null;
-    }
-
-    private void SetCueText(ChangeEventArgs e, EditSound s)
-    {
-        var v = ParseClock(e.Value?.ToString());
-        s.StartSec = v is { } x && x >= 0 ? x : 0;
-    }
-
-    private void SetLenText(ChangeEventArgs e, EditSound s)
-    {
-        var v = ParseClock(e.Value?.ToString());
-        s.DurationSec = v is { } x && x > 0 ? x : null;
-    }
-
-    private bool _colorOpen;
-    private bool _selectedIsNew;
-    private bool _downOnBackdrop;
-
-    private static readonly string[] Palette =
-    [
-        "#E11330", "#C8102E", "#ff5069", "#e07a1f", "#f4a261", "#e9c46a",
-        "#2a9d8f", "#1db954", "#43aa8b", "#457b9d", "#3a86ff", "#4361ee",
-        "#6d597a", "#9d4edd", "#b5179e", "#bc6c25", "#606c38", "#264653",
-        "#8ecae6", "#ffb703", "#e63946", "#f72585", "#111318", "#6c757d",
-    ];
-
-    private bool _askDiscard;
-
-    private void OnWrapClick()
-    {
-        if (_downOnBackdrop) AttemptClose();
-        _downOnBackdrop = false;
-    }
-
-    private void AttemptClose()
-    {
-        if (_selected is { } n && _selectedIsNew && !IsTileValid(n)) { _askDiscard = true; return; }
-        CloseEditor();
-    }
-
-    private void DiscardTile()
-    {
-        if (_selected is { } n && _profile is not null) RemoveFrom(_profile.Root, n);
-        _askDiscard = false;
-        CloseEditor();
-    }
-
-    private void KeepEditing() => _askDiscard = false;
-
-    [JSInvokable]
-    public Task OnEditorEscape()
-    {
-        if (_askDiscard) _askDiscard = false;
-        else if (_searchOpen) CloseSearch();
-        else if (_chooseKind) CancelNewTile();
-        else if (_selected is not null) AttemptClose();
-        else return Task.CompletedTask;
-        return InvokeAsync(StateHasChanged);
+        var b = new EditButton { Kind = kind, Label = kind == NodeKind.Folder ? "Ordner" : "Neu", Icon = kind == NodeKind.Folder ? "📁" : "🔊" };
+        list.Add(b);
+        _selected = b;
+        _selectedIsNew = true;
     }
 
     private void CloseEditor()
     {
         _selected = null;
         _selectedIsNew = false;
-        _askDiscard = false;
-        _colorOpen = false; _emojiOpen = false; _searchOpen = false;
-        _playing = false; _playPos = 0;
-        _trackInfo = null; _ctxInfo = null;
         _ = JS.InvokeVoidAsync("showEditStop");
         _ = JS.InvokeVoidAsync("showPreviewStop");
     }
 
-    private static string Mmss(int s) => $"{s / 60}:{s % 60:00}";
-
-    private static string Clock(double sec)
+    private void RemoveSelected()
     {
-        if (sec < 0) sec = 0;
-        var total = (int)Math.Round(sec * 1000);
-        var ms = total % 1000; var s = total / 1000 % 60; var m = total / 60000;
-        return $"{m}:{s:00}.{ms:000}";
+        if (_selected is { } node && _profile is not null) RemoveFrom(_profile.Root, node);
+        CloseEditor();
     }
 
-    private static double? ParseClock(string? input)
+    [JSInvokable]
+    public Task SetRect(string id, int x, int y, int w, int h)
     {
-        if (string.IsNullOrWhiteSpace(input)) return null;
-        var t = input.Trim().Replace(',', '.');
-        var inv = System.Globalization.CultureInfo.InvariantCulture;
-        var num = System.Globalization.NumberStyles.Float;
-        if (t.Contains(':'))
+        var level = CurrentLevel();
+        var n = level.FirstOrDefault(b => b.Id == id);
+        if (n is null) return Task.CompletedTask;
+        x = Math.Clamp(x, 0, ShowLayout.Cols - 1);
+        y = Math.Clamp(y, 0, ShowLayout.Rows - 1);
+        if (ShowLayout.IsReserved(x, y, _levelStack.Count > 0)) return Task.CompletedTask;
+        if (Overlaps(level, n, x, y, 1, 1)) return Task.CompletedTask;
+        if (n.X == x && n.Y == y) return Task.CompletedTask;
+        n.X = x; n.Y = y; n.W = 1; n.H = 1;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static bool Overlaps(List<EditButton> level, EditButton self, int x, int y, int w, int h)
+    {
+        foreach (var o in level)
         {
-            var parts = t.Split(':', 2);
-            if (int.TryParse(parts[0], num, inv, out var mm) && double.TryParse(parts[1], num, inv, out var ss))
-                return mm * 60 + ss;
-            return null;
+            if (o == self) continue;
+            int ox = Math.Max(0, o.X), oy = Math.Max(0, o.Y);
+            int ow = o.W <= 0 ? 1 : o.W, oh = o.H <= 0 ? 1 : o.H;
+            if (x < ox + ow && x + w > ox && y < oy + oh && y + h > oy) return true;
         }
-        return double.TryParse(t, num, inv, out var v) ? v : null;
+        return false;
     }
-
-    private static bool IsContextRef(string? r) =>
-        !string.IsNullOrWhiteSpace(r) && System.Text.RegularExpressions.Regex.IsMatch(r, @"^spotify:(playlist|album|artist):");
-
-    private async Task ApplyPaste(ChangeEventArgs e, EditSound s)
-    {
-        s.Kind = SoundKind.Spotify;
-        s.Ref = ShowSpotifyLink.ToUri(e.Value?.ToString()) ?? (e.Value?.ToString()?.Trim() ?? "");
-        await RefreshSpotifyInfoAsync(s);
-    }
-
-    private (int X, int Y, int W, int H)? _newRect;
-    private bool _chooseKind;
 
     [JSInvokable]
     public Task CreateRect(int x, int y, int w, int h)
@@ -1003,525 +369,25 @@
         CurrentLevel().Add(b);
         _selected = b;
         _selectedIsNew = true;
-        _colorOpen = false; _emojiOpen = false; _trackInfo = null; _ctxInfo = null;
         _newRect = null;
         _chooseKind = false;
     }
 
     private void CancelNewTile() { _newRect = null; _chooseKind = false; }
 
-    private string _query = "";
-    private IReadOnlyList<SpotifyTrack> _results = [];
-    private bool _searching;
-    private bool _searchOpen;
-    private string _searchError = "";
-    private SpotifyTrack? _trackInfo;
-    private SpotifyContext? _ctxInfo;
+    [JSInvokable]
+    public Task OnEditPosition(double pos, double dur) => Editor?.ReportPositionAsync(pos, dur) ?? Task.CompletedTask;
 
-    private async Task DoSearch()
+    [JSInvokable]
+    public Task OnEditStopped() => Editor?.ReportStoppedAsync() ?? Task.CompletedTask;
+
+    [JSInvokable]
+    public async Task OnEditorEscape()
     {
-        if (string.IsNullOrWhiteSpace(_query)) return;
-        var link = ShowSpotifyLink.ToUri(_query);
-        if (link is not null && _editSong is not null)
-        {
-            _editSong.Kind = SoundKind.Spotify;
-            _editSong.Ref = link;
-            await RefreshSpotifyInfoAsync(_editSong);
-            _selectedIsNew = false;
-            _query = "";
-            return;
-        }
-        _searching = true; _searchError = ""; _searchOpen = true; _results = [];
-        try { _results = await SpotifySearch.HandleAsync(new SearchSpotify.Query(_query)); }
-        catch (Exception ex) { _searchError = "Suche: " + ex.Message; _results = []; }
-        finally { _searching = false; }
+        if (Editor is { } editor) { await editor.HandleEscapeAsync(); return; }
+        if (_chooseKind) CancelNewTile();
+        else if (_showSpotify) _showSpotify = false;
+        else return;
+        await InvokeAsync(StateHasChanged);
     }
-
-    private async Task OnSearchKey(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") await DoSearch();
-    }
-
-    private async Task PickTrack(SpotifyTrack t)
-    {
-        if (_editSong is null) return;
-        _editSong.Kind = SoundKind.Spotify;
-        _editSong.Ref = t.Uri;
-        if (_selected is { } n && (string.IsNullOrWhiteSpace(n.Label) || n.Label == "Neu"))
-        {
-            n.Label = t.Name;
-            if (string.IsNullOrWhiteSpace(n.Subtitle)) n.Subtitle = t.Artist;
-        }
-        _trackInfo = t; _ctxInfo = null;
-        _selectedIsNew = false;
-        _searchOpen = false;
-        _results = [];
-        _query = "";
-        await JS.InvokeVoidAsync("showPreviewStop");
-    }
-
-    private void CloseSearch()
-    {
-        _searchOpen = false;
-        _ = JS.InvokeVoidAsync("showPreviewStop");
-    }
-
-    private void CancelTile()
-    {
-        if (_selected is { } n && _profile is not null) RemoveFrom(_profile.Root, n);
-        _selected = null;
-        _selectedIsNew = false;
-        _ = JS.InvokeVoidAsync("showEditStop");
-    }
-
-    private async Task PreviewAsync(SpotifyTrack t)
-    {
-        if (string.IsNullOrEmpty(t.PreviewUrl)) return;
-        await JS.InvokeVoidAsync("showPreviewToggle", t.PreviewUrl);
-    }
-
-    private async Task RefreshSpotifyInfoAsync(EditSound s)
-    {
-        _trackInfo = null; _ctxInfo = null;
-        if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref) || !_spotifyConfigured) { StateHasChanged(); return; }
-        try
-        {
-            var found = await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref));
-            _trackInfo = found.Track;
-            _ctxInfo = found.Context;
-        }
-        catch { }
-        StateHasChanged();
-    }
-
-    private void ExportJson()
-    {
-        _ioText = JsonSerializer.Serialize(_profiles.Select(p => p.ToModel()).ToList(), ShowJson.Options);
-        _ioError = "";
-    }
-
-    private void ImportJson()
-    {
-        try
-        {
-            var list = JsonSerializer.Deserialize<List<ShowProfile>>(_ioText, ShowJson.Options);
-            if (list is null || list.Count == 0) { _ioError = "Kein gültiges Profil-JSON."; return; }
-            _profiles = list.Select(EditProfile.From).ToList();
-            foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
-            _profile = _profiles.First();
-            _selected = null;
-            _ioError = "Importiert (noch nicht gespeichert).";
-        }
-        catch (Exception ex) { _ioError = "Fehler: " + ex.Message; }
-    }
-
-    private bool _showSpotify;
-    private string _spotifyClientId = "";
-    private string _spotifyClientSecret = "";
-    private bool _spotifyBusy;
-    private string _spotifyStatus = "";
-    private string _spotifyError = "";
-
-    private string _savedClientId = "";
-    private bool _hasSecret;
-    private bool _spotifyConfigured;
-
-    private async Task RefreshSpotifyStateAsync()
-    {
-        var spotify = await SpotifySettings.HandleAsync(new GetSpotifySettings.Query());
-        _savedClientId = spotify.SavedClientId;
-        _hasSecret = spotify.HasSecret;
-        _spotifyConfigured = spotify.Configured;
-    }
-
-    private async Task OpenSpotifySettingsAsync()
-    {
-        _showSpotify = !_showSpotify;
-        if (_showSpotify)
-        {
-            await RefreshSpotifyStateAsync();
-            _spotifyClientId = _savedClientId;
-            _spotifyClientSecret = "";
-            _spotifyStatus = "";
-            _spotifyError = "";
-            _spotifyTestResult = "";
-        }
-    }
-
-    private string _spotifyTestResult = "";
-    private bool _spotifyTestOk;
-
-    private async Task TestSpotifyAsync()
-    {
-        _spotifyBusy = true; _spotifyTestResult = ""; _spotifyStatus = ""; _spotifyError = "";
-        try
-        {
-            var r = await SpotifyTest.HandleAsync(new TestSpotifyCredentials.Command(_spotifyClientId, _spotifyClientSecret));
-            _spotifyTestOk = r == "ok";
-            _spotifyTestResult = _spotifyTestOk
-                ? "✓ Client-ID + Secret gültig (die Suche funktioniert). Für die Wiedergabe braucht es zusätzlich Login + Premium auf dem Board."
-                : "✗ Test fehlgeschlagen: " + r;
-        }
-        catch (Exception ex) { _spotifyTestOk = false; _spotifyTestResult = "✗ Fehler: " + ex.Message; }
-        finally { _spotifyBusy = false; }
-    }
-
-    private async Task SaveSpotifyAsync()
-    {
-        _spotifyBusy = true; _spotifyStatus = ""; _spotifyError = ""; _spotifyTestResult = "";
-        try
-        {
-            await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientId", _spotifyClientId.Trim()));
-            if (!string.IsNullOrWhiteSpace(_spotifyClientSecret))
-                await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientSecret", _spotifyClientSecret.Trim()));
-            _spotifyClientSecret = "";
-            await RefreshSpotifyStateAsync();
-            _spotifyStatus = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
-        }
-        catch (Exception ex) { _spotifyError = "Fehler: " + ex.Message; }
-        finally { _spotifyBusy = false; }
-    }
-
-    private bool _ioBusy;
-    private string _ioStatus = "";
-
-    private List<string> CollectLocalRefs()
-    {
-        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        void Walk(List<EditButton> nodes)
-        {
-            foreach (var n in nodes)
-            {
-                foreach (var s in n.Songs)
-                    if (s.Kind == SoundKind.Local && s.Ref.StartsWith("sounds/")) set.Add(s.Ref);
-                if (n.Children.Count > 0) Walk(n.Children);
-            }
-        }
-        foreach (var pr in _profiles) Walk(pr.Root);
-        return set.ToList();
-    }
-
-    private static string ContentTypeFor(string path)
-    {
-        var ext = Path.GetExtension(path).ToLowerInvariant();
-        return ext switch
-        {
-            ".mp3" => "audio/mpeg",
-            ".wav" => "audio/wav",
-            ".ogg" => "audio/ogg",
-            ".m4a" or ".aac" => "audio/mp4",
-            ".flac" => "audio/flac",
-            _ => "application/octet-stream",
-        };
-    }
-
-    private async Task ExportBundleAsync()
-    {
-        _ioBusy = true; _ioError = ""; _ioStatus = "";
-        try
-        {
-            var refs = CollectLocalRefs();
-            var missing = 0;
-            var ms = new MemoryStream();
-            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
-            {
-                var json = JsonSerializer.Serialize(_profiles.Select(p => p.ToModel()).ToList(), ShowJson.Options);
-                var je = zip.CreateEntry("profiles.json");
-                await using (var w = new StreamWriter(je.Open())) { await w.WriteAsync(json); }
-
-                foreach (var r in refs)
-                {
-                    var bytes = await SoundDownload.HandleAsync(new DownloadShowSound.Query(r));
-                    if (bytes is null) { missing++; continue; }
-                    var e = zip.CreateEntry(r);
-                    await using var s = e.Open();
-                    await s.WriteAsync(bytes);
-                }
-            }
-            ms.Position = 0;
-            using var streamRef = new DotNetStreamReference(ms);
-            await JS.InvokeVoidAsync("showDownloadBytes", "soundboard-bundle.zip", streamRef);
-            _ioStatus = $"Exportiert: {refs.Count - missing} Datei(en)" + (missing > 0 ? $", {missing} fehlten im Blob" : "") + ".";
-        }
-        catch (Exception ex) { _ioError = "Export fehlgeschlagen: " + ex.Message; }
-        finally { _ioBusy = false; }
-    }
-
-    private async Task ImportBundleAsync(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        if (file is null) return;
-        _ioBusy = true; _ioError = ""; _ioStatus = "";
-        try
-        {
-            using var buffer = new MemoryStream();
-            await file.OpenReadStream(200L * 1024 * 1024).CopyToAsync(buffer);
-            buffer.Position = 0;
-            using var zip = new ZipArchive(buffer, ZipArchiveMode.Read);
-
-            var jsonEntry = zip.GetEntry("profiles.json");
-            if (jsonEntry is null) { _ioError = "Kein profiles.json im ZIP gefunden."; return; }
-
-            var uploaded = 0;
-            foreach (var entry in zip.Entries)
-            {
-                if (!entry.FullName.StartsWith("sounds/") || entry.FullName.EndsWith("/")) continue;
-                await using var es = entry.Open();
-                await SoundRestore.HandleAsync(new RestoreShowSound.Command(entry.FullName, es, ContentTypeFor(entry.FullName)));
-                uploaded++;
-            }
-
-            string text;
-            using (var r = new StreamReader(jsonEntry.Open())) text = await r.ReadToEndAsync();
-            var list = JsonSerializer.Deserialize<List<ShowProfile>>(text, ShowJson.Options);
-            if (list is null || list.Count == 0) { _ioError = "profiles.json im ZIP ist ungültig."; return; }
-
-            _profiles = list.Select(EditProfile.From).ToList();
-            foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
-            _profile = _profiles.First();
-            _selected = null;
-            _ioStatus = $"Bundle importiert: {uploaded} Datei(en) hochgeladen. Jetzt 💾 Speichern klicken.";
-        }
-        catch (Exception ex) { _ioError = "Import fehlgeschlagen: " + ex.Message; }
-        finally { _ioBusy = false; }
-    }
-
-    private RenderFragment RenderNode(EditButton node, List<EditButton> siblings) =>
-    @<div class="tn">
-        <div class="tn-row @(node == _selected ? "sel" : "")">
-            <button class="tn-label" @onclick="() => Select(node)">
-                <span class="tn-ico">@(string.IsNullOrEmpty(node.Icon) ? (node.Kind == NodeKind.Folder ? "📁" : "🔊") : node.Icon)</span>
-                <span>@node.Label</span>
-                <span class="tn-kind">@(node.Kind == NodeKind.Folder ? "Ordner" : node.Songs.Count > 1 ? $"{node.Songs.Count} Songs" : "")</span>
-            </button>
-            <span class="tn-ctrl">
-                <button title="Nach oben" @onclick="() => Move(node, siblings, -1)">↑</button>
-                <button title="Nach unten" @onclick="() => Move(node, siblings, 1)">↓</button>
-                <button title="Löschen" class="danger" @onclick="() => Delete(node, siblings)">🗑</button>
-            </span>
-        </div>
-        @if (node.Kind == NodeKind.Folder)
-        {
-            <div class="tn-children">
-                @foreach (var c in node.Children)
-                {
-                    @RenderNode(c, node.Children)
-                }
-                <div class="tn-add">
-                    <button @onclick="() => AddChild(node.Children, NodeKind.Sound)">+ Song</button>
-                    <button @onclick="() => AddChild(node.Children, NodeKind.Folder)">+ Ordner</button>
-                </div>
-            </div>
-        }
-    </div>;
 }
-
-<style>
-    :root {
-        --ra-red: #E11330; --ra-bg: #141418; --ra-panel: #1d1d24; --ra-panel2: #26262f;
-        --ra-line: rgba(255,255,255,0.10); --ra-text: #f1f1f4; --ra-muted: #9b9ba6;
-        --ra-in: #0f0f13; --ra-radius: 16px;
-    }
-    .se { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; font-size: 15px; color: var(--ra-text);
-        background: radial-gradient(120% 80% at 50% -10%, rgba(225,19,48,0.18) 0%, transparent 55%), var(--ra-bg);
-        min-height: 0; padding: 8px clamp(10px, 1.6vw, 24px); overflow-x: hidden; box-sizing: border-box; max-width: 100vw; }
-    .se *, .se *::before, .se *::after { box-sizing: border-box; }
-
-    .se-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
-    .se-top h1 { font-size: 1.2rem; margin: 0; font-weight: 800; letter-spacing: 0.01em; }
-    .se-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .se-btn { appearance: none; border: 1px solid var(--ra-line); background: var(--ra-panel2); border-radius: 12px;
-        padding: 0.6rem 1.1rem; cursor: pointer; font: inherit; font-weight: 700; text-decoration: none; color: var(--ra-text);
-        transition: transform 0.06s ease, background 0.12s ease, box-shadow 0.12s ease; }
-    .se-btn:hover { background: #33333d; transform: translateY(-1px); }
-    .se-btn:active { transform: translateY(0); }
-    .se-btn.primary { background: var(--ra-red); border-color: var(--ra-red); color: #fff; box-shadow: 0 6px 18px rgba(225,19,48,0.35); }
-    .se-btn.sm { padding: 0.4rem 0.7rem; font-size: 0.9rem; }
-    .se-btn.danger { color: #ff8a97; border-color: rgba(255,138,151,0.4); }
-    .se-status { color: #62e39b; font-weight: 800; font-size: 0.9rem; }
-    .se-err { color: #ff8a97; font-weight: 800; font-size: 0.9rem; }
-    .se-muted { color: var(--ra-muted); }
-
-    .se-io { margin: 14px 0; }
-    .se-io textarea { width: 100%; height: 180px; font-family: 'Cascadia Code', monospace; font-size: 0.82rem; border: 1px solid var(--ra-line); border-radius: 12px; padding: 12px; background: var(--ra-in); color: var(--ra-text); }
-    .se-io-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
-
-    .se-tabs { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
-    .se-tab { appearance: none; border: 1px solid var(--ra-line); background: var(--ra-panel2); color: var(--ra-text); border-radius: 999px; padding: 0.55rem 1.2rem; cursor: pointer; font-weight: 800; }
-    .se-tab.active { background: var(--ra-red); color: #fff; border-color: var(--ra-red); box-shadow: 0 6px 18px rgba(225,19,48,0.35); }
-    .se-tab.add { color: #ff9aa6; }
-
-    .se-body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
-    @@media (max-width: 900px) { .se-body { grid-template-columns: 1fr; } }
-
-    .se-tree, .se-detail { min-width: 0; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: var(--ra-radius); padding: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
-    .se-prof-head { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
-    .se-prof-head .se-in { flex: 1; }
-    .se-in { border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.6rem 0.75rem; font: inherit; background: var(--ra-in); color: var(--ra-text); }
-    .se-color { width: 46px; height: 40px; border: 1px solid var(--ra-line); border-radius: 10px; background: var(--ra-in); cursor: pointer; }
-
-    .se-detail { display: flex; flex-direction: column; gap: 6px; }
-    .se-preview { --c: var(--ra-red); background: linear-gradient(160deg, color-mix(in srgb, var(--c) 88%, #fff) 0%, var(--c) 100%); color: #fff; border-radius: 22px; padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 18px; box-shadow: 0 12px 30px rgba(0,0,0,0.4); text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-    .se-pv-icon { font-size: 2.8rem; line-height: 1; }
-    .se-pv-label { font-weight: 900; font-size: 1.5rem; }
-    .se-pv-sub { font-size: 0.9rem; opacity: 0.92; }
-    .se-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @@media (max-width: 560px) { .se-grid { grid-template-columns: 1fr; } }
-    .se-grid > label, .se-fieldcol, .se-full { display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ra-muted); }
-    .se-detail h3 { margin: 20px 0 4px; font-size: 1.05rem; font-weight: 800; color: var(--ra-text); text-transform: none; letter-spacing: 0; }
-    .se-grid input, .se-grid select, .se-full input, .se-search-in { border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.6rem 0.75rem; font: inherit; font-weight: 500; text-transform: none; letter-spacing: 0; background: var(--ra-in); color: var(--ra-text); }
-    .se-grid input:focus, .se-full input:focus, .se-search-in:focus { outline: 2px solid var(--ra-red); border-color: transparent; }
-    .se-pool-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-    .se-pool-row input { flex: 1; border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.55rem 0.7rem; background: var(--ra-in); color: var(--ra-text); }
-
-    .se-fieldcol { position: relative; }
-    .se-lbl { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ra-muted); }
-    .se-full { grid-column: 1 / -1; }
-    .se-emoji-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ra-line); border-radius: 10px; background: var(--ra-in); color: var(--ra-text); padding: 0.55rem 0.75rem; cursor: pointer; font: inherit; font-weight: 500; text-transform: none; }
-    .se-emoji-btn span { font-size: 1.5rem; }
-    .se-emoji-pop { position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px; width: min(90vw, 520px); display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; background: var(--ra-panel2); border: 1px solid var(--ra-line); border-radius: 14px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
-    .se-emoji-pop button { appearance: none; border: none; background: none; cursor: pointer; font-size: 1.5rem; padding: 6px; border-radius: 8px; }
-    .se-emoji-pop button:hover { background: #3a3a45; }
-    .se-emoji-pop .clear { grid-column: 1 / -1; font-size: 0.9rem; color: #ff9aa6; }
-
-    .se-src-tabs { display: inline-flex; border: 1px solid var(--ra-line); border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
-    .se-src-tabs button { appearance: none; border: none; background: var(--ra-in); cursor: pointer; padding: 0.6rem 1.3rem; font: inherit; font-weight: 800; color: var(--ra-muted); }
-    .se-src-tabs button.active { background: var(--ra-red); color: #fff; }
-
-    .se-drop { display: flex; flex-direction: column; align-items: center; gap: 10px; border: 2px dashed var(--ra-line); border-radius: 14px; padding: 22px; text-align: center; color: var(--ra-muted); background: var(--ra-in); margin-bottom: 14px; transition: border-color 0.12s, color 0.12s; }
-    .se-drop:hover, .se-drop.busy { border-color: var(--ra-red); color: var(--ra-text); }
-    .se-drop input[type=file] { font: inherit; color: var(--ra-muted); }
-
-    .se-search { display: flex; gap: 10px; margin-bottom: 12px; }
-    .se-search-in { flex: 1; }
-    .se-results { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; margin-bottom: 12px; }
-    .se-result { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; appearance: none; border: 1px solid var(--ra-line); background: var(--ra-panel2); color: var(--ra-text); border-radius: 12px; padding: 0.6rem 0.9rem; cursor: pointer; }
-    .se-result:hover { background: #33333d; border-color: var(--ra-red); }
-    .se-result-name { font-weight: 800; }
-    .se-result-artist { font-size: 0.85rem; color: var(--ra-muted); }
-
-    .se-canvas-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .se-canvas-head strong { margin-right: 10px; font-size: 1.05rem; }
-    .se-crumb2 { appearance: none; border: none; background: none; cursor: pointer; color: #ff9aa6; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
-    .se-crumb2:hover { background: var(--ra-panel2); }
-    .se-sep2 { color: var(--ra-muted); }
-    .se-canvas { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; aspect-ratio: 5 / 3; width: 100%; max-width: min(100%, calc((100vh - 250px) * 5 / 3)); max-height: calc(100vh - 250px); margin: 0 auto 8px; background:
-        linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/5) calc(100%/3),
-        linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/5) calc(100%/3), #0b0b0e;
-        border: 1px solid var(--ra-line); border-radius: 14px; padding: 6px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }
-    .se-ct { --c: var(--ra-red); container-type: size; position: relative; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff) 0%, var(--c) 100%); color: #fff; border: none; border-radius: 8px; cursor: grab; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22); transition: box-shadow 0.12s; }
-    .se-ct:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
-    .se-ct:active { cursor: grabbing; }
-    .se-ct.sel { outline: 3px solid #fff; outline-offset: -3px; box-shadow: 0 0 0 4px rgba(225,19,48,0.5); z-index: 3; }
-    .se-ct-resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.85) 45%); border-bottom-right-radius: 8px; }
-    .se-current { border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.6rem 0.75rem; background: var(--ra-in); color: var(--ra-text); font-weight: 500; text-transform: none; letter-spacing: 0; word-break: break-word; }
-    .se-ct-ico { font-size: min(46cqmin, 2.2rem); line-height: 1; }
-    .se-ct-lbl { font-weight: 900; font-size: min(22cqmin, 1rem); line-height: 1.02; text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
-    .se-ct-open { position: absolute; bottom: 2px; left: 3px; appearance: none; border: none; background: rgba(0,0,0,0.35); color: #fff; border-radius: 5px; font-size: min(14cqmin, 0.6rem); padding: 0 4px; cursor: pointer; }
-
-    .se-editwrap { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
-    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 22px; width: min(96vw, 900px); max-height: 92vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
-    .se-editclose { position: absolute; top: 14px; right: 14px; appearance: none; border: none; background: var(--ra-panel2); color: var(--ra-text); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
-    .se-editclose:hover { background: #3a3a45; }
-    .se-editdel { margin-top: 18px; width: 100%; }
-
-    .se-ftree { display: flex; flex-direction: column; gap: 3px; margin-bottom: 14px; }
-    .se-fnode { appearance: none; border: none; background: none; cursor: pointer; text-align: left; padding: 0.55rem 0.7rem; border-radius: 10px; font: inherit; font-weight: 700; color: var(--ra-text); width: 100%; }
-    .se-fnode:hover { background: var(--ra-panel2); }
-    .se-fnode.cur { background: var(--ra-red); color: #fff; }
-    .se-fnode-row { display: flex; }
-    .se-add-tiles { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 14px; }
-    .se-hint { color: var(--ra-muted); font-size: 0.82rem; margin: 4px 0; }
-
-    .se-fader { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ra-muted); }
-    .se-fader input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; background: var(--ra-in); outline: none; }
-    .se-fader input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--ra-red); cursor: pointer; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
-    .se-fader input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--ra-red); cursor: pointer; border: 2px solid #fff; }
-    .se-testrow { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-    .se-testrow .se-btn { flex: 1; justify-content: center; min-width: 120px; }
-
-    .se-timeline { margin: 14px 0 8px; }
-    .se-tl-track { position: relative; height: 30px; background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 8px; overflow: hidden; }
-    .se-tl-sel { position: absolute; top: 0; bottom: 0; background: rgba(29,185,84,0.22); }
-    .se-tl-mark { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; }
-    .se-tl-mark.start { background: #1db954; box-shadow: 0 0 6px rgba(29,185,84,0.8); }
-    .se-tl-mark.end { background: #ff5069; box-shadow: 0 0 6px rgba(255,80,105,0.8); }
-    .se-tl-head { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; opacity: 0.3; transition: left 0.2s linear; }
-    .se-tl-head.on { opacity: 1; box-shadow: 0 0 8px #fff; }
-    .se-tl-times { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--ra-muted); margin-top: 5px; font-weight: 700; letter-spacing: 0.02em; }
-
-    .se-cellhint { position: absolute; z-index: 2; box-sizing: border-box; border: 2px dashed rgba(255,255,255,0.6); background: rgba(225,19,48,0.16); border-radius: 8px; pointer-events: none; }
-    .se-reserved { display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px dashed var(--ra-line); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--ra-muted); font-weight: 800; font-size: clamp(0.55rem, 1.4vmin, 0.85rem); text-align: center; pointer-events: none; z-index: 1; overflow: hidden; }
-
-    .se-choosewrap { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
-    .se-choosecard { background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 24px; width: min(92vw, 360px); text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
-    .se-choosecard h3 { margin: 0 0 16px; }
-    .se-choosebtns { display: flex; gap: 10px; }
-    .se-choosebtns .se-btn { flex: 1; justify-content: center; padding: 1rem; font-size: 1rem; }
-    .se-choosecancel { margin-top: 14px; }
-
-    .se-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-
-    .se-color-btn { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--ra-line); border-radius: 10px; background: var(--ra-in); color: var(--ra-text); padding: 0.5rem 0.75rem; cursor: pointer; font: inherit; font-weight: 500; text-transform: none; }
-    .se-color-chip { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); }
-    .se-color-pop { position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px; width: min(90vw, 320px); display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; background: var(--ra-panel2); border: 1px solid var(--ra-line); border-radius: 14px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
-    .se-swatch { appearance: none; border: 2px solid transparent; width: 100%; aspect-ratio: 1; border-radius: 8px; cursor: pointer; }
-    .se-swatch:hover { transform: scale(1.08); }
-    .se-swatch.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--ra-red); }
-
-    .se-trackcard { display: flex; gap: 12px; align-items: center; margin: 10px 0; padding: 10px; border: 1px solid var(--ra-line); border-radius: 12px; background: var(--ra-in); }
-    .se-cover { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #000; }
-    .se-cover.sm { width: 52px; height: 52px; }
-    .se-trackmeta, .se-resmeta { min-width: 0; text-transform: none; letter-spacing: 0; }
-    .se-trackname { font-weight: 800; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .se-trackartist { color: var(--ra-text); font-size: 0.88rem; }
-    .se-trackalbum { color: var(--ra-muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .se-searchwrap { position: fixed; inset: 0; z-index: 130; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); padding: 20px; }
-    .se-searchcard { background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 18px; padding: 18px; width: min(96vw, 620px); max-height: 84vh; display: flex; flex-direction: column; box-shadow: 0 24px 80px rgba(0,0,0,0.7); }
-    .se-searchhead { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
-    .se-searchhead .se-editclose { position: static; }
-    .se-reslist { display: flex; flex-direction: column; gap: 8px; overflow: auto; }
-    .se-resrow { display: flex; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--ra-line); border-radius: 12px; background: var(--ra-panel2); }
-    .se-resrow .se-resmeta { flex: 1; }
-    .se-nopreview { width: 34px; text-align: center; color: var(--ra-muted); }
-
-    .se-editfoot { display: flex; gap: 8px; margin-top: 18px; }
-    .se-editfoot .se-editdel { margin-top: 0; flex: 1; }
-    .se-warn { color: #ffd166; font-weight: 700; font-size: 0.9rem; margin: 8px 0 0; }
-
-    .se-ct.folder { background: color-mix(in srgb, var(--c) 82%, #000); padding-top: 18px; justify-content: center; }
-    .se-ct-fhead { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 4px; padding: 2px 6px;
-        background: color-mix(in srgb, var(--c) 100%, #000); filter: brightness(0.6); font-weight: 900; font-size: min(18cqmin, 0.75rem);
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .se-ct-ico.fbody { font-size: min(40cqmin, 1.8rem); }
-    .se-ct.panic { background: linear-gradient(160deg, #ff2740 0%, #c8102e 100%); }
-    .se-ct-lock { position: absolute; top: 3px; right: 3px; font-size: min(16cqmin, 0.8rem); opacity: 0.9; }
-
-    .se-prof-btns { display: flex; gap: 8px; margin-bottom: 12px; }
-    .se-prof-btns .se-btn { flex: 1; }
-
-    .se-editbody { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-    .se-editbody .se-col { min-width: 0; }
-    @@media (max-width: 720px) { .se-editbody { grid-template-columns: 1fr; } }
-
-    .se-tl-track { cursor: pointer; }
-
-    .se-spotifycard { width: min(96vw, 560px); }
-    .se-spotifyh { margin: 0 0 14px; }
-    .se-spotifycur { background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
-    .se-spotifycur > div:first-child { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ra-muted); }
-    .se-spotifycur strong { display: block; font-size: 1.05rem; word-break: break-all; margin: 2px 0 4px; }
-    .se-savedbanner { background: rgba(29,185,84,0.15); border: 1px solid rgba(29,185,84,0.4); color: #62e39b; border-radius: 10px; padding: 0.6rem 0.8rem; font-weight: 700; margin: 12px 0 0; }
-    .se-redirects { margin: 6px 0 0; padding-left: 1.1rem; }
-    .se-redirects code { background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 6px; padding: 0.1rem 0.4rem; word-break: break-all; }
-
-    .se-songlist { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
-    .se-songrow { display: flex; align-items: center; gap: 6px; }
-    .se-songrow.sel .se-songrow-main { border-color: var(--ra-red); background: var(--ra-panel2); }
-    .se-songrow-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; appearance: none; cursor: pointer; background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.5rem 0.7rem; color: var(--ra-text); font: inherit; }
-    .se-songrow-nr { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--ra-red); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; }
-    .se-songrow-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; text-transform: none; }
-    .se-songrow-cue { flex: 0 0 auto; color: var(--ra-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
-    .se-songh { margin: 16px 0 8px; }
-</style>

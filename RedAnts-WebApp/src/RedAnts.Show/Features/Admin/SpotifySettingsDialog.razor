@@ -1,0 +1,112 @@
+@inject GetSpotifySettings.Handler SpotifySettings
+@inject SetShowSetting.Handler SettingSave
+@inject TestSpotifyCredentials.Handler SpotifyTest
+
+<div class="se-editwrap" @onclick="CloseAsync">
+    <div class="se-editcard se-spotifycard" @onclick:stopPropagation="true">
+        <button class="se-editclose" @onclick="CloseAsync">✕</button>
+        <h3 class="se-spotifyh">🟢 Spotify-Zugang</h3>
+
+        <div class="se-spotifycur">
+            <div>Aktuell gespeicherte Client-ID</div>
+            <strong>@(string.IsNullOrWhiteSpace(_savedClientId) ? "— keine hinterlegt —" : _savedClientId)</strong>
+            <div class="se-muted">Client-Secret: @(_hasSecret ? "gesetzt ✓" : "nicht gesetzt")</div>
+        </div>
+
+        <label class="se-full">Client-ID
+            <input @bind="_clientId" placeholder="z. B. 20dc00b2e3db4ab790fad325e510897d" />
+        </label>
+        <label class="se-full">Client-Secret (nur für die Suche; leer lassen = unverändert)
+            <input type="password" @bind="_clientSecret" placeholder="leer lassen = unverändert" />
+        </label>
+
+        <div class="se-testrow">
+            <button class="se-btn primary" @onclick="SaveAsync" disabled="@_busy">💾 Speichern</button>
+            <button class="se-btn" @onclick="TestAsync" disabled="@_busy">🔍 Testen</button>
+            <button class="se-btn" @onclick="CloseAsync">Schliessen</button>
+        </div>
+        @if (_testResult is { Length: > 0 })
+        {
+            <p class="@(_testOk ? "se-savedbanner" : "se-err")">@_testResult</p>
+        }
+        @if (_status is { Length: > 0 })
+        {
+            <p class="se-savedbanner">✓ @_status</p>
+        }
+        @if (_error is { Length: > 0 })
+        {
+            <p class="se-err">@_error</p>
+        }
+
+        <p class="se-muted" style="margin-top:14px">Wird zentral in der Datenbank gespeichert und gilt für alle Geräte dieser Umgebung (dev und prod haben getrennte Datenbanken). In deiner Spotify-App müssen diese Redirect-URIs eingetragen sein:</p>
+        <ul class="se-redirects">
+            <li><code>https://show.redants.ch/show/callback</code></li>
+            <li><code>https://show-dev.redants.ch/show/callback</code></li>
+            <li><code>http://127.0.0.1:5603/show/callback</code></li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private string _clientId = "";
+    private string _clientSecret = "";
+    private string _savedClientId = "";
+    private bool _hasSecret;
+    private bool _busy;
+    private string _status = "";
+    private string _error = "";
+    private string _testResult = "";
+    private bool _testOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _clientId = _savedClientId;
+    }
+
+    private async Task RefreshAsync()
+    {
+        var spotify = await SpotifySettings.HandleAsync(new GetSpotifySettings.Query());
+        _savedClientId = spotify.SavedClientId;
+        _hasSecret = spotify.HasSecret;
+    }
+
+    private Task CloseAsync() => OnClosed.InvokeAsync();
+
+    private async Task TestAsync()
+    {
+        _busy = true; _testResult = ""; _status = ""; _error = "";
+        try
+        {
+            var result = await SpotifyTest.HandleAsync(new TestSpotifyCredentials.Command(_clientId, _clientSecret));
+            _testOk = result == "ok";
+            _testResult = _testOk
+                ? "✓ Client-ID + Secret gültig (die Suche funktioniert). Für die Wiedergabe braucht es zusätzlich Login + Premium auf dem Board."
+                : "✗ Test fehlgeschlagen: " + result;
+        }
+        catch (DomainException ex) { _testOk = false; _testResult = "✗ " + ex.Message; }
+        catch (Exception ex) { _testOk = false; _testResult = "✗ Fehler: " + ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true; _status = ""; _error = ""; _testResult = "";
+        try
+        {
+            await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientId", _clientId.Trim()));
+            if (!string.IsNullOrWhiteSpace(_clientSecret))
+                await SettingSave.HandleAsync(new SetShowSetting.Command("Spotify:ClientSecret", _clientSecret.Trim()));
+            _clientSecret = "";
+            await RefreshAsync();
+            _status = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = "Fehler: " + ex.Message; }
+        finally { _busy = false; }
+    }
+}
