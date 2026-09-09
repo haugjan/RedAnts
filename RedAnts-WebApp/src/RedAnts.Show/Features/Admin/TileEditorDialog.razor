@@ -1,0 +1,586 @@
+@inject LookupSpotifyReference.Handler SpotifyLookup
+@inject UploadShowSound.Handler SoundUpload
+@inject IJSRuntime JS
+
+@{ var n = Node; }
+<div class="se-editwrap" @onmousedown="() => _downOnBackdrop = true" @onclick="OnWrapClick">
+<div class="se-editcard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
+<button class="se-editclose" @onclick="AttemptCloseAsync">✕</button>
+<div class="se-preview" style="--c:@n.Color">
+    <span class="se-pv-icon">@(string.IsNullOrEmpty(n.Icon) ? "🔊" : n.Icon)</span>
+    <span class="se-pv-label">@n.Label</span>
+    @if (!string.IsNullOrEmpty(n.Subtitle))
+    {
+        <span class="se-pv-sub">@n.Subtitle</span>
+    }
+</div>
+
+<div class="se-editbody">
+<div class="se-col">
+<div class="se-grid">
+    <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
+    <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
+    <div class="se-fieldcol">
+        <span class="se-lbl">Icon</span>
+        <button type="button" class="se-emoji-btn" @onclick="() => _emojiOpen = !_emojiOpen">
+            <span>@(string.IsNullOrEmpty(n.Icon) ? "＋" : n.Icon)</span> auswählen
+        </button>
+        @if (_emojiOpen)
+        {
+            <div class="se-emoji-pop">
+                @foreach (var e in Emojis)
+                {
+                    <button type="button" @onclick="@(() => { n.Icon = e; _emojiOpen = false; })">@e</button>
+                }
+                <button type="button" class="clear" @onclick="@(() => { n.Icon = null; _emojiOpen = false; })">✕</button>
+            </div>
+        }
+    </div>
+    <div class="se-fieldcol">
+        <span class="se-lbl">Farbe</span>
+        <button type="button" class="se-color-btn" @onclick="() => _colorOpen = !_colorOpen">
+            <span class="se-color-chip" style="background:@n.Color"></span> auswählen
+        </button>
+        @if (_colorOpen)
+        {
+            <div class="se-color-pop">
+                @foreach (var c in Palette)
+                {
+                    <button type="button" class="se-swatch @(string.Equals(n.Color, c, StringComparison.OrdinalIgnoreCase) ? "sel" : "")"
+                            style="background:@c" title="@c" @onclick="@(() => { n.Color = c; _colorOpen = false; })"></button>
+                }
+            </div>
+        }
+    </div>
+</div>
+</div>
+<div class="se-col">
+
+@if (n.Kind == NodeKind.Sound)
+{
+    var song = CurrentSong(n);
+    <h3>Songs (@n.Songs.Count)</h3>
+    @if (n.Songs.Count > 1)
+    {
+        <div class="se-fieldcol">
+            <span class="se-lbl">Wiedergabe · Endlos-Loop bis Stopp</span>
+            <div class="se-src-tabs">
+                <button type="button" class="@(!n.SongsRandom ? "active" : "")" @onclick="() => n.SongsRandom = false">🔁 Der Reihe nach</button>
+                <button type="button" class="@(n.SongsRandom ? "active" : "")" @onclick="() => n.SongsRandom = true">🔀 Zufällig</button>
+            </div>
+        </div>
+    }
+    <div class="se-songlist">
+        @for (var i = 0; i < n.Songs.Count; i++)
+        {
+            var idx = i;
+            var sg = n.Songs[idx];
+            <div class="se-songrow @(sg == song ? "sel" : "")">
+                <button type="button" class="se-songrow-main" @onclick="() => SelectSong(sg)">
+                    <span class="se-songrow-nr">@(idx + 1)</span>
+                    <span class="se-songrow-name">@SongEditLabel(sg)</span>
+                    <span class="se-songrow-cue">@Clock(sg.StartSec)@(sg.DurationSec is { } d ? " – " + Clock(d) : "")</span>
+                </button>
+                <button type="button" class="se-btn sm" title="hoch" @onclick="() => MoveSong(n, idx, -1)" disabled="@(idx == 0)">↑</button>
+                <button type="button" class="se-btn sm" title="runter" @onclick="() => MoveSong(n, idx, 1)" disabled="@(idx == n.Songs.Count - 1)">↓</button>
+                <button type="button" class="se-btn sm danger" title="entfernen" @onclick="() => RemoveSong(n, idx)" disabled="@(n.Songs.Count <= 1)">🗑</button>
+            </div>
+        }
+    </div>
+    <button type="button" class="se-btn sm" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
+
+    <h4 class="se-songh">Song @(n.Songs.IndexOf(song) + 1) bearbeiten</h4>
+    <div class="se-src-tabs">
+        <button type="button" class="@(song.Kind == SoundKind.Local ? "active" : "")" @onclick="() => song.Kind = SoundKind.Local">🎵 Datei</button>
+        <button type="button" class="@(song.Kind == SoundKind.Spotify ? "active" : "")" @onclick="() => song.Kind = SoundKind.Spotify">🟢 Spotify</button>
+    </div>
+
+    @if (song.Kind == SoundKind.Local)
+    {
+        <div class="se-full">
+            <span class="se-lbl">Aktuelle Datei</span>
+            <div class="se-current">@FriendlyName(song.Ref)</div>
+        </div>
+        <label class="se-drop @(_uploading ? "busy" : "")">
+            <InputFile OnChange="e => UploadAsync(e, song)" accept="audio/*" />
+            <span>@(_uploading ? "Lädt hoch …" : "Datei ziehen oder klicken – ersetzt sofort")</span>
+        </label>
+    }
+    else
+    {
+        @if (SpotifyConfigured)
+        {
+            <div class="se-search">
+                <input class="se-search-in" @bind="_query" @bind:event="oninput" @onkeyup="OnSearchKeyAsync" placeholder="Song auf Spotify suchen …" />
+                <button class="se-btn primary" @onclick="DoSearchAsync">🔍 Suchen</button>
+            </div>
+        }
+        <label class="se-full">Spotify-Link, URL oder ID einfügen
+            <input value="@song.Ref" @onchange="e => ApplyPasteAsync(e, song)"
+                   placeholder="https://open.spotify.com/… · spotify:track:… · oder nur die ID" />
+        </label>
+        @if (!SpotifyConfigured)
+        {
+            <p class="se-muted">Suche inaktiv (Client-ID + Secret hinterlegen). Link einfügen geht trotzdem.</p>
+        }
+
+        @if (_trackInfo is { } ti && ShowSpotifyLink.Parse(song.Ref)?.Kind == "track")
+        {
+            <div class="se-trackcard">
+                @if (!string.IsNullOrEmpty(ti.CoverUrl))
+                {
+                    <img class="se-cover" src="@ti.CoverUrl" alt="" />
+                }
+                <div class="se-trackmeta">
+                    <div class="se-trackname">@ti.Name</div>
+                    <div class="se-trackartist">@ti.Artist</div>
+                    <div class="se-trackalbum">@ti.Album@(ti.DurationMs > 0 ? $" · {Mmss(ti.DurationMs / 1000)}" : "")</div>
+                </div>
+            </div>
+        }
+        @if (_ctxInfo is { } ci)
+        {
+            <div class="se-trackcard">
+                @if (!string.IsNullOrEmpty(ci.CoverUrl))
+                {
+                    <img class="se-cover" src="@ci.CoverUrl" alt="" />
+                }
+                <div class="se-trackmeta">
+                    <div class="se-trackname">@(string.IsNullOrEmpty(ci.Name) ? ci.Kind : ci.Name)</div>
+                    <div class="se-trackartist">@(ci.Kind == "playlist" ? $"Playlist · {ci.TrackCount} Songs" : ci.Kind)@(string.IsNullOrEmpty(ci.Owner) ? "" : " · " + ci.Owner)</div>
+                </div>
+            </div>
+        }
+
+        @if (IsContextRef(song.Ref))
+        {
+            <div class="se-fieldcol">
+                <span class="se-lbl">Playlist-Reihenfolge</span>
+                <div class="se-src-tabs">
+                    <button type="button" class="@(!song.Shuffle ? "active" : "")" @onclick="() => song.Shuffle = false">➡ Der Reihe nach</button>
+                    <button type="button" class="@(song.Shuffle ? "active" : "")" @onclick="() => song.Shuffle = true">🔀 Zufällig</button>
+                </div>
+            </div>
+        }
+    }
+
+    <div class="se-timeline">
+        <div class="se-tl-track" title="Klicken/ziehen zum Einspringen">
+            <div class="se-tl-sel" style="left:@Pct(song.StartSec, TrackMax)%; width:@Pct(song.DurationSec ?? 0, TrackMax)%;"></div>
+            <div class="se-tl-mark start" style="left:@Pct(song.StartSec, TrackMax)%;" title="Cue"></div>
+            @if (song.DurationSec is { } dsec)
+            {
+                <div class="se-tl-mark end" style="left:@Pct(song.StartSec + dsec, TrackMax)%;" title="Ende"></div>
+            }
+            <div class="se-tl-head @(_playing ? "on" : "")" style="left:@Pct(_playPos, TrackMax)%;"></div>
+        </div>
+        <div class="se-tl-times"><span>@Clock(_playPos)</span><span>@Mmss(TrackMax)</span></div>
+    </div>
+
+    <div class="se-grid">
+        <label>Cue-Start (m:ss.mmm)
+            <input value="@Clock(song.StartSec)" @onchange="e => SetCueText(e, song)" placeholder="0:00.000" />
+        </label>
+        <label>Länge (leer = ganzer Song)
+            <input value="@(song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, song)" placeholder="ganzer Song" />
+        </label>
+    </div>
+
+    <div class="se-testrow">
+        <button class="se-btn primary" @onclick="() => PlayFullAsync(song)">▶ Abspielen</button>
+        <button class="se-btn" @onclick="() => PlayFromCueAsync(song)">▶ Abschnitt</button>
+        <button class="se-btn" @onclick="StopTest">⏹ Stopp</button>
+    </div>
+    <div class="se-testrow">
+        <button class="se-btn" @onclick="() => SetCueFromPos(song)">⤓ Position als Cue</button>
+        <button class="se-btn" @onclick="() => SetEndFromPos(song)">⤒ Position als Ende</button>
+    </div>
+    @if (_uploadError is { Length: > 0 })
+    {
+        <p class="se-err">@_uploadError</p>
+    }
+}
+else
+{
+    <p class="se-muted">Ordner: mit „öffnen" (Raster) oder links reingehen, dann darin Kacheln anlegen.</p>
+}
+</div>
+</div>
+@if (_isNew && !IsTileValid(n))
+{
+    <p class="se-warn">Bitte einen Song/eine Datei wählen. „Abbrechen" verwirft die neue Kachel.</p>
+}
+<div class="se-editfoot">
+    @if (_isNew)
+    {
+        <button class="se-btn sm" @onclick="CancelTileAsync">Abbrechen</button>
+    }
+    <button class="se-btn sm danger se-editdel" @onclick="DeleteAsync">🗑 Kachel löschen</button>
+</div>
+</div>
+</div>
+
+@if (_askDiscard)
+{
+    <div class="se-choosewrap" @onclick="KeepEditing">
+        <div class="se-choosecard" @onclick:stopPropagation="true">
+            <h3>Kein Song gewählt</h3>
+            <p class="se-muted" style="margin:0 0 14px">Diese Kachel hat noch keinen Song/keine Datei.</p>
+            <div class="se-choosebtns">
+                <button class="se-btn" @onclick="DiscardTile">Verwerfen</button>
+                <button class="se-btn primary" @onclick="KeepEditing">Weiterbearbeiten</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_searchOpen)
+{
+    <SpotifySearchDialog Term="@_query" OnPicked="PickTrackAsync" OnLink="ApplySpotifyLinkAsync" OnClosed="CloseSearch" />
+}
+
+@code {
+    [Parameter, EditorRequired] public EditButton Node { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public bool SpotifyConfigured { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [Parameter] public EventCallback OnRemoved { get; set; }
+
+    private const string SoundBase = ShowSoundDelivery.AdminBase;
+
+    private bool _isNew;
+    private bool _emojiOpen;
+    private bool _colorOpen;
+    private bool _downOnBackdrop;
+    private bool _askDiscard;
+    private bool _uploading;
+    private string _uploadError = "";
+    private EditSound? _editSong;
+    private double _playPos;
+    private double _playDur;
+    private bool _playing;
+    private SpotifyTrack? _trackInfo;
+    private SpotifyContext? _ctxInfo;
+    private string _query = "";
+    private bool _searchOpen;
+
+    private int TrackMax => _playDur > 1 ? (int)Math.Ceiling(_playDur) : 480;
+
+    private static readonly string[] Emojis =
+    [
+        "🥅", "🏒", "⚽", "🏆", "🏅", "🎯", "💪", "🙌", "👏", "📣", "📢", "🚨", "⏱️", "🔔",
+        "🎵", "🎶", "🎤", "🥁", "🎸", "🎺", "🎬", "🎉", "🎲", "🔥", "⭐", "⚡", "💥", "🌪️",
+        "🐯", "🦗", "💰", "🪙", "😇", "🛝", "💿", "😬", "😱", "😄", "🕺", "🎧",
+    ];
+
+    private static readonly string[] Palette =
+    [
+        "#E11330", "#C8102E", "#ff5069", "#e07a1f", "#f4a261", "#e9c46a",
+        "#2a9d8f", "#1db954", "#43aa8b", "#457b9d", "#3a86ff", "#4361ee",
+        "#6d597a", "#9d4edd", "#b5179e", "#bc6c25", "#606c38", "#264653",
+        "#8ecae6", "#ffb703", "#e63946", "#f72585", "#111318", "#6c757d",
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isNew = IsNew;
+        _editSong = Node.Songs.Count > 0 ? Node.Songs[0] : null;
+        if (_editSong is { } first) await RefreshSpotifyInfoAsync(first);
+    }
+
+    public Task ReportPositionAsync(double pos, double dur)
+    {
+        _playPos = pos;
+        if (dur > 0) _playDur = dur;
+        _playing = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public Task ReportStoppedAsync()
+    {
+        _playing = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async Task HandleEscapeAsync()
+    {
+        if (_askDiscard) _askDiscard = false;
+        else if (_searchOpen) CloseSearch();
+        else { await AttemptCloseAsync(); return; }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static bool IsTileValid(EditButton b) =>
+        b.Kind == NodeKind.Folder || b.Songs.Any(s => !string.IsNullOrWhiteSpace(s.Ref));
+
+    private static string FriendlyName(string? r)
+    {
+        if (string.IsNullOrWhiteSpace(r)) return "— keine —";
+        return r.StartsWith("sounds/") ? r["sounds/".Length..] : r;
+    }
+
+    private static string SongEditLabel(EditSound s)
+    {
+        if (string.IsNullOrWhiteSpace(s.Ref)) return "— leer —";
+        if (s.Kind == SoundKind.Spotify)
+        {
+            var p = ShowSpotifyLink.Parse(s.Ref);
+            return p is { } v ? $"Spotify · {v.Kind}" : "Spotify";
+        }
+        var r = s.Ref;
+        if (r.StartsWith("sounds/")) r = r["sounds/".Length..];
+        var slash = r.LastIndexOf('/');
+        if (slash >= 0) r = r[(slash + 1)..];
+        return r;
+    }
+
+    private EditSound CurrentSong(EditButton b)
+    {
+        if (b.Songs.Count == 0) b.Songs.Add(new EditSound());
+        if (_editSong is null || !b.Songs.Contains(_editSong)) _editSong = b.Songs[0];
+        return _editSong;
+    }
+
+    private void SelectSong(EditSound s)
+    {
+        _editSong = s;
+        _trackInfo = null; _ctxInfo = null;
+        _playPos = 0; _playDur = 0; _playing = false;
+        _ = JS.InvokeVoidAsync("showEditStop");
+        _ = RefreshSpotifyInfoAsync(s);
+    }
+
+    private void AddSong(EditButton b)
+    {
+        var s = new EditSound();
+        b.Songs.Add(s);
+        SelectSong(s);
+    }
+
+    private void RemoveSong(EditButton b, int idx)
+    {
+        if (b.Songs.Count <= 1 || idx < 0 || idx >= b.Songs.Count) return;
+        var removed = b.Songs[idx];
+        b.Songs.RemoveAt(idx);
+        if (_editSong == removed) _editSong = b.Songs[Math.Min(idx, b.Songs.Count - 1)];
+    }
+
+    private void MoveSong(EditButton b, int idx, int delta)
+    {
+        var j = idx + delta;
+        if (j < 0 || j >= b.Songs.Count) return;
+        (b.Songs[idx], b.Songs[j]) = (b.Songs[j], b.Songs[idx]);
+    }
+
+    private async Task UploadAsync(InputFileChangeEventArgs e, EditSound sound)
+    {
+        var file = e.File;
+        if (file is null) return;
+        _uploading = true;
+        _uploadError = "";
+        try
+        {
+            await using var stream = file.OpenReadStream(50L * 1024 * 1024);
+            sound.Ref = await SoundUpload.HandleAsync(new UploadShowSound.Command(file.Name, stream, file.ContentType));
+        }
+        catch (DomainException ex) { _uploadError = ex.Message; }
+        catch (Exception ex) { _uploadError = "Upload fehlgeschlagen: " + ex.Message; }
+        finally { _uploading = false; }
+    }
+
+    private async Task RefreshSpotifyInfoAsync(EditSound s)
+    {
+        _trackInfo = null; _ctxInfo = null;
+        if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref) || !SpotifyConfigured) { StateHasChanged(); return; }
+        try
+        {
+            var found = await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref));
+            _trackInfo = found.Track;
+            _ctxInfo = found.Context;
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    private async Task ApplyPasteAsync(ChangeEventArgs e, EditSound s)
+    {
+        s.Kind = SoundKind.Spotify;
+        s.Ref = ShowSpotifyLink.ToUri(e.Value?.ToString()) ?? (e.Value?.ToString()?.Trim() ?? "");
+        await RefreshSpotifyInfoAsync(s);
+    }
+
+    private async Task DoSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query)) return;
+        var link = ShowSpotifyLink.ToUri(_query);
+        if (link is not null && _editSong is not null)
+        {
+            await ApplySpotifyLinkAsync(link);
+            _query = "";
+            return;
+        }
+        _searchOpen = true;
+    }
+
+    private async Task OnSearchKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await DoSearchAsync();
+    }
+
+    private async Task ApplySpotifyLinkAsync(string link)
+    {
+        if (_editSong is null) return;
+        _editSong.Kind = SoundKind.Spotify;
+        _editSong.Ref = link;
+        await RefreshSpotifyInfoAsync(_editSong);
+        _isNew = false;
+    }
+
+    private async Task PickTrackAsync(SpotifyTrack t)
+    {
+        if (_editSong is null) return;
+        _editSong.Kind = SoundKind.Spotify;
+        _editSong.Ref = t.Uri;
+        if (string.IsNullOrWhiteSpace(Node.Label) || Node.Label == "Neu")
+        {
+            Node.Label = t.Name;
+            if (string.IsNullOrWhiteSpace(Node.Subtitle)) Node.Subtitle = t.Artist;
+        }
+        _trackInfo = t; _ctxInfo = null;
+        _isNew = false;
+        _searchOpen = false;
+        _query = "";
+        await JS.InvokeVoidAsync("showPreviewStop");
+    }
+
+    private void CloseSearch()
+    {
+        _searchOpen = false;
+        _ = JS.InvokeVoidAsync("showPreviewStop");
+    }
+
+    private static bool IsContextRef(string? r) =>
+        !string.IsNullOrWhiteSpace(r) && System.Text.RegularExpressions.Regex.IsMatch(r, @"^spotify:(playlist|album|artist):");
+
+    private async Task TestAsync(EditSound s)
+    {
+        if (s.Kind == SoundKind.Local)
+        {
+            if (string.IsNullOrWhiteSpace(s.Ref)) { await JS.InvokeVoidAsync("alert", "Noch keine Datei hinterlegt."); return; }
+            var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
+            await JS.InvokeVoidAsync("showEditPlay", url, s.StartSec, s.DurationSec);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("showEditPlaySpotify", s.Ref, s.StartSec, s.Shuffle);
+        }
+        _playing = true;
+    }
+
+    private Task PlayFromCueAsync(EditSound s) => TestAsync(s);
+
+    private async Task PlayFullAsync(EditSound s)
+    {
+        if (s.Kind == SoundKind.Local)
+        {
+            if (string.IsNullOrWhiteSpace(s.Ref)) { await JS.InvokeVoidAsync("alert", "Noch keine Datei hinterlegt."); return; }
+            var url = s.Ref.StartsWith("http") ? s.Ref : SoundBase + s.Ref;
+            await JS.InvokeVoidAsync("showEditPlay", url, 0, (int?)null);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("showEditPlaySpotify", s.Ref, 0, s.Shuffle);
+        }
+        _playing = true;
+    }
+
+    private async Task StopTest()
+    {
+        await JS.InvokeVoidAsync("showEditStop");
+        _playing = false;
+    }
+
+    private void SetCueFromPos(EditSound s) => s.StartSec = Math.Round(_playPos, 3);
+
+    private void SetEndFromPos(EditSound s)
+    {
+        var dur = Math.Round(_playPos - s.StartSec, 3);
+        s.DurationSec = dur > 0 ? dur : null;
+    }
+
+    private void SetCueText(ChangeEventArgs e, EditSound s)
+    {
+        var v = ParseClock(e.Value?.ToString());
+        s.StartSec = v is { } x && x >= 0 ? x : 0;
+    }
+
+    private void SetLenText(ChangeEventArgs e, EditSound s)
+    {
+        var v = ParseClock(e.Value?.ToString());
+        s.DurationSec = v is { } x && x > 0 ? x : null;
+    }
+
+    private static string Pct(double v, double max) =>
+        (max <= 0 ? 0 : Math.Clamp(v / max * 100.0, 0, 100)).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Mmss(int s) => $"{s / 60}:{s % 60:00}";
+
+    private static string Clock(double sec)
+    {
+        if (sec < 0) sec = 0;
+        var total = (int)Math.Round(sec * 1000);
+        var ms = total % 1000; var s = total / 1000 % 60; var m = total / 60000;
+        return $"{m}:{s:00}.{ms:000}";
+    }
+
+    private static double? ParseClock(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var t = input.Trim().Replace(',', '.');
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var num = System.Globalization.NumberStyles.Float;
+        if (t.Contains(':'))
+        {
+            var parts = t.Split(':', 2);
+            if (int.TryParse(parts[0], num, inv, out var mm) && double.TryParse(parts[1], num, inv, out var ss))
+                return mm * 60 + ss;
+            return null;
+        }
+        return double.TryParse(t, num, inv, out var v) ? v : null;
+    }
+
+    private void OnWrapClick()
+    {
+        if (_downOnBackdrop) _ = AttemptCloseAsync();
+        _downOnBackdrop = false;
+    }
+
+    private Task AttemptCloseAsync()
+    {
+        if (_isNew && !IsTileValid(Node)) { _askDiscard = true; return Task.CompletedTask; }
+        return OnClosed.InvokeAsync();
+    }
+
+    private Task DiscardTile()
+    {
+        _askDiscard = false;
+        return OnRemoved.InvokeAsync();
+    }
+
+    private void KeepEditing() => _askDiscard = false;
+
+    private Task CancelTileAsync()
+    {
+        _ = JS.InvokeVoidAsync("showEditStop");
+        return OnRemoved.InvokeAsync();
+    }
+
+    private async Task DeleteAsync()
+    {
+        var what = Node.Kind == NodeKind.Folder && Node.Children.Count > 0
+            ? $"Ordner „{Node.Label}“ samt {Node.Children.Count} Einträgen löschen?"
+            : $"„{Node.Label}“ löschen?";
+        if (!await JS.InvokeAsync<bool>("confirm", what)) return;
+        await OnRemoved.InvokeAsync();
+    }
+}
