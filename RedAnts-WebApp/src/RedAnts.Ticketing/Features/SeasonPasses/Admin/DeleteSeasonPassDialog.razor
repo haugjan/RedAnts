@@ -1,0 +1,28 @@
+@inject DeleteSeasonPass.Handler PassDeletion
+
+<ConfirmDialog Title="Saisonkarte löschen"
+               Message="@($"Saisonkarte {AdminFormat.TicketNo(Pass.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+               ConfirmLabel="Löschen" Danger="true" Busy="_busy" Error="@_error"
+               OnConfirm="DeleteAsync" OnCancel="OnClosed" />
+
+@code {
+    [Parameter, EditorRequired] public SeasonPassRow Pass { get; set; } = default!;
+    [Parameter] public EventCallback OnDeleted { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private bool _busy;
+    private string? _error;
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await PassDeletion.HandleAsync(new DeleteSeasonPass.Command(Pass.Uuid));
+            await OnDeleted.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}

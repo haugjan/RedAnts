@@ -8,7 +8,6 @@
 @inject CreateSeasonPass.Handler PassCreation
 @inject EditSeasonPass.Handler PassEdit
 @inject SetSeasonPassHolder.Handler PassHolder
-@inject DeleteSeasonPass.Handler PassDeletion
 @inject ImportSeasonPasses.Handler PassImport
 @inject SendSeasonPassMail.Handler PassMail
 
@@ -271,10 +270,7 @@
 
 @if (_deleteTarget is not null)
 {
-    <ConfirmDialog Title="Saisonkarte löschen"
-                   Message="@($"Saisonkarte {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
-                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
-                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+    <DeleteSeasonPassDialog Pass="_deleteTarget" OnDeleted="PassDeletedAsync" OnClosed="CloseDelete" />
 }
 
 @if (_showImport)
@@ -583,24 +579,13 @@
     private void ClosePrint() => _showPrint = false;
 
     private SeasonPassRow? _deleteTarget;
-    private bool _deleteBusy;
-    private string? _deleteError;
 
-    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+    private void CloseDelete() => _deleteTarget = null;
 
-    private async Task DeleteConfirmedAsync()
+    private async Task PassDeletedAsync()
     {
-        if (_deleteTarget is null) return;
-        _deleteBusy = true;
-        _deleteError = null;
-        try
-        {
-            await PassDeletion.HandleAsync(new DeleteSeasonPass.Command(_deleteTarget.Uuid));
-            _deleteTarget = null;
-            await ReloadPassesAsync();
-        }
-        catch (Exception ex) { _deleteError = ex.Message; }
-        finally { _deleteBusy = false; }
+        _deleteTarget = null;
+        await ReloadPassesAsync();
     }
 
     private bool _loading = true;
