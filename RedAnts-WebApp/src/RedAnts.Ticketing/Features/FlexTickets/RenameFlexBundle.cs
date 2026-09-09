@@ -5,7 +5,7 @@ public static class RenameFlexBundle
 {
     public sealed record Command(int BundleId, string Reference);
 
-    public sealed class Handler(IFlexTicketBundles bundles)
+    public sealed class Handler(IFlexTicketBundleRepository bundles)
     {
         public async Task HandleAsync(Command command)
         {

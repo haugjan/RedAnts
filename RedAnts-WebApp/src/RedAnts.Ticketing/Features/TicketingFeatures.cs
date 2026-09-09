@@ -90,7 +90,11 @@ public static class TicketingFeatures
         typeof(CreateSingleFlexTicket.Handler),
         typeof(DeleteFlexTicket.Handler),
         typeof(ImportFlexTickets.Handler),
-        typeof(SendFlexTicketMail.Handler)
+        typeof(SendFlexTicketMail.Handler),
+        typeof(GetFlexBundles.Handler),
+        typeof(GetFlexBundleTickets.Handler),
+        typeof(GetFlexBundlesForExport.Handler),
+        typeof(GetFlexTicketMailTemplate.Handler)
     ];
 
     public static IReadOnlyList<Type> Steps { get; } =

@@ -1,7 +1,7 @@
 @using RedAnts.Ticketing.Domain.Sales
 @implements IAsyncDisposable
 @inject ISeasons Seasons
-@inject IFlexTicketBundles Bundles
+@inject GetFlexBundles.Handler FlexBundles
 @inject RebookFlexTicket.Handler Rebooking
 @inject ITicketTokens Tickets
 @inject IJSRuntime JS
@@ -175,7 +175,7 @@
 
     private DotNetObjectReference<RebookView>? _ref;
     private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<FlexTicketBundleView> _bundles = [];
+    private IReadOnlyList<FlexBundleRow> _bundles = [];
 
     public int SelectedSeasonId { get; set; }
     public int SelectedBundleId { get; set; }
@@ -193,7 +193,7 @@
     {
         _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
         SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
-        if (SelectedSeasonId > 0) _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+        if (SelectedSeasonId > 0) _bundles = await FlexBundles.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -219,7 +219,7 @@
         SelectedBundleId = 0;
         _last = null;
         await StopCameraAsync();
-        _bundles = SelectedSeasonId > 0 ? await Bundles.GetBySeasonAsync(SelectedSeasonId) : [];
+        _bundles = SelectedSeasonId > 0 ? await FlexBundles.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId)) : [];
     }
 
     private async Task OnBundleChanged()

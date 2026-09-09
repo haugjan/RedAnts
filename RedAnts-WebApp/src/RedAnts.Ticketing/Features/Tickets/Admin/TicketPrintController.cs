@@ -14,7 +14,7 @@ public sealed class TicketPrintController(
     ITicketPrinter printer,
     ITicketPrintSettings settings,
     IEventBundleTickets eventBundles,
-    IFlexBundleTickets flexBundles,
+    GetFlexBundlesForExport.Handler flexTickets,
     GetSeasonPassesForExport.Handler seasonPasses,
     GetMemberCardsForExport.Handler memberCards,
     IIssuedTicketReader issued) : Controller
@@ -82,7 +82,7 @@ public sealed class TicketPrintController(
                 (await eventBundles.GetByBundleAsync(bid))
                     .Select(t => new TicketPrintItem(t.Uuid, t.Holder?.DisplayName)).ToList(),
             TicketType.SeasonSingle when bundleId is { } bid =>
-                (await flexBundles.GetByBundlesAsync([bid]))
+                (await flexTickets.HandleAsync(new GetFlexBundlesForExport.Query([bid])))
                     .Select(t => new TicketPrintItem(t.Uuid, t.Holder?.DisplayName)).ToList(),
             TicketType.SeasonPass when seasonId is { } sid =>
                 (await seasonPasses.HandleAsync(new GetSeasonPassesForExport.Query(sid, reff.Length == 0 ? [] : [reff])))

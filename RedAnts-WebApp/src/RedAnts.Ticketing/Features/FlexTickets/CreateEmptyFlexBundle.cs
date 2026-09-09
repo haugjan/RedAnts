@@ -6,9 +6,9 @@ public static class CreateEmptyFlexBundle
 {
     public sealed record Command(int SeasonId, TicketCategory Category, string Reference, string? CreatedByName, string? CreatedByEmail);
 
-    public sealed class Handler(IFlexTicketBundles bundles)
+    public sealed class Handler(IFlexTicketBundleRepository bundles)
     {
-        public async Task<FlexTicketBundleView> HandleAsync(Command command)
+        public async Task<int> HandleAsync(Command command)
         {
             var reference = FlexBundleReference.Clean(command.Reference);
             await FlexBundleReference.RequireFreeAsync(bundles, command.SeasonId, reference);

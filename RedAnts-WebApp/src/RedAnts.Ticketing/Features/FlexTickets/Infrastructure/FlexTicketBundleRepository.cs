@@ -6,7 +6,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.FlexTickets.Infrastructure;
 
-public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : IFlexTicketBundles
+public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : IFlexTicketBundleRepository
 {
     public async Task<FlexTicketBundle?> GetByIdAsync(int bundleId)
     {
@@ -27,28 +27,6 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
     }
 
     public const int MaxBundleSize = 2000;
-
-    public async Task<IReadOnlyList<FlexTicketBundleView>> GetBySeasonAsync(int seasonId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var bundles = await scope.Database.FetchAsync<FlexTicketBundleRecord>(
-            "WHERE SeasonId = @0 ORDER BY CreatedAt DESC", seasonId);
-        if (bundles.Count == 0) return [];
-
-        var counts = await scope.Database.FetchAsync<BundleCountRow>(
-            "SELECT BundleId AS BundleId, COUNT(*) AS Total, " +
-            "SUM(CASE WHEN Redeemed = 1 THEN 1 ELSE 0 END) AS Redeemed " +
-            "FROM SeasonSingleTickets WHERE SeasonId = @0 AND BundleId IS NOT NULL GROUP BY BundleId",
-            seasonId);
-        var byBundle = counts.ToDictionary(c => c.BundleId, c => c);
-
-        return bundles.Select(b =>
-        {
-            var c = byBundle.GetValueOrDefault(b.Id);
-            return new FlexTicketBundleView(b.Id, b.SeasonId, (TicketCategory)b.Category, b.Reference,
-                b.CreatedAt, c?.Total ?? 0, c?.Redeemed ?? 0, b.CreatedByName, b.CreatedByEmail);
-        }).ToList();
-    }
 
     public async Task<FlexRebookResult> RebookByUuidAsync(int targetBundleId, Guid uuid, string? operatorName)
     {
@@ -159,43 +137,6 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         return record.Id;
     }
 
-    private const string TicketSelect =
-        "SELECT t.Id, t.Uuid, t.Category, t.Status, t.Redeemed, t.RedeemedEventId, t.CreatedAt, t.BoxOffice, v.IsInside AS InsideFlag, " +
-        "cb.CreatedByName AS CreatorName, cb.CreatedByEmail AS CreatorEmail, bb.Reference AS BundleReference, " +
-        "t.BuyerType, t.BuyerFirstName, t.BuyerLastName, t.BuyerCompany, t.BuyerEmail, " +
-        "t.Salutation, t.Birthday, t.Street, t.AddressLine2, t.PostalCode, t.City, t.Country, t.Phone, " +
-        "CASE WHEN EXISTS (SELECT 1 FROM EventTickets et WHERE et.OriginType = @1 AND et.OriginCardUuid = t.Uuid) THEN 1 ELSE 0 END AS Converted " +
-        "FROM SeasonSingleTickets t " +
-        "LEFT JOIN TicketEventVisits v ON v.TicketUuid = t.Uuid AND v.EventId = t.RedeemedEventId " +
-        "LEFT JOIN FlexTicketBundles cb ON cb.Id = COALESCE(t.OriginBundleId, CASE WHEN t.BoxOffice = 1 THEN NULL ELSE t.BundleId END) " +
-        "LEFT JOIN FlexTicketBundles bb ON bb.Id = t.BundleId ";
-
-    public async Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<FlexTicketRow>(
-            TicketSelect + "WHERE t.BundleId = @0 ORDER BY t.CreatedAt", bundleId, (int)TicketType.SeasonSingle);
-        return rows.Select(MapTicket).ToList();
-    }
-
-    public async Task<IReadOnlyList<FlexTicketView>> GetTicketsBySeasonAsync(int seasonId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<FlexTicketRow>(
-            TicketSelect + "WHERE t.SeasonId = @0 ORDER BY t.CreatedAt", seasonId, (int)TicketType.SeasonSingle);
-        return rows.Select(MapTicket).ToList();
-    }
-
-    private static FlexTicketView MapTicket(FlexTicketRow r) => new(
-        Guid.TryParse(r.Uuid, out var uuid) ? uuid : Guid.Empty,
-        (TicketStatus)r.Status, r.Redeemed, r.RedeemedEventId, r.CreatedAt,
-        (TicketCategory)r.Category, r.InsideFlag, r.Converted == 1, r.BoxOffice,
-        r.CreatorName, r.CreatorEmail,
-        CardHolder.Create((BuyerType)(r.BuyerType ?? 0), r.Salutation, r.BuyerCompany,
-            r.BuyerFirstName, r.BuyerLastName, r.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
-            r.BuyerEmail, r.Street, r.AddressLine2, r.PostalCode, r.City, r.Country, r.Phone),
-        r.BundleReference);
-
     public async Task SetTicketCategoryAsync(Guid uuid, TicketCategory category)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -227,7 +168,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         return await ReferenceExistsAsync(scope.Database, seasonId, (reference ?? "").Trim());
     }
 
-    public async Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
+    public async Task<int> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
@@ -273,13 +214,10 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             });
         }
 
-        var total = await db.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0", record.Id);
-        return new FlexTicketBundleView(record.Id, record.SeasonId, (TicketCategory)record.Category, record.Reference,
-            record.CreatedAt, total, 0, record.CreatedByName, record.CreatedByEmail);
+        return record.Id;
     }
 
-    public async Task<FlexTicketBundleView> AddTicketsAsync(int bundleId, TicketCategory category, int quantity,
+    public async Task<int> AddTicketsAsync(int bundleId, TicketCategory category, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
@@ -315,13 +253,10 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             });
         }
 
-        var redeemed = await db.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0 AND Redeemed = 1", bundleId);
-        return new FlexTicketBundleView(record.Id, record.SeasonId, (TicketCategory)record.Category, record.Reference,
-            record.CreatedAt, existing + quantity, redeemed, record.CreatedByName, record.CreatedByEmail);
+        return record.Id;
     }
 
-    public async Task<FlexTicketBundleView> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
+    public async Task<int> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
         string? createdByName = null, string? createdByEmail = null)
     {
         var bundle = FlexTicketBundle.Create(seasonId, category, reference, createdByName, createdByEmail);
@@ -345,10 +280,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             await db.InsertAsync(record);
         }
 
-        var count = await db.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM SeasonSingleTickets WHERE BundleId = @0", record.Id);
-        return new FlexTicketBundleView(record.Id, record.SeasonId, (TicketCategory)record.Category, record.Reference,
-            record.CreatedAt, count, 0, record.CreatedByName, record.CreatedByEmail);
+        return record.Id;
     }
 
     public async Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,
@@ -539,42 +471,5 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
         var count = await db.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM FlexTicketBundles WHERE SeasonId = @0 AND Reference = @1", seasonId, reference);
         return count > 0;
-    }
-
-    private sealed class BundleCountRow
-    {
-        public int BundleId { get; set; }
-        public int Total { get; set; }
-        public int Redeemed { get; set; }
-    }
-
-    private sealed class FlexTicketRow
-    {
-        public int Id { get; set; }
-        public string Uuid { get; set; } = "";
-        public int Category { get; set; }
-        public int Status { get; set; }
-        public bool Redeemed { get; set; }
-        public int? RedeemedEventId { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-        public bool? InsideFlag { get; set; }
-        public int Converted { get; set; }
-        public bool BoxOffice { get; set; }
-        public string? CreatorName { get; set; }
-        public string? CreatorEmail { get; set; }
-        public string? BundleReference { get; set; }
-        public int? BuyerType { get; set; }
-        public string? BuyerFirstName { get; set; }
-        public string? BuyerLastName { get; set; }
-        public string? BuyerCompany { get; set; }
-        public string? BuyerEmail { get; set; }
-        public string? Salutation { get; set; }
-        public DateTime? Birthday { get; set; }
-        public string? Street { get; set; }
-        public string? AddressLine2 { get; set; }
-        public string? PostalCode { get; set; }
-        public string? City { get; set; }
-        public string? Country { get; set; }
-        public string? Phone { get; set; }
     }
 }
