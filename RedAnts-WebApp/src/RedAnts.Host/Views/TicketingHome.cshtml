@@ -1,10 +1,8 @@
-﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.PublishedContent
-@using RedAnts.Ticketing.Features.Checkout
-@using RedAnts.Ticketing.Features.SeasonPasses
+@using RedAnts.Ticketing.Features.Catalog.Shop
 @using RedAnts.Ticketing.Features.Shared
-@inject IEventPricing Pricing
-@inject ISeasonPassPricing PassPricing
+@inject GetTicketingHome.Handler HomeQuery
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
@@ -14,33 +12,9 @@
     ViewBag.PageTitle = title + " – Red Ants Winterthur";
     ViewBag.TransparentNav = true;
 
-    var seasonsFolder = Model.Children()?.FirstOrDefault(c => c.ContentType.Alias == "seasonsFolder");
-    var openSeasons = (seasonsFolder?.Children() ?? Enumerable.Empty<IPublishedContent>())
-        .Where(c => c.ContentType.Alias == "season" && c.Value<string>("status") == "Open")
-        .ToList();
-
-    var openEvents = openSeasons
-        .SelectMany(s => s.Children() ?? Enumerable.Empty<IPublishedContent>())
-        .Where(c => c.ContentType.Alias == "event"
-            && c.Value<string>("status") == "Open"
-            && c.Value<DateTime>("start") >= SwissTime.Now.Date)
-        .OrderBy(c => c.Value<DateTime>("start"))
-        .ToList();
-
-    var buyableEvents = new List<(IPublishedContent Event, bool SoldOut)>();
-    foreach (var candidate in openEvents)
-    {
-        var cats = await Pricing.GetAvailableAsync(candidate.Id);
-        if (cats.Any(c => c.Available)) buyableEvents.Add((candidate, false));
-        else if (cats.Any(c => c.Remaining == 0)) buyableEvents.Add((candidate, true));
-    }
-
-    var passOffers = new List<(IPublishedContent Season, List<AvailableTicketCategory> Categories)>();
-    foreach (var season in openSeasons)
-    {
-        var cats = (await PassPricing.GetAvailableAsync(season.Id)).Where(c => c.Available).ToList();
-        if (cats.Count > 0) passOffers.Add((season, cats));
-    }
+    var home = await HomeQuery.HandleAsync(new GetTicketingHome.Query());
+    var buyableEvents = home.Events;
+    var passOffers = home.PassOffers;
 }
 
 <main class="flexpage-main">
@@ -61,12 +35,13 @@
         <section class="event-list" id="saisonkarten">
             <div class="event-list-inner">
                 <h2 class="event-list-title">Saisonkarten</h2>
-                @foreach (var (season, cats) in passOffers)
+                @foreach (var season in passOffers)
                 {
-                    <div class="pass-season-label">@season.Name</div>
+                    <div class="pass-season-label">@season.SeasonName</div>
                     <ul class="event-list-items">
-                        @foreach (var cat in cats)
+                        @foreach (var offer in season.Offers)
                         {
+                            var cat = offer.Category;
                             <li class="event-item">
                                 <a class="event-item-link" href="/seasons/">
                                     <span class="event-item-logos">
@@ -109,32 +84,28 @@
             else
             {
                 <ul class="event-list-items">
-                    @foreach (var (evt, soldOut) in buyableEvents)
+                    @foreach (var evt in buyableEvents)
                     {
-                        var evStart = evt.Value<DateTime>("start");
-                        var venue = evt.Value<IPublishedContent>("venue");
-                        var evImage = evt.Value<IPublishedContent>("eventImage")?.Url();
-                        var evHome = evt.Value<IPublishedContent>("homeTeamLogo")?.Url();
-                        var evAway = evt.Value<IPublishedContent>("awayTeamLogo")?.Url();
+                        var soldOut = evt.SoldOut;
                         <li class="event-item">
-                            <a class="event-item-link @(soldOut ? "event-item-link--soldout" : "")" href="@(soldOut ? null : evt.Url())" aria-disabled="@(soldOut ? "true" : null)">
-                                @if (!string.IsNullOrEmpty(evHome) || !string.IsNullOrEmpty(evAway))
+                            <a class="event-item-link @(soldOut ? "event-item-link--soldout" : "")" href="@(soldOut ? null : evt.Url)" aria-disabled="@(soldOut ? "true" : null)">
+                                @if (!string.IsNullOrEmpty(evt.HomeTeamLogoUrl) || !string.IsNullOrEmpty(evt.AwayTeamLogoUrl))
                                 {
                                     <span class="event-item-logos">
-                                        @if (!string.IsNullOrEmpty(evHome)) { <img class="team-logo" src="@evHome" alt="Heimteam" /> }
+                                        @if (!string.IsNullOrEmpty(evt.HomeTeamLogoUrl)) { <img class="team-logo" src="@evt.HomeTeamLogoUrl" alt="Heimteam" /> }
                                         <span class="event-item-vs">vs</span>
-                                        @if (!string.IsNullOrEmpty(evAway)) { <img class="team-logo" src="@evAway" alt="Auswärtsteam" /> }
+                                        @if (!string.IsNullOrEmpty(evt.AwayTeamLogoUrl)) { <img class="team-logo" src="@evt.AwayTeamLogoUrl" alt="Auswärtsteam" /> }
                                     </span>
                                 }
-                                else if (!string.IsNullOrEmpty(evImage))
+                                else if (!string.IsNullOrEmpty(evt.ImageUrl))
                                 {
-                                    <span class="event-item-thumb" style="background-image:url('@evImage');"></span>
+                                    <span class="event-item-thumb" style="background-image:url('@evt.ImageUrl');"></span>
                                 }
                                 <span class="event-item-body">
-                                    <span class="event-item-date">@evStart.ToString("dd.MM.yyyy")@(evt.Value<bool>("timeUnknown") ? "" : $" · {evStart:HH:mm} Uhr")</span>
+                                    <span class="event-item-date">@evt.Date.ToString("dd.MM.yyyy")@(evt.TimeUnknown ? "" : $" · {evt.StartTime:HH:mm} Uhr")</span>
                                     <span class="event-item-name">@evt.Name</span>
                                     <span class="event-item-venue">
-                                        @if (venue != null) { <text>@venue.Name</text> }
+                                        @if (!string.IsNullOrEmpty(evt.VenueName)) { <text>@evt.VenueName</text> }
                                     </span>
                                 </span>
                                 <span class="event-item-cta @(soldOut ? "event-item-cta--soldout" : "")">@(soldOut ? "Ausverkauft" : "Zu den Tickets →")</span>

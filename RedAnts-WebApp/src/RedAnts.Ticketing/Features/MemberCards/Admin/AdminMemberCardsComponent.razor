@@ -568,7 +568,7 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private ISeasonReader Seasons { get; set; } = default!;
     [Inject] private GetMemberCards.Handler CardList { get; set; } = default!;
     [Inject] private CreateMemberCard.Handler CardCreation { get; set; } = default!;
     [Inject] private ImportMemberCards.Handler CardImport { get; set; } = default!;

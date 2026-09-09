@@ -9,7 +9,7 @@ public static class AddEventTicketsToCart
 
     public sealed record Result(bool Added, string CategoryName, string? Message, Cart Cart);
 
-    public sealed class Handler(ICartRepository carts, IEventConversionRules conversionRules, IEventPricing pricing, IEvents events)
+    public sealed class Handler(ICartRepository carts, IEventConversionRuleRepository conversionRules, IEventPricing pricing, IEventReader events)
     {
         public async Task<Result> HandleAsync(Command command)
         {

@@ -14,7 +14,7 @@ public sealed class SeasonPassMailer(
     IEmailSender email,
     ITicketTokens tokens,
     IQrCodeRenderer qr,
-    ISeasons seasons,
+    ISeasonReader seasons,
     IPublicBaseUrl publicUrl,
     ITicketingMailSettings settings,
     IWebHostEnvironment environment,

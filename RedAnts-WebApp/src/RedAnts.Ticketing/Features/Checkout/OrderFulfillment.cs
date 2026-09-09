@@ -17,7 +17,7 @@ public sealed class OrderFulfillment(
     IConvertibleCards convertibleCards,
     IOrderAddOns orderAddOns,
     IAddOnNotifier addOnNotifier,
-    ISeasonAddOns seasonAddOns,
+    ISeasonAddOnRepository seasonAddOns,
     IOrderMailer mailer,
     IPublicBaseUrl publicUrl,
     IOrderItems orderItems,

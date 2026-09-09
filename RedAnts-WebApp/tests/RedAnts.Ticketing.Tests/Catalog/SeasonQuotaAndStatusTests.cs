@@ -1,6 +1,7 @@
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Catalog;
+using RedAnts.Ticketing.Features.Catalog.Pricing;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Catalog;

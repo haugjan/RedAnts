@@ -120,8 +120,8 @@
 
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
-    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private ISeasonReader Seasons { get; set; } = default!;
+    [Inject] private IEventReader Events { get; set; } = default!;
     [Inject] private IFreeEntryAdminReport Report { get; set; } = default!;
     [Inject] private IAdminTicketDeletion Deletion { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;

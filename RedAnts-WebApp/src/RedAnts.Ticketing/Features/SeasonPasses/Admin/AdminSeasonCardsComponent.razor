@@ -3,7 +3,7 @@
 @using RedAnts.Ticketing.Domain.Sales
 @inject GetSeasonPasses.Handler PassList
 @inject GetSeasonPassMailTemplate.Handler MailTemplate
-@inject IPriceTiers PriceTiers
+@inject IPriceTierRepository PriceTiers
 @inject CreateAdminOrder.Handler OrderCreation
 @inject CreateSeasonPass.Handler PassCreation
 @inject EditSeasonPass.Handler PassEdit
@@ -553,7 +553,7 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private ISeasonReader Seasons { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
 

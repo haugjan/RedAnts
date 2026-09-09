@@ -14,6 +14,7 @@ internal sealed class CheckoutFixture
     public const int AdultTier = 1;
     public const int PassTier = 7;
 
+    public InMemoryCart Carts { get; } = new();
     public InMemoryOrders Orders { get; } = new();
     public RecordingOrderLog OrderLog { get; } = new();
     public StubConversionRules ConversionRules { get; } = new();
@@ -22,6 +23,7 @@ internal sealed class CheckoutFixture
     public StubPayrexx Payrexx { get; } = new();
     public InMemoryEventPrices EventPrices { get; } = new();
     public InMemorySeasonPrices SeasonPrices { get; } = new();
+    public StubCapacityUsage Usage { get; } = new();
     public InMemoryEventTickets Tickets { get; } = new();
     public InMemorySeasonPasses Passes { get; } = new();
     public StubConvertibleCards ConvertibleCards { get; } = new();
@@ -39,12 +41,12 @@ internal sealed class CheckoutFixture
             [SeasonCategoryPrice.FromPersistence(TicketCategory.Adult, 300m, true, 5, 20m, true, null, null, null, null, PassTier)]));
     }
 
-    public CapacityReservation Reservation => new(EventPrices, SeasonPrices, NullLogger<CapacityReservation>.Instance);
+    public CapacityReservation Reservation => new(EventPrices, SeasonPrices, Usage, NullLogger<CapacityReservation>.Instance);
 
     public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, SeasonAddOns,
         Mailer, new StubPublicBaseUrl(), OrderItems, Newsletter, new EmptyIssuedTickets(), Reservation, NullLogger<OrderFulfillment>.Instance);
 
-    public PlaceOrder.Handler PlaceOrder => new(Orders, OrderLog, ConversionRules, Admission, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
+    public PlaceOrder.Handler PlaceOrder => new(Carts, Orders, OrderLog, ConversionRules, Admission, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
         new StubOrderTokens(), Reservation, Fulfillment, NullLogger<PlaceOrder.Handler>.Instance);
 
     public ConfirmPayment.Handler ConfirmPayment => new(Orders, Payrexx, Fulfillment, Reservation, OrderLog, NullLogger<ConfirmPayment.Handler>.Instance);

@@ -1,36 +1,29 @@
 using Microsoft.AspNetCore.Mvc;
-using RedAnts.Ticketing.Features.Catalog;
+using RedAnts.Ticketing.Features.Catalog.Shop;
 using RedAnts.Ticketing.Features.Checkout;
 
 namespace RedAnts.Ticketing.Features.Public;
 
-public sealed class NextController(IEvents events, IVenues venues, IEventPricing pricing, ICaptchaVerifier captcha, IContentUrls contentUrls) : Controller
+public sealed class NextController(GetNextEvent.Handler nextEvent, GetCheckoutSettings.Handler checkoutSettings) : Controller
 {
     [HttpGet("/next")]
     public async Task<IActionResult> Next()
     {
-        var today = SwissTime.Today;
-        var upcoming = (await events.GetPublicOpenAsync())
-            .OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList();
-
-        var target = upcoming.FirstOrDefault(e => e.Date == today) ?? upcoming.FirstOrDefault();
+        var target = await nextEvent.HandleAsync(new GetNextEvent.Query());
         var error = TempData["QuickError"] as string;
         var email = TempData["QuickEmail"] as string ?? "";
         var name = TempData["QuickName"] as string ?? "";
-        var siteKey = captcha.Enabled ? captcha.SiteKey : null;
+        var siteKey = (await checkoutSettings.HandleAsync(new GetCheckoutSettings.Query())).TurnstileSiteKey;
 
         if (target is null)
             return View("NextQuickBuy",
                 NextQuickBuyModel.None with { Error = error, Email = email, Name = name, TurnstileSiteKey = siteKey });
 
-        var cats = await pricing.GetAvailableAsync(target.Id);
-        var venue = await venues.FindByIdAsync(target.VenueId);
-        var eventUrl = contentUrls.GetUrl(target.Id);
         var model = new NextQuickBuyModel(
             target.Id, target.Name, target.ImageUrl,
             target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,
             target.Date, target.StartTime, target.TimeUnknown,
-            venue?.Name, cats, error, email, name, siteKey, eventUrl);
+            target.VenueName, target.Categories, error, email, name, siteKey, target.Url);
         return View("NextQuickBuy", model);
     }
 
@@ -39,16 +32,11 @@ public sealed class NextController(IEvents events, IVenues venues, IEventPricing
     {
         Response.Headers["Content-Security-Policy"] = "frame-ancestors *";
 
-        var today = SwissTime.Today;
-        var upcoming = (await events.GetPublicOpenAsync())
-            .OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList();
-
-        var target = upcoming.FirstOrDefault(e => e.Date == today) ?? upcoming.FirstOrDefault();
+        var target = await nextEvent.HandleAsync(new GetNextEvent.Query());
         if (target is null)
             return View("NextEventEmbed", NextEventEmbedModel.None);
 
-        var url = contentUrls.GetUrl(target.Id, absolute: true);
-        var ticketsUrl = !string.IsNullOrEmpty(url) ? url : "/ticketing/";
+        var ticketsUrl = !string.IsNullOrEmpty(target.AbsoluteUrl) ? target.AbsoluteUrl : "/ticketing/";
 
         var model = new NextEventEmbedModel(
             target.Name, target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,

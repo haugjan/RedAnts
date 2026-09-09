@@ -11,7 +11,7 @@ public static class AddSeasonPassesToCart
 
     public sealed record Result(bool Added, string CategoryName, Cart Cart);
 
-    public sealed class Handler(ICartRepository carts, ISeasonPassPricing passPricing, ISeasons seasons, ISeasonAddOns seasonAddOns, IPriceTiers priceTiers)
+    public sealed class Handler(ICartRepository carts, ISeasonPassPricing passPricing, ISeasonReader seasons, ISeasonAddOnRepository seasonAddOns, IPriceTierRepository priceTiers)
     {
         public async Task<Result> HandleAsync(Command command)
         {

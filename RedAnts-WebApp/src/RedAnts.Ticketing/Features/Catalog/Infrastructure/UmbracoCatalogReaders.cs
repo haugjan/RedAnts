@@ -85,7 +85,7 @@ internal sealed class CatalogContentSource(IPublishedContentQuery query, IUmbrac
         Seasons().SelectMany(s => (s.Children() ?? []).Where(c => c.ContentType.Alias == A.EventType));
 }
 
-public sealed class UmbracoSeasons(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : ISeasons
+public sealed class UmbracoSeasons(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : ISeasonReader
 {
     private readonly CatalogContentSource _src = new(query, contextFactory);
 
@@ -106,7 +106,7 @@ public sealed class UmbracoSeasons(IPublishedContentQuery query, IUmbracoContext
         }));
 }
 
-public sealed class UmbracoVenues(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : IVenues
+public sealed class UmbracoVenues(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : IVenueReader
 {
     private readonly CatalogContentSource _src = new(query, contextFactory);
 
@@ -122,7 +122,7 @@ public sealed class UmbracoVenues(IPublishedContentQuery query, IUmbracoContextF
         }));
 }
 
-public sealed class UmbracoEvents(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : IEvents
+public sealed class UmbracoEvents(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : IEventReader
 {
     private readonly CatalogContentSource _src = new(query, contextFactory);
 

@@ -21,7 +21,7 @@ public sealed class CheckoutForm
 public sealed class CheckoutAddressView
 {
     public CheckoutForm Form { get; init; } = new();
-    public Cart Cart { get; init; } = Cart.Empty();
+    public CartSummary Cart { get; init; } = new([], [], 0m, 0, true, false, false);
     public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
@@ -30,7 +30,7 @@ public sealed class CheckoutAddressView
 
 public sealed class CheckoutExpressView
 {
-    public Cart Cart { get; init; } = Cart.Empty();
+    public CartSummary Cart { get; init; } = new([], [], 0m, 0, true, false, false);
     public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }

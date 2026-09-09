@@ -15,7 +15,7 @@ public sealed class OrderItemsBackfillComposer : IComposer
 }
 
 public sealed class OrderItemsBackfill(
-    IScopeProvider scopeProvider, ISeasons seasons, IEvents events, ILogger<OrderItemsBackfill> logger)
+    IScopeProvider scopeProvider, ISeasonReader seasons, IEventReader events, ILogger<OrderItemsBackfill> logger)
     : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken cancellationToken)

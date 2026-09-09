@@ -36,20 +36,29 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<ITicketPrinter, TicketPrinting>();
         builder.Services.AddScoped<ITicketPrintSettings, TicketPrintSettingsRepository>();
 
-        builder.Services.AddScoped<ISeasons, UmbracoSeasons>();
-        builder.Services.AddScoped<IVenues, UmbracoVenues>();
-        builder.Services.AddScoped<IEvents, UmbracoEvents>();
+        builder.Services.AddScoped<ISeasonReader, UmbracoSeasons>();
+        builder.Services.AddScoped<IVenueReader, UmbracoVenues>();
+        builder.Services.AddScoped<IEventReader, UmbracoEvents>();
         builder.Services.AddScoped<IContentUrls, UmbracoContentUrls>();
+        builder.Services.AddScoped<ITicketingHomeReader, TicketingHomeReader>();
+        builder.Services.AddScoped<IEventForSaleReader, EventForSaleReader>();
+        builder.Services.AddScoped<ISeasonForSaleReader, SeasonForSaleReader>();
+        builder.Services.AddScoped<INextEventReader, NextEventReader>();
+        builder.Services.AddScoped<IEventsForAdminReader, EventsForAdminReader>();
+        builder.Services.AddScoped<ISeasonsForAdminReader, SeasonsForAdminReader>();
 
-        builder.Services.AddScoped<IEventPrices, EventPriceRepository>();
-        builder.Services.AddScoped<ISeasonPrices, SeasonPriceRepository>();
-        builder.Services.AddScoped<IPriceTiers, PriceTierRepository>();
+        builder.Services.AddScoped<IEventPriceRepository, EventPriceRepository>();
+        builder.Services.AddScoped<ISeasonPriceRepository, SeasonPriceRepository>();
+        builder.Services.AddScoped<IPriceTierRepository, PriceTierRepository>();
+        builder.Services.AddScoped<ITierSalesReader, TierSalesReader>();
+        builder.Services.AddScoped<ICapacityUsageReader, CapacityUsageReader>();
+        builder.Services.AddScoped<ICheckoutOrderReader, CheckoutOrderReader>();
         builder.Services.AddScoped<IEventPricing, EventPricingReader>();
         builder.Services.AddScoped<ISeasonPassPricing, SeasonPassPricingReader>();
         builder.Services.AddScoped<IEventTickets, EventTicketRepository>();
         builder.Services.AddScoped<IOrders, OrderRepository>();
         builder.Services.AddScoped<INewsletterSignups, NewsletterSignupRepository>();
-        builder.Services.AddScoped<ISeasonAddOns, SeasonAddOnRepository>();
+        builder.Services.AddScoped<ISeasonAddOnRepository, SeasonAddOnRepository>();
         builder.Services.AddScoped<IOrderAddOns, OrderAddOnRepository>();
         builder.Services.AddScoped<IOrderItems, OrderItemRepository>();
         builder.Services.AddScoped<IAddOnNotifier, AddOnNotifier>();

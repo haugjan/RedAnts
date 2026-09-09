@@ -1,5 +1,7 @@
 using RedAnts.Ticketing.Features.Admission;
 using RedAnts.Ticketing.Features.Catalog;
+using RedAnts.Ticketing.Features.Catalog.Pricing;
+using RedAnts.Ticketing.Features.Catalog.Shop;
 using RedAnts.Ticketing.Features.Checkout;
 using RedAnts.Ticketing.Features.EventBundles;
 using RedAnts.Ticketing.Features.FlexTickets;
@@ -28,6 +30,10 @@ public static class TicketingFeatures
         typeof(ExpireDraftOrders.Handler),
         typeof(GetCheckoutStatus.Handler),
         typeof(GetOrderConfirmation.Handler),
+        typeof(GetCart.Handler),
+        typeof(GetCheckoutSettings.Handler),
+        typeof(VerifyCaptcha.Handler),
+        typeof(FindCheckoutOrder.Handler),
         typeof(ScanTicket.Handler),
         typeof(ScanCode.Handler),
         typeof(GrantFreeEntry.Handler),
@@ -44,6 +50,20 @@ public static class TicketingFeatures
         typeof(SetSeasonTicketSalesQuota.Handler),
         typeof(SetSeasonPricing.Handler),
         typeof(SetSeasonAddOns.Handler),
+        typeof(GetTicketingHome.Handler),
+        typeof(GetEventForSale.Handler),
+        typeof(GetSeasonForSale.Handler),
+        typeof(GetSeasonPassOffers.Handler),
+        typeof(GetNextEvent.Handler),
+        typeof(GetVenue.Handler),
+        typeof(GetSeasonChoices.Handler),
+        typeof(GetSeasonsForAdmin.Handler),
+        typeof(GetEventsForAdmin.Handler),
+        typeof(GetEventFreeEntryQuotas.Handler),
+        typeof(GetPriceTiers.Handler),
+        typeof(GetEventTierPrices.Handler),
+        typeof(GetSeasonTierPrices.Handler),
+        typeof(GetSeasonAddOns.Handler),
         typeof(ChangeOrderStatus.Handler),
         typeof(RefundOrder.Handler),
         typeof(CreateAdminOrder.Handler),
@@ -76,6 +96,11 @@ public static class TicketingFeatures
         typeof(CreateSeasonPass.Handler),
         typeof(EditEventTicket.Handler),
         typeof(SetEventTicketHolder.Handler),
+        typeof(GetWebTicket.Handler),
+        typeof(GetMyTickets.Handler),
+        typeof(GetWebTicketPdf.Handler),
+        typeof(GetWebTicketLink.Handler),
+        typeof(SetTicketCustomName.Handler),
         typeof(DeleteEventTicket.Handler),
         typeof(CreateEventTicketBundle.Handler),
         typeof(GetEventBundles.Handler),
@@ -107,7 +132,8 @@ public static class TicketingFeatures
     [
         typeof(CapacityReservation),
         typeof(OrderFulfillment),
-        typeof(TicketScanning)
+        typeof(TicketScanning),
+        typeof(WebTicketResolution)
     ];
 
     public static IServiceCollection AddTicketingFeatures(this IServiceCollection services)

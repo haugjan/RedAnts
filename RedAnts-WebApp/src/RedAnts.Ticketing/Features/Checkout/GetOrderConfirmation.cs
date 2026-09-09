@@ -17,7 +17,7 @@ public static class GetOrderConfirmation
         IReadOnlyList<ConfirmationTicket> Tickets, IReadOnlyList<string> AddOnInfoTexts);
 
     public sealed class Handler(IOrders orders, IEventTickets tickets, ISeasonPassRepository passes, ITicketTokens tokens, IIssuedTicketReader issuedTickets,
-        IEvents events, ISeasons seasons, IVenues venues, ISeasonAddOns seasonAddOns)
+        IEventReader events, ISeasonReader seasons, IVenueReader venues, ISeasonAddOnRepository seasonAddOns)
     {
         public async Task<Result?> HandleAsync(Query query)
         {

@@ -1,23 +1,22 @@
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Orders;
 using System.Text.Json;
 
 namespace RedAnts.Ticketing.Features.Checkout;
 
 public sealed class CheckoutController(
-    ICartRepository carts,
-    IOrders orders,
-    IOrderTokens tokens,
-    ICaptchaVerifier captcha,
-    IPayrexxGateway payrexx,
+    GetCart.Handler getCart,
+    GetCheckoutSettings.Handler getSettings,
+    VerifyCaptcha.Handler verifyCaptcha,
+    FindCheckoutOrder.Handler findOrder,
     PlaceOrder.Handler placeOrder,
     ConfirmPayment.Handler confirmPayment,
     GetOrderConfirmation.Handler getConfirmation,
     GetCheckoutStatus.Handler getStatus,
     CancelDraftOrder.Handler cancelDraft,
     GetQuickBuyCart.Handler quickBuyCart,
+    ClearCart.Handler clearCart,
     ILogger<CheckoutController> logger) : Controller
 {
     private const string FormKey = "RedAnts.Checkout.Form";
@@ -29,64 +28,65 @@ public sealed class CheckoutController(
     private const string MobileError = "Für die gewählte Zusatzoption ist deine Mobilnummer zwingend. Bitte gib sie an.";
 
     [HttpGet("/checkout")]
-    public IActionResult Address(string? payment = null)
+    public async Task<IActionResult> Address(string? payment = null)
     {
-        if (carts.Load().IsEmpty) return Redirect("/cart");
+        var current = await CartAsync();
+        if (current.IsEmpty) return Redirect("/cart");
         var error = payment == "aborted"
             ? "Die Zahlung wurde abgebrochen oder ist fehlgeschlagen. Bitte versuche es erneut."
             : TempData["CheckoutError"] as string;
-        return CheckoutView(LoadForm() ?? new CheckoutForm(), error);
+        return await CheckoutViewAsync(LoadForm() ?? new CheckoutForm(), error, current);
     }
 
     [HttpPost("/checkout")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(CheckoutForm form, bool acceptPrivacy)
     {
-        var current = carts.Load();
+        var current = await CartAsync();
         if (current.IsEmpty) return Redirect("/cart");
 
         SaveForm(form);
 
         BillingAddress billing;
         try { billing = ToBillingAddress(form); }
-        catch (DomainException ex) { return CheckoutView(form, ex.Message); }
+        catch (DomainException ex) { return await CheckoutViewAsync(form, ex.Message, current); }
 
-        if (!acceptPrivacy) return CheckoutView(form, PrivacyError);
-        if (string.IsNullOrWhiteSpace(form.Phone) && current.RequiresMobileNumber) return CheckoutView(form, MobileError);
-        if (!await CaptchaPassesAsync()) return CheckoutView(form, CaptchaError);
+        if (!acceptPrivacy) return await CheckoutViewAsync(form, PrivacyError, current);
+        if (string.IsNullOrWhiteSpace(form.Phone) && current.RequiresMobileNumber) return await CheckoutViewAsync(form, MobileError, current);
+        if (!await CaptchaPassesAsync()) return await CheckoutViewAsync(form, CaptchaError, current);
 
-        var result = await placeOrder.HandleAsync(new PlaceOrder.Command(current, billing, form.AcceptNewsletter, CheckoutSource.Checkout));
-        return await FinishAsync(result, message => CheckoutView(form, message));
+        var result = await placeOrder.HandleAsync(PlaceOrder.Command.FromSessionCart(billing, form.AcceptNewsletter, CheckoutSource.Checkout));
+        return await FinishAsync(result, message => CheckoutViewAsync(form, message, current));
     }
 
     [HttpGet("/checkout/payment")]
     public IActionResult Payment() => Redirect("/checkout");
 
     [HttpGet("/checkout/express")]
-    public IActionResult Express()
+    public async Task<IActionResult> Express()
     {
-        var current = carts.Load();
+        var current = await CartAsync();
         if (current.IsEmpty) return Redirect("/ticketing/");
         if (!current.QualifiesForExpress) return Redirect("/checkout");
-        return ExpressView(current, TempData["CheckoutError"] as string, "", "");
+        return await ExpressViewAsync(current, TempData["CheckoutError"] as string, "", "");
     }
 
     [HttpPost("/checkout/express")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ExpressPay(string email, string? name, bool acceptNewsletter, bool acceptPrivacy)
     {
-        var current = carts.Load();
+        var current = await CartAsync();
         if (current.IsEmpty) return Redirect("/ticketing/");
         if (!current.QualifiesForExpress) return Redirect("/checkout");
 
         email = (email ?? "").Trim();
-        IActionResult Invalid(string error) => ExpressView(current, error, email, name ?? "");
+        Task<IActionResult> Invalid(string error) => ExpressViewAsync(current, error, email, name ?? "");
 
-        if (!LooksLikeEmail(email)) return Invalid(EmailError);
-        if (!acceptPrivacy) return Invalid(PrivacyError);
-        if (!await CaptchaPassesAsync()) return Invalid(CaptchaError);
+        if (!LooksLikeEmail(email)) return await Invalid(EmailError);
+        if (!acceptPrivacy) return await Invalid(PrivacyError);
+        if (!await CaptchaPassesAsync()) return await Invalid(CaptchaError);
 
-        var result = await placeOrder.HandleAsync(new PlaceOrder.Command(current, GuestBilling(email, name), acceptNewsletter, CheckoutSource.Express));
+        var result = await placeOrder.HandleAsync(PlaceOrder.Command.FromSessionCart(GuestBilling(email, name), acceptNewsletter, CheckoutSource.Express));
         return await FinishAsync(result, Invalid);
     }
 
@@ -111,7 +111,7 @@ public sealed class CheckoutController(
         if (oneTicket is null) return Back("Dieses Ticket ist nicht mehr verfügbar.");
 
         var result = await placeOrder.HandleAsync(new PlaceOrder.Command(oneTicket, GuestBilling(email, name), acceptNewsletter, CheckoutSource.QuickBuy));
-        return await FinishAsync(result, Back);
+        return await FinishAsync(result, error => Task.FromResult(Back(error)));
     }
 
     [HttpGet("/checkout/confirmation")]
@@ -126,7 +126,7 @@ public sealed class CheckoutController(
     [HttpGet("/checkout/success")]
     public async Task<IActionResult> Processing(string t)
     {
-        if (tokens.Unprotect(t) is not { } orderId) return Redirect("/");
+        if (await findOrder.HandleAsync(new FindCheckoutOrder.Query(Token: t)) is not { } orderId) return Redirect("/");
 
         var payment = await confirmPayment.HandleAsync(new ConfirmPayment.Command(orderId));
         if (!payment.Found) return Redirect("/");
@@ -137,14 +137,14 @@ public sealed class CheckoutController(
 
         if (confirmation.Paid && !confirmation.IsQuickBuy)
         {
-            carts.Clear();
+            await clearCart.HandleAsync(new ClearCart.Command());
             HttpContext.Session.Remove(FormKey);
         }
 
         return View("Processing", new CheckoutProcessingView
         {
             OrderId = orderId,
-            Token = tokens.Protect(orderId),
+            Token = t,
             OrderNumber = confirmation.OrderNumber,
             Email = confirmation.Email,
             AlreadyPaid = confirmation.Paid,
@@ -162,16 +162,15 @@ public sealed class CheckoutController(
         if (string.IsNullOrWhiteSpace(reference)) reference = Request.Form["referenceId"].ToString();
         if (string.IsNullOrWhiteSpace(reference)) return Ok();
 
-        var order = await orders.GetByNumberAsync(reference.Trim());
-        if (order is null) return Ok();
+        if (await findOrder.HandleAsync(new FindCheckoutOrder.Query(OrderNumber: reference)) is not { } orderId) return Ok();
 
         try
         {
-            await confirmPayment.HandleAsync(new ConfirmPayment.Command(order.Id));
+            await confirmPayment.HandleAsync(new ConfirmPayment.Command(orderId));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Payrexx webhook processing failed for order {Order}.", order.OrderNumber);
+            logger.LogError(ex, "Payrexx webhook processing failed for order {Order}.", reference.Trim());
         }
         return Ok();
     }
@@ -179,7 +178,7 @@ public sealed class CheckoutController(
     [HttpGet("/checkout/status")]
     public async Task<IActionResult> Status(string t)
     {
-        if (tokens.Unprotect(t) is not { } orderId) return NotFound();
+        if (await findOrder.HandleAsync(new FindCheckoutOrder.Query(Token: t)) is not { } orderId) return NotFound();
         var status = await getStatus.HandleAsync(new GetCheckoutStatus.Query(orderId));
         if (!status.Found) return NotFound();
         return Json(new { paid = status.Paid, cancelled = status.Cancelled });
@@ -188,7 +187,7 @@ public sealed class CheckoutController(
     [HttpGet("/checkout/cancel")]
     public async Task<IActionResult> Cancelled(string? t = null)
     {
-        if (tokens.Unprotect(t) is not { } orderId) return View("Cancelled");
+        if (await findOrder.HandleAsync(new FindCheckoutOrder.Query(Token: t)) is not { } orderId) return View("Cancelled");
 
         var payment = await confirmPayment.HandleAsync(new ConfirmPayment.Command(orderId));
         if (payment.Paid) return Redirect($"/checkout/success?t={Uri.EscapeDataString(t!)}");
@@ -197,7 +196,7 @@ public sealed class CheckoutController(
         return View("Cancelled");
     }
 
-    private async Task<IActionResult> FinishAsync(PlaceOrder.Result result, Func<string, IActionResult> showError)
+    private async Task<IActionResult> FinishAsync(PlaceOrder.Result result, Func<string, Task<IActionResult>> showError)
     {
         switch (result)
         {
@@ -205,7 +204,7 @@ public sealed class CheckoutController(
                 TempData["CartError"] = denied.Message;
                 return Redirect("/cart");
             case PlaceOrder.Result.Denied denied:
-                return showError(denied.Message);
+                return await showError(denied.Message);
             case PlaceOrder.Result.PaymentRequired payment:
                 return Redirect(payment.PaymentLink);
             case PlaceOrder.Result.Completed completed:
@@ -218,7 +217,7 @@ public sealed class CheckoutController(
     private async Task<IActionResult> CompletedAsync(int orderId)
     {
         var confirmation = await getConfirmation.HandleAsync(new GetOrderConfirmation.Query(orderId));
-        carts.Clear();
+        await clearCart.HandleAsync(new ClearCart.Command());
         HttpContext.Session.Remove(FormKey);
         if (confirmation is null) return Redirect("/");
         SaveConfirmation(new CheckoutConfirmationView
@@ -233,36 +232,40 @@ public sealed class CheckoutController(
         return Redirect("/checkout/confirmation");
     }
 
-    private IActionResult CheckoutView(CheckoutForm form, string? error)
+    private Task<CartSummary> CartAsync() => getCart.HandleAsync(new GetCart.Query());
+
+    private async Task<IActionResult> CheckoutViewAsync(CheckoutForm form, string? error, CartSummary current)
     {
-        var current = carts.Load();
+        var settings = await getSettings.HandleAsync(new GetCheckoutSettings.Query());
         return View("Address", new CheckoutAddressView
         {
             Form = form,
             Cart = current,
-            PayrexxEnabled = payrexx.Enabled,
-            TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
+            PayrexxEnabled = settings.PayrexxEnabled,
+            TurnstileSiteKey = settings.TurnstileSiteKey,
             Error = error,
             MobileRequired = current.RequiresMobileNumber
         });
     }
 
-    private IActionResult ExpressView(Cart current, string? error, string email, string name) =>
-        View("Express", new CheckoutExpressView
+    private async Task<IActionResult> ExpressViewAsync(CartSummary current, string? error, string email, string name)
+    {
+        var settings = await getSettings.HandleAsync(new GetCheckoutSettings.Query());
+        return View("Express", new CheckoutExpressView
         {
             Cart = current,
-            PayrexxEnabled = payrexx.Enabled,
-            TurnstileSiteKey = captcha.Enabled ? captcha.SiteKey : null,
+            PayrexxEnabled = settings.PayrexxEnabled,
+            TurnstileSiteKey = settings.TurnstileSiteKey,
             Error = error,
             Email = email,
             Name = name
         });
-
-    private async Task<bool> CaptchaPassesAsync()
-    {
-        var token = Request.Form["cf-turnstile-response"].ToString();
-        return await captcha.VerifyAsync(token, HttpContext.Connection.RemoteIpAddress?.ToString());
     }
+
+    private Task<bool> CaptchaPassesAsync() =>
+        verifyCaptcha.HandleAsync(new VerifyCaptcha.Query(
+            Request.Form["cf-turnstile-response"].ToString(),
+            HttpContext.Connection.RemoteIpAddress?.ToString()));
 
     private static bool LooksLikeEmail(string email) =>
         email.Length >= 5 && email.Contains('@') && email.Contains('.');

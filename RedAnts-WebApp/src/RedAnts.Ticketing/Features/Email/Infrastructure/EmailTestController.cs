@@ -13,8 +13,8 @@ public sealed class EmailTestController(
     IIssuedTicketReader tickets,
     ITicketTokens tokens,
     IQrCodeRenderer qr,
-    IEvents events,
-    ISeasons seasons,
+    IEventReader events,
+    ISeasonReader seasons,
     IPublicBaseUrl publicUrl,
     IOrderMailer orderMailer) : Controller
 {

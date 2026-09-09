@@ -12,6 +12,17 @@ using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Tests.Checkout;
 
+internal sealed class InMemoryCart : ICartRepository
+{
+    private Cart _cart = Cart.Empty();
+
+    public Cart Load() => _cart;
+
+    public void Save(Cart cart) => _cart = cart;
+
+    public void Clear() => _cart = Cart.Empty();
+}
+
 internal sealed class InMemoryOrders : IOrders
 {
     private int _nextId = 1;
@@ -64,11 +75,10 @@ internal sealed class InMemoryOrders : IOrders
     }
 }
 
-internal sealed class InMemoryEventPrices : IEventPrices
+internal sealed class InMemoryEventPrices : IEventPriceRepository
 {
     private readonly Dictionary<int, EventPrice> _prices = new();
 
-    public Dictionary<int, CapacityUsage> Usage { get; } = new();
     public int FailingSaves { get; set; }
     public int Saves { get; private set; }
 
@@ -82,9 +92,6 @@ internal sealed class InMemoryEventPrices : IEventPrices
     public Task<EventPrice> SaveAsync(EventPrice price) => throw new NotSupportedException();
 
     public Task DeleteAsync(int eventPriceId) => throw new NotSupportedException();
-
-    public Task<CapacityUsage> GetUsageAsync(int eventId) =>
-        Task.FromResult(Usage.TryGetValue(eventId, out var usage) ? usage : CapacityUsage.None);
 
     public Task SaveReservationAsync(EventPrice price)
     {
@@ -106,11 +113,10 @@ internal sealed class InMemoryEventPrices : IEventPrices
             price.ConversionOnly, price.Reserved, version);
 }
 
-internal sealed class InMemorySeasonPrices : ISeasonPrices
+internal sealed class InMemorySeasonPrices : ISeasonPriceRepository
 {
     private readonly Dictionary<int, SeasonPrice> _prices = new();
 
-    public Dictionary<int, CapacityUsage> Usage { get; } = new();
     public int FailingSaves { get; set; }
 
     public void Seed(SeasonPrice price) => _prices[price.SeasonId] = price;
@@ -123,9 +129,6 @@ internal sealed class InMemorySeasonPrices : ISeasonPrices
     public Task<SeasonPrice> SaveAsync(SeasonPrice price) => throw new NotSupportedException();
 
     public Task DeleteAsync(int seasonPriceId) => throw new NotSupportedException();
-
-    public Task<CapacityUsage> GetPassUsageAsync(int seasonId) =>
-        Task.FromResult(Usage.TryGetValue(seasonId, out var usage) ? usage : CapacityUsage.None);
 
     public Task SaveReservationAsync(SeasonPrice price)
     {
@@ -147,6 +150,18 @@ internal sealed class InMemorySeasonPrices : ISeasonPrices
             price.DefaultTicketSalesQuota, price.Reserved, version);
 }
 
+internal sealed class StubCapacityUsage : ICapacityUsageReader
+{
+    public Dictionary<int, CapacityUsage> EventUsage { get; } = new();
+    public Dictionary<int, CapacityUsage> PassUsage { get; } = new();
+
+    public Task<CapacityUsage> GetEventUsageAsync(int eventId) =>
+        Task.FromResult(EventUsage.TryGetValue(eventId, out var usage) ? usage : CapacityUsage.None);
+
+    public Task<CapacityUsage> GetSeasonPassUsageAsync(int seasonId) =>
+        Task.FromResult(PassUsage.TryGetValue(seasonId, out var usage) ? usage : CapacityUsage.None);
+}
+
 internal sealed class RecordingOrderLog : IOrderLog
 {
     public List<(int OrderId, OrderStatus Status, string? By, string? Note)> Entries { get; } = [];
@@ -162,11 +177,9 @@ internal sealed class RecordingOrderLog : IOrderLog
             .Select(e => new OrderLogEntry(e.Status, e.By, SwissTime.Timestamp, e.Note)).ToList());
 }
 
-internal sealed class StubConversionRules : IEventConversionRules
+internal sealed class StubConversionRules : IEventConversionRuleRepository
 {
     public HashSet<int> ConversionOnlyEvents { get; } = [];
-
-    public Task<IReadOnlyList<EventConversionRule>> GetAllAsync() => Task.FromResult<IReadOnlyList<EventConversionRule>>([]);
 
     public Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId) => Task.FromResult<IReadOnlyList<EventConversionRule>>([]);
 
@@ -185,7 +198,7 @@ internal sealed class StubAdmission : IOccupancyReader
         Task.FromResult(Occupancies.TryGetValue(eventId, out var occupancy) ? occupancy : new Occupancy(0, null));
 }
 
-internal sealed class StubSeasonAddOns : ISeasonAddOns
+internal sealed class StubSeasonAddOns : ISeasonAddOnRepository
 {
     public List<SeasonAddOn> AddOns { get; } = [];
 

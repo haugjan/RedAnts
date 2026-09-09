@@ -10,8 +10,8 @@ namespace RedAnts.Ticketing.Features.Admission.Infrastructure;
 public sealed class AdmissionFactsReader(
     IScopeProvider scopeProvider,
     IIssuedTicketReader tickets,
-    IEvents events,
-    IEventConversionRules conversionRules) : IAdmissionFactsReader
+    IEventReader events,
+    IEventConversionRuleRepository conversionRules) : IAdmissionFactsReader
 {
     public async Task<AdmissionFacts> ReadAsync(int eventId, TicketType ticketType, Guid ticketUuid)
     {

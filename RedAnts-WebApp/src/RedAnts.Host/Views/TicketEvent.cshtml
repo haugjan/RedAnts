@@ -1,9 +1,8 @@
 @inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
-@inject RedAnts.Ticketing.Features.Checkout.IEventPricing Pricing
-@inject RedAnts.Ticketing.Features.Catalog.IEventConversionRules ConversionRules
+@inject RedAnts.Ticketing.Features.Catalog.Shop.GetEventForSale.Handler EventQuery
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
-@using Umbraco.Cms.Core.Models.PublishedContent
 @using RedAnts.Ticketing.Domain
+@using RedAnts.Ticketing.Features.Catalog.Shop
 @using RedAnts.Ticketing.Features.Shared
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
@@ -16,18 +15,9 @@
     ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
     ViewBag.TransparentNav = !blocked;
 
-    var start = Model.Value<DateTime>("start");
-    var timeUnknown = Model.Value<bool>("timeUnknown");
-    var venue = Model.Value<IPublishedContent>("venue");
-    var image = Model.Value<IPublishedContent>("eventImage")?.Url();
-    var homeLogo = Model.Value<IPublishedContent>("homeTeamLogo")?.Url();
-    var awayLogo = Model.Value<IPublishedContent>("awayTeamLogo")?.Url();
-    var text = Model.Value<string>("text");
+    var evt = blocked ? null : await EventQuery.HandleAsync(new GetEventForSale.Query(Model.Id));
     var backHref = "/ticketing/";
-    var conversionRules = blocked
-        ? (IReadOnlyList<RedAnts.Ticketing.Features.Catalog.EventConversionRule>)Array.Empty<RedAnts.Ticketing.Features.Catalog.EventConversionRule>()
-        : await ConversionRules.GetByEventAsync(Model.Id);
-    var conversionOnly = !blocked && await ConversionRules.GetConversionOnlyAsync(Model.Id);
+    var culture = DisplayCulture.From(Context.Request);
 }
 
 @section Head {
@@ -132,7 +122,7 @@
     </style>
 }
 
-@if (blocked)
+@if (blocked || evt is null)
 {
     <main class="flexpage-main" style="padding-top:66px;">
         <div class="evt-wrap"><div class="evt-alert">Dieser Anlass ist nicht verfügbar.</div></div>
@@ -140,15 +130,16 @@
 }
 else
 {
+    var venue = evt.Venue;
     <main class="flexpage-main">
-        <section class="page-header @(string.IsNullOrEmpty(image) ? "page-header--plain" : "")"
-                 style="@(string.IsNullOrEmpty(image) ? "" : $"background-image:url('{image}');")">
-            @if (!string.IsNullOrEmpty(image))
+        <section class="page-header @(string.IsNullOrEmpty(evt.ImageUrl) ? "page-header--plain" : "")"
+                 style="@(string.IsNullOrEmpty(evt.ImageUrl) ? "" : $"background-image:url('{evt.ImageUrl}');")">
+            @if (!string.IsNullOrEmpty(evt.ImageUrl))
             {
                 <div class="page-header-overlay"></div>
             }
             <div class="page-header-inner">
-                <h1 class="page-header-title">@Model.Name</h1>
+                <h1 class="page-header-title">@evt.Name</h1>
             </div>
         </section>
 
@@ -158,23 +149,22 @@ else
             <div class="evt-facts">
                 <div class="evt-fact">
                     <span class="evt-fact__label">Datum</span>
-                    <span class="evt-fact__value">@start.ToString("dddd, dd.MM.yyyy", DisplayCulture.From(Context.Request))</span>
+                    <span class="evt-fact__value">@evt.Date.ToString("dddd, dd.MM.yyyy", culture)</span>
                 </div>
-                @if (!timeUnknown)
+                @if (!evt.TimeUnknown)
                 {
                     <div class="evt-fact">
                         <span class="evt-fact__label">Zeit</span>
-                        <span class="evt-fact__value">@start.ToString("HH:mm") Uhr</span>
+                        <span class="evt-fact__value">@evt.StartTime.ToString("HH:mm") Uhr</span>
                     </div>
                 }
                 @if (venue is not null)
                 {
-                    var venueGeoId = venue.Value<string>("googleGeoId")?.Trim();
-                    var venueMapsUrl = string.IsNullOrEmpty(venueGeoId)
+                    var venueMapsUrl = string.IsNullOrEmpty(venue.GoogleGeoId)
                         ? $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(venue.Name + ", Winterthur")}"
-                        : venueGeoId.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                            ? venueGeoId
-                            : $"https://maps.app.goo.gl/{venueGeoId}";
+                        : venue.GoogleGeoId.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                            ? venue.GoogleGeoId
+                            : $"https://maps.app.goo.gl/{venue.GoogleGeoId}";
                     <div class="evt-fact">
                         <span class="evt-fact__label">Ort</span>
                         <span class="evt-fact__value"><a href="@venueMapsUrl" target="_blank" rel="noopener">@venue.Name</a></span>
@@ -182,27 +172,27 @@ else
                 }
             </div>
 
-            @if (!string.IsNullOrEmpty(homeLogo) || !string.IsNullOrEmpty(awayLogo))
+            @if (!string.IsNullOrEmpty(evt.HomeTeamLogoUrl) || !string.IsNullOrEmpty(evt.AwayTeamLogoUrl))
             {
                 <div class="evt-logos">
-                    @if (!string.IsNullOrEmpty(homeLogo)) { <img class="team-logo team-logo--lg" src="@homeLogo" alt="Heimteam" /> }
+                    @if (!string.IsNullOrEmpty(evt.HomeTeamLogoUrl)) { <img class="team-logo team-logo--lg" src="@evt.HomeTeamLogoUrl" alt="Heimteam" /> }
                     <span class="vs">vs</span>
-                    @if (!string.IsNullOrEmpty(awayLogo)) { <img class="team-logo team-logo--lg" src="@awayLogo" alt="Auswärtsteam" /> }
+                    @if (!string.IsNullOrEmpty(evt.AwayTeamLogoUrl)) { <img class="team-logo team-logo--lg" src="@evt.AwayTeamLogoUrl" alt="Auswärtsteam" /> }
                 </div>
             }
 
-            @if (!string.IsNullOrEmpty(text))
+            @if (!string.IsNullOrEmpty(evt.Text))
             {
-                <div class="evt-text">@Html.Raw(text)</div>
+                <div class="evt-text">@Html.Raw(evt.Text)</div>
             }
 
             <div class="evt-tickets">
                 <h2>Tickets</h2>
                 @{
-                    var cats = await Pricing.GetAvailableAsync(Model.Id);
+                    var cats = evt.Categories;
                     var returnUrl = Context.Request.Path + Context.Request.QueryString;
                 }
-                @if (conversionOnly)
+                @if (evt.ConversionOnly)
                 {
                     <p class="evt-empty">Vorverkauf: Für diesen Anlass gibt es Tickets nur über die Kartenumwandlung. Saisonkarten-, Mitglieder- und Flexticket-Besitzer:innen lösen ihr Ticket unten mit ihrer Kartennummer.</p>
                 }
@@ -239,7 +229,7 @@ else
                             {
                                 <form method="post" action="/cart/add" class="evt-add-form">
                                     @Html.AntiForgeryToken()
-                                    <input type="hidden" name="eventId" value="@Model.Id" />
+                                    <input type="hidden" name="eventId" value="@evt.Id" />
                                     <input type="hidden" name="tierId" value="@cat.TierId" />
                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                     <input type="number" name="quantity" value="1" min="1" aria-label="Menge" />
@@ -256,14 +246,14 @@ else
                 <a href="/cart" class="evt-continue" id="evt-continue">Weiter zum Warenkorb &rarr;</a>
             </div>
 
-            @if (conversionRules.Count > 0)
+            @if (evt.OffersConversion)
             {
                 <div class="evt-convert">
                     <h2 class="evt-convert__title">Karte umwandeln</h2>
                     <p class="evt-convert__hint">Für diesen Anlass geben Saisonkarten, Mitglieder- und Flextickets nicht automatisch Eintritt. Gib deine Kartennummer ein, um dein Ticket für diesen Anlass zu lösen.</p>
                     <form class="evt-convert-form" method="post" action="/cart/convert">
                         @Html.AntiForgeryToken()
-                        <input type="hidden" name="eventId" value="@Model.Id" />
+                        <input type="hidden" name="eventId" value="@evt.Id" />
                         <input type="hidden" name="returnUrl" value="@returnUrl" />
                         <input type="text" name="cardNumber" placeholder="Kartennummer" aria-label="Kartennummer" autocomplete="off" autocapitalize="none" />
                         <button type="submit" class="evt-addbtn">Ticket lösen</button>
@@ -286,16 +276,14 @@ else
 
             @if (venue is not null)
             {
-                var arrival = venue.Value<string>("arrival");
-                if (!string.IsNullOrWhiteSpace(arrival))
+                if (!string.IsNullOrWhiteSpace(venue.Arrival))
                 {
                     <div class="evt-arrival">
                         <h2 class="evt-arrival__title">Anreise</h2>
-                        <div class="evt-arrival__body">@Html.Raw(arrival)</div>
+                        <div class="evt-arrival__body">@Html.Raw(venue.Arrival)</div>
                     </div>
                 }
-                var venueImg = venue.Value<IPublishedContent>("image")?.Url();
-                var geoId = venue.Value<string>("googleGeoId")?.Trim();
+                var geoId = venue.GoogleGeoId;
                 var hasGeo = !string.IsNullOrEmpty(geoId);
                 var mapsKey = Configuration["Google:MapsEmbedApiKey"];
                 var mapSrc = hasGeo && !string.IsNullOrEmpty(mapsKey)
@@ -304,15 +292,14 @@ else
                 var routeUrl = hasGeo
                     ? $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(venue.Name)}&destination_place_id={Uri.EscapeDataString(geoId!)}"
                     : $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(venue.Name + ", Winterthur")}";
-                var venueAddress = venue.Value<string>("venueAddress")?.Trim();
                 <div class="evt-map">
-                    @if (!string.IsNullOrEmpty(venueAddress))
+                    @if (!string.IsNullOrEmpty(venue.Address))
                     {
-                        <p class="evt-venue-address">@venueAddress</p>
+                        <p class="evt-venue-address">@venue.Address</p>
                     }
-                    @if (!string.IsNullOrEmpty(venueImg))
+                    @if (!string.IsNullOrEmpty(venue.ImageUrl))
                     {
-                        <img class="evt-venue-img" src="@venueImg" alt="@venue.Name" loading="lazy" />
+                        <img class="evt-venue-img" src="@venue.ImageUrl" alt="@venue.Name" loading="lazy" />
                     }
                     <iframe src="@mapSrc"
                             loading="lazy" referrerpolicy="no-referrer-when-downgrade"

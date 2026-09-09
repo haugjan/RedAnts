@@ -5,7 +5,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Catalog.Infrastructure;
 
-public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventPrices
+public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventPriceRepository
 {
     public async Task<EventPrice?> GetByEventAsync(int eventId)
     {
@@ -61,17 +61,6 @@ public sealed class EventPriceRepository(IScopeProvider scopeProvider) : IEventP
         await scope.Database.DeleteAsync(new EventPriceRecord { Id = eventPriceId });
     }
 
-    public async Task<CapacityUsage> GetUsageAsync(int eventId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var byTier = await scope.Database.FetchAsync<TierCountRow>(
-            "SELECT TierId AS TierId, COUNT(*) AS Cnt FROM EventTickets WHERE EventId = @0 AND Status = @1 AND TierId IS NOT NULL GROUP BY TierId",
-            eventId, (int)TicketStatus.Valid);
-        var total = await scope.Database.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM EventTickets WHERE EventId = @0 AND Status = @1", eventId, (int)TicketStatus.Valid);
-        return new CapacityUsage(total, byTier.ToDictionary(r => r.TierId, r => r.Cnt));
-    }
-
     public async Task SaveReservationAsync(EventPrice price)
     {
         using var scope = scopeProvider.CreateScope();
@@ -110,7 +99,7 @@ internal sealed class ReservedCounts(IReadOnlyDictionary<string, int> existing)
     private static string Key(int? tierId, int category) => $"{tierId ?? 0}:{category}";
 }
 
-public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeasonPrices
+public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeasonPriceRepository
 {
     public async Task<SeasonPrice?> GetBySeasonAsync(int seasonId)
     {
@@ -165,17 +154,6 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
         await scope.Database.DeleteAsync(new SeasonPriceRecord { Id = seasonPriceId });
     }
 
-    public async Task<CapacityUsage> GetPassUsageAsync(int seasonId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var byTier = await scope.Database.FetchAsync<TierCountRow>(
-            "SELECT TierId AS TierId, COUNT(*) AS Cnt FROM SeasonPasses WHERE SeasonId = @0 AND Status = @1 AND TierId IS NOT NULL GROUP BY TierId",
-            seasonId, (int)TicketStatus.Valid);
-        var total = await scope.Database.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM SeasonPasses WHERE SeasonId = @0 AND Status = @1", seasonId, (int)TicketStatus.Valid);
-        return new CapacityUsage(total, byTier.ToDictionary(r => r.TierId, r => r.Cnt));
-    }
-
     public async Task SaveReservationAsync(SeasonPrice price)
     {
         using var scope = scopeProvider.CreateScope();
@@ -202,7 +180,7 @@ public sealed class SeasonPriceRepository(IScopeProvider scopeProvider) : ISeaso
     private static DateOnly? ToDateOnly(DateTime? value) => value is { } v ? DateOnly.FromDateTime(v) : null;
 }
 
-public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTiers
+public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTierRepository
 {
     public async Task<IReadOnlyList<PriceTier>> GetBySeasonAsync(int seasonId)
     {
@@ -243,12 +221,6 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
         return saved.Select(Map).ToList();
     }
 
-    public async Task<int> GetSoldCountAsync(int tierId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        return await SoldCountAsync(scope.Database, tierId);
-    }
-
     private static async Task<SeasonPriceTierRecord> UpsertAsync(IDatabase db, int seasonId, int id, string name,
         int? minAge, int? maxAge, int? promoOfTierId, int sortOrder)
     {
@@ -267,11 +239,6 @@ public sealed class PriceTierRepository(IScopeProvider scopeProvider) : IPriceTi
         else await db.UpdateAsync(rec);
         return rec;
     }
-
-    private static async Task<int> SoldCountAsync(IDatabase db, int tierId) =>
-        await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM EventTickets WHERE TierId = @0", tierId)
-        + await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM SeasonSingleTickets WHERE TierId = @0", tierId)
-        + await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM SeasonPasses WHERE TierId = @0", tierId);
 
     private static PriceTier Map(SeasonPriceTierRecord r) =>
         PriceTier.FromPersistence(r.Id, r.SeasonId, r.Name, r.MinAge, r.MaxAge, r.PromoOfTierId, r.SortOrder, r.LegacyCategory);
@@ -349,7 +316,7 @@ internal sealed class TierCountRow
     public int Cnt { get; set; }
 }
 
-public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeasonAddOns
+public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeasonAddOnRepository
 {
     public async Task<IReadOnlyList<SeasonAddOn>> GetBySeasonAsync(int seasonId)
     {
@@ -389,7 +356,7 @@ public sealed class SeasonAddOnRepository(IScopeProvider scopeProvider) : ISeaso
         SeasonAddOn.FromPersistence(r.Id, r.SeasonId, r.Label, r.Price, r.Active, r.SortOrder, (AddOnScope)r.Scope,
             r.InfoBeforePurchase, r.InfoAfterPurchase, r.LongTitle, ParseTierIds(r.AllowedTierIds), r.PromoOnly, r.RequireMobileNumber);
 
-    private static IReadOnlyList<int> ParseTierIds(string? csv) =>
+    internal static IReadOnlyList<int> ParseTierIds(string? csv) =>
         string.IsNullOrWhiteSpace(csv)
             ? []
             : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

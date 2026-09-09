@@ -1,20 +1,23 @@
-﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
-@using Umbraco.Cms.Core.Models.PublishedContent
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@using RedAnts.Ticketing.Features.Catalog.Shop
+@inject GetVenue.Handler VenueQuery
 @{
     Layout = "~/Features/Shared/Views/_TicketsLayout.cshtml";
     ViewData["Title"] = Model.Name;
     ViewData["PlainLayout"] = true;
-    var image = Model.Value<IPublishedContent>("image")?.Url();
-    var description = Model.Value<string>("description");
-    var geo = Model.Value<string>("googleGeoId");
+    var venue = await VenueQuery.HandleAsync(new GetVenue.Query(Model.Id));
+    var name = venue?.Name ?? Model.Name;
+    var image = venue?.ImageUrl;
+    var description = venue?.Description;
+    var geo = venue?.GoogleGeoId;
 }
 
 @if (!string.IsNullOrEmpty(image))
 {
-    <img src="@image" class="img-fluid rounded mt-2 mb-3" style="max-height:320px;width:100%;object-fit:cover;" alt="@Model.Name" />
+    <img src="@image" class="img-fluid rounded mt-2 mb-3" style="max-height:320px;width:100%;object-fit:cover;" alt="@name" />
 }
 
-<h1 class="mt-2 mb-2">@Model.Name</h1>
+<h1 class="mt-2 mb-2">@name</h1>
 
 @if (!string.IsNullOrEmpty(description)) { @Html.Raw(description) }
 
@@ -22,7 +25,7 @@
 {
     <p class="mt-3">
         <a class="btn btn-outline-secondary btn-sm" target="_blank"
-           href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(Model.Name)&query_place_id=@geo">
+           href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(name)&query_place_id=@geo">
             Auf Google Maps öffnen
         </a>
     </p>

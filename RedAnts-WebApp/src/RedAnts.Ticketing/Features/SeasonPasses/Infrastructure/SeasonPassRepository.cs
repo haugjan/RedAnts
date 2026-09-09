@@ -7,7 +7,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.SeasonPasses.Infrastructure;
 
-public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IPriceTiers priceTiers) : ISeasonPassRepository
+public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IPriceTierRepository priceTiers) : ISeasonPassRepository
 {
     public async Task<(int Created, int Updated)> ImportUnifiedAsync(int seasonId, IReadOnlyList<TicketImportRow> rows,
         string defaultBundle, int? defaultTierId = null, string? createdByName = null, string? createdByEmail = null)
