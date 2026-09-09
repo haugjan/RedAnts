@@ -239,10 +239,9 @@
 
 @if (_deleteTarget is not null)
 {
-    <ConfirmDialog Title="Ticket löschen"
-                   Message="@($"Ticket {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
-                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
-                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+    <DeleteEventTicketDialog Ticket="_deleteTarget"
+                             OnDeleted="DeletedAsync"
+                             OnClosed="() => _deleteTarget = null" />
 }
 
 @if (_showCreateBundle)
@@ -311,7 +310,6 @@
     [Inject] private GetTicketPrintSettings.Handler PrintSettings { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
     [Inject] private EditEventTicket.Handler TicketEdits { get; set; } = default!;
-    [Inject] private DeleteEventTicket.Handler TicketDeletions { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private EventTicketRow? _mailFor;
@@ -349,24 +347,11 @@
     private void ClosePrint() => _showPrint = false;
 
     private EventTicketRow? _deleteTarget;
-    private bool _deleteBusy;
-    private string? _deleteError;
 
-    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
-
-    private async Task DeleteConfirmedAsync()
+    private async Task DeletedAsync()
     {
-        if (_deleteTarget is null) return;
-        _deleteBusy = true;
-        _deleteError = null;
-        try
-        {
-            await TicketDeletions.HandleAsync(new DeleteEventTicket.Command(_deleteTarget.Uuid));
-            _deleteTarget = null;
-            await ReloadTicketsAsync();
-        }
-        catch (Exception ex) { _deleteError = ex.Message; }
-        finally { _deleteBusy = false; }
+        _deleteTarget = null;
+        await ReloadTicketsAsync();
     }
 
     private static readonly TicketCategory[] AllCategories = Enum.GetValues<TicketCategory>();
