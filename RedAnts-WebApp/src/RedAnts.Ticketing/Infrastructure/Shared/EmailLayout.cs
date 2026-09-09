@@ -1,4 +1,4 @@
-namespace RedAnts.Infrastructure.Shared;
+namespace RedAnts.Ticketing.Infrastructure.Shared;
 
 public static class EmailLayout
 {

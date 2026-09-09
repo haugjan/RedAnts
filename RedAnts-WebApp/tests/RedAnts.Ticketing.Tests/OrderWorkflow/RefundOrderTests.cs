@@ -1,6 +1,6 @@
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.OrderWorkflow;
-using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.OrderWorkflow;
+using RedAnts.Ticketing.Features.Ports;
 using RedAnts.Ticketing.Tests.CheckoutWorkflow;
 using Xunit;
 

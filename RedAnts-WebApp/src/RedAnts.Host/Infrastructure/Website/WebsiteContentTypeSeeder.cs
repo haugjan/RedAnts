@@ -15,7 +15,7 @@ using Umbraco.Cms.Core.Serialization;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Strings;
 using Umbraco.Extensions;
-using RedAnts.Infrastructure.Ticketing.Content;
+using RedAnts.Ticketing.Infrastructure.Content;
 using A = RedAnts.Infrastructure.Website.WebsiteAliases;
 
 namespace RedAnts.Infrastructure.Website;

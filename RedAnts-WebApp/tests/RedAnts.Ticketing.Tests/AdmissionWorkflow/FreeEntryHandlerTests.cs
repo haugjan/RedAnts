@@ -1,6 +1,6 @@
-using RedAnts.Domain.Ticketing.Admission;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.AdmissionWorkflow;
+using RedAnts.Ticketing.Domain.Admission;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.AdmissionWorkflow;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.AdmissionWorkflow;

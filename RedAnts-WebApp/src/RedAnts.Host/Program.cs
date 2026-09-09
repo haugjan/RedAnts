@@ -4,8 +4,8 @@ using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
-using RedAnts.Infrastructure.Show;
-using RedAnts.Infrastructure.Ticketing;
+using RedAnts.Show.Infrastructure;
+using RedAnts.Ticketing.Infrastructure;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
 AssemblyLoadContext.Default.Resolving += (ctx, name) =>

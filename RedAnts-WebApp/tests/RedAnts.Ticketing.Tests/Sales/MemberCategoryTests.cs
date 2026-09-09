@@ -1,5 +1,5 @@
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.Email;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.Email;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Sales;

@@ -1,7 +1,7 @@
-using RedAnts.Domain.Ticketing.Admission;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Infrastructure.Ticketing.Sales;
-using RedAnts.Infrastructure.Ticketing.Scanning;
+using RedAnts.Ticketing.Domain.Admission;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Infrastructure.Sales;
+using RedAnts.Ticketing.Infrastructure.Scanning;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Scanning;

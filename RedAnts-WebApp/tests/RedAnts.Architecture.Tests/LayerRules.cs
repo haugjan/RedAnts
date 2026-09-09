@@ -9,16 +9,16 @@ namespace RedAnts.Architecture.Tests;
 public class LayerRules
 {
     private static readonly IObjectProvider<IType> Domain =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Domain(\..*)?$").As("Domain");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|(Ticketing|Show)\.Domain)(\..*)?$").As("Domain");
 
     private static readonly IObjectProvider<IType> TicketingAndWebsiteFeatures =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Features\.(Ticketing|Website)(\..*)?$").As("Features");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Ticketing\.Features|Features\.Website)(\..*)?$").As("Features");
 
     private static readonly IObjectProvider<IType> ShowFeatures =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Features\.Show(\..*)?$").As("Show features");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Show\.Features(\..*)?$").As("Show features");
 
     private static readonly IObjectProvider<IType> Infrastructure =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Infrastructure(\..*)?$").As("Infrastructure");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Infrastructure|(Ticketing|Show)\.Infrastructure)(\..*)?$").As("Infrastructure");
 
     [Fact]
     public void Domain_depends_on_nothing_above_it() =>
@@ -47,7 +47,7 @@ public class LayerRules
             .Check(RedAntsArchitecture.Loaded);
 
     [Theory]
-    [InlineData(@"^RedAnts\.(Domain|Features|Infrastructure)\.(Ticketing|Show|Website|Shared)(\..*)?$")]
+    [InlineData(@"^RedAnts\.((Ticketing|Show)\.(Domain|Features|Infrastructure)|(Features|Infrastructure)\.(Website|Shared))(\..*)?$")]
     [InlineData(@"^(Umbraco|NPoco|Microsoft\.AspNetCore|Microsoft\.Extensions)(\..*)?$")]
     public void Kernel_depends_only_on_the_base_class_library(string namespacePattern) =>
         Types().That().ResideInAssembly(RedAntsArchitecture.Kernel)

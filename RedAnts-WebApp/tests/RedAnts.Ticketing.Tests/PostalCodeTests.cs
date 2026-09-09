@@ -1,4 +1,4 @@
-using RedAnts.Domain.Ticketing;
+using RedAnts.Ticketing.Domain;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests;

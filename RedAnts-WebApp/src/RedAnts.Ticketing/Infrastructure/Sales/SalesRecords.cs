@@ -1,0 +1,356 @@
+// Uses Umbraco 17 APIs deprecated for removal in Umbraco 18 (content/data-type Save, DataType GetAll,
+// FileService templates, Constants.Security.SuperUserId, IPublishedContent.Parent, SpecialDbTypes.NTEXT).
+// Still functional; migrate to the async management services at the Umbraco 18 upgrade.
+#pragma warning disable CS0618
+using NPoco;
+using Umbraco.Cms.Infrastructure.Persistence.DatabaseAnnotations;
+
+namespace RedAnts.Ticketing.Infrastructure.Sales;
+
+[TableName("Orders")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+
+    [Column("OrderNumber")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(40)]
+    [Index(IndexTypes.UniqueNonClustered)] public string OrderNumber { get; set; } = "";
+
+    [Column("BillingFirstName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string BillingFirstName { get; set; } = "";
+    [Column("BillingLastName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string BillingLastName { get; set; } = "";
+    [Column("BillingStreet")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string BillingStreet { get; set; } = "";
+    [Column("BillingAddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BillingAddressLine2 { get; set; }
+    [Column("BillingPostalCode")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(10)] public string BillingPostalCode { get; set; } = "";
+    [Column("BillingCity")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string BillingCity { get; set; } = "";
+    [Column("BillingCountry")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string BillingCountry { get; set; } = "Schweiz";
+    [Column("BillingEmail")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string BillingEmail { get; set; } = "";
+    [Column("BillingPhone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? BillingPhone { get; set; }
+
+    [Column("Currency")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(3)] public string Currency { get; set; } = "CHF";
+    [Column("SubtotalNet")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal SubtotalNet { get; set; }
+    [Column("VatRate")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatRate { get; set; }
+    [Column("VatAmount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatAmount { get; set; }
+    [Column("TotalGross")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal TotalGross { get; set; }
+    [Column("SellerUid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(30)] public string? SellerUid { get; set; }
+
+    [Column("PaymentMethod")] [NullSetting(NullSetting = NullSettings.NotNull)] public int PaymentMethod { get; set; }
+    [Column("PaymentSource")] [NullSetting(NullSetting = NullSettings.Null)] public int? PaymentSource { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("PaidAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTimeOffset? PaidAt { get; set; }
+
+    [Column("BillingType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BillingType { get; set; }
+    [Column("BillingCompany")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BillingCompany { get; set; }
+
+    [Column("PayrexxGatewayId")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? PayrexxGatewayId { get; set; }
+    [Column("FulfillmentPayload")] [NullSetting(NullSetting = NullSettings.Null)] [SpecialDbType(SpecialDbTypes.NTEXT)] public string? FulfillmentPayload { get; set; }
+}
+
+[TableName("EventTickets")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class EventTicketRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("Uuid")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(36)] [Index(IndexTypes.UniqueNonClustered)] public string Uuid { get; set; } = "";
+    [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int EventId { get; set; }
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("TierId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? TierId { get; set; }
+    [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
+    [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
+    [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
+    [Column("BuyerFirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerFirstName { get; set; }
+    [Column("BuyerLastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerLastName { get; set; }
+    [Column("BuyerCompany")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerCompany { get; set; }
+    [Column("CreatedByName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByName { get; set; }
+    [Column("CreatedByEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByEmail { get; set; }
+    [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
+    [Column("OriginType")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginType { get; set; }
+    [Column("OriginCardUuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] [Index(IndexTypes.NonClustered)] public string? OriginCardUuid { get; set; }
+    [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
+    [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    [Column("Email")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Email { get; set; }
+    [Column("Street")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Street { get; set; }
+    [Column("AddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? AddressLine2 { get; set; }
+    [Column("PostalCode")] [NullSetting(NullSetting = NullSettings.Null)] [Length(20)] public string? PostalCode { get; set; }
+    [Column("City")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? City { get; set; }
+    [Column("Country")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Country { get; set; }
+    [Column("Phone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Phone { get; set; }
+}
+
+[TableName("EventConversionRules")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class EventConversionRuleRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int EventId { get; set; }
+    [Column("CardType")] [NullSetting(NullSetting = NullSettings.NotNull)] public int CardType { get; set; }
+    [Column("Discount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Discount { get; set; }
+}
+
+[TableName("SeasonSingleTickets")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class SeasonSingleTicketRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("Uuid")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(36)] [Index(IndexTypes.UniqueNonClustered)] public string Uuid { get; set; } = "";
+    [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int SeasonId { get; set; }
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("TierId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? TierId { get; set; }
+    [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("RedeemedEventId")] [NullSetting(NullSetting = NullSettings.Null)] public int? RedeemedEventId { get; set; }
+    [Column("Redeemed")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Redeemed { get; set; }
+    [Column("BundleId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? BundleId { get; set; }
+    [Column("BoxOffice")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool BoxOffice { get; set; }
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
+    [Column("OriginBundleId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginBundleId { get; set; }
+    [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
+    [Column("BuyerFirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerFirstName { get; set; }
+    [Column("BuyerLastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerLastName { get; set; }
+    [Column("BuyerCompany")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerCompany { get; set; }
+    [Column("BuyerEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerEmail { get; set; }
+    [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
+    [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    [Column("Street")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Street { get; set; }
+    [Column("AddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? AddressLine2 { get; set; }
+    [Column("PostalCode")] [NullSetting(NullSetting = NullSettings.Null)] [Length(20)] public string? PostalCode { get; set; }
+    [Column("City")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? City { get; set; }
+    [Column("Country")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Country { get; set; }
+    [Column("Phone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Phone { get; set; }
+}
+
+[TableName("SeasonPasses")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class SeasonPassRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("Uuid")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(36)] [Index(IndexTypes.UniqueNonClustered)] public string Uuid { get; set; } = "";
+    [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int SeasonId { get; set; }
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("TierId")] [NullSetting(NullSetting = NullSettings.Null)] [Index(IndexTypes.NonClustered)] public int? TierId { get; set; }
+    [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("BuyerType")] [NullSetting(NullSetting = NullSettings.Null)] public int? BuyerType { get; set; }
+    [Column("BuyerFirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerFirstName { get; set; }
+    [Column("BuyerLastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? BuyerLastName { get; set; }
+    [Column("BuyerCompany")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerCompany { get; set; }
+    [Column("CreatedByName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByName { get; set; }
+    [Column("CreatedByEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByEmail { get; set; }
+    [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
+    [Column("BuyerEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? BuyerEmail { get; set; }
+    [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
+    [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    [Column("Street")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Street { get; set; }
+    [Column("AddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? AddressLine2 { get; set; }
+    [Column("PostalCode")] [NullSetting(NullSetting = NullSettings.Null)] [Length(20)] public string? PostalCode { get; set; }
+    [Column("City")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? City { get; set; }
+    [Column("Country")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Country { get; set; }
+    [Column("Phone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Phone { get; set; }
+}
+
+[TableName("MembershipCards")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class MemberCardRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("Uuid")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(36)] [Index(IndexTypes.UniqueNonClustered)] public string Uuid { get; set; } = "";
+    [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int SeasonId { get; set; }
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.Null)] public int? OrderId { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("FirstName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? FirstName { get; set; }
+    [Column("LastName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? LastName { get; set; }
+    [Column("Birthday")] [NullSetting(NullSetting = NullSettings.Null)] public DateTime? Birthday { get; set; }
+    [Column("Email")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Email { get; set; }
+    [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Reference { get; set; }
+    [Column("Admissions")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Admissions { get; set; } = 1;
+    [Column("CustomName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(120)] public string? CustomName { get; set; }
+    [Column("CreatedByName")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByName { get; set; }
+    [Column("CreatedByEmail")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedByEmail { get; set; }
+    [Column("Salutation")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Salutation { get; set; }
+    [Column("Company")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Company { get; set; }
+    [Column("Street")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Street { get; set; }
+    [Column("AddressLine2")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? AddressLine2 { get; set; }
+    [Column("PostalCode")] [NullSetting(NullSetting = NullSettings.Null)] [Length(20)] public string? PostalCode { get; set; }
+    [Column("City")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? City { get; set; }
+    [Column("Country")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? Country { get; set; }
+    [Column("Phone")] [NullSetting(NullSetting = NullSettings.Null)] [Length(50)] public string? Phone { get; set; }
+}
+
+[TableName("TicketEventVisits")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class EventVisitRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
+    [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int EventId { get; set; }
+    [Column("TicketType")] [NullSetting(NullSetting = NullSettings.NotNull)] public int TicketType { get; set; }
+    [Column("TicketUuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] [Index(IndexTypes.NonClustered)] public string? TicketUuid { get; set; }
+    [Column("IsInside")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool IsInside { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+    [Column("Uuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] public string? Uuid { get; set; }
+    [Column("OriginType")] [NullSetting(NullSetting = NullSettings.Null)] public int? OriginType { get; set; }
+    [Column("OriginCardUuid")] [NullSetting(NullSetting = NullSettings.Null)] [Length(36)] [Index(IndexTypes.NonClustered)] public string? OriginCardUuid { get; set; }
+}
+
+[TableName("TicketEventVisitsLogs")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class EventVisitLogRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
+    [Column("VisitId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public long VisitId { get; set; }
+    [Column("Type")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Type { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset OccurredAt { get; set; }
+    [Column("ScannedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? ScannedBy { get; set; }
+}
+
+[TableName("TicketEventFreeEntries")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class EventFreeEntryRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
+    [Column("VisitId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public long VisitId { get; set; }
+    [Column("FreeEntryType")] [NullSetting(NullSetting = NullSettings.NotNull)] public int FreeEntryType { get; set; }
+}
+
+[TableName("TicketEventFreeEntryQuotas")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class EventFreeEntryQuotaRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("EventId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public int EventId { get; set; }
+    [Column("SuQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? SuQuota { get; set; }
+    [Column("PlayerQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? PlayerQuota { get; set; }
+    [Column("StaffQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? StaffQuota { get; set; }
+    [Column("OfficialQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? OfficialQuota { get; set; }
+    [Column("ChildQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? ChildQuota { get; set; }
+    [Column("HelperQuota")] [NullSetting(NullSetting = NullSettings.Null)] public int? HelperQuota { get; set; }
+    [Column("SuFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? SuFixed { get; set; }
+    [Column("PlayerFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? PlayerFixed { get; set; }
+    [Column("StaffFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? StaffFixed { get; set; }
+    [Column("OfficialFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? OfficialFixed { get; set; }
+    [Column("ChildFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? ChildFixed { get; set; }
+    [Column("HelperFixed")] [NullSetting(NullSetting = NullSettings.Null)] public int? HelperFixed { get; set; }
+}
+
+[TableName("NewsletterSignups")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class NewsletterSignupRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("Email")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] [Index(IndexTypes.NonClustered)] public string Email { get; set; } = "";
+    [Column("Name")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Name { get; set; }
+    [Column("Source")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(50)] public string Source { get; set; } = "";
+    [Column("SignedUpAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset SignedUpAt { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("TransferredAt")] [NullSetting(NullSetting = NullSettings.Null)] public DateTimeOffset? TransferredAt { get; set; }
+}
+
+[TableName("OrderStatusLogs")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderStatusLogRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("ToStatus")] [NullSetting(NullSetting = NullSettings.NotNull)] public int ToStatus { get; set; }
+    [Column("ChangedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? ChangedBy { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset OccurredAt { get; set; }
+    [Column("Note")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Note { get; set; }
+}
+
+[TableName("OrderAddOns")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderAddOnRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("SeasonId")] [NullSetting(NullSetting = NullSettings.NotNull)] public int SeasonId { get; set; }
+    [Column("SeasonName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string SeasonName { get; set; } = "";
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("TierId")] [NullSetting(NullSetting = NullSettings.Null)] public int? TierId { get; set; }
+    [Column("CategoryName")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(100)] public string CategoryName { get; set; } = "";
+    [Column("Label")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string Label { get; set; } = "";
+    [Column("Price")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Price { get; set; }
+    [Column("Quantity")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Quantity { get; set; }
+    [Column("Delivered")] [NullSetting(NullSetting = NullSettings.NotNull)] public bool Delivered { get; set; }
+}
+
+[TableName("OrderRefunds")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderRefundRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("RefundNumber")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(40)] [Index(IndexTypes.UniqueNonClustered)] public string RefundNumber { get; set; } = "";
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("Amount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Amount { get; set; }
+    [Column("VatRate")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatRate { get; set; }
+    [Column("VatAmount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatAmount { get; set; }
+    [Column("Currency")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(3)] public string Currency { get; set; } = "CHF";
+    [Column("Method")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Method { get; set; }
+    [Column("Status")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Status { get; set; }
+    [Column("PayrexxRefundId")] [NullSetting(NullSetting = NullSettings.Null)] [Length(100)] public string? PayrexxRefundId { get; set; }
+    [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Reference { get; set; }
+    [Column("Reason")] [NullSetting(NullSetting = NullSettings.Null)] [Length(500)] public string? Reason { get; set; }
+    [Column("CreatedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedBy { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+}
+
+[TableName("AccountingJournal")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class AccountingJournalRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public long Id { get; set; }
+    [Column("EntryNumber")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.UniqueNonClustered)] public long EntryNumber { get; set; }
+    [Column("EntryType")] [NullSetting(NullSetting = NullSettings.NotNull)] public int EntryType { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("RefundId")] [NullSetting(NullSetting = NullSettings.Null)] public int? RefundId { get; set; }
+    [Column("Amount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal Amount { get; set; }
+    [Column("VatRate")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatRate { get; set; }
+    [Column("VatAmount")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal VatAmount { get; set; }
+    [Column("Currency")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(3)] public string Currency { get; set; } = "CHF";
+    [Column("Reference")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? Reference { get; set; }
+    [Column("Description")] [NullSetting(NullSetting = NullSettings.Null)] [Length(500)] public string? Description { get; set; }
+    [Column("CreatedBy")] [NullSetting(NullSetting = NullSettings.Null)] [Length(200)] public string? CreatedBy { get; set; }
+    [Column("OccurredAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset OccurredAt { get; set; }
+    [Column("CreatedAt")] [NullSetting(NullSetting = NullSettings.NotNull)] public DateTimeOffset CreatedAt { get; set; }
+}
+
+[TableName("OrderItems")]
+[PrimaryKey("Id", AutoIncrement = true)]
+[ExplicitColumns]
+public class OrderItemRecord
+{
+    [Column("Id")] [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)] public int Id { get; set; }
+    [Column("OrderId")] [NullSetting(NullSetting = NullSettings.NotNull)] [Index(IndexTypes.NonClustered)] public int OrderId { get; set; }
+    [Column("Kind")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Kind { get; set; }
+    [Column("ArticleGuid")] [NullSetting(NullSetting = NullSettings.Null)] public Guid? ArticleGuid { get; set; }
+    [Column("RefId")] [NullSetting(NullSetting = NullSettings.NotNull)] public int RefId { get; set; }
+    [Column("Category")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Category { get; set; }
+    [Column("Label")] [NullSetting(NullSetting = NullSettings.NotNull)] [Length(200)] public string Label { get; set; } = "";
+    [Column("Quantity")] [NullSetting(NullSetting = NullSettings.NotNull)] public int Quantity { get; set; }
+    [Column("UnitPrice")] [NullSetting(NullSetting = NullSettings.NotNull)] public decimal UnitPrice { get; set; }
+}

@@ -1,4 +1,4 @@
-using RedAnts.Infrastructure.Show;
+using RedAnts.Show.Infrastructure;
 using Xunit;
 
 namespace RedAnts.Show.Tests;

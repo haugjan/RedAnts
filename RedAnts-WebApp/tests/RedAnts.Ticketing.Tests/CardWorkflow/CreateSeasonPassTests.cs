@@ -1,6 +1,6 @@
-using RedAnts.Domain.Ticketing;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.CardWorkflow;
+using RedAnts.Ticketing.Domain;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.CardWorkflow;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.CardWorkflow;

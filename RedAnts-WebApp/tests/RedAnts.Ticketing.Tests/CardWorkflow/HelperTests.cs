@@ -1,4 +1,4 @@
-using RedAnts.Features.Ticketing.CardWorkflow;
+using RedAnts.Ticketing.Features.CardWorkflow;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.CardWorkflow;

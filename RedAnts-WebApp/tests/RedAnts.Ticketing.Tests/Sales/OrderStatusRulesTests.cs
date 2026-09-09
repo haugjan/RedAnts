@@ -1,7 +1,7 @@
-using RedAnts.Domain.Ticketing;
-using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Ticketing.Domain;
+using RedAnts.Ticketing.Domain.Sales;
 using Xunit;
-using PaymentMethod = RedAnts.Domain.Ticketing.Sales.PaymentMethod;
+using PaymentMethod = RedAnts.Ticketing.Domain.Sales.PaymentMethod;
 
 namespace RedAnts.Ticketing.Tests.Sales;
 

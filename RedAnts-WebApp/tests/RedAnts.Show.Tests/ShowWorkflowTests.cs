@@ -1,7 +1,7 @@
 using RedAnts.Domain;
-using RedAnts.Domain.Show;
-using RedAnts.Features.Show.Ports;
-using RedAnts.Features.Show.ShowWorkflow;
+using RedAnts.Show.Domain;
+using RedAnts.Show.Features.Ports;
+using RedAnts.Show.Features.ShowWorkflow;
 using Xunit;
 
 namespace RedAnts.Show.Tests;

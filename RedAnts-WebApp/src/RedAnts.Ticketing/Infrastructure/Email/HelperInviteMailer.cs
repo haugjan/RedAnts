@@ -1,0 +1,75 @@
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.Email;
+using RedAnts.Ticketing.Infrastructure.Shared;
+
+namespace RedAnts.Ticketing.Infrastructure.Email;
+
+public sealed class HelperInviteMailer(
+    IEmailSender email,
+    IConfiguration config,
+    ITicketingMailSettings settings,
+    IWebHostEnvironment hostEnvironment,
+    ILogger<HelperInviteMailer> logger) : IHelperInviteMailer
+{
+    private const string FallbackSubject = "Dein Zugang zum Red Ants Scan-Tool";
+
+    private const string FallbackBody =
+        "Hallo {Vorname}\n\n" +
+        "Vielen Dank, dass du beim Einlass der Red Ants mithilfst! Mit deinem persönlichen Zugang " +
+        "kannst du am Anlass die Tickets scannen.\n\n" +
+        "Bitte nimm dein persönliches Mobiltelefon mit und schaue, dass dieses genügend geladen ist.\n\n" +
+        "Deinen Login-Link und dein Passwort findest du unten. Eine kurze Anleitung zum Scan-Tool " +
+        "liegt dieser E-Mail als PDF bei.\n\n" +
+        "Bei Fragen antworte einfach auf diese E-Mail. Bis bald in der Halle!";
+
+    public string DefaultSubject => settings.Subject(TicketingMailKind.HelperInvite, FallbackSubject);
+
+    public string DefaultBody => settings.Body(TicketingMailKind.HelperInvite, FallbackBody);
+
+    public async Task<EmailSendResult> SendAsync(
+        Helper helper, string subject, string body, string loginLink, CancellationToken cancellationToken = default)
+    {
+        var resolvedSubject = Fill(subject, helper, loginLink);
+        var bodyHtml = MailMarkdown.ToHtml(Fill(body, helper, loginLink));
+
+        var access =
+            $"<strong>Dein Zugang</strong><br>" +
+            $"Passwort: <code>{WebUtility.HtmlEncode(helper.Code)}</code><br>" +
+            $"Login-Link: <a href=\"{WebUtility.HtmlEncode(loginLink)}\">{WebUtility.HtmlEncode(loginLink)}</a>";
+
+        var note = "Die Anleitung zum Scan-Tool findest du im PDF-Anhang dieser E-Mail.";
+        var html = EmailLayout.Render(resolvedSubject, bodyHtml, greeting: null, access, note);
+
+        var attachments = LoadGuideAttachment();
+        return await email.SendAsync(helper.Email, helper.FullName, resolvedSubject, html, attachments, cancellationToken,
+            source: "Helfer-Einladung", reference: helper.Email);
+    }
+
+    private static string Fill(string text, Helper helper, string loginLink) =>
+        (text ?? "")
+            .Replace("{Vorname}", helper.FirstName)
+            .Replace("{Nachname}", helper.LastName)
+            .Replace("{Passwort}", helper.Code)
+            .Replace("{Link}", loginLink);
+
+    private IReadOnlyList<EmailAttachment>? LoadGuideAttachment()
+    {
+        var configured = config["Scanner:GuidePdfPath"];
+        var path = !string.IsNullOrWhiteSpace(configured)
+            ? (Path.IsPathRooted(configured) ? configured : Path.Combine(hostEnvironment.ContentRootPath, configured))
+            : Path.Combine(hostEnvironment.ContentRootPath, "wwwroot", "downloads", "scanner-anleitung.pdf");
+
+        if (!File.Exists(path))
+        {
+            logger.LogWarning("Helper invite: guide PDF not found at {Path}; sending without attachment.", path);
+            return null;
+        }
+
+        var bytes = File.ReadAllBytes(path);
+        return [new EmailAttachment("Scanner-Anleitung.pdf", Convert.ToBase64String(bytes))];
+    }
+}

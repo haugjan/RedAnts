@@ -1,5 +1,5 @@
 using RedAnts.Domain;
-using RedAnts.Domain.Show;
+using RedAnts.Show.Domain;
 using Xunit;
 
 namespace RedAnts.Show.Tests;

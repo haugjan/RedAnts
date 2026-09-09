@@ -1,7 +1,7 @@
-using RedAnts.Domain.Ticketing;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.Admin;
-using RedAnts.Features.Ticketing.Ports;
+using RedAnts.Ticketing.Domain;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.Admin;
+using RedAnts.Ticketing.Features.Ports;
 
 namespace RedAnts.Ticketing.Tests.CatalogWorkflow;
 

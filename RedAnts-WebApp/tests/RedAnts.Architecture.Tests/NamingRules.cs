@@ -1,10 +1,13 @@
 using Xunit;
+using System.Text.RegularExpressions;
 using ArchUnitNET.Domain;
 
 namespace RedAnts.Architecture.Tests;
 
 public class NamingRules
 {
+    private static readonly Regex DomainNamespace = new(@"^RedAnts\.(Domain|(Ticketing|Show)\.Domain)(\.|$)");
+
     private static readonly string[] ForbiddenSuffixes =
         ["Service", "Manager", "Adapter", "Port", "Editor", "Store", "Impl", "Helper", "Util", "Utils"];
 
@@ -15,7 +18,7 @@ public class NamingRules
         .ToHashSet();
 
     private static IEnumerable<IType> Candidates => RedAntsArchitecture.OwnTypes
-        .Where(t => !t.Namespace.FullName.StartsWith("RedAnts.Domain"))
+        .Where(t => !DomainNamespace.IsMatch(t.Namespace.FullName))
         .Where(t => ForbiddenSuffixes.Any(s => TrimInterfacePrefix(t.Name).EndsWith(s, StringComparison.Ordinal)));
 
     [Fact]

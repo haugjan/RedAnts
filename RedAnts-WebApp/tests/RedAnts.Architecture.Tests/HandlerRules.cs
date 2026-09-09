@@ -6,10 +6,12 @@ namespace RedAnts.Architecture.Tests;
 
 public class HandlerRules
 {
+    private static readonly Regex SliceNamespace = new(@"^RedAnts\.(Ticketing|Show)\.Features(\.|$)");
+
     private static IEnumerable<IType> Handlers => RedAntsArchitecture.OwnTypes.Where(IsHandler);
 
     private static bool IsHandler(IType type) =>
-        type.Name == "Handler" && type.Namespace.FullName.StartsWith("RedAnts.Features.");
+        type.Name == "Handler" && SliceNamespace.IsMatch(type.Namespace.FullName);
 
     [Fact]
     public void Handlers_are_nested_in_a_slice_and_sealed()
@@ -39,16 +41,16 @@ public class HandlerRules
     {
         var offenders = Handlers
             .Select(h => h.Namespace.FullName)
-            .Where(ns => !Regex.IsMatch(ns, @"^RedAnts\.Features\.[A-Za-z]+(\.[A-Za-z]+Workflow)?$"))
+            .Where(ns => !Regex.IsMatch(ns, @"^RedAnts\.(Ticketing|Show)\.Features(\.[A-Za-z]+Workflow)?$"))
             .Distinct()
             .ToList();
-        Assert.True(offenders.Count == 0, "Slice namespaces must be RedAnts.Features.<Module>[.<Name>Workflow]:\n" + string.Join("\n", offenders));
+        Assert.True(offenders.Count == 0, "Slice namespaces must be RedAnts.<Module>.Features[.<Name>Workflow]:\n" + string.Join("\n", offenders));
     }
 
     public static IEnumerable<object[]> Modules =>
     [
-        ["Ticketing", RedAntsArchitecture.Ticketing, RedAnts.Features.Ticketing.TicketingFeatures.Handlers],
-        ["Show", RedAntsArchitecture.Show, RedAnts.Features.Show.ShowFeatures.Handlers]
+        ["Ticketing", RedAntsArchitecture.Ticketing, RedAnts.Ticketing.Features.TicketingFeatures.Handlers],
+        ["Show", RedAntsArchitecture.Show, RedAnts.Show.Features.ShowFeatures.Handlers]
     ];
 
     [Theory]
@@ -56,7 +58,7 @@ public class HandlerRules
     public void Slices_are_registered_exactly_once(string module, System.Reflection.Assembly assembly, IReadOnlyList<Type> handlers)
     {
         var expected = assembly.GetTypes()
-            .Where(t => t.IsClass && t.Name == "Handler" && t.Namespace is { } ns && ns.StartsWith("RedAnts.Features."))
+            .Where(t => t.IsClass && t.Name == "Handler" && t.Namespace is { } ns && SliceNamespace.IsMatch(ns))
             .Where(t => !t.GetInterfaces().Any(i => i.Name.StartsWith("INotification")))
             .ToHashSet();
         var registered = handlers.ToList();

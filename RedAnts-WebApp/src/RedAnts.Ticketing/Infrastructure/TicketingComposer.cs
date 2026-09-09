@@ -1,0 +1,46 @@
+using PdfSharp.Fonts;
+using RedAnts.Ticketing.Features.Email;
+using RedAnts.Ticketing.Features.Ports;
+using RedAnts.Ticketing.Infrastructure.Content;
+using RedAnts.Ticketing.Infrastructure.Email;
+using RedAnts.Ticketing.Infrastructure.Sales;
+using RedAnts.Ticketing.Infrastructure.Tickets;
+using Umbraco.Cms.Core.Composing;
+
+namespace RedAnts.Ticketing.Infrastructure;
+
+public class TicketingComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder builder)
+    {
+        builder.AddComponent<TicketingMigrationComponent>();
+
+        if (GlobalFontSettings.FontResolver is null)
+            GlobalFontSettings.FontResolver = new FlexPrintFontResolver();
+        builder.Services.AddScoped<ITicketPrinter, TicketPrinting>();
+        builder.Services.AddScoped<ITicketPrintSettings, TicketPrintSettingsRepository>();
+
+        builder.Services.AddScoped<ISeasons, UmbracoSeasons>();
+        builder.Services.AddScoped<IVenues, UmbracoVenues>();
+        builder.Services.AddScoped<IEvents, UmbracoEvents>();
+        builder.Services.AddScoped<IContentUrls, UmbracoContentUrls>();
+
+        builder.Services.AddScoped<IEventPrices, EventPriceRepository>();
+        builder.Services.AddScoped<ISeasonPrices, SeasonPriceRepository>();
+        builder.Services.AddScoped<IPriceTiers, PriceTierRepository>();
+        builder.Services.AddScoped<IEventPricing, EventPricingReader>();
+        builder.Services.AddScoped<ISeasonPassPricing, SeasonPassPricingReader>();
+        builder.Services.AddScoped<IEventTickets, EventTicketRepository>();
+        builder.Services.AddScoped<ISeasonPasses, SeasonPassRepository>();
+        builder.Services.AddScoped<IFlexTicketBundles, FlexTicketBundleRepository>();
+        builder.Services.AddScoped<IEventTicketBundles, EventTicketBundleRepository>();
+        builder.Services.AddScoped<IMemberCards, MemberCardRepository>();
+        builder.Services.AddScoped<IOrders, OrderRepository>();
+        builder.Services.AddScoped<INewsletterSignups, NewsletterSignupRepository>();
+        builder.Services.AddScoped<ISeasonAddOns, SeasonAddOnRepository>();
+        builder.Services.AddScoped<IOrderAddOns, OrderAddOnRepository>();
+        builder.Services.AddScoped<IOrderItems, OrderItemRepository>();
+        builder.Services.AddScoped<IAddOnNotifier, AddOnNotifier>();
+        builder.Services.AddScoped<IHelpers, HelperMemberRepository>();
+    }
+}

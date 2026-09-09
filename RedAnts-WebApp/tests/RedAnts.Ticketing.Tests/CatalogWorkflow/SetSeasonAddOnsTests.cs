@@ -1,5 +1,5 @@
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.CatalogWorkflow;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.CatalogWorkflow;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.CatalogWorkflow;

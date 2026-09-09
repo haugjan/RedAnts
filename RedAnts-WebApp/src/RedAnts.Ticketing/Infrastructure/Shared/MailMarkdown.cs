@@ -1,6 +1,6 @@
 using Markdig;
 
-namespace RedAnts.Infrastructure.Shared;
+namespace RedAnts.Ticketing.Infrastructure.Shared;
 
 public static class MailMarkdown
 {

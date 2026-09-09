@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
-using RedAnts.Domain.Ticketing;
-using RedAnts.Domain.Ticketing.Admission;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.CheckoutWorkflow;
-using RedAnts.Features.Ticketing.Scanning;
+using RedAnts.Ticketing.Domain;
+using RedAnts.Ticketing.Domain.Admission;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.CheckoutWorkflow;
+using RedAnts.Ticketing.Features.Scanning;
 
 namespace RedAnts.Ticketing.Tests.CheckoutWorkflow;
 

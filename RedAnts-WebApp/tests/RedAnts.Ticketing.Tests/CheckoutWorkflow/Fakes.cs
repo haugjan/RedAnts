@@ -1,11 +1,11 @@
-using RedAnts.Domain.Ticketing;
-using RedAnts.Domain.Ticketing.Admission;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.AdmissionWorkflow;
-using RedAnts.Features.Ticketing.Email;
-using RedAnts.Features.Ticketing.Ports;
-using RedAnts.Features.Ticketing.Scanning;
-using RedAnts.Features.Ticketing.Tickets;
+using RedAnts.Ticketing.Domain;
+using RedAnts.Ticketing.Domain.Admission;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.AdmissionWorkflow;
+using RedAnts.Ticketing.Features.Email;
+using RedAnts.Ticketing.Features.Ports;
+using RedAnts.Ticketing.Features.Scanning;
+using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Tests.CheckoutWorkflow;
 

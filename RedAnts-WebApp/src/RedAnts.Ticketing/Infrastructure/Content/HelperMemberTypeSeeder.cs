@@ -1,0 +1,89 @@
+// Uses Umbraco 17 APIs deprecated for removal in Umbraco 18 (content/data-type Save, DataType GetAll,
+// FileService templates, Constants.Security.SuperUserId, IPublishedContent.Parent, SpecialDbTypes.NTEXT).
+// Still functional; migrate to the async management services at the Umbraco 18 upgrade.
+#pragma warning disable CS0618
+using Microsoft.Extensions.Logging;
+using Umbraco.Cms.Core;
+using Umbraco.Cms.Core.Composing;
+using Umbraco.Cms.Core.Events;
+using Umbraco.Cms.Core.Models;
+using Umbraco.Cms.Core.Notifications;
+using Umbraco.Cms.Core.Services;
+using Umbraco.Cms.Core.Strings;
+
+namespace RedAnts.Ticketing.Infrastructure.Content;
+
+public static class HelperAliases
+{
+    public const string MemberType = "scanHelper";
+    public const string Code = "helperCode";
+    public const string SeasonId = "helperSeasonId";
+    public const string FirstName = "helperFirstName";
+    public const string LastName = "helperLastName";
+    public const string AllEvents = "helperAllEvents";
+    public const string EventIds = "helperEventIds";
+    public const string CanRebook = "helperCanRebook";
+}
+
+public sealed class HelperMemberTypeSeederComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder builder)
+        => builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, HelperMemberTypeSeeder>();
+}
+
+public sealed class HelperMemberTypeSeeder(
+    IMemberTypeService memberTypeService,
+    IDataTypeService dataTypeService,
+    IShortStringHelper shortStringHelper,
+    ILogger<HelperMemberTypeSeeder> logger) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
+{
+    private const string Group = "helfer";
+    private const string GroupName = "Helfer";
+
+    public Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var all = dataTypeService.GetAll().ToList();
+            IDataType ByEditor(string alias) => all.First(d => d.EditorAlias == alias);
+            var textBox = ByEditor("Umbraco.TextBox");
+            var integer = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.Integer") ?? textBox;
+            var boolean = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TrueFalse") ?? textBox;
+
+            var existing = memberTypeService.Get(HelperAliases.MemberType);
+            if (existing is not null)
+            {
+                if (!existing.PropertyTypeExists(HelperAliases.CanRebook))
+                {
+                    existing.AddPropertyType(Prop(boolean, HelperAliases.CanRebook, "Darf Flextickets umbuchen"), Group, GroupName);
+                    memberTypeService.Save(existing);
+                }
+                return Task.CompletedTask;
+            }
+
+            var type = new MemberType(shortStringHelper, Constants.System.Root)
+            {
+                Alias = HelperAliases.MemberType,
+                Name = "Scan-Helfer",
+                Icon = "icon-user"
+            };
+            type.AddPropertyType(Prop(textBox, HelperAliases.Code, "Zugangscode"), Group, GroupName);
+            type.AddPropertyType(Prop(textBox, HelperAliases.FirstName, "Vorname"), Group, GroupName);
+            type.AddPropertyType(Prop(textBox, HelperAliases.LastName, "Nachname"), Group, GroupName);
+            type.AddPropertyType(Prop(integer, HelperAliases.SeasonId, "Saison-Id"), Group, GroupName);
+            type.AddPropertyType(Prop(boolean, HelperAliases.AllEvents, "Alle Anlässe"), Group, GroupName);
+            type.AddPropertyType(Prop(textBox, HelperAliases.EventIds, "Zugewiesene Anlässe"), Group, GroupName);
+            type.AddPropertyType(Prop(boolean, HelperAliases.CanRebook, "Darf Flextickets umbuchen"), Group, GroupName);
+
+            memberTypeService.Save(type);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "HelperMemberTypeSeeder failed.");
+        }
+        return Task.CompletedTask;
+    }
+
+    private PropertyType Prop(IDataType dataType, string alias, string name) =>
+        new(shortStringHelper, dataType, alias) { Name = name };
+}

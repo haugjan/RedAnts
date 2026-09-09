@@ -1,5 +1,5 @@
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Domain.Ticketing.Admission;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Domain.Admission;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Scanning;

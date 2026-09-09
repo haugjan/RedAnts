@@ -1,0 +1,225 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="/" />
+    <title>Show Admin</title>
+    <style>
+        html, body { height: 100%; margin: 0; background: #141418; font-family: 'Segoe UI', Roboto, sans-serif; }
+    </style>
+</head>
+<body>
+    <component type="typeof(RedAnts.Show.Features.ShowAdminPage)" render-mode="Server" />
+    <script src="/_content/RedAnts.Show/show/soundboard.js" asp-append-version="true"></script>
+    <script>
+        var showEditAudio = null, showEditTimer = null, showEditSpTimer = null;
+        function showEditReport(pos, dur) {
+            if (window.__showDotNet) { try { window.__showDotNet.invokeMethodAsync('OnEditPosition', pos || 0, dur || 0); } catch (e) { } }
+        }
+        function showEditReportStopped() {
+            if (window.__showDotNet) { try { window.__showDotNet.invokeMethodAsync('OnEditStopped'); } catch (e) { } }
+        }
+        function showEditClearTimers() {
+            if (showEditTimer) { clearInterval(showEditTimer); showEditTimer = null; }
+            if (showEditSpTimer) { clearInterval(showEditSpTimer); showEditSpTimer = null; }
+        }
+        window.showEditPlay = function (url, startSec, durationSec) {
+            window.showEditStop();
+            showEditAudio = new Audio(url);
+            showEditAudio.addEventListener('loadedmetadata', function () { showEditReport(showEditAudio.currentTime, showEditAudio.duration || 0); });
+            showEditAudio.addEventListener('ended', function () { window.showEditStop(); });
+            var begin = function () { if (startSec > 0) { try { showEditAudio.currentTime = startSec; } catch (e) { } } showEditAudio.play().catch(function () { }); };
+            if (showEditAudio.readyState >= 1) begin(); else showEditAudio.addEventListener('canplay', begin, { once: true });
+            showEditClearTimers();
+            showEditTimer = setInterval(function () {
+                if (!showEditAudio) return;
+                showEditReport(showEditAudio.currentTime, showEditAudio.duration || 0);
+                if (durationSec && showEditAudio.currentTime >= (startSec || 0) + durationSec) window.showEditStop();
+            }, 250);
+        };
+        window.showEditPlaySpotify = async function (uri, startSec, shuffle) {
+            if (!uri) { alert('Kein Spotify-Track/URI gesetzt.'); return; }
+            if (!window.showBoard) { alert('Spotify-Player nicht geladen.'); return; }
+            if (!showBoard.isLoggedIn()) { alert('Zuerst auf dem Board (▶ Board öffnen → Zahnrad) mit Spotify verbinden.'); return; }
+            var ready = await showBoard.ensureSpotify();
+            if (!ready) { alert('Spotify-Player noch nicht bereit – kurz warten und erneut.'); return; }
+            window.showEditStop();
+            var status = await showBoard.playSpotify(uri, (startSec || 0) * 1000, !!shuffle);
+            if (status !== 'ok') { alert('Spotify: ' + status); return; }
+            showEditClearTimers();
+            showEditSpTimer = setInterval(async function () {
+                var st = await showBoard.getState();
+                if (st) showEditReport((st.position || 0) / 1000, (st.duration || 0) / 1000);
+            }, 300);
+        };
+        window.showEditStop = function () {
+            showEditClearTimers();
+            try { if (showEditAudio) showEditAudio.pause(); } catch (e) { }
+            showEditAudio = null;
+            if (window.showBoard) { try { showBoard.stopAll(); } catch (e) { } }
+            showEditReportStopped();
+        };
+
+        var showPreviewAudio = null;
+        window.showPreviewToggle = function (url) {
+            if (showPreviewAudio && !showPreviewAudio.paused && showPreviewAudio.dataset.url === url) { window.showPreviewStop(); return; }
+            window.showPreviewStop();
+            showPreviewAudio = new Audio(url);
+            showPreviewAudio.dataset.url = url;
+            showPreviewAudio.play().catch(function () { });
+        };
+        window.showPreviewStop = function () {
+            try { if (showPreviewAudio) { showPreviewAudio.pause(); showPreviewAudio = null; } } catch (e) { }
+        };
+
+        window.showDownloadBytes = async function (filename, streamRef) {
+            const arr = await streamRef.arrayBuffer();
+            const blob = new Blob([arr], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        };
+
+        window.showEditSeek = function (frac) {
+            if (showEditAudio && showEditAudio.duration) {
+                try { showEditAudio.currentTime = frac * showEditAudio.duration; } catch (e) { }
+                showEditReport(showEditAudio.currentTime, showEditAudio.duration || 0);
+                return;
+            }
+            if (window.showBoard && showBoard.seek) { showBoard.seek(frac); }
+        };
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && window.__showDotNet) {
+                window.__showDotNet.invokeMethodAsync('OnEditorEscape');
+            }
+        });
+
+        (function () {
+            var seeking = false, track = null;
+            function frac(el, x) { var r = el.getBoundingClientRect(); return Math.min(1, Math.max(0, (x - r.left) / r.width)); }
+            document.addEventListener('pointerdown', function (e) {
+                var tl = e.target.closest && e.target.closest('.se-tl-track'); if (!tl) return;
+                seeking = true; track = tl; window.showEditSeek(frac(tl, e.clientX));
+            });
+            document.addEventListener('pointermove', function (e) { if (seeking && track) window.showEditSeek(frac(track, e.clientX)); });
+            document.addEventListener('pointerup', function () { seeking = false; track = null; });
+        })();
+        // Drag-and-drop auf die Upload-Zone: Dateien an das versteckte File-Input weiterreichen.
+        document.addEventListener('dragover', function (e) {
+            var z = e.target.closest && e.target.closest('.se-drop');
+            if (z) { e.preventDefault(); z.classList.add('busy'); }
+        });
+        document.addEventListener('dragleave', function (e) {
+            var z = e.target.closest && e.target.closest('.se-drop');
+            if (z) z.classList.remove('busy');
+        });
+        document.addEventListener('drop', function (e) {
+            var z = e.target.closest && e.target.closest('.se-drop');
+            if (!z) return;
+            e.preventDefault();
+            z.classList.remove('busy');
+            var input = z.querySelector('input[type=file]');
+            if (input && e.dataTransfer && e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+
+        // Kachel-Raster: verschieben (Kachel greifen) und Grösse ziehen (Ecke).
+        (function () {
+            var gd = null, drag = null;
+            window.showGridInit = function (ref) { gd = ref; window.__showDotNet = ref; };
+            var COLS = 5, ROWS = 3, PAD = 6, GAP = 6;
+            function metrics(canvas) {
+                var r = canvas.getBoundingClientRect();
+                return { r: r,
+                    cw: (r.width - PAD * 2 - GAP * (COLS - 1)) / COLS,
+                    ch: (r.height - PAD * 2 - GAP * (ROWS - 1)) / ROWS };
+            }
+            function cellAt(canvas, cx, cy) {
+                var m = metrics(canvas);
+                var col = Math.floor((cx - m.r.left - PAD) / (m.cw + GAP));
+                var row = Math.floor((cy - m.r.top - PAD) / (m.ch + GAP));
+                return { col: Math.max(0, Math.min(COLS - 1, col)), row: Math.max(0, Math.min(ROWS - 1, row)) };
+            }
+            document.addEventListener('pointerdown', function (e) {
+                var tile = e.target.closest && e.target.closest('.se-ct');
+                if (!tile) return;
+                var canvas = tile.closest('.se-canvas');
+                if (!canvas) return;
+                var tx = +tile.getAttribute('data-x'), ty = +tile.getAttribute('data-y');
+                var cell = cellAt(canvas, e.clientX, e.clientY);
+                drag = {
+                    id: tile.getAttribute('data-id'), canvas: canvas,
+                    offCol: cell.col - tx, offRow: cell.row - ty, last: ''
+                };
+                if (tile.setPointerCapture) { try { tile.setPointerCapture(e.pointerId); } catch (x) { } }
+            });
+            document.addEventListener('pointermove', function (e) {
+                if (!drag || !gd) return;
+                var cell = cellAt(drag.canvas, e.clientX, e.clientY);
+                var x = cell.col - drag.offCol, y = cell.row - drag.offRow;
+                var key = x + ',' + y;
+                if (key === drag.last) return;
+                drag.last = key;
+                drag.moved = true;
+                gd.invokeMethodAsync('SetRect', drag.id, x, y, 1, 1);
+            });
+            document.addEventListener('pointerup', function () {
+                if (drag && drag.moved) {
+                    var sup = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
+                    document.addEventListener('click', sup, { capture: true, once: true });
+                    setTimeout(function () { document.removeEventListener('click', sup, { capture: true }); }, 350);
+                }
+                drag = null;
+            });
+            document.addEventListener('pointercancel', function () { drag = null; });
+
+            // Neue Kachel per Klick auf eine freie Zelle.
+            var draw = null;
+            document.addEventListener('pointerdown', function (e) {
+                if (e.target.closest && e.target.closest('.se-ct')) return;
+                var canvas = e.target.closest && e.target.closest('.se-canvas');
+                if (!canvas) return;
+                draw = { canvas: canvas, cell: cellAt(canvas, e.clientX, e.clientY) };
+            });
+            document.addEventListener('pointerup', function (e) {
+                if (!draw) return;
+                var cell = cellAt(draw.canvas, e.clientX, e.clientY);
+                var start = draw.cell;
+                draw = null;
+                if (cell.col !== start.col || cell.row !== start.row) return;
+                if (gd) gd.invokeMethodAsync('CreateRect', cell.col, cell.row, 1, 1);
+            });
+            document.addEventListener('pointercancel', function () { draw = null; });
+
+            var hint = null;
+            function showHint(canvas, cell) {
+                var m = metrics(canvas);
+                if (!hint) { hint = document.createElement('div'); hint.className = 'se-cellhint'; }
+                if (hint.parentNode !== canvas) canvas.appendChild(hint);
+                hint.style.display = 'block';
+                hint.style.left = (PAD + cell.col * (m.cw + GAP)) + 'px';
+                hint.style.top = (PAD + cell.row * (m.ch + GAP)) + 'px';
+                hint.style.width = m.cw + 'px';
+                hint.style.height = m.ch + 'px';
+            }
+            function hideHint() { if (hint) hint.style.display = 'none'; }
+            document.addEventListener('pointermove', function (e) {
+                var overTile = e.target.closest && e.target.closest('.se-ct');
+                var canvas = e.target.closest && e.target.closest('.se-canvas');
+                if (!canvas || overTile) { hideHint(); return; }
+                showHint(canvas, cellAt(canvas, e.clientX, e.clientY));
+            });
+        })();
+    </script>
+    <script src="/_framework/blazor.server.js"></script>
+</body>
+</html>

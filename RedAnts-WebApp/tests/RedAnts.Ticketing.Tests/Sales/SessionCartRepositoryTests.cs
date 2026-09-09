@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Infrastructure.Ticketing.Sales;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Infrastructure.Sales;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Sales;

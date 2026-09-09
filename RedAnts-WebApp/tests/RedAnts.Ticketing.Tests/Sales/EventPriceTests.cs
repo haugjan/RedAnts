@@ -1,5 +1,5 @@
 using Xunit;
-using RedAnts.Domain.Ticketing.Sales;
+using RedAnts.Ticketing.Domain.Sales;
 
 namespace RedAnts.Ticketing.Tests.Sales;
 

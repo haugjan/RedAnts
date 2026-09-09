@@ -9,17 +9,17 @@ namespace RedAnts.Architecture.Tests;
 public class ModuleRules
 {
     private static readonly IObjectProvider<IType> TicketingInternals =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|Infrastructure)\.Ticketing(\..*)?$")
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Ticketing\.(Domain|Infrastructure)(\..*)?$")
             .And().DoNotHaveNameEndingWith("Extensions")
             .And().DoNotHaveNameEndingWith("Composer")
             .As("Ticketing internals");
 
     private static readonly IObjectProvider<IType> Ticketing =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|Features|Infrastructure)\.Ticketing(\..*)?$")
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Ticketing\.(Domain|Features|Infrastructure)(\..*)?$")
             .As("Ticketing");
 
     private static readonly IObjectProvider<IType> ShowInternals =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|Features|Infrastructure)\.Show(\..*)?$")
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Show\.(Domain|Features|Infrastructure)(\..*)?$")
             .And().DoNotHaveNameEndingWith("Extensions")
             .As("Show internals");
 

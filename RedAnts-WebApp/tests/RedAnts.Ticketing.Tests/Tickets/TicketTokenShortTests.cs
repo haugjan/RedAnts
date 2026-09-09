@@ -3,8 +3,8 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Infrastructure.Ticketing.Tickets;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Infrastructure.Tickets;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Tickets;

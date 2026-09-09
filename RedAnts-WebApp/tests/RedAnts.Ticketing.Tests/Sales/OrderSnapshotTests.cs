@@ -1,6 +1,6 @@
 using System.Text.Json;
-using RedAnts.Domain.Ticketing.Sales;
-using RedAnts.Features.Ticketing.CheckoutWorkflow;
+using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.CheckoutWorkflow;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Sales;

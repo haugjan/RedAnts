@@ -1,0 +1,1058 @@
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms
+@using RedAnts.Ticketing.Domain.Sales
+@using RedAnts.Ticketing.Features.Email
+@using RedAnts.Ticketing.Features.Ports
+@inject ISeasonPassAdminReport Report
+@inject ISeasonPasses Passes
+@inject IPriceTiers PriceTiers
+@inject CreateAdminOrder.Handler OrderCreation
+@inject ISeasonPassMailer Mailer
+@inject CreateSeasonPass.Handler PassCreation
+@inject EditSeasonPass.Handler PassEdit
+@inject SetSeasonPassHolder.Handler PassHolder
+@inject DeleteSeasonPass.Handler PassDeletion
+@inject ImportSeasonPasses.Handler PassImport
+@inject SendSeasonPassMail.Handler PassMail
+@inject IPublicBaseUrl PublicUrl
+@inject ITicketTokens Tokens
+
+<section class="ta-page">
+    <h1 class="ta-page-title">Saisonkarten</h1>
+
+    @if (_loading)
+    {
+        <p class="ta-muted-text">Wird geladen …</p>
+    }
+    else if (_seasons.Count == 0)
+    {
+        <div class="ta-placeholder">Es sind noch keine Saisons erfasst.</div>
+    }
+    else
+    {
+        <div class="ta-toolbar">
+            <div class="ta-toolbar-filters">
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="spSeasonSelect">Saison</label>
+                    <select id="spSeasonSelect" class="ta-select" @bind="SelectedSeasonId" @bind:after="ReloadPassesAsync">
+                        @foreach (var s in _seasons)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="spBundleFilter">Bundle</label>
+                    <select id="spBundleFilter" class="ta-select" @bind="_bundleFilter">
+                        <option value="">Alle anzeigen</option>
+                        @foreach (var b in Bundles())
+                        {
+                            <option value="@b">@b</option>
+                        }
+                    </select>
+                </div>
+                <div class="ta-field ta-field--filter">
+                    <label class="ta-label" for="spSearch">Suche</label>
+                    <input id="spSearch" type="search" class="ta-input"
+                           placeholder="Name, E-Mail, Bundle …"
+                           @bind="_search" @bind:event="oninput" />
+                </div>
+            </div>
+            <div class="ta-toolbar-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenExport">
+                    Export CSV
+                </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenImport">
+                    Import CSV
+                </button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_passes.Count == 0)" @onclick="OpenBulk"
+                        title="Alle Karten eines Bundles per E-Mail versenden">Karten versenden</button>
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(string.IsNullOrEmpty(_bundleFilter))"
+                        title="@(string.IsNullOrEmpty(_bundleFilter) ? "Zum Drucken zuerst ein Bundle wählen" : "Alle Karten dieses Bundles als PDF drucken")"
+                        @onclick="OpenBundlePrint">PDF drucken</button>
+                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreate">
+                    Saisonkarte erstellen
+                </button>
+            </div>
+        </div>
+
+        @if (_passes.Count == 0)
+        {
+            <div class="ta-placeholder">Für diese Saison sind keine Saisonkarten ausgestellt.</div>
+        }
+        else
+        {
+            var shown = Sorted().ToList();
+            <div class="ta-table-wrap">
+                <table class="ta-table">
+                    <thead>
+                        <tr>
+                            <th>Karten-Nr.</th>
+                            <th class="ta-th-sort" @onclick='() => Sort("buyer")'>Person <span class="ta-sort-ind">@Ind("buyer")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("created")'>Erstellt <span class="ta-sort-ind">@Ind("created")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("bundle")'>Bundle <span class="ta-sort-ind">@Ind("bundle")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("category")'>Kategorie <span class="ta-sort-ind">@Ind("category")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("price")'>Preis <span class="ta-sort-ind">@Ind("price")</span></th>
+                            <th class="ta-th-sort" @onclick='() => Sort("status")'>Status <span class="ta-sort-ind">@Ind("status")</span></th>
+                            <th class="ta-num ta-th-sort" @onclick='() => Sort("visits")'>Event&shy;besuche <span class="ta-sort-ind">@Ind("visits")</span></th>
+                            <th>Zahlung</th>
+                            <th class="ta-col-actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in shown)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="ta-ticketno">@AdminFormat.TicketNo(p.Uuid)</span>
+                                    <a class="ta-qr-link" href="@PublicUrl.TicketUrl(Tokens.CreateShort(p.Uuid))" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
+                                    </a>
+                                </td>
+                                <td class="ta-cell-name">
+                                    <PersonCell Holder="p.Holder" />
+                                </td>
+                                <td title="@AdminFormat.CreatedTooltip(p.CreatedAt, p.CreatedByName, null, OnlineMarker(p))">@AdminFormat.CreatedShort(p.CreatedAt, p.CreatedByName, OnlineMarker(p))</td>
+                                <td>@(string.IsNullOrEmpty(p.Reference) ? "–" : p.Reference)</td>
+                                <td>
+                                    <InlineSelectEdit TValue="int" Value="MainTierId(p)" FieldLabel="Kategorie"
+                                                      Options="MainTierIds" Label="@(id => TierName(id))"
+                                                      Save="@(id => SaveTierAsync(p, id))" />
+                                </td>
+                                <td class="ta-num">CHF @p.Price.ToString("N2")</td>
+                                <td>
+                                    <InlineSelectEdit TValue="TicketStatus" Value="p.Status" FieldLabel="Status"
+                                                      Options="StatusOptions" Label="@StatusLabel"
+                                                      Save="@(v => SaveStatusAsync(p, v))">
+                                        <Display Context="st">
+                                            <span class="ta-badge ta-badge-@st.ToString().ToLowerInvariant()">@StatusLabel(st)</span>
+                                        </Display>
+                                    </InlineSelectEdit>
+                                </td>
+                                <td class="ta-num">
+                                    @if (p.EventVisits > 0)
+                                    {
+                                        <button type="button" class="ta-visits-link" @onclick="() => OpenVisits(p)">@p.EventVisits</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="ta-muted">0</span>
+                                    }
+                                    @if (p.Conversions > 0)
+                                    {
+                                        <button type="button" class="ta-conv-badge ta-conv-link" title="Diese Saisonkarte wurde für Ticketumwandlung(en) an Spezialanlässen gebraucht. Details anzeigen." @onclick="() => OpenVisits(p)">↔ @p.Conversions Uml.</button>
+                                    }
+                                </td>
+                                <td>
+                                    @(p.PaymentState ?? "–")
+                                    @if (!string.IsNullOrEmpty(p.OrderNumber)) { <div class="ta-addr-sub">@p.OrderNumber</div> }
+                                </td>
+                                <td class="ta-col-actions">
+                                    <button type="button" class="ta-icon-btn" title="@(p.HasEmail ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!p.HasEmail)" @onclick="() => OpenMail(p)">✉</button>
+                                    <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(p)">✎</button>
+                                    <button type="button" class="ta-icon-btn" title="Als PDF drucken" @onclick="() => OpenSinglePrint(p.Uuid)">🖨</button>
+                                    @if (Identity.IsAdmin)
+                                    {
+                                        <button type="button" class="ta-icon-btn ta-icon-btn-danger" title="Löschen" @onclick="() => _deleteTarget = p">🗑</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (shown.Count == 0)
+            {
+                <div class="ta-placeholder">Keine Saisonkarte passt zur Suche „@_search".</div>
+            }
+            <p class="ta-summary">
+                @if (!string.IsNullOrWhiteSpace(_search))
+                {
+                    <text>@shown.Count von @_passes.Count Saisonkarten · Total CHF @shown.Sum(p => p.Price).ToString("N2")</text>
+                }
+                else
+                {
+                    <text>@_passes.Count Saisonkarte@(_passes.Count == 1 ? "" : "n") · Total CHF @_passes.Sum(p => p.Price).ToString("N2")</text>
+                }
+            </p>
+        }
+    }
+</section>
+
+<style>
+    .ta-noemail { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #fff8e1; color: #7a5c00; border: 1px solid #e0b400; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .ta-textarea { min-height: 9rem; resize: vertical; font-family: inherit; line-height: 1.5; }
+    .ta-field--grow { flex: 1 1 18rem; }
+    .ta-cards-search { width: 100%; min-width: 14rem; }
+</style>
+
+@if (_showCreate)
+{
+    <div class="ta-overlay" @onmousedown="CloseCreate">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarte erstellen</h2>
+
+            <PersonFields Model="_newPerson" Prefix="newSp" EmailHint=" (optional, für den Kartenversand)" />
+
+            <div class="ta-field">
+                <label class="ta-label" for="newSpCategory">Kategorie</label>
+                <select id="newSpCategory" class="ta-select" @bind="_newTierId">
+                    @foreach (var t in _tiers)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="newSpPrice">Preis (CHF)</label>
+                <input id="newSpPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_newPrice" @bind:after="OnNewPriceChanged" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newSpPaymentSource">Zahlart</label>
+                <select id="newSpPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                    @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(_newPrice))
+                    {
+                        <option value="@ps">@ps.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="newSpReference">Bundle (optional)</label>
+                <input id="newSpReference" class="ta-input" type="text" maxlength="100" list="spBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_newReference" />
+                <datalist id="spBundleOptions">
+                    @foreach (var b in Bundles()) { <option value="@b" /> }
+                </datalist>
+            </div>
+
+            @if (_createError is not null)
+            {
+                <p class="ta-modal-error">@_createError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate" disabled="@_creating">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreatePassAsync" disabled="@_creating">
+                    @(_creating ? "Erstellt …" : "Erstellen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_editing is not null)
+{
+    <div class="ta-overlay" @onmousedown="CancelEdit">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarte bearbeiten</h2>
+            <p class="ta-modal-sub">Karten-Nr. @AdminFormat.TicketNo(_editing.Uuid)</p>
+
+            <PersonFields Model="_editPerson" Prefix="editSp" />
+
+            <div class="ta-field">
+                <label class="ta-label" for="editPrice">Preis (CHF)</label>
+                <input id="editPrice" type="number" step="0.01" min="0" class="ta-input" @bind="_editPrice" @bind:after="() => _editPrice = decimal.Round(_editPrice, 2)" />
+            </div>
+
+            @if (_editError is not null)
+            {
+                <p class="ta-modal-error">@_editError</p>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                    @(_saving ? "Speichert …" : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_visitsPass is not null)
+{
+    <VisitsOverlay Uuid="_visitsPass.Uuid" Title="@(_visitsPass.BuyerName ?? AdminFormat.TicketNo(_visitsPass.Uuid))" OnClose="CloseVisits" />
+}
+
+@if (_deleteTarget is not null)
+{
+    <ConfirmDialog Title="Saisonkarte löschen"
+                   Message="@($"Saisonkarte {AdminFormat.TicketNo(_deleteTarget.Uuid)} endgültig löschen? Das kann nicht rückgängig gemacht werden.")"
+                   ConfirmLabel="Löschen" Danger="true" Busy="_deleteBusy" Error="@_deleteError"
+                   OnConfirm="DeleteConfirmedAsync" OnCancel="CancelDelete" />
+}
+
+@if (_showImport)
+{
+    <div class="ta-overlay" @onmousedown="CloseImport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarten importieren</h2>
+
+            <div class="ta-field">
+                <label class="ta-label">Saison</label>
+                <div class="ta-readonly">@SelectedSeasonName</div>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impSpCategory">Kategorie (Vorauswahl, Datei kann überschreiben)</label>
+                <select id="impSpCategory" class="ta-select" @bind="_importTierId">
+                    @foreach (var t in _tiers.Where(t => !t.IsPromo))
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label" for="impSpReference">Bundle</label>
+                <input id="impSpReference" class="ta-input" type="text" maxlength="100" list="spImportBundleOptions" placeholder="z. B. Sponsoren 2026" @bind="_importReference" />
+                <datalist id="spImportBundleOptions">
+                    @foreach (var b in Bundles()) { <option value="@b" /> }
+                </datalist>
+                <p class="ta-hint">Gilt für Zeilen ohne eigene Bundle-Spalte; eine Bundle-Spalte in der Datei hat Vorrang.</p>
+            </div>
+
+            <div class="ta-field">
+                <label class="ta-label">Datei (CSV oder Excel)</label>
+                <InputFile OnChange="OnImportFileAsync" accept=".csv,.xlsx,text/csv" />
+                <p class="ta-hint">
+                    Spalten (alle optional): Karten-Nr, Bundle, Kategorie, Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
+                    Die Spalten werden automatisch erkannt; passt die Zuordnung nicht, unten von Hand anpassen.
+                    Zeilen mit bestehender Karten-Nr werden aktualisiert.
+                    <a href="/admin/season-passes/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
+                </p>
+            </div>
+
+            @if (_importTable is not null && _importTable.Columns.Count > 0)
+            {
+                <div class="ta-field">
+                    @if (!_showMapping)
+                    {
+                        <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => _showMapping = true">Spaltenzuordnung anpassen</button>
+                    }
+                    else
+                    {
+                        <label class="ta-label">Spaltenzuordnung</label>
+                        <p class="ta-hint">Ordne jeder benötigten Spalte eine Spalte aus deiner Datei zu.</p>
+                        <table class="ta-map">
+                            @foreach (var field in TicketImportCsv.Fields)
+                            {
+                                <tr>
+                                    <td class="ta-map-label">@field.Label</td>
+                                    <td>
+                                        <select class="ta-select" value="@MapValue(field.Key)" @onchange="e => SetMap(field.Key, e.Value?.ToString())">
+                                            <option value="-1">(nicht zuordnen)</option>
+                                            @for (var i = 0; i < _importTable.Columns.Count; i++)
+                                            {
+                                                var idx = i;
+                                                <option value="@idx">@_importTable.Columns[idx]</option>
+                                            }
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </table>
+                        <div class="ta-modal-actions">
+                            <button type="button" class="ta-btn ta-btn-primary" @onclick="ApplyMapping">Zuordnung übernehmen</button>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (_importFileName is not null)
+            {
+                <div class="ta-parse">
+                    <strong>@_importFileName</strong>: @_importRows.Count gültige Zeile@(_importRows.Count == 1 ? "" : "n") erkannt.
+                    @if (_importWarnings.Count > 0)
+                    {
+                        <ul class="ta-warnings">
+                            @foreach (var w in _importWarnings) { <li>@w</li> }
+                        </ul>
+                    }
+                </div>
+                @if (_importErrors.Count > 0)
+                {
+                    <div class="ta-error">
+                        @_importErrors.Count Fehler, bitte in der Datei korrigieren:
+                        <ul class="ta-warnings">
+                            @foreach (var er in _importErrors) { <li>@er</li> }
+                        </ul>
+                    </div>
+                }
+            }
+
+            @if (!string.IsNullOrEmpty(_importError)) { <div class="ta-error">@_importError</div> }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_importSaving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="RunImportAsync" disabled="@(_importSaving || _importRows.Count == 0 || _importErrors.Count > 0)">
+                    @(_importSaving ? "Wird importiert …" : _importErrors.Count > 0 ? "Bitte Fehler beheben" : $"{_importRows.Count} Saisonkarten importieren")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showExport)
+{
+    <div class="ta-overlay" @onmousedown="CloseExport">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarten exportieren</h2>
+            <p class="ta-modal-sub">Ohne Auswahl werden alle Saisonkarten der Saison exportiert. Mehrfachauswahl möglich.</p>
+
+            <div class="ta-field">
+                <label class="ta-label">Bundle</label>
+                @if (!Bundles().Any())
+                {
+                    <p class="ta-muted-text">Keine Bundles vorhanden – es werden alle Saisonkarten exportiert.</p>
+                }
+                else
+                {
+                    <div class="ta-export-list">
+                        @foreach (var b in Bundles())
+                        {
+                            <label class="ta-export-item">
+                                <input type="checkbox" checked="@_exportSel.Contains(b)"
+                                       @onchange="e => ToggleExport(b, (bool)(e.Value ?? false))" /> @b
+                            </label>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Abbrechen</button>
+                <a class="ta-btn ta-btn-primary" href="@ExportUrl" target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showBulk)
+{
+    <div class="ta-overlay" @onmousedown="CloseBulk">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Karten versenden</h2>
+
+            @if (_bulkResult is not null)
+            {
+                <div class="ta-flash">@_bulkResult.Enqueued Karte@(_bulkResult.Enqueued == 1 ? "" : "n") eingereiht@(_bulkResult.Failed > 0 ? $", {_bulkResult.Failed} fehlgeschlagen" : "").</div>
+                @if (_bulkResult.NoEmail.Count > 0)
+                {
+                    <p class="ta-hint">@_bulkResult.NoEmail.Count Karte@(_bulkResult.NoEmail.Count == 1 ? "" : "n") ohne E-Mail übersprungen:</p>
+                    <ul class="ta-warnings">
+                        @foreach (var p in _bulkResult.NoEmail)
+                        {
+                            <li>@(p.BuyerName ?? "(ohne Name)") · @AdminFormat.TicketNo(p.Uuid)</li>
+                        }
+                    </ul>
+                }
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CloseBulk">Schliessen</button>
+                </div>
+            }
+            else if (!Bundles().Any())
+            {
+                <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk">Schliessen</button>
+                </div>
+            }
+            else
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkBundle">Bundle</label>
+                    <select id="bulkBundle" class="ta-select" @bind="_bulkBundle">
+                        @foreach (var b in Bundles())
+                        {
+                            <option value="@b">@b</option>
+                        }
+                    </select>
+                </div>
+                <p class="ta-hint">@BundleWithEmail Karte@(BundleWithEmail == 1 ? "" : "n") mit E-Mail werden versendet · @BundleWithoutEmail ohne E-Mail werden übersprungen.</p>
+
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkSubject">Betreff</label>
+                    <input id="bulkSubject" class="ta-input" type="text" maxlength="200" @bind="_bulkSubject" />
+                </div>
+                <div class="ta-field">
+                    <label class="ta-label" for="bulkBody">Text</label>
+                    <textarea id="bulkBody" class="ta-input ta-textarea" @bind="_bulkBody"></textarea>
+                    <p class="ta-hint">Platzhalter: {Name}, {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt. QR-Code, Online-Karte und PDF-Link werden je Karte angehängt.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_bulkError))
+                {
+                    <div class="ta-modal-error">@_bulkError</div>
+                }
+
+                <div class="ta-modal-actions">
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseBulk" disabled="@_bulkSending">Abbrechen</button>
+                    <button type="button" class="ta-btn ta-btn-primary" @onclick="SendBulk" disabled="@(_bulkSending || BundleWithEmail == 0)">
+                        @(_bulkSending ? "Sendet …" : $"{BundleWithEmail} Karten senden")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (_mailFor is not null)
+{
+    <div class="ta-overlay" @onmousedown="CloseMail">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Saisonkarte senden</h2>
+            <p class="ta-modal-sub">@(_mailFor.BuyerName ?? AdminFormat.TicketNo(_mailFor.Uuid)) · @_mailFor.Email</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="spMailSubject">Betreff</label>
+                <input id="spMailSubject" class="ta-input" type="text" maxlength="200" @bind="_mailSubject" />
+            </div>
+            <div class="ta-field">
+                <label class="ta-label" for="spMailBody">Text</label>
+                <textarea id="spMailBody" class="ta-input ta-textarea" @bind="_mailBody"></textarea>
+                <p class="ta-hint">Platzhalter: {Name}, {Vorname}, {Nachname}, {Saison}. Markdown wird unterstützt (**fett**, Listen mit -, [Links](https://…)). QR-Code, Online-Karte und PDF-Link werden automatisch angehängt.</p>
+            </div>
+
+            @if (_mailSent)
+            {
+                <div class="ta-flash">E-Mail wurde in den Versand gegeben.</div>
+            }
+            @if (!string.IsNullOrEmpty(_mailError))
+            {
+                <div class="ta-modal-error">@_mailError</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseMail" disabled="@_mailSending">Schliessen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@(_mailSending || _mailSent)">
+                    @(_mailSent ? "Gesendet ✓" : _mailSending ? "Sendet …" : "Senden")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showPrint)
+{
+    <TicketPrintDialog Type="TicketType.SeasonPass"
+                       Title="Saisonkarten als PDF drucken"
+                       Subtitle="@_printSubtitle"
+                       Layout="_printLayout"
+                       OnClose="ClosePrint">
+        <HiddenInputs>
+            @if (_printUuid is { } u)
+            {
+                <input type="hidden" name="uuid" value="@u" />
+            }
+            else
+            {
+                <input type="hidden" name="seasonId" value="@SelectedSeasonId" />
+                <input type="hidden" name="reference" value="@_bundleFilter" />
+            }
+        </HiddenInputs>
+    </TicketPrintDialog>
+}
+
+@code {
+    [Parameter] public string AdminUser { get; set; } = "";
+    [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
+
+    [Inject] private ISeasons Seasons { get; set; } = default!;
+    [Inject] private TicketingAdminState AdminState { get; set; } = default!;
+    [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
+
+    private bool _showPrint;
+    private TicketPrintLayout _printLayout = TicketPrintLayout.Default;
+    private Guid? _printUuid;
+    private string _printSubtitle = "";
+
+    private async Task OpenBundlePrint()
+    {
+        if (string.IsNullOrEmpty(_bundleFilter)) return;
+        _printUuid = null;
+        var count = _passes.Count(p => string.Equals(p.Reference, _bundleFilter, StringComparison.Ordinal));
+        _printSubtitle = $"{_bundleFilter} · {count} Karten · eine Seite pro Karte";
+        _printLayout = await PrintSettings.GetAsync(TicketType.SeasonPass);
+        _showPrint = true;
+    }
+
+    private async Task OpenSinglePrint(Guid uuid)
+    {
+        _printUuid = uuid;
+        _printSubtitle = $"Karten-Nr. {AdminFormat.TicketNo(uuid)}";
+        _printLayout = await PrintSettings.GetAsync(TicketType.SeasonPass);
+        _showPrint = true;
+    }
+
+    private void ClosePrint() => _showPrint = false;
+
+    private SeasonPassListItem? _deleteTarget;
+    private bool _deleteBusy;
+    private string? _deleteError;
+
+    private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_deleteTarget is null) return;
+        _deleteBusy = true;
+        _deleteError = null;
+        try
+        {
+            await PassDeletion.HandleAsync(new DeleteSeasonPass.Command(_deleteTarget.Uuid));
+            _deleteTarget = null;
+            await ReloadPassesAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleteBusy = false; }
+    }
+
+    private bool _loading = true;
+    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<SeasonPassListItem> _passes = [];
+
+    public int SelectedSeasonId { get; set; }
+
+    private string _sortCol = "buyer";
+    private bool _sortAsc = true;
+    private string _search = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
+            ? id
+            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        await ReloadPassesAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadPassesAsync()
+    {
+        AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
+        _passes = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
+        _tiers = SelectedSeasonId > 0 ? await PriceTiers.GetBySeasonAsync(SelectedSeasonId) : [];
+    }
+
+    private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+    private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
+    private IEnumerable<SeasonPassListItem> Sorted()
+    {
+        var src = Filtered();
+        IEnumerable<SeasonPassListItem> q = _sortCol switch
+        {
+            "category" => src.OrderBy(p => p.CategoryName),
+            "price" => src.OrderBy(p => p.Price),
+            "status" => src.OrderBy(p => p.Status),
+            "visits" => src.OrderBy(p => p.EventVisits),
+            "created" => src.OrderBy(p => p.CreatedAt),
+            "bundle" => src.OrderBy(p => p.Reference ?? "￿"),
+            _ => src.OrderBy(p => p.BuyerSortKey),
+        };
+        return _sortAsc ? q : q.Reverse();
+    }
+
+    private string _bundleFilter = "";
+
+    private IEnumerable<SeasonPassListItem> Filtered()
+    {
+        var src = string.IsNullOrEmpty(_bundleFilter)
+            ? _passes
+            : _passes.Where(p => string.Equals(p.Reference, _bundleFilter, StringComparison.Ordinal));
+        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return terms.Length == 0
+            ? src
+            : src.Where(p => terms.All(t => Haystack(p).Contains(t, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static string Haystack(SeasonPassListItem p) => string.Join(' ', new[]
+    {
+        AdminFormat.TicketNo(p.Uuid), p.BuyerName ?? "", p.Email ?? "", p.Reference ?? "",
+        p.CategoryName, StatusLabel(p.Status), p.PaymentState ?? "",
+        p.OrderNumber ?? "", p.Price.ToString("N2")
+    });
+
+    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
+    {
+        var today = SwissTime.Today;
+        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
+            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
+    }
+
+    private static int? OnlineMarker(SeasonPassListItem p) => p.OrderNumber is null ? null : 0;
+
+    private static readonly TicketStatus[] StatusOptions = [TicketStatus.Valid, TicketStatus.Cancelled];
+
+    private async Task SaveStatusAsync(SeasonPassListItem p, TicketStatus status)
+    {
+        var pass = await Passes.GetByUuidAsync(p.Uuid);
+        if (pass is null) return;
+        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, pass.Price, status, null, null, null));
+        await ReloadPassesAsync();
+    }
+
+    private IReadOnlyList<int> MainTierIds => _tiers.Where(t => !t.IsPromo).Select(t => t.Id).ToList();
+    private string TierName(int id) => _tiers.FirstOrDefault(t => t.Id == id)?.Name ?? "–";
+    private int MainTierId(SeasonPassListItem p) =>
+        _tiers.FirstOrDefault(t => !t.IsPromo && t.Name == p.CategoryName)?.Id
+        ?? (p.TierId is { } tid ? (_tiers.FirstOrDefault(t => t.Id == tid)?.PromoOfTierId ?? tid) : MainTierIds.FirstOrDefault());
+
+    private async Task SaveTierAsync(SeasonPassListItem p, int tierId)
+    {
+        var pass = await Passes.GetByUuidAsync(p.Uuid);
+        if (pass is null) return;
+        await PassEdit.HandleAsync(new EditSeasonPass.Command(p.Uuid, pass.Price, pass.Status, tierId, null, null));
+        await ReloadPassesAsync();
+    }
+
+    private SeasonPassListItem? _visitsPass;
+    private void OpenVisits(SeasonPassListItem p) => _visitsPass = p;
+    private void CloseVisits() => _visitsPass = null;
+
+    private string SelectedSeasonName => _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
+
+    private IEnumerable<string> Bundles() =>
+        _passes.Where(p => !string.IsNullOrEmpty(p.Reference)).Select(p => p.Reference!).Distinct().OrderBy(r => r);
+
+    private bool _showImport;
+    private bool _importSaving;
+    private string? _importFileName;
+    private string? _importError;
+    private string _importReference = "";
+    private int _importTierId;
+    private IReadOnlyList<TicketImportRow> _importRows = [];
+    private IReadOnlyList<string> _importWarnings = [];
+    private IReadOnlyList<string> _importErrors = [];
+    private TicketImportTable? _importTable;
+    private Dictionary<string, int> _map = new();
+    private bool _showMapping;
+
+    private void OpenImport()
+    {
+        _importFileName = null;
+        _importReference = "";
+        _importTierId = _tiers.FirstOrDefault(t => !t.IsPromo)?.Id ?? 0;
+        _importRows = [];
+        _importWarnings = [];
+        _importErrors = [];
+        _importError = null;
+        _importTable = null;
+        _map = new();
+        _showMapping = false;
+        _showImport = true;
+    }
+    private void CloseImport() { if (!_importSaving) _showImport = false; }
+
+    private async Task OnImportFileAsync(InputFileChangeEventArgs e)
+    {
+        _importError = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+
+            var table = TicketImportCsv.ReadTable(buffer.ToArray(), e.File.Name);
+            _importFileName = e.File.Name;
+            _importTable = table;
+            _map = new Dictionary<string, int>(table.AutoMap);
+
+            if (table.Columns.Count == 0 || table.Rows.Count == 0)
+            {
+                _importRows = [];
+                _importWarnings = [];
+                _importErrors = ["Keine Datenzeilen gefunden. Bitte prüfe die Datei."];
+                _showMapping = false;
+                return;
+            }
+
+            if (TicketImportCsv.EssentialMapped(_map))
+            {
+                ApplyMapping();
+            }
+            else
+            {
+                _importRows = [];
+                _importWarnings = [];
+                _importErrors = [];
+                _importError = "Spalten konnten nicht automatisch erkannt werden. Bitte unten von Hand zuordnen.";
+                _showMapping = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _importFileName = null;
+            _importTable = null;
+            _importRows = [];
+            _importWarnings = [];
+            _importErrors = [];
+            _importError = $"Datei konnte nicht gelesen werden: {ex.Message}";
+        }
+    }
+
+    private int MapValue(string key) => _map.TryGetValue(key, out var idx) ? idx : -1;
+
+    private void SetMap(string key, string? value)
+    {
+        if (int.TryParse(value, out var idx) && idx >= 0) _map[key] = idx;
+        else _map.Remove(key);
+    }
+
+    private void ApplyMapping()
+    {
+        if (_importTable is null) return;
+        _importError = null;
+        var result = TicketImportCsv.BuildRows(_importTable, _map);
+        _importRows = result.Rows;
+        _importWarnings = result.Warnings;
+        _importErrors = result.Errors;
+        _showMapping = false;
+    }
+
+    private async Task RunImportAsync()
+    {
+        _importError = null;
+        if (SelectedSeasonId <= 0) { _importError = "Bitte zuerst eine Saison wählen."; return; }
+        if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte ein Bundle angeben."; return; }
+        if (_importErrors.Count > 0) { _importError = "Bitte zuerst die Fehler in der Datei beheben."; return; }
+        if (_importRows.Count == 0) { _importError = "Bitte eine Datei mit mindestens einer Zeile wählen."; return; }
+        _importSaving = true;
+        try
+        {
+            await PassImport.HandleAsync(new ImportSeasonPasses.Command(SelectedSeasonId, _importRows, _importReference.Trim(),
+                _importTierId > 0 ? _importTierId : null, Identity.Name, Identity.Email));
+            _showImport = false;
+            await ReloadPassesAsync();
+        }
+        catch (DomainException ex) { _importError = ex.Message; }
+        finally { _importSaving = false; }
+    }
+
+    private bool _showExport;
+    private readonly HashSet<string> _exportSel = [];
+    private void OpenExport() { _exportSel.Clear(); _showExport = true; }
+    private void CloseExport() => _showExport = false;
+    private void ToggleExport(string bundle, bool on) { if (on) _exportSel.Add(bundle); else _exportSel.Remove(bundle); }
+    private string ExportUrl => _exportSel.Count == 0
+        ? $"/admin/season-passes/season/{SelectedSeasonId}/passes.csv"
+        : $"/admin/season-passes/season/{SelectedSeasonId}/passes.csv?bundles={Uri.EscapeDataString(string.Join(",", _exportSel))}";
+
+    private static string StatusLabel(TicketStatus status) => status switch
+    {
+        TicketStatus.Valid => "Gültig",
+        TicketStatus.Cancelled => "Storniert",
+        TicketStatus.Blocked => "Gesperrt",
+        _ => status.ToString()
+    };
+
+    private IReadOnlyList<PriceTier> _tiers = [];
+    private bool _showCreate;
+    private bool _creating;
+    private int _newTierId;
+    private decimal _newPrice;
+    private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
+    private PersonForm _newPerson = new();
+    private string _newReference = "";
+    private string? _createError;
+
+    private void OnNewPriceChanged()
+    {
+        _newPrice = decimal.Round(_newPrice, 2);
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(_newPrice);
+        if (!choices.Contains(_newPaymentSource)) _newPaymentSource = choices[0];
+    }
+
+    private static PaymentSource ClampPaymentSource(PaymentSource source, decimal price)
+    {
+        var choices = PaymentSourceExtensions.AdminChoicesForPrice(price);
+        return choices.Contains(source) ? source : choices[0];
+    }
+
+    private void OpenCreate()
+    {
+        _newTierId = _tiers.FirstOrDefault(t => !t.IsPromo)?.Id ?? _tiers.FirstOrDefault()?.Id ?? 0;
+        _newPrice = 0m;
+        _newPaymentSource = PaymentSourceExtensions.AdminChoicesForPrice(0m)[0];
+        _newPerson = new PersonForm();
+        _newReference = "";
+        _createError = null;
+        _showCreate = true;
+    }
+    private void CloseCreate() { _showCreate = false; _createError = null; }
+
+    private async Task CreatePassAsync()
+    {
+        if (_creating) return;
+        if (SelectedSeasonId <= 0) { _createError = "Es ist keine Saison gewählt."; return; }
+        if (_newTierId <= 0) { _createError = "Es ist keine Stufe gewählt."; return; }
+        if (_newPrice < 0) { _createError = "Der Preis darf nicht negativ sein."; return; }
+        _creating = true;
+        _createError = null;
+        try
+        {
+            var tier = _tiers.FirstOrDefault(t => t.Id == _newTierId);
+            if (tier is null) { _createError = "Die gewählte Stufe wurde nicht gefunden."; return; }
+            var lineCategory = tier.LegacyCategory is { } lc ? (TicketCategory)lc : TicketCategory.Adult;
+            var buyer = _newPerson.ToBuyer();
+            if (buyer is null) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
+            var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
+            var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity.Email,
+                [new AdminOrderLine(OrderItemKind.SeasonPass, SelectedSeasonId, lineCategory, tier.Name, 1, _newPrice)],
+                Identity.Name, paymentSource));
+            await PassCreation.HandleAsync(new CreateSeasonPass.Command(SelectedSeasonId, _newTierId, _newPrice, order.Id, buyer,
+                string.IsNullOrWhiteSpace(_newReference) ? null : _newReference.Trim(),
+                string.IsNullOrWhiteSpace(_newPerson.Email) ? null : _newPerson.Email!.Trim(),
+                _newPerson.ToHolder(), Identity.Name, Identity.Email));
+            _showCreate = false;
+            await ReloadPassesAsync();
+        }
+        catch (DomainException ex) { _createError = ex.Message; }
+        finally { _creating = false; }
+    }
+
+    private SeasonPassListItem? _editing;
+    private decimal _editPrice;
+    private PersonForm _editPerson = new();
+    private bool _saving;
+    private string? _editError;
+
+    private Task OpenEdit(SeasonPassListItem pass)
+    {
+        _editing = pass;
+        _editPrice = decimal.Round(pass.Price, 2);
+        _editPerson = PersonForm.From(pass.Holder);
+        if (string.IsNullOrWhiteSpace(_editPerson.Email)) _editPerson.Email = pass.Email;
+        _editError = null;
+        return Task.CompletedTask;
+    }
+
+    private void CancelEdit() { _editing = null; _editError = null; }
+
+    private async Task SaveEdit()
+    {
+        if (_editing is null || _saving) return;
+        _saving = true;
+        _editError = null;
+        try
+        {
+            var pass = await Passes.GetByUuidAsync(_editing.Uuid);
+            if (pass is null) { _editError = "Diese Saisonkarte wurde nicht gefunden."; return; }
+
+            await PassEdit.HandleAsync(new EditSeasonPass.Command(_editing.Uuid, _editPrice, pass.Status, null, null, null));
+            await PassHolder.HandleAsync(new SetSeasonPassHolder.Command(_editing.Uuid, _editPerson.ToHolder()));
+
+            _editing = null;
+            await ReloadPassesAsync();
+        }
+        catch (DomainException ex) { _editError = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private SeasonPassListItem? _mailFor;
+    private string _mailSubject = "";
+    private string _mailBody = "";
+    private bool _mailSending;
+    private bool _mailSent;
+    private string? _mailError;
+
+    private void OpenMail(SeasonPassListItem p)
+    {
+        _mailFor = p;
+        _mailSubject = Mailer.DefaultSubject;
+        _mailBody = Mailer.DefaultBody;
+        _mailSent = false;
+        _mailError = null;
+    }
+
+    private void CloseMail() { if (!_mailSending) { _mailFor = null; _mailError = null; _mailSent = false; } }
+
+    private async Task SendMail()
+    {
+        if (_mailFor is null || _mailSending || _mailSent) return;
+        _mailSending = true;
+        _mailError = null;
+        _mailSent = false;
+        try
+        {
+            var result = await SendToAsync(_mailFor, _mailSubject, _mailBody);
+            if (!result.Success)
+            {
+                _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
+                return;
+            }
+            _mailSent = true;
+            _mailSending = false;
+            StateHasChanged();
+            await Task.Delay(1400);
+            _mailFor = null;
+            _mailSent = false;
+        }
+        catch (Exception ex) { _mailError = ex.Message; }
+        finally { _mailSending = false; }
+    }
+
+    private async Task<EmailSendResult> SendToAsync(SeasonPassListItem item, string subject, string body)
+    {
+        var pass = await Passes.GetByUuidAsync(item.Uuid);
+        if (pass is null) return new EmailSendResult(false, "Diese Saisonkarte wurde nicht gefunden.");
+        if (string.IsNullOrWhiteSpace(pass.Email)) pass.SetEmail(item.Email);
+        return await PassMail.HandleAsync(new SendSeasonPassMail.Command(pass, item.CategoryName, subject, body));
+    }
+
+    private bool _showBulk;
+    private string _bulkBundle = "";
+    private string _bulkSubject = "";
+    private string _bulkBody = "";
+    private bool _bulkSending;
+    private string? _bulkError;
+    private BulkResult? _bulkResult;
+
+    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<SeasonPassListItem> NoEmail);
+
+    private List<SeasonPassListItem> BundleCards() =>
+        _passes.Where(p => p.Status != TicketStatus.Cancelled && p.Reference == _bulkBundle).ToList();
+
+    private int BundleWithEmail => BundleCards().Count(p => p.HasEmail);
+    private int BundleWithoutEmail => BundleCards().Count(p => !p.HasEmail);
+
+    private void OpenBulk()
+    {
+        _bulkBundle = Bundles().FirstOrDefault() ?? "";
+        _bulkSubject = Mailer.DefaultSubject;
+        _bulkBody = Mailer.DefaultBody;
+        _bulkResult = null;
+        _bulkError = null;
+        _showBulk = true;
+    }
+
+    private void CloseBulk() { if (!_bulkSending) { _showBulk = false; _bulkError = null; _bulkResult = null; } }
+
+    private async Task SendBulk()
+    {
+        if (_bulkSending || string.IsNullOrWhiteSpace(_bulkBundle)) return;
+        _bulkSending = true;
+        _bulkError = null;
+        _bulkResult = null;
+        try
+        {
+            var targets = BundleCards();
+            var noEmail = targets.Where(p => !p.HasEmail).ToList();
+            var enqueued = 0;
+            var failed = 0;
+            foreach (var p in targets.Where(p => p.HasEmail))
+            {
+                try
+                {
+                    var result = await SendToAsync(p, _bulkSubject, _bulkBody);
+                    if (result.Success) enqueued++;
+                    else failed++;
+                }
+                catch { failed++; }
+            }
+            _bulkResult = new BulkResult(enqueued, failed, noEmail);
+        }
+        catch (Exception ex) { _bulkError = ex.Message; }
+        finally { _bulkSending = false; }
+    }
+}

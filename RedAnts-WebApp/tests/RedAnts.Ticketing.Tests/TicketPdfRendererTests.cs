@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 using QuestPDF.Infrastructure;
-using RedAnts.Features.Ticketing.Tickets;
-using RedAnts.Infrastructure.Ticketing.Tickets;
+using RedAnts.Ticketing.Features.Tickets;
+using RedAnts.Ticketing.Infrastructure.Tickets;
 using Xunit;
 
 namespace RedAnts.Ticketing.Tests;
