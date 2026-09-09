@@ -263,6 +263,10 @@
                                 <div class="se-songrow @(sg == song ? "sel" : "")">
                                     <button type="button" class="se-songrow-main" @onclick="() => SelectSong(sg)">
                                         <span class="se-songrow-nr">@(idx + 1)</span>
+                                        @if (SongCover(sg) is { } cov)
+                                        {
+                                            <img class="se-songrow-cover" src="@cov" alt="" />
+                                        }
                                         <span class="se-songrow-name">@SongEditLabel(sg)</span>
                                         <span class="se-songrow-cue">@Clock(sg.StartSec)@(sg.DurationSec is { } d ? " – " + Clock(d) : "")</span>
                                     </button>
@@ -649,6 +653,7 @@
         _editSong = node.Songs.Count > 0 ? node.Songs[0] : null;
         _ = JS.InvokeVoidAsync("showEditStop");
         if (_editSong is { } s0) _ = RefreshSpotifyInfoAsync(s0);
+        _ = PreloadSongTracksAsync(node);
     }
 
     private static bool IsTileValid(EditButton n) =>
@@ -694,11 +699,41 @@
         (n.Songs[idx], n.Songs[j]) = (n.Songs[j], n.Songs[idx]);
     }
 
-    private static string SongEditLabel(EditSound s)
+    private readonly Dictionary<string, SpotifyTrack> _songTracks = new(StringComparer.OrdinalIgnoreCase);
+
+    private string? SongCover(EditSound s) =>
+        s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref)
+        && _songTracks.TryGetValue(s.Ref, out var t) && !string.IsNullOrEmpty(t.CoverUrl)
+            ? t.CoverUrl
+            : null;
+
+    private async Task PreloadSongTracksAsync(EditButton node)
+    {
+        if (!Search.Configured) return;
+        foreach (var s in node.Songs.ToList())
+        {
+            if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref)) continue;
+            if (_songTracks.ContainsKey(s.Ref)) continue;
+            if (ShowSpotifyLink.Parse(s.Ref)?.Kind != "track") continue;
+            try
+            {
+                if (await Search.GetTrackAsync(s.Ref) is { } t)
+                {
+                    _songTracks[s.Ref] = t;
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
+
+    private string SongEditLabel(EditSound s)
     {
         if (string.IsNullOrWhiteSpace(s.Ref)) return "— leer —";
         if (s.Kind == SoundKind.Spotify)
         {
+            if (_songTracks.TryGetValue(s.Ref, out var t) && !string.IsNullOrWhiteSpace(t.Name))
+                return string.IsNullOrWhiteSpace(t.Artist) ? t.Name : $"{t.Name} · {t.Artist}";
             var p = ShowSpotifyLink.Parse(s.Ref);
             return p is { } v ? $"Spotify · {v.Kind}" : "Spotify";
         }
@@ -1084,7 +1119,11 @@
         try
         {
             var p = ShowSpotifyLink.Parse(s.Ref);
-            if (p?.Kind == "track") _trackInfo = await Search.GetTrackAsync(s.Ref);
+            if (p?.Kind == "track")
+            {
+                _trackInfo = await Search.GetTrackAsync(s.Ref);
+                if (_trackInfo is { } tr) _songTracks[s.Ref] = tr;
+            }
             else if (p is not null) _ctxInfo = await Search.GetContextAsync(s.Ref);
         }
         catch { }
@@ -1417,7 +1456,7 @@
     .se-ct-open { position: absolute; bottom: 2px; left: 3px; appearance: none; border: none; background: rgba(0,0,0,0.35); color: #fff; border-radius: 5px; font-size: min(14cqmin, 0.6rem); padding: 0 4px; cursor: pointer; }
 
     .se-editwrap { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 20px; }
-    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 22px; width: min(96vw, 900px); max-height: 92vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
+    .se-editcard { position: relative; background: var(--ra-panel); border: 1px solid var(--ra-line); border-radius: 20px; padding: 22px; width: min(96vw, 1180px); max-height: 90vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
     .se-editclose { position: absolute; top: 14px; right: 14px; appearance: none; border: none; background: var(--ra-panel2); color: var(--ra-text); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
     .se-editclose:hover { background: #3a3a45; }
     .se-editdel { margin-top: 18px; width: 100%; }
@@ -1498,7 +1537,7 @@
     .se-prof-btns { display: flex; gap: 8px; margin-bottom: 12px; }
     .se-prof-btns .se-btn { flex: 1; }
 
-    .se-editbody { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+    .se-editbody { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 18px; align-items: start; }
     .se-editbody .se-col { min-width: 0; }
     @@media (max-width: 720px) { .se-editbody { grid-template-columns: 1fr; } }
 
@@ -1513,11 +1552,12 @@
     .se-redirects { margin: 6px 0 0; padding-left: 1.1rem; }
     .se-redirects code { background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 6px; padding: 0.1rem 0.4rem; word-break: break-all; }
 
-    .se-songlist { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+    .se-songlist { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
     .se-songrow { display: flex; align-items: center; gap: 6px; }
     .se-songrow.sel .se-songrow-main { border-color: var(--ra-red); background: var(--ra-panel2); }
     .se-songrow-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; appearance: none; cursor: pointer; background: var(--ra-in); border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.5rem 0.7rem; color: var(--ra-text); font: inherit; }
     .se-songrow-nr { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--ra-red); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; }
+    .se-songrow-cover { flex: 0 0 auto; width: 1.75rem; height: 1.75rem; border-radius: 4px; object-fit: cover; }
     .se-songrow-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; text-transform: none; }
     .se-songrow-cue { flex: 0 0 auto; color: var(--ra-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
     .se-songh { margin: 16px 0 8px; }
