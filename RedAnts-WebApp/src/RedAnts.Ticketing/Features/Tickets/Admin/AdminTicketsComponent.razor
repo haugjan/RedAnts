@@ -189,7 +189,7 @@
                                     <button type="button" class="ta-visits-link" @onclick="() => _visitsFor = t">Besuche</button>
                                 </td>
                                 <td class="ta-col-actions">
-                                    <button type="button" class="ta-icon-btn" title="@(HasEmail(t) ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!HasEmail(t))" @onclick="() => OpenMailAsync(t)">✉</button>
+                                    <button type="button" class="ta-icon-btn" title="@(HasEmail(t) ? "E-Mail senden" : "Keine E-Mail hinterlegt")" disabled="@(!HasEmail(t))" @onclick="() => _mailFor = t">✉</button>
                                     <button type="button" class="ta-icon-btn" title="Bearbeiten" @onclick="() => OpenEdit(t)">✎</button>
                                     <button type="button" class="ta-icon-btn" title="Als PDF drucken" @onclick="() => OpenSinglePrint(t.Uuid)">🖨</button>
                                     @if (Identity?.IsAdmin == true)
@@ -540,32 +540,7 @@
 
 @if (_mailFor is not null)
 {
-    <div class="ta-overlay" @onmousedown="CloseMail">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Spielticket senden</h2>
-            <p class="ta-modal-sub">@(_mailFor.Holder?.DisplayName ?? AdminFormat.TicketNo(_mailFor.Uuid)) · @_mailFor.Holder?.Email</p>
-
-            <div class="ta-field">
-                <label class="ta-label" for="etMailSubject">Betreff</label>
-                <input id="etMailSubject" class="ta-input" type="text" maxlength="200" @bind="_mailSubject" />
-            </div>
-            <div class="ta-field">
-                <label class="ta-label" for="etMailBody">Text</label>
-                <textarea id="etMailBody" class="ta-input ta-textarea" @bind="_mailBody"></textarea>
-                <p class="ta-hint">Platzhalter: {Name}, {Anlass}, {Datum}. Markdown wird unterstützt. QR-Code, Online-Ticket und PDF-Link werden automatisch angehängt.</p>
-            </div>
-
-            @if (_mailSent) { <div class="ta-flash">E-Mail wurde in den Versand gegeben.</div> }
-            @if (!string.IsNullOrEmpty(_mailError)) { <div class="ta-modal-error">@_mailError</div> }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseMail" disabled="@_mailSending">Schliessen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="SendMail" disabled="@(_mailSending || _mailSent)">
-                    @(_mailSent ? "Gesendet ✓" : _mailSending ? "Sendet …" : "Senden")
-                </button>
-            </div>
-        </div>
-    </div>
+    <SendEventTicketMailDialog Ticket="_mailFor" OnClosed="() => _mailFor = null" />
 }
 
 @if (_showBulk)
@@ -634,39 +609,8 @@
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private EventTicketRow? _mailFor;
-    private string _mailSubject = "";
-    private string _mailBody = "";
-    private bool _mailSending;
-    private bool _mailSent;
-    private string? _mailError;
 
     private static bool HasEmail(EventTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
-
-    private async Task OpenMailAsync(EventTicketRow t)
-    {
-        var defaults = await MailDefaults.HandleAsync(new GetEventTicketMailDefaults.Query());
-        _mailFor = t;
-        _mailSubject = defaults.Subject;
-        _mailBody = defaults.Body;
-        _mailSent = false;
-        _mailError = null;
-    }
-
-    private void CloseMail() { if (!_mailSending) { _mailFor = null; _mailError = null; } }
-
-    private async Task SendMail()
-    {
-        if (_mailFor is null) return;
-        _mailSending = true;
-        _mailError = null;
-        try
-        {
-            var result = await SendOneAsync(_mailFor, _mailSubject, _mailBody);
-            if (result.Success) { _mailSent = true; await Task.Delay(1400); _mailFor = null; }
-            else _mailError = result.Error;
-        }
-        finally { _mailSending = false; }
-    }
 
     private Task<EmailSendResult> SendOneAsync(EventTicketRow t, string subject, string body) =>
         Mails.HandleAsync(new SendEventTicketMail.Command(t.Uuid, subject, body));
