@@ -1,0 +1,47 @@
+<div class="ta-overlay" @onmousedown="Close">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Saisonkarten exportieren</h2>
+        <p class="ta-modal-sub">Ohne Auswahl werden alle Saisonkarten der Saison exportiert. Mehrfachauswahl möglich.</p>
+
+        <div class="ta-field">
+            <label class="ta-label">Bundle</label>
+            @if (Bundles.Count == 0)
+            {
+                <p class="ta-muted-text">Keine Bundles vorhanden – es werden alle Saisonkarten exportiert.</p>
+            }
+            else
+            {
+                <div class="ta-export-list">
+                    @foreach (var b in Bundles)
+                    {
+                        <label class="ta-export-item">
+                            <input type="checkbox" checked="@_selected.Contains(b)"
+                                   @onchange="e => Toggle(b, (bool)(e.Value ?? false))" /> @b
+                        </label>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Abbrechen</button>
+            <a class="ta-btn ta-btn-primary" href="@Url" target="_blank" rel="noopener" @onclick="Close">Herunterladen</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int SeasonId { get; set; }
+    [Parameter] public IReadOnlyList<string> Bundles { get; set; } = [];
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private readonly HashSet<string> _selected = [];
+
+    private void Toggle(string bundle, bool on) { if (on) _selected.Add(bundle); else _selected.Remove(bundle); }
+
+    private string Url => _selected.Count == 0
+        ? $"/admin/season-passes/season/{SeasonId}/passes.csv"
+        : $"/admin/season-passes/season/{SeasonId}/passes.csv?bundles={Uri.EscapeDataString(string.Join(",", _selected))}";
+
+    private Task Close() => OnClosed.InvokeAsync();
+}
