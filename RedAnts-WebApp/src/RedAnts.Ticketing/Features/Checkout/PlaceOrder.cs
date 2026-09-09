@@ -1,6 +1,5 @@
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Admission;
 using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Orders;
 using RedAnts.Ticketing.Features.Tickets;
@@ -30,8 +29,7 @@ public static class PlaceOrder
         ICartRepository carts,
         IOrderRepository orders,
         IOrderLog orderLog,
-        IEventConversionRuleRepository conversionRules,
-        IOccupancyReader occupancy,
+        CheckoutEligibility eligibility,
         ISeasonAddOnRepository seasonAddOns,
         IPayrexxGateway payrexx,
         IPublicBaseUrl publicUrl,
@@ -46,15 +44,8 @@ public static class PlaceOrder
         public async Task<Result> HandleAsync(Command command)
         {
             var cart = command.Cart ?? carts.Load();
-            if (cart.IsEmpty) return new Result.Denied("Der Warenkorb ist leer.", true);
-
-            foreach (var eventId in cart.EventIds)
-                if ((await occupancy.GetAsync(eventId)).Full)
-                    return new Result.Denied("Abendkasse geschlossen: Die Halle ist voll. Es können keine Tickets mehr gekauft werden.", true);
-
-            foreach (var eventId in cart.EventIds.Where(cart.HasRegularTicketsFor))
-                if (await conversionRules.GetConversionOnlyAsync(eventId))
-                    return new Result.Denied("Für einen Anlass im Warenkorb sind normale Ticketkäufe nicht möglich (nur Kartenumwandlung). Bitte das betroffene Ticket entfernen.", true);
+            if (await eligibility.EvaluateAsync(cart, command.Source) is CheckResult.Denied blocked)
+                return new Result.Denied(blocked.Cause.Message, blocked.Cause is not CheckoutDenied.ExpressUnavailable);
 
             if (string.IsNullOrWhiteSpace(command.Billing.Phone) && await RequiresMobileNumberAsync(cart))
                 return new Result.Denied("Für die gewählte Zusatzoption ist deine Mobilnummer zwingend. Bitte gib sie an.", false);

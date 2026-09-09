@@ -44,10 +44,14 @@ internal sealed class CheckoutFixture
 
     public CapacityReservation Reservation => new(EventPrices, SeasonPrices, Usage, NullLogger<CapacityReservation>.Instance);
 
+    public CheckoutEligibility Eligibility => new(Admission, ConversionRules);
+
+    public CanCheckout.Handler CanCheckout => new(Carts, Eligibility);
+
     public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, SeasonAddOns,
         Mailer, new StubPublicBaseUrl(), OrderItems, Newsletter, new EmptyIssuedTickets(), UnitOfWork, Reservation, NullLogger<OrderFulfillment>.Instance);
 
-    public PlaceOrder.Handler PlaceOrder => new(Carts, Orders, OrderLog, ConversionRules, Admission, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
+    public PlaceOrder.Handler PlaceOrder => new(Carts, Orders, OrderLog, Eligibility, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
         new StubOrderTokens(), UnitOfWork, Reservation, Fulfillment, NullLogger<PlaceOrder.Handler>.Instance);
 
     public ConfirmPayment.Handler ConfirmPayment => new(Orders, Payrexx, Fulfillment, Reservation, OrderLog, NullLogger<ConfirmPayment.Handler>.Instance);

@@ -28,6 +28,7 @@ public static class TicketingFeatures
         typeof(ClearCart.Handler),
         typeof(GetQuickBuyCart.Handler),
         typeof(PlaceOrder.Handler),
+        typeof(CanCheckout.Handler),
         typeof(ConfirmPayment.Handler),
         typeof(CancelDraftOrder.Handler),
         typeof(ExpireDraftOrders.Handler),
@@ -162,6 +163,7 @@ public static class TicketingFeatures
     public static IReadOnlyList<Type> Steps { get; } =
     [
         typeof(CapacityReservation),
+        typeof(CheckoutEligibility),
         typeof(OrderFulfillment),
         typeof(TicketScanning),
         typeof(WebTicketResolution)

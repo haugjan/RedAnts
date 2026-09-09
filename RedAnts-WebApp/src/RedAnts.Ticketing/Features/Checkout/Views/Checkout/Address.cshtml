@@ -22,6 +22,11 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
+@if (Model.Blocked is not null)
+{
+    <div class="alert alert-warning" role="alert">@Model.Blocked</div>
+}
+
 <div class="row g-4">
     <div class="col-lg-7">
         <form method="post" action="/checkout" class="card p-4">
@@ -107,7 +112,7 @@
             <p class="text-muted small mt-3 mb-0">Alle Preise verstehen sich ohne MwSt. Der Verein ist nicht mehrwertsteuerpflichtig.</p>
 
             <div class="d-flex justify-content-end mt-4">
-                <button type="submit" class="btn btn-danger">Kostenpflichtig bestellen</button>
+                <button type="submit" class="btn btn-danger" disabled="@(Model.Blocked is not null)">Kostenpflichtig bestellen</button>
             </div>
         </form>
     </div>

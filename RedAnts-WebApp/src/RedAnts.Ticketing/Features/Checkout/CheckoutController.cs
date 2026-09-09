@@ -7,6 +7,7 @@ namespace RedAnts.Ticketing.Features.Checkout;
 
 public sealed class CheckoutController(
     GetCart.Handler getCart,
+    CanCheckout.Handler canCheckout,
     GetCheckoutSettings.Handler getSettings,
     VerifyCaptcha.Handler verifyCaptcha,
     FindCheckoutOrder.Handler findOrder,
@@ -244,6 +245,7 @@ public sealed class CheckoutController(
             PayrexxEnabled = settings.PayrexxEnabled,
             TurnstileSiteKey = settings.TurnstileSiteKey,
             Error = error,
+            Blocked = await BlockedReasonAsync(CheckoutSource.Checkout),
             MobileRequired = current.RequiresMobileNumber
         });
     }
@@ -257,10 +259,14 @@ public sealed class CheckoutController(
             PayrexxEnabled = settings.PayrexxEnabled,
             TurnstileSiteKey = settings.TurnstileSiteKey,
             Error = error,
+            Blocked = await BlockedReasonAsync(CheckoutSource.Express),
             Email = email,
             Name = name
         });
     }
+
+    private async Task<string?> BlockedReasonAsync(CheckoutSource source) =>
+        await canCheckout.HandleAsync(new CanCheckout.Check(source)) is CheckResult.Denied denied ? denied.Cause.Message : null;
 
     private Task<bool> CaptchaPassesAsync() =>
         verifyCaptcha.HandleAsync(new VerifyCaptcha.Query(

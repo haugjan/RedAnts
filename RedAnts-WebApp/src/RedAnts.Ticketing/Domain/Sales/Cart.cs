@@ -70,6 +70,25 @@ public sealed class CartLine
 
 public sealed record TierDemand(int TierId, int Quantity, bool IsConversion = false);
 
+public sealed record CheckoutContext(IReadOnlySet<int> FullEvents, IReadOnlySet<int> ConversionOnlyEvents, bool Express)
+{
+    public static CheckoutContext None { get; } = new(new HashSet<int>(), new HashSet<int>(), false);
+}
+
+public static class CheckoutDenied
+{
+    public sealed record CartEmpty() : CheckResult.Denied.Reason("Der Warenkorb ist leer.");
+
+    public sealed record VenueFull() : CheckResult.Denied.Reason(
+        "Abendkasse geschlossen: Die Halle ist voll. Es können keine Tickets mehr gekauft werden.");
+
+    public sealed record ConversionOnly() : CheckResult.Denied.Reason(
+        "Für einen Anlass im Warenkorb sind normale Ticketkäufe nicht möglich (nur Kartenumwandlung). Bitte das betroffene Ticket entfernen.");
+
+    public sealed record ExpressUnavailable() : CheckResult.Denied.Reason(
+        "Für diesen Warenkorb ist die Expresskasse nicht möglich.");
+}
+
 public sealed class Cart
 {
     public const int MaxQuantityPerLine = 50;
@@ -100,6 +119,15 @@ public sealed class Cart
     public IReadOnlyList<int> EventIds => _items.Where(i => i.Kind == CartLineKind.EventTicket).Select(i => i.EventId).Distinct().ToList();
     public IReadOnlyList<int> SeasonIds => _items.Where(i => i.Kind == CartLineKind.SeasonPass).Select(i => i.SeasonId).Distinct().ToList();
     public bool HasRegularTicketsFor(int eventId) => _items.Any(i => i.Kind == CartLineKind.EventTicket && i.EventId == eventId && !i.IsConversion);
+
+    public CheckResult CheckoutBlocker(CheckoutContext context)
+    {
+        if (IsEmpty) return CheckResult.Deny(new CheckoutDenied.CartEmpty());
+        if (EventIds.Any(context.FullEvents.Contains)) return CheckResult.Deny(new CheckoutDenied.VenueFull());
+        if (context.ConversionOnlyEvents.Any(HasRegularTicketsFor)) return CheckResult.Deny(new CheckoutDenied.ConversionOnly());
+        if (context.Express && !QualifiesForExpress) return CheckResult.Deny(new CheckoutDenied.ExpressUnavailable());
+        return CheckResult.Allow();
+    }
 
     public IReadOnlyList<TierDemand> EventDemand(int eventId) => _items
         .Where(i => i.Kind == CartLineKind.EventTicket && i.EventId == eventId)

@@ -11,6 +11,11 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
+@if (Model.Blocked is not null)
+{
+    <div class="alert alert-warning" role="alert">@Model.Blocked</div>
+}
+
 <div class="row g-4">
     <div class="col-lg-7">
         <form method="post" action="/checkout/express" class="card p-4">
@@ -47,7 +52,7 @@
 
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <a href="/checkout" class="btn btn-link text-muted p-0">Mit Rechnungsadresse bestellen</a>
-                <button type="submit" class="btn btn-danger">Kostenpflichtig kaufen</button>
+                <button type="submit" class="btn btn-danger" disabled="@(Model.Blocked is not null)">Kostenpflichtig kaufen</button>
             </div>
         </form>
     </div>
