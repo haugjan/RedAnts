@@ -14,7 +14,7 @@ public sealed class PriceTierSeederComposer : IComposer
         => builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, PriceTierSeeder>();
 }
 
-public sealed class PriceTierSeeder(IScopeProvider scopeProvider, ISeasons seasons, IEvents events)
+public sealed class PriceTierSeeder(IScopeProvider scopeProvider, ISeasonReader seasons, IEventReader events)
     : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken cancellationToken)

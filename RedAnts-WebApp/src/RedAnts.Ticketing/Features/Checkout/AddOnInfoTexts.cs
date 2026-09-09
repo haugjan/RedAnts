@@ -4,7 +4,7 @@ namespace RedAnts.Ticketing.Features.Checkout;
 
 internal static class AddOnInfoTexts
 {
-    public static async Task<List<string>> CollectAsync(ISeasonAddOns seasonAddOns, OrderSnapshot snapshot)
+    public static async Task<List<string>> CollectAsync(ISeasonAddOnRepository seasonAddOns, OrderSnapshot snapshot)
     {
         var infos = new List<string>();
         foreach (var group in snapshot.AddOns.GroupBy(a => a.SeasonId))

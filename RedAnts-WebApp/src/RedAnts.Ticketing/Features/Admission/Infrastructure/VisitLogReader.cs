@@ -8,7 +8,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Admission.Infrastructure;
 
-public sealed class VisitLogReader(IScopeProvider scopeProvider, IEvents events) : IVisitLogReader
+public sealed class VisitLogReader(IScopeProvider scopeProvider, IEventReader events) : IVisitLogReader
 {
     public async Task<IReadOnlyDictionary<Guid, bool>> GetInsideByEventAsync(int eventId)
     {

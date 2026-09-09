@@ -25,9 +25,9 @@ public static class PlaceOrder
     public sealed class Handler(
         IOrders orders,
         IOrderLog orderLog,
-        IEventConversionRules conversionRules,
+        IEventConversionRuleRepository conversionRules,
         IOccupancyReader occupancy,
-        ISeasonAddOns seasonAddOns,
+        ISeasonAddOnRepository seasonAddOns,
         IPayrexxGateway payrexx,
         IPublicBaseUrl publicUrl,
         IOrderTokens tokens,

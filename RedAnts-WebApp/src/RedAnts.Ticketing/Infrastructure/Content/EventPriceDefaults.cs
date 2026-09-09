@@ -14,8 +14,8 @@ public sealed class EventPriceDefaultsComposer : IComposer
 }
 
 public sealed class EventPriceDefaults(
-    IEventPrices eventPrices,
-    ISeasonPrices seasonPrices) : INotificationAsyncHandler<ContentSavedNotification>
+    IEventPriceRepository eventPrices,
+    ISeasonPriceRepository seasonPrices) : INotificationAsyncHandler<ContentSavedNotification>
 {
     public async Task HandleAsync(ContentSavedNotification notification, CancellationToken cancellationToken)
     {

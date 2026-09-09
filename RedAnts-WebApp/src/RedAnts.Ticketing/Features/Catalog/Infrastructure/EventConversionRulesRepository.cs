@@ -5,7 +5,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Catalog.Infrastructure;
 
-public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider, IEventPrices eventPrices) : IEventConversionRules
+public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider, IEventPriceRepository eventPrices) : IEventConversionRuleRepository
 {
     public async Task<bool> GetConversionOnlyAsync(int eventId) =>
         (await eventPrices.GetByEventAsync(eventId))?.ConversionOnly ?? false;
@@ -16,13 +16,6 @@ public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider,
         var updated = existing?.WithConversionOnly(value)
             ?? EventPrice.Create(eventId, null, null, [], conversionOnly: value);
         await eventPrices.SaveAsync(updated);
-    }
-
-    public async Task<IReadOnlyList<EventConversionRule>> GetAllAsync()
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<EventConversionRuleRecord>("");
-        return rows.Select(Map).ToList();
     }
 
     public async Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId)
@@ -54,5 +47,5 @@ public sealed class EventConversionRulesRepository(IScopeProvider scopeProvider,
 public sealed class EventConversionRulesComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IEventConversionRules, EventConversionRulesRepository>();
+        => builder.Services.AddScoped<IEventConversionRuleRepository, EventConversionRulesRepository>();
 }

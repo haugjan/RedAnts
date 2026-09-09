@@ -80,7 +80,7 @@ public class PlaceOrderTests
     public async Task Exhausted_tier_is_denied_with_the_category_name_and_creates_no_order()
     {
         var fixture = new CheckoutFixture();
-        fixture.EventPrices.Usage[CheckoutFixture.EventId] = new CapacityUsage(9, new Dictionary<int, int> { [CheckoutFixture.AdultTier] = 9 });
+        fixture.Usage.EventUsage[CheckoutFixture.EventId] = new CapacityUsage(9, new Dictionary<int, int> { [CheckoutFixture.AdultTier] = 9 });
 
         var result = await fixture.PlaceOrder.HandleAsync(Command(CheckoutFixture.CartWithTickets(2)));
 
@@ -95,7 +95,7 @@ public class PlaceOrderTests
     public async Task Exhausted_event_quota_is_denied()
     {
         var fixture = new CheckoutFixture();
-        fixture.EventPrices.Usage[CheckoutFixture.EventId] = new CapacityUsage(99, new Dictionary<int, int>());
+        fixture.Usage.EventUsage[CheckoutFixture.EventId] = new CapacityUsage(99, new Dictionary<int, int>());
 
         var result = await fixture.PlaceOrder.HandleAsync(Command(CheckoutFixture.CartWithTickets(2)));
 
@@ -228,7 +228,7 @@ public class PlaceOrderTests
     public async Task Conversion_lines_count_against_the_event_total_only()
     {
         var fixture = new CheckoutFixture();
-        fixture.EventPrices.Usage[CheckoutFixture.EventId] = new CapacityUsage(0, new Dictionary<int, int> { [CheckoutFixture.AdultTier] = 10 });
+        fixture.Usage.EventUsage[CheckoutFixture.EventId] = new CapacityUsage(0, new Dictionary<int, int> { [CheckoutFixture.AdultTier] = 10 });
         var cart = Cart.Empty();
         cart.AddConversion(CheckoutFixture.EventId, "Match", CheckoutFixture.SeasonId, CheckoutFixture.AdultTier, "Saisonkarte", 0m,
             new ConversionOrigin(TicketType.SeasonPass, Guid.NewGuid(), "Saisonkarte", (int)TicketCategory.Adult, 1));

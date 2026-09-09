@@ -68,7 +68,7 @@
                 <tbody>
                     @foreach (var e in Sorted())
                     {
-                        var c = Counts(e.Id);
+                        var c = e.Counts;
                         <tr>
                             <td class="ta-cell-name">@e.Name</td>
                             <td>@e.Date.ToString("dd.MM.yyyy")</td>
@@ -89,12 +89,12 @@
                                                   Save="@(s => SaveStatusAsync(e, s))" />
                             </td>
                             <td class="ta-num">
-                                <InlineNumberEdit Value="@ToDecimal(Quota(e.Id))" FieldLabel="Einlasskontingent"
+                                <InlineNumberEdit Value="@ToDecimal(e.AdmissionQuota)" FieldLabel="Einlasskontingent"
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveQuotaAsync(e, v))" />
                             </td>
                             <td class="ta-num">
-                                <InlineNumberEdit Value="@ToDecimal(SalesQuota(e.Id))" FieldLabel="Verkaufskontingent"
+                                <InlineNumberEdit Value="@ToDecimal(e.SalesQuota)" FieldLabel="Verkaufskontingent"
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveSalesQuotaAsync(e, v))" />
                             </td>
@@ -268,9 +268,8 @@
 
 @if (_linkEvent is not null)
 {
-    var l = Links(_linkEvent.Id);
     <LinkOverlay Subtitle="@($"{_linkEvent.Name} · {_linkEvent.Date:dd.MM.yyyy}")"
-                 PublicUrl="@l.Public" InternUrl="@l.Intern"
+                 PublicUrl="@_linkEvent.PublicUrl" InternUrl="@_linkEvent.InternUrl"
                  PublicHint="@PublicLinkHint(_linkEvent.Status)" InternHint="@InternLinkHint(_linkEvent.Status)"
                  OnClose="() => _linkEvent = null" />
 }
@@ -278,31 +277,21 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
-    [Inject] private IEvents Events { get; set; } = default!;
-    [Inject] private IEventAdmissionReport AdmissionReport { get; set; } = default!;
+    [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
+    [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
+    [Inject] private GetEventTierPrices.Handler EventTierPrices { get; set; } = default!;
+    [Inject] private GetEventFreeEntryQuotas.Handler FreeEntryQuotas { get; set; } = default!;
     [Inject] private SetEventSalesStatus.Handler SetSalesStatus { get; set; } = default!;
     [Inject] private SetEventAdmissionQuota.Handler SetAdmissionQuota { get; set; } = default!;
     [Inject] private SetEventSalesQuota.Handler SetSalesQuota { get; set; } = default!;
     [Inject] private SetEventPricing.Handler SetPricing { get; set; } = default!;
     [Inject] private SetEventConversionRules.Handler SetConversionRules { get; set; } = default!;
     [Inject] private SetEventFreeEntryQuotas.Handler SetFreeEntryQuotas { get; set; } = default!;
-    [Inject] private IEventQuotasReader Quotas { get; set; } = default!;
-    [Inject] private IFreeEntryRepository FreeEntries { get; set; } = default!;
-    [Inject] private IEventPrices Prices { get; set; } = default!;
-    [Inject] private IPriceTiers PriceTiers { get; set; } = default!;
-    [Inject] private IEventLinkReader LinkReader { get; set; } = default!;
-    [Inject] private IEventConversionRules ConversionRules { get; set; } = default!;
-    [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;
-    private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<Event> _events = [];
-    private IReadOnlyDictionary<int, EventAdmissionCounts> _counts = new Dictionary<int, EventAdmissionCounts>();
-    private IReadOnlyDictionary<int, int?> _quotas = new Dictionary<int, int?>();
-    private IReadOnlyDictionary<int, int?> _salesQuotas = new Dictionary<int, int?>();
-    private IReadOnlyDictionary<int, EventLinks> _links = new Dictionary<int, EventLinks>();
+    private IReadOnlyList<SeasonChoice> _seasons = [];
+    private IReadOnlyList<EventForAdmin> _events = [];
 
     public int SelectedSeasonId { get; set; }
 
@@ -311,41 +300,36 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _seasons = await SeasonChoices.HandleAsync(new GetSeasonChoices.Query());
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
-            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+            : _seasons.FirstOrDefault(s => s.IsCurrent)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await ReloadEventsAsync();
         _loading = false;
     }
-
-    private EventAdmissionCounts Counts(int eventId) => _counts.TryGetValue(eventId, out var c) ? c : EventAdmissionCounts.Empty;
 
     private static string ConvTitle(EventAdmissionCounts c) =>
         c.TotalConversions == 0
             ? "Keine Ticketumwandlungen"
             : $"Umwandlungen: {c.TotalConversions} (Saisonkarte {c.ConvertedSeasonPasses}, Mitglied {c.ConvertedMemberCards}, Flex {c.ConvertedFlex}); davon bezahlt {c.ConvertedPaid}, Umwandlungs-Umsatz CHF {c.ConvertedRevenue:0.00}";
-    private int? Quota(int eventId) => _quotas.TryGetValue(eventId, out var q) ? q : null;
-    private int? SalesQuota(int eventId) => _salesQuotas.TryGetValue(eventId, out var q) ? q : null;
-    private EventLinks Links(int eventId) => _links.TryGetValue(eventId, out var l) ? l : new EventLinks(null, null);
 
-    private string PastClass(Event e, EventAdmissionCounts c)
+    private static string PastClass(EventForAdmin e, EventAdmissionCounts c)
     {
-        if (Quota(e.Id) is not { } q) return "";
+        if (e.AdmissionQuota is not { } q) return "";
         if (c.TotalRedeemed > q) return "ta-cell-over";
         return q - c.TotalRedeemed <= 10 ? "ta-cell-warn" : "";
     }
 
-    private string ExpectedClass(Event e, EventAdmissionCounts c)
+    private static string ExpectedClass(EventForAdmin e, EventAdmissionCounts c)
     {
-        if (Quota(e.Id) is not { } q) return "";
+        if (e.AdmissionQuota is not { } q) return "";
         if (c.ExpectedAdmissions > q) return "ta-cell-over";
         return PotentialAdmissions(e, c) > q ? "ta-cell-warn" : "";
     }
 
-    private string? ExpectedTitle(Event e, EventAdmissionCounts c)
+    private static string? ExpectedTitle(EventForAdmin e, EventAdmissionCounts c)
     {
-        if (Quota(e.Id) is not { } q) return null;
+        if (e.AdmissionQuota is not { } q) return null;
         if (c.ExpectedAdmissions > q)
             return $"Erwartete Zutritte ({c.ExpectedAdmissions}) über dem Einlasskontingent ({q}).";
         return PotentialAdmissions(e, c) > q
@@ -353,8 +337,8 @@
             : null;
     }
 
-    private int PotentialAdmissions(Event e, EventAdmissionCounts c) =>
-        ExpectedAdmissionsCalculator.Potential(c.ExpectedAdmissions, SalesQuota(e.Id), c.SoldSingleTickets);
+    private static int PotentialAdmissions(EventForAdmin e, EventAdmissionCounts c) =>
+        ExpectedAdmissionsCalculator.Potential(c.ExpectedAdmissions, e.SalesQuota, c.SoldSingleTickets);
 
     private string? _createEventUrl;
 
@@ -363,31 +347,18 @@
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         if (SelectedSeasonId > 0)
         {
-            _events = await Events.GetBySeasonAsync(SelectedSeasonId);
-            _counts = await AdmissionReport.GetCountsByEventAsync();
-            _quotas = await Quotas.GetAdmissionQuotasAsync();
-            _salesQuotas = await Quotas.GetSalesQuotasAsync();
-            _links = await LinkReader.GetBySeasonAsync(SelectedSeasonId);
-            _createEventUrl = await CreateLinks.CreateEventUrlAsync(SelectedSeasonId);
-            _conversionRules = (await ConversionRules.GetAllAsync())
-                .GroupBy(r => r.EventId)
-                .ToDictionary(g => g.Key, g => (IReadOnlyList<EventConversionRule>)g.ToList());
+            var result = await EventsForAdmin.HandleAsync(new GetEventsForAdmin.Query(SelectedSeasonId));
+            _events = result.Events;
+            _createEventUrl = result.CreateEventUrl;
         }
         else
         {
             _events = [];
-            _quotas = new Dictionary<int, int?>();
-            _salesQuotas = new Dictionary<int, int?>();
-            _links = new Dictionary<int, EventLinks>();
             _createEventUrl = null;
-            _conversionRules = new Dictionary<int, IReadOnlyList<EventConversionRule>>();
         }
     }
 
-    private IReadOnlyDictionary<int, IReadOnlyList<EventConversionRule>> _conversionRules =
-        new Dictionary<int, IReadOnlyList<EventConversionRule>>();
-
-    private Event? _conversionEvent;
+    private EventForAdmin? _conversionEvent;
     private bool _convSeasonRequired;
     private bool _convMemberRequired;
     private bool _convFlexRequired;
@@ -396,17 +367,15 @@
     private bool _convSaving;
     private string? _convError;
 
-    private async Task OpenConversion(Event e)
+    private void OpenConversion(EventForAdmin e)
     {
         _conversionEvent = e;
         _convError = null;
-        var rules = _conversionRules.TryGetValue(e.Id, out var list) ? list : [];
-        _convSeasonRequired = rules.Any(r => r.CardType == TicketType.SeasonPass);
-        _convMemberRequired = rules.Any(r => r.CardType == TicketType.MemberCard);
-        var flex = rules.FirstOrDefault(r => r.CardType == TicketType.SeasonSingle);
-        _convFlexRequired = flex is not null;
-        _convFlexDiscount = decimal.Round(flex?.Discount ?? 0m, 2);
-        _convOnly = await ConversionRules.GetConversionOnlyAsync(e.Id);
+        _convSeasonRequired = e.SeasonPassRequired;
+        _convMemberRequired = e.MemberCardRequired;
+        _convFlexRequired = e.FlexDiscount is not null;
+        _convFlexDiscount = e.FlexDiscount ?? 0m;
+        _convOnly = e.ConversionOnly;
     }
 
     private void CancelConversion() => _conversionEvent = null;
@@ -436,22 +405,15 @@
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private IEnumerable<Event> Sorted()
+    private IEnumerable<EventForAdmin> Sorted()
     {
-        IEnumerable<Event> q = _sortCol switch
+        IEnumerable<EventForAdmin> q = _sortCol switch
         {
             "name" => _events.OrderBy(e => e.Name),
             "status" => _events.OrderBy(e => e.Status),
             _ => _events.OrderBy(e => e.Date).ThenBy(e => e.StartTime),
         };
         return _sortAsc ? q : q.Reverse();
-    }
-
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
-    {
-        var today = SwissTime.Today;
-        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
-            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
     }
 
     private static string StatusLabel(EventStatus status) => status switch
@@ -462,8 +424,8 @@
         _ => "Entwurf"
     };
 
-    private Event? _linkEvent;
-    private void OpenLinks(Event e) => _linkEvent = e;
+    private EventForAdmin? _linkEvent;
+    private void OpenLinks(EventForAdmin e) => _linkEvent = e;
 
     private static string? PublicLinkHint(EventStatus status) => status switch
     {
@@ -485,19 +447,19 @@
 
     private static decimal? ToDecimal(int? value) => value;
 
-    private async Task SaveStatusAsync(Event e, EventStatus status)
+    private async Task SaveStatusAsync(EventForAdmin e, EventStatus status)
     {
         await SetSalesStatus.HandleAsync(new SetEventSalesStatus.Command(e.Id, status));
         await ReloadEventsAsync();
     }
 
-    private async Task SaveQuotaAsync(Event e, decimal? quota)
+    private async Task SaveQuotaAsync(EventForAdmin e, decimal? quota)
     {
         await SetAdmissionQuota.HandleAsync(new SetEventAdmissionQuota.Command(e.Id, quota is null ? null : (int)quota.Value));
         await ReloadEventsAsync();
     }
 
-    private async Task SaveSalesQuotaAsync(Event e, decimal? quota)
+    private async Task SaveSalesQuotaAsync(EventForAdmin e, decimal? quota)
     {
         await SetSalesQuota.HandleAsync(new SetEventSalesQuota.Command(e.Id, quota is null ? null : (int)quota.Value));
         await ReloadEventsAsync();
@@ -506,18 +468,18 @@
     private static readonly FreeEntryType[] FreeEntryTypes =
         Enum.GetValues<FreeEntryType>().Where(t => t != FreeEntryType.Child).ToArray();
 
-    private Event? _editing;
+    private EventForAdmin? _editing;
     private Dictionary<FreeEntryType, int?> _editQuotas = new();
     private Dictionary<FreeEntryType, int?> _editFixed = new();
     private bool _saving;
     private string? _editError;
 
-    private async Task OpenEdit(Event e)
+    private async Task OpenEdit(EventForAdmin e)
     {
         _editing = e;
-        var quota = await FreeEntries.GetQuotaAsync(e.Id);
-        _editQuotas = Enum.GetValues<FreeEntryType>().ToDictionary(t => t, t => quota.QuotaFor(t));
-        _editFixed = Enum.GetValues<FreeEntryType>().ToDictionary(t => t, t => quota.FixedFor(t) is var fixedCount && fixedCount > 0 ? fixedCount : (int?)null);
+        var quotas = await FreeEntryQuotas.HandleAsync(new GetEventFreeEntryQuotas.Query(e.Id));
+        _editQuotas = quotas.Quotas.ToDictionary(q => q.Key, q => q.Value);
+        _editFixed = quotas.FixedCounts.ToDictionary(q => q.Key, q => q.Value);
         _editError = null;
     }
 
@@ -560,27 +522,17 @@
         public DateOnly? AvailableUntil { get; set; }
     }
 
-    private Event? _pricingEvent;
-    private EventPrice? _pricingExisting;
+    private EventForAdmin? _pricingEvent;
     private List<CategoryRow> _priceRows = [];
     private bool _pricingSaving;
     private string? _pricingError;
 
-    private async Task OpenPricing(Event e)
+    private async Task OpenPricing(EventForAdmin e)
     {
         _pricingEvent = e;
         _pricingError = null;
-        _pricingExisting = await Prices.GetByEventAsync(e.Id);
-        var byTier = (_pricingExisting?.Categories ?? [])
-            .Where(c => c.TierId is not null)
-            .ToDictionary(c => c.TierId!.Value);
-        var tiers = await PriceTiers.GetBySeasonAsync(SelectedSeasonId);
-        _priceRows = tiers
-            .Where(t => t.PromoOfTierId is null)
-            .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
-            .Select(t => byTier.TryGetValue(t.Id, out var existing)
-                ? new CategoryRow { TierId = t.Id, Name = t.Name, Enabled = true, Price = decimal.Round(existing.SalePrice, 2), Quota = existing.Quota, AvailableUntil = existing.AvailableUntil }
-                : new CategoryRow { TierId = t.Id, Name = t.Name, Enabled = false, Price = 0m, Quota = null })
+        _priceRows = (await EventTierPrices.HandleAsync(new GetEventTierPrices.Query(e.Id)))
+            .Select(t => new CategoryRow { TierId = t.TierId, Name = t.Name, Enabled = t.Offered, Price = t.Price, Quota = t.Quota, AvailableUntil = t.AvailableUntil })
             .ToList();
     }
 

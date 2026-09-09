@@ -4,7 +4,7 @@ using RedAnts.Ticketing.Features.Checkout;
 
 namespace RedAnts.Ticketing.Features.Public;
 
-public sealed class NextController(IEvents events, IVenues venues, IEventPricing pricing, ICaptchaVerifier captcha, IContentUrls contentUrls) : Controller
+public sealed class NextController(IEventReader events, IVenueReader venues, IEventPricing pricing, ICaptchaVerifier captcha, IContentUrls contentUrls) : Controller
 {
     [HttpGet("/next")]
     public async Task<IActionResult> Next()

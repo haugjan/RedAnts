@@ -6,7 +6,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Admission.Infrastructure;
 
-public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEvents events) : IEventAdmissionReport
+public sealed class EventAdmissionReportReader(IScopeProvider scopeProvider, IEventReader events) : IEventAdmissionReport
 {
     public async Task<IReadOnlyDictionary<int, EventAdmissionCounts>> GetCountsByEventAsync()
     {

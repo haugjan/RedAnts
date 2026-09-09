@@ -4,7 +4,7 @@ using RedAnts.Ticketing.Features.Catalog;
 
 namespace RedAnts.Ticketing.Tests.Catalog;
 
-internal sealed class InMemorySeasonPrices : ISeasonPrices
+internal sealed class InMemorySeasonPrices : ISeasonPriceRepository
 {
     private int _nextId = 1;
 
@@ -34,17 +34,14 @@ internal sealed class InMemorySeasonPrices : ISeasonPrices
         return Task.CompletedTask;
     }
 
-    public Task<CapacityUsage> GetPassUsageAsync(int seasonId) => Task.FromResult(CapacityUsage.None);
-
     public Task SaveReservationAsync(SeasonPrice price) => Task.CompletedTask;
 }
 
-internal sealed class InMemoryPriceTiers : IPriceTiers
+internal sealed class InMemoryPriceTiers : IPriceTierRepository
 {
     private int _nextId = 100;
 
     public List<PriceTier> Stored { get; } = [];
-    public Dictionary<int, int> Sold { get; } = new();
     public int SaveCalls { get; private set; }
     public IReadOnlyList<PriceTierInput>? LastInputs { get; private set; }
 
@@ -79,8 +76,6 @@ internal sealed class InMemoryPriceTiers : IPriceTiers
         return GetBySeasonAsync(seasonId);
     }
 
-    public Task<int> GetSoldCountAsync(int tierId) => Task.FromResult(Sold.GetValueOrDefault(tierId));
-
     private PriceTier Upsert(int seasonId, int id, string name, int? minAge, int? maxAge, int? promoOfTierId, int sortOrder)
     {
         var tier = PriceTier.FromPersistence(id == 0 ? _nextId++ : id, seasonId, name, minAge, maxAge, promoOfTierId, sortOrder);
@@ -90,7 +85,14 @@ internal sealed class InMemoryPriceTiers : IPriceTiers
     }
 }
 
-internal sealed class RecordingSeasonAddOns : ISeasonAddOns
+internal sealed class StubTierSales : ITierSalesReader
+{
+    public Dictionary<int, int> Sold { get; } = new();
+
+    public Task<int> GetSoldCountAsync(int tierId) => Task.FromResult(Sold.GetValueOrDefault(tierId));
+}
+
+internal sealed class RecordingSeasonAddOns : ISeasonAddOnRepository
 {
     public List<SeasonAddOn> Existing { get; } = [];
     public int? ReplacedSeasonId { get; private set; }

@@ -332,8 +332,8 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
-    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private ISeasonReader Seasons { get; set; } = default!;
+    [Inject] private IEventReader Events { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;

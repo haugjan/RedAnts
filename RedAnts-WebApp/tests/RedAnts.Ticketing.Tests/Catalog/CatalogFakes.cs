@@ -6,7 +6,7 @@ using RedAnts.Ticketing.Features.Catalog;
 
 namespace RedAnts.Ticketing.Tests.Catalog;
 
-internal sealed class RecordingEventPrices : IEventPrices
+internal sealed class RecordingEventPrices : IEventPriceRepository
 {
     private readonly Dictionary<int, EventPrice> _prices = new();
 
@@ -26,17 +26,13 @@ internal sealed class RecordingEventPrices : IEventPrices
 
     public Task DeleteAsync(int eventPriceId) => throw new NotSupportedException();
 
-    public Task<CapacityUsage> GetUsageAsync(int eventId) => Task.FromResult(CapacityUsage.None);
-
     public Task SaveReservationAsync(EventPrice price) => throw new NotSupportedException();
 }
 
-internal sealed class RecordingConversionRules : IEventConversionRules
+internal sealed class RecordingConversionRules : IEventConversionRuleRepository
 {
     public List<(int EventId, TicketType CardType, decimal? Discount)> Rules { get; } = [];
     public Dictionary<int, bool> ConversionOnly { get; } = new();
-
-    public Task<IReadOnlyList<EventConversionRule>> GetAllAsync() => throw new NotSupportedException();
 
     public Task<IReadOnlyList<EventConversionRule>> GetByEventAsync(int eventId) => throw new NotSupportedException();
 

@@ -22,6 +22,7 @@ internal sealed class CheckoutFixture
     public StubPayrexx Payrexx { get; } = new();
     public InMemoryEventPrices EventPrices { get; } = new();
     public InMemorySeasonPrices SeasonPrices { get; } = new();
+    public StubCapacityUsage Usage { get; } = new();
     public InMemoryEventTickets Tickets { get; } = new();
     public InMemorySeasonPasses Passes { get; } = new();
     public StubConvertibleCards ConvertibleCards { get; } = new();
@@ -39,7 +40,7 @@ internal sealed class CheckoutFixture
             [SeasonCategoryPrice.FromPersistence(TicketCategory.Adult, 300m, true, 5, 20m, true, null, null, null, null, PassTier)]));
     }
 
-    public CapacityReservation Reservation => new(EventPrices, SeasonPrices, NullLogger<CapacityReservation>.Instance);
+    public CapacityReservation Reservation => new(EventPrices, SeasonPrices, Usage, NullLogger<CapacityReservation>.Instance);
 
     public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, SeasonAddOns,
         Mailer, new StubPublicBaseUrl(), OrderItems, Newsletter, new EmptyIssuedTickets(), Reservation, NullLogger<OrderFulfillment>.Instance);

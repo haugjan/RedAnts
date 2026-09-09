@@ -614,8 +614,8 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
-    [Inject] private IEvents Events { get; set; } = default!;
+    [Inject] private ISeasonReader Seasons { get; set; } = default!;
+    [Inject] private IEventReader Events { get; set; } = default!;
     [Inject] private IEventTickets Tickets { get; set; } = default!;
     [Inject] private IEventTicketBundles Bundles { get; set; } = default!;
     [Inject] private IVisitLogReader Visits { get; set; } = default!;

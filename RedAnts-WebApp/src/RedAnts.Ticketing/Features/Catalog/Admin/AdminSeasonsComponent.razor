@@ -49,7 +49,6 @@
                 <tbody>
                     @foreach (var s in _seasons)
                     {
-                        var stats = Stats(s.Id);
                         <tr>
                             <td class="ta-period">
                                 @s.StartDate.ToString("dd.MM.yyyy")
@@ -66,28 +65,28 @@
                                     </Display>
                                 </InlineSelectEdit>
                             </td>
-                            <td class="ta-num">@EventCount(s.Id)</td>
+                            <td class="ta-num">@s.EventCount</td>
                             <td class="ta-num">
-                                <InlineNumberEdit Value="@((decimal?)Quota(s.Id))" FieldLabel="Standard-Einlasskontingent"
+                                <InlineNumberEdit Value="@((decimal?)s.PassQuota)" FieldLabel="Standard-Einlasskontingent"
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveQuotaAsync(s, v))" />
                             </td>
                             <td class="ta-num">
-                                <InlineNumberEdit Value="@((decimal?)SalesQuota(s.Id))" FieldLabel="Standard-Verkaufskontingent"
+                                <InlineNumberEdit Value="@((decimal?)s.DefaultTicketSalesQuota)" FieldLabel="Standard-Verkaufskontingent"
                                                   Min="0" AllowEmpty="true" EmptyLabel="∞"
                                                   Save="@(v => SaveSalesQuotaAsync(s, v))" />
                             </td>
-                            <td class="ta-num">@stats.PassesSold</td>
-                            <td class="ta-num">@stats.TicketsSold</td>
-                            <td class="ta-num">@stats.FlexTickets</td>
-                            <td class="ta-num">@stats.Admissions</td>
+                            <td class="ta-num">@s.PassesSold</td>
+                            <td class="ta-num">@s.TicketsSold</td>
+                            <td class="ta-num">@s.FlexTickets</td>
+                            <td class="ta-num">@s.Admissions</td>
                             <td class="ta-links">
                                 <button type="button" class="ta-link-btn" title="Links anzeigen und kopieren"
                                         @onclick="() => OpenLinks(s)">🔗</button>
                             </td>
                             <td class="ta-col-actions">
                                 <button type="button" class="ta-icon-btn" title="Preise und Kontingente" @onclick="() => OpenEditAsync(s)">$</button>
-                                <button type="button" class="ta-icon-btn" title="Zusatzoptionen@(AddOnCount(s.Id) > 0 ? $" ({AddOnCount(s.Id)})" : "")" @onclick="() => OpenAddOns(s)">＋</button>
+                                <button type="button" class="ta-icon-btn" title="Zusatzoptionen@(s.AddOnCount > 0 ? $" ({s.AddOnCount})" : "")" @onclick="() => OpenAddOns(s)">＋</button>
                             </td>
                         </tr>
                     }
@@ -304,9 +303,8 @@
 
 @if (_linkSeason is not null)
 {
-    var l = Links(_linkSeason.Id);
     <LinkOverlay Subtitle="@_linkSeason.Name"
-                 PublicUrl="@l.Public" InternUrl="@l.Intern"
+                 PublicUrl="@_linkSeason.PublicUrl" InternUrl="@_linkSeason.InternUrl"
                  PublicHint="@PublicLinkHint(_linkSeason.Status)" InternHint="@InternLinkHint(_linkSeason.Status)"
                  OnClose="() => _linkSeason = null" />
 }
@@ -343,59 +341,31 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
-    [Inject] private ISeasons Seasons { get; set; } = default!;
-    [Inject] private IEvents Events { get; set; } = default!;
-    [Inject] private ISeasonPrices SeasonPrices { get; set; } = default!;
-    [Inject] private IPriceTiers PriceTiers { get; set; } = default!;
-    [Inject] private ISeasonAddOns SeasonAddOns { get; set; } = default!;
-    [Inject] private ISeasonPassPricing PassPricing { get; set; } = default!;
+    [Inject] private GetSeasonsForAdmin.Handler SeasonsForAdmin { get; set; } = default!;
+    [Inject] private GetSeasonTierPrices.Handler SeasonTierPrices { get; set; } = default!;
+    [Inject] private GetSeasonAddOns.Handler SeasonAddOns { get; set; } = default!;
+    [Inject] private GetPriceTiers.Handler PriceTiers { get; set; } = default!;
     [Inject] private SetSeasonSalesStatus.Handler SetSalesStatus { get; set; } = default!;
     [Inject] private SetSeasonPassQuota.Handler SetPassQuota { get; set; } = default!;
     [Inject] private SetSeasonTicketSalesQuota.Handler SetTicketSalesQuota { get; set; } = default!;
     [Inject] private SetSeasonPricing.Handler SetPricing { get; set; } = default!;
     [Inject] private SetSeasonAddOns.Handler SetAddOns { get; set; } = default!;
-    [Inject] private ISeasonStatsReader StatsReader { get; set; } = default!;
-    [Inject] private ISeasonLinkReader LinkReader { get; set; } = default!;
-    [Inject] private IContentCreateLinks CreateLinks { get; set; } = default!;
 
     private static readonly IReadOnlyList<SeasonStatus> _statusOptions = Enum.GetValues<SeasonStatus>();
 
     private bool _loading = true;
-    private IReadOnlyList<Season> _seasons = [];
-    private Dictionary<int, SeasonPrice?> _prices = new();
-    private Dictionary<int, int> _eventCounts = new();
-    private Dictionary<int, SeasonStats> _stats = new();
-    private IReadOnlyDictionary<int, SeasonLinks> _links = new Dictionary<int, SeasonLinks>();
+    private IReadOnlyList<SeasonForAdmin> _seasons = [];
     private string? _createSeasonUrl;
 
     protected override async Task OnInitializedAsync() => await ReloadAsync();
 
     private async Task ReloadAsync()
     {
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
-        _links = await LinkReader.GetAllAsync();
-        _createSeasonUrl = await CreateLinks.CreateSeasonUrlAsync();
-        _prices = new Dictionary<int, SeasonPrice?>();
-        _eventCounts = new Dictionary<int, int>();
-        _stats = new Dictionary<int, SeasonStats>();
-        _addOns = new Dictionary<int, IReadOnlyList<SeasonAddOn>>();
-        foreach (var s in _seasons)
-        {
-            _prices[s.Id] = await SeasonPrices.GetBySeasonAsync(s.Id);
-            _addOns[s.Id] = await SeasonAddOns.GetBySeasonAsync(s.Id);
-            var eventIds = (await Events.GetBySeasonAsync(s.Id)).Select(e => e.Id).ToList();
-            _eventCounts[s.Id] = eventIds.Count;
-            _stats[s.Id] = await StatsReader.GetAsync(s.Id, eventIds);
-        }
+        var result = await SeasonsForAdmin.HandleAsync(new GetSeasonsForAdmin.Query());
+        _seasons = result.Seasons;
+        _createSeasonUrl = result.CreateSeasonUrl;
         _loading = false;
     }
-
-    private SeasonPrice? Price(int seasonId) => _prices.GetValueOrDefault(seasonId);
-    private int? Quota(int seasonId) => Price(seasonId)?.TotalSalesQuota;
-    private int? SalesQuota(int seasonId) => Price(seasonId)?.DefaultTicketSalesQuota;
-    private int EventCount(int seasonId) => _eventCounts.GetValueOrDefault(seasonId);
-    private SeasonStats Stats(int seasonId) => _stats.GetValueOrDefault(seasonId) ?? new SeasonStats(0, 0, 0, 0);
-    private SeasonLinks Links(int seasonId) => _links.GetValueOrDefault(seasonId) ?? new SeasonLinks(null, null);
 
     private static string StatusLabel(SeasonStatus status) => status switch
     {
@@ -405,26 +375,26 @@
         _ => "Entwurf"
     };
 
-    private async Task SaveStatusAsync(Season s, SeasonStatus status)
+    private async Task SaveStatusAsync(SeasonForAdmin s, SeasonStatus status)
     {
         await SetSalesStatus.HandleAsync(new SetSeasonSalesStatus.Command(s.Id, status));
         await ReloadAsync();
     }
 
-    private async Task SaveQuotaAsync(Season s, decimal? value)
+    private async Task SaveQuotaAsync(SeasonForAdmin s, decimal? value)
     {
         await SetPassQuota.HandleAsync(new SetSeasonPassQuota.Command(s.Id, value is { } v ? (int?)Math.Round(v) : null));
         await ReloadAsync();
     }
 
-    private async Task SaveSalesQuotaAsync(Season s, decimal? value)
+    private async Task SaveSalesQuotaAsync(SeasonForAdmin s, decimal? value)
     {
         await SetTicketSalesQuota.HandleAsync(new SetSeasonTicketSalesQuota.Command(s.Id, value is { } v ? (int?)Math.Round(v) : null));
         await ReloadAsync();
     }
 
-    private Season? _linkSeason;
-    private void OpenLinks(Season s) => _linkSeason = s;
+    private SeasonForAdmin? _linkSeason;
+    private void OpenLinks(SeasonForAdmin s) => _linkSeason = s;
 
     private static string? PublicLinkHint(SeasonStatus status) => status switch
     {
@@ -439,49 +409,32 @@
         _ => "Saison ist nicht im Verkauf: der Link ist derzeit nicht aktiv."
     };
 
-    private Season? _editing;
+    private SeasonForAdmin? _editing;
     private List<TierRow> _editTiers = new();
     private bool _saving;
     private string? _editError;
 
-    private async Task OpenEditAsync(Season s)
+    private async Task OpenEditAsync(SeasonForAdmin s)
     {
         _editing = s;
-        var price = Price(s.Id);
-        var sold = await PassPricing.GetSoldCountsAsync(s.Id);
-        var tiers = await PriceTiers.GetBySeasonAsync(s.Id);
-        var priceByTier = (price?.Categories ?? [])
-            .Where(c => c.TierId is not null)
-            .ToDictionary(c => c.TierId!.Value);
-        var promoByParent = tiers.Where(t => t.PromoOfTierId is not null).ToDictionary(t => t.PromoOfTierId!.Value);
-
-        _editTiers = tiers
-            .Where(t => t.PromoOfTierId is null)
-            .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
+        _editTiers = (await SeasonTierPrices.HandleAsync(new GetSeasonTierPrices.Query(s.Id)))
             .Select(t =>
             {
-                var row = new TierRow { Id = t.Id, Name = t.Name, MinAge = t.MinAge, MaxAge = t.MaxAge, SortOrder = t.SortOrder, Sold = sold.GetValueOrDefault(t.Id) };
-                if (priceByTier.TryGetValue(t.Id, out var cp))
+                var row = new TierRow
                 {
-                    row.PassOffered = cp.PassOffered; row.PassPrice = decimal.Round(cp.PassPrice, 2); row.PassQuota = cp.PassQuota;
-                    row.PassAvailableFrom = cp.PassAvailableFrom;
-                    row.PassAvailableUntil = cp.PassAvailableUntil;
-                    row.TicketOffered = cp.TicketOffered; row.TicketPrice = decimal.Round(cp.TicketPrice, 2); row.TicketQuota = cp.TicketQuota;
-                    row.TicketAvailableUntil = cp.TicketAvailableUntil;
-                }
-                if (promoByParent.GetValueOrDefault(t.Id) is { } promo)
+                    Id = t.TierId, Name = t.Name, MinAge = t.MinAge, MaxAge = t.MaxAge, SortOrder = t.SortOrder, Sold = t.Sold,
+                    PassOffered = t.Pass.Offered, PassPrice = t.Pass.Price, PassQuota = t.Pass.Quota,
+                    PassAvailableFrom = t.Pass.AvailableFrom, PassAvailableUntil = t.Pass.AvailableUntil,
+                    TicketOffered = t.Ticket.Offered, TicketPrice = t.Ticket.Price, TicketQuota = t.Ticket.Quota,
+                    TicketAvailableUntil = t.Ticket.AvailableUntil
+                };
+                if (t.Promo is { } promo)
                 {
-                    row.HasPromo = true; row.PromoId = promo.Id; row.PromoName = promo.Name;
-                    row.PromoSold = sold.GetValueOrDefault(promo.Id);
-                    if (priceByTier.TryGetValue(promo.Id, out var pp))
-                    {
-                        row.PassPromoOffered = pp.PassOffered; row.TicketPromoOffered = pp.TicketOffered;
-                        row.PassPromoPrice = decimal.Round(pp.PassPrice, 2); row.PassPromoQuota = pp.PassQuota;
-                        row.PassPromoAvailableFrom = pp.PassAvailableFrom;
-                        row.PassPromoAvailableUntil = pp.PassAvailableUntil;
-                        row.TicketPromoPrice = decimal.Round(pp.TicketPrice, 2); row.TicketPromoQuota = pp.TicketQuota;
-                        row.TicketPromoAvailableUntil = pp.TicketAvailableUntil;
-                    }
+                    row.HasPromo = true; row.PromoId = promo.TierId; row.PromoName = promo.Name; row.PromoSold = promo.Sold;
+                    row.PassPromoOffered = promo.Pass.Offered; row.PassPromoPrice = promo.Pass.Price; row.PassPromoQuota = promo.Pass.Quota;
+                    row.PassPromoAvailableFrom = promo.Pass.AvailableFrom; row.PassPromoAvailableUntil = promo.Pass.AvailableUntil;
+                    row.TicketPromoOffered = promo.Ticket.Offered; row.TicketPromoPrice = promo.Ticket.Price; row.TicketPromoQuota = promo.Ticket.Quota;
+                    row.TicketPromoAvailableUntil = promo.Ticket.AvailableUntil;
                 }
                 return row;
             })
@@ -569,24 +522,21 @@
         public bool CanDelete => Sold == 0 && PromoSold == 0;
     }
 
-    private Dictionary<int, IReadOnlyList<SeasonAddOn>> _addOns = new();
-    private int AddOnCount(int seasonId) => _addOns.GetValueOrDefault(seasonId)?.Count ?? 0;
-
-    private Season? _editingAddOns;
+    private SeasonForAdmin? _editingAddOns;
     private List<AddOnRow> _addOnRows = new();
     private List<(int Id, string Name)> _addOnTiers = new();
     private bool _addOnSaving;
     private string? _addOnError;
 
-    private async Task OpenAddOns(Season s)
+    private async Task OpenAddOns(SeasonForAdmin s)
     {
         _editingAddOns = s;
-        _addOnTiers = (await PriceTiers.GetBySeasonAsync(s.Id))
+        _addOnTiers = (await PriceTiers.HandleAsync(new GetPriceTiers.Query(s.Id)))
             .Where(t => t.PromoOfTierId is null)
             .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
             .Select(t => (t.Id, t.Name))
             .ToList();
-        _addOnRows = (_addOns.GetValueOrDefault(s.Id) ?? [])
+        _addOnRows = (await SeasonAddOns.HandleAsync(new GetSeasonAddOns.Query(s.Id)))
             .Select(a => new AddOnRow { Label = a.Label, LongTitle = a.LongTitle ?? "", Price = decimal.Round(a.Price, 2), Active = a.Active, Scope = a.Scope,
                 InfoBefore = a.InfoBeforePurchase ?? "", InfoAfter = a.InfoAfterPurchase ?? "", AllowedTierIds = a.AllowedTierIds.ToHashSet(), PromoOnly = a.PromoOnly,
                 RequireMobileNumber = a.RequireMobileNumber })

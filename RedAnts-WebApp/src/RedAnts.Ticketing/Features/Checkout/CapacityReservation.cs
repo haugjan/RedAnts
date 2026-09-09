@@ -3,7 +3,7 @@ using RedAnts.Ticketing.Features.Catalog;
 
 namespace RedAnts.Ticketing.Features.Checkout;
 
-public sealed class CapacityReservation(IEventPrices eventPrices, ISeasonPrices seasonPrices, ILogger<CapacityReservation> logger)
+public sealed class CapacityReservation(IEventPriceRepository eventPrices, ISeasonPriceRepository seasonPrices, ICapacityUsageReader usage, ILogger<CapacityReservation> logger)
 {
     private const int Attempts = 2;
 
@@ -48,7 +48,7 @@ public sealed class CapacityReservation(IEventPrices eventPrices, ISeasonPrices 
                     ? CheckResult.Deny(new CapacityDenied.TierUnavailable(regular.TierId))
                     : CheckResult.Allow();
 
-            var result = price.Reserve(demand, await eventPrices.GetUsageAsync(eventId), SwissTime.Today);
+            var result = price.Reserve(demand, await usage.GetEventUsageAsync(eventId), SwissTime.Today);
             if (!result.IsAllowed) return result;
             try
             {
@@ -70,7 +70,7 @@ public sealed class CapacityReservation(IEventPrices eventPrices, ISeasonPrices 
             if (price is null)
                 return CheckResult.Deny(new CapacityDenied.TierUnavailable(demand.Count > 0 ? demand[0].TierId : 0));
 
-            var result = price.ReservePasses(demand, await seasonPrices.GetPassUsageAsync(seasonId), SwissTime.Today);
+            var result = price.ReservePasses(demand, await usage.GetSeasonPassUsageAsync(seasonId), SwissTime.Today);
             if (!result.IsAllowed) return result;
             try
             {

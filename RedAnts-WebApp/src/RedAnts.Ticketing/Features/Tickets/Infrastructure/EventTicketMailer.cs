@@ -14,7 +14,7 @@ public sealed class EventTicketMailer(
     IEmailSender email,
     ITicketTokens tokens,
     IQrCodeRenderer qr,
-    IEvents events,
+    IEventReader events,
     IPublicBaseUrl publicUrl,
     ITicketingMailSettings settings,
     IWebHostEnvironment environment,

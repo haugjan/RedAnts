@@ -1,14 +1,8 @@
-﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.PublishedContent
-@using RedAnts.Ticketing.Features.Catalog
-@using RedAnts.Ticketing.Features.Checkout
-@using RedAnts.Ticketing.Features.SeasonPasses
+@using RedAnts.Ticketing.Features.Catalog.Shop
 @using RedAnts.Ticketing.Features.Shared
-@using RedAnts.Ticketing.Domain.Sales
-@inject ISeasonPassPricing PassPricing
-@inject RedAnts.Ticketing.Features.Catalog.ISeasons Seasons
-@inject ISeasonAddOns SeasonAddOns
-@inject IPriceTiers PriceTiers
+@inject GetSeasonPassOffers.Handler PassOffersQuery
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
@@ -19,15 +13,9 @@
     ViewBag.PageTitle = title + " – Red Ants Winterthur";
     ViewBag.TransparentNav = true;
 
-    var passOffers = new List<(int SeasonId, string SeasonName, List<AvailableTicketCategory> Categories, List<SeasonAddOn> AddOns, Dictionary<int, int> TierBase)>();
-    foreach (var season in await Seasons.GetPublicOpenAsync())
-    {
-        var cats = (await PassPricing.GetAvailableAsync(season.Id)).Where(c => c.Available).ToList();
-        if (cats.Count == 0) continue;
-        var addOns = (await SeasonAddOns.GetBySeasonAsync(season.Id)).Where(a => a.Active).ToList();
-        var tierBase = (await PriceTiers.GetBySeasonAsync(season.Id)).ToDictionary(t => t.Id, t => t.PromoOfTierId ?? t.Id);
-        passOffers.Add((season.Id, season.Name, cats, addOns, tierBase));
-    }
+    var passOffers = (await PassOffersQuery.HandleAsync(new GetSeasonPassOffers.Query()))
+        .Where(s => s.Offers.Count > 0)
+        .ToList();
 }
 
 <main class="flexpage-main">
@@ -59,33 +47,28 @@
             {
                 <div class="pass-panel">
                     <h2 class="pass-title">@(passOffers.Count == 1 ? $"Saisonkarten {passOffers[0].SeasonName}" : "Saisonkarten")</h2>
-                    @foreach (var (seasonId, seasonName, cats, addOns, tierBase) in passOffers)
+                    @foreach (var season in passOffers)
                     {
                         <div class="pass-offer">
                             @if (passOffers.Count > 1)
                             {
                                 <div class="pass-offer-head">
-                                    <span class="pass-offer-season">@seasonName</span>
+                                    <span class="pass-offer-season">@season.SeasonName</span>
                                 </div>
                             }
                             <ul class="pass-offer-cats">
-                                @foreach (var cat in cats)
+                                @foreach (var offer in season.Offers)
                                 {
+                                    var cat = offer.Category;
+                                    var catAddOns = offer.AddOns;
                                     <li class="pass-offer-cat">
                                         @if (!string.IsNullOrWhiteSpace(cat.ActionText))
                                         {
                                             <span class="pass-offer-action">@cat.ActionText</span>
                                         }
-                                        @{
-                                            var baseTierId = tierBase.GetValueOrDefault(cat.TierId, cat.TierId);
-                                            var isPromoOffer = baseTierId != cat.TierId;
-                                            var catAddOns = addOns.Where(a =>
-                                                (a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId))
-                                                && (!a.PromoOnly || isPromoOffer)).ToList();
-                                        }
                                         <form method="post" action="/cart/add-season-pass" class="pass-add-form">
                                             @Html.AntiForgeryToken()
-                                            <input type="hidden" name="seasonId" value="@seasonId" />
+                                            <input type="hidden" name="seasonId" value="@season.SeasonId" />
                                             <input type="hidden" name="tierId" value="@cat.TierId" />
                                             <input type="hidden" name="returnUrl" value="/seasons/" />
                                             <div class="pass-offer-cat-row">
@@ -125,7 +108,7 @@
                                                     {
                                                         <label class="pass-addon">
                                                             <input type="checkbox" name="addOns" value="@a.Id" checked="@(a.Price == 0m)" />
-                                                            <span class="pass-addon-label">@(string.IsNullOrWhiteSpace(a.LongTitle) ? a.Label : a.LongTitle)@(a.Scope == AddOnScope.PerOrder ? " (einmalig pro Bestellung)" : "")</span>
+                                                            <span class="pass-addon-label">@(string.IsNullOrWhiteSpace(a.LongTitle) ? a.Label : a.LongTitle)@(a.OncePerOrder ? " (einmalig pro Bestellung)" : "")</span>
                                                             <span class="pass-addon-price">+CHF @MoneyFormat.Amount(a.Price)</span>
                                                             @if (!string.IsNullOrWhiteSpace(a.InfoBeforePurchase))
                                                             {

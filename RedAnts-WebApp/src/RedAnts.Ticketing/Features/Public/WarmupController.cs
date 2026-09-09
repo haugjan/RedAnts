@@ -10,9 +10,9 @@ public sealed class WarmupController(
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
     IDataProtectionProvider dataProtection,
-    ISeasons seasons,
-    IEvents events,
-    IVenues venues,
+    ISeasonReader seasons,
+    IEventReader events,
+    IVenueReader venues,
     IHelpers helpers,
     IContentUrls contentUrls) : Controller
 {

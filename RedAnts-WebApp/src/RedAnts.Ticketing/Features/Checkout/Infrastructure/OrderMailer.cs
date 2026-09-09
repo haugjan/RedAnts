@@ -11,9 +11,9 @@ public sealed class OrderMailer(
     IEmailSender email,
     ITicketTokens tokens,
     IQrCodeRenderer qr,
-    IEvents events,
-    ISeasons seasons,
-    IVenues venues,
+    IEventReader events,
+    ISeasonReader seasons,
+    IVenueReader venues,
     IPublicBaseUrl publicUrl,
     IWebHostEnvironment environment,
     ILogger<OrderMailer> logger) : IOrderMailer
