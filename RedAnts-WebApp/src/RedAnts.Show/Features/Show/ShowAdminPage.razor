@@ -1,4 +1,3 @@
-@using Microsoft.Extensions.Options
 @using System.Text.Json
 @using System.IO.Compression
 @using Microsoft.JSInterop
@@ -10,7 +9,6 @@
 @inject SetShowSetting.Handler SettingSave
 @inject SearchSpotify.Handler SpotifySearch
 @inject UploadShowSound.Handler SoundUpload
-@inject IOptions<ShowStorageOptions> Storage
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -586,9 +584,7 @@
         finally { _uploading = false; }
     }
 
-    private string SoundBase => string.IsNullOrWhiteSpace(Storage.Value.PublicBaseUrl)
-        ? "/_content/RedAnts.Show/show/"
-        : Storage.Value.PublicBaseUrl!.TrimEnd('/') + "/";
+    private const string SoundBase = ShowSoundDelivery.AdminBase;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 

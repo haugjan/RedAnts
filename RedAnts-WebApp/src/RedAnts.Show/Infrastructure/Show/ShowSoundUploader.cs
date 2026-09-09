@@ -1,5 +1,6 @@
 extern alias AzureId;
 using System.Text.RegularExpressions;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Options;
@@ -10,6 +11,8 @@ namespace RedAnts.Infrastructure.Show;
 
 public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> options) : IShowSoundUploader
 {
+    private const string CachePolicy = "private, max-age=31536000, immutable";
+
     private BlobContainerClient Container()
     {
         var opts = options.Value;
@@ -34,7 +37,7 @@ public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> optio
     public async Task UploadAtPathAsync(string blobPath, Stream content, string? contentType)
     {
         var container = Container();
-        await container.CreateIfNotExistsAsync(PublicAccessType.Blob);
+        await container.CreateIfNotExistsAsync(PublicAccessType.None);
         var blob = container.GetBlobClient(blobPath);
 
         using var buffer = new MemoryStream();
@@ -43,8 +46,24 @@ public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> optio
 
         await blob.UploadAsync(buffer, new BlobUploadOptions
         {
-            HttpHeaders = new BlobHttpHeaders { ContentType = string.IsNullOrWhiteSpace(contentType) ? "audio/mpeg" : contentType }
+            HttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = string.IsNullOrWhiteSpace(contentType) ? "audio/mpeg" : contentType,
+                CacheControl = CachePolicy,
+            }
         });
+    }
+
+    public async Task<ShowSoundContent?> OpenReadAsync(string blobPath)
+    {
+        var blob = Container().GetBlobClient(blobPath);
+        Response<BlobProperties> properties;
+        try { properties = await blob.GetPropertiesAsync(); }
+        catch (RequestFailedException ex) when (ex.Status == 404) { return null; }
+
+        var stream = await blob.OpenReadAsync();
+        var contentType = string.IsNullOrWhiteSpace(properties.Value.ContentType) ? "audio/mpeg" : properties.Value.ContentType;
+        return new ShowSoundContent(stream, contentType, properties.Value.LastModified, properties.Value.ETag.ToString());
     }
 
     public async Task<byte[]?> DownloadAsync(string blobPath)

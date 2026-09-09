@@ -1,9 +1,7 @@
-@using Microsoft.Extensions.Options
 @using Microsoft.AspNetCore.WebUtilities
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject NavigationManager Nav
-@inject IOptions<ShowStorageOptions> Storage
 @inject GetShowProfiles.Handler ProfilesQuery
 @inject IShowRemote Remote
 @inject IShowSettings Settings
@@ -195,9 +193,7 @@
 @code {
     private const string AppBase = "/show/";
 
-    private string SoundBase => string.IsNullOrWhiteSpace(Storage.Value.PublicBaseUrl)
-        ? "/_content/RedAnts.Show/show/"
-        : Storage.Value.PublicBaseUrl!.TrimEnd('/') + "/";
+    private const string SoundBase = ShowSoundDelivery.BoardBase;
 
     private IReadOnlyList<ShowProfile> _profiles = ShowConfig.Profiles;
     private IReadOnlyList<ShowProfile> Profiles => _profiles;

@@ -96,14 +96,14 @@ echo "==> Storage account ($STORAGE_ACCOUNT in $LOCATION, for Umbraco media)"
 az storage account create \
   --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT" \
   --location "$LOCATION" --sku Standard_LRS --kind StorageV2 \
-  --allow-blob-public-access true --min-tls-version TLS1_2
+  --allow-blob-public-access false --min-tls-version TLS1_2
 
-echo "==> Media blob container ($MEDIA_CONTAINER, public blob read for media URLs)"
+echo "==> Media blob container ($MEDIA_CONTAINER, private; media is served by the app)"
 STORAGE_CONN="$(az storage account show-connection-string \
   --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT" \
   --query connectionString -o tsv)"
 az storage container create \
-  --name "$MEDIA_CONTAINER" --public-access blob \
+  --name "$MEDIA_CONTAINER" --public-access off \
   --connection-string "$STORAGE_CONN" --output none
 
 echo "==> App settings: connection string + provider + blob media"

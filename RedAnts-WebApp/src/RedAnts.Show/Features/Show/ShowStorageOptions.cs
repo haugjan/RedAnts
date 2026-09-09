@@ -7,5 +7,4 @@ public sealed class ShowStorageOptions
     public string? AccountUrl { get; set; }
     public string? ConnectionString { get; set; }
     public string Container { get; set; } = "show";
-    public string? PublicBaseUrl { get; set; }
 }

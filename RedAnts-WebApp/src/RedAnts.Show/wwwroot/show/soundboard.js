@@ -58,7 +58,48 @@
 
   board.currentLocalId = function () { return activeId; };
 
+  let pendingReady = null;
+  let playToken = 0;
+
+  function cancelPendingReady() {
+    if (!pendingReady) return;
+    pendingReady.el.removeEventListener('loadedmetadata', pendingReady.handler);
+    pendingReady = null;
+  }
+
+  function resolveSrc(ref) {
+    return /^(https?:)?\//.test(ref) ? ref : assetBase + ref;
+  }
+
+  function isLoaded(el, src) {
+    if (!el.currentSrc) return false;
+    try { return el.currentSrc === new URL(src, location.href).href; }
+    catch (e) { return el.src === src; }
+  }
+
+  function playAt(el, src, startSec, afterStart, onFail) {
+    cancelPendingReady();
+    const token = ++playToken;
+    const begin = function () {
+      if (token !== playToken) return;
+      el.muted = false;
+      const target = startSec > 0 ? startSec : 0;
+      try { el.currentTime = target; }
+      catch (e) { if (onFail) { onFail(); return; } }
+      const p = el.play();
+      if (p && p.catch) p.catch(function () { if (onFail) onFail(); });
+      if (afterStart) afterStart();
+    };
+    if (isLoaded(el, src) && el.readyState >= 1) { begin(); return; }
+    const handler = function () { pendingReady = null; begin(); };
+    pendingReady = { el: el, handler: handler };
+    el.addEventListener('loadedmetadata', handler, { once: true });
+    if (isLoaded(el, src)) el.load(); else el.src = src;
+  }
+
   function pauseMedia() {
+    cancelPendingReady();
+    playToken++;
     if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
     if (mediaEl) { try { mediaEl.pause(); } catch {} }
   }
@@ -68,25 +109,13 @@
     spotifyId = null;
     if (player) { try { player.pause(); } catch {} }
     pauseMedia();
-    const src = /^(https?:)?\//.test(ref) ? ref : assetBase + ref;
     const el = getMediaEl();
     el.volume = volume;
     activeId = id;
     emitActive();
-    const begin = function () {
-      el.muted = false;
-      try { el.currentTime = startSec > 0 ? startSec : 0; } catch (e) {}
-      const p = el.play();
-      if (p && p.catch) p.catch(function () {});
+    playAt(el, resolveSrc(ref), startSec, function () {
       if (durationSec) activeTimer = setTimeout(function () { try { el.pause(); } catch (e) {} onLocalEnded(); }, durationSec * 1000);
-    };
-    if (el.src !== src) {
-      el.src = src;
-      if (startSec > 0) { el.addEventListener('loadedmetadata', begin, { once: true }); el.load(); }
-      else { begin(); }
-    } else {
-      begin();
-    }
+    }, onLocalEnded);
   };
 
   board.stopLocal = function () {
@@ -126,20 +155,14 @@
       } else {
         const el = getMediaEl();
         if (player) { try { player.pause(); } catch {} }
-        const src = /^(https?:)?\//.test(song.r) ? song.r : assetBase + song.r;
         el.volume = volume;
         let done = false, cut = null;
         const finish = function () { if (done) return; done = true; el.removeEventListener('ended', onEnd); if (cut) clearTimeout(cut); resolve(); };
         const onEnd = function () { finish(); };
         el.addEventListener('ended', onEnd, { once: true });
-        const begin = function () {
-          el.muted = false;
-          try { el.currentTime = song.s > 0 ? song.s : 0; } catch (e) {}
-          const p = el.play(); if (p && p.catch) p.catch(finish);
+        playAt(el, resolveSrc(song.r), song.s, function () {
           if (song.d) cut = setTimeout(function () { try { el.pause(); } catch (e) {} finish(); }, song.d * 1000);
-        };
-        if (el.src !== src) { el.src = src; if (song.s > 0) { el.addEventListener('loadedmetadata', begin, { once: true }); el.load(); } else begin(); }
-        else begin();
+        }, finish);
       }
     });
   }
