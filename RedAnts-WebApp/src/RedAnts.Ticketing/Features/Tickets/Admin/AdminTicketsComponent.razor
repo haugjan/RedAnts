@@ -58,7 +58,7 @@
                 </div>
             </div>
             <div class="ta-toolbar-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_result.Bundles.Count == 0)" @onclick="OpenExport">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_result.Bundles.Count == 0)" @onclick="() => _showExport = true">
                     Export CSV
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_bundleFilter <= 0)"
@@ -266,37 +266,7 @@
 
 @if (_showExport)
 {
-    <div class="ta-overlay" @onmousedown="CloseExport">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Spieltickets exportieren</h2>
-            <p class="ta-modal-sub">Bundle wählen (Mehrfachauswahl möglich).</p>
-            @if (_result.Bundles.Count == 0)
-            {
-                <p class="ta-muted-text">Für diesen Anlass sind keine Bundles erfasst.</p>
-            }
-            else
-            {
-                <div class="ta-export-list">
-                    @foreach (var b in _result.Bundles)
-                    {
-                        <label class="ta-export-item">
-                            <input type="checkbox" checked="@_exportSel.Contains(b.Id)"
-                                   @onchange="e => ToggleExport(b.Id, (bool)(e.Value ?? false))" />
-                            @b.Reference · @b.Category.DisplayName() · @b.TicketCount Stk.
-                        </label>
-                    }
-                </div>
-            }
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
-                @if (_exportSel.Count > 0)
-                {
-                    <a class="ta-btn ta-btn-primary" href="/admin/event-tickets/tickets.csv?ids=@string.Join(",", _exportSel)"
-                       target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
-                }
-            </div>
-        </div>
-    </div>
+    <ExportEventTicketsDialog Bundles="_result.Bundles" OnClosed="() => _showExport = false" />
 }
 
 @if (_showPrint)
@@ -572,10 +542,6 @@
     }
 
     private bool _showExport;
-    private readonly HashSet<int> _exportSel = [];
-    private void OpenExport() { _exportSel.Clear(); _showExport = true; }
-    private void CloseExport() => _showExport = false;
-    private void ToggleExport(int bundleId, bool on) { if (on) _exportSel.Add(bundleId); else _exportSel.Remove(bundleId); }
 
     private EventTicketRow? _editing;
 
