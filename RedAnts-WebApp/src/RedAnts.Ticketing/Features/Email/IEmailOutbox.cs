@@ -8,4 +8,5 @@ public interface IEmailOutbox
     Task RescheduleAsync(int id, string? sentVia, string lastError, DateTimeOffset nextAttemptAt);
     Task MarkFailedAsync(int id, string? sentVia, string lastError);
     Task<int> PurgeSentBeforeAsync(DateTimeOffset cutoff);
+    Task<bool> RequeueAsync(int id);
 }

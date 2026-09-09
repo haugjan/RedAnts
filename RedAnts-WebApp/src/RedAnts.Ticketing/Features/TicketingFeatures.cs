@@ -1,6 +1,7 @@
 using RedAnts.Ticketing.Features.Admission;
 using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Checkout;
+using RedAnts.Ticketing.Features.Email;
 using RedAnts.Ticketing.Features.EventBundles;
 using RedAnts.Ticketing.Features.FlexTickets;
 using RedAnts.Ticketing.Features.Helpers;
@@ -64,6 +65,8 @@ public static class TicketingFeatures
         typeof(GetSalesStats.Handler),
         typeof(GetEventStats.Handler),
         typeof(GetVisitorStats.Handler),
+        typeof(GetOutbox.Handler),
+        typeof(RetryOutboxMail.Handler),
         typeof(CreateMemberCard.Handler),
         typeof(ImportMemberCards.Handler),
         typeof(EditMemberCard.Handler),

@@ -5,7 +5,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 namespace RedAnts.Ticketing.Features.Email.Infrastructure;
 
 public sealed class OutboxRepository(IScopeProvider scopeProvider, OutboxSignal signal)
-    : IEmailOutbox, IOutboxAdminReport
+    : IEmailOutbox, IOutboxReader
 {
     public async Task EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default)
     {
