@@ -36,6 +36,7 @@ public static class PlaceOrder
         IPayrexxGateway payrexx,
         IPublicBaseUrl publicUrl,
         IOrderTokens tokens,
+        IUnitOfWork unitOfWork,
         CapacityReservation reservation,
         OrderFulfillment fulfillment,
         ILogger<Handler> logger)
@@ -65,18 +66,22 @@ public static class PlaceOrder
             Order saved;
             try
             {
-                var number = await orders.NextOrderNumberAsync();
-                var order = Order.Create(number, command.Billing, cart.TotalAmount, VatRate, PaymentMethod.Payrexx, sellerUid: null,
-                    paymentSource: PaymentSource.Online);
-                order.SetFulfillmentPayload(JsonSerializer.Serialize(snapshot));
-                saved = await orders.SaveAsync(order);
+                saved = await unitOfWork.RunAsync(async () =>
+                {
+                    var number = await orders.NextOrderNumberAsync();
+                    var order = Order.Create(number, command.Billing, cart.TotalAmount, VatRate, PaymentMethod.Payrexx, sellerUid: null,
+                        paymentSource: PaymentSource.Online);
+                    order.SetFulfillmentPayload(JsonSerializer.Serialize(snapshot));
+                    var stored = await orders.SaveAsync(order);
+                    await orderLog.AppendAsync(stored.Id, OrderStatus.Draft, "Online-Kauf", "Bestellung erstellt");
+                    return stored;
+                });
             }
             catch
             {
                 await reservation.ReleaseAsync(snapshot);
                 throw;
             }
-            await orderLog.AppendAsync(saved.Id, OrderStatus.Draft, "Online-Kauf", "Bestellung erstellt");
 
             if (payrexx.Enabled && saved.TotalGross > 0m)
                 return await StartPaymentAsync(saved, command.Billing, snapshot);
@@ -129,11 +134,13 @@ public static class PlaceOrder
             catch (Exception ex)
             {
                 logger.LogError(ex, "Payrexx gateway creation failed for order {Order}.", saved.OrderNumber);
-                if (await orders.TryCancelDraftAsync(saved.Id))
+                var cancelled = await unitOfWork.RunAsync(async () =>
                 {
-                    await reservation.ReleaseAsync(snapshot);
+                    if (!await orders.TryCancelDraftAsync(saved.Id)) return false;
                     await orderLog.AppendAsync(saved.Id, OrderStatus.Cancelled, "System", "Zahlung konnte nicht gestartet werden");
-                }
+                    return true;
+                });
+                if (cancelled) await reservation.ReleaseAsync(snapshot);
                 return new Result.Denied("Die Zahlung konnte nicht gestartet werden. Bitte versuche es erneut.", false);
             }
         }

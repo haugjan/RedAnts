@@ -240,4 +240,37 @@ public class PlaceOrderTests
         var ticket = fixture.Tickets.Stored.Single();
         Assert.Equal(TicketType.SeasonPass, ticket.OriginType);
     }
+
+    [Fact]
+    public async Task Order_and_journal_are_written_in_one_unit_of_work()
+    {
+        var fixture = new CheckoutFixture();
+        fixture.Payrexx.Enabled = true;
+
+        var result = await fixture.PlaceOrder.HandleAsync(Command(CheckoutFixture.CartWithTickets()));
+
+        Assert.IsType<PlaceOrder.Result.PaymentRequired>(result);
+        Assert.Equal(1, fixture.UnitOfWork.Committed);
+        Assert.Equal(0, fixture.UnitOfWork.RolledBack);
+        Assert.Single(fixture.Orders.Stored);
+        Assert.Single(fixture.OrderLog.Entries);
+    }
+
+    [Fact]
+    public async Task A_failing_journal_write_rolls_the_order_back_and_releases_the_reservation()
+    {
+        var fixture = new CheckoutFixture();
+        fixture.Payrexx.Enabled = true;
+        fixture.OrderLog.Throws = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            fixture.PlaceOrder.HandleAsync(Command(CheckoutFixture.CartWithTickets())));
+
+        Assert.Equal(1, fixture.UnitOfWork.RolledBack);
+        Assert.Equal(0, fixture.UnitOfWork.Committed);
+        Assert.Empty(fixture.OrderLog.Entries);
+        Assert.Empty(fixture.Payrexx.Requests);
+        Assert.Equal(0, fixture.EventReserved);
+        Assert.Equal(0, fixture.TierReserved);
+    }
 }
