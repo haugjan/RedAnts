@@ -24,8 +24,11 @@ public static class RefundOrder
 {
     public sealed record Command(RefundRequest Request);
 
-    public sealed class Handler(IOrderRepository orders, IOrderRefunds refunds, IPayrexxGateway payrexx, IOrderTickets orderTickets)
+    public sealed class Handler(IOrderRepository orders, IOrderRefunds refunds, IPayrexxGateway payrexx, IOrderTickets orderTickets,
+        IUnitOfWork unitOfWork)
     {
+        private sealed record Settlement(string RefundNumber, int DeactivatedTickets);
+
         public async Task<RefundResult> HandleAsync(Command command)
         {
             var request = command.Request;
@@ -38,20 +41,24 @@ public static class RefundOrder
             if (request.Amount > open.Remaining)
                 throw new DomainException($"Der Betrag übersteigt den noch offenen Rest von CHF {open.Remaining:0.00}.");
 
-            var refundNumber = request.ViaPayrexx
-                ? await RefundThroughPayrexxAsync(order, request)
-                : (await refunds.CreateAsync(order.Id, request.Amount, request.Method, RefundStatus.Confirmed,
-                    request.Reference, request.Reason, request.ChangedBy)).RefundNumber;
-
-            var deactivated = request.DeactivateTickets ? await orderTickets.DeactivateByOrderAsync(order.Id) : 0;
+            var settlement = request.ViaPayrexx
+                ? await SettleThroughPayrexxAsync(order, request)
+                : await unitOfWork.RunAsync(() => SettleManuallyAsync(order, request));
 
             var summary = await refunds.GetSummaryAsync(order.Id);
             var updated = await orders.GetByIdAsync(order.Id);
-            return new RefundResult(refundNumber, summary.RefundedConfirmed, summary.Remaining,
-                updated?.Status ?? order.Status, deactivated);
+            return new RefundResult(settlement.RefundNumber, summary.RefundedConfirmed, summary.Remaining,
+                updated?.Status ?? order.Status, settlement.DeactivatedTickets);
         }
 
-        private async Task<string> RefundThroughPayrexxAsync(Order order, RefundRequest request)
+        private async Task<Settlement> SettleManuallyAsync(Order order, RefundRequest request)
+        {
+            var refund = await refunds.CreateAsync(order.Id, request.Amount, request.Method, RefundStatus.Confirmed,
+                request.Reference, request.Reason, request.ChangedBy);
+            return new Settlement(refund.RefundNumber, await DeactivateTicketsAsync(order, request));
+        }
+
+        private async Task<Settlement> SettleThroughPayrexxAsync(Order order, RefundRequest request)
         {
             if (!order.PaidThroughPayrexx || !payrexx.Enabled)
                 throw new DomainException("Diese Bestellung wurde nicht online über Payrexx bezahlt und kann nicht über Payrexx zurückerstattet werden.");
@@ -79,8 +86,14 @@ public static class RefundOrder
                     : $"Payrexx-Rückerstattung fehlgeschlagen: {result.Error}");
             }
 
-            await refunds.ConfirmAsync(reserved.Id, result.RefundId, request.ChangedBy);
-            return reserved.RefundNumber;
+            return await unitOfWork.RunAsync(async () =>
+            {
+                await refunds.ConfirmAsync(reserved.Id, result.RefundId, request.ChangedBy);
+                return new Settlement(reserved.RefundNumber, await DeactivateTicketsAsync(order, request));
+            });
         }
+
+        private Task<int> DeactivateTicketsAsync(Order order, RefundRequest request) =>
+            request.DeactivateTickets ? orderTickets.DeactivateByOrderAsync(order.Id) : Task.FromResult(0);
     }
 }

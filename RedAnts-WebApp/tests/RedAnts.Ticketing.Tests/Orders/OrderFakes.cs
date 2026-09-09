@@ -62,9 +62,11 @@ internal sealed class RecordingOrderTickets : IOrderTickets
 {
     public List<int> DeactivatedOrders { get; } = [];
     public int TicketsPerOrder { get; set; } = 2;
+    public bool Throws { get; set; }
 
     public Task<int> DeactivateByOrderAsync(int orderId)
     {
+        if (Throws) throw new InvalidOperationException("ticket table unavailable");
         DeactivatedOrders.Add(orderId);
         return Task.FromResult(TicketsPerOrder);
     }

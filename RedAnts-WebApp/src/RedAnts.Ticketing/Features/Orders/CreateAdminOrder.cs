@@ -1,5 +1,6 @@
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.Checkout;
 using PaymentMethod = RedAnts.Ticketing.Domain.Sales.PaymentMethod;
 
 namespace RedAnts.Ticketing.Features.Orders;
@@ -11,9 +12,9 @@ public static class CreateAdminOrder
 {
     public sealed record Command(Buyer Buyer, string? Email, IReadOnlyList<AdminOrderLine> Lines, string CreatedBy, PaymentSource PaymentSource);
 
-    public sealed class Handler(IOrderRepository orders, IOrderItems orderItems, IOrderLog orderLog)
+    public sealed class Handler(IOrderRepository orders, IOrderItems orderItems, IOrderLog orderLog, IUnitOfWork unitOfWork)
     {
-        public async Task<Order> HandleAsync(Command command)
+        public Task<Order> HandleAsync(Command command) => unitOfWork.RunAsync(async () =>
         {
             var buyer = command.Buyer;
             var billing = BillingAddress.FromPersistence((int)buyer.Type, buyer.FirstName ?? "", buyer.LastName ?? "",
@@ -30,6 +31,6 @@ public static class CreateAdminOrder
             await orderLog.AppendAsync(saved.Id, OrderStatus.Draft, command.CreatedBy, "Im Backoffice erstellt");
             await orderLog.AppendAsync(saved.Id, OrderStatus.Paid, command.CreatedBy, "Backoffice");
             return saved;
-        }
+        });
     }
 }

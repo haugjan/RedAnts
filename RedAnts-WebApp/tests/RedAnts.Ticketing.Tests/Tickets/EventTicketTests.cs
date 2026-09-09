@@ -103,10 +103,41 @@ public class EventTicketTests
             new(null, null, null, null, CardHolder.Create(BuyerType.Private, null, null, "A", "B", null, null, null, null, null, null, null, null))
         };
 
-        var result = await new ImportEventTickets.Handler(bundles).HandleAsync(
+        var result = await new ImportEventTickets.Handler(bundles, new RecordingUnitOfWork()).HandleAsync(
             new ImportEventTickets.Command(EventId, rows, "Import", TicketCategory.Adult, null, null));
 
         Assert.Equal((1, 0), result);
         Assert.Equal((EventId, "Import"), Assert.Single(bundles.Imports));
     }
+
+    [Fact]
+    public async Task The_event_ticket_import_runs_in_one_unit_of_work()
+    {
+        var bundles = new RecordingEventTicketBundles();
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await new ImportEventTickets.Handler(bundles, unitOfWork).HandleAsync(ImportCommand());
+
+        Assert.Equal(1, unitOfWork.Committed);
+        Assert.Single(bundles.Imports);
+    }
+
+    [Fact]
+    public async Task A_failing_event_ticket_import_rolls_the_unit_of_work_back()
+    {
+        var bundles = new RecordingEventTicketBundles { ImportThrows = true };
+        var unitOfWork = new RecordingUnitOfWork();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ImportEventTickets.Handler(bundles, unitOfWork).HandleAsync(ImportCommand()));
+
+        Assert.Equal(1, unitOfWork.RolledBack);
+        Assert.Equal(0, unitOfWork.Committed);
+        Assert.Empty(bundles.Imports);
+    }
+
+    private static ImportEventTickets.Command ImportCommand() =>
+        new(EventId, [new TicketImportRow(null, null, null, null,
+            CardHolder.Create(BuyerType.Private, null, null, "A", "B", null, null, null, null, null, null, null, null))],
+            "Import", TicketCategory.Adult, null, null);
 }

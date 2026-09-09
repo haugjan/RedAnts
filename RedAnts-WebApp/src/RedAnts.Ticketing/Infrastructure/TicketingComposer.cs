@@ -31,6 +31,8 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<IEventsForAdminReader, EventsForAdminReader>();
         builder.Services.AddScoped<ISeasonsForAdminReader, SeasonsForAdminReader>();
 
+        builder.Services.AddScoped<IUnitOfWork, ScopedUnitOfWork>();
+
         builder.Services.AddScoped<IEventPriceRepository, EventPriceRepository>();
         builder.Services.AddScoped<ISeasonPriceRepository, SeasonPriceRepository>();
         builder.Services.AddScoped<IPriceTierRepository, PriceTierRepository>();

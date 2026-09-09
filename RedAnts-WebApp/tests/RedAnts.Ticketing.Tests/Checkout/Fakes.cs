@@ -171,9 +171,11 @@ internal sealed class StubCapacityUsage : ICapacityUsageReader
 internal sealed class RecordingOrderLog : IOrderLog
 {
     public List<(int OrderId, OrderStatus Status, string? By, string? Note)> Entries { get; } = [];
+    public bool Throws { get; set; }
 
     public Task AppendAsync(int orderId, OrderStatus toStatus, string? changedBy, string? note = null)
     {
+        if (Throws) throw new InvalidOperationException("order log unavailable");
         Entries.Add((orderId, toStatus, changedBy, note));
         return Task.CompletedTask;
     }
@@ -257,8 +259,12 @@ internal sealed class InMemoryEventTicketRepository : IEventTicketRepository
 
     public Task<EventTicket?> GetByUuidAsync(Guid uuid) => Task.FromResult(Stored.FirstOrDefault(t => t.Uuid == uuid));
 
+    public int FailingSaveNumber { get; set; }
+
     public Task<EventTicket> SaveAsync(EventTicket ticket)
     {
+        if (FailingSaveNumber > 0 && Stored.Count + 1 == FailingSaveNumber)
+            throw new InvalidOperationException("ticket table unavailable");
         Stored.RemoveAll(t => t.Uuid == ticket.Uuid);
         Stored.Add(ticket);
         return Task.FromResult(ticket);
@@ -385,4 +391,34 @@ internal sealed class EmptyIssuedTickets : IIssuedTicketReader
     public Task<IssuedTicket?> FindAsync(Guid uuid) => Task.FromResult<IssuedTicket?>(null);
 
     public Task<IssuedTicket?> FindByCodeAsync(string codePrefix) => Task.FromResult<IssuedTicket?>(null);
+}
+
+internal sealed class RecordingUnitOfWork : IUnitOfWork
+{
+    public int Started { get; private set; }
+    public int Committed { get; private set; }
+    public int RolledBack { get; private set; }
+
+    public async Task<T> RunAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken = default)
+    {
+        Started++;
+        try
+        {
+            var result = await work();
+            Committed++;
+            return result;
+        }
+        catch
+        {
+            RolledBack++;
+            throw;
+        }
+    }
+
+    public async Task RunAsync(Func<Task> work, CancellationToken cancellationToken = default) =>
+        await RunAsync<object?>(async () =>
+        {
+            await work();
+            return null;
+        }, cancellationToken);
 }

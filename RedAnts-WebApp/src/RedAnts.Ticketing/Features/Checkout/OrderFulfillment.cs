@@ -23,41 +23,51 @@ public sealed class OrderFulfillment(
     IOrderItems orderItems,
     INewsletterSignupRepository newsletter,
     IIssuedTicketReader issuedTickets,
+    IUnitOfWork unitOfWork,
     CapacityReservation reservation,
     ILogger<OrderFulfillment> logger)
 {
     private const string Channel = "Online-Kauf";
+
+    private sealed record Issued(IReadOnlyList<OrderMailTicket> Tickets, IReadOnlyList<OrderAddOnLine> AddOns);
 
     public async Task<bool> FulfillAsync(int orderId)
     {
         var order = await orders.GetByIdAsync(orderId);
         if (order is null || order.Status != OrderStatus.Draft) return false;
         if (OrderSnapshot.Parse(order.FulfillmentPayload) is not { } snapshot) return false;
-        if (!await orders.TryMarkPaidAsync(orderId)) return false;
-
-        await reservation.ReleaseAsync(snapshot);
-        await orderLog.AppendAsync(order.Id, OrderStatus.Paid, Channel, "Online bezahlt");
 
         var billing = order.BillingAddress;
         var buyer = billing.ToBuyer();
         var holderName = string.IsNullOrWhiteSpace(buyer.DisplayName) ? null : buyer.DisplayName;
 
-        var mailTickets = new List<OrderMailTicket>();
-        foreach (var item in snapshot.Items)
-            for (var i = 0; i < item.Quantity; i++)
-                mailTickets.Add(item.IsSeasonPass
-                    ? await IssuePassAsync(item, order, buyer, holderName)
-                    : await IssueTicketAsync(item, order, buyer, holderName));
+        var issued = await unitOfWork.RunAsync<Issued?>(async () =>
+        {
+            if (!await orders.TryMarkPaidAsync(orderId)) return null;
+            await orderLog.AppendAsync(order.Id, OrderStatus.Paid, Channel, "Online bezahlt");
 
-        await orders.CopyBillingToTicketsAsync(order.Id);
-        await DeliverAddOnsAsync(order, snapshot);
+            var mailTickets = new List<OrderMailTicket>();
+            foreach (var item in snapshot.Items)
+                for (var i = 0; i < item.Quantity; i++)
+                    mailTickets.Add(item.IsSeasonPass
+                        ? await IssuePassAsync(item, order, buyer, holderName)
+                        : await IssueTicketAsync(item, order, buyer, holderName));
+
+            await orders.CopyBillingToTicketsAsync(order.Id);
+            return new Issued(mailTickets, await SaveAddOnsAsync(order, snapshot));
+        });
+        if (issued is null) return false;
+
+        await reservation.ReleaseAsync(snapshot);
+        await SaveOrderItemsAsync(order, snapshot);
+
+        if (issued.AddOns.Count > 0)
+            await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email, issued.AddOns);
 
         var addOnInfos = await AddOnInfoTexts.CollectAsync(seasonAddOns, snapshot);
         await mailer.SendTicketsAsync(new OrderMailModel(
             order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
-            publicUrl.Resolve(), mailTickets, addOnInfos));
-
-        await SaveOrderItemsAsync(order, snapshot);
+            publicUrl.Resolve(), issued.Tickets, addOnInfos));
 
         if (snapshot.SubscribeNewsletter)
             await newsletter.SubscribeAsync(billing.Email, billing.FullName, snapshot.NewsletterSource);
@@ -90,14 +100,14 @@ public sealed class OrderFulfillment(
         return string.IsNullOrWhiteSpace(resolved) ? fallback : resolved;
     }
 
-    private async Task DeliverAddOnsAsync(Order order, OrderSnapshot snapshot)
+    private async Task<IReadOnlyList<OrderAddOnLine>> SaveAddOnsAsync(Order order, OrderSnapshot snapshot)
     {
-        if (snapshot.AddOns.Count == 0) return;
+        if (snapshot.AddOns.Count == 0) return [];
         var lines = snapshot.AddOns
             .Select(a => new OrderAddOnLine(a.SeasonId, a.EventName, default, a.CategoryName, a.Label, a.Price, a.Quantity, a.TierId))
             .ToList();
         await orderAddOns.SaveAsync(order.Id, lines);
-        await addOnNotifier.NotifyAsync(order.OrderNumber, order.BillingAddress.FullName, order.BillingAddress.Email, lines);
+        return lines;
     }
 
     private async Task SaveOrderItemsAsync(Order order, OrderSnapshot snapshot)

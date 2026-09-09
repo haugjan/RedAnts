@@ -12,8 +12,9 @@ public class RefundOrderTests
     private readonly RecordingOrderRefunds _refunds = new();
     private readonly RefundingPayrexx _payrexx = new();
     private readonly RecordingOrderTickets _tickets = new();
+    private readonly RecordingUnitOfWork _unitOfWork = new();
 
-    private RefundOrder.Handler Handler => new(_orders, _refunds, _payrexx, _tickets);
+    private RefundOrder.Handler Handler => new(_orders, _refunds, _payrexx, _tickets, _unitOfWork);
 
     private static RefundRequest Manual(int orderId, decimal amount, bool deactivate = false) =>
         new(orderId, amount, RefundMethod.Cash, false, "Beleg 1", "Kulanz", deactivate, "admin");
@@ -145,5 +146,56 @@ public class RefundOrderTests
 
         Assert.Equal(20m, result.RefundedTotal);
         Assert.Equal(OrderStatus.PartiallyRefunded, result.Status);
+    }
+
+    [Fact]
+    public async Task The_refund_row_and_the_ticket_deactivation_share_one_unit_of_work()
+    {
+        var order = await OrderFixtures.PaidOrderAsync(_orders);
+
+        await Handler.HandleAsync(new RefundOrder.Command(Manual(order.Id, 40m, deactivate: true)));
+
+        Assert.Equal(1, _unitOfWork.Committed);
+        Assert.Equal(0, _unitOfWork.RolledBack);
+        Assert.Single(_refunds.Stored);
+        Assert.Single(_tickets.DeactivatedOrders);
+    }
+
+    [Fact]
+    public async Task A_failing_ticket_deactivation_rolls_the_refund_back()
+    {
+        var order = await OrderFixtures.PaidOrderAsync(_orders);
+        _tickets.Throws = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Handler.HandleAsync(new RefundOrder.Command(Manual(order.Id, 40m, deactivate: true))));
+
+        Assert.Equal(1, _unitOfWork.RolledBack);
+        Assert.Equal(0, _unitOfWork.Committed);
+        Assert.Empty(_tickets.DeactivatedOrders);
+    }
+
+    [Fact]
+    public async Task The_payrexx_call_runs_outside_the_unit_of_work()
+    {
+        var order = await OrderFixtures.PaidOrderAsync(_orders, gatewayId: "gw-1");
+
+        await Handler.HandleAsync(new RefundOrder.Command(ViaPayrexx(order.Id, 40m)));
+
+        Assert.Single(_payrexx.Refunds);
+        Assert.Equal(1, _unitOfWork.Committed);
+        Assert.Single(_refunds.Confirmations);
+    }
+
+    [Fact]
+    public async Task A_failing_payrexx_refund_opens_no_unit_of_work()
+    {
+        var order = await OrderFixtures.PaidOrderAsync(_orders, gatewayId: "gw-1");
+        _payrexx.ThrowOnRefund = true;
+
+        await Assert.ThrowsAsync<DomainException>(() => Handler.HandleAsync(new RefundOrder.Command(ViaPayrexx(order.Id, 40m))));
+
+        Assert.Equal(0, _unitOfWork.Started);
+        Assert.Single(_refunds.Failures);
     }
 }

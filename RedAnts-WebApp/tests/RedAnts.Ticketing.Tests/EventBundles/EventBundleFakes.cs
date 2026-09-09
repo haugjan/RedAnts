@@ -19,9 +19,12 @@ internal sealed class RecordingEventTicketBundles : IEventTicketBundleRepository
         return Task.FromResult(Created.Count);
     }
 
+    public bool ImportThrows { get; set; }
+
     public Task<(int Created, int Updated)> ImportUnifiedAsync(int eventId, IReadOnlyList<TicketImportRow> rows, string defaultBundle,
         TicketCategory defaultCategory, string? createdByName = null, string? createdByEmail = null)
     {
+        if (ImportThrows) throw new InvalidOperationException("event ticket table unavailable");
         Imports.Add((eventId, defaultBundle));
         return Task.FromResult((rows.Count, 0));
     }
