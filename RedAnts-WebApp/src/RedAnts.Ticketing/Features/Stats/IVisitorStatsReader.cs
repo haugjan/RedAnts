@@ -1,8 +1,6 @@
-using RedAnts.Ticketing.Features.Stats.Admin;
-
 namespace RedAnts.Ticketing.Features.Stats;
 
-public interface IVisitorStatsReport
+public interface IVisitorStatsReader
 {
     Task<VisitorOverview> GetAsync(DateOnly from, DateOnly toExclusive);
 }

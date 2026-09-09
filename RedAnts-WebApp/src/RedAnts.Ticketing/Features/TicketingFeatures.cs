@@ -7,6 +7,7 @@ using RedAnts.Ticketing.Features.Helpers;
 using RedAnts.Ticketing.Features.MemberCards;
 using RedAnts.Ticketing.Features.Orders;
 using RedAnts.Ticketing.Features.SeasonPasses;
+using RedAnts.Ticketing.Features.Stats;
 using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Features;
@@ -59,6 +60,10 @@ public static class TicketingFeatures
         typeof(GetOrderAddOnsForAdmin.Handler),
         typeof(SetOrderAddOnDelivered.Handler),
         typeof(GetSeasonsForAdmin.Handler),
+        typeof(GetSeasonStats.Handler),
+        typeof(GetSalesStats.Handler),
+        typeof(GetEventStats.Handler),
+        typeof(GetVisitorStats.Handler),
         typeof(CreateMemberCard.Handler),
         typeof(ImportMemberCards.Handler),
         typeof(EditMemberCard.Handler),

@@ -1,4 +1,4 @@
-namespace RedAnts.Ticketing.Features.Stats.Admin;
+namespace RedAnts.Ticketing.Features.Stats;
 
 public sealed record VisitTypeSlice(int TicketType, int Count);
 

@@ -1,8 +1,6 @@
-using RedAnts.Ticketing.Features.Stats.Admin;
-
 namespace RedAnts.Ticketing.Features.Stats;
 
-public interface IEventVisitStatsReport
+public interface IEventVisitStatsReader
 {
     Task<EventVisitStats> GetAsync(int eventId, DateTime kickoffSwiss);
 }

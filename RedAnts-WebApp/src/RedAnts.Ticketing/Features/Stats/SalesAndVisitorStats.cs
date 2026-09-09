@@ -1,4 +1,4 @@
-namespace RedAnts.Ticketing.Features.Stats.Admin;
+namespace RedAnts.Ticketing.Features.Stats;
 
 public enum StatBucket { Day, Month }
 
@@ -29,4 +29,3 @@ public sealed class SalesStats
 
 public sealed record SalesEventCounts(int TicketsSold, decimal Revenue);
 
-public sealed record AdmissionCounts(int Visits, int Inside, int FreeEntries);
