@@ -1,7 +1,5 @@
 @using RedAnts.Ticketing.Domain
 @using RedAnts.Ticketing.Domain.Sales
-@inject IPublicBaseUrl PublicUrl
-@inject ITicketTokens Tokens
 
 <section class="ta-page">
     <h1 class="ta-page-title">@TicketType.SeasonSingle.DisplayName()</h1>
@@ -47,7 +45,7 @@
                 </div>
                 <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="flexSearch">Suche</label>
-                    <input id="flexSearch" class="ta-input" type="search" placeholder="Name, E-Mail …" @bind="_search" @bind:event="oninput" />
+                    <input id="flexSearch" class="ta-input" type="search" placeholder="Name, E-Mail …" @bind="_search" @bind:event="oninput" @bind:after="ReloadTicketsAsync" />
                 </div>
             </div>
             <div class="ta-toolbar-actions">
@@ -85,7 +83,7 @@
         {
             <div class="ta-placeholder">Für diese Saison sind keine Flexticket-Bundles erfasst.</div>
         }
-        else if (_tickets.Count == 0)
+        else if (_total == 0)
         {
             <div class="ta-placeholder">Dieses Bundle enthält keine Flextickets.</div>
         }
@@ -113,7 +111,7 @@
                                 <td>
                                     <span class="ta-ticketno">
                                         <span class="ta-no">@AdminFormat.TicketNo(t.Uuid)</span>
-                                        <a class="ta-qr-link" href="@PublicUrl.TicketUrl(Tokens.CreateShort(t.Uuid))" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                        <a class="ta-qr-link" href="@t.TicketUrl" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
                                         </a>
                                     </span>
@@ -660,7 +658,8 @@
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
-    [Inject] private IFlexTicketBundles Bundles { get; set; } = default!;
+    [Inject] private GetFlexBundles.Handler BundleList { get; set; } = default!;
+    [Inject] private GetFlexBundleTickets.Handler TicketList { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
     [Inject] private CreateAdminOrder.Handler OrderCreation { get; set; } = default!;
     [Inject] private CreateFlexBundle.Handler BundleCreation { get; set; } = default!;
@@ -678,7 +677,7 @@
     [Inject] private SendFlexTicketMail.Handler MailSending { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
-    [Inject] private IFlexTicketMailer Mailer { get; set; } = default!;
+    [Inject] private GetFlexTicketMailTemplate.Handler MailTemplate { get; set; } = default!;
 
     private bool _showPrint;
     private int _printBundleId;
@@ -706,14 +705,14 @@
 
     private void ClosePrint() => _showPrint = false;
 
-    private static bool HasEmail(FlexTicketView t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
+    private static bool HasEmail(FlexTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
 
-    private FlexTicketView? _editPersonFor;
+    private FlexTicketRow? _editPersonFor;
     private PersonForm _editPersonForm = new();
     private bool _editPersonSaving;
     private string? _editPersonError;
 
-    private void OpenEditPerson(FlexTicketView t)
+    private void OpenEditPerson(FlexTicketRow t)
     {
         _editPersonFor = t;
         _editPersonForm = PersonForm.From(t.Holder);
@@ -737,18 +736,19 @@
         finally { _editPersonSaving = false; }
     }
 
-    private FlexTicketView? _mailFor;
+    private FlexTicketRow? _mailFor;
     private string _mailSubject = "";
     private string _mailBody = "";
     private bool _mailSending;
     private bool _mailSent;
     private string? _mailError;
 
-    private void OpenMail(FlexTicketView t)
+    private async Task OpenMail(FlexTicketRow t)
     {
         _mailFor = t;
-        _mailSubject = Mailer.DefaultSubject;
-        _mailBody = Mailer.DefaultBody;
+        var template = await MailTemplate.HandleAsync(new GetFlexTicketMailTemplate.Query());
+        _mailSubject = template.Subject;
+        _mailBody = template.Body;
         _mailSent = false;
         _mailError = null;
     }
@@ -769,7 +769,7 @@
         finally { _mailSending = false; }
     }
 
-    private Task<EmailSendResult> SendOneAsync(FlexTicketView t, string subject, string body) =>
+    private Task<EmailSendResult> SendOneAsync(FlexTicketRow t, string subject, string body) =>
         MailSending.HandleAsync(new SendFlexTicketMail.Command(new FlexMailTicket(t.Uuid, t.Holder?.Email, t.Holder?.DisplayName, SelectedSeasonId,
             t.Category.DisplayName()), subject, body));
 
@@ -781,13 +781,14 @@
     private BulkResult? _bulkResult;
     private sealed record BulkResult(int Enqueued, int Failed, int NoEmail);
 
-    private int BulkWithEmail => Filtered().Count(HasEmail);
-    private int BulkWithoutEmail => Filtered().Count(t => !HasEmail(t));
+    private int BulkWithEmail => _tickets.Count(HasEmail);
+    private int BulkWithoutEmail => _tickets.Count(t => !HasEmail(t));
 
-    private void OpenBulk()
+    private async Task OpenBulk()
     {
-        _bulkSubject = Mailer.DefaultSubject;
-        _bulkBody = Mailer.DefaultBody;
+        var template = await MailTemplate.HandleAsync(new GetFlexTicketMailTemplate.Query());
+        _bulkSubject = template.Subject;
+        _bulkBody = template.Body;
         _bulkResult = null;
         _bulkError = null;
         _showBulk = true;
@@ -802,7 +803,7 @@
         try
         {
             int enqueued = 0, failed = 0, noEmail = 0;
-            foreach (var t in Filtered().ToList())
+            foreach (var t in _tickets.ToList())
             {
                 if (!HasEmail(t)) { noEmail++; continue; }
                 var r = await SendOneAsync(t, _bulkSubject, _bulkBody);
@@ -813,13 +814,13 @@
         finally { _bulkSending = false; }
     }
 
-    private FlexTicketView? _deleteTarget;
+    private FlexTicketRow? _deleteTarget;
     private bool _deleteBusy;
     private string? _deleteError;
 
     private void CancelDelete() { _deleteTarget = null; _deleteError = null; }
 
-    private FlexTicketBundleView? _deleteBundleTarget;
+    private FlexBundleRow? _deleteBundleTarget;
     private bool _deleteBundleBusy;
     private string? _deleteBundleError;
 
@@ -844,7 +845,7 @@
                 return;
             }
             _deleteBundleTarget = null;
-            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+            _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
             SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
             await ReloadTicketsAsync();
         }
@@ -873,14 +874,15 @@
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<FlexTicketBundleView> _bundles = [];
-    private IReadOnlyList<FlexTicketView> _tickets = [];
+    private IReadOnlyList<FlexBundleRow> _bundles = [];
+    private IReadOnlyList<FlexTicketRow> _tickets = [];
+    private int _total;
 
     public int SelectedSeasonId { get; set; }
     public int SelectedBundleId { get; set; }
     private string _selectedSeasonName = "";
 
-    private FlexTicketBundleView? SelectedBundle => _bundles.FirstOrDefault(b => b.Id == SelectedBundleId);
+    private FlexBundleRow? SelectedBundle => _bundles.FirstOrDefault(b => b.Id == SelectedBundleId);
 
     private bool _showExport;
     private readonly HashSet<int> _exportSelection = [];
@@ -1071,7 +1073,7 @@
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
-        _bundles = SelectedSeasonId > 0 ? await Bundles.GetBySeasonAsync(SelectedSeasonId) : [];
+        _bundles = SelectedSeasonId > 0 ? await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId)) : [];
         SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
         await ReloadTicketsAsync();
     }
@@ -1079,52 +1081,34 @@
     private async Task ReloadTicketsAsync()
     {
         AdminState.SelectedBundleId = SelectedBundleId > 0 ? SelectedBundleId : null;
-        _tickets = SelectedBundleId > 0
-            ? await Bundles.GetTicketsAsync(SelectedBundleId)
-            : _bundles.Count > 0 && SelectedSeasonId > 0
-                ? await Bundles.GetTicketsBySeasonAsync(SelectedSeasonId)
-                : [];
+        var result = SelectedBundleId > 0 || (_bundles.Count > 0 && SelectedSeasonId > 0)
+            ? await TicketList.HandleAsync(new GetFlexBundleTickets.Query(SelectedSeasonId, SelectedBundleId > 0 ? SelectedBundleId : null, _search))
+            : new GetFlexBundleTickets.Result([], 0);
+        _tickets = result.Tickets;
+        _total = result.Total;
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
     private string _search = "";
 
-    private IEnumerable<FlexTicketView> Filtered()
+    private IEnumerable<FlexTicketRow> Sorted()
     {
-        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return terms.Length == 0
-            ? _tickets
-            : _tickets.Where(t => terms.All(term => Haystack(t).Contains(term, StringComparison.OrdinalIgnoreCase)));
-    }
-
-    private static string Haystack(FlexTicketView t)
-    {
-        var h = t.Holder;
-        return string.Join(' ', new[]
+        IEnumerable<FlexTicketRow> q = _sortCol switch
         {
-            AdminFormat.TicketNo(t.Uuid), h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email ?? "",
-            t.Category.DisplayName(), t.Status.DisplayName()
-        });
-    }
-
-    private IEnumerable<FlexTicketView> Sorted()
-    {
-        IEnumerable<FlexTicketView> q = _sortCol switch
-        {
-            "status" => Filtered().OrderBy(t => t.Status),
-            "redeemed" => Filtered().OrderBy(t => t.Redeemed),
-            _ => Filtered().OrderBy(t => t.CreatedAt),
+            "status" => _tickets.OrderBy(t => t.Status),
+            "redeemed" => _tickets.OrderBy(t => t.Redeemed),
+            _ => _tickets.OrderBy(t => t.CreatedAt),
         };
         return _sortAsc ? q : q.Reverse();
     }
 
-    private FlexTicketView? _visitsFor;
+    private FlexTicketRow? _visitsFor;
 
     private static readonly TicketStatus[] AllStatuses = Enum.GetValues<TicketStatus>();
     private static readonly RedemptionState[] AllRedemptionStates = Enum.GetValues<RedemptionState>();
 
-    private static RedemptionState StateOf(FlexTicketView t) =>
+    private static RedemptionState StateOf(FlexTicketRow t) =>
         RedemptionStateExtensions.Derive(t.Redeemed, t.IsInside);
 
     private static string RedemptionBadge(RedemptionState state) => state switch
@@ -1134,26 +1118,26 @@
         _ => "ta-badge-draft"
     };
 
-    private async Task SaveCategoryAsync(FlexTicketView t, TicketCategory category)
+    private async Task SaveCategoryAsync(FlexTicketRow t, TicketCategory category)
     {
         await CategoryChanges.HandleAsync(new SetFlexTicketCategory.Command(t.Uuid, category));
         await ReloadTicketsAsync();
     }
 
-    private async Task SaveStatusAsync(FlexTicketView t, TicketStatus status)
+    private async Task SaveStatusAsync(FlexTicketRow t, TicketStatus status)
     {
         await StatusChanges.HandleAsync(new SetFlexTicketStatus.Command(t.Uuid, status));
         await ReloadTicketsAsync();
     }
 
-    private FlexTicketView? _redeemFor;
+    private FlexTicketRow? _redeemFor;
     private RedemptionState _redeemTarget;
     private int _redeemEventId;
     private bool _redeemBusy;
     private string? _redeemError;
     private IReadOnlyList<Event> _seasonEvents = [];
 
-    private async Task OpenRedeem(FlexTicketView t)
+    private async Task OpenRedeem(FlexTicketRow t)
     {
         _seasonEvents = SelectedSeasonId > 0
             ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
@@ -1203,7 +1187,7 @@
         finally { _redeemBusy = false; }
     }
 
-    private async Task ScanOrThrowAsync(FlexTicketView t, int eventId, ScanMode mode, string scannedBy)
+    private async Task ScanOrThrowAsync(FlexTicketRow t, int eventId, ScanMode mode, string scannedBy)
     {
         var outcome = await TicketScans.HandleAsync(new ScanTicket.Command(eventId, TicketType.SeasonSingle, t.Uuid, SelectedSeasonId, mode, scannedBy));
         if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
@@ -1248,10 +1232,10 @@
         {
             var existing = _bundles.FirstOrDefault(b =>
                 string.Equals(b.Reference, reference, StringComparison.OrdinalIgnoreCase));
-            FlexTicketBundleView result;
+            int result;
             if (existing is not null)
             {
-                result = existing;
+                result = existing.Id;
                 if (_newQuantity >= 1)
                 {
                     var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
@@ -1275,15 +1259,15 @@
                     Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
             }
             _showCreate = false;
-            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
-            SelectedBundleId = result.Id;
+            _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
+            SelectedBundleId = result;
             await ReloadTicketsAsync();
         }
         catch (DomainException ex) { _createError = ex.Message; }
         finally { _saving = false; }
     }
 
-    private FlexTicketBundleView? _confirmAddBundle;
+    private FlexBundleRow? _confirmAddBundle;
     private bool _confirmAddBusy;
     private string? _confirmAddError;
 
@@ -1304,19 +1288,19 @@
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
             _confirmAddBundle = null;
             _showCreate = false;
-            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
-            SelectedBundleId = updated.Id;
+            _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
+            SelectedBundleId = updated;
             await ReloadTicketsAsync();
         }
         catch (DomainException ex) { _confirmAddError = ex.Message; }
         finally { _confirmAddBusy = false; }
     }
 
-    private FlexTicketBundleView? _editing;
+    private FlexBundleRow? _editing;
     private string _editReference = "";
     private string? _editError;
 
-    private void OpenEdit(FlexTicketBundleView b)
+    private void OpenEdit(FlexBundleRow b)
     {
         _editing = b;
         _editReference = b.Reference;
@@ -1336,7 +1320,7 @@
         {
             await BundleRenames.HandleAsync(new RenameFlexBundle.Command(_editing.Id, reference));
             _editing = null;
-            _bundles = await Bundles.GetBySeasonAsync(SelectedSeasonId);
+            _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
         }
         catch (DomainException ex) { _editError = ex.Message; }
         finally { _saving = false; }

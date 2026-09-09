@@ -6,7 +6,7 @@ public static class CreateSingleFlexTicket
 {
     public sealed record Command(int SeasonId, TicketCategory Category, string Reference, CardHolder Holder, string? CreatedByName, string? CreatedByEmail);
 
-    public sealed class Handler(IFlexTicketBundles bundles)
+    public sealed class Handler(IFlexTicketBundleRepository bundles)
     {
         public Task<Guid> HandleAsync(Command command)
         {

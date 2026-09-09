@@ -8,7 +8,7 @@ public static class ImportEventTickets
     public sealed record Command(int EventId, IReadOnlyList<TicketImportRow> Rows, string DefaultBundle, TicketCategory DefaultCategory,
         string? CreatedByName, string? CreatedByEmail);
 
-    public sealed class Handler(IEventTicketBundles bundles)
+    public sealed class Handler(IEventTicketBundleRepository bundles)
     {
         public Task<(int Created, int Updated)> HandleAsync(Command command) =>
             bundles.ImportUnifiedAsync(command.EventId, command.Rows, command.DefaultBundle, command.DefaultCategory,

@@ -73,7 +73,7 @@ public class SeasonPassTests
         await new DeleteSeasonPass.Handler(deletion).HandleAsync(new DeleteSeasonPass.Command(pass.Uuid));
         var imported = await new ImportSeasonPasses.Handler(passes).HandleAsync(new ImportSeasonPasses.Command(3,
             [new TicketImportRow(null, null, null, null, holder)], "BUNDLE", 4, "Admin", "admin@redants.ch"));
-        var mail = await new SendSeasonPassMail.Handler(mailer).HandleAsync(new SendSeasonPassMail.Command(pass, "Erwachsen", "Betreff", "Text"));
+        var mail = await new SendSeasonPassMail.Handler(passes, mailer).HandleAsync(new SendSeasonPassMail.Command(pass.Uuid, "Erwachsen", "anna@example.ch", "Betreff", "Text"));
 
         Assert.Equal((pass.Uuid, holder), Assert.Single(passes.Holders));
         Assert.Equal(("pass", pass.Uuid), Assert.Single(deletion.Deleted));
@@ -81,5 +81,6 @@ public class SeasonPassTests
         Assert.Equal((3, 1, "BUNDLE", 4), Assert.Single(passes.Imports));
         Assert.True(mail.Success);
         Assert.Equal("Erwachsen", Assert.Single(mailer.Sent).CategoryLabel);
+        Assert.Equal("anna@example.ch", pass.Email);
     }
 }

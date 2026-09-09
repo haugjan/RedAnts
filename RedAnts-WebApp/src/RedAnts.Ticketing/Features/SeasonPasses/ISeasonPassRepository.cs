@@ -3,7 +3,7 @@ using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Features.SeasonPasses;
 
-public interface ISeasonPasses
+public interface ISeasonPassRepository
 {
     Task<SeasonPass?> GetByUuidAsync(Guid uuid);
     Task<IReadOnlyList<SeasonPass>> GetByOrderAsync(int orderId);

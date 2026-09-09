@@ -13,10 +13,10 @@ namespace RedAnts.Ticketing.Features.Tickets.Admin;
 public sealed class TicketPrintController(
     ITicketPrinter printer,
     ITicketPrintSettings settings,
-    IEventBundleTickets eventBundles,
-    IFlexBundleTickets flexBundles,
-    ISeasonPassAdminReport seasonReport,
-    IMemberCardAdminReport memberReport,
+    GetEventBundleTickets.Handler eventBundles,
+    GetFlexBundlesForExport.Handler flexTickets,
+    GetSeasonPassesForExport.Handler seasonPasses,
+    GetMemberCardsForExport.Handler memberCards,
     IIssuedTicketReader issued) : Controller
 {
     [HttpPost("/admin/tickets/print")]
@@ -79,18 +79,16 @@ public sealed class TicketPrintController(
         return type switch
         {
             TicketType.EventTicket when bundleId is { } bid =>
-                (await eventBundles.GetByBundleAsync(bid))
+                (await eventBundles.HandleAsync(new GetEventBundleTickets.Query(bid)))
                     .Select(t => new TicketPrintItem(t.Uuid, t.Holder?.DisplayName)).ToList(),
             TicketType.SeasonSingle when bundleId is { } bid =>
-                (await flexBundles.GetByBundlesAsync([bid]))
+                (await flexTickets.HandleAsync(new GetFlexBundlesForExport.Query([bid])))
                     .Select(t => new TicketPrintItem(t.Uuid, t.Holder?.DisplayName)).ToList(),
             TicketType.SeasonPass when seasonId is { } sid =>
-                (await seasonReport.GetBySeasonAsync(sid))
-                    .Where(p => reff.Length == 0 || string.Equals(p.Reference ?? "", reff, StringComparison.Ordinal))
+                (await seasonPasses.HandleAsync(new GetSeasonPassesForExport.Query(sid, reff.Length == 0 ? [] : [reff])))
                     .Select(p => new TicketPrintItem(p.Uuid, p.Holder?.DisplayName ?? p.BuyerName)).ToList(),
             TicketType.MemberCard when seasonId is { } sid =>
-                (await memberReport.GetBySeasonAsync(sid))
-                    .Where(c => reff.Length == 0 || string.Equals(c.Reference ?? "", reff, StringComparison.Ordinal))
+                (await memberCards.HandleAsync(new GetMemberCardsForExport.Query(sid, reff.Length == 0 ? [] : [reff])))
                     .Select(c => new TicketPrintItem(c.Uuid, c.HolderName)).ToList(),
             _ => []
         };

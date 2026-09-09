@@ -2,8 +2,6 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using RedAnts.Ticketing.Domain
 @using RedAnts.Ticketing.Domain.Sales
-@inject IPublicBaseUrl PublicUrl
-@inject ITicketTokens Tokens
 
 <section class="ta-page">
     <h1 class="ta-page-title">Mitglieder</h1>
@@ -31,9 +29,9 @@
                 </div>
                 <div class="ta-field ta-field--filter">
                     <label class="ta-label" for="mcBundleFilter">Bundle</label>
-                    <select id="mcBundleFilter" class="ta-select" @bind="_bundleFilter">
+                    <select id="mcBundleFilter" class="ta-select" @bind="_bundleFilter" @bind:after="ReloadCardsAsync">
                         <option value="">Alle anzeigen</option>
-                        @foreach (var b in BundleRefs)
+                        @foreach (var b in _bundles)
                         {
                             <option value="@b">@b</option>
                         }
@@ -43,16 +41,16 @@
                     <label class="ta-label" for="mcSearch">Suche</label>
                     <input id="mcSearch" type="search" class="ta-input"
                            placeholder="Name, E-Mail, Bundle …"
-                           @bind="_search" @bind:event="oninput" />
+                           @bind="_search" @bind:event="oninput" @bind:after="ReloadCardsAsync" />
                 </div>
             </div>
             <div class="ta-toolbar-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_cards.Count == 0)"
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenExport" disabled="@(_total == 0)"
                         title="Mitglieder eines Bundles als CSV herunterladen">Export CSV</button>
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenImport" disabled="@(SelectedSeasonId <= 0)">
                     Import CSV
                 </button>
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenBulk" disabled="@(_cards.Count == 0)"
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenBulk" disabled="@(_total == 0)"
                         title="Alle Karten eines Bundles per E-Mail versenden">Karten versenden</button>
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="OpenBundlePrint" disabled="@(string.IsNullOrEmpty(_bundleFilter))"
                         title="@(string.IsNullOrEmpty(_bundleFilter) ? "Zum Drucken zuerst ein Bundle wählen" : "Alle Karten dieses Bundles als PDF drucken")">PDF drucken</button>
@@ -62,7 +60,7 @@
             </div>
         </div>
 
-        @if (_cards.Count == 0)
+        @if (_total == 0)
         {
             <div class="ta-placeholder">Für diese Saison sind keine Mitgliederkarten erfasst.</div>
         }
@@ -90,7 +88,7 @@
                             <tr>
                                 <td>
                                     <span class="ta-ticketno">@AdminFormat.TicketNo(c.Uuid)</span>
-                                    <a class="ta-qr-link" href="@PublicUrl.TicketUrl(Tokens.CreateShort(c.Uuid))" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
+                                    <a class="ta-qr-link" href="@c.TicketUrl" target="_blank" rel="noopener" title="Online-Ticket" aria-label="Online-Ticket">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 14h.01M20 14v3M14 17h.01M17 20h3M20 20h.01"/></svg>
                                     </a>
                                 </td>
@@ -162,11 +160,11 @@
             <p class="ta-summary">
                 @if (!string.IsNullOrWhiteSpace(_search))
                 {
-                    <text>@shown.Count von @_cards.Count Mitgliederkarten</text>
+                    <text>@shown.Count von @_total Mitgliederkarten</text>
                 }
                 else
                 {
-                    <text>@_cards.Count Mitgliederkarte@(_cards.Count == 1 ? "" : "n")</text>
+                    <text>@_total Mitgliederkarte@(_total == 1 ? "" : "n")</text>
                 }
             </p>
         }
@@ -214,7 +212,7 @@
                 <label class="ta-label" for="newMcReference">Bundle</label>
                 <input id="newMcReference" class="ta-input" type="text" maxlength="100" list="mcBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_newReference" />
                 <datalist id="mcBundleOptions">
-                    @foreach (var b in BundleRefs) { <option value="@b" /> }
+                    @foreach (var b in _bundles) { <option value="@b" /> }
                 </datalist>
             </div>
 
@@ -242,7 +240,7 @@
             <h2 class="ta-modal-title">Mitglieder exportieren (CSV)</h2>
             <p class="ta-modal-sub">Bundle wählen (Mehrfachauswahl möglich).</p>
 
-            @if (_references.Count == 0)
+            @if (_bundles.Count == 0)
             {
                 <p class="ta-muted-text">Für diese Saison sind keine Bundles vorhanden.</p>
             }
@@ -251,7 +249,7 @@
                 <div class="ta-field">
                     <label class="ta-label">Bundle</label>
                     <div class="ta-export-list">
-                        @foreach (var r in _references)
+                        @foreach (var r in _bundles)
                         {
                             <label class="ta-export-item">
                                 <input type="checkbox" checked="@_exportSel.Contains(r)"
@@ -266,7 +264,7 @@
                 <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseExport">Schliessen</button>
                 @if (_exportSel.Count > 0)
                 {
-                    <a class="ta-btn ta-btn-primary" href="/admin/members/export.csv?bundles=@Uri.EscapeDataString(string.Join(",", _exportSel))"
+                    <a class="ta-btn ta-btn-primary" href="/admin/members/season/@SelectedSeasonId/cards.csv?bundles=@Uri.EscapeDataString(string.Join(",", _exportSel))"
                        target="_blank" rel="noopener" @onclick="CloseExport">Herunterladen</a>
                 }
             </div>
@@ -571,7 +569,7 @@
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
     [Inject] private ISeasons Seasons { get; set; } = default!;
-    [Inject] private IMemberCardAdminReport Report { get; set; } = default!;
+    [Inject] private GetMemberCards.Handler CardList { get; set; } = default!;
     [Inject] private CreateMemberCard.Handler CardCreation { get; set; } = default!;
     [Inject] private ImportMemberCards.Handler CardImport { get; set; } = default!;
     [Inject] private EditMemberCard.Handler CardEdit { get; set; } = default!;
@@ -579,7 +577,7 @@
     [Inject] private SetMemberCardCategory.Handler CardCategory { get; set; } = default!;
     [Inject] private DeleteMemberCard.Handler CardDeletion { get; set; } = default!;
     [Inject] private SendMemberCardMail.Handler CardMail { get; set; } = default!;
-    [Inject] private IMemberCardMailer Mailer { get; set; } = default!;
+    [Inject] private GetMemberCardMailTemplate.Handler MailTemplate { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
     [Inject] private ITicketPrintSettings PrintSettings { get; set; } = default!;
 
@@ -608,7 +606,7 @@
 
     private void ClosePrint() => _showPrint = false;
 
-    private MemberCardListItem? _deleteTarget;
+    private MemberCardRow? _deleteTarget;
     private bool _deleteBusy;
     private string? _deleteError;
 
@@ -633,7 +631,10 @@
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<MemberCardListItem> _cards = [];
+    private IReadOnlyList<MemberCardRow> _cards = [];
+    private IReadOnlyList<string> _bundles = [];
+    private IReadOnlyList<MemberCardMailBatch> _batches = [];
+    private int _total;
 
     public int SelectedSeasonId { get; set; }
     private string _selectedSeasonName = "";
@@ -656,15 +657,21 @@
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
-        _cards = SelectedSeasonId > 0 ? await Report.GetBySeasonAsync(SelectedSeasonId) : [];
+        var result = SelectedSeasonId > 0
+            ? await CardList.HandleAsync(new GetMemberCards.Query(SelectedSeasonId, _bundleFilter, _search))
+            : new GetMemberCards.Result([], [], [], 0);
+        _cards = result.Cards;
+        _bundles = result.Bundles;
+        _batches = result.MailBatches;
+        _total = result.Total;
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private IEnumerable<MemberCardListItem> Sorted()
+    private IEnumerable<MemberCardRow> Sorted()
     {
-        var src = Filtered();
-        IEnumerable<MemberCardListItem> q = _sortCol switch
+        var src = _cards;
+        IEnumerable<MemberCardRow> q = _sortCol switch
         {
             "category" => src.OrderBy(c => c.Category).ThenBy(c => c.SortKey),
             "admissions" => src.OrderBy(c => c.Admissions),
@@ -678,25 +685,6 @@
     }
 
     private string _bundleFilter = "";
-    private IEnumerable<string> BundleRefs =>
-        _cards.Where(c => !string.IsNullOrWhiteSpace(c.Reference)).Select(c => c.Reference!).Distinct().OrderBy(r => r);
-
-    private IEnumerable<MemberCardListItem> Filtered()
-    {
-        var src = string.IsNullOrEmpty(_bundleFilter)
-            ? _cards
-            : _cards.Where(c => string.Equals(c.Reference, _bundleFilter, StringComparison.Ordinal));
-        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return terms.Length == 0
-            ? src
-            : src.Where(c => terms.All(t => Haystack(c).Contains(t, StringComparison.OrdinalIgnoreCase)));
-    }
-
-    private static string Haystack(MemberCardListItem c) => string.Join(' ', new[]
-    {
-        AdminFormat.TicketNo(c.Uuid), c.FirstName ?? "", c.LastName ?? "", c.Address?.Company ?? "",
-        c.Email ?? "", c.Reference ?? "", c.CategoryLabel, c.IsCancelled ? "Storniert" : "Gültig"
-    });
 
     private bool _showCreate;
     private bool _creating;
@@ -746,17 +734,10 @@
     }
 
     private bool _showExport;
-    private IReadOnlyList<string> _references = [];
     private readonly HashSet<string> _exportSel = [];
 
     private void OpenExport()
     {
-        _references = _cards
-            .Where(c => !string.IsNullOrWhiteSpace(c.Reference))
-            .Select(c => c.Reference!)
-            .Distinct()
-            .OrderBy(r => r)
-            .ToList();
         _exportSel.Clear();
         _showExport = true;
     }
@@ -888,7 +869,7 @@
         finally { _saving = false; }
     }
 
-    private MemberCardListItem? _editing;
+    private MemberCardRow? _editing;
     private DateOnly? _editBirthday;
     private int _editAdmissions = 1;
     private string _editReference = "";
@@ -896,7 +877,7 @@
     private bool _savingEdit;
     private string? _editError;
 
-    private void OpenEdit(MemberCardListItem c)
+    private void OpenEdit(MemberCardRow c)
     {
         _editing = c;
         _editBirthday = c.Birthday;
@@ -928,22 +909,23 @@
         finally { _savingEdit = false; }
     }
 
-    private MemberCardListItem? _visitsCard;
-    private void OpenVisits(MemberCardListItem c) => _visitsCard = c;
+    private MemberCardRow? _visitsCard;
+    private void OpenVisits(MemberCardRow c) => _visitsCard = c;
     private void CloseVisits() => _visitsCard = null;
 
-    private MemberCardListItem? _mailFor;
+    private MemberCardRow? _mailFor;
     private string _mailSubject = "";
     private string _mailBody = "";
     private bool _mailSending;
     private bool _mailSent;
     private string? _mailError;
 
-    private void OpenMail(MemberCardListItem c)
+    private async Task OpenMail(MemberCardRow c)
     {
         _mailFor = c;
-        _mailSubject = Mailer.DefaultSubjectFor(c.Category);
-        _mailBody = Mailer.DefaultBodyFor(c.Category);
+        var template = await MailTemplate.HandleAsync(new GetMemberCardMailTemplate.Query(c.Category));
+        _mailSubject = template.Subject;
+        _mailBody = template.Body;
         _mailSent = false;
         _mailError = null;
     }
@@ -958,7 +940,7 @@
         _mailSent = false;
         try
         {
-            var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(ToDomain(_mailFor), _mailSubject, _mailBody));
+            var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(_mailFor.Uuid, _mailSubject, _mailBody));
             if (!result.Success)
             {
                 _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
@@ -975,10 +957,6 @@
         finally { _mailSending = false; }
     }
 
-    private MemberCard ToDomain(MemberCardListItem c) => MemberCard.FromPersistence(
-        0, c.Uuid, SelectedSeasonId, c.Category, null, c.Status, c.CreatedAt,
-        c.FirstName, c.LastName, c.Birthday, c.Email, c.Reference, address: c.Address, admissions: c.Admissions);
-
     private bool _showBulk;
     private string _bulkBatchKey = "";
     private string _bulkSubject = "";
@@ -986,44 +964,31 @@
     private bool _bulkSending;
     private string? _bulkError;
     private BulkResult? _bulkResult;
-    private List<MailBatch> _batches = [];
 
-    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<MemberCardListItem> NoEmail);
+    private sealed record BulkResult(int Enqueued, int Failed, IReadOnlyList<MemberCardRow> NoEmail);
 
-    private sealed record MailBatch(string Reference, MemberCategory Category, IReadOnlyList<MemberCardListItem> Cards)
-    {
-        public string Key => $"{Reference}|{(int)Category}";
-        public string Label => $"{Reference} – {Category.DisplayName()}";
-        public int WithEmail => Cards.Count(c => c.HasEmail);
-    }
+    private MemberCardMailBatch? CurrentBatch => _batches.FirstOrDefault(b => b.Key == _bulkBatchKey);
 
-    private MailBatch? CurrentBatch => _batches.FirstOrDefault(b => b.Key == _bulkBatchKey);
-
-    private List<MemberCardListItem> BundleCards() => CurrentBatch?.Cards.ToList() ?? [];
+    private List<MemberCardRow> BundleCards() => CurrentBatch?.Cards.ToList() ?? [];
 
     private int BundleWithEmail => BundleCards().Count(c => c.HasEmail);
     private int BundleWithoutEmail => BundleCards().Count(c => !c.HasEmail);
 
-    private void OpenBulk()
+    private async Task OpenBulk()
     {
-        _batches = _cards
-            .Where(c => !c.IsCancelled && !string.IsNullOrWhiteSpace(c.Reference))
-            .GroupBy(c => (Reference: c.Reference!, c.Category))
-            .OrderBy(g => g.Key.Reference).ThenBy(g => g.Key.Category)
-            .Select(g => new MailBatch(g.Key.Reference, g.Key.Category, g.ToList()))
-            .ToList();
         _bulkBatchKey = _batches.FirstOrDefault()?.Key ?? "";
-        ApplyBatchDefaults();
+        await ApplyBatchDefaults();
         _bulkResult = null;
         _bulkError = null;
         _showBulk = true;
     }
 
-    private void ApplyBatchDefaults()
+    private async Task ApplyBatchDefaults()
     {
         var category = CurrentBatch?.Category ?? MemberCategory.RedAnts;
-        _bulkSubject = Mailer.DefaultSubjectFor(category);
-        _bulkBody = Mailer.DefaultBodyFor(category);
+        var template = await MailTemplate.HandleAsync(new GetMemberCardMailTemplate.Query(category));
+        _bulkSubject = template.Subject;
+        _bulkBody = template.Body;
     }
 
     private void CloseBulk() { if (!_bulkSending) { _showBulk = false; _bulkError = null; _bulkResult = null; } }
@@ -1049,7 +1014,7 @@
             {
                 try
                 {
-                    var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(ToDomain(c), _bulkSubject, _bulkBody));
+                    var result = await CardMail.HandleAsync(new SendMemberCardMail.Command(c.Uuid, _bulkSubject, _bulkBody));
                     if (result.Success) enqueued++;
                     else failed++;
                 }
@@ -1096,13 +1061,13 @@
     private static readonly TicketStatus[] MemberStatusOptions = [TicketStatus.Valid, TicketStatus.Cancelled];
     private static string StatusLabel(TicketStatus status) => status == TicketStatus.Cancelled ? "Storniert" : "Gültig";
 
-    private async Task SaveCategoryAsync(MemberCardListItem c, MemberCategory category)
+    private async Task SaveCategoryAsync(MemberCardRow c, MemberCategory category)
     {
         await CardCategory.HandleAsync(new SetMemberCardCategory.Command(c.Uuid, category));
         await ReloadCardsAsync();
     }
 
-    private async Task SaveStatusAsync(MemberCardListItem c, TicketStatus status)
+    private async Task SaveStatusAsync(MemberCardRow c, TicketStatus status)
     {
         await CardStatus.HandleAsync(new SetMemberCardStatus.Command(c.Uuid, status));
         await ReloadCardsAsync();

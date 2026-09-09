@@ -8,7 +8,7 @@ public static class ImportFlexTickets
     public sealed record Command(int SeasonId, IReadOnlyList<TicketImportRow> Rows, string DefaultBundle, TicketCategory DefaultCategory,
         string? CreatedByName, string? CreatedByEmail);
 
-    public sealed class Handler(IFlexTicketBundles bundles)
+    public sealed class Handler(IFlexTicketBundleRepository bundles)
     {
         public Task<(int Created, int Updated)> HandleAsync(Command command) =>
             bundles.ImportUnifiedAsync(command.SeasonId, command.Rows, command.DefaultBundle, command.DefaultCategory,

@@ -6,31 +6,9 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.EventBundles.Infrastructure;
 
-public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : IEventTicketBundles
+public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : IEventTicketBundleRepository
 {
     public const int MaxBundleSize = 1000;
-
-    public async Task<IReadOnlyList<EventTicketBundleView>> GetByEventAsync(int eventId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var bundles = await scope.Database.FetchAsync<EventTicketBundleRecord>(
-            "WHERE EventId = @0 ORDER BY CreatedAt DESC", eventId);
-        if (bundles.Count == 0) return [];
-
-        var counts = await scope.Database.FetchAsync<BundleCountRow>(
-            "SELECT BundleId AS BundleId, COUNT(*) AS Total, " +
-            "SUM(CASE WHEN Redeemed = 1 THEN 1 ELSE 0 END) AS Redeemed " +
-            "FROM EventTickets WHERE EventId = @0 AND BundleId IS NOT NULL GROUP BY BundleId",
-            eventId);
-        var byBundle = counts.ToDictionary(c => c.BundleId, c => c);
-
-        return bundles.Select(b =>
-        {
-            var c = byBundle.GetValueOrDefault(b.Id);
-            return new EventTicketBundleView(b.Id, b.EventId, (TicketCategory)b.Category, b.Reference,
-                b.CreatedAt, c?.Total ?? 0, c?.Redeemed ?? 0, b.CreatedByName, b.CreatedByEmail);
-        }).ToList();
-    }
 
     public async Task<bool> ReferenceExistsAsync(int eventId, string reference)
     {
@@ -38,7 +16,7 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
         return await ReferenceExistsAsync(scope.Database, eventId, (reference ?? "").Trim());
     }
 
-    public async Task<EventTicketBundleView> CreateAsync(int eventId, TicketCategory category, string reference, int quantity,
+    public async Task<int> CreateAsync(int eventId, TicketCategory category, string reference, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         if (quantity < 1) throw new DomainException("Die Anzahl muss mindestens 1 sein.");
@@ -85,10 +63,7 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
             });
         }
 
-        var total = await db.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM EventTickets WHERE BundleId = @0", record.Id);
-        return new EventTicketBundleView(record.Id, record.EventId, (TicketCategory)record.Category, record.Reference,
-            record.CreatedAt, total, 0, record.CreatedByName, record.CreatedByEmail);
+        return record.Id;
     }
 
     public async Task<(int Created, int Updated)> ImportUnifiedAsync(int eventId, IReadOnlyList<TicketImportRow> rows,
@@ -195,12 +170,5 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
         var count = await db.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM EventTicketBundles WHERE EventId = @0 AND Reference = @1", eventId, reference);
         return count > 0;
-    }
-
-    private sealed class BundleCountRow
-    {
-        public int BundleId { get; set; }
-        public int Total { get; set; }
-        public int Redeemed { get; set; }
     }
 }

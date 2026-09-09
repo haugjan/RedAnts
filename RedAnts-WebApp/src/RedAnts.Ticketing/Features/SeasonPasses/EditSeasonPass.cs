@@ -8,7 +8,7 @@ public static class EditSeasonPass
 
     public sealed record Command(Guid Uuid, decimal Price, TicketStatus Status, int? TierId, Buyer? Buyer, string? Email);
 
-    public sealed class Handler(ISeasonPasses passes)
+    public sealed class Handler(ISeasonPassRepository passes)
     {
         public async Task HandleAsync(Command command)
         {

@@ -6,7 +6,7 @@ public static class SetMemberCardCategory
 {
     public sealed record Command(Guid Uuid, MemberCategory Category);
 
-    public sealed class Handler(IMemberCards cards)
+    public sealed class Handler(IMemberCardRepository cards)
     {
         public async Task HandleAsync(Command command)
         {

@@ -7,9 +7,9 @@ public static class CreateEventTicketBundle
     public sealed record Command(int EventId, TicketCategory Category, string Reference, int Quantity,
         string? CreatedByName, string? CreatedByEmail, int? OrderId);
 
-    public sealed class Handler(IEventTicketBundles bundles)
+    public sealed class Handler(IEventTicketBundleRepository bundles)
     {
-        public async Task<EventTicketBundleView> HandleAsync(Command command)
+        public async Task<int> HandleAsync(Command command)
         {
             var reference = (command.Reference ?? "").Trim();
             if (reference.Length == 0) throw new DomainException("Bitte ein Bundle angeben.");

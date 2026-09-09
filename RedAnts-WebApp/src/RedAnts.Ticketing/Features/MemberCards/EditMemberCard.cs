@@ -9,7 +9,7 @@ public static class EditMemberCard
     public sealed record Command(Guid Uuid, string? FirstName, string? LastName, DateOnly? Birthday, MemberCategory Category,
         TicketStatus Status, string? Reference, string? Email, MemberAddress? Address, int Admissions);
 
-    public sealed class Handler(IMemberCards cards)
+    public sealed class Handler(IMemberCardRepository cards)
     {
         public async Task HandleAsync(Command command)
         {

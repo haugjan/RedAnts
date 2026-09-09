@@ -1,9 +1,9 @@
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Admin;
 
-namespace RedAnts.Ticketing.Features.SeasonPasses.Admin;
+namespace RedAnts.Ticketing.Features.SeasonPasses;
 
-public sealed record SeasonPassListItem(
+public sealed record SeasonPassRow(
     Guid Uuid,
     string CategoryName,
     decimal Price,
@@ -13,6 +13,7 @@ public sealed record SeasonPassListItem(
     string? BuyerName,
     string? OrderNumber,
     string? PaymentState,
+    string TicketUrl,
     BuyerType? BuyerType = null,
     string? CreatedByName = null,
     string? Reference = null,
@@ -24,6 +25,8 @@ public sealed record SeasonPassListItem(
     int? TierId = null,
     CardHolder? Holder = null)
 {
+    public string CardNo => AdminFormat.TicketNo(Uuid);
+    public string StatusLabel => Status.DisplayName();
     public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
     public bool IsCompany => !string.IsNullOrWhiteSpace(BuyerCompany);
     public string? BuyerDisplay => AdminName.Display(BuyerCompany, BuyerFirstName, BuyerLastName) ?? BuyerName;

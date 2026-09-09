@@ -1,17 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Tickets;
 using RedAnts.Ticketing.Features.Tickets.Admin;
 using Umbraco.Cms.Core;
 
 namespace RedAnts.Ticketing.Features.FlexTickets.Admin;
 
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
-public sealed class FlexBundleExportController(
-    IFlexBundleTickets bundleTickets,
-    ITicketTokens tokens,
-    IPublicBaseUrl publicUrl) : Controller
+public sealed class FlexBundleExportController(GetFlexBundlesForExport.Handler tickets) : Controller
 {
     [HttpGet("/admin/flex-tickets/bundles.csv")]
     public async Task<IActionResult> Export([FromQuery] string? ids)
@@ -23,10 +19,8 @@ public sealed class FlexBundleExportController(
             .Distinct()
             .ToList();
 
-        var tickets = await bundleTickets.GetByBundlesAsync(bundleIds);
-        var rows = tickets.Select(t => new TicketExportRow(
-            t.Uuid.ToString("N")[..8].ToUpperInvariant(), t.Reference, t.Category.DisplayName(),
-            t.Holder ?? CardHolder.Empty, null, publicUrl.TicketUrl(tokens.CreateShort(t.Uuid))));
+        var rows = (await tickets.HandleAsync(new GetFlexBundlesForExport.Query(bundleIds)))
+            .Select(t => new TicketExportRow(t.CardNo, t.BundleReference, t.CategoryLabel, t.Holder ?? CardHolder.Empty, null, t.TicketUrl));
 
         var name = bundleIds.Count == 1 ? $"flextickets-bundle-{bundleIds[0]}.csv" : "flextickets-bundles.csv";
         return File(TicketExportCsv.Build(rows), "text/csv; charset=utf-8", name);

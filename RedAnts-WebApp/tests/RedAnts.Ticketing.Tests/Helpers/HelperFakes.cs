@@ -4,7 +4,7 @@ using RedAnts.Ticketing.Features.Helpers;
 
 namespace RedAnts.Ticketing.Tests.Helpers;
 
-internal sealed class RecordingHelpers : IHelpers
+internal sealed class RecordingHelpers : IHelperRepository
 {
     private int _nextId = 1;
 
@@ -12,9 +12,6 @@ internal sealed class RecordingHelpers : IHelpers
     public List<(int Id, bool Active)> ActiveChanges { get; } = [];
     public List<(int Id, bool AllEvents, IReadOnlyList<int> EventIds, bool CanRebook)> Assignments { get; } = [];
     public List<int> Deleted { get; } = [];
-
-    public Task<IReadOnlyList<Helper>> GetBySeasonAsync(int seasonId) =>
-        Task.FromResult<IReadOnlyList<Helper>>(Stored.Where(h => h.SeasonId == seasonId).ToList());
 
     public Task<Helper?> FindByIdAsync(int id) => Task.FromResult(Stored.FirstOrDefault(h => h.Id == id));
 
@@ -45,6 +42,30 @@ internal sealed class RecordingHelpers : IHelpers
     {
         Deleted.Add(id);
         return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeHelperListReader : IHelperListReader
+{
+    public List<HelperRow> Rows { get; } = [];
+    public List<int> Requested { get; } = [];
+
+    public Task<IReadOnlyList<HelperRow>> GetBySeasonAsync(int seasonId)
+    {
+        Requested.Add(seasonId);
+        return Task.FromResult<IReadOnlyList<HelperRow>>(Rows.Where(h => h.SeasonId == seasonId).ToList());
+    }
+}
+
+internal sealed class FakeHelperScanReportReader : IHelperScanReportReader
+{
+    public List<HelperScanRow> Rows { get; } = [];
+    public List<IReadOnlyCollection<int>> Requested { get; } = [];
+
+    public Task<IReadOnlyList<HelperScanRow>> GetByEventsAsync(IReadOnlyCollection<int> eventIds)
+    {
+        Requested.Add(eventIds);
+        return Task.FromResult<IReadOnlyList<HelperScanRow>>(Rows.Where(r => eventIds.Contains(r.EventId)).ToList());
     }
 }
 

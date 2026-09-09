@@ -7,7 +7,7 @@ public static class CreateSeasonPass
     public sealed record Command(int SeasonId, int? TierId, decimal Price, int OrderId, Buyer Buyer, string? Reference, string? Email,
         CardHolder Holder, string? CreatedByName, string? CreatedByEmail);
 
-    public sealed class Handler(ISeasonPasses passes)
+    public sealed class Handler(ISeasonPassRepository passes)
     {
         public async Task<SeasonPass> HandleAsync(Command command)
         {

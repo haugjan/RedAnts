@@ -617,7 +617,7 @@
     [Inject] private ISeasons Seasons { get; set; } = default!;
     [Inject] private IEvents Events { get; set; } = default!;
     [Inject] private IEventTickets Tickets { get; set; } = default!;
-    [Inject] private IEventTicketBundles Bundles { get; set; } = default!;
+    [Inject] private GetEventBundles.Handler BundleList { get; set; } = default!;
     [Inject] private IVisitLogReader Visits { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
     [Inject] private IOccupancyReader Occupancies { get; set; } = default!;
@@ -771,7 +771,7 @@
     private IReadOnlyList<Season> _seasons = [];
     private IReadOnlyList<Event> _events = [];
     private IReadOnlyList<EventTicket> _tickets = [];
-    private IReadOnlyList<EventTicketBundleView> _bundles = [];
+    private IReadOnlyList<EventBundleRow> _bundles = [];
     private IReadOnlyDictionary<int, string> _bundleRefById = new Dictionary<int, string>();
     private string _selectedEventName = "";
 
@@ -829,7 +829,7 @@
             ? (await Tickets.GetByEventAsync(SelectedEventId)).OrderBy(t => t.CreatedAt).ToList()
             : [];
         _bundles = SelectedEventId > 0
-            ? await Bundles.GetByEventAsync(SelectedEventId)
+            ? await BundleList.HandleAsync(new GetEventBundles.Query(SelectedEventId))
             : [];
         _bundleRefById = _bundles.ToDictionary(b => b.Id, b => b.Reference);
         _inside = SelectedEventId > 0

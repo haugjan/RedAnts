@@ -13,7 +13,7 @@ public sealed class WarmupController(
     ISeasons seasons,
     IEvents events,
     IVenues venues,
-    IHelpers helpers,
+    GetHelpers.Handler helpers,
     IContentUrls contentUrls) : Controller
 {
     private static readonly string[] CorePaths =
@@ -68,7 +68,7 @@ public sealed class WarmupController(
     {
         foreach (var season in await seasons.GetPublicOpenAsync())
         {
-            var helper = (await helpers.GetBySeasonAsync(season.Id)).FirstOrDefault(h => h.Active);
+            var helper = (await helpers.HandleAsync(new GetHelpers.Query(season.Id))).FirstOrDefault(h => h.Active);
             if (helper is not null)
                 return $"{HelperSessionCookie.Name}={HelperSessionCookie.Protect(dataProtection, helper.Id)}";
         }

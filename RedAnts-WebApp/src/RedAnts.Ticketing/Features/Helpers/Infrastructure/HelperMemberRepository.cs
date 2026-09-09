@@ -1,25 +1,14 @@
 using RedAnts.Ticketing.Domain.Sales;
-using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
 
 namespace RedAnts.Ticketing.Features.Helpers.Infrastructure;
 
-public sealed class HelperMemberRepository(IMemberService memberService) : IHelpers
+public sealed class HelperMemberRepository(IMemberService memberService) : IHelperRepository
 {
-    public Task<IReadOnlyList<Helper>> GetBySeasonAsync(int seasonId)
-    {
-        var helpers = memberService.GetMembersByMemberType(HelperAliases.MemberType)
-            .Select(Map)
-            .Where(h => h.SeasonId == seasonId)
-            .OrderByDescending(h => h.Active).ThenBy(h => h.LastName).ThenBy(h => h.FirstName).ThenBy(h => h.Id)
-            .ToList();
-        return Task.FromResult<IReadOnlyList<Helper>>(helpers);
-    }
-
     public Task<Helper?> FindByIdAsync(int id)
     {
         var member = memberService.GetById(id);
-        return Task.FromResult(member is null || member.ContentType.Alias != HelperAliases.MemberType ? null : Map(member));
+        return Task.FromResult(member is null || !HelperMembers.IsHelper(member) ? null : HelperMembers.ToHelper(member));
     }
 
     public Task<Helper?> FindByPasswordAsync(string code)
@@ -27,9 +16,9 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
         var value = (code ?? "").Trim();
         if (value.Length == 0) return Task.FromResult<Helper?>(null);
         var member = memberService.GetByUsername(value);
-        return Task.FromResult(member is null || member.ContentType.Alias != HelperAliases.MemberType || !member.IsApproved
+        return Task.FromResult(member is null || !HelperMembers.IsHelper(member) || !member.IsApproved
             ? null
-            : Map(member));
+            : HelperMembers.ToHelper(member));
     }
 
     public Task<Helper> AddAsync(int seasonId, string firstName, string lastName, string email)
@@ -48,13 +37,13 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
         member.SetValue(HelperAliases.CanRebook, false);
         memberService.Save(member);
 
-        return Task.FromResult(Map(member));
+        return Task.FromResult(HelperMembers.ToHelper(member));
     }
 
     public Task SetActiveAsync(int id, bool active)
     {
         var member = memberService.GetById(id);
-        if (member is not null && member.ContentType.Alias == HelperAliases.MemberType)
+        if (member is not null && HelperMembers.IsHelper(member))
         {
             member.IsApproved = active;
             memberService.Save(member);
@@ -65,7 +54,7 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
     public Task SetAssignmentAsync(int id, bool allEvents, IReadOnlyList<int> eventIds, bool canRebook)
     {
         var member = memberService.GetById(id);
-        if (member is not null && member.ContentType.Alias == HelperAliases.MemberType)
+        if (member is not null && HelperMembers.IsHelper(member))
         {
             member.SetValue(HelperAliases.AllEvents, allEvents);
             member.SetValue(HelperAliases.EventIds, allEvents ? "" : string.Join(',', eventIds.Where(e => e > 0).Distinct()));
@@ -78,7 +67,7 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
     public Task DeleteAsync(int id)
     {
         var member = memberService.GetById(id);
-        if (member is not null && member.ContentType.Alias == HelperAliases.MemberType)
+        if (member is not null && HelperMembers.IsHelper(member))
             memberService.Delete(member);
         return Task.CompletedTask;
     }
@@ -93,27 +82,4 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
         }
         return PasswordGenerator.Generate() + Random.Shared.Next(1000, 10000);
     }
-
-    private static Helper Map(IMember m) =>
-        Helper.FromPersistence(
-            m.Id,
-            m.GetValue<int?>(HelperAliases.SeasonId) ?? 0,
-            m.GetValue<string>(HelperAliases.FirstName) ?? "",
-            m.GetValue<string>(HelperAliases.LastName) ?? "",
-            m.Email ?? "",
-            string.IsNullOrWhiteSpace(m.GetValue<string>(HelperAliases.Code)) ? m.Username : m.GetValue<string>(HelperAliases.Code)!,
-            m.GetValue<bool>(HelperAliases.AllEvents),
-            ParseIds(m.GetValue<string>(HelperAliases.EventIds)),
-            m.GetValue<bool>(HelperAliases.CanRebook),
-            m.IsApproved,
-            m.CreateDate);
-
-    private static IReadOnlyList<int> ParseIds(string? csv) =>
-        string.IsNullOrWhiteSpace(csv)
-            ? []
-            : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(s => int.TryParse(s, out var id) ? id : 0)
-                .Where(id => id > 0)
-                .Distinct()
-                .ToList();
 }

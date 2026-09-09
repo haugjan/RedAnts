@@ -5,16 +5,13 @@ using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Tests.FlexTickets;
 
-internal sealed class RecordingFlexBundles : IFlexTicketBundles
+internal sealed class RecordingFlexBundles : IFlexTicketBundleRepository
 {
     public Dictionary<int, FlexTicketBundle> Bundles { get; } = new();
     public HashSet<string> Existing { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<FlexTicketBundle> Saved { get; } = [];
     public List<string> Calls { get; } = [];
     public List<(int SeasonId, string Reference, int Quantity)> Created { get; } = [];
-
-    public Task<IReadOnlyList<FlexTicketBundleView>> GetBySeasonAsync(int seasonId) =>
-        Task.FromResult<IReadOnlyList<FlexTicketBundleView>>([]);
 
     public Task<FlexRebookResult> RebookByUuidAsync(int targetBundleId, Guid uuid, string? operatorName)
     {
@@ -40,10 +37,6 @@ internal sealed class RecordingFlexBundles : IFlexTicketBundles
         return Task.FromResult(new FlexBoxOfficeResult(FlexBoxOfficeStatus.Converted));
     }
 
-    public Task<IReadOnlyList<FlexTicketView>> GetTicketsAsync(int bundleId) => Task.FromResult<IReadOnlyList<FlexTicketView>>([]);
-
-    public Task<IReadOnlyList<FlexTicketView>> GetTicketsBySeasonAsync(int seasonId) => Task.FromResult<IReadOnlyList<FlexTicketView>>([]);
-
     public Task SetTicketStatusAsync(Guid uuid, TicketStatus status)
     {
         Calls.Add($"status:{uuid}:{status}");
@@ -64,25 +57,25 @@ internal sealed class RecordingFlexBundles : IFlexTicketBundles
 
     public Task<bool> ReferenceExistsAsync(int seasonId, string reference) => Task.FromResult(Existing.Contains(reference));
 
-    public Task<FlexTicketBundleView> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
+    public Task<int> CreateAsync(int seasonId, TicketCategory category, string reference, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         Created.Add((seasonId, reference, quantity));
-        return Task.FromResult(new FlexTicketBundleView(Created.Count, seasonId, category, reference, SwissTime.Timestamp, quantity, 0));
+        return Task.FromResult(Created.Count);
     }
 
-    public Task<FlexTicketBundleView> AddTicketsAsync(int bundleId, TicketCategory category, int quantity,
+    public Task<int> AddTicketsAsync(int bundleId, TicketCategory category, int quantity,
         string? createdByName = null, string? createdByEmail = null, int? orderId = null)
     {
         Calls.Add($"add:{bundleId}:{quantity}");
-        return Task.FromResult(new FlexTicketBundleView(bundleId, 1, category, "x", SwissTime.Timestamp, quantity, 0));
+        return Task.FromResult(bundleId);
     }
 
-    public Task<FlexTicketBundleView> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
+    public Task<int> CreateEmptyAsync(int seasonId, TicketCategory category, string reference,
         string? createdByName = null, string? createdByEmail = null)
     {
         Created.Add((seasonId, reference, 0));
-        return Task.FromResult(new FlexTicketBundleView(Created.Count, seasonId, category, reference, SwissTime.Timestamp, 0, 0));
+        return Task.FromResult(Created.Count);
     }
 
     public Task<bool> DeleteEmptyAsync(int bundleId)
@@ -118,6 +111,42 @@ internal sealed class RecordingFlexBundles : IFlexTicketBundles
     {
         Saved.Add(bundle);
         return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeFlexBundleListReader : IFlexBundleListReader
+{
+    public List<FlexBundleRow> Rows { get; } = [];
+    public List<int> Requested { get; } = [];
+
+    public Task<IReadOnlyList<FlexBundleRow>> GetBySeasonAsync(int seasonId)
+    {
+        Requested.Add(seasonId);
+        return Task.FromResult<IReadOnlyList<FlexBundleRow>>(Rows.Where(b => b.SeasonId == seasonId).ToList());
+    }
+}
+
+internal sealed class FakeFlexBundleTicketsReader : IFlexBundleTicketsReader
+{
+    public Dictionary<int, List<FlexTicketRow>> ByBundle { get; } = new();
+    public List<string> Calls { get; } = [];
+
+    public Task<IReadOnlyList<FlexTicketRow>> GetByBundleAsync(int bundleId)
+    {
+        Calls.Add($"bundle:{bundleId}");
+        return Task.FromResult<IReadOnlyList<FlexTicketRow>>(ByBundle.GetValueOrDefault(bundleId) ?? []);
+    }
+
+    public Task<IReadOnlyList<FlexTicketRow>> GetBySeasonAsync(int seasonId)
+    {
+        Calls.Add($"season:{seasonId}");
+        return Task.FromResult<IReadOnlyList<FlexTicketRow>>(ByBundle.Values.SelectMany(t => t).Where(t => t.SeasonId == seasonId).ToList());
+    }
+
+    public Task<IReadOnlyList<FlexTicketRow>> GetByBundlesAsync(IReadOnlyCollection<int> bundleIds)
+    {
+        Calls.Add($"bundles:{string.Join(',', bundleIds)}");
+        return Task.FromResult<IReadOnlyList<FlexTicketRow>>(bundleIds.SelectMany(id => ByBundle.GetValueOrDefault(id) ?? []).ToList());
     }
 }
 

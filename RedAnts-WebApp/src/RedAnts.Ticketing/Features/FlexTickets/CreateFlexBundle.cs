@@ -7,9 +7,9 @@ public static class CreateFlexBundle
     public sealed record Command(int SeasonId, TicketCategory Category, string Reference, int Quantity,
         string? CreatedByName, string? CreatedByEmail, int? OrderId);
 
-    public sealed class Handler(IFlexTicketBundles bundles)
+    public sealed class Handler(IFlexTicketBundleRepository bundles)
     {
-        public async Task<FlexTicketBundleView> HandleAsync(Command command)
+        public async Task<int> HandleAsync(Command command)
         {
             var reference = FlexBundleReference.Clean(command.Reference);
             if (command.Quantity < 1) throw new DomainException("Menge muss mindestens 1 sein.");
@@ -31,7 +31,7 @@ internal static class FlexBundleReference
         return value;
     }
 
-    public static async Task RequireFreeAsync(IFlexTicketBundles bundles, int seasonId, string reference)
+    public static async Task RequireFreeAsync(IFlexTicketBundleRepository bundles, int seasonId, string reference)
     {
         if (await bundles.ReferenceExistsAsync(seasonId, reference))
             throw new DomainException($"Das Bundle „{reference}“ ist in dieser Saison bereits vergeben.");

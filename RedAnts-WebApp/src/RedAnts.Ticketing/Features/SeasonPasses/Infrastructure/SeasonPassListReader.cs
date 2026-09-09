@@ -1,13 +1,12 @@
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.SeasonPasses.Admin;
-using Umbraco.Cms.Core.Composing;
+using RedAnts.Ticketing.Features.Tickets;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.SeasonPasses.Infrastructure;
 
-public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : ISeasonPassAdminReport
+public sealed class SeasonPassListReader(IScopeProvider scopeProvider, ITicketTokens tokens, IPublicBaseUrl publicUrl) : ISeasonPassListReader
 {
-    public async Task<IReadOnlyList<SeasonPassListItem>> GetBySeasonAsync(int seasonId)
+    public async Task<IReadOnlyList<SeasonPassRow>> GetBySeasonAsync(int seasonId)
     {
         using var scope = scopeProvider.CreateScope(autoComplete: true);
 
@@ -53,6 +52,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
 
         return passes.Select(p =>
         {
+            var uuid = Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty;
             var buyer = Buyer.FromPersistence(p.BuyerType ?? 0, p.BuyerFirstName, p.BuyerLastName, p.BuyerCompany);
             var email = string.IsNullOrWhiteSpace(p.BuyerEmail) ? p.BillingEmail : p.BuyerEmail;
             var holder = CardHolder.Create(
@@ -60,8 +60,8 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
                 buyer?.FirstName ?? p.BillingFirstName, buyer?.LastName ?? p.BillingLastName,
                 p.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null, email,
                 p.Street, p.AddressLine2, p.PostalCode, p.City, p.Country, p.Phone);
-            return new SeasonPassListItem(
-                Guid.TryParse(p.Uuid, out var g) ? g : Guid.Empty,
+            return new SeasonPassRow(
+                uuid,
                 ResolveCategory(p.TierId),
                 p.Price,
                 (TicketStatus)p.Status,
@@ -70,6 +70,7 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
                 buyer?.DisplayName ?? BuyerName(p.BillingFirstName, p.BillingLastName),
                 p.OrderNumber,
                 p.OrderStatus is { } os ? PaymentState((OrderStatus)os) : null,
+                publicUrl.TicketUrl(tokens.CreateShort(uuid)),
                 buyer?.Type,
                 p.CreatedByName,
                 p.Reference,
@@ -140,10 +141,4 @@ public sealed class SeasonPassAdminReportReader(IScopeProvider scopeProvider) : 
         public string Name { get; set; } = "";
         public int? PromoOfTierId { get; set; }
     }
-}
-
-public sealed class SeasonPassAdminReportComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<ISeasonPassAdminReport, SeasonPassAdminReportReader>();
 }

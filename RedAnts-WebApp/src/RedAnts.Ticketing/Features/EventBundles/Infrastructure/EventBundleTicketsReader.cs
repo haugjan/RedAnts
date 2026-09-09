@@ -1,15 +1,14 @@
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.EventBundles.Admin;
-using Umbraco.Cms.Core.Composing;
+using RedAnts.Ticketing.Features.Tickets;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.EventBundles.Infrastructure;
 
-public sealed class EventBundleTicketsReader(IScopeProvider scopeProvider) : IEventBundleTickets
+public sealed class EventBundleTicketsReader(IScopeProvider scopeProvider, ITicketTokens tokens, IPublicBaseUrl publicUrl) : IEventBundleTicketsReader
 {
-    public Task<IReadOnlyList<EventBundleTicket>> GetByBundleAsync(int bundleId) => GetByBundlesAsync([bundleId]);
+    public Task<IReadOnlyList<EventBundleTicketRow>> GetByBundleAsync(int bundleId) => GetByBundlesAsync([bundleId]);
 
-    public async Task<IReadOnlyList<EventBundleTicket>> GetByBundlesAsync(IReadOnlyCollection<int> bundleIds)
+    public async Task<IReadOnlyList<EventBundleTicketRow>> GetByBundlesAsync(IReadOnlyCollection<int> bundleIds)
     {
         if (bundleIds.Count == 0) return [];
         using var scope = scopeProvider.CreateScope(autoComplete: true);
@@ -22,13 +21,14 @@ public sealed class EventBundleTicketsReader(IScopeProvider scopeProvider) : IEv
             "WHERE t.BundleId IN (@0) ORDER BY b.Reference, t.Id",
             new object[] { bundleIds });
         return rows
-            .Select(r => new EventBundleTicket(
-                Guid.TryParse(r.Uuid, out var g) ? g : Guid.Empty, r.EventId, r.Reference ?? "",
-                (TicketCategory)r.Category,
-                CardHolder.Create((BuyerType)(r.BuyerType ?? 0), r.Salutation, r.BuyerCompany,
-                    r.BuyerFirstName, r.BuyerLastName, r.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
-                    r.BuyerEmail, r.Street, r.AddressLine2, r.PostalCode, r.City, r.Country, r.Phone)))
-            .Where(t => t.Uuid != Guid.Empty)
+            .Select(r => (Uuid: Guid.TryParse(r.Uuid, out var g) ? g : Guid.Empty, Row: r))
+            .Where(x => x.Uuid != Guid.Empty)
+            .Select(x => new EventBundleTicketRow(
+                x.Uuid, x.Row.EventId, x.Row.Reference ?? "", publicUrl.TicketUrl(tokens.CreateShort(x.Uuid)),
+                (TicketCategory)x.Row.Category,
+                CardHolder.Create((BuyerType)(x.Row.BuyerType ?? 0), x.Row.Salutation, x.Row.BuyerCompany,
+                    x.Row.BuyerFirstName, x.Row.BuyerLastName, x.Row.Birthday is { } bd ? DateOnly.FromDateTime(bd) : null,
+                    x.Row.BuyerEmail, x.Row.Street, x.Row.AddressLine2, x.Row.PostalCode, x.Row.City, x.Row.Country, x.Row.Phone)))
             .ToList();
     }
 
@@ -52,10 +52,4 @@ public sealed class EventBundleTicketsReader(IScopeProvider scopeProvider) : IEv
         public string? Country { get; set; }
         public string? Phone { get; set; }
     }
-}
-
-public sealed class EventBundleTicketsComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IEventBundleTickets, EventBundleTicketsReader>();
 }

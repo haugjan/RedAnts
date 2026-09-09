@@ -13,7 +13,7 @@ public sealed class OrderFulfillment(
     IOrders orders,
     IOrderLog orderLog,
     IEventTickets tickets,
-    ISeasonPasses passes,
+    ISeasonPassRepository passes,
     IConvertibleCards convertibleCards,
     IOrderAddOns orderAddOns,
     IAddOnNotifier addOnNotifier,

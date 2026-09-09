@@ -5,12 +5,12 @@ using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Tests.MemberCards;
 
-internal sealed class InMemoryMemberCards : IMemberCards
+internal sealed class InMemoryMemberCards : IMemberCardRepository
 {
     public List<MemberCard> Stored { get; } = [];
     public List<MemberCard> Saved { get; } = [];
+    public List<MemberCard> Added { get; } = [];
     public List<(int SeasonId, string Reference, MemberCategory Category, int Rows)> Imports { get; } = [];
-    public List<(int SeasonId, MemberCategory Category, string Reference, int Admissions)> Created { get; } = [];
 
     public Task<int> ImportAsync(int seasonId, string reference, MemberCategory category, IReadOnlyList<MemberImportRow> rows,
         string? createdByName = null, string? createdByEmail = null)
@@ -19,20 +19,12 @@ internal sealed class InMemoryMemberCards : IMemberCards
         return Task.FromResult(rows.Count);
     }
 
-    public Task CreateAsync(int seasonId, MemberCategory category, string? firstName, string? lastName, DateOnly? birthday,
-        string reference, string? email = null, string? createdByName = null, string? createdByEmail = null,
-        MemberAddress? address = null, int admissions = 1)
+    public Task AddAsync(MemberCard card)
     {
-        Created.Add((seasonId, category, reference, admissions));
+        Added.Add(card);
+        Stored.Add(card);
         return Task.CompletedTask;
     }
-
-    public Task<bool> ReferenceExistsAsync(int seasonId, string reference) => Task.FromResult(false);
-
-    public Task<IReadOnlyList<string>> GetReferencesAsync() => Task.FromResult<IReadOnlyList<string>>([]);
-
-    public Task<IReadOnlyList<MemberCard>> GetByReferenceAsync(string reference) =>
-        Task.FromResult<IReadOnlyList<MemberCard>>(Stored.Where(c => c.Reference == reference).ToList());
 
     public Task<MemberCard?> GetByUuidAsync(Guid uuid) => Task.FromResult(Stored.FirstOrDefault(c => c.Uuid == uuid));
 
@@ -40,6 +32,18 @@ internal sealed class InMemoryMemberCards : IMemberCards
     {
         Saved.Add(card);
         return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeMemberCardListReader : IMemberCardListReader
+{
+    public List<MemberCardRow> Rows { get; } = [];
+    public List<int> Requested { get; } = [];
+
+    public Task<IReadOnlyList<MemberCardRow>> GetBySeasonAsync(int seasonId)
+    {
+        Requested.Add(seasonId);
+        return Task.FromResult<IReadOnlyList<MemberCardRow>>(Rows);
     }
 }
 
@@ -64,9 +68,9 @@ internal sealed class RecordingMemberCardMailer : IMemberCardMailer
 {
     public List<(MemberCard Card, string Subject, string Body)> Sent { get; } = [];
 
-    public string DefaultSubjectFor(MemberCategory category) => "Betreff";
+    public string DefaultSubjectFor(MemberCategory category) => $"Betreff {category}";
 
-    public string DefaultBodyFor(MemberCategory category) => "Text";
+    public string DefaultBodyFor(MemberCategory category) => $"Text {category}";
 
     public Task<EmailSendResult> SendAsync(MemberCard card, string subject, string body, CancellationToken cancellationToken = default)
     {

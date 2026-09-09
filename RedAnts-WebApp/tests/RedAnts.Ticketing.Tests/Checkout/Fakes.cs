@@ -256,7 +256,7 @@ internal sealed class InMemoryEventTickets : IEventTickets
     public Task SetHolderAsync(Guid uuid, CardHolder holder) => Task.CompletedTask;
 }
 
-internal sealed class InMemorySeasonPasses : ISeasonPasses
+internal sealed class InMemorySeasonPasses : ISeasonPassRepository
 {
     public List<SeasonPass> Stored { get; } = [];
 
