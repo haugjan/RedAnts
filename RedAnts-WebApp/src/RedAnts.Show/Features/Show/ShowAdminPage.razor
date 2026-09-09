@@ -9,6 +9,7 @@
 @inject SetShowSetting.Handler SettingSave
 @inject SearchSpotify.Handler SpotifySearch
 @inject ImportSpotifyContext.Handler SpotifyImport
+@inject IShowSpotifyAccount Account
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
 @implements IDisposable
@@ -73,6 +74,21 @@
                     <div>Aktuell gespeicherte Client-ID</div>
                     <strong>@(string.IsNullOrWhiteSpace(_savedClientId) ? "— keine hinterlegt —" : _savedClientId)</strong>
                     <div class="se-muted">Client-Secret: @(_hasSecret ? "gesetzt ✓" : "nicht gesetzt")</div>
+                    <div class="se-muted">
+                        Konto: @(Account.Connected ? $"verbunden als {Account.AccountName} ✓" : "nicht verbunden")
+                    </div>
+                </div>
+
+                <div class="se-fieldcol">
+                    <span class="se-lbl">Kontoverbindung (nötig für den Playlist-Import)</span>
+                    <div class="se-testrow">
+                        <a class="se-btn primary" href="/admin/show/spotify/connect" target="_blank" rel="noopener">🔗 Mit Spotify verbinden</a>
+                        @if (Account.Connected)
+                        {
+                            <button class="se-btn" @onclick="DisconnectSpotifyAsync" disabled="@_spotifyBusy">Trennen</button>
+                        }
+                    </div>
+                    <p class="se-muted">Öffnet einen neuen Tab. Danach diesen Dialog schliessen und neu öffnen.</p>
                 </div>
 
                 <p class="se-spotifyhelp">
@@ -111,6 +127,9 @@
                     <li><code>https://show.redants.ch/show/callback</code></li>
                     <li><code>https://show-dev.redants.ch/show/callback</code></li>
                     <li><code>http://127.0.0.1:5603/show/callback</code></li>
+                    <li><code>https://admin.redants.ch/admin/show/spotify/callback</code></li>
+                    <li><code>https://admin-dev.redants.ch/admin/show/spotify/callback</code></li>
+                    <li><code>http://127.0.0.1:5606/admin/show/spotify/callback</code></li>
                 </ul>
             </div>
         </div>
@@ -1307,6 +1326,18 @@
             _spotifyClientSecret = "";
             RefreshSpotifyState();
             _spotifyStatus = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
+        }
+        catch (Exception ex) { _spotifyError = "Fehler: " + ex.Message; }
+        finally { _spotifyBusy = false; }
+    }
+
+    private async Task DisconnectSpotifyAsync()
+    {
+        _spotifyBusy = true; _spotifyStatus = ""; _spotifyError = ""; _spotifyTestResult = "";
+        try
+        {
+            await Account.DisconnectAsync();
+            _spotifyStatus = "Kontoverbindung getrennt.";
         }
         catch (Exception ex) { _spotifyError = "Fehler: " + ex.Message; }
         finally { _spotifyBusy = false; }

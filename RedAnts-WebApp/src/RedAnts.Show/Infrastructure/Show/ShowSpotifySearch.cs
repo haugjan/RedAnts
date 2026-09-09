@@ -7,7 +7,11 @@ using RedAnts.Features.Show.Ports;
 
 namespace RedAnts.Infrastructure.Show;
 
-public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfiguration config, IShowSettings settings) : IShowSpotifySearch
+public sealed class ShowSpotifySearch(
+    IHttpClientFactory httpFactory,
+    IConfiguration config,
+    IShowSettings settings,
+    ShowSpotifyAccount account) : IShowSpotifySearch
 {
     private string? ClientId => settings.Get("Spotify:ClientId") ?? config["Spotify:ClientId"];
     private string? Secret => settings.Get("Spotify:ClientSecret") ?? config["Spotify:ClientSecret"];
@@ -39,6 +43,7 @@ public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfigura
 
     private async Task<string> TokenAsync()
     {
+        if (await account.UserTokenAsync() is { Length: > 0 } userToken) return userToken;
         if (_token is not null && DateTime.UtcNow < _expiresUtc) return _token;
         var client = httpFactory.CreateClient();
         var req = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token")
@@ -144,6 +149,10 @@ public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfigura
 
     private async Task<IReadOnlyList<SpotifyTrack>> PlaylistTracksAsync(string id, int max)
     {
+        if (!account.Connected)
+            throw new InvalidOperationException(
+                "Spotify gibt Playlist-Inhalte nur an ein verbundenes Konto heraus. Im Dialog „🟢 Spotify\" einmalig „Mit Spotify verbinden\" ausführen.");
+
         var tracks = new List<SpotifyTrack>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         const string fields = "items(is_local,track(uri,name,type,is_playable,duration_ms,preview_url,artists(name),album(name,images))),next";

@@ -16,6 +16,8 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddSingleton<IShowSettings, ShowSettingsRepository>();
         builder.Services.AddSingleton<IShowRemote, ShowRemote>();
         builder.Services.AddSingleton<IShowSoundUploader, ShowSoundUploader>();
+        builder.Services.AddSingleton<ShowSpotifyAccount>();
+        builder.Services.AddSingleton<IShowSpotifyAccount>(sp => sp.GetRequiredService<ShowSpotifyAccount>());
         builder.Services.AddSingleton<IShowSpotifySearch, ShowSpotifySearch>();
         builder.Services.AddSingleton<IPackageManifestReader, ShowAdminManifestReader>();
         builder.Services.AddShowFeatures();

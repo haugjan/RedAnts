@@ -31,6 +31,15 @@ public interface IShowSpotifySearch
     Task<string> TestCredentialsAsync(string clientId, string secret);
 }
 
+public interface IShowSpotifyAccount
+{
+    bool Connected { get; }
+    string? AccountName { get; }
+    string BuildAuthorizeUrl(string redirectUri, string state);
+    Task<string> CompleteAsync(string code, string redirectUri);
+    Task DisconnectAsync();
+}
+
 public sealed record ShowSoundContent(Stream Content, string ContentType, DateTimeOffset? LastModified, string? ETag);
 
 public interface IShowSoundUploader
