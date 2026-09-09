@@ -70,10 +70,10 @@
                 </button>
                 <button type="button" class="ta-btn ta-btn-ghost" disabled="@(_tickets.Count == 0)" @onclick="() => _showBulk = true"
                         title="Die aktuell gefilterten Flextickets mit E-Mail versenden">Tickets versenden</button>
-                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreateBundle">
+                <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedSeasonId <= 0)" @onclick="() => _showCreateBundle = true">
                     Bundle erstellen
                 </button>
-                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="OpenCreateSingle">
+                <button type="button" class="ta-btn ta-btn-primary" disabled="@(SelectedSeasonId <= 0)" @onclick="() => _showCreateSingle = true">
                     Einzelticket erstellen
                 </button>
             </div>
@@ -298,106 +298,27 @@
     [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
     [Inject] private GetFlexBundles.Handler BundleList { get; set; } = default!;
     [Inject] private GetFlexBundleTickets.Handler TicketList { get; set; } = default!;
-    [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private SetFlexTicketCategory.Handler CategoryChanges { get; set; } = default!;
+    [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
-    private bool _showPrint;
-    private int _printBundleId;
-    private Guid? _printUuid;
-    private string _printSubtitle = "";
-
-    private void OpenPrint()
-    {
-        if (SelectedBundle is null || SelectedBundle.TicketCount == 0) return;
-        _printBundleId = SelectedBundle.Id;
-        _printUuid = null;
-        _printSubtitle = $"{SelectedBundle.Reference} · {SelectedBundle.TicketCount} Karten · eine Seite pro Karte";
-        _showPrint = true;
-    }
-
-    private void OpenSinglePrint(Guid uuid)
-    {
-        _printUuid = uuid;
-        _printSubtitle = $"Ticket-Nr. {AdminFormat.TicketNo(uuid)}";
-        _showPrint = true;
-    }
-
-    private static bool HasEmail(FlexTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
-
-    private FlexTicketRow? _editPersonFor;
-
-    private async Task HolderSavedAsync()
-    {
-        _editPersonFor = null;
-        await ReloadTicketsAsync();
-    }
-
-    private FlexTicketRow? _mailFor;
-
-    private bool _showBulk;
-
-    private FlexTicketRow? _deleteTarget;
-
-    private async Task TicketDeletedAsync()
-    {
-        _deleteTarget = null;
-        await ReloadTicketsAsync();
-    }
-
-    private FlexBundleRow? _deleteBundleTarget;
-
-    private async Task BundleDeletedAsync()
-    {
-        _deleteBundleTarget = null;
-        _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
-        SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
-        await ReloadTicketsAsync();
-    }
-
     private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
+    private static readonly TicketStatus[] AllStatuses = Enum.GetValues<TicketStatus>();
 
     private bool _loading = true;
     private IReadOnlyList<SeasonChoice> _seasons = [];
     private IReadOnlyList<FlexBundleRow> _bundles = [];
     private IReadOnlyList<FlexTicketRow> _tickets = [];
     private int _total;
-
-    public int SelectedSeasonId { get; set; }
-    public int SelectedBundleId { get; set; }
     private string _selectedSeasonName = "";
-
-    private FlexBundleRow? SelectedBundle => _bundles.FirstOrDefault(b => b.Id == SelectedBundleId);
-
-    private bool _showExport;
-
+    private string _search = "";
     private string _sortCol = "created";
     private bool _sortAsc = false;
 
-    private bool _showCreateSingle;
-    private bool _showCreateBundle;
+    public int SelectedSeasonId { get; set; }
+    public int SelectedBundleId { get; set; }
 
-    private async Task BundleCreatedAsync(int bundleId)
-    {
-        _showCreateBundle = false;
-        _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
-        SelectedBundleId = bundleId;
-        await ReloadTicketsAsync();
-    }
-
-    private async Task SingleTicketCreatedAsync()
-    {
-        _showCreateSingle = false;
-        await OnSeasonChangedAsync();
-    }
-
-    private bool _showImport;
-
-    private async Task ImportedAsync()
-    {
-        _showImport = false;
-        await OnSeasonChangedAsync();
-    }
+    private FlexBundleRow? SelectedBundle => _bundles.FirstOrDefault(b => b.Id == SelectedBundleId);
 
     protected override async Task OnInitializedAsync()
     {
@@ -419,10 +340,13 @@
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
         _selectedSeasonName = _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.Name ?? "";
-        _bundles = SelectedSeasonId > 0 ? await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId)) : [];
+        await ReloadBundlesAsync();
         SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
         await ReloadTicketsAsync();
     }
+
+    private async Task ReloadBundlesAsync() =>
+        _bundles = SelectedSeasonId > 0 ? await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId)) : [];
 
     private async Task ReloadTicketsAsync()
     {
@@ -435,8 +359,8 @@
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
+
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private string _search = "";
 
     private IEnumerable<FlexTicketRow> Sorted()
     {
@@ -449,9 +373,7 @@
         return _sortAsc ? q : q.Reverse();
     }
 
-    private FlexTicketRow? _visitsFor;
-
-    private static readonly TicketStatus[] AllStatuses = Enum.GetValues<TicketStatus>();
+    private static bool HasEmail(FlexTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
 
     private static RedemptionState StateOf(FlexTicketRow t) =>
         RedemptionStateExtensions.Derive(t.Redeemed, t.IsInside);
@@ -475,7 +397,45 @@
         await ReloadTicketsAsync();
     }
 
+    private FlexTicketRow? _visitsFor;
+    private FlexTicketRow? _mailFor;
+    private FlexTicketRow? _editPersonFor;
     private FlexTicketRow? _redeemFor;
+    private FlexTicketRow? _deleteTarget;
+    private FlexBundleRow? _editing;
+    private FlexBundleRow? _deleteBundleTarget;
+    private bool _showCreateSingle;
+    private bool _showCreateBundle;
+    private bool _showImport;
+    private bool _showExport;
+    private bool _showBulk;
+
+    private bool _showPrint;
+    private int _printBundleId;
+    private Guid? _printUuid;
+    private string _printSubtitle = "";
+
+    private void OpenPrint()
+    {
+        if (SelectedBundle is null || SelectedBundle.TicketCount == 0) return;
+        _printBundleId = SelectedBundle.Id;
+        _printUuid = null;
+        _printSubtitle = $"{SelectedBundle.Reference} · {SelectedBundle.TicketCount} Karten · eine Seite pro Karte";
+        _showPrint = true;
+    }
+
+    private void OpenSinglePrint(Guid uuid)
+    {
+        _printUuid = uuid;
+        _printSubtitle = $"Ticket-Nr. {AdminFormat.TicketNo(uuid)}";
+        _showPrint = true;
+    }
+
+    private async Task HolderSavedAsync()
+    {
+        _editPersonFor = null;
+        await ReloadTicketsAsync();
+    }
 
     private async Task RedemptionChangedAsync()
     {
@@ -483,14 +443,43 @@
         await ReloadTicketsAsync();
     }
 
-    private void OpenCreateSingle() => _showCreateSingle = true;
-    private void OpenCreateBundle() => _showCreateBundle = true;
+    private async Task TicketDeletedAsync()
+    {
+        _deleteTarget = null;
+        await ReloadTicketsAsync();
+    }
 
-    private FlexBundleRow? _editing;
+    private async Task SingleTicketCreatedAsync()
+    {
+        _showCreateSingle = false;
+        await OnSeasonChangedAsync();
+    }
+
+    private async Task ImportedAsync()
+    {
+        _showImport = false;
+        await OnSeasonChangedAsync();
+    }
+
+    private async Task BundleCreatedAsync(int bundleId)
+    {
+        _showCreateBundle = false;
+        await ReloadBundlesAsync();
+        SelectedBundleId = bundleId;
+        await ReloadTicketsAsync();
+    }
 
     private async Task BundleRenamedAsync()
     {
         _editing = null;
-        _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
+        await ReloadBundlesAsync();
+    }
+
+    private async Task BundleDeletedAsync()
+    {
+        _deleteBundleTarget = null;
+        await ReloadBundlesAsync();
+        SelectedBundleId = _bundles.FirstOrDefault()?.Id ?? 0;
+        await ReloadTicketsAsync();
     }
 }
