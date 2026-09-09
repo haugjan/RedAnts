@@ -5,7 +5,7 @@ public static class RemoveHelperFromSeason
 {
     public sealed record Command(int HelperId);
 
-    public sealed class Handler(IHelpers helpers)
+    public sealed class Handler(IHelperRepository helpers)
     {
         public Task HandleAsync(Command command) => helpers.DeleteAsync(command.HelperId);
     }

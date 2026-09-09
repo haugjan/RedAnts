@@ -53,7 +53,7 @@ public class HelperTests
         var mailer = new RecordingHelperInviteMailer();
         var helper = await helpers.AddAsync(3, "Anna", "Muster", "anna@example.ch");
 
-        var result = await new InviteHelperByMail.Handler(mailer).HandleAsync(new InviteHelperByMail.Command(helper, "Einladung", "Text", "https://scan.redants.ch/scan/login"));
+        var result = await new InviteHelperByMail.Handler(helpers, mailer).HandleAsync(new InviteHelperByMail.Command(helper.Id, "Einladung", "Text", "https://scan.redants.ch/scan/login"));
 
         Assert.True(result.Success);
         var sent = Assert.Single(mailer.Sent);

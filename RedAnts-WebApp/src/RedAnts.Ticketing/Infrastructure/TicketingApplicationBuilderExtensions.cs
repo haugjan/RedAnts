@@ -124,7 +124,7 @@ public static class TicketingApplicationBuilderExtensions
             if (string.IsNullOrEmpty(value)) return null;
             int id;
             try { id = int.Parse(helperProtector.Unprotect(value)); } catch { return null; }
-            var helper = await ctx.RequestServices.GetRequiredService<IHelpers>().FindByIdAsync(id);
+            var helper = await ctx.RequestServices.GetRequiredService<IHelperRepository>().FindByIdAsync(id);
             return helper is { Active: true }
                 ? (helper.FullName, helper.AllEvents, string.Join(",", helper.EventIds), helper.CanRebook)
                 : null;
@@ -147,7 +147,7 @@ public static class TicketingApplicationBuilderExtensions
                 if (HttpMethods.IsPost(context.Request.Method))
                 {
                     var form = await context.Request.ReadFormAsync();
-                    var helper = await context.RequestServices.GetRequiredService<IHelpers>()
+                    var helper = await context.RequestServices.GetRequiredService<IHelperRepository>()
                         .FindByPasswordAsync(form["password"].ToString());
                     if (helper is not null)
                     {
@@ -175,7 +175,7 @@ public static class TicketingApplicationBuilderExtensions
             if (path.StartsWithSegments("/scan", out var rest) && rest.HasValue && rest.Value.Trim('/').Length > 0)
             {
                 var code = Uri.UnescapeDataString(rest.Value.Trim('/'));
-                var helper = await context.RequestServices.GetRequiredService<IHelpers>().FindByPasswordAsync(code);
+                var helper = await context.RequestServices.GetRequiredService<IHelperRepository>().FindByPasswordAsync(code);
                 if (helper is not null) SetHelperCookie(context, helper.Id);
                 context.Response.Redirect("/scan");
                 return;

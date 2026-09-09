@@ -2,9 +2,8 @@ using RedAnts.Ticketing.Domain.Sales;
 
 namespace RedAnts.Ticketing.Features.Helpers;
 
-public interface IHelpers
+public interface IHelperRepository
 {
-    Task<IReadOnlyList<Helper>> GetBySeasonAsync(int seasonId);
     Task<Helper?> FindByIdAsync(int id);
     Task<Helper?> FindByPasswordAsync(string code);
     Task<Helper> AddAsync(int seasonId, string firstName, string lastName, string email);

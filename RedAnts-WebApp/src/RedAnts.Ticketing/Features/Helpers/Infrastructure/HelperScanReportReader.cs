@@ -1,10 +1,8 @@
-using RedAnts.Ticketing.Features.Helpers.Admin;
-using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Helpers.Infrastructure;
 
-public sealed class HelperScanReportReader(IScopeProvider scopeProvider) : IHelperScanReport
+public sealed class HelperScanReportReader(IScopeProvider scopeProvider) : IHelperScanReportReader
 {
     public async Task<IReadOnlyList<HelperScanRow>> GetByEventsAsync(IReadOnlyCollection<int> eventIds)
     {
@@ -29,10 +27,4 @@ public sealed class HelperScanReportReader(IScopeProvider scopeProvider) : IHelp
         public int CheckIns { get; set; }
         public int CheckOuts { get; set; }
     }
-}
-
-public sealed class HelperScanReportComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IHelperScanReport, HelperScanReportReader>();
 }

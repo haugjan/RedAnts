@@ -1,7 +1,7 @@
 @using RedAnts.Ticketing.Domain.Sales
-@inject IHelpers Helpers
-@inject IHelperScanReport ScanReport
-@inject IHelperInviteMailer InviteMailer
+@inject GetHelpers.Handler HelperList
+@inject GetHelperScanReport.Handler ScanReport
+@inject GetHelperInviteTemplate.Handler InviteTemplate
 @inject AddHelperToSeason.Handler HelperAddition
 @inject SetHelperActive.Handler HelperActivation
 @inject AssignHelperEvents.Handler HelperAssignment
@@ -338,7 +338,7 @@
 
     private bool _loading = true;
     private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<Helper> _helpers = [];
+    private IReadOnlyList<HelperRow> _helpers = [];
     private IReadOnlyList<HelperScanRow> _scanRows = [];
     private IReadOnlyList<Event> _events = [];
     private Dictionary<int, Event> _eventById = new();
@@ -354,25 +354,25 @@
     private string? _addError;
     private bool _copied;
 
-    private Helper? _deleteFor;
+    private HelperRow? _deleteFor;
     private bool _deleteHasScans;
     private bool _deleting;
     private string? _deleteError;
 
-    private Helper? _assignFor;
+    private HelperRow? _assignFor;
     private bool _assignAll;
     private bool _assignCanRebook;
     private HashSet<int> _assignEventIds = new();
     private bool _assignSaving;
 
-    private Helper? _mailFor;
+    private HelperRow? _mailFor;
     private string _mailSubject = "";
     private string _mailBody = "";
     private bool _mailSending;
     private bool _mailSent;
     private string? _mailError;
 
-    private Helper? _scanFor;
+    private HelperRow? _scanFor;
     private IReadOnlyList<HelperScanDetail> _scanDetail = [];
 
     private sealed record HelperScanDetail(string EventName, DateOnly EventDate, int CheckIns, int CheckOuts, bool Unassigned);
@@ -400,13 +400,13 @@
             _eventById = new();
             return;
         }
-        _helpers = await Helpers.GetBySeasonAsync(SelectedSeasonId);
+        _helpers = await HelperList.HandleAsync(new GetHelpers.Query(SelectedSeasonId));
         _events = (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderByDescending(e => e.Date).ToList();
         _eventById = _events.ToDictionary(e => e.Id);
-        _scanRows = await ScanReport.GetByEventsAsync(_events.Select(e => e.Id).ToList());
+        _scanRows = await ScanReport.HandleAsync(new GetHelperScanReport.Query(_events.Select(e => e.Id).ToList()));
     }
 
-    private HelperAgg Agg(Helper h)
+    private HelperAgg Agg(HelperRow h)
     {
         var rows = _scanRows.Where(r => r.Person == h.FullName).ToList();
         var eventsIn = rows.Where(r => r.CheckIns > 0).Select(r => r.EventId).Distinct().Count();
@@ -419,9 +419,9 @@
         return new HelperAgg(eventsIn, eventsOut, scansIn, scansOut, unassigned);
     }
 
-    private bool HasScans(Helper h) => _scanRows.Where(r => r.Person == h.FullName).Sum(r => r.Total) > 0;
+    private bool HasScans(HelperRow h) => _scanRows.Where(r => r.Person == h.FullName).Sum(r => r.Total) > 0;
 
-    private string AssignmentLabel(Helper h)
+    private string AssignmentLabel(HelperRow h)
     {
         var events = h.AllEvents ? "Alle Anlässe" : $"{h.EventIds.Count(id => _eventById.ContainsKey(id))} Anlässe";
         return h.CanRebook ? $"{events} · Umbuchen" : events;
@@ -456,7 +456,7 @@
         finally { _adding = false; }
     }
 
-    private void OpenAssign(Helper h)
+    private void OpenAssign(HelperRow h)
     {
         _assignFor = h;
         _assignAll = h.AllEvents;
@@ -486,7 +486,7 @@
         finally { _assignSaving = false; }
     }
 
-    private void OpenScans(Helper h)
+    private void OpenScans(HelperRow h)
     {
         _scanFor = h;
         _scanDetail = _scanRows
@@ -499,11 +499,12 @@
 
     private void CloseScans() => _scanFor = null;
 
-    private void OpenMail(Helper h)
+    private async Task OpenMail(HelperRow h)
     {
         _mailFor = h;
-        _mailSubject = InviteMailer.DefaultSubject;
-        _mailBody = InviteMailer.DefaultBody;
+        var template = await InviteTemplate.HandleAsync(new GetHelperInviteTemplate.Query());
+        _mailSubject = template.Subject;
+        _mailBody = template.Body;
         _mailSent = false;
         _mailError = null;
     }
@@ -518,7 +519,7 @@
         _mailSent = false;
         try
         {
-            var result = await HelperInvitation.HandleAsync(new InviteHelperByMail.Command(_mailFor, _mailSubject, _mailBody, LoginLink(_mailFor)));
+            var result = await HelperInvitation.HandleAsync(new InviteHelperByMail.Command(_mailFor.Id, _mailSubject, _mailBody, LoginLink(_mailFor)));
             if (!result.Success)
             {
                 _mailError = result.Error ?? "E-Mail konnte nicht versendet werden.";
@@ -535,13 +536,13 @@
         finally { _mailSending = false; }
     }
 
-    private async Task ToggleActiveAsync(Helper h, bool active)
+    private async Task ToggleActiveAsync(HelperRow h, bool active)
     {
         await HelperActivation.HandleAsync(new SetHelperActive.Command(h.Id, active));
         await ReloadAsync();
     }
 
-    private void OpenDelete(Helper h)
+    private void OpenDelete(HelperRow h)
     {
         _deleteFor = h;
         _deleteHasScans = HasScans(h);
@@ -565,7 +566,7 @@
         finally { _deleting = false; }
     }
 
-    private string LoginLink(Helper h)
+    private string LoginLink(HelperRow h)
     {
         var configured = Config["Scanner:PublicUrl"];
         var baseUrl = !string.IsNullOrWhiteSpace(configured)

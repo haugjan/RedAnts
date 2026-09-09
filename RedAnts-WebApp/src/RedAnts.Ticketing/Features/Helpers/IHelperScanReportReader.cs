@@ -1,8 +1,6 @@
-using RedAnts.Ticketing.Features.Helpers.Admin;
-
 namespace RedAnts.Ticketing.Features.Helpers;
 
-public interface IHelperScanReport
+public interface IHelperScanReportReader
 {
     Task<IReadOnlyList<HelperScanRow>> GetByEventsAsync(IReadOnlyCollection<int> eventIds);
 }
