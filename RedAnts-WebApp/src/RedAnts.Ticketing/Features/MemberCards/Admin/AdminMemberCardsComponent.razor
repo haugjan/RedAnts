@@ -1,5 +1,3 @@
-@using System.Text
-@using Microsoft.AspNetCore.Components.Forms
 @using RedAnts.Ticketing.Domain
 @using RedAnts.Ticketing.Domain.Sales
 
@@ -196,119 +194,8 @@
 
 @if (_showImport)
 {
-    <div class="ta-overlay" @onmousedown="CloseImport">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Mitglieder importieren</h2>
-
-            <div class="ta-field">
-                <label class="ta-label">Saison</label>
-                <div class="ta-readonly">@_selectedSeasonName</div>
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="impCategory">Kategorie (gilt für alle Zeilen)</label>
-                <select id="impCategory" class="ta-select" @bind="_importCategory">
-                    @foreach (var cat in Categories)
-                    {
-                        <option value="@cat">@cat.DisplayName()</option>
-                    }
-                </select>
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label" for="impReference">Bundle</label>
-                <input id="impReference" class="ta-input" type="text" maxlength="100" placeholder="z. B. Mitglieder 2026" @bind="_importReference" />
-            </div>
-
-            <div class="ta-field">
-                <label class="ta-label">Datei (CSV oder Excel)</label>
-                <InputFile OnChange="OnFileSelectedAsync" accept=".csv,.xlsx,text/csv" />
-                <p class="ta-hint">
-                    Alle Zeilen werden als @(_importCategory.DisplayName())-Mitglieder importiert (Kategorie oben wählen, nicht in der Datei).
-                    Spalten (alle optional): Anzahl (Einlässe pro Event, Standard 1), Firma, Anrede, Name, Vorname, Strasse, Adresszusatz, PLZ, Ort, Land, E-Mail, Telefon, Geburtsdatum (dd.MM.yyyy).
-                    Die Spalten werden automatisch erkannt. Passt die Zuordnung nicht, kannst du sie unten von Hand anpassen.
-                    Exportierte Zeilen mit einer bestehenden Karten-Nr werden beim erneuten Import aktualisiert.
-                    <a href="/admin/members/example.csv" target="_blank" rel="noopener">Beispieldatei herunterladen</a>
-                </p>
-            </div>
-
-            @if (_table is not null && _table.Columns.Count > 0)
-            {
-                <div class="ta-field">
-                    @if (!_showMapping)
-                    {
-                        <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => _showMapping = true">Spaltenzuordnung anpassen</button>
-                    }
-                    else
-                    {
-                        <label class="ta-label">Spaltenzuordnung</label>
-                        <p class="ta-hint">Ordne jeder benötigten Spalte eine Spalte aus deiner Datei zu.</p>
-                        <table class="ta-map">
-                            @foreach (var field in TicketImportCsv.Fields)
-                            {
-                                <tr>
-                                    <td class="ta-map-label">@field.Label</td>
-                                    <td>
-                                        <select class="ta-select" value="@MapValue(field.Key)" @onchange="e => SetMap(field.Key, e.Value?.ToString())">
-                                            <option value="-1">(nicht zuordnen)</option>
-                                            @for (var i = 0; i < _table.Columns.Count; i++)
-                                            {
-                                                var idx = i;
-                                                <option value="@idx">@_table.Columns[idx]</option>
-                                            }
-                                        </select>
-                                    </td>
-                                </tr>
-                            }
-                        </table>
-                        <div class="ta-modal-actions">
-                            <button type="button" class="ta-btn ta-btn-primary" @onclick="ApplyMapping">Zuordnung übernehmen</button>
-                        </div>
-                    }
-                </div>
-            }
-
-            @if (_fileName is not null)
-            {
-                <div class="ta-parse">
-                    <strong>@_fileName</strong>: @_parsedRows.Count gültige Zeile@(_parsedRows.Count == 1 ? "" : "n") erkannt.
-                    @if (_parseWarnings.Count > 0)
-                    {
-                        <ul class="ta-warnings">
-                            @foreach (var w in _parseWarnings)
-                            {
-                                <li>@w</li>
-                            }
-                        </ul>
-                    }
-                </div>
-                @if (_parseErrors.Count > 0)
-                {
-                    <div class="ta-error">
-                        @_parseErrors.Count Fehler, bitte in der Datei korrigieren, dann erneut wählen:
-                        <ul class="ta-warnings">
-                            @foreach (var er in _parseErrors)
-                            {
-                                <li>@er</li>
-                            }
-                        </ul>
-                    </div>
-                }
-            }
-
-            @if (!string.IsNullOrEmpty(_importError))
-            {
-                <div class="ta-error">@_importError</div>
-            }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseImport" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="ImportAsync" disabled="@(_saving || _parsedRows.Count == 0 || _parseErrors.Count > 0)">
-                    @(_saving ? "Wird importiert …" : _parseErrors.Count > 0 ? "Bitte Fehler beheben" : $"{_parsedRows.Count} Mitglieder importieren")
-                </button>
-            </div>
-        </div>
-    </div>
+    <ImportMemberCardsDialog SeasonId="SelectedSeasonId" SeasonName="@_selectedSeasonName"
+                             OnSaved="CardsImportedAsync" OnClosed="CloseImport" />
 }
 
 @if (_editing is not null)
@@ -348,7 +235,6 @@
 
     [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
     [Inject] private GetMemberCards.Handler CardList { get; set; } = default!;
-    [Inject] private ImportMemberCards.Handler CardImport { get; set; } = default!;
     [Inject] private SetMemberCardStatus.Handler CardStatus { get; set; } = default!;
     [Inject] private SetMemberCardCategory.Handler CardCategory { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -382,8 +268,6 @@
         _deleteTarget = null;
         await ReloadCardsAsync();
     }
-
-    private static readonly MemberCategory[] Categories = Enum.GetValues<MemberCategory>();
 
     private bool _loading = true;
     private IReadOnlyList<SeasonChoice> _seasons = [];
@@ -461,128 +345,15 @@
     private void CloseExport() => _showExport = false;
 
     private bool _showImport;
-    private bool _saving;
-    private string? _importError;
-    private string _importReference = "";
-    private MemberCategory _importCategory = MemberCategory.RedAnts;
-    private string? _fileName;
-    private IReadOnlyList<MemberImportRow> _parsedRows = [];
-    private IReadOnlyList<string> _parseWarnings = [];
-    private IReadOnlyList<string> _parseErrors = [];
-    private TicketImportTable? _table;
-    private Dictionary<string, int> _map = new();
-    private bool _showMapping;
 
-    private void OpenImport()
+    private void OpenImport() => _showImport = true;
+
+    private void CloseImport() => _showImport = false;
+
+    private async Task CardsImportedAsync()
     {
-        _importError = null;
-        _importReference = "";
-        _importCategory = MemberCategory.RedAnts;
-        _fileName = null;
-        _parsedRows = [];
-        _parseWarnings = [];
-        _parseErrors = [];
-        _table = null;
-        _map = new();
-        _showMapping = false;
-        _showImport = true;
-    }
-
-    private void CloseImport() { if (!_saving) _showImport = false; }
-
-    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
-    {
-        _importError = null;
-        try
-        {
-            var file = e.File;
-            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-            using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer);
-
-            var table = TicketImportCsv.ReadTable(buffer.ToArray(), file.Name);
-            _fileName = file.Name;
-            _table = table;
-            _map = new Dictionary<string, int>(table.AutoMap);
-
-            if (table.Columns.Count == 0 || table.Rows.Count == 0)
-            {
-                _parsedRows = [];
-                _parseWarnings = [];
-                _parseErrors = ["Keine Datenzeilen gefunden. Bitte prüfe die Datei."];
-                _showMapping = false;
-                return;
-            }
-
-            if (TicketImportCsv.EssentialMapped(_map))
-            {
-                ApplyMapping();
-            }
-            else
-            {
-                _parsedRows = [];
-                _parseWarnings = [];
-                _parseErrors = [];
-                _importError = "Spalten konnten nicht automatisch erkannt werden. Bitte unten von Hand zuordnen.";
-                _showMapping = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            _fileName = null;
-            _table = null;
-            _parsedRows = [];
-            _parseWarnings = [];
-            _importError = $"Datei konnte nicht gelesen werden: {ex.Message}";
-        }
-    }
-
-    private int MapValue(string key) => _map.TryGetValue(key, out var idx) ? idx : -1;
-
-    private void SetMap(string key, string? value)
-    {
-        if (int.TryParse(value, out var idx) && idx >= 0) _map[key] = idx;
-        else _map.Remove(key);
-    }
-
-    private void ApplyMapping()
-    {
-        if (_table is null) return;
-        _importError = null;
-        var result = TicketImportCsv.BuildRows(_table, _map);
-        _parsedRows = result.Rows.Select(ToMemberRow).ToList();
-        _parseWarnings = result.Warnings;
-        _parseErrors = result.Errors;
-        _showMapping = false;
-    }
-
-    private static MemberImportRow ToMemberRow(TicketImportRow row)
-    {
-        var h = row.Holder;
-        return new MemberImportRow(h.LastName, h.FirstName, h.Birthday, h.Email, row.CardNo,
-            MemberAddress.Create(h.Salutation, h.Company, h.Street, h.AddressLine2,
-                h.PostalCode, h.City, h.Country, h.Phone),
-            row.Admissions ?? 1, row.Bundle);
-    }
-
-    private async Task ImportAsync()
-    {
-        _importError = null;
-        if (SelectedSeasonId <= 0) { _importError = "Bitte zuerst eine Saison wählen."; return; }
-        if (string.IsNullOrWhiteSpace(_importReference)) { _importError = "Bitte ein Bundle angeben."; return; }
-        if (_parseErrors.Count > 0) { _importError = "Bitte zuerst die Fehler in der Datei beheben."; return; }
-        if (_parsedRows.Count == 0) { _importError = "Bitte eine CSV-Datei mit mindestens einer Zeile wählen."; return; }
-
-        _saving = true;
-        try
-        {
-            var reference = _importReference.Trim();
-            await CardImport.HandleAsync(new ImportMemberCards.Command(SelectedSeasonId, reference, _importCategory, _parsedRows, Identity.Name, Identity.Email));
-            _showImport = false;
-            await ReloadCardsAsync();
-        }
-        catch (DomainException ex) { _importError = ex.Message; }
-        finally { _saving = false; }
+        _showImport = false;
+        await ReloadCardsAsync();
     }
 
     private MemberCardRow? _editing;
