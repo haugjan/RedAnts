@@ -1,0 +1,83 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+<div class="ta-overlay" @onmousedown="CloseAsync">
+    <div class="ta-modal" @onmousedown:stopPropagation="true">
+        <h2 class="ta-modal-title">Flexticket erstellen</h2>
+
+        <div class="ta-field">
+            <label class="ta-label">Saison</label>
+            <div class="ta-readonly">@SeasonName</div>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newCategory">Ticketkategorie</label>
+            <select id="newCategory" class="ta-select" @bind="_category">
+                @foreach (var c in Categories)
+                {
+                    <option value="@c">@c.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="ta-field">
+            <label class="ta-label" for="newReference">Bundle</label>
+            <input id="newReference" class="ta-input" type="text" maxlength="50" list="flexBundleOptions" placeholder="Neu oder bestehendes wählen" @bind="_reference" />
+            <datalist id="flexBundleOptions">
+                @foreach (var b in Bundles) { <option value="@b.Reference" /> }
+            </datalist>
+        </div>
+
+        <PersonFields Model="_person" Prefix="newFt" EmailHint=" (optional, für den Ticketversand)" />
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="ta-error">@_error</div>
+        }
+
+        <div class="ta-modal-actions">
+            <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_saving">Abbrechen</button>
+            <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateAsync" disabled="@_saving">
+                @(_saving ? "Wird erstellt …" : "Einzelticket erstellen")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int SeasonId { get; set; }
+    [Parameter] public string SeasonName { get; set; } = "";
+    [Parameter] public IReadOnlyList<FlexBundleRow> Bundles { get; set; } = [];
+    [Parameter] public string AdminUser { get; set; } = "";
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
+
+    [Inject] private CreateSingleFlexTicket.Handler SingleTicketCreation { get; set; } = default!;
+
+    private static readonly TicketCategory[] Categories = Enum.GetValues<TicketCategory>();
+
+    private TicketCategory _category = TicketCategory.Adult;
+    private string _reference = "";
+    private PersonForm _person = new();
+    private bool _saving;
+    private string? _error;
+
+    private Task CloseAsync() => _saving ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task CreateAsync()
+    {
+        if (SeasonId <= 0) { _error = "Es ist keine Saison gewählt."; return; }
+        var reference = (_reference ?? "").Trim();
+        if (reference.Length == 0) { _error = "Bitte ein Bundle angeben."; return; }
+        var holder = _person.ToHolder();
+        if (!holder.HasName) { _error = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
+        _saving = true;
+        _error = null;
+        try
+        {
+            await SingleTicketCreation.HandleAsync(new CreateSingleFlexTicket.Command(SeasonId, _category, reference, holder,
+                Identity?.Name ?? AdminUser, Identity?.Email));
+            await OnSaved.InvokeAsync();
+        }
+        catch (DomainException ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+}

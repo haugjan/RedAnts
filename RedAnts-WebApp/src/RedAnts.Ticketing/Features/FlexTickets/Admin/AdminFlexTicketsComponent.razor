@@ -272,11 +272,21 @@
     <SendFlexTicketMailsDialog Tickets="_tickets" SeasonId="SelectedSeasonId" OnClosed="() => _showBulk = false" />
 }
 
-@if (_showCreate)
+@if (_showCreateSingle)
 {
-    <div class="ta-overlay" @onmousedown="CloseCreate">
+    <CreateFlexTicketDialog SeasonId="SelectedSeasonId"
+                            SeasonName="@_selectedSeasonName"
+                            Bundles="_bundles"
+                            AdminUser="@AdminUser"
+                            OnSaved="SingleTicketCreatedAsync"
+                            OnClosed="() => _showCreateSingle = false" />
+}
+
+@if (_showCreateBundle)
+{
+    <div class="ta-overlay" @onmousedown="CloseCreateBundle">
         <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">@(_createSingle ? "Flexticket erstellen" : "Flexticket-Bundle erstellen")</h2>
+            <h2 class="ta-modal-title">Flexticket-Bundle erstellen</h2>
 
             <div class="ta-field">
                 <label class="ta-label">Saison</label>
@@ -299,29 +309,22 @@
                 </datalist>
             </div>
 
-            @if (_createSingle)
-            {
-                <PersonFields Model="_newPerson" Prefix="newFt" EmailHint=" (optional, für den Ticketversand)" />
-            }
-            else
+            <div class="ta-field">
+                <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
+                <input id="newQuantity" class="ta-input" type="number" min="0" max="2000" @bind="_newQuantity" />
+                <p class="ta-field-hint">0 = leeres Bundle (nur als Umbuchungsziel, ohne Tickets).</p>
+            </div>
+            @if (_newQuantity > 0)
             {
                 <div class="ta-field">
-                    <label class="ta-label" for="newQuantity">Anzahl Flextickets</label>
-                    <input id="newQuantity" class="ta-input" type="number" min="0" max="2000" @bind="_newQuantity" />
-                    <p class="ta-field-hint">0 = leeres Bundle (nur als Umbuchungsziel, ohne Tickets).</p>
+                    <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
+                    <select id="newFlexPaymentSource" class="ta-select" @bind="_newPaymentSource">
+                        @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
+                        {
+                            <option value="@ps">@ps.DisplayName()</option>
+                        }
+                    </select>
                 </div>
-                @if (_newQuantity > 0)
-                {
-                    <div class="ta-field">
-                        <label class="ta-label" for="newFlexPaymentSource">Zahlart</label>
-                        <select id="newFlexPaymentSource" class="ta-select" @bind="_newPaymentSource">
-                            @foreach (var ps in PaymentSourceExtensions.AdminChoicesForPrice(0m))
-                            {
-                                <option value="@ps">@ps.DisplayName()</option>
-                            }
-                        </select>
-                    </div>
-                }
             }
 
             @if (!string.IsNullOrEmpty(_createError))
@@ -330,19 +333,10 @@
             }
 
             <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreate" disabled="@_saving">Abbrechen</button>
-                @if (_createSingle)
-                {
-                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateSingleTicketAsync" disabled="@_saving">
-                        @(_saving ? "Wird erstellt …" : "Einzelticket erstellen")
-                    </button>
-                }
-                else
-                {
-                    <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_saving">
-                        @(_saving ? "Wird erstellt …" : "Bundle erstellen")
-                    </button>
-                }
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseCreateBundle" disabled="@_saving">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="CreateBundleAsync" disabled="@_saving">
+                    @(_saving ? "Wird erstellt …" : "Bundle erstellen")
+                </button>
             </div>
         </div>
     </div>
@@ -589,7 +583,6 @@
     [Inject] private AddFlexTickets.Handler TicketAdditions { get; set; } = default!;
     [Inject] private RenameFlexBundle.Handler BundleRenames { get; set; } = default!;
     [Inject] private DeleteEmptyFlexBundle.Handler BundleDeletions { get; set; } = default!;
-    [Inject] private CreateSingleFlexTicket.Handler SingleTicketCreation { get; set; } = default!;
     [Inject] private ImportFlexTickets.Handler TicketImports { get; set; } = default!;
     [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private SetFlexTicketRedeemed.Handler RedemptionChanges { get; set; } = default!;
@@ -733,34 +726,19 @@
     private string _sortCol = "created";
     private bool _sortAsc = false;
 
-    private bool _showCreate;
+    private bool _showCreateSingle;
+    private bool _showCreateBundle;
     private bool _saving;
     private string? _createError;
-    private bool _createSingle = true;
     private TicketCategory _newCategory = TicketCategory.Adult;
     private PaymentSource _newPaymentSource = PaymentSource.Sponsoring;
     private string _newReference = "";
     private int _newQuantity = 1;
-    private PersonForm _newPerson = new();
 
-    private async Task CreateSingleTicketAsync()
+    private async Task SingleTicketCreatedAsync()
     {
-        if (SelectedSeasonId <= 0) { _createError = "Es ist keine Saison gewählt."; return; }
-        var reference = (_newReference ?? "").Trim();
-        if (reference.Length == 0) { _createError = "Bitte ein Bundle angeben."; return; }
-        var holder = _newPerson.ToHolder();
-        if (!holder.HasName) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
-        _saving = true;
-        _createError = null;
-        try
-        {
-            await SingleTicketCreation.HandleAsync(new CreateSingleFlexTicket.Command(SelectedSeasonId, _newCategory, reference, holder,
-                Identity?.Name ?? AdminUser, Identity?.Email));
-            _showCreate = false;
-            await OnSeasonChangedAsync();
-        }
-        catch (DomainException ex) { _createError = ex.Message; }
-        finally { _saving = false; }
+        _showCreateSingle = false;
+        await OnSeasonChangedAsync();
     }
 
     private bool _showImport;
@@ -1023,22 +1001,19 @@
         return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
     }
 
-    private void OpenCreateSingle() => OpenCreate(true);
-    private void OpenCreateBundle() => OpenCreate(false);
+    private void OpenCreateSingle() => _showCreateSingle = true;
 
-    private void OpenCreate(bool single)
+    private void OpenCreateBundle()
     {
         _createError = null;
-        _createSingle = single;
-        _newPerson = new PersonForm();
         _newCategory = TicketCategory.Adult;
         _newReference = "";
         _newQuantity = 1;
         _newPaymentSource = PaymentSource.Sponsoring;
-        _showCreate = true;
+        _showCreateBundle = true;
     }
 
-    private void CloseCreate() { if (!_saving) _showCreate = false; }
+    private void CloseCreateBundle() { if (!_saving) _showCreateBundle = false; }
 
     private async Task CreateBundleAsync()
     {
@@ -1082,7 +1057,7 @@
                 result = await BundleCreation.HandleAsync(new CreateFlexBundle.Command(SelectedSeasonId, _newCategory, reference, _newQuantity,
                     Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
             }
-            _showCreate = false;
+            _showCreateBundle = false;
             _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
             SelectedBundleId = result;
             await ReloadTicketsAsync();
@@ -1111,7 +1086,7 @@
             var updated = await TicketAdditions.HandleAsync(new AddFlexTickets.Command(_confirmAddBundle.Id, _newCategory, _newQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
             _confirmAddBundle = null;
-            _showCreate = false;
+            _showCreateBundle = false;
             _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
             SelectedBundleId = updated;
             await ReloadTicketsAsync();
