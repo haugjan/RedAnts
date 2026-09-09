@@ -54,11 +54,22 @@ public class TicketPdfRendererTests
     [Fact]
     public void Render_WithRealLogo_DoesNotThrow()
     {
-        var wwwroot = @"C:\development\RedAnts-s1\src\RedAnts.Host\wwwroot";
-        if (!File.Exists(Path.Combine(wwwroot, "img", "logo-badge.png"))) return;
+        var wwwroot = HostWebRoot();
+        Assert.True(File.Exists(Path.Combine(wwwroot, "img", "logo-badge.png")), $"No badge logo under {wwwroot}.");
+
         var pdf = new TicketPdfRenderer(new FakeEnv { WebRootPath = wwwroot })
             .Render(Model("Anna Muster", "Red Ants vs. Gegner"));
         Assert.True(pdf.Length > 0);
+    }
+
+    private static string HostWebRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "RedAnts.slnx")))
+            directory = directory.Parent;
+
+        Assert.NotNull(directory);
+        return Path.Combine(directory.FullName, "src", "RedAnts.Host", "wwwroot");
     }
 
     private sealed class FakeEnv : IWebHostEnvironment
