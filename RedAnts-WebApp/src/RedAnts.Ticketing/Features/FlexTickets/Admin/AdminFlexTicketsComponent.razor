@@ -56,7 +56,7 @@
                     <button type="button" class="ta-btn ta-btn-ghost" disabled="@(SelectedBundle.TicketCount == 0)"
                             title="@(SelectedBundle.TicketCount == 0 ? "Leeres Bundle – keine Flextickets zum Drucken" : "Flextickets als druckfertiges PDF erzeugen (eine Karte pro Seite)")"
                             @onclick="OpenPrint">PDF drucken</button>
-                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => OpenEdit(SelectedBundle)">Bundle bearbeiten</button>
+                    <button type="button" class="ta-btn ta-btn-ghost" @onclick="() => _editing = SelectedBundle">Bundle bearbeiten</button>
                     @if (Identity?.IsAdmin == true)
                     {
                         <button type="button" class="ta-btn ta-btn-ghost ta-btn-danger"
@@ -304,30 +304,9 @@
 
 @if (_editing is not null)
 {
-    <div class="ta-overlay" @onmousedown="CancelEdit">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Bundle bearbeiten</h2>
-            <p class="ta-modal-sub">@_editing.Category.DisplayName() · @_editing.TicketCount Flextickets</p>
-
-            <div class="ta-field">
-                <label class="ta-label" for="editReference">Bundle</label>
-                <input id="editReference" class="ta-input" type="text" maxlength="50" @bind="_editReference" />
-                <p class="ta-field-hint">Kategorie und Anzahl eines ausgestellten Bundles sind nicht änderbar.</p>
-            </div>
-
-            @if (!string.IsNullOrEmpty(_editError))
-            {
-                <div class="ta-modal-error">@_editError</div>
-            }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CancelEdit" disabled="@_saving">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveEditAsync" disabled="@_saving">
-                    @(_saving ? "Speichert …" : "Speichern")
-                </button>
-            </div>
-        </div>
-    </div>
+    <RenameFlexBundleDialog Bundle="_editing"
+                            OnSaved="BundleRenamedAsync"
+                            OnClosed="() => _editing = null" />
 }
 
 @if (_redeemFor is not null)
@@ -418,7 +397,6 @@
     [Inject] private GetFlexBundles.Handler BundleList { get; set; } = default!;
     [Inject] private GetFlexBundleTickets.Handler TicketList { get; set; } = default!;
     [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
-    [Inject] private RenameFlexBundle.Handler BundleRenames { get; set; } = default!;
     [Inject] private DeleteEmptyFlexBundle.Handler BundleDeletions { get; set; } = default!;
     [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private SetFlexTicketRedeemed.Handler RedemptionChanges { get; set; } = default!;
@@ -562,7 +540,6 @@
 
     private bool _showCreateSingle;
     private bool _showCreateBundle;
-    private bool _saving;
 
     private async Task BundleCreatedAsync(int bundleId)
     {
@@ -736,32 +713,10 @@
     private void OpenCreateBundle() => _showCreateBundle = true;
 
     private FlexBundleRow? _editing;
-    private string _editReference = "";
-    private string? _editError;
 
-    private void OpenEdit(FlexBundleRow b)
+    private async Task BundleRenamedAsync()
     {
-        _editing = b;
-        _editReference = b.Reference;
-        _editError = null;
-    }
-
-    private void CancelEdit() { if (!_saving) { _editing = null; _editError = null; } }
-
-    private async Task SaveEditAsync()
-    {
-        if (_editing is null) return;
-        var reference = (_editReference ?? "").Trim();
-        if (reference == _editing.Reference) { _editing = null; return; }
-        _saving = true;
-        _editError = null;
-        try
-        {
-            await BundleRenames.HandleAsync(new RenameFlexBundle.Command(_editing.Id, reference));
-            _editing = null;
-            _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
-        }
-        catch (DomainException ex) { _editError = ex.Message; }
-        finally { _saving = false; }
+        _editing = null;
+        _bundles = await BundleList.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
     }
 }
