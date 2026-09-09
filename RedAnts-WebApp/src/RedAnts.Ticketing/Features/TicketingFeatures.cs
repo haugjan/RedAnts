@@ -6,6 +6,7 @@ using RedAnts.Ticketing.Features.EventBundles;
 using RedAnts.Ticketing.Features.FlexTickets;
 using RedAnts.Ticketing.Features.Helpers;
 using RedAnts.Ticketing.Features.MemberCards;
+using RedAnts.Ticketing.Features.Newsletter;
 using RedAnts.Ticketing.Features.Orders;
 using RedAnts.Ticketing.Features.SeasonPasses;
 using RedAnts.Ticketing.Features.Stats;
@@ -67,6 +68,9 @@ public static class TicketingFeatures
         typeof(GetVisitorStats.Handler),
         typeof(GetOutbox.Handler),
         typeof(RetryOutboxMail.Handler),
+        typeof(GetNewsletterSignups.Handler),
+        typeof(SetNewsletterTransferStatus.Handler),
+        typeof(MarkNewsletterSignupsTransferred.Handler),
         typeof(CreateMemberCard.Handler),
         typeof(ImportMemberCards.Handler),
         typeof(EditMemberCard.Handler),

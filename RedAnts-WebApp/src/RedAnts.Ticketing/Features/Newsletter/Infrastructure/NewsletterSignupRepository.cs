@@ -4,7 +4,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Newsletter.Infrastructure;
 
-public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : INewsletterSignups
+public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : INewsletterSignupRepository
 {
     public async Task SubscribeAsync(string email, string? name, string source)
     {
@@ -24,23 +24,6 @@ public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : I
         });
     }
 
-    public async Task<IReadOnlyList<NewsletterSignup>> GetAllAsync()
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<NewsletterSignupRecord>(
-            "SELECT Id, Email, Name, Source, SignedUpAt, Status, TransferredAt FROM NewsletterSignups ORDER BY SignedUpAt DESC");
-        return rows.Select(Map).ToList();
-    }
-
-    public async Task<IReadOnlyList<NewsletterSignup>> GetPendingAsync()
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var rows = await scope.Database.FetchAsync<NewsletterSignupRecord>(
-            "SELECT Id, Email, Name, Source, SignedUpAt, Status, TransferredAt FROM NewsletterSignups WHERE Status = @0 ORDER BY SignedUpAt",
-            (int)NewsletterTransferStatus.Pending);
-        return rows.Select(Map).ToList();
-    }
-
     public async Task MarkTransferredAsync(IEnumerable<int> ids)
     {
         var list = ids.Distinct().ToList();
@@ -56,14 +39,11 @@ public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : I
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var row = await scope.Database.SingleOrDefaultByIdAsync<NewsletterSignupRecord>(id);
         if (row is null) return;
-        var signup = Map(row);
+        var signup = NewsletterSignup.FromPersistence(row.Id, row.Email, row.Name, row.Source, row.SignedUpAt, row.Status, row.TransferredAt);
         if (status == NewsletterTransferStatus.Transferred) signup.MarkTransferred(SwissTime.Timestamp);
         else signup.MarkPending();
         row.Status = (int)signup.Status;
         row.TransferredAt = signup.TransferredAt;
         await scope.Database.UpdateAsync(row);
     }
-
-    private static NewsletterSignup Map(NewsletterSignupRecord r) =>
-        NewsletterSignup.FromPersistence(r.Id, r.Email, r.Name, r.Source, r.SignedUpAt, r.Status, r.TransferredAt);
 }

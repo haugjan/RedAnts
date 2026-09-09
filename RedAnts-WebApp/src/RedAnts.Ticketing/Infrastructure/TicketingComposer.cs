@@ -13,8 +13,6 @@ using RedAnts.Ticketing.Features.Helpers;
 using RedAnts.Ticketing.Features.Helpers.Infrastructure;
 using RedAnts.Ticketing.Features.MemberCards;
 using RedAnts.Ticketing.Features.MemberCards.Infrastructure;
-using RedAnts.Ticketing.Features.Newsletter;
-using RedAnts.Ticketing.Features.Newsletter.Infrastructure;
 using RedAnts.Ticketing.Features.SeasonPasses;
 using RedAnts.Ticketing.Features.SeasonPasses.Infrastructure;
 using RedAnts.Ticketing.Features.Tickets;
@@ -48,7 +46,6 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<IFlexTicketBundles, FlexTicketBundleRepository>();
         builder.Services.AddScoped<IEventTicketBundles, EventTicketBundleRepository>();
         builder.Services.AddScoped<IMemberCards, MemberCardRepository>();
-        builder.Services.AddScoped<INewsletterSignups, NewsletterSignupRepository>();
         builder.Services.AddScoped<ISeasonAddOns, SeasonAddOnRepository>();
         builder.Services.AddScoped<IAddOnNotifier, AddOnNotifier>();
         builder.Services.AddScoped<IHelpers, HelperMemberRepository>();

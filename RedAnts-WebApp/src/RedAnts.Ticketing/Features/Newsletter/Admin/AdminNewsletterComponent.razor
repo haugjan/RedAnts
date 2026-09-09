@@ -1,5 +1,4 @@
 @using RedAnts.Ticketing.Domain.Sales
-@inject INewsletterSignups Signups
 
 <section class="ta-page">
     <h1 class="ta-page-title">Newsletter</h1>
@@ -86,8 +85,12 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
+    [Inject] private GetNewsletterSignups.Handler Signups { get; set; } = default!;
+    [Inject] private SetNewsletterTransferStatus.Handler StatusChanges { get; set; } = default!;
+    [Inject] private MarkNewsletterSignupsTransferred.Handler Transfers { get; set; } = default!;
+
     private bool _loading = true;
-    private IReadOnlyList<NewsletterSignup> _signups = [];
+    private IReadOnlyList<NewsletterSignupRow> _signups = [];
 
     private bool _showConfirm;
     private bool _marking;
@@ -107,7 +110,7 @@
         _loading = false;
     }
 
-    private async Task ReloadAsync() => _signups = await Signups.GetAllAsync();
+    private async Task ReloadAsync() => _signups = await Signups.HandleAsync(new GetNewsletterSignups.Query());
 
     private void OnExportClicked()
     {
@@ -121,23 +124,23 @@
     private async Task ConfirmMarkAsync()
     {
         _marking = true;
-        await Signups.MarkTransferredAsync(_exportedIds);
+        await Transfers.HandleAsync(new MarkNewsletterSignupsTransferred.Command(_exportedIds));
         await ReloadAsync();
         _showConfirm = false;
         _marking = false;
     }
 
-    private async Task SaveStatusAsync(NewsletterSignup s, NewsletterTransferStatus target)
+    private async Task SaveStatusAsync(NewsletterSignupRow s, NewsletterTransferStatus target)
     {
-        await Signups.SetTransferStatusAsync(s.Id, target);
+        await StatusChanges.HandleAsync(new SetNewsletterTransferStatus.Command(s.Id, target));
         await ReloadAsync();
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private IEnumerable<NewsletterSignup> Sorted()
+    private IEnumerable<NewsletterSignupRow> Sorted()
     {
-        IEnumerable<NewsletterSignup> q = _sortCol switch
+        IEnumerable<NewsletterSignupRow> q = _sortCol switch
         {
             "email" => _signups.OrderBy(s => s.Email),
             "status" => _signups.OrderBy(s => s.Status),

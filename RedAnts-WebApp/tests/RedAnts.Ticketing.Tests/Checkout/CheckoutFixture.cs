@@ -29,7 +29,7 @@ internal sealed class CheckoutFixture
     public RecordingAddOnNotifier AddOnNotifier { get; } = new();
     public RecordingOrderMailer Mailer { get; } = new();
     public RecordingOrderItems OrderItems { get; } = new();
-    public RecordingNewsletter Newsletter { get; } = new();
+    public RecordingNewsletterSignupRepository Newsletter { get; } = new();
 
     public CheckoutFixture()
     {

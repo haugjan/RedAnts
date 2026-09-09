@@ -350,9 +350,11 @@ internal sealed class RecordingOrderItems : IOrderItems
     }
 }
 
-internal sealed class RecordingNewsletter : INewsletterSignups
+internal sealed class RecordingNewsletterSignupRepository : INewsletterSignupRepository
 {
     public List<(string Email, string? Name, string Source)> Subscriptions { get; } = [];
+    public List<(int Id, NewsletterTransferStatus Status)> StatusChanges { get; } = [];
+    public List<int> MarkedTransferred { get; } = [];
 
     public Task SubscribeAsync(string email, string? name, string source)
     {
@@ -360,13 +362,17 @@ internal sealed class RecordingNewsletter : INewsletterSignups
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<NewsletterSignup>> GetAllAsync() => Task.FromResult<IReadOnlyList<NewsletterSignup>>([]);
+    public Task SetTransferStatusAsync(int id, NewsletterTransferStatus status)
+    {
+        StatusChanges.Add((id, status));
+        return Task.CompletedTask;
+    }
 
-    public Task<IReadOnlyList<NewsletterSignup>> GetPendingAsync() => Task.FromResult<IReadOnlyList<NewsletterSignup>>([]);
-
-    public Task SetTransferStatusAsync(int id, NewsletterTransferStatus status) => Task.CompletedTask;
-
-    public Task MarkTransferredAsync(IEnumerable<int> ids) => Task.CompletedTask;
+    public Task MarkTransferredAsync(IEnumerable<int> ids)
+    {
+        MarkedTransferred.AddRange(ids);
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class EmptyIssuedTickets : IIssuedTicketReader

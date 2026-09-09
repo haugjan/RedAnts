@@ -21,7 +21,7 @@ public sealed class OrderFulfillment(
     IOrderMailer mailer,
     IPublicBaseUrl publicUrl,
     IOrderItems orderItems,
-    INewsletterSignups newsletter,
+    INewsletterSignupRepository newsletter,
     IIssuedTicketReader issuedTickets,
     CapacityReservation reservation,
     ILogger<OrderFulfillment> logger)
