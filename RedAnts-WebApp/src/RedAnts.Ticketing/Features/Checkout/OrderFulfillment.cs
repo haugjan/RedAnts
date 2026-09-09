@@ -10,9 +10,9 @@ using RedAnts.Ticketing.Features.Tickets;
 namespace RedAnts.Ticketing.Features.Checkout;
 
 public sealed class OrderFulfillment(
-    IOrders orders,
+    IOrderRepository orders,
     IOrderLog orderLog,
-    IEventTickets tickets,
+    IEventTicketRepository tickets,
     ISeasonPassRepository passes,
     IConvertibleCards convertibleCards,
     IOrderAddOns orderAddOns,
@@ -21,7 +21,7 @@ public sealed class OrderFulfillment(
     IOrderMailer mailer,
     IPublicBaseUrl publicUrl,
     IOrderItems orderItems,
-    INewsletterSignups newsletter,
+    INewsletterSignupRepository newsletter,
     IIssuedTicketReader issuedTickets,
     CapacityReservation reservation,
     ILogger<OrderFulfillment> logger)

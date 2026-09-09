@@ -23,7 +23,7 @@
                     @foreach (var e in _entries)
                     {
                         <tr>
-                            <td><span class="ta-badge @StatusClass(e.ToStatus)">@StatusLabel(e.ToStatus)</span></td>
+                            <td><span class="ta-badge @StatusClass(e.ToStatus)">@e.ToStatus.DisplayName()</span></td>
                             <td>@SwissTime.ToSwiss(e.OccurredAt).ToString("dd.MM.yyyy HH:mm")</td>
                             <td>@(string.IsNullOrEmpty(e.ChangedBy) ? "—" : e.ChangedBy)</td>
                             <td>@(string.IsNullOrEmpty(e.Note) ? "—" : e.Note)</td>
@@ -44,28 +44,18 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public EventCallback OnClose { get; set; }
 
-    [Inject] private IOrderLog Log { get; set; } = default!;
+    [Inject] private GetOrderDetail.Handler Details { get; set; } = default!;
 
     private bool _loading = true;
-    private IReadOnlyList<OrderLogEntry> _entries = [];
+    private IReadOnlyList<OrderLogRow> _entries = [];
 
     protected override async Task OnInitializedAsync()
     {
-        _entries = await Log.GetByOrderAsync(OrderId);
+        _entries = (await Details.HandleAsync(new GetOrderDetail.Query(OrderId))).Log;
         _loading = false;
     }
 
     private Task Close() => OnClose.InvokeAsync();
-
-    private static string StatusLabel(OrderStatus status) => status switch
-    {
-        OrderStatus.Paid => "Bezahlt",
-        OrderStatus.Draft => "Unbezahlt",
-        OrderStatus.Cancelled => "Storniert",
-        OrderStatus.Refunded => "Erstattet",
-        OrderStatus.PartiallyRefunded => "Teilerstattet",
-        _ => status.ToString()
-    };
 
     private static string StatusClass(OrderStatus status) => status switch
     {

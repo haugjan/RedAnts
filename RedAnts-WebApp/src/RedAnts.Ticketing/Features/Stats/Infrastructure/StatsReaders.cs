@@ -1,12 +1,11 @@
 using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Stats.Admin;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Stats.Infrastructure;
 
-public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorStatsReport
+public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorStatsReader
 {
     public async Task<VisitorOverview> GetAsync(DateOnly from, DateOnly toExclusive)
     {
@@ -72,7 +71,7 @@ public sealed class VisitorStatsReader(IScopeProvider scopeProvider) : IVisitorS
     public sealed class PageRow { public string Path { get; set; } = ""; public int Views { get; set; } public int Visitors { get; set; } }
 }
 
-public sealed class SalesStatsReader(IScopeProvider scopeProvider) : ISalesStatsReport
+public sealed class SalesStatsReader(IScopeProvider scopeProvider) : ISalesStatsReader
 {
     public async Task<SalesStats> GetSeasonAsync(int seasonId, IReadOnlyCollection<int> eventIds)
     {
@@ -124,48 +123,11 @@ public sealed class SalesStatsReader(IScopeProvider scopeProvider) : ISalesStats
     public sealed class CntRevRow { public int Cnt { get; set; } public decimal? Revenue { get; set; } }
 }
 
-public sealed class AdmissionStatsReader(IScopeProvider scopeProvider) : IAdmissionStatsReport
-{
-    public async Task<IReadOnlyDictionary<int, AdmissionCounts>> GetByEventsAsync(IReadOnlyCollection<int> eventIds)
-    {
-        if (eventIds.Count == 0) return new Dictionary<int, AdmissionCounts>();
-
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-
-        var visits = await scope.Database.FetchAsync<VisitAggRow>(@"
-            SELECT EventId, COUNT(*) AS Visits, SUM(CASE WHEN IsInside = 1 THEN 1 ELSE 0 END) AS Inside
-            FROM TicketEventVisits
-            GROUP BY EventId");
-
-        var free = await scope.Database.FetchAsync<FreeAggRow>(@"
-            SELECT v.EventId AS EventId, COUNT(*) AS FreeEntries
-            FROM TicketEventFreeEntries f JOIN TicketEventVisits v ON v.Id = f.VisitId
-            GROUP BY v.EventId");
-
-        var eventIdSet = new HashSet<int>(eventIds);
-        var visitById = visits.Where(v => eventIdSet.Contains(v.EventId)).ToDictionary(v => v.EventId);
-        var freeById = free.Where(f => eventIdSet.Contains(f.EventId)).ToDictionary(f => f.EventId, f => f.FreeEntries);
-
-        var result = new Dictionary<int, AdmissionCounts>();
-        foreach (var id in eventIdSet)
-        {
-            var v = visitById.GetValueOrDefault(id);
-            var freeCount = freeById.GetValueOrDefault(id);
-            result[id] = new AdmissionCounts(v?.Visits ?? 0, v?.Inside ?? 0, freeCount);
-        }
-        return result;
-    }
-
-    public sealed class VisitAggRow { public int EventId { get; set; } public int Visits { get; set; } public int Inside { get; set; } }
-    public sealed class FreeAggRow { public int EventId { get; set; } public int FreeEntries { get; set; } }
-}
-
 public sealed class StatsReadersComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
-        builder.Services.AddScoped<IVisitorStatsReport, VisitorStatsReader>();
-        builder.Services.AddScoped<ISalesStatsReport, SalesStatsReader>();
-        builder.Services.AddScoped<IAdmissionStatsReport, AdmissionStatsReader>();
+        builder.Services.AddScoped<IVisitorStatsReader, VisitorStatsReader>();
+        builder.Services.AddScoped<ISalesStatsReader, SalesStatsReader>();
     }
 }

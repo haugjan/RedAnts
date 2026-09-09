@@ -11,7 +11,7 @@ public static class CreateAdminOrder
 {
     public sealed record Command(Buyer Buyer, string? Email, IReadOnlyList<AdminOrderLine> Lines, string CreatedBy, PaymentSource PaymentSource);
 
-    public sealed class Handler(IOrders orders, IOrderItems orderItems, IOrderLog orderLog)
+    public sealed class Handler(IOrderRepository orders, IOrderItems orderItems, IOrderLog orderLog)
     {
         public async Task<Order> HandleAsync(Command command)
         {

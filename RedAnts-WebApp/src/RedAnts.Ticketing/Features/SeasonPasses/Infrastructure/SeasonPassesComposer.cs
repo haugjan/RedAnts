@@ -8,5 +8,6 @@ public sealed class SeasonPassesComposer : IComposer
     {
         builder.Services.AddScoped<ISeasonPassRepository, SeasonPassRepository>();
         builder.Services.AddScoped<ISeasonPassListReader, SeasonPassListReader>();
+        builder.Services.AddScoped<ISeasonPassPricing, SeasonPassPricingReader>();
     }
 }

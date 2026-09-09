@@ -1,7 +1,4 @@
 @using RedAnts.Domain
-@using System.Globalization
-@inject IOutboxAdminReport Report
-@inject Microsoft.Extensions.Configuration.IConfiguration Config
 
 <section class="ta-page">
     <h1 class="ta-page-title">E-Mails</h1>
@@ -32,7 +29,7 @@
     {
         <p class="ta-muted-text">Wird geladen …</p>
     }
-    else if (_entries.Count == 0)
+    else if (_outbox.Mails.Count == 0)
     {
         <div class="ta-placeholder">
             @(_includeSent ? "Keine E-Mails in den letzten 30 Tagen." : "Keine offenen E-Mails. Alles versendet.")
@@ -55,7 +52,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var m in _entries)
+                    @foreach (var m in _outbox.Mails)
                     {
                         <tr>
                             <td>
@@ -105,7 +102,7 @@
             </table>
         </div>
         <p class="ta-summary">
-            @OpenCount offen · @FailedCount fehlgeschlagen@(_includeSent ? $" · {SentCount} gesendet" : "")
+            @_outbox.OpenCount offen · @_outbox.FailedCount fehlgeschlagen@(_includeSent ? $" · {_outbox.SentCount} gesendet" : "")
         </p>
     }
 </section>
@@ -120,52 +117,51 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
+    [Inject] private GetOutbox.Handler Outbox { get; set; } = default!;
+    [Inject] private RetryOutboxMail.Handler Retries { get; set; } = default!;
+
     private bool _loading = true;
     private bool _includeSent;
     private string? _flash;
     private string? _secretWarning;
     private bool _secretExpired;
-    private IReadOnlyList<OutboxEntry> _entries = [];
-
-    private int OpenCount => _entries.Count(e => e.Status is OutboxStatus.Pending or OutboxStatus.Sending);
-    private int FailedCount => _entries.Count(e => e.Status == OutboxStatus.Failed);
-    private int SentCount => _entries.Count(e => e.Status == OutboxStatus.Sent);
+    private OutboxForAdmin _outbox = OutboxForAdmin.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        ComputeSecretWarning();
         await ReloadAsync();
         _loading = false;
     }
 
-    private void ComputeSecretWarning()
+    private void ComputeSecretWarning(DateOnly? expires)
     {
-        var raw = Config["Graph:ClientSecretExpires"];
-        if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)) return;
+        _secretWarning = null;
+        _secretExpired = false;
+        if (expires is not { } expiry) return;
 
-        var days = (int)Math.Floor((expires.Date - SwissTime.Now.Date).TotalDays);
+        var days = expiry.DayNumber - SwissTime.Today.DayNumber;
         if (days < 0)
         {
             _secretExpired = true;
-            _secretWarning = $"Das Graph Client-Secret ist am {expires:dd.MM.yyyy} abgelaufen. Der E-Mail-Versand ist gestört. " +
+            _secretWarning = $"Das Graph Client-Secret ist am {expiry:dd.MM.yyyy} abgelaufen. Der E-Mail-Versand ist gestört. " +
                              "Bitte in Entra ein neues Secret für die App 'Red Ants Web App' erstellen, in den App-Settings hinterlegen und Graph:ClientSecretExpires aktualisieren.";
         }
         else if (days <= 30)
         {
-            _secretWarning = $"Das Graph Client-Secret läuft am {expires:dd.MM.yyyy} ab (in {days} Tagen). " +
+            _secretWarning = $"Das Graph Client-Secret läuft am {expiry:dd.MM.yyyy} ab (in {days} Tagen). " +
                              "Bitte rechtzeitig in Entra erneuern und Graph:ClientSecretExpires aktualisieren.";
         }
     }
 
     private async Task ReloadAsync()
     {
-        _entries = await Report.ListAsync(_includeSent, SwissTime.Timestamp.AddDays(-30));
+        _outbox = await Outbox.HandleAsync(new GetOutbox.Query(_includeSent));
+        ComputeSecretWarning(_outbox.GraphSecretExpires);
     }
 
     private async Task RequeueAsync(int id)
     {
-        _flash = await Report.RequeueAsync(id)
+        _flash = await Retries.HandleAsync(new RetryOutboxMail.Command(id))
             ? "E-Mail wurde erneut in die Warteschlange gestellt."
             : "E-Mail konnte nicht erneut gesendet werden.";
         await ReloadAsync();

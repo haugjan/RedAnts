@@ -3,12 +3,15 @@ using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Catalog.Pricing;
 using RedAnts.Ticketing.Features.Catalog.Shop;
 using RedAnts.Ticketing.Features.Checkout;
+using RedAnts.Ticketing.Features.Email;
 using RedAnts.Ticketing.Features.EventBundles;
 using RedAnts.Ticketing.Features.FlexTickets;
 using RedAnts.Ticketing.Features.Helpers;
 using RedAnts.Ticketing.Features.MemberCards;
+using RedAnts.Ticketing.Features.Newsletter;
 using RedAnts.Ticketing.Features.Orders;
 using RedAnts.Ticketing.Features.SeasonPasses;
+using RedAnts.Ticketing.Features.Stats;
 using RedAnts.Ticketing.Features.Tickets;
 
 namespace RedAnts.Ticketing.Features;
@@ -39,6 +42,13 @@ public static class TicketingFeatures
         typeof(GrantFreeEntry.Handler),
         typeof(RevokeFreeEntry.Handler),
         typeof(GetOccupancy.Handler),
+        typeof(GetFreeEntries.Handler),
+        typeof(GetVisits.Handler),
+        typeof(GetEventAdmissionReport.Handler),
+        typeof(DeleteFreeEntry.Handler),
+        typeof(ResolveScannedCode.Handler),
+        typeof(GetEventsForScanning.Handler),
+        typeof(GetFlexBundles.Handler),
         typeof(SetEventSalesStatus.Handler),
         typeof(SetEventAdmissionQuota.Handler),
         typeof(SetEventSalesQuota.Handler),
@@ -67,6 +77,19 @@ public static class TicketingFeatures
         typeof(ChangeOrderStatus.Handler),
         typeof(RefundOrder.Handler),
         typeof(CreateAdminOrder.Handler),
+        typeof(GetOrdersForAdmin.Handler),
+        typeof(GetOrderDetail.Handler),
+        typeof(GetOrderAddOnsForAdmin.Handler),
+        typeof(SetOrderAddOnDelivered.Handler),
+        typeof(GetSeasonStats.Handler),
+        typeof(GetSalesStats.Handler),
+        typeof(GetEventStats.Handler),
+        typeof(GetVisitorStats.Handler),
+        typeof(GetOutbox.Handler),
+        typeof(RetryOutboxMail.Handler),
+        typeof(GetNewsletterSignups.Handler),
+        typeof(SetNewsletterTransferStatus.Handler),
+        typeof(MarkNewsletterSignupsTransferred.Handler),
         typeof(CreateMemberCard.Handler),
         typeof(ImportMemberCards.Handler),
         typeof(EditMemberCard.Handler),
@@ -107,6 +130,12 @@ public static class TicketingFeatures
         typeof(GetEventBundleTickets.Handler),
         typeof(GetEventBundlesForExport.Handler),
         typeof(ImportEventTickets.Handler),
+        typeof(GetEventTicketsForAdmin.Handler),
+        typeof(GetTicketPrintSettings.Handler),
+        typeof(GetEventTicketMailDefaults.Handler),
+        typeof(SendEventTicketMail.Handler),
+        typeof(CreateEventTicket.Handler),
+        typeof(PrintTickets.Handler),
         typeof(CreateFlexBundle.Handler),
         typeof(CreateEmptyFlexBundle.Handler),
         typeof(AddFlexTickets.Handler),
@@ -122,7 +151,6 @@ public static class TicketingFeatures
         typeof(DeleteFlexTicket.Handler),
         typeof(ImportFlexTickets.Handler),
         typeof(SendFlexTicketMail.Handler),
-        typeof(GetFlexBundles.Handler),
         typeof(GetFlexBundleTickets.Handler),
         typeof(GetFlexBundlesForExport.Handler),
         typeof(GetFlexTicketMailTemplate.Handler)

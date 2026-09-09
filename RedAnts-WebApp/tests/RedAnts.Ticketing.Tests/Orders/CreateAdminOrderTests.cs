@@ -8,7 +8,7 @@ namespace RedAnts.Ticketing.Tests.Orders;
 
 public class CreateAdminOrderTests
 {
-    private readonly InMemoryOrders _orders = new();
+    private readonly InMemoryOrderRepository _orders = new();
     private readonly RecordingOrderItems _items = new();
     private readonly RecordingOrderLog _log = new();
 

@@ -1,12 +1,11 @@
 using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Stats.Admin;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Stats.Infrastructure;
 
-public sealed class SeasonVisitStatsReader(IScopeProvider scopeProvider) : ISeasonVisitStatsReport
+public sealed class SeasonVisitStatsReader(IScopeProvider scopeProvider) : ISeasonVisitStatsReader
 {
     private const int Valid = (int)TicketStatus.Valid;
     private const int Paid = (int)OrderStatus.Paid;
@@ -208,7 +207,7 @@ public sealed class SeasonVisitStatsReader(IScopeProvider scopeProvider) : ISeas
     public sealed class RefRow { public string Reference { get; set; } = ""; public int Category { get; set; } public int Issued { get; set; } public int Redeemed { get; set; } }
 }
 
-public sealed class EventVisitStatsReader(IScopeProvider scopeProvider) : IEventVisitStatsReport
+public sealed class EventVisitStatsReader(IScopeProvider scopeProvider) : IEventVisitStatsReader
 {
     private const int Valid = (int)TicketStatus.Valid;
     private const int Paid = (int)OrderStatus.Paid;
@@ -337,7 +336,7 @@ public sealed class VisitStatsReadersComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
-        builder.Services.AddScoped<ISeasonVisitStatsReport, SeasonVisitStatsReader>();
-        builder.Services.AddScoped<IEventVisitStatsReport, EventVisitStatsReader>();
+        builder.Services.AddScoped<ISeasonVisitStatsReader, SeasonVisitStatsReader>();
+        builder.Services.AddScoped<IEventVisitStatsReader, EventVisitStatsReader>();
     }
 }

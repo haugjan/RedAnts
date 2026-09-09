@@ -28,7 +28,7 @@ public static class PlaceOrder
 
     public sealed class Handler(
         ICartRepository carts,
-        IOrders orders,
+        IOrderRepository orders,
         IOrderLog orderLog,
         IEventConversionRuleRepository conversionRules,
         IOccupancyReader occupancy,

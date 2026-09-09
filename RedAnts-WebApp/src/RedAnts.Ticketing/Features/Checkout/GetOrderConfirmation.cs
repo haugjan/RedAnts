@@ -16,7 +16,7 @@ public static class GetOrderConfirmation
     public sealed record Result(int OrderId, string OrderNumber, string Email, decimal Total, bool Paid, bool IsQuickBuy,
         IReadOnlyList<ConfirmationTicket> Tickets, IReadOnlyList<string> AddOnInfoTexts);
 
-    public sealed class Handler(IOrders orders, IEventTickets tickets, ISeasonPassRepository passes, ITicketTokens tokens, IIssuedTicketReader issuedTickets,
+    public sealed class Handler(IOrderRepository orders, IEventTicketRepository tickets, ISeasonPassRepository passes, ITicketTokens tokens, IIssuedTicketReader issuedTickets,
         IEventReader events, ISeasonReader seasons, IVenueReader venues, ISeasonAddOnRepository seasonAddOns)
     {
         public async Task<Result?> HandleAsync(Query query)

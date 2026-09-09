@@ -3,9 +3,6 @@ using System.Text;
 
 namespace RedAnts.Ticketing.Features.Tickets.Admin;
 
-public sealed record TicketExportRow(
-    string CardNo, string? Bundle, string? Category, CardHolder Holder, int? Admissions, string Link);
-
 public static class TicketExportCsv
 {
     private const string Header =

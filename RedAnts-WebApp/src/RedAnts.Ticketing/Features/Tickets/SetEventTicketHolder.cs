@@ -6,7 +6,7 @@ public static class SetEventTicketHolder
 {
     public sealed record Command(Guid Uuid, CardHolder Holder);
 
-    public sealed class Handler(IEventTickets tickets)
+    public sealed class Handler(IEventTicketRepository tickets)
     {
         public Task HandleAsync(Command command) => tickets.SetHolderAsync(command.Uuid, command.Holder);
     }

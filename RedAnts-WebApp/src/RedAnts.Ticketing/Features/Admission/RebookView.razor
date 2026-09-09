@@ -1,9 +1,9 @@
 @using RedAnts.Ticketing.Domain.Sales
 @implements IAsyncDisposable
-@inject ISeasonReader Seasons
-@inject GetFlexBundles.Handler FlexBundles
+@inject GetSeasonChoices.Handler SeasonChoices
+@inject GetFlexBundles.Handler Bundles
 @inject RebookFlexTicket.Handler Rebooking
-@inject ITicketTokens Tickets
+@inject ResolveScannedCode.Handler CodeResolution
 @inject IJSRuntime JS
 
 <div class="rebook">
@@ -174,7 +174,7 @@
     [Parameter] public EventCallback OnBack { get; set; }
 
     private DotNetObjectReference<RebookView>? _ref;
-    private IReadOnlyList<Season> _seasons = [];
+    private IReadOnlyList<SeasonChoice> _seasons = [];
     private IReadOnlyList<FlexBundleRow> _bundles = [];
 
     public int SelectedSeasonId { get; set; }
@@ -191,9 +191,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
-        SelectedSeasonId = CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
-        if (SelectedSeasonId > 0) _bundles = await FlexBundles.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
+        _seasons = await SeasonChoices.HandleAsync(new GetSeasonChoices.Query());
+        SelectedSeasonId = _seasons.FirstOrDefault(s => s.IsCurrent)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+        if (SelectedSeasonId > 0) _bundles = await Bundles.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -219,7 +219,7 @@
         SelectedBundleId = 0;
         _last = null;
         await StopCameraAsync();
-        _bundles = SelectedSeasonId > 0 ? await FlexBundles.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId)) : [];
+        _bundles = SelectedSeasonId > 0 ? await Bundles.HandleAsync(new GetFlexBundles.Query(SelectedSeasonId)) : [];
     }
 
     private async Task OnBundleChanged()
@@ -234,9 +234,10 @@
         if (SelectedBundleId <= 0) return;
         var scanned = ExtractToken(code);
         FlexRebookResult result;
-        if (Tickets.TryVerify(scanned, out var data))
+        var resolved = await CodeResolution.HandleAsync(new ResolveScannedCode.Query(scanned));
+        if (resolved.Token is { } data)
             result = await Rebooking.HandleAsync(new RebookFlexTicket.Command(SelectedBundleId, data.Uuid, null, Operator));
-        else if (Tickets.TryVerifyShort(scanned, out var shortCode))
+        else if (resolved.ShortCode is { } shortCode)
             result = await Rebooking.HandleAsync(new RebookFlexTicket.Command(SelectedBundleId, null, shortCode, Operator));
         else
             result = new FlexRebookResult(FlexRebookStatus.NotFound, Shorten(code));
@@ -316,13 +317,6 @@
         FlexRebookStatus.AlreadyRedeemed => "Bereits eingelöst",
         _ => "Kein Flexticket"
     };
-
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
-    {
-        var today = SwissTime.Today;
-        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
-            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
-    }
 
     private static string ExtractToken(string code)
     {

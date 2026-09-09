@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.Tickets;
 using RedAnts.Ticketing.Features.Tickets.Admin;
 using Umbraco.Cms.Core;
 

@@ -1,7 +1,6 @@
 @using Microsoft.AspNetCore.Components.Web
 @implements IDisposable
-@inject IEventReader Events
-@inject IVenueReader Venues
+@inject GetEventsForScanning.Handler ScannerEvents
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
@@ -70,7 +69,7 @@
                             <span class="event-card__date">@evt.Date.ToString("dd.MM.yyyy")@(evt.TimeUnknown ? "" : $" · {evt.StartTime:HH:mm}")</span>
                             <span class="event-card__name">@evt.Name</span>
                             <span class="event-card__meta">
-                                <span class="event-card__venue">@VenueName(evt.VenueId)</span>
+                                <span class="event-card__venue">@evt.VenueName</span>
                                 <span class="status status--@evt.Status.ToString().ToLowerInvariant()">@StatusLabel(evt.Status)</span>
                             </span>
                         </button>
@@ -209,49 +208,42 @@
     [Parameter] public bool CanRebook { get; set; }
 
     private readonly DateOnly _today = SwissTime.Today;
-    private IReadOnlyList<Event>? _events;
-    private IReadOnlyDictionary<int, string> _venues = new Dictionary<int, string>();
-    private Event? _selected;
+    private IReadOnlyList<ScannerEvent>? _events;
+    private ScannerEvent? _selected;
     private bool _testMode;
     private bool _rebookMode;
     private bool _boxOfficeMode;
-    private Event? _pendingEvent;
+    private ScannerEvent? _pendingEvent;
     private string? _operator;
 
     protected override async Task OnInitializedAsync()
     {
         if (!string.IsNullOrWhiteSpace(HelperName)) _operator = HelperName.Trim();
-        _venues = (await Venues.GetAllAsync()).ToDictionary(v => v.Id, v => v.Name);
-        var events = await Events.GetUpcomingForScanningAsync();
-        if (!string.IsNullOrEmpty(HelperName) && !AllEvents)
-        {
-            var allowed = AllowedEventIds
+        var onlyEventIds = !string.IsNullOrEmpty(HelperName) && !AllEvents
+            ? AllowedEventIds
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => int.TryParse(s, out var id) ? id : 0)
                 .Where(id => id > 0)
-                .ToHashSet();
-            events = events.Where(e => allowed.Contains(e.Id)).ToList();
-        }
-        _events = events;
+                .ToHashSet()
+            : null;
+        _events = await ScannerEvents.HandleAsync(new GetEventsForScanning.Query(onlyEventIds));
     }
 
     private void Logout() => Navigation.NavigateTo("/scan/logout", forceLoad: true);
 
-    private void Select(Event evt)
+    private void Select(ScannerEvent evt)
     {
         if (evt.Date == _today) _selected = evt;
         else _pendingEvent = evt;
     }
 
-    private void ConfirmSelect(Event evt)
+    private void ConfirmSelect(ScannerEvent evt)
     {
         _pendingEvent = null;
         _selected = evt;
     }
 
     private void BackToList() { _selected = null; _testMode = false; _rebookMode = false; _boxOfficeMode = false; }
-
-    private string VenueName(int venueId) => _venues.TryGetValue(venueId, out var name) ? name : "";
 
     private static string StatusLabel(EventStatus status) => status switch
     {

@@ -9,7 +9,7 @@ public static class GetCheckoutStatus
 
     public sealed record Result(bool Found, bool Paid, bool Cancelled);
 
-    public sealed class Handler(IOrders orders, IPayrexxGateway payrexx, ILogger<Handler> logger)
+    public sealed class Handler(IOrderRepository orders, IPayrexxGateway payrexx, ILogger<Handler> logger)
     {
         public async Task<Result> HandleAsync(Query query)
         {

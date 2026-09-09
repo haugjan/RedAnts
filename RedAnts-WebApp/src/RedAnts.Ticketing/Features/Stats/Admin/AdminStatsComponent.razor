@@ -1,8 +1,8 @@
 @using RedAnts.Ticketing.Domain.Sales
-@inject IVisitorStatsReport VisitorReport
-@inject ISalesStatsReport SalesReport
-@inject ISeasonVisitStatsReport SeasonReport
-@inject IEventVisitStatsReport EventReport
+@inject GetVisitorStats.Handler VisitorQuery
+@inject GetSalesStats.Handler SalesQuery
+@inject GetSeasonStats.Handler SeasonQuery
+@inject GetEventStats.Handler EventQuery
 
 <section class="ta-page">
     <h1 class="ta-page-title">Statistik</h1>
@@ -490,14 +490,14 @@
 @code {
     [Parameter] public string AdminUser { get; set; } = "";
 
-    [Inject] private ISeasonReader Seasons { get; set; } = default!;
-    [Inject] private IEventReader Events { get; set; } = default!;
+    [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
+    [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private bool _loading = true;
     private string _mode = "season";
-    private IReadOnlyList<Season> _seasons = [];
-    private List<Event> _events = [];
+    private IReadOnlyList<SeasonChoice> _seasons = [];
+    private List<EventForAdmin> _events = [];
     private SeasonVisitStats? _season;
     private EventVisitStats? _event;
     private SalesStats? _sales;
@@ -509,10 +509,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _seasons = await SeasonChoices.HandleAsync(new GetSeasonChoices.Query());
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
-            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+            : _seasons.FirstOrDefault(s => s.IsCurrent)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
 
         await LoadEventsAsync();
         await ReloadSeasonAsync();
@@ -520,9 +520,6 @@
         await ReloadVisitorsAsync();
         _loading = false;
     }
-
-    private Season? CurrentSeasonObj => _seasons.FirstOrDefault(s => s.Id == SelectedSeasonId);
-
     private async Task SetModeAsync(string mode)
     {
         if (_mode == mode) return;
@@ -540,9 +537,7 @@
 
     private async Task LoadEventsAsync()
     {
-        _events = SelectedSeasonId > 0
-            ? (await Events.GetBySeasonAsync(SelectedSeasonId)).OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList()
-            : [];
+        _events = (await EventsForAdmin.HandleAsync(new GetEventsForAdmin.Query(SelectedSeasonId))).Events.ToList();
 
         if (_events.All(e => e.Id != SelectedEventId))
         {
@@ -554,23 +549,20 @@
 
     private async Task ReloadSeasonAsync()
     {
-        var ids = _events.Select(e => e.Id).ToList();
-        var seasonStart = CurrentSeasonObj?.StartDate.ToDateTime(TimeOnly.MinValue) ?? SwissTime.Now;
-        _season = await SeasonReport.GetAsync(SelectedSeasonId, ids, seasonStart);
-        _sales = await SalesReport.GetSeasonAsync(SelectedSeasonId, ids);
+        _season = await SeasonQuery.HandleAsync(new GetSeasonStats.Query(SelectedSeasonId));
+        _sales = await SalesQuery.HandleAsync(new GetSalesStats.Query(SelectedSeasonId));
     }
 
     private async Task ReloadEventAsync()
     {
         AdminState.SelectedEventId = SelectedEventId > 0 ? SelectedEventId : null;
-        var ev = _events.FirstOrDefault(e => e.Id == SelectedEventId);
-        _event = ev is null ? null : await EventReport.GetAsync(SelectedEventId, ev.Date.ToDateTime(ev.StartTime));
+        _event = await EventQuery.HandleAsync(new GetEventStats.Query(SelectedEventId));
     }
 
     private async Task ReloadVisitorsAsync()
     {
         var (from, toExclusive) = ResolveVisitorRange();
-        _visitors = await VisitorReport.GetAsync(from, toExclusive);
+        _visitors = await VisitorQuery.HandleAsync(new GetVisitorStats.Query(from, toExclusive));
     }
 
     private (DateOnly From, DateOnly ToExclusive) ResolveVisitorRange()
@@ -592,13 +584,6 @@
         : $"{b.Start:dd.MM.yyyy}: {b.Views} Aufrufe, {b.Visitors} Besucher";
 
     private string AxisLabel(DateOnly d) => _visitors?.Bucket == StatBucket.Month ? d.ToString("MMM yy") : d.ToString("dd.MM.");
-
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
-    {
-        var today = SwissTime.Today;
-        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
-            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
-    }
 
     private static string TypeLabel(int t) => ((TicketType)t).DisplayName();
     private static string FreeLabel(int t) => ((FreeEntryType)t).DisplayName();

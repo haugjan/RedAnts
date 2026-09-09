@@ -1,5 +1,5 @@
 using RedAnts.Ticketing.Domain;
-using RedAnts.Ticketing.Features.Admission.Admin;
+using RedAnts.Ticketing.Features.Admission;
 
 namespace RedAnts.Ticketing.Features.Catalog;
 

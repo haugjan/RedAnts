@@ -23,7 +23,7 @@ internal sealed class InMemoryCart : ICartRepository
     public void Clear() => _cart = Cart.Empty();
 }
 
-internal sealed class InMemoryOrders : IOrders
+internal sealed class InMemoryOrderRepository : IOrderRepository
 {
     private int _nextId = 1;
 
@@ -65,14 +65,20 @@ internal sealed class InMemoryOrders : IOrders
         return Task.FromResult(order is not null);
     }
 
-    public Task<IReadOnlyList<Order>> GetDraftsCreatedBetweenAsync(DateTimeOffset createdAfter, DateTimeOffset createdBefore) =>
-        Task.FromResult<IReadOnlyList<Order>>(Stored.Where(o => o.Status == OrderStatus.Draft && o.CreatedAt >= createdAfter && o.CreatedAt < createdBefore).ToList());
-
     public Task CopyBillingToTicketsAsync(int orderId)
     {
         BillingCopies++;
         return Task.CompletedTask;
     }
+}
+
+internal sealed class InMemoryDraftOrdersReader(InMemoryOrderRepository orders) : IDraftOrdersReader
+{
+    public Task<IReadOnlyList<int>> GetIdsCreatedBetweenAsync(DateTimeOffset createdAfter, DateTimeOffset createdBefore) =>
+        Task.FromResult<IReadOnlyList<int>>(orders.Stored
+            .Where(o => o.Status == OrderStatus.Draft && o.CreatedAt >= createdAfter && o.CreatedAt < createdBefore)
+            .Select(o => o.Id)
+            .ToList());
 }
 
 internal sealed class InMemoryEventPrices : IEventPriceRepository
@@ -171,10 +177,6 @@ internal sealed class RecordingOrderLog : IOrderLog
         Entries.Add((orderId, toStatus, changedBy, note));
         return Task.CompletedTask;
     }
-
-    public Task<IReadOnlyList<OrderLogEntry>> GetByOrderAsync(int orderId) =>
-        Task.FromResult<IReadOnlyList<OrderLogEntry>>(Entries.Where(e => e.OrderId == orderId)
-            .Select(e => new OrderLogEntry(e.Status, e.By, SwissTime.Timestamp, e.Note)).ToList());
 }
 
 internal sealed class StubConversionRules : IEventConversionRuleRepository
@@ -250,23 +252,28 @@ internal sealed class StubOrderTokens : IOrderTokens
         token is { Length: > 3 } && token.StartsWith("tok") && int.TryParse(token[3..], out var id) ? id : null;
 }
 
-internal sealed class InMemoryEventTickets : IEventTickets
+internal sealed class InMemoryEventTicketRepository : IEventTicketRepository
 {
     public List<EventTicket> Stored { get; } = [];
+    public List<(Guid Uuid, CardHolder Holder)> Holders { get; } = [];
 
-    public Task<IReadOnlyList<EventTicket>> GetByEventAsync(int eventId) =>
-        Task.FromResult<IReadOnlyList<EventTicket>>(Stored.Where(t => t.EventId == eventId).ToList());
+    public Task<EventTicket?> GetByUuidAsync(Guid uuid) => Task.FromResult(Stored.FirstOrDefault(t => t.Uuid == uuid));
 
     public Task<IReadOnlyList<EventTicket>> GetByOrderAsync(int orderId) =>
         Task.FromResult<IReadOnlyList<EventTicket>>(Stored.Where(t => t.OrderId == orderId).ToList());
 
     public Task<EventTicket> SaveAsync(EventTicket ticket)
     {
+        Stored.RemoveAll(t => t.Uuid == ticket.Uuid);
         Stored.Add(ticket);
         return Task.FromResult(ticket);
     }
 
-    public Task SetHolderAsync(Guid uuid, CardHolder holder) => Task.CompletedTask;
+    public Task SetHolderAsync(Guid uuid, CardHolder holder)
+    {
+        Holders.Add((uuid, holder));
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class InMemorySeasonPasses : ISeasonPassRepository
@@ -306,6 +313,7 @@ internal sealed class StubConvertibleCards : IConvertibleCards
 internal sealed class RecordingOrderAddOns : IOrderAddOns
 {
     public Dictionary<int, IReadOnlyList<OrderAddOnLine>> Saved { get; } = new();
+    public List<(int OrderAddOnId, bool Delivered)> Deliveries { get; } = [];
 
     public Task SaveAsync(int orderId, IReadOnlyList<OrderAddOnLine> lines)
     {
@@ -313,8 +321,11 @@ internal sealed class RecordingOrderAddOns : IOrderAddOns
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<OrderAddOnLine>> GetByOrderAsync(int orderId) =>
-        Task.FromResult(Saved.TryGetValue(orderId, out var lines) ? lines : []);
+    public Task SetDeliveredAsync(int orderAddOnId, bool delivered)
+    {
+        Deliveries.Add((orderAddOnId, delivered));
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class RecordingAddOnNotifier : IAddOnNotifier
@@ -350,14 +361,13 @@ internal sealed class RecordingOrderItems : IOrderItems
         Saved[orderId] = items;
         return Task.CompletedTask;
     }
-
-    public Task<IReadOnlyList<OrderItem>> GetByOrderAsync(int orderId) =>
-        Task.FromResult(Saved.TryGetValue(orderId, out var items) ? items : []);
 }
 
-internal sealed class RecordingNewsletter : INewsletterSignups
+internal sealed class RecordingNewsletterSignupRepository : INewsletterSignupRepository
 {
     public List<(string Email, string? Name, string Source)> Subscriptions { get; } = [];
+    public List<(int Id, NewsletterTransferStatus Status)> StatusChanges { get; } = [];
+    public List<int> MarkedTransferred { get; } = [];
 
     public Task SubscribeAsync(string email, string? name, string source)
     {
@@ -365,13 +375,17 @@ internal sealed class RecordingNewsletter : INewsletterSignups
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<NewsletterSignup>> GetAllAsync() => Task.FromResult<IReadOnlyList<NewsletterSignup>>([]);
+    public Task SetTransferStatusAsync(int id, NewsletterTransferStatus status)
+    {
+        StatusChanges.Add((id, status));
+        return Task.CompletedTask;
+    }
 
-    public Task<IReadOnlyList<NewsletterSignup>> GetPendingAsync() => Task.FromResult<IReadOnlyList<NewsletterSignup>>([]);
-
-    public Task SetTransferStatusAsync(int id, NewsletterTransferStatus status) => Task.CompletedTask;
-
-    public Task MarkTransferredAsync(IEnumerable<int> ids) => Task.CompletedTask;
+    public Task MarkTransferredAsync(IEnumerable<int> ids)
+    {
+        MarkedTransferred.AddRange(ids);
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class EmptyIssuedTickets : IIssuedTicketReader

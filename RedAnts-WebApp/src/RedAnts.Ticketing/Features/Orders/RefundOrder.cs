@@ -24,7 +24,7 @@ public static class RefundOrder
 {
     public sealed record Command(RefundRequest Request);
 
-    public sealed class Handler(IOrders orders, IOrderRefunds refunds, IPayrexxGateway payrexx, IOrderTickets orderTickets)
+    public sealed class Handler(IOrderRepository orders, IOrderRefunds refunds, IPayrexxGateway payrexx, IOrderTickets orderTickets)
     {
         public async Task<RefundResult> HandleAsync(Command command)
         {

@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @implements IAsyncDisposable
 @inject IJSRuntime JS
-@inject ITicketTokens Tickets
+@inject ResolveScannedCode.Handler CodeResolution
 @inject ScanTicket.Handler TicketScans
 @inject ScanCode.Handler CodeScans
 @inject GrantFreeEntry.Handler FreeEntryGrants
@@ -391,9 +391,10 @@
     {
         _cameraPaused = true;
         var scanned = ExtractToken(code);
-        if (Tickets.TryVerify(scanned, out var data))
+        var resolved = await CodeResolution.HandleAsync(new ResolveScannedCode.Query(scanned));
+        if (resolved.Token is { } data)
             _last = await TicketScans.HandleAsync(new ScanTicket.Command(EventId, data.Type, data.Uuid, data.ScopeId, _mode, Operator, IsTest));
-        else if (Tickets.TryVerifyShort(scanned, out var shortCode))
+        else if (resolved.ShortCode is { } shortCode)
             _last = await CodeScans.HandleAsync(new ScanCode.Command(EventId, shortCode, _mode, Operator, IsTest));
         else
             _last = new ScanOutcome(AdmissionOutcome.Rejected, null, Shorten(code),

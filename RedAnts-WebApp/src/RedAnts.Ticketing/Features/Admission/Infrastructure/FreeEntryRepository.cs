@@ -84,4 +84,16 @@ public sealed class FreeEntryRepository(IScopeProvider scopeProvider) : IFreeEnt
         }
         scope.Complete();
     }
+
+    public async Task DeleteAsync(Guid uuid)
+    {
+        var key = uuid.ToString();
+        using var scope = scopeProvider.CreateScope(autoComplete: true);
+        var db = scope.Database;
+        await db.ExecuteAsync(
+            "DELETE FROM TicketEventVisitsLogs WHERE VisitId IN (SELECT Id FROM TicketEventVisits WHERE Uuid = @0)", key);
+        await db.ExecuteAsync(
+            "DELETE FROM TicketEventFreeEntries WHERE VisitId IN (SELECT Id FROM TicketEventVisits WHERE Uuid = @0)", key);
+        await db.ExecuteAsync("DELETE FROM TicketEventVisits WHERE Uuid = @0", key);
+    }
 }

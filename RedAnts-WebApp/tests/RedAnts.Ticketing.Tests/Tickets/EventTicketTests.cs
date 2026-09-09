@@ -1,5 +1,6 @@
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Tickets;
+using RedAnts.Ticketing.Tests.Checkout;
 using RedAnts.Ticketing.Tests.EventBundles;
 using Xunit;
 
@@ -9,7 +10,7 @@ public class EventTicketTests
 {
     private const int EventId = 10;
 
-    private static EventTicket Stored(InMemoryEventTickets tickets, TicketStatus status = TicketStatus.Valid, bool redeemed = false)
+    private static EventTicket Stored(InMemoryEventTicketRepository tickets, TicketStatus status = TicketStatus.Valid, bool redeemed = false)
     {
         var ticket = EventTicket.FromPersistence(5, Guid.NewGuid(), EventId, TicketCategory.Adult, 20m, 7, status,
             new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero), redeemed, Buyer.Create(BuyerType.Private, "Anna", "Muster", null),
@@ -21,7 +22,7 @@ public class EventTicketTests
     [Fact]
     public async Task Edit_replaces_the_editable_fields_and_keeps_the_rest()
     {
-        var tickets = new InMemoryEventTickets();
+        var tickets = new InMemoryEventTicketRepository();
         var original = Stored(tickets);
         var handler = new EditEventTicket.Handler(tickets);
 
@@ -43,7 +44,7 @@ public class EventTicketTests
     [Fact]
     public async Task Edit_forces_not_redeemed_for_cancelled_tickets()
     {
-        var tickets = new InMemoryEventTickets();
+        var tickets = new InMemoryEventTicketRepository();
         var original = Stored(tickets, redeemed: true);
 
         await new EditEventTicket.Handler(tickets).HandleAsync(
@@ -57,7 +58,7 @@ public class EventTicketTests
     [Fact]
     public async Task Edit_rejects_a_negative_price_without_saving()
     {
-        var tickets = new InMemoryEventTickets();
+        var tickets = new InMemoryEventTicketRepository();
         var original = Stored(tickets);
 
         await Assert.ThrowsAsync<DomainException>(() => new EditEventTicket.Handler(tickets).HandleAsync(
@@ -69,7 +70,7 @@ public class EventTicketTests
     [Fact]
     public async Task Edit_rejects_an_unknown_ticket()
     {
-        var tickets = new InMemoryEventTickets();
+        var tickets = new InMemoryEventTicketRepository();
         Stored(tickets);
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => new EditEventTicket.Handler(tickets).HandleAsync(
@@ -81,7 +82,7 @@ public class EventTicketTests
     [Fact]
     public async Task Holder_and_deletion_delegate_to_the_ports()
     {
-        var tickets = new InMemoryEventTickets();
+        var tickets = new InMemoryEventTicketRepository();
         var deletion = new RecordingTicketDeletion();
         var uuid = Guid.NewGuid();
         var holder = CardHolder.Create(BuyerType.Private, null, null, "Anna", "Muster", null, null, null, null, null, null, null, null);

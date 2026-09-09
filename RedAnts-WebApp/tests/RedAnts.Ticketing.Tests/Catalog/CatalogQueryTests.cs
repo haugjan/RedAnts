@@ -1,7 +1,7 @@
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Admission;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Admission.Admin;
+using RedAnts.Ticketing.Features.Admission;
 using RedAnts.Ticketing.Features.Catalog;
 using Xunit;
 

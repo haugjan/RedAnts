@@ -1,4 +1,3 @@
-using RedAnts.Ticketing.Domain.Sales;
 using System.Text;
 
 namespace RedAnts.Ticketing.Features.Newsletter.Admin;
@@ -8,7 +7,7 @@ public static class NewsletterFairgateCsv
     private const string Header = "Vorname;Nachname;Primäre E-Mail;Korrespondenzsprache";
     private const string Korrespondenzsprache = "De";
 
-    public static byte[] Build(IEnumerable<NewsletterSignup> signups)
+    public static byte[] Build(IEnumerable<NewsletterSignupRow> signups)
     {
         var sb = new StringBuilder();
         sb.Append(Header).Append("\r\n");

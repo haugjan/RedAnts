@@ -2,7 +2,6 @@ using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Admin;
 using RedAnts.Ticketing.Features.Admission;
-using RedAnts.Ticketing.Features.Admission.Admin;
 using RedAnts.Ticketing.Features.Catalog.Pricing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
@@ -12,7 +11,7 @@ public sealed class EventsForAdminReader(
     IEventReader events,
     IEventQuotasReader quotas,
     IEventLinkReader links,
-    IEventAdmissionReport admission,
+    IEventAdmissionReader admission,
     IContentCreateLinks createLinks,
     IScopeProvider scopeProvider) : IEventsForAdminReader
 {

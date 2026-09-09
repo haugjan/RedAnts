@@ -1,27 +1,13 @@
 using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
-using RedAnts.Ticketing.Features.Admission.Admin;
 using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Tickets.Infrastructure;
-using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Admission.Infrastructure;
 
 public sealed class VisitLogReader(IScopeProvider scopeProvider, IEventReader events) : IVisitLogReader
 {
-    public async Task<IReadOnlyDictionary<Guid, bool>> GetInsideByEventAsync(int eventId)
-    {
-        using var scope = scopeProvider.CreateScope(autoComplete: true);
-        var visits = await scope.Database.FetchAsync<EventVisitRecord>(
-            "WHERE EventId = @0 AND TicketUuid IS NOT NULL", eventId);
-        var map = new Dictionary<Guid, bool>();
-        foreach (var v in visits)
-            if (Guid.TryParse(v.TicketUuid, out var uuid))
-                map[uuid] = v.IsInside;
-        return map;
-    }
-
     public async Task<IReadOnlyList<TicketVisitEntry>> GetByTicketUuidAsync(Guid uuid)
     {
         List<EventVisitRecord> visits;
@@ -95,10 +81,4 @@ public sealed class VisitLogReader(IScopeProvider scopeProvider, IEventReader ev
 
         return result;
     }
-}
-
-public sealed class VisitLogReaderComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IVisitLogReader, VisitLogReader>();
 }

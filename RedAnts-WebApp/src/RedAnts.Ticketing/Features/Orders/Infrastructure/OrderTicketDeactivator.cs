@@ -1,6 +1,5 @@
 using NPoco;
 using RedAnts.Ticketing.Domain.Sales;
-using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace RedAnts.Ticketing.Features.Orders.Infrastructure;
@@ -21,10 +20,4 @@ public sealed class OrderTicketDeactivator(IScopeProvider scopeProvider) : IOrde
                 (int)TicketStatus.Cancelled, orderId, (int)TicketStatus.Valid);
         return total;
     }
-}
-
-public sealed class OrderTicketsComposer : IComposer
-{
-    public void Compose(IUmbracoBuilder builder)
-        => builder.Services.AddScoped<IOrderTickets, OrderTicketDeactivator>();
 }

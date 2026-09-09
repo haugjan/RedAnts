@@ -1,5 +1,4 @@
 @using RedAnts.Ticketing.Domain.Sales
-@inject IOrderAdminReport Report
 
 <section class="ta-page">
     <h1 class="ta-page-title">Bestellungen</h1>
@@ -34,12 +33,12 @@
                     <label class="ta-label" for="ordSearch">Suche</label>
                     <input id="ordSearch" type="search" class="ta-input ta-orders-search"
                            placeholder="Name, E-Mail, Ort, PLZ, Bestell-Nr., Kategorie …"
-                           @bind="_search" @bind:event="oninput" />
+                           @bind="_search" @bind:event="oninput" @bind:after="SearchAsync" />
                 </div>
             </div>
         </div>
 
-        @if (_orders.Count == 0)
+        @if (_result.Total == 0)
         {
             <div class="ta-placeholder">Für diese Saison sind keine Onlineeinkäufe vorhanden.</div>
         }
@@ -81,7 +80,7 @@
                                 </td>
                                 <td>@SwissTime.ToSwiss(o.CreatedAt).ToString("dd.MM.yyyy HH:mm")</td>
                                 <td>
-                                    <span class="ta-badge @StatusClass(o.Status)">@StatusLabel(o.Status)</span>
+                                    <span class="ta-badge @StatusClass(o.Status)">@o.Status.DisplayName()</span>
                                     @if (o.Status == OrderStatus.PartiallyRefunded)
                                     {
                                         <div class="ta-orders-refund-note">CHF @o.RefundedAmount.ToString("N2") von @o.TotalGross.ToString("N2") erstattet</div>
@@ -119,11 +118,11 @@
             <p class="ta-summary">
                 @if (!string.IsNullOrWhiteSpace(_search))
                 {
-                    <text>@shown.Count von @_orders.Count Bestellungen · </text>
+                    <text>@shown.Count von @_result.Total Bestellungen · </text>
                 }
                 else
                 {
-                    <text>@_orders.Count Bestellung@(_orders.Count == 1 ? "" : "en") · </text>
+                    <text>@shown.Count Bestellung@(shown.Count == 1 ? "" : "en") · </text>
                 }
                 @shown.Count(o => o.Status is OrderStatus.Paid or OrderStatus.PartiallyRefunded) bezahlt ·
                 @shown.Count(o => o.Status == OrderStatus.Draft) offen ·
@@ -176,20 +175,20 @@
     [Parameter] public string AdminUser { get; set; } = "";
     [CascadingParameter] public AdminIdentity Identity { get; set; } = new("admin", null);
 
-    [Inject] private ISeasonReader Seasons { get; set; } = default!;
-    [Inject] private IEventReader Events { get; set; } = default!;
+    [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
+    [Inject] private GetOrdersForAdmin.Handler Orders { get; set; } = default!;
     [Inject] private ChangeOrderStatus.Handler StatusChanges { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
 
     private enum OrderAction { MarkPaid, Cancel, Refund }
 
-    private OrderListItem? _actionOrder;
+    private OrderListRow? _actionOrder;
     private OrderAction _action;
     private bool _actionBusy;
     private string? _actionError;
     private string? _flash;
 
-    private OrderListItem? _refundOrder;
+    private OrderListRow? _refundOrder;
 
     private static string? FlashFor(OrderAction action, string orderNumber, int deactivated)
     {
@@ -202,7 +201,7 @@
         };
     }
 
-    private static OrderAction[] ActionsFor(OrderListItem o) => o.Status switch
+    private static OrderAction[] ActionsFor(OrderListRow o) => o.Status switch
     {
         OrderStatus.Draft => [OrderAction.MarkPaid, OrderAction.Cancel],
         OrderStatus.Paid when o.TotalGross > 0m => [OrderAction.Cancel, OrderAction.Refund],
@@ -211,13 +210,13 @@
         _ => []
     };
 
-    private void OnAction(OrderListItem o, OrderAction action)
+    private void OnAction(OrderListRow o, OrderAction action)
     {
         if (action == OrderAction.Refund) { _refundOrder = o; return; }
         Ask(o, action);
     }
 
-    private void Ask(OrderListItem o, OrderAction action)
+    private void Ask(OrderListRow o, OrderAction action)
     {
         _actionOrder = o;
         _action = action;
@@ -286,25 +285,26 @@
         _ => "Bestätigen"
     };
 
-    private static string ActionMessage(OrderAction action, OrderListItem o) => action switch
+    private static string ActionMessage(OrderAction action, OrderListRow o) => action switch
     {
         OrderAction.MarkPaid => $"Bestellung {o.OrderNumber} als bezahlt markieren?",
         OrderAction.Cancel => $"Bestellung {o.OrderNumber} stornieren? Dies kann nicht rückgängig gemacht werden.",
         _ => ""
     };
 
-    private OrderListItem? _logOrder;
-    private void OpenLog(OrderListItem o) => _logOrder = o;
+    private OrderListRow? _logOrder;
+    private void OpenLog(OrderListRow o) => _logOrder = o;
     private void CloseLog() => _logOrder = null;
 
-    private OrderListItem? _itemsOrder;
-    private void OpenItems(OrderListItem o) => _itemsOrder = o;
+    private OrderListRow? _itemsOrder;
+    private void OpenItems(OrderListRow o) => _itemsOrder = o;
     private void CloseItems() => _itemsOrder = null;
 
     private bool _loading = true;
-    private IReadOnlyList<Season> _seasons = [];
-    private IReadOnlyList<OrderListItem> _orders = [];
+    private IReadOnlyList<SeasonChoice> _seasons = [];
+    private OrdersForAdmin _result = OrdersForAdmin.Empty;
     private string _search = "";
+    private CancellationTokenSource? _searchDebounce;
 
     public int SelectedSeasonId { get; set; }
 
@@ -313,10 +313,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seasons = (await Seasons.GetAllAsync()).OrderByDescending(s => s.StartDate).ToList();
+        _seasons = await SeasonChoices.HandleAsync(new GetSeasonChoices.Query());
         SelectedSeasonId = AdminState.SelectedSeasonId is int id && _seasons.Any(s => s.Id == id)
             ? id
-            : CurrentSeason(_seasons)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
+            : _seasons.FirstOrDefault(s => s.IsCurrent)?.Id ?? _seasons.FirstOrDefault()?.Id ?? 0;
         await ReloadOrdersAsync();
         _loading = false;
     }
@@ -324,17 +324,24 @@
     private async Task ReloadOrdersAsync()
     {
         AdminState.SelectedSeasonId = SelectedSeasonId > 0 ? SelectedSeasonId : null;
-        if (SelectedSeasonId <= 0) { _orders = []; return; }
-        var eventIds = (await Events.GetBySeasonAsync(SelectedSeasonId)).Select(e => e.Id).ToList();
-        _orders = await Report.GetBySeasonAsync(SelectedSeasonId, eventIds);
+        _result = await Orders.HandleAsync(new GetOrdersForAdmin.Query(SelectedSeasonId, _search));
+    }
+
+    private async Task SearchAsync()
+    {
+        _searchDebounce?.Cancel();
+        var debounce = _searchDebounce = new CancellationTokenSource();
+        try { await Task.Delay(250, debounce.Token); }
+        catch (TaskCanceledException) { return; }
+        await ReloadOrdersAsync();
     }
 
     private void Sort(string col) { _sortAsc = _sortCol == col ? !_sortAsc : true; _sortCol = col; }
     private string Ind(string col) => _sortCol == col ? (_sortAsc ? "▲" : "▼") : "";
-    private IEnumerable<OrderListItem> Sorted()
+    private IEnumerable<OrderListRow> Sorted()
     {
-        var src = Filtered();
-        IEnumerable<OrderListItem> q = _sortCol switch
+        var src = _result.Orders;
+        IEnumerable<OrderListRow> q = _sortCol switch
         {
             "buyer" => src.OrderBy(o => o.BuyerName),
             "amount" => src.OrderBy(o => o.TotalGross),
@@ -344,42 +351,10 @@
         return _sortAsc ? q : q.Reverse();
     }
 
-    private IEnumerable<OrderListItem> Filtered()
-    {
-        var terms = (_search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return terms.Length == 0
-            ? _orders
-            : _orders.Where(o => terms.All(t => Haystack(o).Contains(t, StringComparison.OrdinalIgnoreCase)));
-    }
-
-    private static string Haystack(OrderListItem o) => string.Join(' ', new[]
-    {
-        o.OrderNumber, o.BuyerName, o.Email, o.Street, o.AddressLine2 ?? "", o.PostalCode, o.City, o.Country,
-        o.EventTicketSummary, o.SeasonPassSummary, o.FlexTicketSummary,
-        o.PaymentSource is { } ps ? ps.DisplayName() : "", StatusLabel(o.Status)
-    });
-
-    private static Season? CurrentSeason(IReadOnlyList<Season> seasons)
-    {
-        var today = SwissTime.Today;
-        return seasons.FirstOrDefault(s => s.StartDate <= today && today <= s.EndDate)
-            ?? seasons.Where(s => s.StartDate <= today).MaxBy(s => s.StartDate);
-    }
-
     private static bool IsSwitzerland(string country) =>
         string.IsNullOrWhiteSpace(country) || country.Equals("Schweiz", StringComparison.OrdinalIgnoreCase);
 
     private static string Cell(int count, string summary) => count == 0 ? "—" : summary;
-
-    private static string StatusLabel(OrderStatus status) => status switch
-    {
-        OrderStatus.Paid => "Bezahlt",
-        OrderStatus.Draft => "Unbezahlt",
-        OrderStatus.Cancelled => "Storniert",
-        OrderStatus.Refunded => "Erstattet",
-        OrderStatus.PartiallyRefunded => "Teilerstattet",
-        _ => status.ToString()
-    };
 
     private static string StatusClass(OrderStatus status) => status switch
     {

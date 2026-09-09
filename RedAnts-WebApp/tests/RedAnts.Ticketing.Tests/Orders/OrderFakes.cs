@@ -1,5 +1,6 @@
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
+using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Checkout;
 using RedAnts.Ticketing.Features.Orders;
 using RedAnts.Ticketing.Tests.Checkout;
@@ -22,9 +23,6 @@ internal sealed class RecordingOrderRefunds : IOrderRefunds
         var reserved = Stored.Where(r => r.OrderId == orderId && r.Status == RefundStatus.Pending).Sum(r => r.Amount);
         return Task.FromResult(new RefundSummary(orderId, TotalGross, confirmed, reserved, TotalGross - confirmed - reserved));
     }
-
-    public Task<IReadOnlyList<OrderRefund>> GetByOrderAsync(int orderId) =>
-        Task.FromResult<IReadOnlyList<OrderRefund>>(Stored.Where(r => r.OrderId == orderId).ToList());
 
     public Task<OrderRefund> CreateAsync(int orderId, decimal amount, RefundMethod method, RefundStatus initialStatus,
         string? reference, string? reason, string? createdBy)
@@ -98,7 +96,7 @@ internal static class OrderFixtures
     public static BillingAddress Billing() => BillingAddress.Create(
         BuyerType.Private, "Anna", "Muster", null, "Bahnhofstrasse 1", null, "8400", "Winterthur", "Schweiz", "anna@example.ch", null);
 
-    public static async Task<Order> PaidOrderAsync(InMemoryOrders orders, decimal total = 100m, string? gatewayId = null)
+    public static async Task<Order> PaidOrderAsync(InMemoryOrderRepository orders, decimal total = 100m, string? gatewayId = null)
     {
         var order = Order.Create(await orders.NextOrderNumberAsync(), Billing(), total, 0m, PaymentMethod.Payrexx, null,
             paymentSource: PaymentSource.Online);
@@ -107,10 +105,69 @@ internal static class OrderFixtures
         return await orders.SaveAsync(order);
     }
 
-    public static async Task<Order> DraftOrderAsync(InMemoryOrders orders, decimal total = 100m)
+    public static async Task<Order> DraftOrderAsync(InMemoryOrderRepository orders, decimal total = 100m)
     {
         var order = Order.Create(await orders.NextOrderNumberAsync(), Billing(), total, 0m, PaymentMethod.Payrexx, null,
             paymentSource: PaymentSource.Online);
         return await orders.SaveAsync(order);
     }
+}
+
+internal sealed class StubOrderListReader : IOrderListReader
+{
+    public List<OrderListRow> Rows { get; } = [];
+    public (int SeasonId, IReadOnlyCollection<int> EventIds)? LastCall { get; private set; }
+
+    public Task<IReadOnlyList<OrderListRow>> GetBySeasonAsync(int seasonId, IReadOnlyCollection<int> eventIds)
+    {
+        LastCall = (seasonId, eventIds);
+        return Task.FromResult<IReadOnlyList<OrderListRow>>(Rows);
+    }
+
+    public static OrderListRow Row(int id, string number, string buyer, string email, OrderStatus status = OrderStatus.Paid, string city = "Winterthur") =>
+        new(id, number, SwissTime.Timestamp, status, 50m, BuyerType.Private, buyer, "Bahnhofstrasse 1", null, "8400", city, "Schweiz",
+            email, 2, "2× Erwachsen", 0, "—", 0, "—", PaymentSource.Online, 0m);
+}
+
+internal sealed class StubOrderDetailReader : IOrderDetailReader
+{
+    public Dictionary<int, OrderDetail> Details { get; } = new();
+
+    public Task<OrderDetail?> GetAsync(int orderId) =>
+        Task.FromResult(Details.TryGetValue(orderId, out var detail) ? detail : null);
+}
+
+internal sealed class StubOrderAddOnListReader : IOrderAddOnListReader
+{
+    public List<OrderAddOnRow> Rows { get; } = [];
+    public int? LastSeasonId { get; private set; }
+
+    public Task<IReadOnlyList<OrderAddOnRow>> GetBySeasonAsync(int seasonId)
+    {
+        LastSeasonId = seasonId;
+        return Task.FromResult<IReadOnlyList<OrderAddOnRow>>(Rows);
+    }
+
+    public static OrderAddOnRow Row(int id, string number, string buyer, string label, int quantity, bool delivered) =>
+        new(id, id * 10, number, SwissTime.Timestamp, OrderStatus.Paid, buyer, $"{buyer.ToLowerInvariant()}@example.ch", label, "Erwachsen", quantity, 5m, delivered);
+}
+
+internal sealed class StubEvents : IEventReader
+{
+    public List<Event> Events { get; } = [];
+
+    public static Event InSeason(int id, int seasonId) =>
+        Event.FromPersistence(id, $"Spiel {id}", null, seasonId, new DateOnly(2026, 10, 3), new TimeOnly(18, 0), false, 1, EventStatus.Open,
+            null, null, null, null);
+
+    public Task<IReadOnlyList<Event>> GetAllAsync() => Task.FromResult<IReadOnlyList<Event>>(Events);
+
+    public Task<IReadOnlyList<Event>> GetPublicOpenAsync() => Task.FromResult<IReadOnlyList<Event>>(Events);
+
+    public Task<IReadOnlyList<Event>> GetUpcomingForScanningAsync() => Task.FromResult<IReadOnlyList<Event>>(Events);
+
+    public Task<IReadOnlyList<Event>> GetBySeasonAsync(int seasonId) =>
+        Task.FromResult<IReadOnlyList<Event>>(Events.Where(e => e.SeasonId == seasonId).ToList());
+
+    public Task<Event?> FindByIdAsync(int id) => Task.FromResult(Events.FirstOrDefault(e => e.Id == id));
 }

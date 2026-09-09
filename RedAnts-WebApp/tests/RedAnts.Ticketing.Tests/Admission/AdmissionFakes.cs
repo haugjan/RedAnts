@@ -98,6 +98,12 @@ internal sealed class InMemoryFreeEntries : IFreeEntryRepository
         }
         return Task.CompletedTask;
     }
+
+    public Task DeleteAsync(Guid uuid)
+    {
+        Stored.RemoveAll(e => e.Uuid == uuid);
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class StubIssuedTickets : IIssuedTicketReader
