@@ -1,0 +1,128 @@
+@using RedAnts.Ticketing.Domain.Sales
+
+@if (_ready)
+{
+    <div class="ta-overlay" @onmousedown="CloseAsync">
+        <div class="ta-modal" @onmousedown:stopPropagation="true">
+            <h2 class="ta-modal-title">Einlösung ändern</h2>
+            <p class="ta-modal-sub">Flexticket @AdminFormat.TicketNo(Ticket.Uuid) · aktuell @Current.DisplayName()</p>
+
+            <div class="ta-field">
+                <label class="ta-label" for="redeemTarget">Neuer Zustand</label>
+                <select id="redeemTarget" class="ta-select" @bind="_target">
+                    @foreach (var s in AllRedemptionStates)
+                    {
+                        <option value="@s">@s.DisplayName()</option>
+                    }
+                </select>
+            </div>
+
+            @if (_target == RedemptionState.Redeemed && Ticket.RedeemedEventId is null)
+            {
+                <div class="ta-field">
+                    <label class="ta-label" for="redeemEvent">Anlass</label>
+                    <select id="redeemEvent" class="ta-select" @bind="_eventId">
+                        @foreach (var e in _events)
+                        {
+                            <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
+                        }
+                    </select>
+                    <p class="ta-field-hint">Die Einlösung wird als Eingangsscan an diesem Anlass erfasst.</p>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="ta-modal-error">@_error</div>
+            }
+
+            <div class="ta-modal-actions">
+                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseAsync" disabled="@_busy">Abbrechen</button>
+                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveAsync" disabled="@_busy">
+                    @(_busy ? "Speichert …" : "Ändern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public FlexTicketRow Ticket { get; set; } = default!;
+    [Parameter] public int SeasonId { get; set; }
+    [Parameter] public string AdminUser { get; set; } = "";
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [CascadingParameter] public AdminIdentity? Identity { get; set; }
+
+    [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
+    [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
+    [Inject] private SetFlexTicketRedeemed.Handler RedemptionChanges { get; set; } = default!;
+
+    private static readonly RedemptionState[] AllRedemptionStates = Enum.GetValues<RedemptionState>();
+
+    private bool _ready;
+    private IReadOnlyList<EventForAdmin> _events = [];
+    private RedemptionState _target;
+    private int _eventId;
+    private bool _busy;
+    private string? _error;
+
+    private RedemptionState Current => RedemptionStateExtensions.Derive(Ticket.Redeemed, Ticket.IsInside);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _events = SeasonId > 0
+            ? (await EventsForAdmin.HandleAsync(new GetEventsForAdmin.Query(SeasonId))).Events
+            : [];
+        _target = Current;
+        _eventId = Ticket.RedeemedEventId ?? NextEvent(_events)?.Id ?? 0;
+        _ready = true;
+    }
+
+    private Task CloseAsync() => _busy ? Task.CompletedTask : OnClosed.InvokeAsync();
+
+    private async Task SaveAsync()
+    {
+        if (_target == Current) { await OnClosed.InvokeAsync(); return; }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var scannedBy = Identity?.Name ?? AdminUser;
+            switch (_target)
+            {
+                case RedemptionState.Redeemed:
+                    var eventId = Ticket.RedeemedEventId ?? _eventId;
+                    if (eventId <= 0) throw new DomainException("Bitte einen Anlass wählen.");
+                    await ScanOrThrowAsync(eventId, ScanMode.CheckIn, scannedBy);
+                    break;
+                case RedemptionState.Outside:
+                    if (Ticket.RedeemedEventId is not { } outEvent || Current != RedemptionState.Redeemed)
+                        throw new DomainException("Nur ein eingelöstes Flexticket kann auf „Draussen“ gesetzt werden.");
+                    await ScanOrThrowAsync(outEvent, ScanMode.CheckOut, scannedBy);
+                    break;
+                case RedemptionState.Open:
+                    if (Ticket.RedeemedEventId is { } inEvent && Ticket.IsInside == true)
+                        await ScanOrThrowAsync(inEvent, ScanMode.CheckOut, scannedBy);
+                    await RedemptionChanges.HandleAsync(new SetFlexTicketRedeemed.Command(Ticket.Uuid, false));
+                    break;
+            }
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ScanOrThrowAsync(int eventId, ScanMode mode, string scannedBy)
+    {
+        var outcome = await TicketScans.HandleAsync(new ScanTicket.Command(eventId, TicketType.SeasonSingle, Ticket.Uuid, SeasonId, mode, scannedBy));
+        if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
+    }
+
+    private static EventForAdmin? NextEvent(IReadOnlyList<EventForAdmin> events)
+    {
+        var today = SwissTime.Today;
+        return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
+    }
+}

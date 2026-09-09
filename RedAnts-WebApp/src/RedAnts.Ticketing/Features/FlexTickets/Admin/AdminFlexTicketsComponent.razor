@@ -151,7 +151,7 @@
                                 <td>
                                     @if (t.Status == TicketStatus.Valid)
                                     {
-                                        <button type="button" class="ta-badge-btn" title="Einlösung ändern" @onclick="() => OpenRedeem(t)">
+                                        <button type="button" class="ta-badge-btn" title="Einlösung ändern" @onclick="() => _redeemFor = t">
                                             <span class="ta-badge @RedemptionBadge(StateOf(t))">@StateOf(t).DisplayName()</span>
                                         </button>
                                     }
@@ -311,48 +311,11 @@
 
 @if (_redeemFor is not null)
 {
-    <div class="ta-overlay" @onmousedown="CloseRedeem">
-        <div class="ta-modal" @onmousedown:stopPropagation="true">
-            <h2 class="ta-modal-title">Einlösung ändern</h2>
-            <p class="ta-modal-sub">Flexticket @AdminFormat.TicketNo(_redeemFor.Uuid) · aktuell @StateOf(_redeemFor).DisplayName()</p>
-
-            <div class="ta-field">
-                <label class="ta-label" for="redeemTarget">Neuer Zustand</label>
-                <select id="redeemTarget" class="ta-select" @bind="_redeemTarget">
-                    @foreach (var s in AllRedemptionStates)
-                    {
-                        <option value="@s">@s.DisplayName()</option>
-                    }
-                </select>
-            </div>
-
-            @if (_redeemTarget == RedemptionState.Redeemed && _redeemFor.RedeemedEventId is null)
-            {
-                <div class="ta-field">
-                    <label class="ta-label" for="redeemEvent">Anlass</label>
-                    <select id="redeemEvent" class="ta-select" @bind="_redeemEventId">
-                        @foreach (var e in _seasonEvents)
-                        {
-                            <option value="@e.Id">@e.Date.ToString("dd.MM.yyyy") · @e.Name</option>
-                        }
-                    </select>
-                    <p class="ta-field-hint">Die Einlösung wird als Eingangsscan an diesem Anlass erfasst.</p>
-                </div>
-            }
-
-            @if (!string.IsNullOrEmpty(_redeemError))
-            {
-                <div class="ta-modal-error">@_redeemError</div>
-            }
-
-            <div class="ta-modal-actions">
-                <button type="button" class="ta-btn ta-btn-ghost" @onclick="CloseRedeem" disabled="@_redeemBusy">Abbrechen</button>
-                <button type="button" class="ta-btn ta-btn-primary" @onclick="SaveRedeemAsync" disabled="@_redeemBusy">
-                    @(_redeemBusy ? "Speichert …" : "Ändern")
-                </button>
-            </div>
-        </div>
-    </div>
+    <ChangeFlexRedemptionDialog Ticket="_redeemFor"
+                                SeasonId="SelectedSeasonId"
+                                AdminUser="@AdminUser"
+                                OnSaved="RedemptionChangedAsync"
+                                OnClosed="() => _redeemFor = null" />
 }
 
 @if (_visitsFor is not null)
@@ -393,13 +356,10 @@
     [CascadingParameter] public AdminIdentity? Identity { get; set; }
 
     [Inject] private GetSeasonChoices.Handler SeasonChoices { get; set; } = default!;
-    [Inject] private GetEventsForAdmin.Handler EventsForAdmin { get; set; } = default!;
     [Inject] private GetFlexBundles.Handler BundleList { get; set; } = default!;
     [Inject] private GetFlexBundleTickets.Handler TicketList { get; set; } = default!;
-    [Inject] private ScanTicket.Handler TicketScans { get; set; } = default!;
     [Inject] private DeleteEmptyFlexBundle.Handler BundleDeletions { get; set; } = default!;
     [Inject] private SetFlexTicketStatus.Handler StatusChanges { get; set; } = default!;
-    [Inject] private SetFlexTicketRedeemed.Handler RedemptionChanges { get; set; } = default!;
     [Inject] private SetFlexTicketCategory.Handler CategoryChanges { get; set; } = default!;
     [Inject] private DeleteFlexTicket.Handler TicketDeletions { get; set; } = default!;
     [Inject] private TicketingAdminState AdminState { get; set; } = default!;
@@ -616,7 +576,6 @@
     private FlexTicketRow? _visitsFor;
 
     private static readonly TicketStatus[] AllStatuses = Enum.GetValues<TicketStatus>();
-    private static readonly RedemptionState[] AllRedemptionStates = Enum.GetValues<RedemptionState>();
 
     private static RedemptionState StateOf(FlexTicketRow t) =>
         RedemptionStateExtensions.Derive(t.Redeemed, t.IsInside);
@@ -641,72 +600,11 @@
     }
 
     private FlexTicketRow? _redeemFor;
-    private RedemptionState _redeemTarget;
-    private int _redeemEventId;
-    private bool _redeemBusy;
-    private string? _redeemError;
-    private IReadOnlyList<EventForAdmin> _seasonEvents = [];
 
-    private async Task OpenRedeem(FlexTicketRow t)
+    private async Task RedemptionChangedAsync()
     {
-        _seasonEvents = SelectedSeasonId > 0
-            ? (await EventsForAdmin.HandleAsync(new GetEventsForAdmin.Query(SelectedSeasonId))).Events
-            : [];
-        _redeemFor = t;
-        _redeemTarget = StateOf(t);
-        _redeemEventId = t.RedeemedEventId ?? NextEvent(_seasonEvents)?.Id ?? 0;
-        _redeemError = null;
-    }
-
-    private void CloseRedeem() { if (!_redeemBusy) { _redeemFor = null; _redeemError = null; } }
-
-    private async Task SaveRedeemAsync()
-    {
-        if (_redeemFor is null) return;
-        var t = _redeemFor;
-        var current = StateOf(t);
-        if (_redeemTarget == current) { CloseRedeem(); return; }
-
-        _redeemBusy = true;
-        _redeemError = null;
-        try
-        {
-            var scannedBy = Identity?.Name ?? AdminUser;
-            switch (_redeemTarget)
-            {
-                case RedemptionState.Redeemed:
-                    var eventId = t.RedeemedEventId ?? _redeemEventId;
-                    if (eventId <= 0) throw new DomainException("Bitte einen Anlass wählen.");
-                    await ScanOrThrowAsync(t, eventId, ScanMode.CheckIn, scannedBy);
-                    break;
-                case RedemptionState.Outside:
-                    if (t.RedeemedEventId is not { } outEvent || current != RedemptionState.Redeemed)
-                        throw new DomainException("Nur ein eingelöstes Flexticket kann auf „Draussen“ gesetzt werden.");
-                    await ScanOrThrowAsync(t, outEvent, ScanMode.CheckOut, scannedBy);
-                    break;
-                case RedemptionState.Open:
-                    if (t.RedeemedEventId is { } inEvent && t.IsInside == true)
-                        await ScanOrThrowAsync(t, inEvent, ScanMode.CheckOut, scannedBy);
-                    await RedemptionChanges.HandleAsync(new SetFlexTicketRedeemed.Command(t.Uuid, false));
-                    break;
-            }
-            _redeemFor = null;
-            await ReloadTicketsAsync();
-        }
-        catch (Exception ex) { _redeemError = ex.Message; }
-        finally { _redeemBusy = false; }
-    }
-
-    private async Task ScanOrThrowAsync(FlexTicketRow t, int eventId, ScanMode mode, string scannedBy)
-    {
-        var outcome = await TicketScans.HandleAsync(new ScanTicket.Command(eventId, TicketType.SeasonSingle, t.Uuid, SelectedSeasonId, mode, scannedBy));
-        if (!outcome.Ok) throw new DomainException(outcome.Reason ?? "Die Änderung wurde abgelehnt.");
-    }
-
-    private static EventForAdmin? NextEvent(IReadOnlyList<EventForAdmin> events)
-    {
-        var today = SwissTime.Today;
-        return events.FirstOrDefault(e => e.Date >= today) ?? events.MaxBy(e => e.Date);
+        _redeemFor = null;
+        await ReloadTicketsAsync();
     }
 
     private void OpenCreateSingle() => _showCreateSingle = true;
