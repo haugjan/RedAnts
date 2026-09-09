@@ -14,10 +14,12 @@ public sealed record TicketPrintLayout(
     double NameYMm,
     double NameFontPt,
     double NameMaxWidthMm,
-    int NameAlign = 0)
+    int NameAlign = 0,
+    double OffsetXMm = 0,
+    double OffsetYMm = 0)
 {
     public static TicketPrintLayout Default { get; } =
-        new(91, 61, 5, 5, 25, 8, false, 34, 8, 9, 52, 0);
+        new(91, 61, 5, 5, 25, 8, false, 34, 8, 9, 52, 0, 0, 0);
 }
 
 public sealed record TicketPrintItem(Guid Uuid, string? HolderName);

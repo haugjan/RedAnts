@@ -26,4 +26,6 @@ public class TicketPrintSettingsRecord
     [Column("NameFontPt")] [NullSetting(NullSetting = NullSettings.Null)] public decimal? NameFontPt { get; set; }
     [Column("NameMaxWidthMm")] [NullSetting(NullSetting = NullSettings.Null)] public decimal? NameMaxWidthMm { get; set; }
     [Column("NameAlign")] [NullSetting(NullSetting = NullSettings.Null)] public int? NameAlign { get; set; }
+    [Column("OffsetXMm")] [NullSetting(NullSetting = NullSettings.Null)] public decimal? OffsetXMm { get; set; }
+    [Column("OffsetYMm")] [NullSetting(NullSetting = NullSettings.Null)] public decimal? OffsetYMm { get; set; }
 }

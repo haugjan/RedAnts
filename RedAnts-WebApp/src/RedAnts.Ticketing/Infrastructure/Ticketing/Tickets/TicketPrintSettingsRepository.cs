@@ -39,7 +39,9 @@ public sealed class TicketPrintSettingsRepository(IScopeProvider scopeProvider) 
         (double)(r.NameYMm ?? (decimal)TicketPrintLayout.Default.NameYMm),
         (double)(r.NameFontPt ?? (decimal)TicketPrintLayout.Default.NameFontPt),
         (double)(r.NameMaxWidthMm ?? (decimal)TicketPrintLayout.Default.NameMaxWidthMm),
-        r.NameAlign ?? TicketPrintLayout.Default.NameAlign);
+        r.NameAlign ?? TicketPrintLayout.Default.NameAlign,
+        (double)(r.OffsetXMm ?? 0m),
+        (double)(r.OffsetYMm ?? 0m));
 
     private static TicketPrintSettingsRecord ToRecord(TicketPrintSettingsRecord r, TicketPrintLayout l)
     {
@@ -55,6 +57,8 @@ public sealed class TicketPrintSettingsRepository(IScopeProvider scopeProvider) 
         r.NameFontPt = (decimal)l.NameFontPt;
         r.NameMaxWidthMm = (decimal)l.NameMaxWidthMm;
         r.NameAlign = l.NameAlign;
+        r.OffsetXMm = (decimal)l.OffsetXMm;
+        r.OffsetYMm = (decimal)l.OffsetYMm;
         return r;
     }
 }

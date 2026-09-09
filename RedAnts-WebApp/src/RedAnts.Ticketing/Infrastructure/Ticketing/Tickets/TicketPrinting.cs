@@ -28,6 +28,9 @@ public sealed class TicketPrinting(ITicketTokens tokens, IPublicBaseUrl publicUr
             page.Height = XUnit.FromMillimeter(layout.PageHeightMm);
 
             using var gfx = XGraphics.FromPdfPage(page);
+            gfx.TranslateTransform(
+                -XUnit.FromMillimeter(layout.OffsetXMm).Point,
+                -XUnit.FromMillimeter(layout.OffsetYMm).Point);
             gfx.DrawImage(template, 0, 0, page.Width.Point, page.Height.Point);
 
             DrawQr(gfx, black, paper, layout, publicUrl.TicketUrl(tokens.CreateShort(item.Uuid)));
