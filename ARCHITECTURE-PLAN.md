@@ -125,6 +125,8 @@ Show follows the same rules with the capabilities `Board/` (ShowController, Show
 
 ## Phase C: one component per dialog in the admin UI
 
+**Done 2026-09-09.** Commits `93c5d7e` and 16 more (season pass and member card dialogs), `bc54d76` and 20 more (event ticket and flex ticket dialogs), `e799a37` and 7 more (Show admin dialogs). 37 dialog components; the list components fell to 402 to 518 lines with 5 to 6 injections and the Show admin page to 393 lines. The split caught a real defect: the mail dialog of the event ticket tab had been deleted with the print extraction and the button silently did nothing.
+
 **Goal.** `AdminFlexTicketsComponent` (1354 lines), `AdminTicketsComponent` (1210), `AdminMemberCardsComponent` (1112), `AdminSeasonCardsComponent` (1058) and `ShowAdminPage.razor` (1528) each carry several dialogs, their state and their handler calls. Every dialog becomes its own component with one command, the list component only holds the table, the filter and the query from Phase B.
 
 **Steps.**
@@ -192,6 +194,8 @@ Show follows the same rules with the capabilities `Board/` (ShowController, Show
 **Done 2026-09-09.** Commits `e1f9e8e` (TimeProvider in `AddTicketing`, `SwissTime.TimestampOf/NowOf/TodayOf`, the sales factories, `DraftOrderExpiry`, `ExpireDraftOrders.Command.Due`, `OutboxDispatcher`, `TicketTokenSigner`), `4b1f0a9` (`Database/AgentDatabaseFixture.cs` with `AgentScopeProvider`, `AgentDatabase`, `[DatabaseFact]` and twelve repository and reader tests) and `96e7ffa` (the ticket PDF web root resolved from the test assembly). Deviations from the steps above: the overloads are named `TimestampOf`/`NowOf`/`TodayOf` because C# forbids a method and a property of the same name, the factories take a trailing optional `TimeProvider? time = null` so no call site in the checkout and import handlers had to change while Phases C and D were running, and `IOrderTokens` has no expiry to inject a clock into. The covered readers are the order list reader and the season pass list reader (the stats readers need seeded Umbraco content, which the fixture does not create). Test state: Kernel 34, Show 19, Host 5, Ticketing 603 with the agent database and 591 with 12 skipped without it, Architecture 27, Browser 25 (not run in this phase).
 
 ## Phase H: fail fast in the deploy-time migration
+
+**Done 2026-09-09.** Commit `d3adb0f`: `MigrationStateCheck` compares the stored plan state with the plan transitions before the upgrade, logs one line naming the database, the stored state and the last known step, and throws a `DomainException` with the same text; both migrate steps in `deploy.yml` tee their log and append the tail to the job summary on failure. Seven unit tests cover known, empty and unknown states.
 
 **Goal.** When the stored plan state of a database is unknown to the deployed plan, the migrate step reports one clear line (database, stored state, last known state) and fails, instead of an exit code 134 and a stack trace, and the deploy summary shows it.
 
