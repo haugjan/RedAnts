@@ -93,7 +93,19 @@
             </div>
         }
     </div>
-    <button type="button" class="se-btn sm se-addsong" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
+    <div class="se-songactions">
+        <button type="button" class="se-btn sm" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
+        @if (SpotifyConfigured && (_backfilling || MissingTitles(n) > 0))
+        {
+            <button type="button" class="se-btn sm" @onclick="() => BackfillTitlesAsync(n)" disabled="@_backfilling">
+                @(_backfilling ? $"lädt … {_backfillDone}/{_backfillTotal}" : $"♪ Titel nachladen ({MissingTitles(n)})")
+            </button>
+        }
+        @if (_backfilling)
+        {
+            <button type="button" class="se-btn sm danger" @onclick="() => _backfillCancelled = true">Abbrechen</button>
+        }
+    </div>
 }
 </div>
 <div class="se-col se-col-b">
@@ -453,6 +465,61 @@ else
     private string _importNote = "";
     private string _importError = "";
 
+    private bool _backfilling;
+    private bool _backfillCancelled;
+    private int _backfillDone;
+    private int _backfillTotal;
+
+    private static bool NeedsTitle(EditSound s) =>
+        s.Kind == SoundKind.Spotify
+        && !string.IsNullOrWhiteSpace(s.Ref)
+        && string.IsNullOrWhiteSpace(s.Title)
+        && ShowSpotifyLink.Parse(s.Ref)?.Kind == "track";
+
+    private static int MissingTitles(EditButton n) => n.Songs.Count(NeedsTitle);
+
+    // Spotify beantwortet nur den Einzelabruf, deshalb je Song eine Abfrage mit Pause
+    // dazwischen. Cue-Punkte und Längen der Songs bleiben dabei unberührt.
+    private async Task BackfillTitlesAsync(EditButton n)
+    {
+        if (_backfilling || !SpotifyConfigured) return;
+        var todo = n.Songs.Where(NeedsTitle).ToList();
+        if (todo.Count == 0) return;
+
+        _backfilling = true;
+        _backfillCancelled = false;
+        _backfillTotal = todo.Count;
+        _backfillDone = 0;
+        _importNote = "";
+        _importError = "";
+        try
+        {
+            foreach (var s in todo)
+            {
+                if (_backfillCancelled) break;
+                try
+                {
+                    if ((await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref))).Track is { } t)
+                        Describe(s, t);
+                }
+                catch (Exception ex)
+                {
+                    _importError = "Titel laden: " + ex.Message;
+                    break;
+                }
+                _backfillDone++;
+                StateHasChanged();
+                await Task.Delay(350);
+            }
+            _importNote = $"{_backfillDone} von {_backfillTotal} Titeln geladen, Cue-Punkte unverändert. Zum Übernehmen oben speichern.";
+        }
+        finally
+        {
+            _backfilling = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task ImportContextAsync(EditButton n, EditSound song)
     {
         if (_importing || !IsContextRef(song.Ref)) return;
@@ -469,42 +536,55 @@ else
 
             var at = n.Songs.IndexOf(song);
             if (at < 0) at = n.Songs.Count - 1;
+
+            // Songs, die schon auf der Kachel liegen, behalten ihre Cue-Punkte und
+            // bekommen nur den fehlenden Titel nachgetragen.
             var existing = n.Songs
                 .Where(s => s != song && s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref))
-                .Select(s => s.Ref)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                .GroupBy(s => s.Ref, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             var added = new List<EditSound>();
+            var described = 0;
             foreach (var t in tracks)
             {
-                if (!existing.Add(t.Uri)) continue;
+                if (existing.TryGetValue(t.Uri, out var already))
+                {
+                    if (string.IsNullOrWhiteSpace(already.Title)) { Describe(already, t); described++; }
+                    continue;
+                }
                 var imported = new EditSound { Kind = SoundKind.Spotify, Ref = t.Uri };
                 Describe(imported, t);
+                existing[t.Uri] = imported;
                 added.Add(imported);
             }
 
-            if (added.Count == 0)
+            if (added.Count == 0 && described == 0)
             {
-                _importError = "Alle Songs dieser Liste sind bereits auf der Kachel.";
+                _importError = "Alle Songs dieser Liste sind bereits auf der Kachel, inklusive Titel.";
                 return;
             }
 
-            n.Songs.RemoveAt(at);
-            n.Songs.InsertRange(at, added);
+            if (added.Count > 0)
+            {
+                n.Songs.RemoveAt(at);
+                n.Songs.InsertRange(at, added);
+            }
 
             if (string.IsNullOrWhiteSpace(n.Label) || n.Label == "Neu")
             {
                 if (!string.IsNullOrWhiteSpace(listName)) n.Label = listName;
-                if (string.IsNullOrWhiteSpace(n.Subtitle)) n.Subtitle = $"{added.Count} Songs";
+                if (string.IsNullOrWhiteSpace(n.Subtitle)) n.Subtitle = $"{n.Songs.Count} Songs";
             }
 
             _isNew = false;
-            var skipped = tracks.Count - added.Count;
+            var untouched = tracks.Count - added.Count - described;
             _importNote = $"{added.Count} Songs importiert"
-                + (skipped > 0 ? $", {skipped} bereits vorhanden" : "")
+                + (described > 0 ? $", {described} vorhandene ergänzt (Cue bleibt)" : "")
+                + (untouched > 0 ? $", {untouched} unverändert" : "")
                 + (tracks.Count >= MaxContextImport ? $" (Limit {MaxContextImport})" : "")
-                + ".";
-            SelectSong(added[0]);
+                + ". Zum Übernehmen oben speichern.";
+            if (added.Count > 0) SelectSong(added[0]);
         }
         catch (Exception ex)
         {
