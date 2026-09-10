@@ -19,7 +19,6 @@ public static class ShowFeatures
         typeof(GetSpotifySettings.Handler),
         typeof(TestSpotifyCredentials.Handler),
         typeof(LookupSpotifyReference.Handler),
-        typeof(LookupSpotifyTracks.Handler),
         typeof(StartSpotifyConnect.Handler),
         typeof(CompleteSpotifyConnect.Handler),
         typeof(GetSpotifyAccessToken.Handler),

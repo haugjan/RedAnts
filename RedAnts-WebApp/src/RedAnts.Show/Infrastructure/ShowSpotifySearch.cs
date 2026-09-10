@@ -118,42 +118,6 @@ public sealed class ShowSpotifySearch(
         return track;
     }
 
-    // Ein Aufruf je 50 Songs statt einer pro Song: eine Kachel mit einer importierten
-    // Playlist würde die API sonst mit hundert Einzelabfragen in ein 429 laufen lassen.
-    public async Task<IReadOnlyDictionary<string, SpotifyTrack>> GetTracksAsync(IEnumerable<string> idsOrUris)
-    {
-        var found = new Dictionary<string, SpotifyTrack>(StringComparer.OrdinalIgnoreCase);
-        if (!Configured) return found;
-
-        var wanted = new List<(string Reference, string Id)>();
-        foreach (var reference in idsOrUris.Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            if (ShowSpotifyLink.Parse(reference) is not { Kind: "track" } parsed) continue;
-            if (_trackCache.TryGetValue(parsed.Id, out var cached)) { found[reference] = cached; continue; }
-            wanted.Add((reference, parsed.Id));
-        }
-
-        foreach (var chunk in wanted.Chunk(50))
-        {
-            var ids = string.Join(",", chunk.Select(c => c.Id));
-            var json = await GetAsync($"https://api.spotify.com/v1/tracks?market=CH&ids={ids}");
-            if (!json.TryGetProperty("tracks", out var tracks) || tracks.ValueKind != JsonValueKind.Array) continue;
-
-            var index = 0;
-            foreach (var element in tracks.EnumerateArray())
-            {
-                var reference = index < chunk.Length ? chunk[index].Reference : null;
-                var id = index < chunk.Length ? chunk[index].Id : null;
-                index++;
-                if (reference is null || id is null || element.ValueKind != JsonValueKind.Object) continue;
-                if (MapTrack(element) is not { } track) continue;
-                _trackCache[id] = track;
-                found[reference] = track;
-            }
-        }
-        return found;
-    }
-
     public async Task<SpotifyContext?> GetContextAsync(string idOrUri)
     {
         if (!Configured) return null;

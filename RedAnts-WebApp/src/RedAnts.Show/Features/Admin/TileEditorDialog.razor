@@ -1,5 +1,4 @@
 @inject LookupSpotifyReference.Handler SpotifyLookup
-@inject LookupSpotifyTracks.Handler SpotifyTracksLookup
 @inject ImportSpotifyContext.Handler SpotifyImport
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
@@ -311,7 +310,6 @@ else
         _isNew = IsNew;
         _editSong = Node.Songs.Count > 0 ? Node.Songs[0] : null;
         if (_editSong is { } first) await RefreshSpotifyInfoAsync(first);
-        _ = PreloadSongTracksAsync(Node);
     }
 
     public Task ReportPositionAsync(double pos, double dur)
@@ -345,40 +343,23 @@ else
         return r.StartsWith("sounds/") ? r["sounds/".Length..] : r;
     }
 
-    private readonly Dictionary<string, SpotifyTrack> _songTracks = new(StringComparer.OrdinalIgnoreCase);
+    private static string? SongCover(EditSound s) =>
+        s.Kind == SoundKind.Spotify && !string.IsNullOrEmpty(s.CoverUrl) ? s.CoverUrl : null;
 
-    private string? SongCover(EditSound s) =>
-        s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref)
-        && _songTracks.TryGetValue(s.Ref, out var t) && !string.IsNullOrEmpty(t.CoverUrl)
-            ? t.CoverUrl
-            : null;
-
-    private async Task PreloadSongTracksAsync(EditButton node)
+    private static void Describe(EditSound s, SpotifyTrack track)
     {
-        if (!SpotifyConfigured) return;
-        var references = node.Songs
-            .Where(s => s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref) && !_songTracks.ContainsKey(s.Ref))
-            .Select(s => s.Ref)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (references.Count == 0) return;
-
-        try
-        {
-            foreach (var (reference, track) in await SpotifyTracksLookup.HandleAsync(new LookupSpotifyTracks.Query(references)))
-                _songTracks[reference] = track;
-        }
-        catch { }
-        StateHasChanged();
+        s.Title = track.Name;
+        s.Artist = track.Artist;
+        s.CoverUrl = string.IsNullOrEmpty(track.CoverUrl) ? null : track.CoverUrl;
     }
 
-    private string SongEditLabel(EditSound s)
+    private static string SongEditLabel(EditSound s)
     {
         if (string.IsNullOrWhiteSpace(s.Ref)) return "— leer —";
         if (s.Kind == SoundKind.Spotify)
         {
-            if (_songTracks.TryGetValue(s.Ref, out var t) && !string.IsNullOrWhiteSpace(t.Name))
-                return string.IsNullOrWhiteSpace(t.Artist) ? t.Name : $"{t.Name} · {t.Artist}";
+            if (!string.IsNullOrWhiteSpace(s.Title))
+                return string.IsNullOrWhiteSpace(s.Artist) ? s.Title : $"{s.Title} · {s.Artist}";
             var p = ShowSpotifyLink.Parse(s.Ref);
             return p is { } v ? $"Spotify · {v.Kind}" : "Spotify";
         }
@@ -452,7 +433,7 @@ else
             var found = await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref));
             _trackInfo = found.Track;
             _ctxInfo = found.Context;
-            if (_trackInfo is { } tr) _songTracks[s.Ref] = tr;
+            if (_trackInfo is { } tr) Describe(s, tr);
         }
         catch { }
         StateHasChanged();
@@ -462,6 +443,7 @@ else
     {
         s.Kind = SoundKind.Spotify;
         s.Ref = ShowSpotifyLink.ToUri(e.Value?.ToString()) ?? (e.Value?.ToString()?.Trim() ?? "");
+        s.Title = null; s.Artist = null; s.CoverUrl = null;
         _importNote = ""; _importError = "";
         await RefreshSpotifyInfoAsync(s);
     }
@@ -496,8 +478,9 @@ else
             foreach (var t in tracks)
             {
                 if (!existing.Add(t.Uri)) continue;
-                _songTracks[t.Uri] = t;
-                added.Add(new EditSound { Kind = SoundKind.Spotify, Ref = t.Uri });
+                var imported = new EditSound { Kind = SoundKind.Spotify, Ref = t.Uri };
+                Describe(imported, t);
+                added.Add(imported);
             }
 
             if (added.Count == 0)
@@ -565,6 +548,7 @@ else
         if (_editSong is null) return;
         _editSong.Kind = SoundKind.Spotify;
         _editSong.Ref = t.Uri;
+        Describe(_editSong, t);
         if (string.IsNullOrWhiteSpace(Node.Label) || Node.Label == "Neu")
         {
             Node.Label = t.Name;

@@ -11,10 +11,23 @@ public sealed class EditSound
     public double StartSec { get; set; }
     public double? DurationSec { get; set; }
     public bool Shuffle { get; set; }
+    public string? Title { get; set; }
+    public string? Artist { get; set; }
+    public string? CoverUrl { get; set; }
 
-    public EditSound Clone() => new() { Kind = Kind, Ref = Ref, StartSec = StartSec, DurationSec = DurationSec, Shuffle = Shuffle };
-    public ShowSound ToModel() => new(Kind, Ref, StartSec, DurationSec, Shuffle);
-    public static EditSound From(ShowSound s) => new() { Kind = s.Kind, Ref = s.Ref, StartSec = s.StartSec, DurationSec = s.DurationSec, Shuffle = s.Shuffle };
+    public EditSound Clone() => new()
+    {
+        Kind = Kind, Ref = Ref, StartSec = StartSec, DurationSec = DurationSec, Shuffle = Shuffle,
+        Title = Title, Artist = Artist, CoverUrl = CoverUrl,
+    };
+
+    public ShowSound ToModel() => new(Kind, Ref, StartSec, DurationSec, Shuffle, Title, Artist, CoverUrl);
+
+    public static EditSound From(ShowSound s) => new()
+    {
+        Kind = s.Kind, Ref = s.Ref, StartSec = s.StartSec, DurationSec = s.DurationSec, Shuffle = s.Shuffle,
+        Title = s.Title, Artist = s.Artist, CoverUrl = s.CoverUrl,
+    };
 }
 
 public sealed class EditButton
