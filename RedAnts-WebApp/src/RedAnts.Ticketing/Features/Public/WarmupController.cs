@@ -15,6 +15,9 @@ public sealed class WarmupController(
     GetTicketingHome.Handler ticketingHome,
     GetHelpers.Handler helpers) : Controller
 {
+    private static readonly TimeSpan PageTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan TotalBudget = TimeSpan.FromSeconds(100);
+
     private static readonly string[] CorePaths =
         ["/", "/ticketing/", "/seasons/", "/next", "/next/embed", "/scan/login", "/scanner-test", "/cart", "/umbraco"];
 
@@ -42,26 +45,36 @@ public sealed class WarmupController(
 
         var scannerData = await WarmScannerDataAsync();
 
+        var deadline = DateTimeOffset.UtcNow.Add(TotalBudget);
         var client = httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(30);
+        client.Timeout = PageTimeout;
 
         async Task<string> FetchAsync(string path)
         {
             var url = path.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? path : baseUrl + path;
-            try
+            Exception? failure = null;
+            for (var attempt = 1; attempt <= 2; attempt++)
             {
-                using var req = new HttpRequestMessage(HttpMethod.Get, url);
-                if (cookieHeader is not null) req.Headers.Add("Cookie", cookieHeader);
-                using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseContentRead);
-                return $"{path} -> {(int)resp.StatusCode}";
+                try
+                {
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    if (cookieHeader is not null) req.Headers.Add("Cookie", cookieHeader);
+                    using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseContentRead);
+                    return $"{path} -> {(int)resp.StatusCode}";
+                }
+                catch (Exception ex)
+                {
+                    failure = ex;
+                    if (ex is not TaskCanceledException || DateTimeOffset.UtcNow >= deadline) break;
+                }
             }
-            catch (Exception ex)
-            {
-                return $"{path} -> error {ex.GetType().Name}";
-            }
+            return $"{path} -> error {failure!.GetType().Name}";
         }
 
-        var lines = (await Task.WhenAll(paths.Select(FetchAsync))).Append(scannerData);
+        var lines = new List<string>();
+        foreach (var path in paths)
+            lines.Add(DateTimeOffset.UtcNow < deadline ? await FetchAsync(path) : $"{path} -> not reached");
+        lines.Add(scannerData);
         return Content("warmup\n" + string.Join('\n', lines) + '\n', "text/plain; charset=utf-8");
     }
 
