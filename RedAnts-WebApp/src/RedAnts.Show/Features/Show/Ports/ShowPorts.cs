@@ -37,6 +37,7 @@ public interface IShowSpotifyAccount
     string? AccountName { get; }
     string BuildAuthorizeUrl(string redirectUri, string state);
     Task<string> CompleteAsync(string code, string redirectUri);
+    Task<string?> AccessTokenAsync();
     Task DisconnectAsync();
 }
 

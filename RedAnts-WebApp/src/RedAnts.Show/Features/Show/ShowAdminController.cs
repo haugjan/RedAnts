@@ -52,6 +52,16 @@ public sealed class ShowAdminController(IShowSoundUploader sounds, IShowSpotifyA
         }
     }
 
+    [HttpGet("spotify/token")]
+    public async Task<IActionResult> SpotifyToken()
+    {
+        if (!spotify.Connected) return StatusCode(409, new { error = "not-connected" });
+        var token = await spotify.AccessTokenAsync();
+        if (string.IsNullOrEmpty(token)) return StatusCode(409, new { error = "not-connected" });
+        Response.Headers.CacheControl = "no-store";
+        return Json(new { access_token = token, expires_in = 300 });
+    }
+
     private string RedirectUri() => $"{Request.Scheme}://{Request.Host}/admin/show/spotify/callback";
 
     private ContentResult Done(string message, bool ok)

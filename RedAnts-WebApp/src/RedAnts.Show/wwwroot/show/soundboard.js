@@ -329,10 +329,29 @@
     try { return JSON.parse(raw); } catch { return null; }
   }
   function saveToken(t) { localStorage.setItem(TOKEN_KEY, JSON.stringify(t)); }
-  board.isLoggedIn = function () { return loadToken() !== null; };
+  board.isLoggedIn = function () { return serverTokenUrl !== null || loadToken() !== null; };
   board.logout = function () { localStorage.removeItem(TOKEN_KEY); deviceId = null; };
 
+  // Der Admin-Bereich spielt über das zentral verbundene Spotify-Konto: der Token
+  // kommt vom Server statt aus dem PKCE-Login des Boards.
+  let serverTokenUrl = null;
+  let serverToken = null;
+  board.useServerTokens = function (url) { serverTokenUrl = url || null; };
+
+  async function getServerToken() {
+    if (serverToken && Date.now() < serverToken.expiresAt) return serverToken.accessToken;
+    const res = await fetch(serverTokenUrl, { headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error('Kein Spotify-Konto verbunden (Dialog „Spotify" im Admin)');
+    const json = await res.json();
+    serverToken = {
+      accessToken: json.access_token,
+      expiresAt: Date.now() + (json.expires_in || 300) * 1000 - 30000,
+    };
+    return serverToken.accessToken;
+  }
+
   async function getAccessToken() {
+    if (serverTokenUrl) return getServerToken();
     const token = loadToken();
     if (!token) throw new Error('Nicht mit Spotify verbunden');
     if (Date.now() < token.expiresAt) return token.accessToken;

@@ -10,6 +10,7 @@
 @inject SearchSpotify.Handler SpotifySearch
 @inject ImportSpotifyContext.Handler SpotifyImport
 @inject IShowSpotifyAccount Account
+@inject NavigationManager Nav
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
 @implements IDisposable
@@ -23,7 +24,7 @@
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
             <button class="se-btn" @onclick="OpenSpotifySettings">🟢 Spotify</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
-            <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
+            <a class="se-btn" href="@BoardUrl" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
             {
                 <span class="se-status">@_status</span>
@@ -742,6 +743,17 @@
         var j = idx + delta;
         if (j < 0 || j >= n.Songs.Count) return;
         (n.Songs[idx], n.Songs[j]) = (n.Songs[j], n.Songs[idx]);
+    }
+
+    private string BoardUrl
+    {
+        get
+        {
+            var host = new Uri(Nav.BaseUri).Host;
+            if (host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)) return "https://show.redants.ch/show";
+            if (host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase)) return "https://show-dev.redants.ch/show";
+            return "/show";
+        }
     }
 
     private readonly Dictionary<string, SpotifyTrack> _songTracks = new(StringComparer.OrdinalIgnoreCase);
