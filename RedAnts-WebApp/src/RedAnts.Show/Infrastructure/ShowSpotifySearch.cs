@@ -1,3 +1,4 @@
+using RedAnts.Domain;
 using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Admin;
 using System.Collections.Concurrent;
@@ -65,8 +66,17 @@ public sealed class ShowSpotifySearch(
         return _token!;
     }
 
+    // Eine Drosselung gilt für die ganze App und dauert im Extremfall Stunden. Weiter
+    // anzuklopfen verlängert sie nur, deshalb merken wir uns das Ende und antworten
+    // bis dahin sofort.
+    private DateTimeOffset _throttledUntil = DateTimeOffset.MinValue;
+
+    public DateTimeOffset? ThrottledUntil => _throttledUntil > SwissTime.Timestamp ? _throttledUntil : null;
+
     private async Task<JsonElement> GetAsync(string url)
     {
+        if (ThrottledUntil is { } waiting) throw new ShowSpotifyThrottled(waiting);
+
         var token = await TokenAsync();
         var client = httpFactory.CreateClient();
         var req = new HttpRequestMessage(HttpMethod.Get, url);
@@ -76,9 +86,8 @@ public sealed class ShowSpotifySearch(
         {
             var wait = res.Headers.RetryAfter?.Delta?.TotalSeconds
                 ?? (double.TryParse(res.Headers.RetryAfter?.ToString(), out var secs) ? secs : 0);
-            throw new HttpRequestException(wait > 0
-                ? $"Spotify drosselt gerade (429). In {Math.Ceiling(wait)} Sekunden nochmals versuchen."
-                : "Spotify drosselt gerade (429). Kurz warten und nochmals versuchen.");
+            _throttledUntil = SwissTime.Timestamp.AddSeconds(Math.Max(wait, 5));
+            throw new ShowSpotifyThrottled(_throttledUntil);
         }
         if (!res.IsSuccessStatusCode)
         {

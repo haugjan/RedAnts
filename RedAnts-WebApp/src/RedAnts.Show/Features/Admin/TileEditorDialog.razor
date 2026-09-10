@@ -97,19 +97,7 @@
             </div>
         }
     </div>
-    <div class="se-songactions">
-        <button type="button" class="se-btn sm" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
-        @if (SpotifyConfigured && (_backfilling || MissingTitles(n) > 0))
-        {
-            <button type="button" class="se-btn sm" @onclick="() => BackfillTitlesAsync(n)" disabled="@_backfilling">
-                @(_backfilling ? $"lädt … {_backfillDone}/{_backfillTotal}" : $"♪ Titel nachladen ({MissingTitles(n)})")
-            </button>
-        }
-        @if (_backfilling)
-        {
-            <button type="button" class="se-btn sm danger" @onclick="() => _backfillCancelled = true">Abbrechen</button>
-        }
-    </div>
+    <button type="button" class="se-btn sm se-addsong" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
 }
 </div>
 <div class="se-col se-col-b">
@@ -214,11 +202,13 @@
     </div>
 
     <div class="se-grid">
-        <label>Cue-Start (m:ss.mmm)
-            <input value="@Clock(song.StartSec)" @onchange="e => SetCueText(e, song)" placeholder="0:00.000" />
+        <label>Cue-Start (m:ss.mmm, ↑↓ = 50 ms)
+            <input value="@Clock(song.StartSec)" @onchange="e => SetCueText(e, song)"
+                   @onkeydown="e => NudgeCue(e, song)" placeholder="0:00.000" />
         </label>
-        <label>Länge (leer = ganzer Song)
-            <input value="@(song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, song)" placeholder="ganzer Song" />
+        <label>Länge (leer = ganzer Song, ↑↓ = 50 ms)
+            <input value="@(song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, song)"
+                   @onkeydown="e => NudgeLength(e, song)" placeholder="ganzer Song" />
         </label>
     </div>
 
@@ -482,81 +472,6 @@ else
     private string _importNote = "";
     private string _importError = "";
 
-    private bool _backfilling;
-    private bool _backfillCancelled;
-    private int _backfillDone;
-    private int _backfillTotal;
-
-    private static bool NeedsTitle(EditSound s) =>
-        s.Kind == SoundKind.Spotify
-        && !string.IsNullOrWhiteSpace(s.Ref)
-        && string.IsNullOrWhiteSpace(s.Title)
-        && ShowSpotifyLink.Parse(s.Ref)?.Kind == "track";
-
-    private static int MissingTitles(EditButton n) => n.Songs.Count(NeedsTitle);
-
-    // Spotify beantwortet nur den Einzelabruf, deshalb je Song eine Abfrage mit Pause
-    // dazwischen. Cue-Punkte und Längen der Songs bleiben dabei unberührt.
-    private async Task BackfillTitlesAsync(EditButton n)
-    {
-        if (_backfilling || !SpotifyConfigured) return;
-        var todo = n.Songs.Where(NeedsTitle).ToList();
-        if (todo.Count == 0) return;
-
-        _backfilling = true;
-        _backfillCancelled = false;
-        _backfillTotal = todo.Count;
-        _backfillDone = 0;
-        _importNote = "";
-        _importError = "";
-        var failed = 0;
-        var consecutive = 0;
-        var reason = "";
-        try
-        {
-            foreach (var s in todo)
-            {
-                if (_backfillCancelled) break;
-                try
-                {
-                    if ((await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref))).Track is { } t)
-                    {
-                        Describe(s, t);
-                        _backfillDone++;
-                        consecutive = 0;
-                    }
-                    else
-                    {
-                        failed++;
-                        consecutive++;
-                        reason = "Spotify kennt diesen Song nicht (oder er ist in der Schweiz nicht verfügbar).";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    failed++;
-                    consecutive++;
-                    reason = ex.Message;
-                }
-
-                // Nach mehreren Fehlern hintereinander liegt es nicht am einzelnen Song.
-                if (consecutive >= 5) break;
-                StateHasChanged();
-                await Task.Delay(350);
-            }
-
-            _importNote = $"{_backfillDone} von {_backfillTotal} Titeln geladen, Cue-Punkte unverändert.";
-            _importError = failed > 0
-                ? $"{failed} Titel konnten nicht geladen werden: {reason}"
-                : "";
-        }
-        finally
-        {
-            _backfilling = false;
-            StateHasChanged();
-        }
-    }
-
     private async Task ImportContextAsync(EditButton n, EditSound song)
     {
         if (_importing || !IsContextRef(song.Ref)) return;
@@ -743,6 +658,28 @@ else
     {
         var v = ParseClock(e.Value?.ToString());
         s.DurationSec = v is { } x && x > 0 ? x : null;
+    }
+
+    private const double NudgeStep = 0.05;
+
+    private static double? StepOf(KeyboardEventArgs e) => e.Key switch
+    {
+        "ArrowUp" => NudgeStep,
+        "ArrowDown" => -NudgeStep,
+        _ => null,
+    };
+
+    private void NudgeCue(KeyboardEventArgs e, EditSound s)
+    {
+        if (StepOf(e) is not { } step) return;
+        s.StartSec = Math.Max(0, Math.Round(s.StartSec + step, 3));
+    }
+
+    private void NudgeLength(KeyboardEventArgs e, EditSound s)
+    {
+        if (StepOf(e) is not { } step) return;
+        var next = Math.Round((s.DurationSec ?? 0) + step, 3);
+        s.DurationSec = next > 0 ? next : null;
     }
 
     private static string Pct(double v, double max) =>
