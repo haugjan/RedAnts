@@ -152,6 +152,11 @@ public class ShowQueryTests
 
         public Task<SpotifyTrack?> GetTrackAsync(string idOrUri) => Task.FromResult<SpotifyTrack?>(new SpotifyTrack(idOrUri, "Track", "Artist"));
 
+        public Task<IReadOnlyDictionary<string, SpotifyTrack>> GetTracksAsync(IEnumerable<string> idsOrUris) =>
+            Task.FromResult<IReadOnlyDictionary<string, SpotifyTrack>>(
+                idsOrUris.Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(r => r, r => new SpotifyTrack(r, "Track", "Artist"), StringComparer.OrdinalIgnoreCase));
+
         public Task<SpotifyContext?> GetContextAsync(string idOrUri) => Task.FromResult<SpotifyContext?>(new SpotifyContext(idOrUri, "playlist", "Context"));
 
         public Task<IReadOnlyList<SpotifyTrack>> GetContextTracksAsync(string idOrUri, int max = 200) =>

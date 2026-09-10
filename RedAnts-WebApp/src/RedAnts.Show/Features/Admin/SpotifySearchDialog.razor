@@ -1,8 +1,8 @@
 @inject SearchSpotify.Handler SpotifySearch
 @inject IJSRuntime JS
 
-<div class="se-searchwrap" @onclick="CloseAsync">
-    <div class="se-searchcard" @onclick:stopPropagation="true">
+<div class="se-searchwrap" @onmousedown="CloseAsync">
+    <div class="se-searchcard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
         <div class="se-searchhead">
             <input class="se-search-in" @bind="_term" @bind:event="oninput" @onkeyup="OnKeyAsync" placeholder="Song auf Spotify suchen …" />
             <button class="se-btn primary" @onclick="SearchAsync">🔍 Suchen</button>

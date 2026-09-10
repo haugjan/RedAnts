@@ -1,4 +1,5 @@
 @inject LookupSpotifyReference.Handler SpotifyLookup
+@inject LookupSpotifyTracks.Handler SpotifyTracksLookup
 @inject ImportSpotifyContext.Handler SpotifyImport
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
@@ -246,8 +247,8 @@ else
 
 @if (_askDiscard)
 {
-    <div class="se-choosewrap" @onclick="KeepEditing">
-        <div class="se-choosecard" @onclick:stopPropagation="true">
+    <div class="se-choosewrap" @onmousedown="KeepEditing">
+        <div class="se-choosecard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
             <h3>Kein Song gewählt</h3>
             <p class="se-muted" style="margin:0 0 14px">Diese Kachel hat noch keinen Song/keine Datei.</p>
             <div class="se-choosebtns">
@@ -355,21 +356,20 @@ else
     private async Task PreloadSongTracksAsync(EditButton node)
     {
         if (!SpotifyConfigured) return;
-        foreach (var s in node.Songs.ToList())
+        var references = node.Songs
+            .Where(s => s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref) && !_songTracks.ContainsKey(s.Ref))
+            .Select(s => s.Ref)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (references.Count == 0) return;
+
+        try
         {
-            if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref)) continue;
-            if (_songTracks.ContainsKey(s.Ref)) continue;
-            if (ShowSpotifyLink.Parse(s.Ref)?.Kind != "track") continue;
-            try
-            {
-                if ((await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref))).Track is { } t)
-                {
-                    _songTracks[s.Ref] = t;
-                    StateHasChanged();
-                }
-            }
-            catch { }
+            foreach (var (reference, track) in await SpotifyTracksLookup.HandleAsync(new LookupSpotifyTracks.Query(references)))
+                _songTracks[reference] = track;
         }
+        catch { }
+        StateHasChanged();
     }
 
     private string SongEditLabel(EditSound s)

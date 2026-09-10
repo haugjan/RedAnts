@@ -4,8 +4,8 @@
 @inject DisconnectSpotifyAccount.Handler SpotifyDisconnect
 @inject NavigationManager Nav
 
-<div class="se-editwrap" @onclick="CloseAsync">
-    <div class="se-editcard se-spotifycard" @onclick:stopPropagation="true">
+<div class="se-editwrap" @onmousedown="CloseAsync">
+    <div class="se-editcard se-spotifycard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
         <button class="se-editclose" @onclick="CloseAsync">✕</button>
         <h3 class="se-spotifyh">🟢 Spotify-Zugang</h3>
 

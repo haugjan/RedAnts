@@ -94,9 +94,12 @@
     linear-gradient(var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/5) calc(100%/3),
     linear-gradient(90deg, var(--ra-line) 1px, transparent 1px) 0 0 / calc(100%/5) calc(100%/3), #0b0b0e;
     border: 1px solid var(--ra-line); border-radius: 14px; padding: 6px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5); }
-.se-ct { --c: var(--ra-red); container-type: size; position: relative; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff) 0%, var(--c) 100%); color: #fff; border: none; border-radius: 8px; cursor: grab; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22); transition: box-shadow 0.12s; }
+.se-ct { --c: var(--ra-red); container-type: size; position: relative; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff) 0%, var(--c) 100%); color: #fff; border: none; border-radius: 8px; cursor: pointer; user-select: none; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22); transition: box-shadow 0.12s; }
 .se-ct:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
-.se-ct:active { cursor: grabbing; }
+.se-ct-grip { position: absolute; top: 0; left: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 0.8rem; line-height: 1; opacity: 0.5; cursor: grab; border-bottom-right-radius: 8px; background: rgba(0,0,0,0.28); z-index: 2; }
+.se-ct-grip:hover { opacity: 1; background: rgba(0,0,0,0.45); }
+.se-ct-grip:active { cursor: grabbing; }
 .se-ct.sel { outline: 3px solid #fff; outline-offset: -3px; box-shadow: 0 0 0 4px rgba(225,19,48,0.5); z-index: 3; }
 .se-ct-resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.85) 45%); border-bottom-right-radius: 8px; }
 .se-current { border: 1px solid var(--ra-line); border-radius: 10px; padding: 0.6rem 0.75rem; background: var(--ra-in); color: var(--ra-text); font-weight: 500; text-transform: none; letter-spacing: 0; word-break: break-word; }
@@ -177,7 +180,7 @@
 .se-warn { color: #ffd166; font-weight: 700; font-size: 0.9rem; margin: 8px 0 0; }
 
 .se-ct.folder { background: color-mix(in srgb, var(--c) 82%, #000); padding-top: 18px; justify-content: center; }
-.se-ct-fhead { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 4px; padding: 2px 6px;
+.se-ct-fhead { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 4px; padding: 2px 6px 2px 24px;
     background: color-mix(in srgb, var(--c) 100%, #000); filter: brightness(0.6); font-weight: 900; font-size: min(18cqmin, 0.75rem);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .se-ct-ico.fbody { font-size: min(40cqmin, 1.8rem); }

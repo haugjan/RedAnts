@@ -129,8 +129,8 @@
 
     @if (_songMenu is { } menu)
     {
-        <div class="sb-backdrop" @onclick="() => _songMenu = null">
-            <div class="sb-songmenu" @onclick:stopPropagation="true">
+        <div class="sb-backdrop" @onmousedown="() => _songMenu = null">
+            <div class="sb-songmenu" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
                 <div class="sb-songmenu-head">
                     <span>@menu.Label</span>
                     <button class="sb-link" @onclick="() => _songMenu = null">✕</button>

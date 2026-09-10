@@ -1,5 +1,7 @@
 using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Admin;
+using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -70,6 +72,14 @@ public sealed class ShowSpotifySearch(
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var res = await client.SendAsync(req);
+        if (res.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var wait = res.Headers.RetryAfter?.Delta?.TotalSeconds
+                ?? (double.TryParse(res.Headers.RetryAfter?.ToString(), out var secs) ? secs : 0);
+            throw new HttpRequestException(wait > 0
+                ? $"Spotify drosselt gerade (429). In {Math.Ceiling(wait)} Sekunden nochmals versuchen."
+                : "Spotify drosselt gerade (429). Kurz warten und nochmals versuchen.");
+        }
         if (!res.IsSuccessStatusCode)
         {
             var err = await res.Content.ReadAsStringAsync();
@@ -94,13 +104,54 @@ public sealed class ShowSpotifySearch(
         return list;
     }
 
+    private readonly ConcurrentDictionary<string, SpotifyTrack> _trackCache = new(StringComparer.OrdinalIgnoreCase);
+
     public async Task<SpotifyTrack?> GetTrackAsync(string idOrUri)
     {
         if (!Configured) return null;
         var p = ShowSpotifyLink.Parse(idOrUri);
         if (p is not { } v || v.Kind != "track") return null;
+        if (_trackCache.TryGetValue(v.Id, out var cached)) return cached;
         var json = await GetAsync($"https://api.spotify.com/v1/tracks/{v.Id}?market=CH");
-        return MapTrack(json);
+        var track = MapTrack(json);
+        if (track is not null) _trackCache[v.Id] = track;
+        return track;
+    }
+
+    // Ein Aufruf je 50 Songs statt einer pro Song: eine Kachel mit einer importierten
+    // Playlist würde die API sonst mit hundert Einzelabfragen in ein 429 laufen lassen.
+    public async Task<IReadOnlyDictionary<string, SpotifyTrack>> GetTracksAsync(IEnumerable<string> idsOrUris)
+    {
+        var found = new Dictionary<string, SpotifyTrack>(StringComparer.OrdinalIgnoreCase);
+        if (!Configured) return found;
+
+        var wanted = new List<(string Reference, string Id)>();
+        foreach (var reference in idsOrUris.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (ShowSpotifyLink.Parse(reference) is not { Kind: "track" } parsed) continue;
+            if (_trackCache.TryGetValue(parsed.Id, out var cached)) { found[reference] = cached; continue; }
+            wanted.Add((reference, parsed.Id));
+        }
+
+        foreach (var chunk in wanted.Chunk(50))
+        {
+            var ids = string.Join(",", chunk.Select(c => c.Id));
+            var json = await GetAsync($"https://api.spotify.com/v1/tracks?market=CH&ids={ids}");
+            if (!json.TryGetProperty("tracks", out var tracks) || tracks.ValueKind != JsonValueKind.Array) continue;
+
+            var index = 0;
+            foreach (var element in tracks.EnumerateArray())
+            {
+                var reference = index < chunk.Length ? chunk[index].Reference : null;
+                var id = index < chunk.Length ? chunk[index].Id : null;
+                index++;
+                if (reference is null || id is null || element.ValueKind != JsonValueKind.Object) continue;
+                if (MapTrack(element) is not { } track) continue;
+                _trackCache[id] = track;
+                found[reference] = track;
+            }
+        }
+        return found;
     }
 
     public async Task<SpotifyContext?> GetContextAsync(string idOrUri)
