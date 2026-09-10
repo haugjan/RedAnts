@@ -3,6 +3,7 @@
 @using System.Linq
 @using Umbraco.Cms.Core.Models.PublishedContent
 @{
+    var reqHost = Context.Request.Host.Host;
     var home = Umbraco.ContentAtRoot()?.FirstOrDefault(c => c.ContentType.Alias == "flexPage");
     var cartCount = (await CartQuery.HandleAsync(new RedAnts.Ticketing.Features.Checkout.GetCart.Query())).TotalQuantity;
     var navPages = home?.Children()?
@@ -29,7 +30,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>@pageTitle</title>
   @{
-      var reqHost = Context.Request.Host.Host;
       var isIndexable = SiteHosts.IsIndexableHost(reqHost)
           && !(ViewBag.NoIndex as bool? ?? false);
       var canonicalUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
