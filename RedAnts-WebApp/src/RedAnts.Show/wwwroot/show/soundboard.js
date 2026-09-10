@@ -106,6 +106,7 @@
 
   board.playLocal = function (id, ref, startSec, durationSec) {
     board.stopSequence();
+    armSongInfo(false);
     spotifyId = null;
     if (player) { try { player.pause(); } catch {} }
     pauseMedia();
@@ -121,6 +122,7 @@
   board.stopLocal = function () {
     board.stopSequence();
     pauseMedia();
+    armSongInfo(false);
     if (activeId !== null) { activeId = null; emitActive(); }
   };
 
@@ -129,6 +131,36 @@
     if (mediaEl) mediaEl.volume = v;
     if (player) player.setVolume(v);
   };
+
+  // ---------- laufender Song für die Fussleiste ----------
+  let songInfoOn = false;
+  let lastSongInfo = '';
+
+  function isContextRef(ref) { return /^spotify:(playlist|album|artist):/.test(String(ref || '')); }
+
+  function fileLabel(ref) {
+    let r = String(ref || '');
+    const q = r.indexOf('?');
+    if (q >= 0) r = r.slice(0, q);
+    const slash = r.lastIndexOf('/');
+    if (slash >= 0) r = r.slice(slash + 1);
+    try { r = decodeURIComponent(r); } catch (e) {}
+    return r.replace(/\.[a-z0-9]+$/i, '');
+  }
+
+  function reportSong(title, sub) {
+    if (!songInfoOn || !dotnet) return;
+    const key = (title || '') + '|' + (sub || '');
+    if (key === lastSongInfo) return;
+    lastSongInfo = key;
+    try { dotnet.invokeMethodAsync('OnSongInfo', title || '', sub || ''); } catch (e) {}
+  }
+
+  function armSongInfo(on) {
+    songInfoOn = !!on;
+    lastSongInfo = '';
+    if (!on && dotnet) { try { dotnet.invokeMethodAsync('OnSongInfo', '', ''); } catch (e) {} }
+  }
 
   // ---------- Sequenzer: mehrere Songs pro Kachel (Reihenfolge/Zufall, Endlos-Loop) ----------
   let seqToken = 0;
@@ -160,6 +192,7 @@
         const finish = function () { if (done) return; done = true; el.removeEventListener('ended', onEnd); if (cut) clearTimeout(cut); resolve(); };
         const onEnd = function () { finish(); };
         el.addEventListener('ended', onEnd, { once: true });
+        reportSong(fileLabel(song.r), '');
         playAt(el, resolveSrc(song.r), song.s, function () {
           if (song.d) cut = setTimeout(function () { try { el.pause(); } catch (e) {} finish(); }, song.d * 1000);
         }, finish);
@@ -176,6 +209,7 @@
     const my = ++seqToken;
     activeId = id;
     emitActive();
+    armSongInfo(songs.length > 1 || songs.some(function (s) { return s.t === 'spotify' && isContextRef(s.r); }));
     const loop = songs.length > 1;
     const order = songs.map(function (_, i) { return i; });
     let pos = 0;
@@ -212,6 +246,7 @@
       const s = songs[0];
       if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); return; }
       board.stopLocal(); board.activateSpotify(); spotifyId = id;
+      armSongInfo(isContextRef(s.r));
       const label = tile.getAttribute('data-label') || '';
       board.playSpotify(s.r, (s.s || 0) * 1000, !!s.sh).then(function (status) {
         if (status === 'ok') { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStarted', id, label, s.d != null ? s.d : null); }
@@ -219,6 +254,7 @@
       });
     } else if (songs.length === 1) {
       const s = songs[0];
+      armSongInfo(false);
       board.playLocal(id, s.r, s.s || 0, (s.d != null ? s.d : null));
       if (dotnet) { try { dotnet.invokeMethodAsync('OnLocalStarted'); } catch (x) {} }
     } else {
@@ -403,6 +439,11 @@
       if (dotnet) dotnet.invokeMethodAsync('OnPlayerReady');
     });
     player.addListener('not_ready', () => { deviceId = null; });
+    player.addListener('player_state_changed', (state) => {
+      const track = state && state.track_window && state.track_window.current_track;
+      if (!track) return;
+      reportSong(track.name || '', (track.artists || []).map((a) => a.name).filter(Boolean).join(', '));
+    });
     ['initialization_error', 'authentication_error', 'account_error']
       .forEach((ev) => player.addListener(ev, ({ message }) => toast('Spotify: ' + message)));
     player.addListener('playback_error', ({ message }) => {
@@ -495,6 +536,7 @@
 
   board.stopSpotify = async function (fade) {
     spotifyId = null;
+    armSongInfo(false);
     try {
       if (fade && player) {
         const steps = 10;
