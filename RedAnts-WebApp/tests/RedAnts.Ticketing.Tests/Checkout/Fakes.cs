@@ -38,8 +38,8 @@ internal sealed class InMemoryOrderRepository : IOrderRepository
             Stored.Add(order);
             return Task.FromResult(order);
         }
-        var saved = Order.FromPersistence(_nextId++, order.OrderNumber, order.BillingAddress, order.Currency, order.SubtotalNet,
-            order.VatRate, order.VatAmount, order.TotalGross, order.SellerUid, order.PaymentMethod, order.Status, order.CreatedAt,
+        var saved = Order.FromPersistence(_nextId++, order.OrderNumber, order.BillingAddress, order.Currency, order.SubtotalNet.Amount,
+            order.VatRate, order.VatAmount.Amount, order.TotalGross.Amount, order.SellerUid, order.PaymentMethod, order.Status, order.CreatedAt,
             order.PaidAt, order.PayrexxGatewayId, order.FulfillmentPayload, order.PaymentSource);
         Stored.Add(saved);
         return Task.FromResult(saved);

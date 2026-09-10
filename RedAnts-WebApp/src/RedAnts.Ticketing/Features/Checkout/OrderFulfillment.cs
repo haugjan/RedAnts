@@ -66,7 +66,7 @@ public sealed class OrderFulfillment(
 
         var addOnInfos = await AddOnInfoTexts.CollectAsync(seasonAddOns, snapshot);
         await mailer.SendTicketsAsync(new OrderMailModel(
-            order.OrderNumber, billing.Email, billing.FullName, order.TotalGross,
+            order.OrderNumber, billing.Email, billing.FullName, order.TotalGross.Amount,
             publicUrl.Resolve(), issued.Tickets, addOnInfos));
 
         if (snapshot.SubscribeNewsletter)
@@ -120,10 +120,10 @@ public sealed class OrderFulfillment(
                 var kind = item.IsSeasonPass ? OrderItemKind.SeasonPass : OrderItemKind.EventTicket;
                 var refId = item.IsSeasonPass ? item.SeasonId : item.EventId;
                 var label = string.IsNullOrEmpty(item.CategoryName) ? item.EventName : $"{item.EventName} · {item.CategoryName}";
-                lines.Add(OrderItem.Create(order.Id, kind, refId, default, label, item.Quantity, item.UnitPrice));
+                lines.Add(OrderItem.Create(order.Id, kind, refId, default, label, item.Quantity, Money.Of(item.UnitPrice)));
             }
             foreach (var addOn in snapshot.AddOns)
-                lines.Add(OrderItem.Create(order.Id, OrderItemKind.AddOn, addOn.SeasonId, default, addOn.Label, addOn.Quantity, addOn.Price));
+                lines.Add(OrderItem.Create(order.Id, OrderItemKind.AddOn, addOn.SeasonId, default, addOn.Label, addOn.Quantity, Money.Of(addOn.Price)));
             if (lines.Count > 0)
                 await orderItems.SaveAsync(order.Id, lines);
         }

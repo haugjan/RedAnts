@@ -948,7 +948,7 @@
             if (buyer is null) { _createError = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
             var paymentSource = ClampPaymentSource(_newPaymentSource, _newPrice);
             var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity?.Email,
-                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _newCategory, _newCategory.DisplayName(), 1, _newPrice)],
+                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _newCategory, _newCategory.DisplayName(), 1, Money.Chf(_newPrice, label: "Preis"))],
                 Identity?.Name ?? AdminUser, paymentSource));
             await TicketCreation.HandleAsync(new CreateEventTicket.Command(SelectedEventId, _newCategory, _newPrice, order.Id, buyer,
                 Identity?.Name ?? AdminUser, Identity?.Email, _newPerson.ToHolder()));
@@ -1111,7 +1111,7 @@
         try
         {
             var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _bundleCategory, $"Ticket-Bundle · {reference}", _bundleQuantity, 0m)],
+                [new AdminOrderLine(OrderItemKind.EventTicket, SelectedEventId, _bundleCategory, $"Ticket-Bundle · {reference}", _bundleQuantity, Money.Zero)],
                 Identity?.Name ?? AdminUser, _bundlePaymentSource));
             await BundleCreation.HandleAsync(new CreateEventTicketBundle.Command(SelectedEventId, _bundleCategory, reference, _bundleQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id));

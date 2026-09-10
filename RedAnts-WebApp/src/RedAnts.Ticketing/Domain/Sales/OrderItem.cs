@@ -10,12 +10,12 @@ public sealed class OrderItem
     public TicketCategory Category { get; private set; }
     public string Label { get; private set; }
     public int Quantity { get; private set; }
-    public decimal UnitPrice { get; private set; }
+    public Money UnitPrice { get; private set; }
 
-    public decimal LineTotal => decimal.Round(UnitPrice * Quantity, 2);
+    public Money LineTotal => UnitPrice.Times(Quantity);
 
     private OrderItem(int id, int orderId, OrderItemKind kind, Guid? articleGuid, int refId,
-        TicketCategory category, string label, int quantity, decimal unitPrice)
+        TicketCategory category, string label, int quantity, Money unitPrice)
     {
         Id = id;
         OrderId = orderId;
@@ -29,15 +29,14 @@ public sealed class OrderItem
     }
 
     public static OrderItem Create(int orderId, OrderItemKind kind, int refId, TicketCategory category,
-        string label, int quantity, decimal unitPrice, Guid? articleGuid = null)
+        string label, int quantity, Money unitPrice, Guid? articleGuid = null)
     {
         if (quantity < 1) throw new DomainException("Menge muss mindestens 1 sein.");
-        if (unitPrice < 0) throw new DomainException("Preis darf nicht negativ sein.");
         return new OrderItem(0, orderId, kind, articleGuid, refId, category,
-            (label ?? "").Trim(), quantity, decimal.Round(unitPrice, 2));
+            (label ?? "").Trim(), quantity, Money.Of(unitPrice.Amount, unitPrice.Currency, "unitPrice", "Preis"));
     }
 
     public static OrderItem FromPersistence(int id, int orderId, OrderItemKind kind, Guid? articleGuid,
         int refId, TicketCategory category, string label, int quantity, decimal unitPrice) =>
-        new(id, orderId, kind, articleGuid, refId, category, label ?? "", quantity, unitPrice);
+        new(id, orderId, kind, articleGuid, refId, category, label ?? "", quantity, Money.Stored(unitPrice));
 }

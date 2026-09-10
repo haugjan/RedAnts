@@ -27,7 +27,7 @@ public static class GetOrderConfirmation
             var paid = order.Status == OrderStatus.Paid;
             var confirmationTickets = paid ? await TicketsAsync(order, snapshot) : [];
             var addOnInfos = paid && snapshot is not null ? await AddOnInfoTexts.CollectAsync(seasonAddOns, snapshot) : [];
-            return new Result(order.Id, order.OrderNumber, order.BillingAddress.Email, order.TotalGross, paid,
+            return new Result(order.Id, order.OrderNumber, order.BillingAddress.Email, order.TotalGross.Amount, paid,
                 snapshot?.IsQuickBuy ?? false, confirmationTickets, addOnInfos);
         }
 

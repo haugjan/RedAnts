@@ -5,7 +5,7 @@ namespace RedAnts.Ticketing.Features.Orders;
 
 public sealed record RefundRequest(
     int OrderId,
-    decimal Amount,
+    Money Amount,
     RefundMethod Method,
     bool ViaPayrexx,
     string? Reference,
@@ -45,7 +45,7 @@ public static class RefundOrder
 
             var summary = await refunds.GetSummaryAsync(order.Id);
             var updated = await orders.GetByIdAsync(order.Id);
-            return new RefundResult(settlement.RefundNumber, summary.RefundedConfirmed, summary.Remaining,
+            return new RefundResult(settlement.RefundNumber, summary.RefundedConfirmed.Amount, summary.Remaining.Amount,
                 updated?.Status ?? order.Status, settlement.DeactivatedTickets);
         }
 
@@ -61,7 +61,7 @@ public static class RefundOrder
             var reserved = await refunds.CreateAsync(order.Id, request.Amount, RefundMethod.Payrexx, RefundStatus.Pending,
                 request.Reference, request.Reason, request.ChangedBy);
 
-            var cents = (int)decimal.Round(request.Amount * 100m, 0);
+            var cents = (int)decimal.Round(request.Amount.Amount * 100m, 0);
             PayrexxRefundResult result;
             try
             {

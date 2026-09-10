@@ -6,7 +6,7 @@ using PaymentMethod = RedAnts.Ticketing.Domain.Sales.PaymentMethod;
 namespace RedAnts.Ticketing.Features.Orders;
 
 public sealed record AdminOrderLine(
-    OrderItemKind Kind, int RefId, TicketCategory Category, string Label, int Quantity, decimal UnitPrice, Guid? ArticleGuid = null);
+    OrderItemKind Kind, int RefId, TicketCategory Category, string Label, int Quantity, Money UnitPrice, Guid? ArticleGuid = null);
 
 public static class CreateAdminOrder
 {
@@ -19,7 +19,7 @@ public static class CreateAdminOrder
             var buyer = command.Buyer;
             var billing = BillingAddress.FromPersistence((int)buyer.Type, buyer.FirstName ?? "", buyer.LastName ?? "",
                 buyer.Company, "", null, "", "", "Schweiz", command.Email ?? "", null);
-            var total = command.Lines.Sum(l => decimal.Round(l.UnitPrice * l.Quantity, 2));
+            var total = Money.Sum(command.Lines.Select(l => l.UnitPrice.Times(l.Quantity)));
             var number = await orders.NextOrderNumberAsync();
             var order = Order.Create(number, billing, total, 0m, PaymentMethod.Manual, sellerUid: null,
                 paymentSource: command.PaymentSource);

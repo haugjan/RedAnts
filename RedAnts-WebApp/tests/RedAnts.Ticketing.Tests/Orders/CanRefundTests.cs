@@ -22,7 +22,7 @@ public class CanRefundTests
         var order = await OrderFixtures.PaidOrderAsync(_orders);
 
         Assert.True((await Handler.HandleAsync(new CanRefund.Check(order.Id))).IsAllowed);
-        Assert.True((await Handler.HandleAsync(new CanRefund.Check(order.Id, 40m))).IsAllowed);
+        Assert.True((await Handler.HandleAsync(new CanRefund.Check(order.Id, Money.Of(40m)))).IsAllowed);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class CanRefundTests
     public async Task A_fully_refunded_order_is_denied()
     {
         var order = await OrderFixtures.PaidOrderAsync(_orders);
-        await _refunds.CreateAsync(order.Id, 100m, RefundMethod.Cash, RefundStatus.Confirmed, null, null, "admin");
+        await _refunds.CreateAsync(order.Id, Money.Of(100m), RefundMethod.Cash, RefundStatus.Confirmed, null, null, "admin");
 
         var denied = await DeniedAsync(new CanRefund.Check(order.Id));
 
@@ -64,7 +64,7 @@ public class CanRefundTests
     {
         var order = await OrderFixtures.PaidOrderAsync(_orders);
 
-        var denied = await DeniedAsync(new CanRefund.Check(order.Id, amount));
+        var denied = await DeniedAsync(new CanRefund.Check(order.Id, Money.Stored(amount)));
 
         Assert.IsType<RefundDenied.AmountNotPositive>(denied.Cause);
         Assert.Equal("Betrag muss grösser als 0 sein.", denied.Cause.Message);
@@ -74,9 +74,9 @@ public class CanRefundTests
     public async Task An_amount_above_the_open_rest_is_denied()
     {
         var order = await OrderFixtures.PaidOrderAsync(_orders);
-        await _refunds.CreateAsync(order.Id, 70m, RefundMethod.Cash, RefundStatus.Confirmed, null, null, "admin");
+        await _refunds.CreateAsync(order.Id, Money.Of(70m), RefundMethod.Cash, RefundStatus.Confirmed, null, null, "admin");
 
-        var denied = await DeniedAsync(new CanRefund.Check(order.Id, 40m));
+        var denied = await DeniedAsync(new CanRefund.Check(order.Id, Money.Of(40m)));
 
         Assert.IsType<RefundDenied.AmountAboveRemaining>(denied.Cause);
         Assert.Contains("30.00", denied.Cause.Message);
@@ -87,7 +87,7 @@ public class CanRefundTests
     {
         var order = await OrderFixtures.PaidOrderAsync(_orders);
 
-        var denied = await DeniedAsync(new CanRefund.Check(order.Id, 10m, ViaPayrexx: true));
+        var denied = await DeniedAsync(new CanRefund.Check(order.Id, Money.Of(10m), ViaPayrexx: true));
 
         Assert.IsType<RefundDenied.NotPaidOnline>(denied.Cause);
     }
@@ -98,7 +98,7 @@ public class CanRefundTests
         var order = await OrderFixtures.PaidOrderAsync(_orders, gatewayId: "gw-3");
         _payrexx.Enabled = false;
 
-        var denied = await DeniedAsync(new CanRefund.Check(order.Id, 10m, ViaPayrexx: true));
+        var denied = await DeniedAsync(new CanRefund.Check(order.Id, Money.Of(10m), ViaPayrexx: true));
 
         Assert.IsType<RefundDenied.NotPaidOnline>(denied.Cause);
     }
@@ -108,6 +108,6 @@ public class CanRefundTests
     {
         var order = await OrderFixtures.PaidOrderAsync(_orders, gatewayId: "gw-3");
 
-        Assert.True((await Handler.HandleAsync(new CanRefund.Check(order.Id, 10m, ViaPayrexx: true))).IsAllowed);
+        Assert.True((await Handler.HandleAsync(new CanRefund.Check(order.Id, Money.Of(10m), ViaPayrexx: true))).IsAllowed);
     }
 }

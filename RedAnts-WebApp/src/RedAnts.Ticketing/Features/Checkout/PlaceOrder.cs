@@ -60,7 +60,7 @@ public static class PlaceOrder
                 saved = await unitOfWork.RunAsync(async () =>
                 {
                     var number = await orders.NextOrderNumberAsync();
-                    var order = Order.Create(number, command.Billing, cart.TotalAmount, VatRate, PaymentMethod.Payrexx, sellerUid: null,
+                    var order = Order.Create(number, command.Billing, Money.Of(cart.TotalAmount), VatRate, PaymentMethod.Payrexx, sellerUid: null,
                         paymentSource: PaymentSource.Online);
                     order.SetFulfillmentPayload(JsonSerializer.Serialize(snapshot));
                     var stored = await orders.SaveAsync(order);
@@ -74,7 +74,7 @@ public static class PlaceOrder
                 throw;
             }
 
-            if (payrexx.Enabled && saved.TotalGross > 0m)
+            if (payrexx.Enabled && saved.TotalGross.IsPositive)
                 return await StartPaymentAsync(saved, command.Billing, snapshot);
 
             await fulfillment.FulfillAsync(saved.Id);
@@ -105,7 +105,7 @@ public static class PlaceOrder
             var baseUrl = publicUrl.Resolve();
             var token = Uri.EscapeDataString(tokens.Protect(saved.Id));
             var request = new PayrexxCreateRequest(
-                AmountInCents: (int)Math.Round(saved.TotalGross * 100m, MidpointRounding.AwayFromZero),
+                AmountInCents: (int)Math.Round(saved.TotalGross.Amount * 100m, MidpointRounding.AwayFromZero),
                 Currency: saved.Currency,
                 Purpose: $"Red Ants Ticketing {saved.OrderNumber}",
                 ReferenceId: saved.OrderNumber,

@@ -9,7 +9,7 @@ public class OrderStatusRulesTests
 {
     private static Order Draft() => Order.Create("2026-000001", BillingAddress.Create(
         BuyerType.Private, "Anna", "Muster", null, "Bahnhofstrasse 1", null, "8400", "Winterthur", "Schweiz", "anna@example.ch", null),
-        50m, 0m, PaymentMethod.Payrexx, null);
+        Money.Of(50m), 0m, PaymentMethod.Payrexx, null);
 
     private static Order Paid()
     {
@@ -62,22 +62,22 @@ public class OrderStatusRulesTests
     {
         Assert.True(Paid().IsRefundable);
         var partial = Paid();
-        partial.ApplyRefundTotal(10m);
+        partial.ApplyRefundTotal(Money.Of(10m));
         Assert.True(partial.IsRefundable);
         Assert.False(Draft().IsRefundable);
-        Assert.IsType<RefundDenied.NotPaid>(Assert.IsType<CheckResult.Denied>(Draft().RefundBlocker(100m)).Cause);
+        Assert.IsType<RefundDenied.NotPaid>(Assert.IsType<CheckResult.Denied>(Draft().RefundBlocker(Money.Of(100m))).Cause);
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-5)]
     public void A_refund_needs_a_positive_amount(decimal amount) =>
-        Assert.IsType<RefundDenied.AmountNotPositive>(Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(100m, amount)).Cause);
+        Assert.IsType<RefundDenied.AmountNotPositive>(Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(Money.Of(100m), Money.Stored(amount))).Cause);
 
     [Fact]
     public void A_refund_stays_below_the_remaining_amount()
     {
-        var denied = Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(30m, 40m));
+        var denied = Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(Money.Of(30m), Money.Of(40m)));
 
         Assert.IsType<RefundDenied.AmountAboveRemaining>(denied.Cause);
         Assert.Contains("30.00", denied.Cause.Message);
@@ -87,17 +87,17 @@ public class OrderStatusRulesTests
     public void A_fully_refunded_order_has_nothing_left()
     {
         var order = Paid();
-        order.ApplyRefundTotal(10m);
+        order.ApplyRefundTotal(Money.Of(10m));
 
-        Assert.IsType<RefundDenied.NothingLeft>(Assert.IsType<CheckResult.Denied>(order.RefundBlocker(0m)).Cause);
+        Assert.IsType<RefundDenied.NothingLeft>(Assert.IsType<CheckResult.Denied>(order.RefundBlocker(Money.Zero)).Cause);
     }
 
     [Fact]
     public void A_payrexx_refund_needs_an_online_payment()
     {
         Assert.IsType<RefundDenied.NotPaidOnline>(
-            Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(100m, 10m, viaPayrexx: true)).Cause);
-        Assert.True(Paid().RefundBlocker(100m, 10m).IsAllowed);
+            Assert.IsType<CheckResult.Denied>(Paid().RefundBlocker(Money.Of(100m), Money.Of(10m), viaPayrexx: true)).Cause);
+        Assert.True(Paid().RefundBlocker(Money.Of(100m), Money.Of(10m)).IsAllowed);
     }
 
     [Fact]

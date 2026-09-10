@@ -21,7 +21,7 @@ public sealed class OrderItemRepository(IScopeProvider scopeProvider) : IOrderIt
                 Category = (int)item.Category,
                 Label = item.Label,
                 Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice
+                UnitPrice = item.UnitPrice.Amount
             });
         }
     }

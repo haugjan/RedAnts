@@ -5,10 +5,10 @@ public sealed class OrderRefund
     public int Id { get; private set; }
     public string RefundNumber { get; private set; }
     public int OrderId { get; private set; }
-    public decimal Amount { get; private set; }
+    public Money Amount { get; private set; }
     public decimal VatRate { get; private set; }
-    public decimal VatAmount { get; private set; }
-    public string Currency { get; private set; }
+    public Money VatAmount { get; private set; }
+    public string Currency => Amount.Currency;
     public RefundMethod Method { get; private set; }
     public RefundStatus Status { get; private set; }
     public string? PayrexxRefundId { get; private set; }
@@ -17,8 +17,8 @@ public sealed class OrderRefund
     public string? CreatedBy { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
-    private OrderRefund(int id, string refundNumber, int orderId, decimal amount, decimal vatRate, decimal vatAmount,
-        string currency, RefundMethod method, RefundStatus status, string? payrexxRefundId, string? reference,
+    private OrderRefund(int id, string refundNumber, int orderId, Money amount, decimal vatRate, Money vatAmount,
+        RefundMethod method, RefundStatus status, string? payrexxRefundId, string? reference,
         string? reason, string? createdBy, DateTimeOffset createdAt)
     {
         Id = id;
@@ -27,7 +27,6 @@ public sealed class OrderRefund
         Amount = amount;
         VatRate = vatRate;
         VatAmount = vatAmount;
-        Currency = currency;
         Method = method;
         Status = status;
         PayrexxRefundId = payrexxRefundId;
@@ -37,23 +36,24 @@ public sealed class OrderRefund
         CreatedAt = createdAt;
     }
 
-    public static OrderRefund Create(string refundNumber, int orderId, decimal amount, decimal vatRate,
+    public static OrderRefund Create(string refundNumber, int orderId, Money amount, decimal vatRate,
         RefundMethod method, RefundStatus status, string? reference, string? reason, string? createdBy,
-        string currency = "CHF", TimeProvider? time = null)
+        TimeProvider? time = null)
     {
-        if (amount <= 0) throw new DomainException("Rückzahlungsbetrag muss grösser als 0 sein.");
-        var value = decimal.Round(amount, 2);
-        var vat = vatRate <= 0 ? 0m : decimal.Round(value - value / (1 + vatRate), 2);
-        return new OrderRefund(0, refundNumber.Trim(), orderId, value, vatRate, vat, currency, method, status,
+        var value = Money.Of(amount.Amount, amount.Currency, "amount", "Rückzahlungsbetrag");
+        if (!value.IsPositive) throw new DomainException("Rückzahlungsbetrag muss grösser als 0 sein.");
+        var vat = vatRate <= 0
+            ? Money.Of(0m, value.Currency)
+            : Money.Of(value.Amount - value.Amount / (1 + vatRate), value.Currency);
+        return new OrderRefund(0, refundNumber.Trim(), orderId, value, vatRate, vat, method, status,
             null, Clean(reference), Clean(reason), Clean(createdBy), SwissTime.TimestampOf(time));
     }
 
     public static OrderRefund FromPersistence(int id, string refundNumber, int orderId, decimal amount, decimal vatRate,
         decimal vatAmount, string currency, RefundMethod method, RefundStatus status, string? payrexxRefundId,
         string? reference, string? reason, string? createdBy, DateTimeOffset createdAt) =>
-        new(id, refundNumber ?? "", orderId, amount, vatRate, vatAmount,
-            string.IsNullOrWhiteSpace(currency) ? "CHF" : currency, method, status, payrexxRefundId,
-            reference, reason, createdBy, createdAt);
+        new(id, refundNumber ?? "", orderId, Money.Stored(amount, currency), vatRate, Money.Stored(vatAmount, currency),
+            method, status, payrexxRefundId, reference, reason, createdBy, createdAt);
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

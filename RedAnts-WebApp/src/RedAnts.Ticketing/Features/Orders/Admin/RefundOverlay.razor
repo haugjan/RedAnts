@@ -176,13 +176,14 @@
         try
         {
             var payrexx = _method == RefundMethod.Payrexx;
-            if (await DeniedReasonAsync(new CanRefund.Check(OrderId, _amount, payrexx)) is { } reason)
+            var amount = Money.Of(_amount, field: "amount", label: "Betrag");
+            if (await DeniedReasonAsync(new CanRefund.Check(OrderId, amount, payrexx)) is { } reason)
             {
                 _error = reason;
                 return;
             }
 
-            var request = new RefundRequest(OrderId, _amount, _method, payrexx,
+            var request = new RefundRequest(OrderId, amount, _method, payrexx,
                 _reference, _reason, _deactivate, ChangedBy);
             var outcome = await RefundOrders.HandleAsync(new RefundOrder.Command(request));
             await LoadAsync();

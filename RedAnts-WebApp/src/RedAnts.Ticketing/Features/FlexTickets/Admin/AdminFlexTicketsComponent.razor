@@ -1239,7 +1239,7 @@
                 if (_newQuantity >= 1)
                 {
                     var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-                        [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
+                        [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, Money.Zero)],
                         Identity?.Name ?? AdminUser, _newPaymentSource));
                     result = await TicketAdditions.HandleAsync(new AddFlexTickets.Command(existing.Id, _newCategory, _newQuantity,
                         Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
@@ -1253,7 +1253,7 @@
             else
             {
                 var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-                    [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
+                    [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, Money.Zero)],
                     Identity?.Name ?? AdminUser, _newPaymentSource));
                 result = await BundleCreation.HandleAsync(new CreateFlexBundle.Command(SelectedSeasonId, _newCategory, reference, _newQuantity,
                     Identity?.Name ?? AdminUser, Identity?.Email, order.Id));
@@ -1282,7 +1282,7 @@
         {
             var reference = _confirmAddBundle.Reference;
             var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-                [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, 0m)],
+                [new AdminOrderLine(OrderItemKind.SeasonSingle, SelectedSeasonId, _newCategory, $"Flexticket · {reference}", _newQuantity, Money.Zero)],
                 Identity?.Name ?? AdminUser, _newPaymentSource));
             var updated = await TicketAdditions.HandleAsync(new AddFlexTickets.Command(_confirmAddBundle.Id, _newCategory, _newQuantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id));

@@ -115,7 +115,7 @@ public class PlaceOrderTests
         var order = fixture.Orders.Stored.Single();
         Assert.Equal(OrderStatus.Draft, order.Status);
         Assert.Equal("gw-1", order.PayrexxGatewayId);
-        Assert.Equal(40m, order.TotalGross);
+        Assert.Equal(40m, order.TotalGross.Amount);
         Assert.NotNull(OrderSnapshot.Parse(order.FulfillmentPayload));
         Assert.Equal(2, fixture.EventReserved);
         Assert.Equal(2, fixture.TierReserved);

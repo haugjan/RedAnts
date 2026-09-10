@@ -21,8 +21,8 @@ public class CreateAdminOrderTests
         var buyer = Buyer.Create(BuyerType.Company, null, null, "UHC Beispiel");
         var lines = new List<AdminOrderLine>
         {
-            new(OrderItemKind.EventTicket, 42, TicketCategory.Adult, "Spiel · Erwachsen", 2, 20m),
-            new(OrderItemKind.AddOn, 3, default, "Parkplatz", 1, 5.555m, Guid.NewGuid())
+            new(OrderItemKind.EventTicket, 42, TicketCategory.Adult, "Spiel · Erwachsen", 2, Money.Of(20m)),
+            new(OrderItemKind.AddOn, 3, default, "Parkplatz", 1, Money.Of(5.555m), Guid.NewGuid())
         };
 
         var order = await Handler.HandleAsync(new CreateAdminOrder.Command(buyer, "kasse@redants.ch", lines, "kassier", PaymentSource.Cash));
@@ -31,7 +31,7 @@ public class CreateAdminOrderTests
         Assert.Equal(OrderStatus.Paid, order.Status);
         Assert.Equal(PaymentMethod.Manual, order.PaymentMethod);
         Assert.Equal(PaymentSource.Cash, order.PaymentSource);
-        Assert.Equal(45.56m, order.TotalGross);
+        Assert.Equal(45.56m, order.TotalGross.Amount);
         Assert.Equal("UHC Beispiel", order.BillingAddress.Company);
         Assert.Equal("kasse@redants.ch", order.BillingAddress.Email);
         Assert.Equal("Schweiz", order.BillingAddress.Country);
@@ -39,7 +39,7 @@ public class CreateAdminOrderTests
         var items = _items.Saved[order.Id];
         Assert.Equal(2, items.Count);
         Assert.Equal(lines[1].ArticleGuid, items[1].ArticleGuid);
-        Assert.Equal(40m, items[0].LineTotal);
+        Assert.Equal(40m, items[0].LineTotal.Amount);
 
         Assert.Equal(
             [(order.Id, OrderStatus.Draft, "kassier", "Im Backoffice erstellt"), (order.Id, OrderStatus.Paid, "kassier", "Backoffice")],
@@ -56,7 +56,7 @@ public class CreateAdminOrderTests
         Assert.Equal("Max", order.BillingAddress.FirstName);
         Assert.Equal("Muster", order.BillingAddress.LastName);
         Assert.Equal("", order.BillingAddress.Email);
-        Assert.Equal(0m, order.TotalGross);
+        Assert.Equal(0m, order.TotalGross.Amount);
         Assert.Empty(_items.Saved[order.Id]);
     }
 
@@ -85,6 +85,6 @@ public class CreateAdminOrderTests
 
     private static CreateAdminOrder.Command Command() =>
         new(Buyer.Create(BuyerType.Private, "Anna", "Muster", null), "anna@example.ch",
-            [new AdminOrderLine(OrderItemKind.EventTicket, 42, TicketCategory.Adult, "Spiel · Erwachsen", 1, 20m)],
+            [new AdminOrderLine(OrderItemKind.EventTicket, 42, TicketCategory.Adult, "Spiel · Erwachsen", 1, Money.Of(20m))],
             "kassier", PaymentSource.Cash);
 }

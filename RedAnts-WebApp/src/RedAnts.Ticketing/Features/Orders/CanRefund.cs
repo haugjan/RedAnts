@@ -5,7 +5,7 @@ namespace RedAnts.Ticketing.Features.Orders;
 
 public static class CanRefund
 {
-    public sealed record Check(int OrderId, decimal? Amount = null, bool ViaPayrexx = false);
+    public sealed record Check(int OrderId, Money? Amount = null, bool ViaPayrexx = false);
 
     public sealed class Handler(IOrderRepository orders, IOrderRefunds refunds, IPayrexxGateway payrexx)
     {
