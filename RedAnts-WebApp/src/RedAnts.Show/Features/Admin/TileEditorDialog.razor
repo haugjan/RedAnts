@@ -102,7 +102,7 @@
         @if (SpotifyConfigured && (_backfilling || MissingTitles(n) > 0))
         {
             <button type="button" class="se-btn sm" @onclick="() => BackfillTitlesAsync(n)" disabled="@_backfilling">
-                @(_backfilling ? $"lädt … {_backfillDone}/{_backfillTotal}" : $"♪ Titel nachladen ({MissingTitles(n)})")
+                @(_backfilling ? $"lädt … {_backfillDone}/{_backfillTotal}" : $"♪ Titel nachladen ({MissingTitles(n)} Abfragen)")
             </button>
         }
         @if (_backfilling)
@@ -110,6 +110,13 @@
             <button type="button" class="se-btn sm danger" @onclick="() => _backfillCancelled = true">Abbrechen</button>
         }
     </div>
+    @if (SpotifyConfigured && !_backfilling && MissingTitles(n) > 0)
+    {
+        <p class="se-muted se-titlehint">
+            Schonender: rechts den Playlist-Link einfügen und importieren. Das holt alle Titel mit einer einzigen Abfrage
+            und lässt vorhandene Songs samt Cue-Punkten stehen.
+        </p>
+    }
 }
 </div>
 <div class="se-col se-col-b">
@@ -534,6 +541,12 @@ else
                         reason = "Spotify kennt diesen Song nicht (oder er ist in der Schweiz nicht verfügbar).";
                     }
                 }
+                catch (ShowSpotifyThrottled throttled)
+                {
+                    failed++;
+                    reason = throttled.Message;
+                    break;
+                }
                 catch (Exception ex)
                 {
                     failed++;
@@ -549,7 +562,7 @@ else
 
             _importNote = $"{_backfillDone} von {_backfillTotal} Titeln geladen, Cue-Punkte unverändert.";
             _importError = failed > 0
-                ? $"{failed} Titel konnten nicht geladen werden: {reason}"
+                ? $"Abgebrochen bei Song {_backfillDone + failed}: {reason}"
                 : "";
         }
         finally

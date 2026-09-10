@@ -225,4 +225,5 @@
 .se-songh2 { margin: 18px 0 6px; }
 .se-addsong { flex: 0 0 auto; align-self: flex-start; margin-top: 2px; }
 .se-songactions { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.se-titlehint { flex: 0 0 auto; margin: 6px 0 0; font-size: 0.8rem; line-height: 1.35; }
 .se-songrow { flex: 0 0 auto; }
