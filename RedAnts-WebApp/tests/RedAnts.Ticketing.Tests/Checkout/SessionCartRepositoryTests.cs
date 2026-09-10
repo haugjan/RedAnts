@@ -44,14 +44,14 @@ public class SessionCartRepositoryTests
 
         Assert.Single(cart.OrderAddOns);
         Assert.Equal("Garderobe", cart.OrderAddOns[0].Label);
-        Assert.Equal(25m * 2 + 5m + 340m + 20m, cart.TotalAmount);
+        Assert.Equal(25m * 2 + 5m + 340m + 20m, cart.TotalAmount.Amount);
     }
 
     [Fact]
     public void Written_json_keeps_the_legacy_property_names_and_round_trips()
     {
         var cart = CartJson.Read(LegacyJson);
-        cart.AddOrderAddOns([new CartAddOn(6, "Mitgliederkarte", 0m, 7, "Saison 2026/27", RequiresMobileNumber: true)]);
+        cart.AddOrderAddOns([new CartAddOn(6, "Mitgliederkarte", Money.Of(0m), 7, "Saison 2026/27", RequiresMobileNumber: true)]);
 
         var json = CartJson.Write(cart);
         using var document = JsonDocument.Parse(json);

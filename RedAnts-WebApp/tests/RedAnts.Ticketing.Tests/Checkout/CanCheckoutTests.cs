@@ -56,7 +56,7 @@ public class CanCheckoutTests
     public async Task A_conversion_only_event_still_allows_a_converted_ticket()
     {
         var cart = Cart.Empty();
-        cart.AddConversion(CheckoutFixture.EventId, "Match", CheckoutFixture.SeasonId, CheckoutFixture.AdultTier, "Saisonkarte", 0m,
+        cart.AddConversion(CheckoutFixture.EventId, "Match", CheckoutFixture.SeasonId, CheckoutFixture.AdultTier, "Saisonkarte", Money.Of(0m),
             new ConversionOrigin(TicketType.SeasonPass, Guid.NewGuid(), "Saisonkarte", (int)TicketCategory.Adult, 1));
         _fixture.Carts.Save(cart);
         _fixture.ConversionRules.ConversionOnlyEvents.Add(CheckoutFixture.EventId);

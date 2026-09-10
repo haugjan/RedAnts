@@ -22,7 +22,7 @@ public static class AddConversionToCart
                 return new Result(false, blocked.Cause.Message, cart);
 
             var origin = new ConversionOrigin(offer.CardType, offer.CardUuid, offer.CardLabel, offer.OriginCategory, offer.RemainingCap);
-            if (cart.AddConversion(command.EventId, offer.EventName, offer.SeasonId, offer.TierId, offer.CardLabel, offer.Price, origin) == 0)
+            if (cart.AddConversion(command.EventId, offer.EventName, offer.SeasonId, offer.TierId, offer.CardLabel, Money.Of(offer.Price), origin) == 0)
                 return new Result(false, new ConversionDenied.CardExhausted().Message, cart);
 
             carts.Save(cart);

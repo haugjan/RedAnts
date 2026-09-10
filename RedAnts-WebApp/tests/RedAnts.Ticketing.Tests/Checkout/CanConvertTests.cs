@@ -20,7 +20,7 @@ public class CanConvertTests
 
     private void Convert(int cap = 1) =>
         _fixture.Carts.Load().AddConversion(CheckoutFixture.EventId, "Red Ants vs. Gegner", CheckoutFixture.SeasonId,
-            CheckoutFixture.AdultTier, "Mitgliederkarte ABCD1234", 0m,
+            CheckoutFixture.AdultTier, "Mitgliederkarte ABCD1234", Money.Of(0m),
             new ConversionOrigin(TicketType.MemberCard, CardUuid, "Mitgliederkarte ABCD1234", (int)TicketCategory.Adult, cap));
 
     [Fact]

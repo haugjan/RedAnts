@@ -6,7 +6,7 @@ public enum CartLineKind
     SeasonPass
 }
 
-public sealed record CartAddOn(int Id, string Label, decimal Price, int SeasonId, string SeasonName, bool RequiresMobileNumber = false);
+public sealed record CartAddOn(int Id, string Label, Money Price, int SeasonId, string SeasonName, bool RequiresMobileNumber = false);
 
 public sealed record ConversionOrigin(TicketType CardType, Guid CardUuid, string Label, int Category, int Cap);
 
@@ -19,13 +19,13 @@ public sealed class CartLine
     public int TierId { get; }
     public string CategoryName { get; private set; }
     public string StandardCategoryName { get; private set; }
-    public decimal UnitPrice { get; private set; }
+    public Money UnitPrice { get; private set; }
     public int Quantity { get; internal set; }
     public IReadOnlyList<CartAddOn> AddOns { get; private set; }
     public ConversionOrigin? Origin { get; private set; }
 
     internal CartLine(CartLineKind kind, int eventId, int seasonId, string eventName, int tierId, string categoryName,
-        string standardCategoryName, decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns, ConversionOrigin? origin)
+        string standardCategoryName, Money unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns, ConversionOrigin? origin)
     {
         Kind = kind;
         EventId = eventId;
@@ -41,7 +41,7 @@ public sealed class CartLine
     }
 
     public static CartLine FromPersistence(CartLineKind kind, int eventId, int seasonId, string eventName, int tierId,
-        string categoryName, string standardCategoryName, decimal unitPrice, int quantity,
+        string categoryName, string standardCategoryName, Money unitPrice, int quantity,
         IReadOnlyList<CartAddOn>? addOns = null, ConversionOrigin? origin = null) =>
         new(kind, eventId, seasonId, eventName ?? "", tierId, categoryName ?? "", standardCategoryName ?? "",
             unitPrice, Math.Max(1, quantity), addOns ?? [], origin);
@@ -52,10 +52,12 @@ public sealed class CartLine
     public int RefId => Kind == CartLineKind.SeasonPass ? SeasonId : EventId;
     public string AddOnKey => AddOns.Count == 0 ? "" : string.Join("-", AddOns.Select(a => a.Id).OrderBy(x => x));
     public string Key => $"{(int)Kind}:{RefId}:{TierId}:{AddOnKey}" + (Origin is null ? "" : ":" + Origin.CardUuid);
-    public decimal AddOnTotal => AddOns.Sum(a => a.Price);
-    public decimal LineTotal => (UnitPrice + AddOnTotal) * Quantity;
+    public Money AddOnTotal => Money.Sum(AddOns.Select(a => a.Price));
+    public Money LineTotal => AddOns.Count == 0
+        ? UnitPrice.Times(Quantity)
+        : (UnitPrice + AddOnTotal).Times(Quantity);
 
-    internal void Refresh(string eventName, string categoryName, string standardCategoryName, decimal unitPrice)
+    internal void Refresh(string eventName, string categoryName, string standardCategoryName, Money unitPrice)
     {
         EventName = eventName;
         CategoryName = categoryName;
@@ -101,7 +103,7 @@ public static class CheckoutDenied
 public sealed class Cart
 {
     public const int MaxQuantityPerLine = 50;
-    public const decimal ExpressLimit = 50m;
+    public static Money ExpressLimit { get; } = Money.Chf(50m);
 
     private readonly List<CartLine> _items;
     private readonly List<CartAddOn> _orderAddOns;
@@ -122,7 +124,7 @@ public sealed class Cart
 
     public bool IsEmpty => _items.Count == 0 && _orderAddOns.Count == 0;
     public int TotalQuantity => _items.Sum(i => i.Quantity) + _orderAddOns.Count;
-    public decimal TotalAmount => _items.Sum(i => i.LineTotal) + _orderAddOns.Sum(a => a.Price);
+    public Money TotalAmount => Money.Sum(_items.Select(i => i.LineTotal).Concat(_orderAddOns.Select(a => a.Price)));
     public bool QualifiesForExpress => !IsEmpty && TotalAmount < ExpressLimit && _items.All(i => i.Kind != CartLineKind.SeasonPass);
     public bool RequiresMobileNumber => _items.SelectMany(i => i.AddOns).Concat(_orderAddOns).Any(a => a.RequiresMobileNumber);
     public IReadOnlyList<int> EventIds => _items.Where(i => i.Kind == CartLineKind.EventTicket).Select(i => i.EventId).Distinct().ToList();
@@ -157,7 +159,7 @@ public sealed class Cart
         .Select(i => new TierDemand(i.TierId, i.Quantity))
         .ToList();
 
-    public void AddEventTickets(int eventId, string eventName, int tierId, string categoryName, string standardCategoryName, decimal unitPrice, int quantity)
+    public void AddEventTickets(int eventId, string eventName, int tierId, string categoryName, string standardCategoryName, Money unitPrice, int quantity)
     {
         RequirePositive(quantity);
         var existing = _items.FirstOrDefault(i => i.Kind == CartLineKind.EventTicket && i.EventId == eventId && i.TierId == tierId && !i.IsConversion);
@@ -172,7 +174,7 @@ public sealed class Cart
     }
 
     public void AddSeasonPasses(int seasonId, string seasonName, int tierId, string categoryName, string standardCategoryName,
-        decimal unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns)
+        Money unitPrice, int quantity, IReadOnlyList<CartAddOn> addOns)
     {
         RequirePositive(quantity);
         var addOnList = (addOns ?? []).ToList();
@@ -189,7 +191,7 @@ public sealed class Cart
             unitPrice, Math.Min(quantity, MaxQuantityPerLine), addOnList, null));
     }
 
-    public int AddConversion(int eventId, string eventName, int seasonId, int tierId, string categoryName, decimal unitPrice, ConversionOrigin origin)
+    public int AddConversion(int eventId, string eventName, int seasonId, int tierId, string categoryName, Money unitPrice, ConversionOrigin origin)
     {
         var allowed = Math.Min(origin.Cap, MaxQuantityPerLine);
         var existing = _items.FirstOrDefault(i => i.Kind == CartLineKind.EventTicket && i.EventId == eventId && i.Origin?.CardUuid == origin.CardUuid);

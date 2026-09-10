@@ -30,13 +30,13 @@ public sealed record OrderSnapshot(
     public static OrderSnapshot FromCart(Cart cart, bool subscribeNewsletter, CheckoutSource source)
     {
         var items = cart.Items
-            .Select(i => new OrderSnapshotItem((int)i.Kind, i.EventId, i.SeasonId, i.TierId, i.UnitPrice, i.Quantity, i.EventName, i.CategoryName,
+            .Select(i => new OrderSnapshotItem((int)i.Kind, i.EventId, i.SeasonId, i.TierId, i.UnitPrice.Amount, i.Quantity, i.EventName, i.CategoryName,
                 i.Origin is { } o ? (int)o.CardType : null, i.Origin?.CardUuid.ToString(), i.Origin?.Category ?? 0))
             .ToList();
         var addOns = cart.Items
             .Where(i => i.Kind == CartLineKind.SeasonPass && i.AddOns.Count > 0)
-            .SelectMany(i => i.AddOns.Select(a => new OrderSnapshotAddOn(a.Id, i.SeasonId, i.EventName, i.TierId, i.CategoryName, a.Label, a.Price, i.Quantity)))
-            .Concat(cart.OrderAddOns.Select(a => new OrderSnapshotAddOn(a.Id, a.SeasonId, a.SeasonName, 0, "", a.Label, a.Price, 1)))
+            .SelectMany(i => i.AddOns.Select(a => new OrderSnapshotAddOn(a.Id, i.SeasonId, i.EventName, i.TierId, i.CategoryName, a.Label, a.Price.Amount, i.Quantity)))
+            .Concat(cart.OrderAddOns.Select(a => new OrderSnapshotAddOn(a.Id, a.SeasonId, a.SeasonName, 0, "", a.Label, a.Price.Amount, 1)))
             .ToList();
         return new OrderSnapshot(items, addOns, subscribeNewsletter, source.ToString());
     }

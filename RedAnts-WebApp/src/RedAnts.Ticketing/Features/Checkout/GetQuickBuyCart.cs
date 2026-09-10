@@ -17,7 +17,7 @@ public static class GetQuickBuyCart
             if (available is not { Available: true } || evt is null) return null;
 
             var cart = Cart.Empty();
-            cart.AddEventTickets(query.EventId, evt.Name, available.TierId, available.Name, available.StandardName(), available.Price, 1);
+            cart.AddEventTickets(query.EventId, evt.Name, available.TierId, available.Name, available.StandardName(), Money.Of(available.Price), 1);
             return cart;
         }
     }

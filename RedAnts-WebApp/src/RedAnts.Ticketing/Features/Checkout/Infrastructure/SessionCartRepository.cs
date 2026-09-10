@@ -34,7 +34,7 @@ public static class CartJson
 
     private static CartLine ToLine(CartItemDto i) =>
         CartLine.FromPersistence((CartLineKind)i.Kind, i.EventId, i.SeasonId, i.EventName, i.TierId, i.CategoryName,
-            i.StandardCategoryName, i.UnitPrice, i.Quantity, i.AddOns.Select(ToAddOn).ToList(), ToOrigin(i));
+            i.StandardCategoryName, Money.Stored(i.UnitPrice), i.Quantity, i.AddOns.Select(ToAddOn).ToList(), ToOrigin(i));
 
     private static ConversionOrigin? ToOrigin(CartItemDto i) =>
         i.OriginType is { } type && Guid.TryParse(i.OriginCardUuid, out var uuid)
@@ -42,7 +42,7 @@ public static class CartJson
             : null;
 
     private static CartAddOn ToAddOn(CartAddOnDto a) =>
-        new(a.Id, a.Label, a.Price, a.SeasonId, a.SeasonName, a.RequiresMobileNumber);
+        new(a.Id, a.Label, Money.Stored(a.Price), a.SeasonId, a.SeasonName, a.RequiresMobileNumber);
 
     private static CartDto ToDto(Cart cart) => new()
     {
@@ -59,7 +59,7 @@ public static class CartJson
         TierId = line.TierId,
         CategoryName = line.CategoryName,
         StandardCategoryName = line.StandardCategoryName,
-        UnitPrice = line.UnitPrice,
+        UnitPrice = line.UnitPrice.Amount,
         Quantity = line.Quantity,
         AddOns = line.AddOns.Select(ToDto).ToList(),
         OriginType = line.Origin is { } o ? (int)o.CardType : null,
@@ -73,7 +73,7 @@ public static class CartJson
     {
         Id = a.Id,
         Label = a.Label,
-        Price = a.Price,
+        Price = a.Price.Amount,
         SeasonId = a.SeasonId,
         SeasonName = a.SeasonName,
         RequiresMobileNumber = a.RequiresMobileNumber

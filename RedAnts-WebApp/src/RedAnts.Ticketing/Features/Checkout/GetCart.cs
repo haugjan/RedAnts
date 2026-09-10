@@ -35,12 +35,12 @@ public static class GetCart
 
         private static CartSummary Summarize(Cart cart) =>
             new(cart.Items.Select(ToLine).ToList(), cart.OrderAddOns.Select(ToAddOn).ToList(),
-                cart.TotalAmount, cart.TotalQuantity, cart.IsEmpty, cart.QualifiesForExpress, cart.RequiresMobileNumber);
+                cart.TotalAmount.Amount, cart.TotalQuantity, cart.IsEmpty, cart.QualifiesForExpress, cart.RequiresMobileNumber);
 
         private static CartLineSummary ToLine(CartLine line) =>
-            new(line.Key, line.EventName, line.CategoryName, line.StandardCategoryName, line.UnitPrice, line.Quantity, line.LineTotal,
+            new(line.Key, line.EventName, line.CategoryName, line.StandardCategoryName, line.UnitPrice.Amount, line.Quantity, line.LineTotal.Amount,
                 line.AddOns.Select(ToAddOn).ToList(), line.IsConversion, line.OriginCap);
 
-        private static CartAddOnSummary ToAddOn(CartAddOn addOn) => new(addOn.Id, addOn.Label, addOn.Price, addOn.SeasonName);
+        private static CartAddOnSummary ToAddOn(CartAddOn addOn) => new(addOn.Id, addOn.Label, addOn.Price.Amount, addOn.SeasonName);
     }
 }

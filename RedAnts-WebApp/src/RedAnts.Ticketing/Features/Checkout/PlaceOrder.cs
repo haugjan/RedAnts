@@ -60,7 +60,7 @@ public static class PlaceOrder
                 saved = await unitOfWork.RunAsync(async () =>
                 {
                     var number = await orders.NextOrderNumberAsync();
-                    var order = Order.Create(number, command.Billing, Money.Of(cart.TotalAmount), VatRate, PaymentMethod.Payrexx, sellerUid: null,
+                    var order = Order.Create(number, command.Billing, cart.TotalAmount, VatRate, PaymentMethod.Payrexx, sellerUid: null,
                         paymentSource: PaymentSource.Online);
                     order.SetFulfillmentPayload(JsonSerializer.Serialize(snapshot));
                     var stored = await orders.SaveAsync(order);

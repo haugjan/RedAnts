@@ -42,7 +42,7 @@ public sealed class CartController(
             ok = result.Added,
             message = result.Message,
             totalQuantity = result.Cart.TotalQuantity,
-            totalAmount = result.Cart.TotalAmount
+            totalAmount = result.Cart.TotalAmount.Amount
         });
     }
 
@@ -69,7 +69,7 @@ public sealed class CartController(
                 added = 0,
                 categoryName = "",
                 totalQuantity = result.Cart.TotalQuantity,
-                totalAmount = result.Cart.TotalAmount,
+                totalAmount = result.Cart.TotalAmount.Amount,
                 message
             });
 
@@ -79,7 +79,7 @@ public sealed class CartController(
             added = result.Added ? Math.Max(1, quantity) : 0,
             categoryName = result.CategoryName,
             totalQuantity = result.Cart.TotalQuantity,
-            totalAmount = result.Cart.TotalAmount
+            totalAmount = result.Cart.TotalAmount.Amount
         });
     }
 
@@ -96,7 +96,7 @@ public sealed class CartController(
             added = result.Added ? Math.Max(1, quantity) : 0,
             categoryName = result.CategoryName,
             totalQuantity = result.Cart.TotalQuantity,
-            totalAmount = result.Cart.TotalAmount
+            totalAmount = result.Cart.TotalAmount.Amount
         });
     }
 

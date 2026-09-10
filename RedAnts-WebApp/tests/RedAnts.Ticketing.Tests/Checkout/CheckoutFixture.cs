@@ -70,14 +70,14 @@ internal sealed class CheckoutFixture
     public static Cart CartWithTickets(int quantity = 2)
     {
         var cart = Cart.Empty();
-        cart.AddEventTickets(EventId, "Red Ants vs. Gegner", AdultTier, "Erwachsen", "Erw", 20m, quantity);
+        cart.AddEventTickets(EventId, "Red Ants vs. Gegner", AdultTier, "Erwachsen", "Erw", Money.Of(20m), quantity);
         return cart;
     }
 
     public static Cart CartWithPass(IReadOnlyList<CartAddOn>? addOns = null)
     {
         var cart = Cart.Empty();
-        cart.AddSeasonPasses(SeasonId, "Saison 2026/27", PassTier, "Erwachsen", "Erw", 300m, 1, addOns ?? []);
+        cart.AddSeasonPasses(SeasonId, "Saison 2026/27", PassTier, "Erwachsen", "Erw", Money.Of(300m), 1, addOns ?? []);
         return cart;
     }
 

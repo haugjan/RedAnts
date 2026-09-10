@@ -11,9 +11,9 @@ public class CheckoutQueryTests
     {
         var carts = new InMemoryCart();
         var cart = Cart.Empty();
-        cart.AddEventTickets(10, "Red Ants vs. Gegner", 1, "Erwachsen", "Erw", 20m, 2);
-        cart.AddSeasonPasses(3, "Saison 2026/27", 7, "Erwachsen", "Erw", 300m, 1, [new CartAddOn(9, "Karte", 5m, 3, "Saison 2026/27", true)]);
-        cart.AddOrderAddOns([new CartAddOn(11, "Livestream", 30m, 3, "Saison 2026/27")]);
+        cart.AddEventTickets(10, "Red Ants vs. Gegner", 1, "Erwachsen", "Erw", Money.Of(20m), 2);
+        cart.AddSeasonPasses(3, "Saison 2026/27", 7, "Erwachsen", "Erw", Money.Of(300m), 1, [new CartAddOn(9, "Karte", Money.Of(5m), 3, "Saison 2026/27", true)]);
+        cart.AddOrderAddOns([new CartAddOn(11, "Livestream", Money.Of(30m), 3, "Saison 2026/27")]);
         carts.Save(cart);
 
         var summary = await new GetCart.Handler(carts).HandleAsync(new GetCart.Query());
@@ -23,7 +23,7 @@ public class CheckoutQueryTests
         Assert.Equal(40m, summary.Items[0].LineTotal);
         Assert.Equal("Karte", Assert.Single(summary.Items[1].AddOns).Label);
         Assert.Equal("Livestream", Assert.Single(summary.OrderAddOns).Label);
-        Assert.Equal(cart.TotalAmount, summary.TotalAmount);
+        Assert.Equal(cart.TotalAmount.Amount, summary.TotalAmount);
         Assert.Equal(4, summary.TotalQuantity);
         Assert.False(summary.IsEmpty);
         Assert.False(summary.QualifiesForExpress);
