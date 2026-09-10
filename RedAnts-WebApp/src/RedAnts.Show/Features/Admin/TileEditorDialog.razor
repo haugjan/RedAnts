@@ -214,11 +214,13 @@
     </div>
 
     <div class="se-grid">
-        <label>Cue-Start (m:ss.mmm)
-            <input value="@Clock(song.StartSec)" @onchange="e => SetCueText(e, song)" placeholder="0:00.000" />
+        <label>Cue-Start (m:ss.mmm, ↑↓ = 50 ms)
+            <input value="@Clock(song.StartSec)" @onchange="e => SetCueText(e, song)"
+                   @onkeydown="e => NudgeCue(e, song)" placeholder="0:00.000" />
         </label>
-        <label>Länge (leer = ganzer Song)
-            <input value="@(song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, song)" placeholder="ganzer Song" />
+        <label>Länge (leer = ganzer Song, ↑↓ = 50 ms)
+            <input value="@(song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="e => SetLenText(e, song)"
+                   @onkeydown="e => NudgeLength(e, song)" placeholder="ganzer Song" />
         </label>
     </div>
 
@@ -743,6 +745,28 @@ else
     {
         var v = ParseClock(e.Value?.ToString());
         s.DurationSec = v is { } x && x > 0 ? x : null;
+    }
+
+    private const double NudgeStep = 0.05;
+
+    private static double? StepOf(KeyboardEventArgs e) => e.Key switch
+    {
+        "ArrowUp" => NudgeStep,
+        "ArrowDown" => -NudgeStep,
+        _ => null,
+    };
+
+    private void NudgeCue(KeyboardEventArgs e, EditSound s)
+    {
+        if (StepOf(e) is not { } step) return;
+        s.StartSec = Math.Max(0, Math.Round(s.StartSec + step, 3));
+    }
+
+    private void NudgeLength(KeyboardEventArgs e, EditSound s)
+    {
+        if (StepOf(e) is not { } step) return;
+        var next = Math.Round((s.DurationSec ?? 0) + step, 3);
+        s.DurationSec = next > 0 ? next : null;
     }
 
     private static string Pct(double v, double max) =>
