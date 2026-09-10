@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace RedAnts.Infrastructure.Shared;
 
@@ -30,35 +31,38 @@ public static partial class BackofficeBrandingExtensions
                 return;
             }
 
-            var original = context.Response.Body;
+            var originalFeature = context.Features.Get<IHttpResponseBodyFeature>();
+            var originalBody = context.Response.Body;
             await using var buffer = new MemoryStream();
+            if (originalFeature is not null) context.Features.Set<IHttpResponseBodyFeature>(new StreamResponseBodyFeature(buffer));
             context.Response.Body = buffer;
             try
             {
                 await next();
-                context.Response.Body = original;
-                var contentType = context.Response.ContentType ?? "";
-                var compressed = context.Response.Headers.ContentEncoding.Count > 0;
-                buffer.Seek(0, SeekOrigin.Begin);
-                if (!context.Response.HasStarted && !compressed
-                    && contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var reader = new StreamReader(buffer, leaveOpen: true);
-                    var body = await reader.ReadToEndAsync();
-                    var branded = Title().Replace(body, $"<title>{PageTitle}</title>", 1);
-                    branded = IconLink().Replace(branded, FaviconLink, 1);
-                    var bytes = Encoding.UTF8.GetBytes(branded);
-                    context.Response.ContentLength = bytes.Length;
-                    await original.WriteAsync(bytes);
-                }
-                else
-                {
-                    await buffer.CopyToAsync(original);
-                }
             }
             finally
             {
-                context.Response.Body = original;
+                if (originalFeature is not null) context.Features.Set(originalFeature);
+                context.Response.Body = originalBody;
+            }
+
+            var contentType = context.Response.ContentType ?? "";
+            var compressed = context.Response.Headers.ContentEncoding.Count > 0;
+            buffer.Seek(0, SeekOrigin.Begin);
+            if (!context.Response.HasStarted && !compressed
+                && contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
+            {
+                using var reader = new StreamReader(buffer, leaveOpen: true);
+                var body = await reader.ReadToEndAsync();
+                var branded = Title().Replace(body, $"<title>{PageTitle}</title>", 1);
+                branded = IconLink().Replace(branded, FaviconLink, 1);
+                var bytes = Encoding.UTF8.GetBytes(branded);
+                context.Response.ContentLength = bytes.Length;
+                await originalBody.WriteAsync(bytes);
+            }
+            else
+            {
+                await buffer.CopyToAsync(originalBody);
             }
         });
 
