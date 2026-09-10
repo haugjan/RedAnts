@@ -62,6 +62,10 @@
     {
         <p class="se-ok">@_importNote</p>
     }
+    @if (_importError is { Length: > 0 })
+    {
+        <p class="se-err">@_importError</p>
+    }
     @if (n.Songs.Count > 1)
     {
         <div class="se-fieldcol">
@@ -185,10 +189,6 @@
                     </button>
                     <span class="se-muted">Ersetzt diesen Eintrag durch je einen Song pro Titel.</span>
                 </div>
-                @if (_importError is { Length: > 0 })
-                {
-                    <p class="se-err">@_importError</p>
-                }
             </div>
             <div class="se-fieldcol">
                 <span class="se-lbl">Playlist-Reihenfolge</span>
@@ -251,6 +251,7 @@ else
     {
         <button class="se-btn sm" @onclick="CancelTileAsync">Abbrechen</button>
     }
+    <button class="se-btn sm primary" @onclick="SaveAsync" disabled="@_saving">@(_saving ? "Speichert …" : "💾 Speichern")</button>
     <button class="se-btn sm danger se-editdel" @onclick="DeleteAsync">🗑 Kachel löschen</button>
 </div>
 </div>
@@ -281,6 +282,22 @@ else
     [Parameter] public bool SpotifyConfigured { get; set; }
     [Parameter] public EventCallback OnClosed { get; set; }
     [Parameter] public EventCallback OnRemoved { get; set; }
+    [Parameter] public EventCallback OnSaveRequested { get; set; }
+
+    private bool _saving;
+
+    private async Task SaveAsync()
+    {
+        if (_saving) return;
+        _saving = true;
+        try
+        {
+            await OnSaveRequested.InvokeAsync();
+            _importNote = $"Gespeichert · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (Exception ex) { _importError = "Speichern: " + ex.Message; }
+        finally { _saving = false; }
+    }
 
     private const string SoundBase = ShowSoundDelivery.AdminBase;
 
@@ -492,6 +509,9 @@ else
         _backfillDone = 0;
         _importNote = "";
         _importError = "";
+        var failed = 0;
+        var consecutive = 0;
+        var reason = "";
         try
         {
             foreach (var s in todo)
@@ -500,18 +520,35 @@ else
                 try
                 {
                     if ((await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref))).Track is { } t)
+                    {
                         Describe(s, t);
+                        _backfillDone++;
+                        consecutive = 0;
+                    }
+                    else
+                    {
+                        failed++;
+                        consecutive++;
+                        reason = "Spotify kennt diesen Song nicht (oder er ist in der Schweiz nicht verfügbar).";
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _importError = "Titel laden: " + ex.Message;
-                    break;
+                    failed++;
+                    consecutive++;
+                    reason = ex.Message;
                 }
-                _backfillDone++;
+
+                // Nach mehreren Fehlern hintereinander liegt es nicht am einzelnen Song.
+                if (consecutive >= 5) break;
                 StateHasChanged();
                 await Task.Delay(350);
             }
-            _importNote = $"{_backfillDone} von {_backfillTotal} Titeln geladen, Cue-Punkte unverändert. Zum Übernehmen oben speichern.";
+
+            _importNote = $"{_backfillDone} von {_backfillTotal} Titeln geladen, Cue-Punkte unverändert.";
+            _importError = failed > 0
+                ? $"{failed} Titel konnten nicht geladen werden: {reason}"
+                : "";
         }
         finally
         {
@@ -583,7 +620,7 @@ else
                 + (described > 0 ? $", {described} vorhandene ergänzt (Cue bleibt)" : "")
                 + (untouched > 0 ? $", {untouched} unverändert" : "")
                 + (tracks.Count >= MaxContextImport ? $" (Limit {MaxContextImport})" : "")
-                + ". Zum Übernehmen oben speichern.";
+                + ".";
             if (added.Count > 0) SelectSong(added[0]);
         }
         catch (Exception ex)

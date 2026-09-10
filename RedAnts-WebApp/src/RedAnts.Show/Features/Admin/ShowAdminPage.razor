@@ -114,7 +114,7 @@
                 @if (_selected is { } sel)
                 {
                     <TileEditorDialog @ref="_editor" @key="sel" Node="sel" IsNew="_selectedIsNew" SpotifyConfigured="_spotifyConfigured"
-                                      OnClosed="CloseEditor" OnRemoved="RemoveSelected" />
+                                      OnClosed="CloseEditor" OnRemoved="RemoveSelected" OnSaveRequested="SaveAsync" />
                 }
 
                 @if (_chooseKind)
