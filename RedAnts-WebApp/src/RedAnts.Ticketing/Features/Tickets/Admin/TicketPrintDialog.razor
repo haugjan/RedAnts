@@ -104,6 +104,21 @@
                             </select>
                         </div>
                     </div>
+
+                    <div class="fp-grid">
+                        <div class="ta-field">
+                            <label class="ta-label" for="fpOffsetX">Offset X (mm)</label>
+                            <input id="fpOffsetX" name="offsetX" class="ta-input" type="number" step="0.1" min="-20" max="20" value="@F(Layout.OffsetXMm)" />
+                        </div>
+                        <div class="ta-field">
+                            <label class="ta-label" for="fpOffsetY">Offset Y (mm)</label>
+                            <input id="fpOffsetY" name="offsetY" class="ta-input" type="number" step="0.1" min="-20" max="20" value="@F(Layout.OffsetYMm)" />
+                        </div>
+                    </div>
+                    <p class="ta-field-hint">
+                        Gleicht den Versatz des Druckers aus. Positiv schiebt den ganzen Druck nach links und nach oben.
+                        Die Werte kommen aus dem Probedruck.
+                    </p>
                 </div>
             </div>
 

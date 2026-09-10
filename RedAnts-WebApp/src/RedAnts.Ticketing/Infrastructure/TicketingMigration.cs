@@ -75,6 +75,7 @@ public class TicketingMigrationPlan : MigrationPlan
         To<ConvertTimestampsToDateTimeOffset>("timestamps-datetimeoffset");
         To<AddTicketCustomName>("ticket-custom-name");
         To<AddTicketEmailIndexes>("ticket-email-indexes");
+        To<AddTicketPrintOffset>("ticket-print-offset");
     }
 }
 
@@ -231,6 +232,19 @@ public class AddTicketPrintSettings(IMigrationContext context) : AsyncMigrationB
             Create.Table<TicketPrintSettingsRecord>().Do();
         else if (!ColumnExists("TicketPrintSettings", "NameAlign"))
             Alter.Table("TicketPrintSettings").AddColumn("NameAlign").AsInt32().Nullable().Do();
+        return Task.CompletedTask;
+    }
+}
+
+public class AddTicketPrintOffset(IMigrationContext context) : AsyncMigrationBase(context)
+{
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists("TicketPrintSettings")) return Task.CompletedTask;
+        if (!ColumnExists("TicketPrintSettings", "OffsetXMm"))
+            Alter.Table("TicketPrintSettings").AddColumn("OffsetXMm").AsDecimal(20, 2).Nullable().Do();
+        if (!ColumnExists("TicketPrintSettings", "OffsetYMm"))
+            Alter.Table("TicketPrintSettings").AddColumn("OffsetYMm").AsDecimal(20, 2).Nullable().Do();
         return Task.CompletedTask;
     }
 }

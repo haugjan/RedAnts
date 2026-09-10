@@ -22,14 +22,10 @@ public sealed class MyTicketsReader(IScopeProvider scopeProvider) : IMyTicketsRe
 
         const string sql =
             "SELECT Email FROM (" +
-            "SELECT o.BillingEmail AS Email FROM EventTickets x LEFT JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0 " +
-            "UNION SELECT x.Email FROM EventTickets x WHERE x.Uuid = @0 " +
-            "UNION SELECT o.BillingEmail FROM SeasonSingleTickets x LEFT JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0 " +
-            "UNION SELECT x.BuyerEmail FROM SeasonSingleTickets x WHERE x.Uuid = @0 " +
-            "UNION SELECT o.BillingEmail FROM SeasonPasses x LEFT JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0 " +
-            "UNION SELECT x.BuyerEmail FROM SeasonPasses x WHERE x.Uuid = @0 " +
-            "UNION SELECT o.BillingEmail FROM MembershipCards x LEFT JOIN Orders o ON x.OrderId = o.Id WHERE x.Uuid = @0 " +
-            "UNION SELECT x.Email FROM MembershipCards x WHERE x.Uuid = @0 " +
+            "SELECT Email FROM EventTickets WHERE Uuid = @0 " +
+            "UNION SELECT BuyerEmail FROM SeasonSingleTickets WHERE Uuid = @0 " +
+            "UNION SELECT BuyerEmail FROM SeasonPasses WHERE Uuid = @0 " +
+            "UNION SELECT Email FROM MembershipCards WHERE Uuid = @0 " +
             ") t WHERE Email IS NOT NULL AND LTRIM(RTRIM(Email)) <> ''";
 
         var rows = await scope.Database.FetchAsync<string>(sql, key);
@@ -45,21 +41,10 @@ public sealed class MyTicketsReader(IScopeProvider scopeProvider) : IMyTicketsRe
 
         const string sql =
             "SELECT t.Uuid, t.TicketType, t.ScopeId, t.Status, t.CreatedAt FROM (" +
-            "SELECT et.Uuid, 0 AS TicketType, et.EventId AS ScopeId, et.Status, et.CreatedAt " +
-            "FROM EventTickets et LEFT JOIN Orders o ON et.OrderId = o.Id " +
-            "WHERE o.BillingEmail IN (@0) OR et.Email IN (@0) " +
-            "UNION ALL " +
-            "SELECT st.Uuid, 1, st.SeasonId, st.Status, st.CreatedAt " +
-            "FROM SeasonSingleTickets st LEFT JOIN Orders o ON st.OrderId = o.Id " +
-            "WHERE o.BillingEmail IN (@0) OR st.BuyerEmail IN (@0) " +
-            "UNION ALL " +
-            "SELECT sp.Uuid, 2, sp.SeasonId, sp.Status, sp.CreatedAt " +
-            "FROM SeasonPasses sp LEFT JOIN Orders o ON sp.OrderId = o.Id " +
-            "WHERE o.BillingEmail IN (@0) OR sp.BuyerEmail IN (@0) " +
-            "UNION ALL " +
-            "SELECT mc.Uuid, 3, mc.SeasonId, mc.Status, mc.CreatedAt " +
-            "FROM MembershipCards mc LEFT JOIN Orders o ON mc.OrderId = o.Id " +
-            "WHERE o.BillingEmail IN (@0) OR mc.Email IN (@0) " +
+            "SELECT Uuid, 0 AS TicketType, EventId AS ScopeId, Status, CreatedAt FROM EventTickets WHERE Email IN (@0) " +
+            "UNION ALL SELECT Uuid, 1, SeasonId, Status, CreatedAt FROM SeasonSingleTickets WHERE BuyerEmail IN (@0) " +
+            "UNION ALL SELECT Uuid, 2, SeasonId, Status, CreatedAt FROM SeasonPasses WHERE BuyerEmail IN (@0) " +
+            "UNION ALL SELECT Uuid, 3, SeasonId, Status, CreatedAt FROM MembershipCards WHERE Email IN (@0) " +
             ") t ORDER BY t.CreatedAt DESC";
 
         var rows = await scope.Database.FetchAsync<TicketRow>(sql, list);

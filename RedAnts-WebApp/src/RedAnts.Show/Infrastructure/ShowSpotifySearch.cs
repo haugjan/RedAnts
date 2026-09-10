@@ -6,7 +6,11 @@ using System.Text.Json;
 
 namespace RedAnts.Show.Infrastructure;
 
-public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfiguration config, IShowSettings settings) : IShowSpotifySearch
+public sealed class ShowSpotifySearch(
+    IHttpClientFactory httpFactory,
+    IConfiguration config,
+    IShowSettings settings,
+    ShowSpotifyAccount account) : IShowSpotifySearch
 {
     private string? ClientId => settings.Get("Spotify:ClientId") ?? config["Spotify:ClientId"];
     private string? Secret => settings.Get("Spotify:ClientSecret") ?? config["Spotify:ClientSecret"];
@@ -38,6 +42,7 @@ public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfigura
 
     private async Task<string> TokenAsync()
     {
+        if (await account.UserTokenAsync() is { Length: > 0 } userToken) return userToken;
         if (_token is not null && DateTime.UtcNow < _expiresUtc) return _token;
         var client = httpFactory.CreateClient();
         var req = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token")
@@ -107,7 +112,7 @@ public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfigura
 
         var endpoint = v.Kind switch
         {
-            "playlist" => $"https://api.spotify.com/v1/playlists/{v.Id}?fields=name,owner(display_name),images,tracks(total)",
+            "playlist" => $"https://api.spotify.com/v1/playlists/{v.Id}",
             "album" => $"https://api.spotify.com/v1/albums/{v.Id}",
             "artist" => $"https://api.spotify.com/v1/artists/{v.Id}",
             _ => null,
@@ -120,10 +125,125 @@ public sealed class ShowSpotifySearch(IHttpClientFactory httpFactory, IConfigura
             var name = json.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
             var cover = FirstImage(json);
             var owner = json.TryGetProperty("owner", out var o) && o.TryGetProperty("display_name", out var dn) ? dn.GetString() ?? "" : "";
-            var count = json.TryGetProperty("tracks", out var tr) && tr.TryGetProperty("total", out var tot) ? tot.GetInt32() : 0;
+            var count = TrackTotal(json);
             return new SpotifyContext($"spotify:{v.Kind}:{v.Id}", v.Kind, name, owner, cover, count);
         }
         catch { return new SpotifyContext($"spotify:{v.Kind}:{v.Id}", v.Kind, "", "", "", 0); }
+    }
+
+    public async Task<IReadOnlyList<SpotifyTrack>> GetContextTracksAsync(string idOrUri, int max = 200)
+    {
+        if (!Configured) return [];
+        if (ShowSpotifyLink.Parse(idOrUri) is not { } v || v.Kind == "track") return [];
+        max = Math.Clamp(max, 1, 500);
+
+        return v.Kind switch
+        {
+            "playlist" => await PlaylistTracksAsync(v.Id, max),
+            "album" => await AlbumTracksAsync(v.Id, max),
+            "artist" => await ArtistTopTracksAsync(v.Id, max),
+            _ => [],
+        };
+    }
+
+    private async Task<IReadOnlyList<SpotifyTrack>> PlaylistTracksAsync(string id, int max)
+    {
+        if (!account.Connected)
+            throw new InvalidOperationException(
+                "Spotify gibt Playlist-Inhalte nur an ein verbundenes Konto heraus. Im Dialog „🟢 Spotify\" einmalig „Mit Spotify verbinden\" ausführen.");
+
+        var tracks = new List<SpotifyTrack>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var url = $"https://api.spotify.com/v1/playlists/{id}?market=CH";
+        var firstPage = true;
+
+        while (url.Length > 0 && tracks.Count < max)
+        {
+            JsonElement json;
+            try { json = await GetAsync(url); }
+            catch (HttpRequestException) when (!firstPage) { break; }
+            firstPage = false;
+
+            var (items, next) = ReadTrackPage(json);
+            if (items.ValueKind != JsonValueKind.Array) break;
+
+            foreach (var item in items.EnumerateArray())
+            {
+                if (item.TryGetProperty("is_local", out var loc) && loc.ValueKind == JsonValueKind.True) continue;
+                if (EntryTrack(item) is not { } t) continue;
+                if (t.TryGetProperty("type", out var ty) && ty.GetString() != "track") continue;
+                if (MapTrack(t) is not { } track || !track.Uri.StartsWith("spotify:track:", StringComparison.Ordinal)) continue;
+                if (!seen.Add(track.Uri)) continue;
+                tracks.Add(track);
+                if (tracks.Count >= max) break;
+            }
+            url = next;
+        }
+        return tracks;
+    }
+
+    private static int TrackTotal(JsonElement json)
+    {
+        foreach (var key in new[] { "tracks", "items" })
+        {
+            if (json.TryGetProperty(key, out var node) && node.ValueKind == JsonValueKind.Object
+                && node.TryGetProperty("total", out var total) && total.ValueKind == JsonValueKind.Number)
+                return total.GetInt32();
+        }
+        return 0;
+    }
+
+    private static (JsonElement Items, string Next) ReadTrackPage(JsonElement json)
+    {
+        var node = json;
+        if (json.TryGetProperty("tracks", out var tracks) && tracks.ValueKind == JsonValueKind.Object) node = tracks;
+        else if (json.TryGetProperty("items", out var embedded) && embedded.ValueKind == JsonValueKind.Object) node = embedded;
+
+        var items = node.TryGetProperty("items", out var arr) && arr.ValueKind == JsonValueKind.Array ? arr : default;
+        var next = node.TryGetProperty("next", out var nx) && nx.ValueKind == JsonValueKind.String ? nx.GetString() ?? "" : "";
+        return (items, next);
+    }
+
+    private static JsonElement? EntryTrack(JsonElement item)
+    {
+        if (item.TryGetProperty("track", out var t) && t.ValueKind == JsonValueKind.Object) return t;
+        if (item.TryGetProperty("item", out var i) && i.ValueKind == JsonValueKind.Object) return i;
+        return item.TryGetProperty("uri", out _) ? item : null;
+    }
+
+    private async Task<IReadOnlyList<SpotifyTrack>> AlbumTracksAsync(string id, int max)
+    {
+        var album = await GetAsync($"https://api.spotify.com/v1/albums/{id}?market=CH");
+        var albumName = album.TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
+        var cover = FirstImage(album);
+
+        var tracks = new List<SpotifyTrack>();
+        var url = $"https://api.spotify.com/v1/albums/{id}/tracks?market=CH&limit=50";
+        while (url.Length > 0 && tracks.Count < max)
+        {
+            var json = await GetAsync(url);
+            foreach (var t in json.GetProperty("items").EnumerateArray())
+            {
+                if (MapTrack(t) is not { } track || !track.Uri.StartsWith("spotify:track:", StringComparison.Ordinal)) continue;
+                tracks.Add(track with { Album = albumName, CoverUrl = cover });
+                if (tracks.Count >= max) break;
+            }
+            url = json.TryGetProperty("next", out var nx) && nx.ValueKind == JsonValueKind.String ? nx.GetString() ?? "" : "";
+        }
+        return tracks;
+    }
+
+    private async Task<IReadOnlyList<SpotifyTrack>> ArtistTopTracksAsync(string id, int max)
+    {
+        var json = await GetAsync($"https://api.spotify.com/v1/artists/{id}/top-tracks?market=CH");
+        var tracks = new List<SpotifyTrack>();
+        foreach (var t in json.GetProperty("tracks").EnumerateArray())
+        {
+            if (MapTrack(t) is not { } track) continue;
+            tracks.Add(track);
+            if (tracks.Count >= max) break;
+        }
+        return tracks;
     }
 
     private static SpotifyTrack? MapTrack(JsonElement t)

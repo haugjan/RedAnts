@@ -1,4 +1,5 @@
 @inject LookupSpotifyReference.Handler SpotifyLookup
+@inject ImportSpotifyContext.Handler SpotifyImport
 @inject UploadShowSound.Handler SoundUpload
 @inject IJSRuntime JS
 
@@ -16,7 +17,7 @@
 </div>
 
 <div class="se-editbody">
-<div class="se-col">
+<div class="se-col se-col-a">
 <div class="se-grid">
     <label>Beschriftung <input @bind="n.Label" @bind:event="oninput" /></label>
     <label>Untertitel (Song) <input @bind="n.Subtitle" @bind:event="oninput" /></label>
@@ -53,13 +54,14 @@
         }
     </div>
 </div>
-</div>
-<div class="se-col">
-
 @if (n.Kind == NodeKind.Sound)
 {
     var song = CurrentSong(n);
-    <h3>Songs (@n.Songs.Count)</h3>
+    <h3 class="se-songh2">Songs (@n.Songs.Count)</h3>
+    @if (_importNote is { Length: > 0 })
+    {
+        <p class="se-ok">@_importNote</p>
+    }
     @if (n.Songs.Count > 1)
     {
         <div class="se-fieldcol">
@@ -78,6 +80,10 @@
             <div class="se-songrow @(sg == song ? "sel" : "")">
                 <button type="button" class="se-songrow-main" @onclick="() => SelectSong(sg)">
                     <span class="se-songrow-nr">@(idx + 1)</span>
+                    @if (SongCover(sg) is { } cov)
+                    {
+                        <img class="se-songrow-cover" src="@cov" alt="" />
+                    }
                     <span class="se-songrow-name">@SongEditLabel(sg)</span>
                     <span class="se-songrow-cue">@Clock(sg.StartSec)@(sg.DurationSec is { } d ? " – " + Clock(d) : "")</span>
                 </button>
@@ -87,8 +93,13 @@
             </div>
         }
     </div>
-    <button type="button" class="se-btn sm" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
-
+    <button type="button" class="se-btn sm se-addsong" @onclick="() => AddSong(n)">+ Song hinzufügen</button>
+}
+</div>
+<div class="se-col se-col-b">
+@if (n.Kind == NodeKind.Sound)
+{
+    var song = CurrentSong(n);
     <h4 class="se-songh">Song @(n.Songs.IndexOf(song) + 1) bearbeiten</h4>
     <div class="se-src-tabs">
         <button type="button" class="@(song.Kind == SoundKind.Local ? "active" : "")" @onclick="() => song.Kind = SoundKind.Local">🎵 Datei</button>
@@ -154,6 +165,19 @@
 
         @if (IsContextRef(song.Ref))
         {
+            <div class="se-fieldcol">
+                <span class="se-lbl">Alle Songs auf diese Kachel übernehmen</span>
+                <div class="se-importrow">
+                    <button type="button" class="se-btn primary" @onclick="() => ImportContextAsync(n, song)" disabled="@_importing">
+                        @(_importing ? "Importiert …" : "⬇ Songs einzeln importieren")
+                    </button>
+                    <span class="se-muted">Ersetzt diesen Eintrag durch je einen Song pro Titel.</span>
+                </div>
+                @if (_importError is { Length: > 0 })
+                {
+                    <p class="se-err">@_importError</p>
+                }
+            </div>
             <div class="se-fieldcol">
                 <span class="se-lbl">Playlist-Reihenfolge</span>
                 <div class="se-src-tabs">
@@ -286,6 +310,7 @@ else
         _isNew = IsNew;
         _editSong = Node.Songs.Count > 0 ? Node.Songs[0] : null;
         if (_editSong is { } first) await RefreshSpotifyInfoAsync(first);
+        _ = PreloadSongTracksAsync(Node);
     }
 
     public Task ReportPositionAsync(double pos, double dur)
@@ -319,11 +344,41 @@ else
         return r.StartsWith("sounds/") ? r["sounds/".Length..] : r;
     }
 
-    private static string SongEditLabel(EditSound s)
+    private readonly Dictionary<string, SpotifyTrack> _songTracks = new(StringComparer.OrdinalIgnoreCase);
+
+    private string? SongCover(EditSound s) =>
+        s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref)
+        && _songTracks.TryGetValue(s.Ref, out var t) && !string.IsNullOrEmpty(t.CoverUrl)
+            ? t.CoverUrl
+            : null;
+
+    private async Task PreloadSongTracksAsync(EditButton node)
+    {
+        if (!SpotifyConfigured) return;
+        foreach (var s in node.Songs.ToList())
+        {
+            if (s.Kind != SoundKind.Spotify || string.IsNullOrWhiteSpace(s.Ref)) continue;
+            if (_songTracks.ContainsKey(s.Ref)) continue;
+            if (ShowSpotifyLink.Parse(s.Ref)?.Kind != "track") continue;
+            try
+            {
+                if ((await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref))).Track is { } t)
+                {
+                    _songTracks[s.Ref] = t;
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
+
+    private string SongEditLabel(EditSound s)
     {
         if (string.IsNullOrWhiteSpace(s.Ref)) return "— leer —";
         if (s.Kind == SoundKind.Spotify)
         {
+            if (_songTracks.TryGetValue(s.Ref, out var t) && !string.IsNullOrWhiteSpace(t.Name))
+                return string.IsNullOrWhiteSpace(t.Artist) ? t.Name : $"{t.Name} · {t.Artist}";
             var p = ShowSpotifyLink.Parse(s.Ref);
             return p is { } v ? $"Spotify · {v.Kind}" : "Spotify";
         }
@@ -397,6 +452,7 @@ else
             var found = await SpotifyLookup.HandleAsync(new LookupSpotifyReference.Query(s.Ref));
             _trackInfo = found.Track;
             _ctxInfo = found.Context;
+            if (_trackInfo is { } tr) _songTracks[s.Ref] = tr;
         }
         catch { }
         StateHasChanged();
@@ -406,7 +462,75 @@ else
     {
         s.Kind = SoundKind.Spotify;
         s.Ref = ShowSpotifyLink.ToUri(e.Value?.ToString()) ?? (e.Value?.ToString()?.Trim() ?? "");
+        _importNote = ""; _importError = "";
         await RefreshSpotifyInfoAsync(s);
+    }
+
+    private const int MaxContextImport = 200;
+    private bool _importing;
+    private string _importNote = "";
+    private string _importError = "";
+
+    private async Task ImportContextAsync(EditButton n, EditSound song)
+    {
+        if (_importing || !IsContextRef(song.Ref)) return;
+        _importing = true; _importNote = ""; _importError = "";
+        var listName = _ctxInfo?.Name ?? "";
+        try
+        {
+            var tracks = await SpotifyImport.HandleAsync(new ImportSpotifyContext.Query(song.Ref, MaxContextImport));
+            if (tracks.Count == 0)
+            {
+                _importError = "Keine Songs gefunden. Ist die Liste privat oder leer?";
+                return;
+            }
+
+            var at = n.Songs.IndexOf(song);
+            if (at < 0) at = n.Songs.Count - 1;
+            var existing = n.Songs
+                .Where(s => s != song && s.Kind == SoundKind.Spotify && !string.IsNullOrWhiteSpace(s.Ref))
+                .Select(s => s.Ref)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var added = new List<EditSound>();
+            foreach (var t in tracks)
+            {
+                if (!existing.Add(t.Uri)) continue;
+                _songTracks[t.Uri] = t;
+                added.Add(new EditSound { Kind = SoundKind.Spotify, Ref = t.Uri });
+            }
+
+            if (added.Count == 0)
+            {
+                _importError = "Alle Songs dieser Liste sind bereits auf der Kachel.";
+                return;
+            }
+
+            n.Songs.RemoveAt(at);
+            n.Songs.InsertRange(at, added);
+
+            if (string.IsNullOrWhiteSpace(n.Label) || n.Label == "Neu")
+            {
+                if (!string.IsNullOrWhiteSpace(listName)) n.Label = listName;
+                if (string.IsNullOrWhiteSpace(n.Subtitle)) n.Subtitle = $"{added.Count} Songs";
+            }
+
+            _isNew = false;
+            var skipped = tracks.Count - added.Count;
+            _importNote = $"{added.Count} Songs importiert"
+                + (skipped > 0 ? $", {skipped} bereits vorhanden" : "")
+                + (tracks.Count >= MaxContextImport ? $" (Limit {MaxContextImport})" : "")
+                + ".";
+            SelectSong(added[0]);
+        }
+        catch (Exception ex)
+        {
+            _importError = "Import: " + ex.Message;
+        }
+        finally
+        {
+            _importing = false;
+        }
     }
 
     private async Task DoSearchAsync()

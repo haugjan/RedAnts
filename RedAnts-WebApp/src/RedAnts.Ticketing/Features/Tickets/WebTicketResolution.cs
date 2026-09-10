@@ -13,7 +13,7 @@ public sealed class WebTicketResolution(
 {
     public sealed record Resolved(TicketTokenData Data, IssuedTicket? Issued);
 
-    public sealed record Context(string ScopeName, string? DateText, string? VenueName, string? HomeLogo, string? AwayLogo);
+    public sealed record Context(string ScopeName, string? DateText, string? VenueName, string? HomeLogo, string? AwayLogo, bool ScopeIsCurrent);
 
     public async Task<Resolved?> ResolveAsync(string token)
     {
@@ -32,15 +32,15 @@ public sealed class WebTicketResolution(
         if (type == TicketType.EventTicket)
         {
             var ev = await events.FindByIdAsync(scopeId);
-            if (ev is null) return new Context("Anlass", null, null, null, null);
+            if (ev is null) return new Context("Anlass", null, null, null, null, false);
             var venueName = ev.VenueId > 0 ? (await venues.FindByIdAsync(ev.VenueId))?.Name : null;
-            return new Context(ev.Name, EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown), venueName, ev.HomeTeamLogoUrl, ev.AwayTeamLogoUrl);
+            return new Context(ev.Name, EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown), venueName, ev.HomeTeamLogoUrl, ev.AwayTeamLogoUrl, ev.Date >= SwissTime.Today);
         }
 
         var season = await seasons.FindByIdAsync(scopeId);
         return season is null
-            ? new Context("Saison", null, null, null, null)
-            : new Context(season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}", null, null, null);
+            ? new Context("Saison", null, null, null, null, false)
+            : new Context(season.Name, $"{season.StartDate:dd.MM.yyyy} – {season.EndDate:dd.MM.yyyy}", null, null, null, season.EndDate >= SwissTime.Today);
     }
 
     public async Task<IReadOnlyList<UpcomingMatch>> UpcomingAsync(int limit)

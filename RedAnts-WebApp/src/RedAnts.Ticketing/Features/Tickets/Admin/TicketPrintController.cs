@@ -25,6 +25,8 @@ public sealed class TicketPrintController(PrintTickets.Handler printing) : Contr
         [FromForm] double nameFontPt,
         [FromForm] double nameMaxW,
         [FromForm] int nameAlign,
+        [FromForm] double offsetX,
+        [FromForm] double offsetY,
         [FromForm] int? bundleId,
         [FromForm] int? seasonId,
         [FromForm] string? reference,
@@ -40,7 +42,8 @@ public sealed class TicketPrintController(PrintTickets.Handler printing) : Contr
             Positive(pageW, 91), Positive(pageH, 61),
             Math.Max(0, qrX), Math.Max(0, qrY), Positive(qrSize, 25), Positive(fontPt, 8),
             showName, Math.Max(0, nameX), Math.Max(0, nameY), Positive(nameFontPt, 9), Positive(nameMaxW, 52),
-            nameAlign is 1 or 2 ? nameAlign : 0);
+            nameAlign is 1 or 2 ? nameAlign : 0,
+            Offset(offsetX), Offset(offsetY));
 
         using var buffer = new MemoryStream();
         await template.CopyToAsync(buffer);
@@ -52,4 +55,6 @@ public sealed class TicketPrintController(PrintTickets.Handler printing) : Contr
     }
 
     private static double Positive(double value, double fallback) => value > 0 ? value : fallback;
+
+    private static double Offset(double value) => double.IsFinite(value) ? Math.Clamp(value, -20, 20) : 0;
 }

@@ -25,13 +25,14 @@ public static class GetMyTickets
             var summaries = (await myTickets.GetRelatedAsync(emails))
                 .Where(s => s.Uuid != query.Uuid && s.Status == TicketStatus.Valid)
                 .DistinctBy(s => s.Uuid)
-                .Take(30)
                 .ToList();
 
-            var result = new List<RelatedTicket>(summaries.Count);
+            var result = new List<RelatedTicket>();
             foreach (var s in summaries)
             {
+                if (result.Count >= 30) break;
                 var context = await resolution.ContextAsync(s.Type, s.ScopeId);
+                if (!context.ScopeIsCurrent) continue;
                 var issued = await tickets.FindAsync(s.Uuid);
                 result.Add(new RelatedTicket(
                     Token: tokens.CreateShort(s.Uuid),
