@@ -53,7 +53,7 @@ public sealed class SeasonForSaleReader(
         var isPromoOffer = baseTierId != category.TierId;
         return addOns
             .Where(a => (a.AllowedTierIds.Count == 0 || a.AllowedTierIds.Contains(baseTierId)) && (!a.PromoOnly || isPromoOffer))
-            .Select(a => new PassAddOn(a.Id, a.Label, a.LongTitle, a.Price, a.Scope == AddOnScope.PerOrder, a.InfoBeforePurchase))
+            .Select(a => new PassAddOn(a.Id, a.Label, a.LongTitle, a.Price.Amount, a.Scope == AddOnScope.PerOrder, a.InfoBeforePurchase))
             .ToList();
     }
 }

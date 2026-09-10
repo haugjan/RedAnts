@@ -47,6 +47,6 @@ public static class AddSeasonPassesToCart
         }
 
         private static CartAddOn ToCartAddOn(SeasonAddOn addOn, Season season) =>
-            new(addOn.Id, addOn.Label, Money.Of(addOn.Price), season.Id, season.Name, addOn.RequireMobileNumber);
+            new(addOn.Id, addOn.Label, addOn.Price, season.Id, season.Name, addOn.RequireMobileNumber);
     }
 }

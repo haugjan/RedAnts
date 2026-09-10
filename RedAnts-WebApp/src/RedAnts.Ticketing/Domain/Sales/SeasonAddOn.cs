@@ -5,7 +5,7 @@ public sealed class SeasonAddOn
     public int Id { get; private set; }
     public int SeasonId { get; private set; }
     public string Label { get; private set; }
-    public decimal Price { get; private set; }
+    public Money Price { get; private set; }
     public bool Active { get; private set; }
     public int SortOrder { get; private set; }
     public AddOnScope Scope { get; private set; }
@@ -16,7 +16,7 @@ public sealed class SeasonAddOn
     public bool PromoOnly { get; private set; }
     public bool RequireMobileNumber { get; private set; }
 
-    private SeasonAddOn(int id, int seasonId, string label, decimal price, bool active, int sortOrder, AddOnScope scope,
+    private SeasonAddOn(int id, int seasonId, string label, Money price, bool active, int sortOrder, AddOnScope scope,
         string? infoBeforePurchase, string? infoAfterPurchase, string? longTitle, IReadOnlyList<int> allowedTierIds, bool promoOnly,
         bool requireMobileNumber)
     {
@@ -35,7 +35,7 @@ public sealed class SeasonAddOn
         RequireMobileNumber = requireMobileNumber;
     }
 
-    public static SeasonAddOn Create(int seasonId, string label, decimal price, bool active, int sortOrder, AddOnScope scope,
+    public static SeasonAddOn Create(int seasonId, string label, Money price, bool active, int sortOrder, AddOnScope scope,
         string? infoBeforePurchase = null, string? infoAfterPurchase = null,
         string? longTitle = null, IReadOnlyList<int>? allowedTierIds = null, bool promoOnly = false,
         bool requireMobileNumber = false)
@@ -43,8 +43,7 @@ public sealed class SeasonAddOn
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         var trimmed = (label ?? "").Trim();
         if (trimmed.Length == 0) throw new DomainException("Die Zusatzoption braucht eine Bezeichnung.");
-        if (price < 0) throw new DomainException("Der Preis darf nicht negativ sein.");
-        return new SeasonAddOn(0, seasonId, trimmed, decimal.Round(price, 2), active, sortOrder, scope,
+        return new SeasonAddOn(0, seasonId, trimmed, Money.Chf(price.Amount, "price", "Der Preis"), active, sortOrder, scope,
             string.IsNullOrWhiteSpace(infoBeforePurchase) ? null : infoBeforePurchase.Trim(),
             string.IsNullOrWhiteSpace(infoAfterPurchase) ? null : infoAfterPurchase.Trim(),
             string.IsNullOrWhiteSpace(longTitle) ? null : longTitle.Trim(),
@@ -55,6 +54,6 @@ public sealed class SeasonAddOn
         string? infoBeforePurchase = null, string? infoAfterPurchase = null,
         string? longTitle = null, IReadOnlyList<int>? allowedTierIds = null, bool promoOnly = false,
         bool requireMobileNumber = false) =>
-        new(id, seasonId, label, price, active, sortOrder, scope, infoBeforePurchase, infoAfterPurchase,
+        new(id, seasonId, label, Money.Stored(price), active, sortOrder, scope, infoBeforePurchase, infoAfterPurchase,
             longTitle, allowedTierIds ?? [], promoOnly, requireMobileNumber);
 }

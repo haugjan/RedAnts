@@ -115,7 +115,7 @@ internal sealed class InMemoryEventPrices : IEventPriceRepository
 
     private static EventPrice Copy(EventPrice price, int version) =>
         EventPrice.FromPersistence(price.Id, price.EventId, price.TotalSalesQuota, price.AdmissionQuota,
-            price.Categories.Select(c => CategoryPrice.FromPersistence(c.Category, c.SalePrice, c.Quota, c.AvailableUntil, c.TierId, c.Reserved)).ToList(),
+            price.Categories.Select(c => CategoryPrice.FromPersistence(c.Category, c.SalePrice.Amount, c.Quota, c.AvailableUntil, c.TierId, c.Reserved)).ToList(),
             price.ConversionOnly, price.Reserved, version);
 }
 
@@ -151,7 +151,7 @@ internal sealed class InMemorySeasonPrices : ISeasonPriceRepository
 
     private static SeasonPrice Copy(SeasonPrice price, int version) =>
         SeasonPrice.FromPersistence(price.Id, price.SeasonId, price.TotalSalesQuota,
-            price.Categories.Select(c => SeasonCategoryPrice.FromPersistence(c.Category, c.PassPrice, c.PassOffered, c.PassQuota, c.TicketPrice,
+            price.Categories.Select(c => SeasonCategoryPrice.FromPersistence(c.Category, c.PassPrice.Amount, c.PassOffered, c.PassQuota, c.TicketPrice.Amount,
                 c.TicketOffered, c.TicketQuota, c.PassAvailableFrom, c.PassAvailableUntil, c.TicketAvailableUntil, c.TierId, c.Reserved)).ToList(),
             price.DefaultTicketSalesQuota, price.Reserved, version);
 }

@@ -173,7 +173,7 @@ public class CapacityReservationRulesTests
     [Fact]
     public void Create_starts_without_reservations()
     {
-        var price = EventPrice.Create(10, 100, 120, [CategoryPrice.Create(TicketCategory.Adult, 25m, 10, tierId: 3)]);
+        var price = EventPrice.Create(10, 100, 120, [CategoryPrice.Create(TicketCategory.Adult, Money.Chf(25m), 10, tierId: 3)]);
 
         Assert.Equal(0, price.Reserved);
         Assert.Equal(0, price.Version);
@@ -258,7 +258,7 @@ public class CapacityReservationRulesTests
         Assert.Equal(15, Season(50, reserved: 5).RemainingTotal(Usage(30)));
         Assert.Null(Season(null).RemainingTotal(Usage(30)));
 
-        var created = SeasonPrice.Create(7, 50, [SeasonCategoryPrice.Create(TicketCategory.Adult, 300m, true, 10, 25m, true, null, tierId: 3)]);
+        var created = SeasonPrice.Create(7, 50, [SeasonCategoryPrice.Create(TicketCategory.Adult, Money.Chf(300m), true, 10, Money.Chf(25m), true, null, tierId: 3)]);
         Assert.Equal(0, created.Reserved);
         Assert.Equal(0, created.Version);
         Assert.Equal(0, created.Categories[0].Reserved);

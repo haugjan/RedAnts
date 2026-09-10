@@ -78,8 +78,8 @@ public static class SetSeasonPricing
 
         private static SeasonCategoryPrice Category(SeasonPassPricingInput pass, SeasonTicketPricingInput ticket, int tierId) =>
             SeasonCategoryPrice.Create(default,
-                decimal.Round(pass.Price, 2), pass.Offered, pass.Quota,
-                decimal.Round(ticket.Price, 2), ticket.Offered, ticket.Quota,
+                Money.Stored(pass.Price), pass.Offered, pass.Quota,
+                Money.Stored(ticket.Price), ticket.Offered, ticket.Quota,
                 pass.AvailableFrom, pass.AvailableUntil, ticket.AvailableUntil, tierId);
     }
 }
