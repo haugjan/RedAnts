@@ -4,6 +4,7 @@ using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
+using RedAnts.Domain;
 using RedAnts.Infrastructure.Show;
 using RedAnts.Infrastructure.Ticketing;
 using Umbraco.StorageProviders.AzureBlob.IO;
@@ -280,71 +281,22 @@ app.UseTicketingShortHostRedirect();
 app.Use(async (context, next) =>
 {
     var host = context.Request.Host.Host;
-    if (host.EndsWith(".redants.ch", StringComparison.OrdinalIgnoreCase))
+    if (SiteHosts.IsSiteHost(host)
+        && SiteHosts.SurfaceOfPath(context.Request.Path.Value) is { } pathSurface
+        && !SiteHosts.HostServes(host, pathSurface))
     {
-        var path = context.Request.Path;
-        var pathSurface = SurfaceOfPath(path);
-        if (pathSurface is not null && !host.StartsWith(pathSurface + ".", StringComparison.OrdinalIgnoreCase)
-            && !host.StartsWith(pathSurface + "-dev.", StringComparison.OrdinalIgnoreCase))
-        {
-            var isDev = host.Contains("-dev.", StringComparison.OrdinalIgnoreCase);
-            var target = $"https://{pathSurface}{(isDev ? "-dev" : "")}.redants.ch"
-                + context.Request.Path + context.Request.QueryString;
-            context.Response.Redirect(target);
-            return;
-        }
+        context.Response.Redirect(SiteHosts.BaseUrlFor(pathSurface, SiteHosts.IsDevHost(host))
+            + context.Request.Path + context.Request.QueryString);
+        return;
     }
     await next();
 });
-
-static string? SurfaceOfPath(PathString path)
-{
-    if (!path.HasValue || path == "/") return null;
-
-    if (path.StartsWithSegments("/_blazor")
-        || path.StartsWithSegments("/_framework")
-        || path.StartsWithSegments("/_content")
-        || path.StartsWithSegments("/App_Plugins")
-        || path.StartsWithSegments("/api")
-        || path.StartsWithSegments("/health")
-        || path.StartsWithSegments("/warmup")
-        || path.StartsWithSegments("/css")
-        || path.StartsWithSegments("/js")
-        || path.StartsWithSegments("/img")
-        || path.StartsWithSegments("/lib")
-        || path.StartsWithSegments("/media")
-        || path.StartsWithSegments("/favicons")
-        || path.StartsWithSegments("/icons")
-        || path.StartsWithSegments("/__gate"))
-        return null;
-
-    if (path.StartsWithSegments("/umbraco")
-        || path.StartsWithSegments("/umbraco-entra-signin")
-        || path.StartsWithSegments("/umbraco-entra-signout")
-        || path.StartsWithSegments("/admin"))
-        return "admin";
-
-    if (path.StartsWithSegments("/scan") || path.StartsWithSegments("/scanner-test"))
-        return "scan";
-
-    if (path.StartsWithSegments("/show"))
-        return "show";
-
-    return Path.HasExtension(path.Value) ? null : "tickets";
-}
 
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/")
     {
-        var host = context.Request.Host.Host;
-        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("scan-dev.", StringComparison.OrdinalIgnoreCase);
-        var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
-        var isShowHost = host.StartsWith("show.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("show-dev.", StringComparison.OrdinalIgnoreCase);
-        context.Response.Redirect(isScanHost ? "/scan" : isAdminHost ? "/umbraco" : isShowHost ? "/show" : "/ticketing/");
+        context.Response.Redirect(SiteHosts.RootPathFor(SiteHosts.SurfaceOfHost(context.Request.Host.Host)));
         return;
     }
     await next();

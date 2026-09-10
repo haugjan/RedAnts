@@ -1,6 +1,7 @@
 using System.Text;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Mvc;
+using RedAnts.Domain;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Web;
 using Umbraco.Cms.Web.Common;
@@ -10,8 +11,7 @@ namespace RedAnts.Features.Website;
 
 public sealed class SeoController(UmbracoHelper umbraco, IUmbracoContextFactory contextFactory) : Controller
 {
-    private static bool IsIndexableHost(string host) =>
-        host.Equals("tickets.redants.ch", StringComparison.OrdinalIgnoreCase);
+    private static bool IsIndexableHost(string host) => SiteHosts.IsIndexableHost(host);
 
     [HttpGet("/robots.txt")]
     public IActionResult Robots()
