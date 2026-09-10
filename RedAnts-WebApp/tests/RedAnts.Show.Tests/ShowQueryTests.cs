@@ -15,7 +15,7 @@ public class ShowQueryTests
     {
         var settings = new StubSettings { ["Spotify:ClientSecret"] = "s3cret" };
         var config = new ConfigurationBuilder().AddInMemoryCollection([new("Spotify:ClientId", "from-config")]).Build();
-        var handler = new GetSpotifySettings.Handler(settings, new StubSpotify { Configured = true }, config);
+        var handler = new GetSpotifySettings.Handler(settings, new StubSpotify { Configured = true }, new StubSpotifyAccount(), config);
 
         var result = await handler.HandleAsync(new GetSpotifySettings.Query());
 
@@ -23,6 +23,28 @@ public class ShowQueryTests
         Assert.Equal("from-config", result.EffectiveClientId);
         Assert.True(result.HasSecret);
         Assert.True(result.Configured);
+        Assert.False(result.AccountConnected);
+    }
+
+    [Fact]
+    public async Task ImportSpotifyContext_returns_the_tracks_of_the_reference()
+    {
+        var handler = new ImportSpotifyContext.Handler(new StubSpotify { Configured = true });
+
+        var tracks = await handler.HandleAsync(new ImportSpotifyContext.Query("spotify:playlist:abc", 5));
+
+        Assert.Equal(["spotify:track:1", "spotify:track:2"], tracks.Select(t => t.Uri));
+    }
+
+    [Fact]
+    public async Task DisconnectSpotifyAccount_drops_the_stored_connection()
+    {
+        var account = new StubSpotifyAccount { Connected = true };
+        var handler = new DisconnectSpotifyAccount.Handler(account);
+
+        await handler.HandleAsync(new DisconnectSpotifyAccount.Command());
+
+        Assert.False(account.Connected);
     }
 
     [Fact]
@@ -132,10 +154,37 @@ public class ShowQueryTests
 
         public Task<SpotifyContext?> GetContextAsync(string idOrUri) => Task.FromResult<SpotifyContext?>(new SpotifyContext(idOrUri, "playlist", "Context"));
 
+        public Task<IReadOnlyList<SpotifyTrack>> GetContextTracksAsync(string idOrUri, int max = 200) =>
+            Task.FromResult<IReadOnlyList<SpotifyTrack>>(
+            [
+                new SpotifyTrack("spotify:track:1", "One", "Artist"),
+                new SpotifyTrack("spotify:track:2", "Two", "Artist"),
+            ]);
+
         public Task<string> TestCredentialsAsync(string clientId, string secret)
         {
             Tested = (clientId, secret);
             return Task.FromResult("ok");
+        }
+    }
+
+    private sealed class StubSpotifyAccount : IShowSpotifyAccount
+    {
+        public bool Connected { get; set; }
+        public string? AccountName => Connected ? "Agent" : null;
+
+        public string BuildAuthorizeUrl(string redirectUri, string state) => $"https://accounts.spotify.com/authorize?state={state}";
+
+        public Task<string> CompleteAsync(string code, string redirectUri)
+        {
+            Connected = true;
+            return Task.FromResult("Agent");
+        }
+
+        public Task DisconnectAsync()
+        {
+            Connected = false;
+            return Task.CompletedTask;
         }
     }
 
