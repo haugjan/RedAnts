@@ -301,6 +301,8 @@ app.Use(async (context, next) =>
     await next();
 });
 
+RedAnts.Infrastructure.Shared.BackofficeBrandingExtensions.UseBackofficeBranding(app);
+
 app.UseTicketingAnalytics();
 
 app.UseTicketingScanAuth();
