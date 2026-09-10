@@ -73,8 +73,6 @@
         if (SeasonId <= 0) { _error = "Bitte zuerst eine Saison wählen."; return; }
         if (string.IsNullOrWhiteSpace(_reference)) { _error = "Bitte ein Bundle angeben."; return; }
         if (_admissions < 1) { _error = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
-        var contactError = MemberContactRules.FirstError(_person.Email, _birthday);
-        if (contactError is not null) { _error = contactError; return; }
         _creating = true;
         _error = null;
         try

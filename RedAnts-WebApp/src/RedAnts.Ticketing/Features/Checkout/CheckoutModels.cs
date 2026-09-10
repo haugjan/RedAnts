@@ -25,6 +25,7 @@ public sealed class CheckoutAddressView
     public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
+    public string? Blocked { get; init; }
     public bool MobileRequired { get; init; }
 }
 
@@ -34,6 +35,7 @@ public sealed class CheckoutExpressView
     public bool PayrexxEnabled { get; init; }
     public string? TurnstileSiteKey { get; init; }
     public string? Error { get; init; }
+    public string? Blocked { get; init; }
     public string Email { get; init; } = "";
     public string Name { get; init; } = "";
 }

@@ -85,7 +85,7 @@
             {
                 if (!t.HasEmail) { noEmail++; continue; }
                 var result = await MailSending.HandleAsync(new SendFlexTicketMail.Command(
-                    new FlexMailTicket(t.Uuid, t.Holder?.Email, t.Holder?.DisplayName, SeasonId, t.Category.DisplayName()),
+                    new FlexMailTicket(t.Uuid, t.Holder?.Email?.Value, t.Holder?.DisplayName, SeasonId, t.Category.DisplayName()),
                     _subject, _body));
                 if (result.Success) enqueued++; else failed++;
             }

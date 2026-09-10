@@ -19,16 +19,17 @@ internal sealed class RecordingOrderRefunds : IOrderRefunds
 
     public Task<RefundSummary> GetSummaryAsync(int orderId)
     {
-        var confirmed = Stored.Where(r => r.OrderId == orderId && r.Status == RefundStatus.Confirmed).Sum(r => r.Amount);
-        var reserved = Stored.Where(r => r.OrderId == orderId && r.Status == RefundStatus.Pending).Sum(r => r.Amount);
-        return Task.FromResult(new RefundSummary(orderId, TotalGross, confirmed, reserved, TotalGross - confirmed - reserved));
+        var confirmed = Stored.Where(r => r.OrderId == orderId && r.Status == RefundStatus.Confirmed).Sum(r => r.Amount.Amount);
+        var reserved = Stored.Where(r => r.OrderId == orderId && r.Status == RefundStatus.Pending).Sum(r => r.Amount.Amount);
+        return Task.FromResult(new RefundSummary(orderId, Money.Of(TotalGross), Money.Of(confirmed), Money.Of(reserved),
+            Money.Stored(TotalGross - confirmed - reserved)));
     }
 
-    public Task<OrderRefund> CreateAsync(int orderId, decimal amount, RefundMethod method, RefundStatus initialStatus,
+    public Task<OrderRefund> CreateAsync(int orderId, Money amount, RefundMethod method, RefundStatus initialStatus,
         string? reference, string? reason, string? createdBy)
     {
         var id = _nextId++;
-        var refund = OrderRefund.FromPersistence(id, $"R-{id:000}", orderId, amount, 0m, 0m, "CHF", method, initialStatus,
+        var refund = OrderRefund.FromPersistence(id, $"R-{id:000}", orderId, amount.Amount, 0m, 0m, "CHF", method, initialStatus,
             null, reference, reason, createdBy, SwissTime.Timestamp);
         Stored.Add(refund);
         return Task.FromResult(refund);
@@ -52,8 +53,8 @@ internal sealed class RecordingOrderRefunds : IOrderRefunds
     {
         var current = Stored.Single(r => r.Id == refundId);
         Stored.Remove(current);
-        Stored.Add(OrderRefund.FromPersistence(current.Id, current.RefundNumber, current.OrderId, current.Amount, current.VatRate,
-            current.VatAmount, current.Currency, current.Method, status, payrexxRefundId, current.Reference, current.Reason,
+        Stored.Add(OrderRefund.FromPersistence(current.Id, current.RefundNumber, current.OrderId, current.Amount.Amount, current.VatRate,
+            current.VatAmount.Amount, current.Currency, current.Method, status, payrexxRefundId, current.Reference, current.Reason,
             current.CreatedBy, current.CreatedAt));
     }
 }
@@ -100,7 +101,7 @@ internal static class OrderFixtures
 
     public static async Task<Order> PaidOrderAsync(InMemoryOrderRepository orders, decimal total = 100m, string? gatewayId = null)
     {
-        var order = Order.Create(await orders.NextOrderNumberAsync(), Billing(), total, 0m, PaymentMethod.Payrexx, null,
+        var order = Order.Create(await orders.NextOrderNumberAsync(), Billing(), Money.Of(total), 0m, PaymentMethod.Payrexx, null,
             paymentSource: PaymentSource.Online);
         order.MarkPaid();
         order.SetPayrexxGatewayId(gatewayId);
@@ -109,7 +110,7 @@ internal static class OrderFixtures
 
     public static async Task<Order> DraftOrderAsync(InMemoryOrderRepository orders, decimal total = 100m)
     {
-        var order = Order.Create(await orders.NextOrderNumberAsync(), Billing(), total, 0m, PaymentMethod.Payrexx, null,
+        var order = Order.Create(await orders.NextOrderNumberAsync(), Billing(), Money.Of(total), 0m, PaymentMethod.Payrexx, null,
             paymentSource: PaymentSource.Online);
         return await orders.SaveAsync(order);
     }

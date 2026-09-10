@@ -116,7 +116,7 @@ public class EventCatalogTests
         Assert.True(saved.ConversionOnly);
         Assert.Equal(2, saved.Categories.Count);
         var adult = saved.Categories.Single(c => c.TierId == 3);
-        Assert.Equal(30.13m, adult.SalePrice);
+        Assert.Equal(30.15m, adult.SalePrice.Amount);
         Assert.Equal(12, adult.Quota);
         Assert.Equal(new DateOnly(2026, 12, 31), adult.AvailableUntil);
         Assert.Null(saved.Categories.Single(c => c.TierId == 5).Quota);
@@ -143,7 +143,7 @@ public class EventCatalogTests
         var prices = new RecordingEventPrices();
         prices.Seed(ExistingPrice());
 
-        await Assert.ThrowsAsync<DomainException>(() =>
+        await Assert.ThrowsAsync<ValidationException>(() =>
             new SetEventPricing.Handler(prices).HandleAsync(new SetEventPricing.Command(EventId,
                 [new EventCategoryPriceInput(3, -1m, null, null)])));
 

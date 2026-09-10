@@ -7,33 +7,33 @@ namespace RedAnts.Ticketing.Tests.Sales;
 public class PricingTests
 {
     [Fact]
-    public void CategoryPrice_Create_RoundsPriceToTwoDecimals()
+    public void CategoryPrice_Create_SnapsThePriceToFiveRappen()
     {
-        var price = CategoryPrice.Create(TicketCategory.Adult, 12.349m, quota: 100);
+        var price = CategoryPrice.Create(TicketCategory.Adult, Money.Stored(12.349m), quota: 100);
 
-        Assert.Equal(12.35m, price.SalePrice);
+        Assert.Equal(12.35m, price.SalePrice.Amount);
         Assert.Equal(100, price.Quota);
     }
 
     [Fact]
-    public void CategoryPrice_Create_UsesBankersRoundingAtMidpoint()
+    public void CategoryPrice_Create_RoundsAwayFromZeroAtTheMidpoint()
     {
-        Assert.Equal(12.34m, CategoryPrice.Create(TicketCategory.Adult, 12.345m, null).SalePrice);
-        Assert.Equal(12.36m, CategoryPrice.Create(TicketCategory.Adult, 12.355m, null).SalePrice);
+        Assert.Equal(12.35m, CategoryPrice.Create(TicketCategory.Adult, Money.Stored(12.325m), null).SalePrice.Amount);
+        Assert.Equal(12.30m, CategoryPrice.Create(TicketCategory.Adult, Money.Stored(12.32m), null).SalePrice.Amount);
     }
 
     [Fact]
     public void CategoryPrice_Create_AllowsNullQuota()
     {
-        var price = CategoryPrice.Create(TicketCategory.Adult, 10m, quota: null);
+        var price = CategoryPrice.Create(TicketCategory.Adult, Money.Chf(10m), quota: null);
         Assert.Null(price.Quota);
     }
 
     [Fact]
     public void CategoryPrice_Create_RejectsNegativePriceOrQuota()
     {
-        Assert.Throws<DomainException>(() => CategoryPrice.Create(TicketCategory.Adult, -0.01m, null));
-        Assert.Throws<DomainException>(() => CategoryPrice.Create(TicketCategory.Adult, 10m, -1));
+        Assert.Throws<ValidationException>(() => CategoryPrice.Create(TicketCategory.Adult, Money.Stored(-0.01m), null));
+        Assert.Throws<DomainException>(() => CategoryPrice.Create(TicketCategory.Adult, Money.Chf(10m), -1));
     }
 
     [Fact]

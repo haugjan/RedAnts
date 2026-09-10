@@ -38,7 +38,7 @@ public class SetSeasonAddOnsTests
         var parking = addOns.Replaced[0];
         Assert.Equal("Parkplatz", parking.Label);
         Assert.Equal([7, 8], parking.AllowedTierIds.Order());
-        Assert.Equal(12.01m, parking.Price);
+        Assert.Equal(12.00m, parking.Price.Amount);
         Assert.Equal(AddOnScope.PerOrder, parking.Scope);
         Assert.True(parking.PromoOnly);
         Assert.True(parking.RequireMobileNumber);
@@ -59,7 +59,7 @@ public class SetSeasonAddOnsTests
         var tiers = new InMemoryPriceTiers();
         var addOns = new RecordingSeasonAddOns();
 
-        await Assert.ThrowsAsync<DomainException>(() =>
+        await Assert.ThrowsAsync<ValidationException>(() =>
             new SetSeasonAddOns.Handler(addOns, tiers).HandleAsync(new SetSeasonAddOns.Command(SeasonId, [Input("Parkplatz", price: -1m)])));
 
         Assert.Null(addOns.Replaced);

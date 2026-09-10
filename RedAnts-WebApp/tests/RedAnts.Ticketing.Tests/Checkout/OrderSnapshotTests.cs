@@ -12,10 +12,10 @@ public class OrderSnapshotTests
     private static Cart FullCart()
     {
         var cart = Cart.Empty();
-        cart.AddEventTickets(10, "Spiel A", 3, "Erwachsen", "Erw", 25m, 2);
-        cart.AddConversion(11, "Spiel B", 7, 4, "Saisonkarte", 5m, new ConversionOrigin(TicketType.SeasonSingle, Card, "Flex 42", 2, 1));
-        cart.AddSeasonPasses(7, "Saison 26/27", 3, "Erwachsen", "Erw", 300m, 2, [new CartAddOn(1, "Parkplatz", 20m, 7, "Saison 26/27")]);
-        cart.AddOrderAddOns([new CartAddOn(2, "Garderobe", 5m, 7, "Saison 26/27")]);
+        cart.AddEventTickets(10, "Spiel A", 3, "Erwachsen", "Erw", Money.Of(25m), 2);
+        cart.AddConversion(11, "Spiel B", 7, 4, "Saisonkarte", Money.Of(5m), new ConversionOrigin(TicketType.SeasonSingle, Card, "Flex 42", 2, 1));
+        cart.AddSeasonPasses(7, "Saison 26/27", 3, "Erwachsen", "Erw", Money.Of(300m), 2, [new CartAddOn(1, "Parkplatz", Money.Of(20m), 7, "Saison 26/27")]);
+        cart.AddOrderAddOns([new CartAddOn(2, "Garderobe", Money.Of(5m), 7, "Saison 26/27")]);
         return cart;
     }
 

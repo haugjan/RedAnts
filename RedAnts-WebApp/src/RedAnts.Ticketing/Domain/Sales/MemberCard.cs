@@ -12,7 +12,7 @@ public sealed class MemberCard
     public string? FirstName { get; private set; }
     public string? LastName { get; private set; }
     public DateOnly? Birthday { get; private set; }
-    public string? Email { get; private set; }
+    public EmailAddress? Email { get; private set; }
     public string? Reference { get; private set; }
     public int Admissions { get; private set; }
     public string? CreatedByName { get; private set; }
@@ -27,7 +27,7 @@ public sealed class MemberCard
 
     private MemberCard(int id, Guid uuid, int seasonId, MemberCategory category,
         int? orderId, TicketStatus status, DateTimeOffset createdAt, string? firstName, string? lastName,
-        DateOnly? birthday, string? email, string? reference, int admissions, string? createdByName,
+        DateOnly? birthday, EmailAddress? email, string? reference, int admissions, string? createdByName,
         string? createdByEmail, MemberAddress address)
     {
         Id = id;
@@ -55,8 +55,9 @@ public sealed class MemberCard
     {
         if (seasonId <= 0) throw new DomainException("Eine Saison muss zugewiesen sein.");
         return new MemberCard(0, Guid.NewGuid(), seasonId, category,
-            orderId, TicketStatus.Valid, SwissTime.TimestampOf(time), Clean(firstName), Clean(lastName), birthday,
-            Clean(email), Clean(reference), Math.Max(1, admissions), Clean(createdByName), Clean(createdByEmail),
+            orderId, TicketStatus.Valid, SwissTime.TimestampOf(time), Clean(firstName), Clean(lastName),
+            Birthdate.Validate(birthday, time: time),
+            EmailAddress.Optional(email), Clean(reference), Math.Max(1, admissions), Clean(createdByName), Clean(createdByEmail),
             address ?? MemberAddress.Empty);
     }
 
@@ -65,7 +66,7 @@ public sealed class MemberCard
         DateOnly? birthday, string? email, string? reference, string? createdByName = null,
         string? createdByEmail = null, MemberAddress? address = null, int admissions = 1) =>
         new(id, uuid, seasonId, category, orderId, status, createdAt, firstName, lastName, birthday,
-            Clean(email), Clean(reference), Math.Max(1, admissions), Clean(createdByName), Clean(createdByEmail),
+            EmailAddress.TryCreate(email), Clean(reference), Math.Max(1, admissions), Clean(createdByName), Clean(createdByEmail),
             address ?? MemberAddress.Empty);
 
     public void Edit(string? firstName, string? lastName, DateOnly? birthday, MemberCategory category, TicketStatus status,
@@ -73,11 +74,11 @@ public sealed class MemberCard
     {
         FirstName = Clean(firstName);
         LastName = Clean(lastName);
-        Birthday = birthday;
+        Birthday = Birthdate.Validate(birthday);
         Category = category;
         Status = status;
         Reference = Clean(reference);
-        Email = Clean(email);
+        Email = EmailAddress.Optional(email);
         Address = address ?? MemberAddress.Empty;
         Admissions = Math.Max(1, admissions);
     }

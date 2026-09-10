@@ -46,21 +46,21 @@ WHERE i.OrderId IS NULL");
 
                 foreach (var g in await GroupTicketsAsync(db, "EventTickets", "EventId", orderId))
                     items.Add(OrderItem.Create(orderId, OrderItemKind.EventTicket, g.RefId, (TicketCategory)g.Category,
-                        TicketLabel(eventNames, g.RefId, (TicketCategory)g.Category), g.Qty, g.Price));
+                        TicketLabel(eventNames, g.RefId, (TicketCategory)g.Category), g.Qty, Money.Stored(g.Price)));
 
                 foreach (var g in await GroupTicketsAsync(db, "SeasonSingleTickets", "SeasonId", orderId))
                     items.Add(OrderItem.Create(orderId, OrderItemKind.SeasonSingle, g.RefId, (TicketCategory)g.Category,
-                        TicketLabel(seasonNames, g.RefId, (TicketCategory)g.Category), g.Qty, g.Price));
+                        TicketLabel(seasonNames, g.RefId, (TicketCategory)g.Category), g.Qty, Money.Stored(g.Price)));
 
                 foreach (var g in await GroupTicketsAsync(db, "SeasonPasses", "SeasonId", orderId))
                     items.Add(OrderItem.Create(orderId, OrderItemKind.SeasonPass, g.RefId, (TicketCategory)g.Category,
-                        TicketLabel(seasonNames, g.RefId, (TicketCategory)g.Category), g.Qty, g.Price));
+                        TicketLabel(seasonNames, g.RefId, (TicketCategory)g.Category), g.Qty, Money.Stored(g.Price)));
 
                 var addOns = await db.FetchAsync<AddOnRow>(
                     "SELECT SeasonId AS RefId, Category, Label, Price, Quantity AS Qty FROM OrderAddOns WHERE OrderId = @0", orderId);
                 foreach (var a in addOns.Where(a => a.Qty >= 1))
                     items.Add(OrderItem.Create(orderId, OrderItemKind.AddOn, a.RefId, (TicketCategory)a.Category,
-                        a.Label, a.Qty, a.Price));
+                        a.Label, a.Qty, Money.Stored(a.Price)));
 
                 if (items.Count == 0) continue;
 
@@ -74,7 +74,7 @@ WHERE i.OrderId IS NULL");
                         Category = (int)item.Category,
                         Label = item.Label,
                         Quantity = item.Quantity,
-                        UnitPrice = item.UnitPrice
+                        UnitPrice = item.UnitPrice.Amount
                     });
                 filled++;
             }

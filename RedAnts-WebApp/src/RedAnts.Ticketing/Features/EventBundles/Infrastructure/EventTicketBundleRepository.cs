@@ -149,7 +149,7 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
                 BuyerFirstName = h.FirstName,
                 BuyerLastName = h.LastName,
                 BuyerCompany = h.Company,
-                Email = h.Email,
+                Email = h.Email?.Value,
                 Salutation = h.Salutation,
                 Birthday = birthday,
                 Street = h.Street,

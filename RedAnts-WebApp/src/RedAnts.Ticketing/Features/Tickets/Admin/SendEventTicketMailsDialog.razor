@@ -62,7 +62,7 @@
     private int WithEmail => Tickets.Count(HasEmail);
     private int WithoutEmail => Tickets.Count(t => !HasEmail(t));
 
-    private static bool HasEmail(EventTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
+    private static bool HasEmail(EventTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email?.Value);
 
     protected override async Task OnInitializedAsync()
     {

@@ -26,7 +26,7 @@ public static class AddSeasonPassesToCart
             var perOrder = chosen.Where(a => a.Scope == AddOnScope.PerOrder).Select(a => ToCartAddOn(a, season)).ToList();
 
             var cart = carts.Load();
-            cart.AddSeasonPasses(command.SeasonId, season.Name, available.TierId, available.Name, available.StandardName(), available.Price, quantity, perPass);
+            cart.AddSeasonPasses(command.SeasonId, season.Name, available.TierId, available.Name, available.StandardName(), Money.Of(available.Price), quantity, perPass);
             cart.AddOrderAddOns(perOrder);
             carts.Save(cart);
             return new Result(true, available.Name, cart);

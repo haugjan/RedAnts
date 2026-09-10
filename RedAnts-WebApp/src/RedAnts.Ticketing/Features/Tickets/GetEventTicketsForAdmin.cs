@@ -35,7 +35,7 @@ public static class GetEventTicketsForAdmin
             var h = t.Holder;
             return string.Join(' ', new[]
             {
-                AdminFormat.TicketNo(t.Uuid), h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email ?? "",
+                AdminFormat.TicketNo(t.Uuid), h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email?.Value ?? "",
                 t.Category.DisplayName(), t.Status.DisplayName(), t.BundleReference ?? "", t.Price.ToString("N2")
             });
         }

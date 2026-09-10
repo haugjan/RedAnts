@@ -57,8 +57,6 @@
     private async Task SaveAsync()
     {
         if (_admissions < 1) { _error = "Die Anzahl Einlässe muss mindestens 1 sein."; return; }
-        var contactError = MemberContactRules.FirstError(_person.Email, _birthday);
-        if (contactError is not null) { _error = contactError; return; }
         _saving = true;
         _error = null;
         try

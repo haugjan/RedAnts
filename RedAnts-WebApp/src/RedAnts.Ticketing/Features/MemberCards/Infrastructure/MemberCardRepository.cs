@@ -131,7 +131,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
         FirstName = card.FirstName,
         LastName = card.LastName,
         Birthday = card.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : null,
-        Email = card.Email,
+        Email = card.Email?.Value,
         Reference = card.Reference,
         Admissions = card.Admissions,
         CreatedByName = card.CreatedByName,

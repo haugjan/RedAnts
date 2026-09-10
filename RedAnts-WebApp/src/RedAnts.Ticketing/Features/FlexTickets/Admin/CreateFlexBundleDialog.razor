@@ -128,6 +128,6 @@
 
     private Task<Order> CreateOrderAsync(string reference) =>
         OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-            [new AdminOrderLine(OrderItemKind.SeasonSingle, SeasonId, _category, $"Flexticket · {reference}", _quantity, 0m)],
+            [new AdminOrderLine(OrderItemKind.SeasonSingle, SeasonId, _category, $"Flexticket · {reference}", _quantity, Money.Chf(0m))],
             Identity?.Name ?? AdminUser, _paymentSource));
 }

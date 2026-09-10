@@ -38,7 +38,7 @@ public sealed class SeasonPassMailer(
     public async Task<EmailSendResult> SendAsync(SeasonPass pass, string categoryLabel, string subject, string body,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(pass.Email))
+        if (pass.Email is not { } recipient)
             return new EmailSendResult(false, "Für diese Saisonkarte ist keine E-Mail hinterlegt.");
 
         try
@@ -56,7 +56,7 @@ public sealed class SeasonPassMailer(
                 : pass.Reference;
             var toName = pass.Buyer?.DisplayName is { Length: > 0 } n ? n : null;
 
-            var result = await email.SendAsync(pass.Email, toName, resolvedSubject, html, images,
+            var result = await email.SendAsync(recipient.Value, toName, resolvedSubject, html, images,
                 cancellationToken, source: "Saisonkarte", reference: reference);
             if (!result.Success)
                 logger.LogWarning("Season pass e-mail to {Recipient} failed: {Error}", pass.Email, result.Error);

@@ -28,7 +28,7 @@ public static class TicketExportCsv
               .Append(Csv(h.PostalCode)).Append(';')
               .Append(Csv(h.City)).Append(';')
               .Append(Csv(h.Country)).Append(';')
-              .Append(Csv(h.Email)).Append(';')
+              .Append(Csv(h.Email?.Value)).Append(';')
               .Append(Csv(h.Phone)).Append(';')
               .Append(Csv(h.Birthday?.ToString("dd.MM.yyyy"))).Append(';')
               .Append(Csv(r.Link)).Append("\r\n");

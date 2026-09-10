@@ -30,7 +30,7 @@ public class SeasonPassTests
         Assert.Equal(TicketStatus.Cancelled, pass.Status);
         Assert.Equal(9, pass.TierId);
         Assert.Same(buyer, pass.Buyer);
-        Assert.Equal("anna@example.ch", pass.Email);
+        Assert.Equal("anna@example.ch", pass.Email?.Value);
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public class SeasonPassTests
 
         Assert.Equal(2, pass.TierId);
         Assert.Null(pass.Buyer);
-        Assert.Equal("alt@example.ch", pass.Email);
+        Assert.Equal("alt@example.ch", pass.Email?.Value);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class SeasonPassTests
         Assert.Equal((3, 1, "BUNDLE", 4), Assert.Single(passes.Imports));
         Assert.True(mail.Success);
         Assert.Equal("Erwachsen", Assert.Single(mailer.Sent).CategoryLabel);
-        Assert.Equal("anna@example.ch", pass.Email);
+        Assert.Equal("anna@example.ch", pass.Email?.Value);
     }
 
     [Fact]

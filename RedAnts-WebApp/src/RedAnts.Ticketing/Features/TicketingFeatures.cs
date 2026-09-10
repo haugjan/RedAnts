@@ -23,11 +23,13 @@ public static class TicketingFeatures
         typeof(AddEventTicketsToCart.Handler),
         typeof(AddSeasonPassesToCart.Handler),
         typeof(AddConversionToCart.Handler),
+        typeof(CanConvert.Handler),
         typeof(ChangeCartLineQuantity.Handler),
         typeof(RemoveOrderAddOnFromCart.Handler),
         typeof(ClearCart.Handler),
         typeof(GetQuickBuyCart.Handler),
         typeof(PlaceOrder.Handler),
+        typeof(CanCheckout.Handler),
         typeof(ConfirmPayment.Handler),
         typeof(CancelDraftOrder.Handler),
         typeof(ExpireDraftOrders.Handler),
@@ -77,6 +79,7 @@ public static class TicketingFeatures
         typeof(GetSeasonAddOns.Handler),
         typeof(ChangeOrderStatus.Handler),
         typeof(RefundOrder.Handler),
+        typeof(CanRefund.Handler),
         typeof(CreateAdminOrder.Handler),
         typeof(GetOrdersForAdmin.Handler),
         typeof(GetOrderDetail.Handler),
@@ -162,6 +165,7 @@ public static class TicketingFeatures
     public static IReadOnlyList<Type> Steps { get; } =
     [
         typeof(CapacityReservation),
+        typeof(CheckoutEligibility),
         typeof(OrderFulfillment),
         typeof(TicketScanning),
         typeof(WebTicketResolution)

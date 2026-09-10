@@ -40,7 +40,7 @@
                 </table>
             }
 
-            @if (_detail.Remaining > 0m)
+            @if (_blocked is null)
             {
                 <div class="ta-refund-form">
                     <div class="ta-field">
@@ -101,13 +101,13 @@
             }
             else
             {
-                <p class="ta-modal-note">Diese Bestellung ist vollständig zurückerstattet.</p>
+                <p class="ta-modal-note">@_blocked</p>
             }
         }
 
         <div class="ta-modal-actions">
             <button type="button" class="ta-btn ta-btn-ghost" @onclick="Close">Schliessen</button>
-            @if (!_loading && _detail.Remaining > 0m)
+            @if (!_loading && _blocked is null)
             {
                 <button type="button" class="ta-btn ta-btn-danger" disabled="@_busy" @onclick="SubmitAsync">
                     @(_busy ? "Wird gebucht …" : "Rückzahlung buchen")
@@ -137,6 +137,7 @@
     [Parameter] public EventCallback<string> OnRefunded { get; set; }
 
     [Inject] private GetOrderDetail.Handler Details { get; set; } = default!;
+    [Inject] private CanRefund.Handler RefundCheck { get; set; } = default!;
     [Inject] private RefundOrder.Handler RefundOrders { get; set; } = default!;
 
     private bool _loading = true;
@@ -148,6 +149,7 @@
     private string? _reference;
     private string? _reason;
     private string? _error;
+    private string? _blocked;
 
     protected override async Task OnInitializedAsync()
     {
@@ -161,7 +163,11 @@
         _amount = decimal.Round(_detail.Remaining, 2);
         _method = OnlineAvailable ? RefundMethod.Payrexx : RefundMethod.Cash;
         _deactivate = _detail.RefundedConfirmed == 0m && _amount >= _detail.TotalGross;
+        _blocked = await DeniedReasonAsync(new CanRefund.Check(OrderId));
     }
+
+    private async Task<string?> DeniedReasonAsync(CanRefund.Check check) =>
+        await RefundCheck.HandleAsync(check) is CheckResult.Denied denied ? denied.Cause.Message : null;
 
     private async Task SubmitAsync()
     {
@@ -169,11 +175,15 @@
         _error = null;
         try
         {
-            if (_amount <= 0m) throw new InvalidOperationException("Betrag muss grösser als 0 sein.");
-            if (_amount > _detail.Remaining)
-                throw new InvalidOperationException($"Betrag übersteigt den erstattbaren Restbetrag (CHF {_detail.Remaining:N2}).");
+            var payrexx = _method == RefundMethod.Payrexx;
+            var amount = Money.Of(_amount, field: "amount", label: "Betrag");
+            if (await DeniedReasonAsync(new CanRefund.Check(OrderId, amount, payrexx)) is { } reason)
+            {
+                _error = reason;
+                return;
+            }
 
-            var request = new RefundRequest(OrderId, _amount, _method, _method == RefundMethod.Payrexx,
+            var request = new RefundRequest(OrderId, amount, _method, payrexx,
                 _reference, _reason, _deactivate, ChangedBy);
             var outcome = await RefundOrders.HandleAsync(new RefundOrder.Command(request));
             await LoadAsync();

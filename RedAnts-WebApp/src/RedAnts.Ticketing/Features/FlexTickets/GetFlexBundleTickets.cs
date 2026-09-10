@@ -25,7 +25,7 @@ public static class GetFlexBundleTickets
             var h = t.Holder;
             return string.Join(' ', new[]
             {
-                t.CardNo, h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email ?? "",
+                t.CardNo, h?.Company ?? "", h?.FirstName ?? "", h?.LastName ?? "", h?.Email?.Value ?? "",
                 t.CategoryLabel, t.StatusLabel
             });
         }

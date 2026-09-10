@@ -23,7 +23,7 @@ public static class AddEventTicketsToCart
                 return new Result(false, available?.Name ?? "", null, carts.Load());
 
             var cart = carts.Load();
-            cart.AddEventTickets(command.EventId, evt.Name, available.TierId, available.Name, available.StandardName(), available.Price, quantity);
+            cart.AddEventTickets(command.EventId, evt.Name, available.TierId, available.Name, available.StandardName(), Money.Of(available.Price), quantity);
             carts.Save(cart);
             return new Result(true, available.Name, null, cart);
         }

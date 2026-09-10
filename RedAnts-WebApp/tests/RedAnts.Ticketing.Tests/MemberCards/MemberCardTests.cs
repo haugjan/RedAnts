@@ -33,7 +33,7 @@ public class MemberCardTests
         Assert.Equal(MemberCategory.Block4, saved.Category);
         Assert.Equal(TicketStatus.Cancelled, saved.Status);
         Assert.Equal("REF-2", saved.Reference);
-        Assert.Equal("neu@example.ch", saved.Email);
+        Assert.Equal("neu@example.ch", saved.Email?.Value);
         Assert.Equal("Winterthur", saved.Address.City);
         Assert.Equal(3, saved.Admissions);
     }
@@ -78,6 +78,45 @@ public class MemberCardTests
         Assert.Equal((3, MemberCategory.RedAnts, "REF-9", 2, "Anna"), (created.SeasonId, created.Category, created.Reference, created.Admissions, created.FirstName));
         Assert.Equal(2, imported);
         Assert.Equal((3, "IMPORT", MemberCategory.Block4, 2), Assert.Single(cards.Imports));
+    }
+
+    [Fact]
+    public async Task CreateMemberCard_rejects_a_malformed_mail_address()
+    {
+        var cards = new InMemoryMemberCards();
+
+        var error = await Assert.ThrowsAsync<ValidationException>(() => new CreateMemberCard.Handler(cards).HandleAsync(
+            new CreateMemberCard.Command(3, MemberCategory.RedAnts, "Anna", "Muster", null, "REF-9",
+                "anna(at)example.ch", null, 1, "Admin", "admin@redants.ch")));
+
+        Assert.Equal("email", error.Field);
+        Assert.Equal("E-Mail ist keine gültige Adresse.", error.Message);
+        Assert.Empty(cards.Added);
+    }
+
+    [Fact]
+    public async Task CreateMemberCard_rejects_a_birthday_in_the_future()
+    {
+        var cards = new InMemoryMemberCards();
+
+        var error = await Assert.ThrowsAsync<ValidationException>(() => new CreateMemberCard.Handler(cards).HandleAsync(
+            new CreateMemberCard.Command(3, MemberCategory.RedAnts, "Anna", "Muster", SwissTime.Today.AddDays(1), "REF-9",
+                null, null, 1, "Admin", "admin@redants.ch")));
+
+        Assert.Equal("birthday", error.Field);
+        Assert.Empty(cards.Added);
+    }
+
+    [Fact]
+    public async Task CreateMemberCard_accepts_a_valid_mail_address()
+    {
+        var cards = new InMemoryMemberCards();
+
+        await new CreateMemberCard.Handler(cards).HandleAsync(
+            new CreateMemberCard.Command(3, MemberCategory.RedAnts, "Anna", "Muster", new DateOnly(1990, 5, 1), "REF-9",
+                " anna+saison@example.ch ", null, 1, "Admin", "admin@redants.ch"));
+
+        Assert.Equal("anna+saison@example.ch", Assert.Single(cards.Added).Email?.Value);
     }
 
     [Fact]

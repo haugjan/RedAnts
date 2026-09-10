@@ -22,7 +22,7 @@ public class InjectedTimeTests
     public void An_order_is_created_and_paid_on_the_injected_clock()
     {
         var time = Time();
-        var order = Order.Create("ORD-1", Address(), 100m, 0.081m, PaymentMethod.Twint, null, time: time);
+        var order = Order.Create("ORD-1", Address(), Money.Of(100m), 0.081m, PaymentMethod.Twint, null, time: time);
 
         Assert.Equal(SwissInstant, order.CreatedAt);
 
@@ -49,7 +49,7 @@ public class InjectedTimeTests
     [Fact]
     public void The_default_clock_stays_the_system_clock()
     {
-        var order = Order.Create("ORD-2", Address(), 100m, 0.081m, PaymentMethod.Twint, null);
+        var order = Order.Create("ORD-2", Address(), Money.Of(100m), 0.081m, PaymentMethod.Twint, null);
 
         Assert.InRange((order.CreatedAt - SwissTime.Timestamp).Duration().TotalSeconds, 0, 5);
     }

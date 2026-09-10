@@ -15,14 +15,15 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
         var total = await db.ExecuteScalarAsync<decimal?>("SELECT TotalGross FROM Orders WHERE Id = @0", orderId) ?? 0m;
         var confirmed = await SumAsync(db, orderId, RefundStatus.Confirmed);
         var reserved = await ReservedAsync(db, orderId);
-        return new RefundSummary(orderId, total, confirmed, reserved, total - reserved);
+        return new RefundSummary(orderId, Money.Stored(total), Money.Stored(confirmed), Money.Stored(reserved),
+            Money.Stored(total - reserved));
     }
 
-    public async Task<OrderRefund> CreateAsync(int orderId, decimal amount, RefundMethod method, RefundStatus initialStatus,
+    public async Task<OrderRefund> CreateAsync(int orderId, Money amount, RefundMethod method, RefundStatus initialStatus,
         string? reference, string? reason, string? createdBy)
     {
-        if (amount <= 0) throw new DomainException("Rückzahlungsbetrag muss grösser als 0 sein.");
-        var value = decimal.Round(amount, 2);
+        if (!amount.IsPositive) throw new DomainException("Rückzahlungsbetrag muss grösser als 0 sein.");
+        var value = decimal.Round(amount.Amount, 2);
 
         using var scope = scopeProvider.CreateScope();
         var db = scope.Database;
@@ -39,7 +40,8 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
             throw new DomainException($"Betrag übersteigt den erstattbaren Restbetrag (CHF {remaining:N2}).");
 
         var refundNumber = await NextRefundNumberAsync(db);
-        var refund = OrderRefund.Create(refundNumber, orderId, value, order.VatRate, method, initialStatus, reference, reason, createdBy);
+        var refund = OrderRefund.Create(refundNumber, orderId, Money.Stored(value, amount.Currency), order.VatRate,
+            method, initialStatus, reference, reason, createdBy);
         var record = ToRecord(refund);
         await db.InsertAsync(record);
         var saved = Map(record);
@@ -99,9 +101,9 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
             EntryType = (int)JournalEntryType.Refund,
             OrderId = orderId,
             RefundId = refund.Id,
-            Amount = -refund.Amount,
+            Amount = -refund.Amount.Amount,
             VatRate = refund.VatRate,
-            VatAmount = -refund.VatAmount,
+            VatAmount = -refund.VatAmount.Amount,
             Currency = refund.Currency,
             Reference = refund.RefundNumber,
             Description = $"Rückzahlung {refund.Method.DisplayName()}",
@@ -116,7 +118,7 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
             ToStatus = (int)status,
             ChangedBy = string.IsNullOrWhiteSpace(changedBy) ? null : changedBy.Trim(),
             OccurredAt = SwissTime.Timestamp,
-            Note = Truncate($"Rückzahlung CHF {refund.Amount:N2} ({refund.Method.DisplayName()}) · {refund.RefundNumber}", 200)
+            Note = Truncate($"Rückzahlung CHF {refund.Amount.Amount:N2} ({refund.Method.DisplayName()}) · {refund.RefundNumber}", 200)
         });
     }
 
@@ -142,9 +144,9 @@ public sealed class OrderRefundRepository(IScopeProvider scopeProvider) : IOrder
         Id = r.Id,
         RefundNumber = r.RefundNumber,
         OrderId = r.OrderId,
-        Amount = r.Amount,
+        Amount = r.Amount.Amount,
         VatRate = r.VatRate,
-        VatAmount = r.VatAmount,
+        VatAmount = r.VatAmount.Amount,
         Currency = r.Currency,
         Method = (int)r.Method,
         Status = (int)r.Status,

@@ -44,14 +44,14 @@ public class SetSeasonPricingTests
         var price = prices.Stored[SeasonId];
         Assert.Equal(3, price.Categories.Count);
         var adultCategory = Assert.Single(price.Categories, c => c.TierId == adult.Id);
-        Assert.Equal(300.00m, adultCategory.PassPrice);
+        Assert.Equal(300.00m, adultCategory.PassPrice.Amount);
         Assert.Equal(50, adultCategory.PassQuota);
         Assert.Equal(new DateOnly(2026, 6, 1), adultCategory.PassAvailableFrom);
-        Assert.Equal(20m, adultCategory.TicketPrice);
+        Assert.Equal(20m, adultCategory.TicketPrice.Amount);
         Assert.Equal(10, adultCategory.TicketQuota);
         Assert.Equal(new DateOnly(2027, 4, 30), adultCategory.TicketAvailableUntil);
         var promoCategory = Assert.Single(price.Categories, c => c.TierId == promo.Id);
-        Assert.Equal(250m, promoCategory.PassPrice);
+        Assert.Equal(250m, promoCategory.PassPrice.Amount);
         Assert.True(promoCategory.PassOffered);
         Assert.False(promoCategory.TicketOffered);
         Assert.Contains(price.Categories, c => c.TierId == child.Id);
@@ -92,7 +92,7 @@ public class SetSeasonPricingTests
         Assert.Equal(400, price.TotalSalesQuota);
         Assert.Equal(120, price.DefaultTicketSalesQuota);
         Assert.Equal(4, price.Reserved);
-        Assert.Equal(300m, Assert.Single(price.Categories).PassPrice);
+        Assert.Equal(300m, Assert.Single(price.Categories).PassPrice.Amount);
     }
 
     [Fact]

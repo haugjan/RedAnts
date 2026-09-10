@@ -43,8 +43,8 @@ public sealed class HelperInviteMailer(
         var html = EmailLayout.Render(resolvedSubject, bodyHtml, greeting: null, access, note);
 
         var attachments = LoadGuideAttachment();
-        return await email.SendAsync(helper.Email, helper.FullName, resolvedSubject, html, attachments, cancellationToken,
-            source: "Helfer-Einladung", reference: helper.Email);
+        return await email.SendAsync(helper.Email.Value, helper.FullName, resolvedSubject, html, attachments, cancellationToken,
+            source: "Helfer-Einladung", reference: helper.Email.Value);
     }
 
     private static string Fill(string text, Helper helper, string loginLink) =>

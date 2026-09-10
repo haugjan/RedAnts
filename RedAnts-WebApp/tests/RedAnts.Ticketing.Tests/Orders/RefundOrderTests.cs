@@ -17,10 +17,10 @@ public class RefundOrderTests
     private RefundOrder.Handler Handler => new(_orders, _refunds, _payrexx, _tickets, _unitOfWork);
 
     private static RefundRequest Manual(int orderId, decimal amount, bool deactivate = false) =>
-        new(orderId, amount, RefundMethod.Cash, false, "Beleg 1", "Kulanz", deactivate, "admin");
+        new(orderId, Money.Stored(amount), RefundMethod.Cash, false, "Beleg 1", "Kulanz", deactivate, "admin");
 
     private static RefundRequest ViaPayrexx(int orderId, decimal amount) =>
-        new(orderId, amount, RefundMethod.Payrexx, true, null, "Absage", false, "admin");
+        new(orderId, Money.Stored(amount), RefundMethod.Payrexx, true, null, "Absage", false, "admin");
 
     [Fact]
     public async Task A_manual_refund_is_recorded_as_confirmed()
@@ -32,7 +32,7 @@ public class RefundOrderTests
         var refund = Assert.Single(_refunds.Stored);
         Assert.Equal(RefundStatus.Confirmed, refund.Status);
         Assert.Equal(RefundMethod.Cash, refund.Method);
-        Assert.Equal(40m, refund.Amount);
+        Assert.Equal(40m, refund.Amount.Amount);
         Assert.Equal("Beleg 1", refund.Reference);
         Assert.Equal(refund.RefundNumber, result.RefundNumber);
         Assert.Equal(40m, result.RefundedTotal);
@@ -139,7 +139,7 @@ public class RefundOrderTests
     public async Task A_partially_refunded_order_can_be_refunded_again()
     {
         var order = await OrderFixtures.PaidOrderAsync(_orders);
-        order.ApplyRefundTotal(30m);
+        order.ApplyRefundTotal(Money.Of(30m));
         await _orders.SaveAsync(order);
 
         var result = await Handler.HandleAsync(new RefundOrder.Command(Manual(order.Id, 20m)));

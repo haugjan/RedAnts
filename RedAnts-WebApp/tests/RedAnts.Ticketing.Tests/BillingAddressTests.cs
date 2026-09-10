@@ -37,7 +37,7 @@ public class BillingAddressTests
     [InlineData("no-at-sign")]
     public void Create_RejectsInvalidEmail(string email)
     {
-        Assert.Throws<DomainException>(() => BillingAddress.Create(
+        Assert.Throws<ValidationException>(() => BillingAddress.Create(
             BuyerType.Private, "Anna", "Muster", null, "Street 1", null, "8400", "Winterthur", "CH", email, null));
     }
 
@@ -72,7 +72,7 @@ public class BillingAddressTests
         Assert.Null(address.Company);
         Assert.Equal("Street 1", address.Street);
         Assert.Null(address.AddressLine2);
-        Assert.Equal("a@b.ch", address.Email);
+        Assert.Equal("a@b.ch", address.Email.Value);
         Assert.Null(address.Phone);
     }
 

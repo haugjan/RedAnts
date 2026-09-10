@@ -6,6 +6,7 @@ public sealed class CartController(
     GetCart.Handler getCart,
     AddEventTicketsToCart.Handler addEventTickets,
     AddSeasonPassesToCart.Handler addSeasonPasses,
+    CanConvert.Handler canConvert,
     AddConversionToCart.Handler addConversion,
     ChangeCartLineQuantity.Handler changeQuantity,
     RemoveOrderAddOnFromCart.Handler removeOrderAddOn,
@@ -18,24 +19,30 @@ public sealed class CartController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Convert(int eventId, string? cardNumber, int? tierId, string? returnUrl)
     {
+        var allowed = await canConvert.HandleAsync(new CanConvert.Check(eventId, cardNumber ?? "", tierId));
+        if (allowed is CheckResult.Denied denied)
+        {
+            if (!IsFetchRequest()) return RedirectBack(returnUrl);
+            return denied.Cause is CanConvert.TierChoiceRequired tierChoice
+                ? Json(new
+                {
+                    ok = false,
+                    needsTier = true,
+                    message = tierChoice.Message,
+                    tierChoices = tierChoice.Choices.Select(c => new { tierId = c.TierId, name = c.Name, price = c.Price })
+                })
+                : Json(new { ok = false, message = denied.Cause.Message });
+        }
+
         var result = await addConversion.HandleAsync(new AddConversionToCart.Command(eventId, cardNumber ?? "", tierId));
         if (!IsFetchRequest()) return RedirectBack(returnUrl);
-
-        if (result.NeedsTier)
-            return Json(new
-            {
-                ok = false,
-                needsTier = true,
-                message = result.Message,
-                tierChoices = result.TierChoices.Select(c => new { tierId = c.TierId, name = c.Name, price = c.Price })
-            });
 
         return Json(new
         {
             ok = result.Added,
             message = result.Message,
             totalQuantity = result.Cart.TotalQuantity,
-            totalAmount = result.Cart.TotalAmount
+            totalAmount = result.Cart.TotalAmount.Amount
         });
     }
 
@@ -62,7 +69,7 @@ public sealed class CartController(
                 added = 0,
                 categoryName = "",
                 totalQuantity = result.Cart.TotalQuantity,
-                totalAmount = result.Cart.TotalAmount,
+                totalAmount = result.Cart.TotalAmount.Amount,
                 message
             });
 
@@ -72,7 +79,7 @@ public sealed class CartController(
             added = result.Added ? Math.Max(1, quantity) : 0,
             categoryName = result.CategoryName,
             totalQuantity = result.Cart.TotalQuantity,
-            totalAmount = result.Cart.TotalAmount
+            totalAmount = result.Cart.TotalAmount.Amount
         });
     }
 
@@ -89,7 +96,7 @@ public sealed class CartController(
             added = result.Added ? Math.Max(1, quantity) : 0,
             categoryName = result.CategoryName,
             totalQuantity = result.Cart.TotalQuantity,
-            totalAmount = result.Cart.TotalAmount
+            totalAmount = result.Cart.TotalAmount.Amount
         });
     }
 

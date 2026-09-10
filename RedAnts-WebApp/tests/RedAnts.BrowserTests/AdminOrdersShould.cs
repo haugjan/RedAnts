@@ -17,6 +17,24 @@ public sealed class AdminOrdersShould(BrowserFixture browser)
         await browser.ShotAsync(page, "admin-orders");
     }
 
+    [E2EFact]
+    public async Task OpenTheRefundDialogOfAPaidOrder()
+    {
+        var page = await LoginAsync();
+        await page.GotoAsync("/admin/ticketing?tab=orders");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Assertions.Expect(page.Locator("table")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+
+        var refund = page.GetByRole(AriaRole.Button, new() { Name = "Rückerstatten" }).First;
+        await Assertions.Expect(refund).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await refund.ClickAsync();
+
+        await Assertions.Expect(page.Locator(".ta-modal-title")).ToContainTextAsync("Rückerstattung", new() { Timeout = 30_000 });
+        await browser.ShotAsync(page, "admin-orders-refund");
+        await page.Keyboard.PressAsync("Escape");
+        await Assertions.Expect(page.Locator(".ta-modal-title")).ToHaveCountAsync(0, new() { Timeout = 30_000 });
+    }
+
     private async Task<IPage> LoginAsync()
     {
         var page = await browser.NewPageAsync();

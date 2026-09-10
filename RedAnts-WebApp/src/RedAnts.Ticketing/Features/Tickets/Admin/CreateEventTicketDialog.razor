@@ -76,7 +76,7 @@
             var choices = PaymentSourceExtensions.AdminChoicesForPrice(_price);
             var paymentSource = choices.Contains(_paymentSource) ? _paymentSource : choices[0];
             var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity?.Email,
-                [new AdminOrderLine(OrderItemKind.EventTicket, EventId, _category, _category.DisplayName(), 1, _price)],
+                [new AdminOrderLine(OrderItemKind.EventTicket, EventId, _category, _category.DisplayName(), 1, Money.Chf(_price))],
                 Identity?.Name ?? AdminUser, paymentSource));
             await TicketCreation.HandleAsync(new CreateEventTicket.Command(EventId, _category, _price, order.Id, buyer,
                 Identity?.Name ?? AdminUser, Identity?.Email, _person.ToHolder()));

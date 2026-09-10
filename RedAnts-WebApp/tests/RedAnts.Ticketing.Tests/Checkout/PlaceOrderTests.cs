@@ -54,7 +54,7 @@ public class PlaceOrderTests
         var fixture = new CheckoutFixture();
         fixture.SeasonAddOns.AddOns.Add(SeasonAddOn.FromPersistence(5, CheckoutFixture.SeasonId, "Parkplatz", 10m, true, 0, AddOnScope.PerPass,
             requireMobileNumber: true));
-        var cart = CheckoutFixture.CartWithPass([new CartAddOn(5, "Parkplatz", 10m, CheckoutFixture.SeasonId, "Saison", false)]);
+        var cart = CheckoutFixture.CartWithPass([new CartAddOn(5, "Parkplatz", Money.Of(10m), CheckoutFixture.SeasonId, "Saison", false)]);
 
         var result = await fixture.PlaceOrder.HandleAsync(Command(cart));
 
@@ -68,7 +68,7 @@ public class PlaceOrderTests
     public async Task Mobile_number_present_lets_the_order_through()
     {
         var fixture = new CheckoutFixture();
-        var cart = CheckoutFixture.CartWithPass([new CartAddOn(5, "Parkplatz", 10m, CheckoutFixture.SeasonId, "Saison", true)]);
+        var cart = CheckoutFixture.CartWithPass([new CartAddOn(5, "Parkplatz", Money.Of(10m), CheckoutFixture.SeasonId, "Saison", true)]);
 
         var result = await fixture.PlaceOrder.HandleAsync(Command(cart, phone: "079 000 00 00"));
 
@@ -115,7 +115,7 @@ public class PlaceOrderTests
         var order = fixture.Orders.Stored.Single();
         Assert.Equal(OrderStatus.Draft, order.Status);
         Assert.Equal("gw-1", order.PayrexxGatewayId);
-        Assert.Equal(40m, order.TotalGross);
+        Assert.Equal(40m, order.TotalGross.Amount);
         Assert.NotNull(OrderSnapshot.Parse(order.FulfillmentPayload));
         Assert.Equal(2, fixture.EventReserved);
         Assert.Equal(2, fixture.TierReserved);
@@ -160,7 +160,7 @@ public class PlaceOrderTests
         fixture.EventPrices.Seed(EventPrice.FromPersistence(1, CheckoutFixture.EventId, null, null,
             [CategoryPrice.FromPersistence(TicketCategory.Adult, 0m, null, null, CheckoutFixture.AdultTier)]));
         var cart = Cart.Empty();
-        cart.AddEventTickets(CheckoutFixture.EventId, "Gratis", CheckoutFixture.AdultTier, "Erwachsen", "Erw", 0m, 1);
+        cart.AddEventTickets(CheckoutFixture.EventId, "Gratis", CheckoutFixture.AdultTier, "Erwachsen", "Erw", Money.Of(0m), 1);
 
         var result = await fixture.PlaceOrder.HandleAsync(Command(cart));
 
@@ -230,7 +230,7 @@ public class PlaceOrderTests
         var fixture = new CheckoutFixture();
         fixture.Usage.EventUsage[CheckoutFixture.EventId] = new CapacityUsage(0, new Dictionary<int, int> { [CheckoutFixture.AdultTier] = 10 });
         var cart = Cart.Empty();
-        cart.AddConversion(CheckoutFixture.EventId, "Match", CheckoutFixture.SeasonId, CheckoutFixture.AdultTier, "Saisonkarte", 0m,
+        cart.AddConversion(CheckoutFixture.EventId, "Match", CheckoutFixture.SeasonId, CheckoutFixture.AdultTier, "Saisonkarte", Money.Of(0m),
             new ConversionOrigin(TicketType.SeasonPass, Guid.NewGuid(), "Saisonkarte", (int)TicketCategory.Adult, 1));
 
         var result = await fixture.PlaceOrder.HandleAsync(Command(cart));

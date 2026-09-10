@@ -26,7 +26,7 @@ public sealed class HelperMemberRepository(IMemberService memberService) : IHelp
         var code = GenerateUniqueCode();
         var helper = Helper.Create(seasonId, firstName, lastName, email, code);
 
-        var member = memberService.CreateMemberWithIdentity(code, helper.Email, helper.FullName, HelperAliases.MemberType);
+        var member = memberService.CreateMemberWithIdentity(code, helper.Email.Value, helper.FullName, HelperAliases.MemberType);
         member.IsApproved = true;
         member.SetValue(HelperAliases.Code, code);
         member.SetValue(HelperAliases.FirstName, helper.FirstName);

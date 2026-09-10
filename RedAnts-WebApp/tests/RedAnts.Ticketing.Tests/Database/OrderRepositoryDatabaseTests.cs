@@ -28,7 +28,7 @@ public class OrderRepositoryDatabaseTests : IAsyncLifetime
     public async Task An_order_round_trips_through_the_database()
     {
         var number = await Orders.NextOrderNumberAsync();
-        var saved = await Orders.SaveAsync(Order.Create(number, Address(), 120m, 0.081m, PaymentMethod.Twint, "CHE-123.456.789"));
+        var saved = await Orders.SaveAsync(Order.Create(number, Address(), Money.Of(120m), 0.081m, PaymentMethod.Twint, "CHE-123.456.789"));
 
         Assert.True(saved.Id > 0);
 
@@ -36,7 +36,7 @@ public class OrderRepositoryDatabaseTests : IAsyncLifetime
 
         Assert.NotNull(loaded);
         Assert.Equal(number, loaded.OrderNumber);
-        Assert.Equal(120m, loaded.TotalGross);
+        Assert.Equal(120m, loaded.TotalGross.Amount);
         Assert.Equal(saved.VatAmount, loaded.VatAmount);
         Assert.Equal(saved.SubtotalNet, loaded.SubtotalNet);
         Assert.Equal(OrderStatus.Draft, loaded.Status);
@@ -44,7 +44,7 @@ public class OrderRepositoryDatabaseTests : IAsyncLifetime
         Assert.Equal("CHE-123.456.789", loaded.SellerUid);
         Assert.Equal("Winterthur", loaded.BillingAddress.City);
         Assert.Equal("c/o Red Ants", loaded.BillingAddress.AddressLine2);
-        Assert.Equal("anna@example.ch", loaded.BillingAddress.Email);
+        Assert.Equal("anna@example.ch", loaded.BillingAddress.Email.Value);
         Assert.Equal(saved.CreatedAt, loaded.CreatedAt);
 
         Assert.Equal(saved.Id, (await Orders.GetByNumberAsync(number))?.Id);
@@ -55,18 +55,18 @@ public class OrderRepositoryDatabaseTests : IAsyncLifetime
     public async Task Items_and_refunds_are_read_back_with_the_order()
     {
         var order = await Orders.SaveAsync(Order.Create(
-            await Orders.NextOrderNumberAsync(), Address(), 60m, 0.081m, PaymentMethod.Twint, null));
+            await Orders.NextOrderNumberAsync(), Address(), Money.Of(60m), 0.081m, PaymentMethod.Twint, null));
 
         await new OrderItemRepository(_agent.Scopes).SaveAsync(order.Id,
         [
-            OrderItem.Create(order.Id, OrderItemKind.EventTicket, _agent.UnusedId, TicketCategory.Adult, "Sitzplatz", 2, 20m),
-            OrderItem.Create(order.Id, OrderItemKind.SeasonSingle, _agent.UnusedId, TicketCategory.Youth, "Flexticket", 1, 20m)
+            OrderItem.Create(order.Id, OrderItemKind.EventTicket, _agent.UnusedId, TicketCategory.Adult, "Sitzplatz", 2, Money.Of(20m)),
+            OrderItem.Create(order.Id, OrderItemKind.SeasonSingle, _agent.UnusedId, TicketCategory.Youth, "Flexticket", 1, Money.Of(20m))
         ]);
 
         Assert.True(await Orders.TryMarkPaidAsync(order.Id));
 
         var refund = await new OrderRefundRepository(_agent.Scopes)
-            .CreateAsync(order.Id, 20m, RefundMethod.Bank, RefundStatus.Confirmed, "Beleg 1", "Kulanz", "Tester");
+            .CreateAsync(order.Id, Money.Of(20m), RefundMethod.Bank, RefundStatus.Confirmed, "Beleg 1", "Kulanz", "Tester");
 
         var detail = await new OrderDetailReader(_agent.Scopes).GetAsync(order.Id);
 
@@ -84,7 +84,7 @@ public class OrderRepositoryDatabaseTests : IAsyncLifetime
     public async Task Only_a_draft_can_be_marked_paid_or_cancelled()
     {
         var order = await Orders.SaveAsync(Order.Create(
-            await Orders.NextOrderNumberAsync(), Address(), 30m, 0.081m, PaymentMethod.Cash, null));
+            await Orders.NextOrderNumberAsync(), Address(), Money.Of(30m), 0.081m, PaymentMethod.Cash, null));
 
         Assert.True(await Orders.TryMarkPaidAsync(order.Id));
         Assert.False(await Orders.TryMarkPaidAsync(order.Id));
@@ -100,7 +100,7 @@ public class OrderRepositoryDatabaseTests : IAsyncLifetime
     public async Task The_billing_address_is_copied_into_the_tickets_of_the_order()
     {
         var order = await Orders.SaveAsync(Order.Create(
-            await Orders.NextOrderNumberAsync(), Address(), 20m, 0.081m, PaymentMethod.Twint, null));
+            await Orders.NextOrderNumberAsync(), Address(), Money.Of(20m), 0.081m, PaymentMethod.Twint, null));
         var ticket = await new EventTicketRepository(_agent.Scopes)
             .SaveAsync(EventTicket.Create(_agent.UnusedId, TicketCategory.Adult, 20m, order.Id));
 

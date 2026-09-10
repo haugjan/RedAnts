@@ -25,7 +25,7 @@ public class OrderListReaderDatabaseTests : IAsyncLifetime
         "8400", "Winterthur", "Schweiz", "anna@example.ch", null);
 
     private async Task<Order> OrderAsync(string lastName, decimal total) => await Orders.SaveAsync(Order.Create(
-        await Orders.NextOrderNumberAsync(), Address(lastName), total, 0.081m, PaymentMethod.Twint, null));
+        await Orders.NextOrderNumberAsync(), Address(lastName), Money.Of(total), 0.081m, PaymentMethod.Twint, null));
 
     [DatabaseFact]
     public async Task Only_the_orders_of_the_season_and_its_events_are_listed()

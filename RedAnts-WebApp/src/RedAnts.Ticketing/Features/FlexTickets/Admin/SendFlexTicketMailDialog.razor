@@ -62,7 +62,7 @@
         try
         {
             var result = await MailSending.HandleAsync(new SendFlexTicketMail.Command(
-                new FlexMailTicket(Ticket.Uuid, Ticket.Holder?.Email, Ticket.Holder?.DisplayName, SeasonId, Ticket.Category.DisplayName()),
+                new FlexMailTicket(Ticket.Uuid, Ticket.Holder?.Email?.Value, Ticket.Holder?.DisplayName, SeasonId, Ticket.Category.DisplayName()),
                 _subject, _body));
             if (result.Success)
             {

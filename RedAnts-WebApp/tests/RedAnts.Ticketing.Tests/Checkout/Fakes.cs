@@ -38,8 +38,8 @@ internal sealed class InMemoryOrderRepository : IOrderRepository
             Stored.Add(order);
             return Task.FromResult(order);
         }
-        var saved = Order.FromPersistence(_nextId++, order.OrderNumber, order.BillingAddress, order.Currency, order.SubtotalNet,
-            order.VatRate, order.VatAmount, order.TotalGross, order.SellerUid, order.PaymentMethod, order.Status, order.CreatedAt,
+        var saved = Order.FromPersistence(_nextId++, order.OrderNumber, order.BillingAddress, order.Currency, order.SubtotalNet.Amount,
+            order.VatRate, order.VatAmount.Amount, order.TotalGross.Amount, order.SellerUid, order.PaymentMethod, order.Status, order.CreatedAt,
             order.PaidAt, order.PayrexxGatewayId, order.FulfillmentPayload, order.PaymentSource);
         Stored.Add(saved);
         return Task.FromResult(saved);
@@ -115,7 +115,7 @@ internal sealed class InMemoryEventPrices : IEventPriceRepository
 
     private static EventPrice Copy(EventPrice price, int version) =>
         EventPrice.FromPersistence(price.Id, price.EventId, price.TotalSalesQuota, price.AdmissionQuota,
-            price.Categories.Select(c => CategoryPrice.FromPersistence(c.Category, c.SalePrice, c.Quota, c.AvailableUntil, c.TierId, c.Reserved)).ToList(),
+            price.Categories.Select(c => CategoryPrice.FromPersistence(c.Category, c.SalePrice.Amount, c.Quota, c.AvailableUntil, c.TierId, c.Reserved)).ToList(),
             price.ConversionOnly, price.Reserved, version);
 }
 
@@ -151,7 +151,7 @@ internal sealed class InMemorySeasonPrices : ISeasonPriceRepository
 
     private static SeasonPrice Copy(SeasonPrice price, int version) =>
         SeasonPrice.FromPersistence(price.Id, price.SeasonId, price.TotalSalesQuota,
-            price.Categories.Select(c => SeasonCategoryPrice.FromPersistence(c.Category, c.PassPrice, c.PassOffered, c.PassQuota, c.TicketPrice,
+            price.Categories.Select(c => SeasonCategoryPrice.FromPersistence(c.Category, c.PassPrice.Amount, c.PassOffered, c.PassQuota, c.TicketPrice.Amount,
                 c.TicketOffered, c.TicketQuota, c.PassAvailableFrom, c.PassAvailableUntil, c.TicketAvailableUntil, c.TierId, c.Reserved)).ToList(),
             price.DefaultTicketSalesQuota, price.Reserved, version);
 }
@@ -298,8 +298,14 @@ internal sealed class InMemorySeasonPasses : ISeasonPassRepository
 internal sealed class StubConvertibleCards : IConvertibleCards
 {
     public List<(Guid FlexUuid, int EventId)> Converted { get; } = [];
+    public List<(int EventId, string CardNumber, int? TierId)> Resolutions { get; } = [];
+    public ConversionResolution? Resolution { get; set; }
 
-    public Task<ConversionResolution> ResolveAsync(int eventId, string cardNumber, int? chosenTierId = null) => throw new NotSupportedException();
+    public Task<ConversionResolution> ResolveAsync(int eventId, string cardNumber, int? chosenTierId = null)
+    {
+        Resolutions.Add((eventId, cardNumber, chosenTierId));
+        return Task.FromResult(Resolution ?? throw new NotSupportedException());
+    }
 
     public Task MarkFlexConvertedAsync(Guid flexUuid, int eventId)
     {

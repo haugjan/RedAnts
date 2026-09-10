@@ -5,7 +5,7 @@ namespace RedAnts.Ticketing.Features.Orders;
 
 public sealed record RefundRequest(
     int OrderId,
-    decimal Amount,
+    Money Amount,
     RefundMethod Method,
     bool ViaPayrexx,
     string? Reference,
@@ -33,13 +33,11 @@ public static class RefundOrder
         {
             var request = command.Request;
             var order = await orders.GetByIdAsync(request.OrderId)
-                ?? throw new DomainException("Bestellung wurde nicht gefunden.");
-            order.RequireRefundable();
-            if (request.Amount <= 0) throw new DomainException("Betrag muss grösser als 0 sein.");
+                ?? throw new DomainException(new RefundDenied.OrderUnknown().Message);
 
             var open = await refunds.GetSummaryAsync(order.Id);
-            if (request.Amount > open.Remaining)
-                throw new DomainException($"Der Betrag übersteigt den noch offenen Rest von CHF {open.Remaining:0.00}.");
+            if (order.RefundBlocker(open.Remaining, request.Amount, request.ViaPayrexx, payrexx.Enabled) is CheckResult.Denied denied)
+                throw new DomainException(denied.Cause.Message);
 
             var settlement = request.ViaPayrexx
                 ? await SettleThroughPayrexxAsync(order, request)
@@ -47,7 +45,7 @@ public static class RefundOrder
 
             var summary = await refunds.GetSummaryAsync(order.Id);
             var updated = await orders.GetByIdAsync(order.Id);
-            return new RefundResult(settlement.RefundNumber, summary.RefundedConfirmed, summary.Remaining,
+            return new RefundResult(settlement.RefundNumber, summary.RefundedConfirmed.Amount, summary.Remaining.Amount,
                 updated?.Status ?? order.Status, settlement.DeactivatedTickets);
         }
 
@@ -60,13 +58,10 @@ public static class RefundOrder
 
         private async Task<Settlement> SettleThroughPayrexxAsync(Order order, RefundRequest request)
         {
-            if (!order.PaidThroughPayrexx || !payrexx.Enabled)
-                throw new DomainException("Diese Bestellung wurde nicht online über Payrexx bezahlt und kann nicht über Payrexx zurückerstattet werden.");
-
             var reserved = await refunds.CreateAsync(order.Id, request.Amount, RefundMethod.Payrexx, RefundStatus.Pending,
                 request.Reference, request.Reason, request.ChangedBy);
 
-            var cents = (int)decimal.Round(request.Amount * 100m, 0);
+            var cents = (int)decimal.Round(request.Amount.Amount * 100m, 0);
             PayrexxRefundResult result;
             try
             {

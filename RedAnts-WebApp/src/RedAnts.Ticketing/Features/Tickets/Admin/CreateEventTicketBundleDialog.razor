@@ -83,7 +83,7 @@
         try
         {
             var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(Buyer.Create(BuyerType.Company, null, null, reference), Identity?.Email,
-                [new AdminOrderLine(OrderItemKind.EventTicket, EventId, _category, $"Ticket-Bundle · {reference}", _quantity, 0m)],
+                [new AdminOrderLine(OrderItemKind.EventTicket, EventId, _category, $"Ticket-Bundle · {reference}", _quantity, Money.Chf(0m))],
                 Identity?.Name ?? AdminUser, _paymentSource));
             await BundleCreation.HandleAsync(new CreateEventTicketBundle.Command(EventId, _category, reference, _quantity,
                 Identity?.Name ?? AdminUser, Identity?.Email, order.Id));

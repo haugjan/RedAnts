@@ -22,7 +22,7 @@ public class HelperTests
     {
         var helpers = new RecordingHelpers();
 
-        await Assert.ThrowsAsync<DomainException>(() => new AddHelperToSeason.Handler(helpers).HandleAsync(new AddHelperToSeason.Command(3, "Anna", "Muster", "keine-adresse")));
+        await Assert.ThrowsAsync<ValidationException>(() => new AddHelperToSeason.Handler(helpers).HandleAsync(new AddHelperToSeason.Command(3, "Anna", "Muster", "keine-adresse")));
 
         Assert.Empty(helpers.Stored);
     }

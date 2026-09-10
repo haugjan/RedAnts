@@ -106,7 +106,7 @@
             if (buyer is null) { _error = "Bitte Vor-/Nachname oder Firmenname angeben."; return; }
             var paymentSource = ClampPaymentSource(_paymentSource, _price);
             var order = await OrderCreation.HandleAsync(new CreateAdminOrder.Command(buyer, Identity.Email,
-                [new AdminOrderLine(OrderItemKind.SeasonPass, SeasonId, lineCategory, tier.Name, 1, _price)],
+                [new AdminOrderLine(OrderItemKind.SeasonPass, SeasonId, lineCategory, tier.Name, 1, Money.Chf(_price, label: "Preis"))],
                 Identity.Name, paymentSource));
             await PassCreation.HandleAsync(new CreateSeasonPass.Command(SeasonId, _tierId, _price, order.Id, buyer,
                 string.IsNullOrWhiteSpace(_reference) ? null : _reference.Trim(),

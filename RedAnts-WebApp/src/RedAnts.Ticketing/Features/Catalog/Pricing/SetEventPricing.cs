@@ -13,7 +13,7 @@ public static class SetEventPricing
         public async Task HandleAsync(Command command)
         {
             var categories = command.Categories
-                .Select(c => CategoryPrice.Create(default, decimal.Round(c.Price, 2), c.Quota, c.AvailableUntil, c.TierId))
+                .Select(c => CategoryPrice.Create(default, Money.Stored(c.Price), c.Quota, c.AvailableUntil, c.TierId))
                 .ToList();
             var existing = await prices.GetByEventAsync(command.EventId);
             var updated = existing?.WithCategories(categories)

@@ -26,7 +26,7 @@ public static class SetSeasonAddOns
 
             var options = command.AddOns
                 .Where(a => !string.IsNullOrWhiteSpace(a.Label))
-                .Select(a => SeasonAddOn.Create(command.SeasonId, a.Label, decimal.Round(a.Price, 2), a.Active, 0, a.Scope,
+                .Select(a => SeasonAddOn.Create(command.SeasonId, a.Label, Money.Stored(a.Price), a.Active, 0, a.Scope,
                     a.InfoBeforePurchase, a.InfoAfterPurchase, a.LongTitle,
                     a.AllowedTierIds.Where(validTierIds.Contains).ToList(), a.PromoOnly, a.RequireMobileNumber))
                 .ToList();

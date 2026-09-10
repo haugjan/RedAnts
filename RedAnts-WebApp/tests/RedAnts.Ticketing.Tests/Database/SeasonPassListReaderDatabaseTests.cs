@@ -66,7 +66,7 @@ public class SeasonPassListReaderDatabaseTests : IAsyncLifetime
         var address = BillingAddress.Create(BuyerType.Private, "Anna", "Muster", null,
             "Bahnhofstrasse 1", null, "8400", "Winterthur", "Schweiz", "anna@example.ch", null);
         var order = await orders.SaveAsync(Order.Create(
-            await orders.NextOrderNumberAsync(), address, 220m, 0.081m, PaymentMethod.Twint, null));
+            await orders.NextOrderNumberAsync(), address, Money.Of(220m), 0.081m, PaymentMethod.Twint, null));
 
         Assert.True(await orders.TryMarkPaidAsync(order.Id));
 

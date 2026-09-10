@@ -29,7 +29,7 @@ public sealed class PersonForm
             Salutation = h.Salutation,
             FirstName = h.FirstName,
             LastName = h.LastName,
-            Email = h.Email,
+            Email = h.Email?.Value ?? "",
             Street = h.Street,
             AddressLine2 = h.AddressLine2,
             PostalCode = h.PostalCode,

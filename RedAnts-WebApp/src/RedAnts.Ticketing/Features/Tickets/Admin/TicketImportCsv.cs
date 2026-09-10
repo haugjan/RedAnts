@@ -104,8 +104,11 @@ public static class TicketImportCsv
             }
 
             var email = Get("email");
-            if (email is not null && !LooksLikeEmail(email))
-                warnings.Add($"Zeile {lineNo}: E-Mail „{email}“ sieht ungültig aus, wird trotzdem übernommen.");
+            if (email is not null && !EmailAddress.IsValid(email))
+            {
+                warnings.Add($"Zeile {lineNo}: E-Mail „{email}“ ist ungültig und wird nicht übernommen.");
+                email = null;
+            }
 
             int? admissions = null;
             var admissionsCell = Get("admissions");
@@ -182,13 +185,6 @@ public static class TicketImportCsv
             "männlich" or "maennlich" or "m" or "herr" => "Herr",
             _ => v
         };
-    }
-
-    private static bool LooksLikeEmail(string value)
-    {
-        var e = value.Trim();
-        var at = e.IndexOf('@');
-        return at > 0 && at < e.Length - 1 && e[(at + 1)..].Contains('.') && !e.EndsWith('.');
     }
 
     public static byte[] SampleBytes()

@@ -20,7 +20,7 @@ internal sealed class RecordingHelpers : IHelperRepository
     public Task<Helper> AddAsync(int seasonId, string firstName, string lastName, string email)
     {
         var created = Helper.Create(seasonId, firstName, lastName, email, $"code-{_nextId}");
-        var helper = Helper.FromPersistence(_nextId++, created.SeasonId, created.FirstName, created.LastName, created.Email,
+        var helper = Helper.FromPersistence(_nextId++, created.SeasonId, created.FirstName, created.LastName, created.Email.Value,
             created.Code, created.AllEvents, created.EventIds, created.CanRebook, created.Active, created.CreatedAt);
         Stored.Add(helper);
         return Task.FromResult(helper);

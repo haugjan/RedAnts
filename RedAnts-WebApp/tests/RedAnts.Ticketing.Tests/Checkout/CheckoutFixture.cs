@@ -44,10 +44,18 @@ internal sealed class CheckoutFixture
 
     public CapacityReservation Reservation => new(EventPrices, SeasonPrices, Usage, NullLogger<CapacityReservation>.Instance);
 
+    public CheckoutEligibility Eligibility => new(Admission, ConversionRules);
+
+    public CanCheckout.Handler CanCheckout => new(Carts, Eligibility);
+
+    public CanConvert.Handler CanConvert => new(Carts, ConvertibleCards);
+
+    public AddConversionToCart.Handler AddConversion => new(Carts, ConvertibleCards);
+
     public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, SeasonAddOns,
         Mailer, new StubPublicBaseUrl(), OrderItems, Newsletter, new EmptyIssuedTickets(), UnitOfWork, Reservation, NullLogger<OrderFulfillment>.Instance);
 
-    public PlaceOrder.Handler PlaceOrder => new(Carts, Orders, OrderLog, ConversionRules, Admission, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
+    public PlaceOrder.Handler PlaceOrder => new(Carts, Orders, OrderLog, Eligibility, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
         new StubOrderTokens(), UnitOfWork, Reservation, Fulfillment, NullLogger<PlaceOrder.Handler>.Instance);
 
     public ConfirmPayment.Handler ConfirmPayment => new(Orders, Payrexx, Fulfillment, Reservation, OrderLog, NullLogger<ConfirmPayment.Handler>.Instance);
@@ -62,14 +70,14 @@ internal sealed class CheckoutFixture
     public static Cart CartWithTickets(int quantity = 2)
     {
         var cart = Cart.Empty();
-        cart.AddEventTickets(EventId, "Red Ants vs. Gegner", AdultTier, "Erwachsen", "Erw", 20m, quantity);
+        cart.AddEventTickets(EventId, "Red Ants vs. Gegner", AdultTier, "Erwachsen", "Erw", Money.Of(20m), quantity);
         return cart;
     }
 
     public static Cart CartWithPass(IReadOnlyList<CartAddOn>? addOns = null)
     {
         var cart = Cart.Empty();
-        cart.AddSeasonPasses(SeasonId, "Saison 2026/27", PassTier, "Erwachsen", "Erw", 300m, 1, addOns ?? []);
+        cart.AddSeasonPasses(SeasonId, "Saison 2026/27", PassTier, "Erwachsen", "Erw", Money.Of(300m), 1, addOns ?? []);
         return cart;
     }
 
