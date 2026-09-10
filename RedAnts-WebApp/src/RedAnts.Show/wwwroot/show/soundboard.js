@@ -166,21 +166,32 @@
   let seqToken = 0;
   board.stopSequence = function () { seqToken++; };
 
+  function stopSequenceOnError() {
+    seqToken++;
+    armSongInfo(false);
+    if (activeId !== null) { activeId = null; emitActive(); }
+    if (dotnet) { try { dotnet.invokeMethodAsync('OnSpotifyStopped'); } catch (e) {} }
+  }
+
   function playOneSong(song, token) {
     return new Promise(function (resolve) {
       if (token !== seqToken) { resolve(); return; }
       if (song.t === 'spotify') {
-        if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); resolve(); return; }
+        if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); stopSequenceOnError(); resolve(); return; }
         board.activateSpotify();
         board.playSpotify(song.r, (song.s || 0) * 1000, !!song.sh).then(function (status) {
           if (token !== seqToken) { resolve(); return; }
-          if (status !== 'ok') { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', status); resolve(); return; }
-          if (song.d) { setTimeout(function () { resolve(); }, song.d * 1000); }
+          if (status !== 'ok') {
+            if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', status);
+            resolve(false);
+            return;
+          }
+          if (song.d) { setTimeout(function () { resolve(true); }, song.d * 1000); }
           else {
             const poll = setInterval(async function () {
-              if (token !== seqToken) { clearInterval(poll); resolve(); return; }
+              if (token !== seqToken) { clearInterval(poll); resolve(true); return; }
               const st = await board.getState();
-              if (st && ((st.duration > 0 && st.position >= st.duration - 1500) || (st.paused && st.position === 0))) { clearInterval(poll); resolve(); }
+              if (st && ((st.duration > 0 && st.position >= st.duration - 1500) || (st.paused && st.position === 0))) { clearInterval(poll); resolve(true); }
             }, 1000);
           }
         });
@@ -189,7 +200,7 @@
         if (player) { try { player.pause(); } catch {} }
         el.volume = volume;
         let done = false, cut = null;
-        const finish = function () { if (done) return; done = true; el.removeEventListener('ended', onEnd); if (cut) clearTimeout(cut); resolve(); };
+        const finish = function () { if (done) return; done = true; el.removeEventListener('ended', onEnd); if (cut) clearTimeout(cut); resolve(true); };
         const onEnd = function () { finish(); };
         el.addEventListener('ended', onEnd, { once: true });
         reportSong(fileLabel(song.r), '');
@@ -217,11 +228,21 @@
       if (random) return Math.floor(Math.random() * songs.length);
       const i = order[pos % order.length]; pos++; return i;
     }
+    // Ein einzelner nicht abspielbarer Song darf die Kachel nicht stoppen, eine Störung
+    // von Spotify aber auch nicht im Sekundentakt durch die ganze Liste rasen lassen.
+    let fails = 0;
     (function step() {
       if (my !== seqToken) return;
       const song = songs[nextIndex()];
-      playOneSong(song, my).then(function () {
+      playOneSong(song, my).then(function (played) {
         if (my !== seqToken) return;
+        if (played === false) {
+          fails++;
+          if (fails >= 3) { stopSequenceOnError(); return; }
+          setTimeout(step, 1500);
+          return;
+        }
+        fails = 0;
         if (loop) { step(); }
         else if (activeId === id) { activeId = null; emitActive(); }
       });
@@ -305,6 +326,7 @@
 
   let player = null;
   let deviceId = null;
+  let transferredFor = null;
   let spotifyId = null;
   let spotifyActivated = false;
 
@@ -457,7 +479,7 @@
       deviceId = device_id;
       if (dotnet) dotnet.invokeMethodAsync('OnPlayerReady');
     });
-    player.addListener('not_ready', () => { deviceId = null; });
+    player.addListener('not_ready', () => { deviceId = null; transferredFor = null; });
     player.addListener('player_state_changed', (state) => {
       const track = state && state.track_window && state.track_window.current_track;
       if (!track) return;
@@ -524,8 +546,15 @@
       : { uris: [uri], position_ms: positionMs };
     try {
       if (player) { try { await player.setVolume(volume); } catch (x) {} }
-      // SDK-Gerät zum aktiven Gerät machen (behebt geräteabhängige 403).
-      try { await transferToDevice(); await new Promise(function (r) { setTimeout(r, 400); }); } catch (x) {}
+      // SDK-Gerät einmal zum aktiven Gerät machen (behebt geräteabhängige 403). Bei jedem
+      // Song zu transferieren würde eine lange Songliste unnötig durch die API-Limits jagen.
+      if (transferredFor !== deviceId) {
+        try {
+          await transferToDevice();
+          transferredFor = deviceId;
+          await new Promise(function (r) { setTimeout(r, 400); });
+        } catch (x) {}
+      }
       if (isContext) {
         try { await spotifyApi('/me/player/shuffle?state=' + (shuffle ? 'true' : 'false') + '&device_id=' + deviceId, { method: 'PUT' }); } catch (x) {}
       }
@@ -537,6 +566,7 @@
       // Ein Retry nach erneutem Transfer (Gerät war evtl. noch nicht aktiv).
       try {
         await transferToDevice();
+        transferredFor = deviceId;
         await new Promise(function (r) { setTimeout(r, 700); });
         await playBody(body);
         return 'ok';

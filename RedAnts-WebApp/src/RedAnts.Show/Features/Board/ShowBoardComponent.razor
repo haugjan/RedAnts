@@ -426,8 +426,10 @@
         else if (status == "not-ready") msg = "Spotify-Player ist noch nicht bereit, einen Moment...";
         else if (status.Contains("PREMIUM_REQUIRED", StringComparison.OrdinalIgnoreCase))
             msg = "Spotify Premium erforderlich: Der eingeloggte Account muss ein Premium-Abo haben.";
+        else if (status.Contains("429"))
+            msg = status;
         else if (status.Contains("403"))
-            msg = "Spotify 403: Account nicht berechtigt (Premium nötig, und im Development-Modus der App unter User Management freischalten). Detail: " + status;
+            msg = "Spotify hat den Befehl abgelehnt (403). Meist läuft das Konto gerade auf einem anderen Gerät oder der Player wurde übernommen. Wiedergabe hier nochmals starten. Detail: " + status;
         else msg = "Spotify: " + status;
         Toast(msg);
         return InvokeAsync(StateHasChanged);
@@ -495,8 +497,12 @@
         _displayName = null;
     }
 
+    private const int MaxToasts = 3;
+
     private void Toast(string text)
     {
+        if (_toasts.Any(t => t.Text == text)) return;
+        while (_toasts.Count >= MaxToasts) _toasts.RemoveAt(0);
         var id = ++_toastCounter;
         _toasts.Add(new ToastItem(id, text));
         _ = RemoveToastLaterAsync(id);
