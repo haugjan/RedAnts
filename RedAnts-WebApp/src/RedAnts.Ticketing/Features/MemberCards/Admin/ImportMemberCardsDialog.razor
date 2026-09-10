@@ -207,7 +207,7 @@
     private static MemberImportRow ToMemberRow(TicketImportRow row)
     {
         var h = row.Holder;
-        return new MemberImportRow(h.LastName, h.FirstName, h.Birthday, h.Email, row.CardNo,
+        return new MemberImportRow(h.LastName, h.FirstName, h.Birthday, h.Email?.Value, row.CardNo,
             MemberAddress.Create(h.Salutation, h.Company, h.Street, h.AddressLine2,
                 h.PostalCode, h.City, h.Country, h.Phone),
             row.Admissions ?? 1, row.Bundle);

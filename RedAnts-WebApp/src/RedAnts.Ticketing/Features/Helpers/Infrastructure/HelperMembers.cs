@@ -22,7 +22,7 @@ internal static class HelperMembers
             m.CreateDate);
 
     public static HelperRow ToRow(Helper h) =>
-        new(h.Id, h.SeasonId, h.FirstName, h.LastName, h.Email, h.Code, h.AllEvents, h.EventIds, h.CanRebook, h.Active, h.CreatedAt);
+        new(h.Id, h.SeasonId, h.FirstName, h.LastName, h.Email.Value, h.Code, h.AllEvents, h.EventIds, h.CanRebook, h.Active, h.CreatedAt);
 
     private static IReadOnlyList<int> ParseIds(string? csv) =>
         string.IsNullOrWhiteSpace(csv)

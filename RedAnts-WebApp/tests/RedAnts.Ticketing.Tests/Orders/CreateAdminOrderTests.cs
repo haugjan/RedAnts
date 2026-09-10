@@ -33,7 +33,7 @@ public class CreateAdminOrderTests
         Assert.Equal(PaymentSource.Cash, order.PaymentSource);
         Assert.Equal(45.56m, order.TotalGross.Amount);
         Assert.Equal("UHC Beispiel", order.BillingAddress.Company);
-        Assert.Equal("kasse@redants.ch", order.BillingAddress.Email);
+        Assert.Equal("kasse@redants.ch", order.BillingAddress.Email.Value);
         Assert.Equal("Schweiz", order.BillingAddress.Country);
 
         var items = _items.Saved[order.Id];
@@ -55,7 +55,7 @@ public class CreateAdminOrderTests
 
         Assert.Equal("Max", order.BillingAddress.FirstName);
         Assert.Equal("Muster", order.BillingAddress.LastName);
-        Assert.Equal("", order.BillingAddress.Email);
+        Assert.Equal("", order.BillingAddress.Email.Value);
         Assert.Equal(0m, order.TotalGross.Amount);
         Assert.Empty(_items.Saved[order.Id]);
     }

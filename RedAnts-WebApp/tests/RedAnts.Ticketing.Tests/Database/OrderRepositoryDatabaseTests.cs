@@ -44,7 +44,7 @@ public class OrderRepositoryDatabaseTests : IAsyncLifetime
         Assert.Equal("CHE-123.456.789", loaded.SellerUid);
         Assert.Equal("Winterthur", loaded.BillingAddress.City);
         Assert.Equal("c/o Red Ants", loaded.BillingAddress.AddressLine2);
-        Assert.Equal("anna@example.ch", loaded.BillingAddress.Email);
+        Assert.Equal("anna@example.ch", loaded.BillingAddress.Email.Value);
         Assert.Equal(saved.CreatedAt, loaded.CreatedAt);
 
         Assert.Equal(saved.Id, (await Orders.GetByNumberAsync(number))?.Id);

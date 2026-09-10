@@ -14,11 +14,11 @@ public sealed class SeasonPass
     public string? CreatedByName { get; private set; }
     public string? CreatedByEmail { get; private set; }
     public string? Reference { get; private set; }
-    public string? Email { get; private set; }
+    public EmailAddress? Email { get; private set; }
 
     private SeasonPass(int id, Guid uuid, int seasonId, int? tierId, decimal price,
         int? orderId, TicketStatus status, DateTimeOffset createdAt, Buyer? buyer,
-        string? createdByName, string? createdByEmail, string? reference, string? email)
+        string? createdByName, string? createdByEmail, string? reference, EmailAddress? email)
     {
         Id = id;
         Uuid = uuid;
@@ -43,7 +43,7 @@ public sealed class SeasonPass
         if (price < 0) throw new DomainException("Preis darf nicht negativ sein.");
         return new SeasonPass(0, Guid.NewGuid(), seasonId, tierId, decimal.Round(price, 2),
             orderId, TicketStatus.Valid, SwissTime.TimestampOf(time), buyer, Clean(createdByName), Clean(createdByEmail),
-            Clean(reference), Clean(email));
+            Clean(reference), EmailAddress.Optional(email));
     }
 
     public static SeasonPass FromPersistence(int id, Guid uuid, int seasonId, int? tierId,
@@ -51,7 +51,7 @@ public sealed class SeasonPass
         Buyer? buyer = null, string? createdByName = null, string? createdByEmail = null, string? reference = null,
         string? email = null) =>
         new(id, uuid, seasonId, tierId, price, orderId, status, createdAt, buyer,
-            Clean(createdByName), Clean(createdByEmail), Clean(reference), Clean(email));
+            Clean(createdByName), Clean(createdByEmail), Clean(reference), EmailAddress.TryCreate(email));
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -65,5 +65,5 @@ public sealed class SeasonPass
 
     public void SetBuyer(Buyer buyer) => Buyer = buyer;
 
-    public void SetEmail(string? email) => Email = Clean(email);
+    public void SetEmail(string? email) => Email = EmailAddress.Optional(email);
 }

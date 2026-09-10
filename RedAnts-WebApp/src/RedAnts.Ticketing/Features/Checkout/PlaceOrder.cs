@@ -112,7 +112,7 @@ public static class PlaceOrder
                 SuccessUrl: $"{baseUrl}/checkout/success?t={token}",
                 FailedUrl: $"{baseUrl}/checkout/cancel?t={token}",
                 CancelUrl: $"{baseUrl}/checkout/cancel?t={token}",
-                Email: billing.Email,
+                Email: billing.Email.Value,
                 FirstName: billing.FirstName,
                 LastName: billing.LastName);
             try

@@ -12,7 +12,7 @@ public static class SendSeasonPassMail
         {
             var pass = await passes.GetByUuidAsync(command.Uuid);
             if (pass is null) return new EmailSendResult(false, EditSeasonPass.NotFound);
-            if (string.IsNullOrWhiteSpace(pass.Email)) pass.SetEmail(command.Email);
+            if (pass.Email is null) pass.SetEmail(command.Email);
             return await mailer.SendAsync(pass, command.CategoryLabel, command.Subject, command.Body);
         }
     }

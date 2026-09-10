@@ -8,7 +8,7 @@
 else { <span class="ta-muted">(ohne Name)</span> }
 <span class="ta-badge @(h.IsCompany ? "ta-badge-firma" : "ta-badge-privat")">@(h.IsCompany ? "Firma" : "Privat")</span>
 @if (h.Birthday is { } b) { <span class="ta-muted"> (@b.ToString("dd.MM.yyyy"))</span> }
-@if (!string.IsNullOrWhiteSpace(h.Email))
+@if (!string.IsNullOrWhiteSpace(h.Email?.Value))
 {
     <div class="ta-addr-sub">@h.Email</div>
 }

@@ -62,15 +62,15 @@ public sealed class OrderFulfillment(
         await SaveOrderItemsAsync(order, snapshot);
 
         if (issued.AddOns.Count > 0)
-            await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email, issued.AddOns);
+            await addOnNotifier.NotifyAsync(order.OrderNumber, billing.FullName, billing.Email.Value, issued.AddOns);
 
         var addOnInfos = await AddOnInfoTexts.CollectAsync(seasonAddOns, snapshot);
         await mailer.SendTicketsAsync(new OrderMailModel(
-            order.OrderNumber, billing.Email, billing.FullName, order.TotalGross.Amount,
+            order.OrderNumber, billing.Email.Value, billing.FullName, order.TotalGross.Amount,
             publicUrl.Resolve(), issued.Tickets, addOnInfos));
 
         if (snapshot.SubscribeNewsletter)
-            await newsletter.SubscribeAsync(billing.Email, billing.FullName, snapshot.NewsletterSource);
+            await newsletter.SubscribeAsync(billing.Email.Value, billing.FullName, snapshot.NewsletterSource);
 
         return true;
     }

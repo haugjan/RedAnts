@@ -23,5 +23,5 @@ public sealed record FlexTicketRow(
     public string CardNo => AdminFormat.TicketNo(Uuid);
     public string CategoryLabel => Category.DisplayName();
     public string StatusLabel => Status.DisplayName();
-    public bool HasEmail => !string.IsNullOrWhiteSpace(Holder?.Email);
+    public bool HasEmail => !string.IsNullOrWhiteSpace(Holder?.Email?.Value);
 }

@@ -11,11 +11,11 @@ public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : I
         var signup = NewsletterSignup.Create(email, name, source);
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var existing = await scope.Database.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM NewsletterSignups WHERE Email = @0", signup.Email);
+            "SELECT COUNT(*) FROM NewsletterSignups WHERE Email = @0", signup.Email.Value);
         if (existing > 0) return;
         await scope.Database.InsertAsync(new NewsletterSignupRecord
         {
-            Email = signup.Email,
+            Email = signup.Email.Value,
             Name = signup.Name,
             Source = signup.Source,
             SignedUpAt = signup.SignedUpAt,

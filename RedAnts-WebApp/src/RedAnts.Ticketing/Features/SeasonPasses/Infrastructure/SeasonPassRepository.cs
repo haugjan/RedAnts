@@ -83,7 +83,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IPriceTie
                 CreatedByName = createdByName,
                 CreatedByEmail = createdByEmail,
                 Reference = reference,
-                BuyerEmail = h.Email,
+                BuyerEmail = h.Email?.Value,
                 Salutation = h.Salutation,
                 Birthday = birthday,
                 Street = h.Street,
@@ -146,7 +146,7 @@ public sealed class SeasonPassRepository(IScopeProvider scopeProvider, IPriceTie
             CreatedByName = pass.CreatedByName,
             CreatedByEmail = pass.CreatedByEmail,
             Reference = pass.Reference,
-            BuyerEmail = pass.Email
+            BuyerEmail = pass.Email?.Value
         };
         if (row.Id == 0) await scope.Database.InsertAsync(row);
         else await scope.Database.UpdateAsync(row);

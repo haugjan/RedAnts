@@ -13,7 +13,7 @@ public static class SendEventTicketMail
         {
             var ticket = await tickets.GetByUuidAsync(command.Uuid)
                 ?? throw new DomainException("Ticket wurde nicht gefunden.");
-            var mailTicket = new EventMailTicket(ticket.Uuid, ticket.Holder?.Email, ticket.Holder?.DisplayName, ticket.EventId,
+            var mailTicket = new EventMailTicket(ticket.Uuid, ticket.Holder?.Email?.Value, ticket.Holder?.DisplayName, ticket.EventId,
                 ticket.Category.DisplayName());
             return await mailer.SendAsync(mailTicket, command.Subject, command.Body);
         }

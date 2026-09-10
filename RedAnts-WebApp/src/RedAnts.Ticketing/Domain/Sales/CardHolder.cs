@@ -7,7 +7,7 @@ public sealed record CardHolder(
     string? FirstName,
     string? LastName,
     DateOnly? Birthday,
-    string? Email,
+    EmailAddress? Email,
     string? Street,
     string? AddressLine2,
     string? PostalCode,
@@ -21,8 +21,8 @@ public sealed record CardHolder(
     public static CardHolder Create(BuyerType type, string? salutation, string? company, string? firstName,
         string? lastName, DateOnly? birthday, string? email, string? street, string? addressLine2,
         string? postalCode, string? city, string? country, string? phone) =>
-        new(type, Clean(salutation), Clean(company), Clean(firstName), Clean(lastName), birthday, Clean(email),
-            Clean(street), Clean(addressLine2), Clean(postalCode), Clean(city), Clean(country), Clean(phone));
+        new(type, Clean(salutation), Clean(company), Clean(firstName), Clean(lastName), Birthdate.Validate(birthday),
+            EmailAddress.Optional(email), Clean(street), Clean(addressLine2), Clean(postalCode), Clean(city), Clean(country), Clean(phone));
 
     public bool IsCompany => !string.IsNullOrWhiteSpace(Company);
 

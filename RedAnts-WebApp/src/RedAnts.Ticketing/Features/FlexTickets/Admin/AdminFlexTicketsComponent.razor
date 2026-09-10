@@ -705,7 +705,7 @@
 
     private void ClosePrint() => _showPrint = false;
 
-    private static bool HasEmail(FlexTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
+    private static bool HasEmail(FlexTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email?.Value);
 
     private FlexTicketRow? _editPersonFor;
     private PersonForm _editPersonForm = new();
@@ -770,7 +770,7 @@
     }
 
     private Task<EmailSendResult> SendOneAsync(FlexTicketRow t, string subject, string body) =>
-        MailSending.HandleAsync(new SendFlexTicketMail.Command(new FlexMailTicket(t.Uuid, t.Holder?.Email, t.Holder?.DisplayName, SelectedSeasonId,
+        MailSending.HandleAsync(new SendFlexTicketMail.Command(new FlexMailTicket(t.Uuid, t.Holder?.Email?.Value, t.Holder?.DisplayName, SelectedSeasonId,
             t.Category.DisplayName()), subject, body));
 
     private bool _showBulk;

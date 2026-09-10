@@ -13,11 +13,11 @@ public sealed record BillingAddress
     public PostalCode PostalCode { get; }
     public string City { get; }
     public string Country { get; }
-    public string Email { get; }
+    public EmailAddress Email { get; }
     public string? Phone { get; }
 
     private BillingAddress(BuyerType type, string firstName, string lastName, string? company, string street,
-        string? addressLine2, PostalCode postalCode, string city, string country, string email, string? phone)
+        string? addressLine2, PostalCode postalCode, string city, string country, EmailAddress email, string? phone)
     {
         Type = type;
         FirstName = firstName;
@@ -50,8 +50,6 @@ public sealed record BillingAddress
         }
         if (string.IsNullOrWhiteSpace(street)) throw new DomainException("Strasse ist erforderlich.");
         if (string.IsNullOrWhiteSpace(city)) throw new DomainException("Ort ist erforderlich.");
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
-            throw new DomainException("Gültige E-Mail-Adresse ist erforderlich.");
 
         var land = string.IsNullOrWhiteSpace(country) ? "Schweiz" : country.Trim();
 
@@ -59,7 +57,7 @@ public sealed record BillingAddress
             firstName, lastName, company, street.Trim(),
             string.IsNullOrWhiteSpace(addressLine2) ? null : addressLine2.Trim(),
             PostalCode.Create(postalCode, land), city.Trim(), land,
-            email.Trim(), string.IsNullOrWhiteSpace(phone) ? null : phone.Trim());
+            EmailAddress.Create(email), string.IsNullOrWhiteSpace(phone) ? null : phone.Trim());
     }
 
     public static BillingAddress FromPersistence(int type, string firstName, string lastName, string? company,
@@ -67,7 +65,7 @@ public sealed record BillingAddress
         new((BuyerType)type, firstName ?? "", lastName ?? "",
             string.IsNullOrWhiteSpace(company) ? null : company, street ?? "", addressLine2,
             PostalCode.FromPersistence(postalCode), city ?? "", string.IsNullOrWhiteSpace(country) ? "Schweiz" : country,
-            email ?? "", phone);
+            EmailAddress.TryCreate(email) ?? default, phone);
 
     /// <summary>The buyer captured on this address, for copying onto the issued tickets.</summary>
     public Buyer ToBuyer() => Buyer.Create(Type, FirstName, LastName, Company);

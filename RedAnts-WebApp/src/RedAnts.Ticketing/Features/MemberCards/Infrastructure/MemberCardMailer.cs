@@ -41,7 +41,7 @@ public sealed class MemberCardMailer(
 
     public async Task<EmailSendResult> SendAsync(MemberCard card, string subject, string body, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(card.Email))
+        if (card.Email is not { } recipient)
             return new EmailSendResult(false, "Für diese Karte ist keine E-Mail hinterlegt.");
 
         try
@@ -59,7 +59,7 @@ public sealed class MemberCardMailer(
                 : card.Reference;
             var toName = string.IsNullOrWhiteSpace(card.HolderDisplay) ? null : card.HolderDisplay;
 
-            var result = await email.SendAsync(card.Email, toName, resolvedSubject, html, images,
+            var result = await email.SendAsync(recipient.Value, toName, resolvedSubject, html, images,
                 cancellationToken, source: "Mitgliederkarte", reference: reference);
             if (!result.Success)
                 logger.LogWarning("Member card e-mail to {Recipient} failed: {Error}", card.Email, result.Error);

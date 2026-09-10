@@ -25,7 +25,7 @@ public sealed class OrderRepository(IScopeProvider scopeProvider, IConfiguration
             BillingPostalCode = billing.PostalCode.Value,
             BillingCity = billing.City,
             BillingCountry = billing.Country,
-            BillingEmail = billing.Email,
+            BillingEmail = billing.Email.Value,
             BillingPhone = billing.Phone,
             Currency = order.Currency,
             SubtotalNet = order.SubtotalNet.Amount,

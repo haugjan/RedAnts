@@ -9,14 +9,14 @@ public enum NewsletterTransferStatus
 public sealed class NewsletterSignup
 {
     public int Id { get; private set; }
-    public string Email { get; }
+    public EmailAddress Email { get; }
     public string? Name { get; }
     public string Source { get; }
     public DateTimeOffset SignedUpAt { get; }
     public NewsletterTransferStatus Status { get; private set; }
     public DateTimeOffset? TransferredAt { get; private set; }
 
-    private NewsletterSignup(int id, string email, string? name, string source,
+    private NewsletterSignup(int id, EmailAddress email, string? name, string source,
         DateTimeOffset signedUpAt, NewsletterTransferStatus status, DateTimeOffset? transferredAt)
     {
         Id = id;
@@ -30,9 +30,7 @@ public sealed class NewsletterSignup
 
     public static NewsletterSignup Create(string email, string? name, string source, TimeProvider? time = null)
     {
-        var address = (email ?? "").Trim();
-        if (address.Length < 5 || !address.Contains('@') || !address.Contains('.'))
-            throw new DomainException("Für die Newsletter-Anmeldung ist eine gültige E-Mail-Adresse nötig.");
+        var address = EmailAddress.Create(email);
 
         return new NewsletterSignup(0, address,
             string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
@@ -42,7 +40,7 @@ public sealed class NewsletterSignup
 
     public static NewsletterSignup FromPersistence(int id, string email, string? name, string source,
         DateTimeOffset signedUpAt, int status, DateTimeOffset? transferredAt) =>
-        new(id, email, name, source, signedUpAt, (NewsletterTransferStatus)status, transferredAt);
+        new(id, EmailAddress.TryCreate(email) ?? default, name, source, signedUpAt, (NewsletterTransferStatus)status, transferredAt);
 
     public void MarkTransferred(DateTimeOffset at)
     {

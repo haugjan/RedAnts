@@ -640,7 +640,7 @@
     private bool _mailSent;
     private string? _mailError;
 
-    private static bool HasEmail(EventTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email);
+    private static bool HasEmail(EventTicketRow t) => !string.IsNullOrWhiteSpace(t.Holder?.Email?.Value);
 
     private async Task OpenMailAsync(EventTicketRow t)
     {

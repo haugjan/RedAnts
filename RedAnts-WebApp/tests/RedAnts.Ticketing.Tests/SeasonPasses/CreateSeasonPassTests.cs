@@ -21,7 +21,7 @@ public class CreateSeasonPassTests
         Assert.Equal(300m, saved.Price);
         Assert.Equal(42, saved.OrderId);
         Assert.Equal("Bundle A", saved.Reference);
-        Assert.Equal("anna@example.ch", saved.Email);
+        Assert.Equal("anna@example.ch", saved.Email?.Value);
         Assert.Single(passes.Saved);
         Assert.Contains(passes.Holders, h => h.Uuid == saved.Uuid && h.Holder == holder);
     }

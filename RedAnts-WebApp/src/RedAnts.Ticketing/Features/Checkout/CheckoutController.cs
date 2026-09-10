@@ -25,7 +25,6 @@ public sealed class CheckoutController(
     private const string PaymentLabelText = "Online-Zahlung (Payrexx)";
     private const string PrivacyError = "Bitte akzeptiere die AGB und die Datenschutzerklärung.";
     private const string CaptchaError = "Bitte bestätige, dass du kein Roboter bist.";
-    private const string EmailError = "Bitte eine gültige E-Mail-Adresse angeben.";
     private const string MobileError = "Für die gewählte Zusatzoption ist deine Mobilnummer zwingend. Bitte gib sie an.";
 
     [HttpGet("/checkout")]
@@ -83,11 +82,13 @@ public sealed class CheckoutController(
         email = (email ?? "").Trim();
         Task<IActionResult> Invalid(string error) => ExpressViewAsync(current, error, email, name ?? "");
 
-        if (!LooksLikeEmail(email)) return await Invalid(EmailError);
+        EmailAddress buyerEmail;
+        try { buyerEmail = EmailAddress.Create(email); }
+        catch (ValidationException ex) { return await Invalid(ex.Message); }
         if (!acceptPrivacy) return await Invalid(PrivacyError);
         if (!await CaptchaPassesAsync()) return await Invalid(CaptchaError);
 
-        var result = await placeOrder.HandleAsync(PlaceOrder.Command.FromSessionCart(GuestBilling(email, name), acceptNewsletter, CheckoutSource.Express));
+        var result = await placeOrder.HandleAsync(PlaceOrder.Command.FromSessionCart(GuestBilling(buyerEmail, name), acceptNewsletter, CheckoutSource.Express));
         return await FinishAsync(result, Invalid);
     }
 
@@ -104,14 +105,16 @@ public sealed class CheckoutController(
             return Redirect("/next");
         }
 
-        if (!LooksLikeEmail(email)) return Back(EmailError);
+        EmailAddress buyerEmail;
+        try { buyerEmail = EmailAddress.Create(email); }
+        catch (ValidationException ex) { return Back(ex.Message); }
         if (!acceptPrivacy) return Back(PrivacyError);
         if (!await CaptchaPassesAsync()) return Back(CaptchaError);
 
         var oneTicket = await quickBuyCart.HandleAsync(new GetQuickBuyCart.Query(eventId, tierId));
         if (oneTicket is null) return Back("Dieses Ticket ist nicht mehr verfügbar.");
 
-        var result = await placeOrder.HandleAsync(new PlaceOrder.Command(oneTicket, GuestBilling(email, name), acceptNewsletter, CheckoutSource.QuickBuy));
+        var result = await placeOrder.HandleAsync(new PlaceOrder.Command(oneTicket, GuestBilling(buyerEmail, name), acceptNewsletter, CheckoutSource.QuickBuy));
         return await FinishAsync(result, error => Task.FromResult(Back(error)));
     }
 
@@ -273,17 +276,14 @@ public sealed class CheckoutController(
             Request.Form["cf-turnstile-response"].ToString(),
             HttpContext.Connection.RemoteIpAddress?.ToString()));
 
-    private static bool LooksLikeEmail(string email) =>
-        email.Length >= 5 && email.Contains('@') && email.Contains('.');
-
-    private static BillingAddress GuestBilling(string email, string? name)
+    private static BillingAddress GuestBilling(EmailAddress email, string? name)
     {
         var trimmed = (name ?? "").Trim();
         var space = trimmed.IndexOf(' ');
         var firstName = space > 0 ? trimmed[..space] : trimmed;
         var lastName = space > 0 ? trimmed[(space + 1)..] : "";
         return BillingAddress.FromPersistence((int)BuyerType.Private, firstName, lastName, null,
-            "", null, "", "", "Schweiz", email, null);
+            "", null, "", "", "Schweiz", email.Value, null);
     }
 
     private static BillingAddress ToBillingAddress(CheckoutForm f) => BillingAddress.Create(
