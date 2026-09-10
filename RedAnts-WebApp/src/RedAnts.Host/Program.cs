@@ -4,6 +4,7 @@ using System.Runtime.Loader;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
+using RedAnts.Domain;
 using RedAnts.Show.Infrastructure;
 using RedAnts.Ticketing.Infrastructure;
 using Umbraco.StorageProviders.AzureBlob.IO;
@@ -271,42 +272,21 @@ app.Use(async (context, next) =>
 
 app.UseTicketingShortHostRedirect();
 
-// Keep each surface on its own host: the backoffice is served only on admin[-dev].redants.ch
-// and the scanner only on scan[-dev].redants.ch. On any other real redants.ch host (e.g. the
-// public tickets host) these paths redirect to the correct host instead of being served, so
-// there is a single canonical URL per surface. Localhost / *.azurewebsites.net are left alone.
+// Keep each surface on its own host: backoffice on admin[-dev].redants.ch, scanner on
+// scan[-dev].redants.ch, soundboard on show[-dev].redants.ch, everything else on the public
+// tickets host. A path that belongs to another surface redirects to its canonical host instead
+// of being served, so every surface has exactly one URL. Shared plumbing (assets, Blazor, API,
+// health) stays reachable everywhere; localhost / *.azurewebsites.net are left alone.
 app.Use(async (context, next) =>
 {
     var host = context.Request.Host.Host;
-    if (host.EndsWith(".redants.ch", StringComparison.OrdinalIgnoreCase))
+    if (SiteHosts.IsSiteHost(host)
+        && SiteHosts.SurfaceOfPath(context.Request.Path.Value) is { } pathSurface
+        && !SiteHosts.HostServes(host, pathSurface))
     {
-        var isDev = host.Contains("-dev.", StringComparison.OrdinalIgnoreCase);
-        var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
-        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("scan-dev.", StringComparison.OrdinalIgnoreCase);
-        var path = context.Request.Path;
-
-        var isBackofficePath = path.StartsWithSegments("/umbraco")
-            || path.StartsWithSegments("/umbraco-entra-signin")
-            || path.StartsWithSegments("/umbraco-entra-signout");
-        var isScanPath = path.StartsWithSegments("/scan")
-            || path.StartsWithSegments("/scanner-test");
-
-        if (isBackofficePath && !isAdminHost)
-        {
-            var target = (isDev ? "https://admin-dev.redants.ch" : "https://admin.redants.ch")
-                + context.Request.Path + context.Request.QueryString;
-            context.Response.Redirect(target);
-            return;
-        }
-        if (isScanPath && !isScanHost)
-        {
-            var target = (isDev ? "https://scan-dev.redants.ch" : "https://scan.redants.ch")
-                + context.Request.Path + context.Request.QueryString;
-            context.Response.Redirect(target);
-            return;
-        }
+        context.Response.Redirect(SiteHosts.BaseUrlFor(pathSurface, SiteHosts.IsDevHost(host))
+            + context.Request.Path + context.Request.QueryString);
+        return;
     }
     await next();
 });
@@ -315,14 +295,7 @@ app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/")
     {
-        var host = context.Request.Host.Host;
-        var isScanHost = host.StartsWith("scan.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("scan-dev.", StringComparison.OrdinalIgnoreCase);
-        var isAdminHost = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("admin-dev.", StringComparison.OrdinalIgnoreCase);
-        var isShowHost = host.StartsWith("show.", StringComparison.OrdinalIgnoreCase)
-            || host.StartsWith("show-dev.", StringComparison.OrdinalIgnoreCase);
-        context.Response.Redirect(isScanHost ? "/scan" : isAdminHost ? "/umbraco" : isShowHost ? "/show" : "/ticketing/");
+        context.Response.Redirect(SiteHosts.RootPathFor(SiteHosts.SurfaceOfHost(context.Request.Host.Host)));
         return;
     }
     await next();

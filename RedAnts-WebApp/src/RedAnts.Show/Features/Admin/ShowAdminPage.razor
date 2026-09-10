@@ -4,6 +4,7 @@
 @inject SaveShowProfiles.Handler ProfilesSave
 @inject GetSpotifySettings.Handler SpotifyState
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @implements IDisposable
 
 <div class="se">
@@ -15,7 +16,7 @@
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
             <button class="se-btn" @onclick="ToggleSpotifySettings">🟢 Spotify</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
-            <a class="se-btn" href="/show" target="_blank">▶ Board öffnen</a>
+            <a class="se-btn" href="@BoardUrl" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
             {
                 <span class="se-status">@_status</span>
@@ -125,6 +126,8 @@
 </div>
 
 @code {
+    private string BoardUrl => SiteHosts.UrlFor(SiteSurface.Show, new Uri(Nav.BaseUri).Host, "/show");
+
     private List<EditProfile> _profiles = new();
     private EditProfile? _profile;
     private EditButton? _selected;

@@ -175,6 +175,8 @@ public class ShowQueryTests
 
         public string BuildAuthorizeUrl(string redirectUri, string state) => $"https://accounts.spotify.com/authorize?state={state}";
 
+        public Task<string?> AccessTokenAsync() => Task.FromResult<string?>(Connected ? "token" : null);
+
         public Task<string> CompleteAsync(string code, string redirectUri)
         {
             Connected = true;

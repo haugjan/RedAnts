@@ -2,6 +2,7 @@
 @inject SetShowSetting.Handler SettingSave
 @inject TestSpotifyCredentials.Handler SpotifyTest
 @inject DisconnectSpotifyAccount.Handler SpotifyDisconnect
+@inject NavigationManager Nav
 
 <div class="se-editwrap" @onclick="CloseAsync">
     <div class="se-editcard se-spotifycard" @onclick:stopPropagation="true">
@@ -62,17 +63,34 @@
 
         <p class="se-muted" style="margin-top:14px">Wird zentral in der Datenbank gespeichert und gilt für alle Geräte dieser Umgebung (dev und prod haben getrennte Datenbanken). In deiner Spotify-App müssen diese Redirect-URIs eingetragen sein:</p>
         <ul class="se-redirects">
-            <li><code>https://show.redants.ch/show/callback</code></li>
-            <li><code>https://show-dev.redants.ch/show/callback</code></li>
-            <li><code>http://127.0.0.1:5603/show/callback</code></li>
-            <li><code>https://admin.redants.ch/admin/show/spotify/callback</code></li>
-            <li><code>https://admin-dev.redants.ch/admin/show/spotify/callback</code></li>
-            <li><code>http://127.0.0.1:5606/admin/show/spotify/callback</code></li>
+            @foreach (var uri in SpotifyRedirectUris)
+            {
+                <li><code>@uri</code></li>
+            }
         </ul>
     </div>
 </div>
 
 @code {
+    private string CurrentHost => new Uri(Nav.BaseUri).Host;
+
+    private IEnumerable<string> SpotifyRedirectUris
+    {
+        get
+        {
+            foreach (var dev in new[] { false, true })
+            {
+                yield return SiteHosts.BaseUrlFor(SiteSurface.Show, dev) + "/show/callback";
+                yield return SiteHosts.BaseUrlFor(SiteSurface.Admin, dev) + "/admin/show/spotify/callback";
+            }
+            if (!SiteHosts.IsSiteHost(CurrentHost))
+            {
+                var origin = new Uri(Nav.BaseUri).GetLeftPart(UriPartial.Authority);
+                yield return origin + "/show/callback";
+                yield return origin + "/admin/show/spotify/callback";
+            }
+        }
+    }
     [Parameter] public EventCallback OnClosed { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
 

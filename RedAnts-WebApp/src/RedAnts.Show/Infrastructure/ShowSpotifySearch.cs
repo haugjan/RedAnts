@@ -42,7 +42,7 @@ public sealed class ShowSpotifySearch(
 
     private async Task<string> TokenAsync()
     {
-        if (await account.UserTokenAsync() is { Length: > 0 } userToken) return userToken;
+        if (await account.AccessTokenAsync() is { Length: > 0 } userToken) return userToken;
         if (_token is not null && DateTime.UtcNow < _expiresUtc) return _token;
         var client = httpFactory.CreateClient();
         var req = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token")

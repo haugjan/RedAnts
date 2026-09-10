@@ -179,8 +179,8 @@
         }
       </nav>
       <nav class="site-footer-intern" aria-label="Interner Bereich">
-        <a href="https://scan.redants.ch/scan">Scanner</a>
-        <a href="https://admin.redants.ch/umbraco">Verwaltung</a>
+        <a href="@SiteHosts.UrlFor(SiteSurface.Scan, Context.Request.Host.Host, "/scan")">Scanner</a>
+        <a href="@SiteHosts.UrlFor(SiteSurface.Admin, Context.Request.Host.Host, "/umbraco")">Verwaltung</a>
       </nav>
     </div>
   </div>

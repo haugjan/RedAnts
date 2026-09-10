@@ -17,6 +17,7 @@
     <component type="typeof(RedAnts.Show.Features.Admin.ShowAdminPage)" render-mode="Server" />
     <script src="/_content/RedAnts.Show/show/soundboard.js" asp-append-version="true"></script>
     <script>
+        if (window.showBoard) showBoard.useServerTokens('/admin/show/spotify/token');
         var showEditAudio = null, showEditTimer = null, showEditSpTimer = null;
         function showEditReport(pos, dur) {
             if (window.__showDotNet) { try { window.__showDotNet.invokeMethodAsync('OnEditPosition', pos || 0, dur || 0); } catch (e) { } }
@@ -45,9 +46,10 @@
         window.showEditPlaySpotify = async function (uri, startSec, shuffle) {
             if (!uri) { alert('Kein Spotify-Track/URI gesetzt.'); return; }
             if (!window.showBoard) { alert('Spotify-Player nicht geladen.'); return; }
-            if (!showBoard.isLoggedIn()) { alert('Zuerst auf dem Board (▶ Board öffnen → Zahnrad) mit Spotify verbinden.'); return; }
-            var ready = await showBoard.ensureSpotify();
-            if (!ready) { alert('Spotify-Player noch nicht bereit – kurz warten und erneut.'); return; }
+            var ready = false;
+            try { ready = await showBoard.ensureSpotify(); }
+            catch (e) { alert(e && e.message ? e.message : 'Spotify-Player nicht bereit.'); return; }
+            if (!ready) { alert('Spotify-Player noch nicht bereit. Ist im Dialog „🟢 Spotify" ein Konto verbunden (Premium nötig)?'); return; }
             window.showEditStop();
             var status = await showBoard.playSpotify(uri, (startSec || 0) * 1000, !!shuffle);
             if (status !== 'ok') { alert('Spotify: ' + status); return; }

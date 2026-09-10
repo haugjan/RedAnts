@@ -14,7 +14,8 @@ public sealed class ShowSpotifyAccount(
 {
     private const string RefreshKey = "Spotify:RefreshToken";
     private const string NameKey = "Spotify:AccountName";
-    private const string Scopes = "playlist-read-private playlist-read-collaborative user-read-private";
+    private const string Scopes = "playlist-read-private playlist-read-collaborative user-read-private "
+        + "streaming user-read-email user-modify-playback-state user-read-playback-state";
 
     private string? ClientId => settings.Get("Spotify:ClientId") ?? config["Spotify:ClientId"];
     private string? Secret => settings.Get("Spotify:ClientSecret") ?? config["Spotify:ClientSecret"];
@@ -67,7 +68,7 @@ public sealed class ShowSpotifyAccount(
         await settings.SetAsync(NameKey, "");
     }
 
-    public async Task<string?> UserTokenAsync()
+    public async Task<string?> AccessTokenAsync()
     {
         if (!Connected) return null;
         if (_access is not null && DateTime.UtcNow < _expiresUtc) return _access;

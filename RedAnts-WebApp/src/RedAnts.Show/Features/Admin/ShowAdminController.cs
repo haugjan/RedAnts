@@ -10,7 +10,8 @@ namespace RedAnts.Show.Features.Admin;
 public sealed class ShowAdminController(
     OpenShowSound.Handler sounds,
     StartSpotifyConnect.Handler spotifyConnect,
-    CompleteSpotifyConnect.Handler spotifyComplete) : Controller
+    CompleteSpotifyConnect.Handler spotifyComplete,
+    GetSpotifyAccessToken.Handler spotifyToken) : Controller
 {
     private const string StateCookie = "show_spotify_state";
 
@@ -53,6 +54,15 @@ public sealed class ShowAdminController(
         {
             return Done(ex.Message, false);
         }
+    }
+
+    [HttpGet("spotify/token")]
+    public async Task<IActionResult> SpotifyToken()
+    {
+        var token = await spotifyToken.HandleAsync(new GetSpotifyAccessToken.Query());
+        if (token is null) return StatusCode(409, new { error = "not-connected" });
+        Response.Headers.CacheControl = "no-store";
+        return Json(new { access_token = token, expires_in = 300 });
     }
 
     private string RedirectUri() => $"{Request.Scheme}://{Request.Host}/admin/show/spotify/callback";
