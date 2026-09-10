@@ -305,7 +305,7 @@ public sealed class WebsiteContentTypeSeeder(
                 key = heroContentKey,
                 values = new[]
                 {
-                    Val(A.HeroTitle, "Red Ants Winterthur"),
+                    Val(A.HeroTitle, "Red Ants Rychenberg Winterthur"),
                     Val(A.HeroSubtitle, "Unihockey aus Winterthur. Heimspiele, Saisonkarten und alles rund um den Verein."),
                     Val(A.HeroTags, "Winterthur,Unihockey,NLA Damen"),
                     Val(A.HeroCtaText, "Zu den Tickets"),

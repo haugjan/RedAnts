@@ -12,7 +12,7 @@
     var blocked = !AccessGate.SeasonOk(statusEnum, accessSecret, providedSecret);
     if (blocked) { Context.Response.StatusCode = 404; }
 
-    ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
+    ViewBag.PageTitle = Model.Name + " – Red Ants";
     ViewBag.TransparentNav = !blocked;
 
     var season = blocked ? null : await SeasonQuery.HandleAsync(new GetSeasonForSale.Query(Model.Id));

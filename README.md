@@ -1,6 +1,6 @@
 # RedAnts
 
-Public website and self-service ticketing application for Red Ants Winterthur, built on **Umbraco CMS 17 / .NET 10**.
+Public website and self-service ticketing application for Red Ants Rychenberg Winterthur, built on **Umbraco CMS 17 / .NET 10**.
 
 ## Repository layout
 

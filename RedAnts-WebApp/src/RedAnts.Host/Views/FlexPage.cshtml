@@ -1,8 +1,8 @@
-﻿@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
 @using Umbraco.Cms.Core.Models.Blocks
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
-    ViewBag.PageTitle = Model.Name + " – Red Ants Winterthur";
+    ViewBag.PageTitle = Model.Name + " – Red Ants";
 
     var blocks = Model.Value<BlockListModel>("content")?.ToList() ?? new List<BlockListItem>();
     var firstAlias = blocks.FirstOrDefault()?.Content.ContentType.Alias;

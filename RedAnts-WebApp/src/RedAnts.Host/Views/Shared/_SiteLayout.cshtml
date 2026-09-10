@@ -19,7 +19,7 @@
     var logoUrl = "https://redants.ch/uploads/232/admin/website_header/RA_Logo_transparent_300ppi.png";
 
     var transparentNav = ViewBag.TransparentNav as bool? ?? false;
-    var pageTitle = ViewBag.PageTitle as string ?? "Red Ants Winterthur";
+    var pageTitle = ViewBag.PageTitle as string ?? "Red Ants Rychenberg Winterthur";
     var navBg = transparentNav ? "rgba(16,16,16,0.55)" : "rgba(255,255,255,0.97)";
     var navBorder = transparentNav ? "rgba(255,255,255,0.12)" : "#f0f0f0";
 }
@@ -34,14 +34,14 @@
           && !(ViewBag.NoIndex as bool? ?? false);
       var canonicalUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
       var metaDescription = ViewBag.MetaDescription as string
-          ?? "Red Ants Rychenberg Winterthur – Unihockey aus Leidenschaft. Spielplan, Tickets, Saisonkarten und News der Red Ants Winterthur.";
+          ?? "Red Ants Rychenberg Winterthur – Unihockey aus Leidenschaft. Spielplan, Tickets, Saisonkarten und News der Red Ants.";
   }
   <meta name="description" content="@metaDescription" />
   <link rel="canonical" href="@canonicalUrl" />
   <meta name="robots" content="@(isIndexable ? "index,follow" : "noindex,nofollow")" />
   <meta name="theme-color" content="#C8102E" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Red Ants Winterthur" />
+  <meta property="og:site_name" content="Red Ants Rychenberg Winterthur" />
   <meta property="og:locale" content="de_CH" />
   <meta property="og:title" content="@pageTitle" />
   <meta property="og:description" content="@metaDescription" />
@@ -95,7 +95,7 @@
      style="background:@navBg; border-bottom-color:@navBorder; @(transparentNav ? "" : "box-shadow:0 1px 12px rgba(0,0,0,0.06);")">
   <div class="site-nav-inner">
     <a href="@(home?.Url() ?? "/")" class="site-nav-logo" aria-label="Startseite">
-      <img src="@logoUrl" alt="Red Ants Winterthur"
+      <img src="@logoUrl" alt="Red Ants Rychenberg Winterthur"
            onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
       <span class="site-nav-logo-fallback" style="display:none;">Red Ants</span>
     </a>

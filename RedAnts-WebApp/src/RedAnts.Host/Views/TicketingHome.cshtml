@@ -9,7 +9,7 @@
     var headerText = Model.Value<string>("headerText");
     var headerImage = Model.Value<IPublishedContent>("headerImage")?.Url();
     var title = string.IsNullOrWhiteSpace(headerText) ? "Tickets" : headerText;
-    ViewBag.PageTitle = title + " – Red Ants Winterthur";
+    ViewBag.PageTitle = title + " – Red Ants";
     ViewBag.TransparentNav = true;
 
     var home = await HomeQuery.HandleAsync(new GetTicketingHome.Query());
@@ -45,7 +45,7 @@
                             <li class="event-item">
                                 <a class="event-item-link" href="/seasons/">
                                     <span class="event-item-logos">
-                                        <img class="team-logo" src="@passLogo" alt="Red Ants Winterthur" />
+                                        <img class="team-logo" src="@passLogo" alt="Red Ants Rychenberg Winterthur" />
                                     </span>
                                     <span class="event-item-body">
                                         @if (!string.IsNullOrWhiteSpace(cat.ActionText))

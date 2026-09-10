@@ -10,7 +10,7 @@
     var headerImage = Model.Value<IPublishedContent>("headerImage")?.Url();
     var bodyHtml = Model.Value<string>("bodyText");
     var title = string.IsNullOrWhiteSpace(headerText) ? "Saisonkarten" : headerText;
-    ViewBag.PageTitle = title + " – Red Ants Winterthur";
+    ViewBag.PageTitle = title + " – Red Ants";
     ViewBag.TransparentNav = true;
 
     var passOffers = (await PassOffersQuery.HandleAsync(new GetSeasonPassOffers.Query()))

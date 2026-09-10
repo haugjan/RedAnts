@@ -82,7 +82,7 @@ public static class EmailLayout
                 <tr><td align="center" class="ra-pad" style="padding:22px 40px 6px;">
                   {(string.IsNullOrEmpty(logo)
                       ? $"<span style=\"font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:{Accent};font-size:20px;\">Red Ants</span>"
-                      : $"<img src=\"{logo}\" alt=\"Red Ants Winterthur\" width=\"46\" height=\"41\" style=\"width:46px;height:41px;max-width:46px;display:block;border:0;margin:0 auto;\">")}
+                      : $"<img src=\"{logo}\" alt=\"Red Ants Rychenberg Winterthur\" width=\"46\" height=\"41\" style=\"width:46px;height:41px;max-width:46px;display:block;border:0;margin:0 auto;\">")}
                 </td></tr>
                 <tr><td class="ra-pad" style="padding:14px 40px 0;">
                   <h1 class="ra-h1" style="margin:0;font-family:'Oswald',Arial,Helvetica,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#101010;font-size:1.55em;line-height:1.15;">{title}</h1>

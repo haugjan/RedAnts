@@ -1,6 +1,6 @@
 # RedAnts
 
-Public website plus a self-service ticketing application for Red Ants Winterthur, built on **Umbraco CMS 17 / .NET 10** with Azure SQL storage.
+Public website plus a self-service ticketing application for Red Ants Rychenberg Winterthur, built on **Umbraco CMS 17 / .NET 10** with Azure SQL storage.
 
 ## Repository layout
 
