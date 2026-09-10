@@ -484,7 +484,15 @@
         const j = await res.json();
         if (j && j.error) detail = [j.error.reason, j.error.message].filter(Boolean).join(' - ');
       } catch {}
-      throw new Error('Spotify-API-Fehler ' + res.status + (detail ? ': ' + detail : ''));
+      if (res.status === 429) {
+        const wait = parseInt(res.headers.get('Retry-After') || '0', 10);
+        const err429 = new Error('Spotify drosselt gerade (429)' + (wait ? ', in ' + wait + ' Sekunden nochmals versuchen.' : ', kurz warten und nochmals versuchen.'));
+        err429.status = 429;
+        throw err429;
+      }
+      const err = new Error('Spotify-API-Fehler ' + res.status + (detail ? ': ' + detail : ''));
+      err.status = res.status;
+      throw err;
     }
     return res;
   }
@@ -524,6 +532,8 @@
       await playBody(body);
       return 'ok';
     } catch (e) {
+      // Bei einer Drosselung würde ein zweiter Versuch das Limit nur weiter belasten.
+      if (e && e.status === 429) return e.message;
       // Ein Retry nach erneutem Transfer (Gerät war evtl. noch nicht aktiv).
       try {
         await transferToDevice();
