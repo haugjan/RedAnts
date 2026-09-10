@@ -123,7 +123,7 @@ public sealed class EventTicketBundleRepository(IScopeProvider scopeProvider) : 
                     "WHERE EventId=@15 AND Uuid LIKE @16",
                     (object[])new object?[]
                     {
-                        (int)category, bundleId, buyerType, h.FirstName, h.LastName, h.Company, h.Email,
+                        (int)category, bundleId, buyerType, h.FirstName, h.LastName, h.Company, h.Email?.Value,
                         h.Salutation, birthday, h.Street, h.AddressLine2, h.PostalCode, h.City, h.Country, h.Phone,
                         eventId, code + "%"
                     });

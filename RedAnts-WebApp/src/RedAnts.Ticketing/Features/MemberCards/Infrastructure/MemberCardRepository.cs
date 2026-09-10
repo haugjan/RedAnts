@@ -33,7 +33,7 @@ public sealed class MemberCardRepository(IScopeProvider scopeProvider) : IMember
             (object[])new object?[]
             {
                 card.FirstName, card.LastName, card.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
-                (int)card.Category, (int)card.Status, card.Reference, card.Email,
+                (int)card.Category, (int)card.Status, card.Reference, card.Email?.Value,
                 a.Salutation, a.Company, a.Street, a.AddressLine2, a.PostalCode, a.City, a.Country, a.Phone,
                 card.Admissions, card.Id
             });

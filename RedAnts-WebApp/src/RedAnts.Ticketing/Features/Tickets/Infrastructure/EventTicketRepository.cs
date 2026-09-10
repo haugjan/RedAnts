@@ -22,7 +22,7 @@ public sealed class EventTicketRepository(IScopeProvider scopeProvider) : IEvent
             "WHERE Uuid=@13",
             (object[])new object?[]
             {
-                (int)holder.Type, holder.FirstName, holder.LastName, holder.Company, holder.Email,
+                (int)holder.Type, holder.FirstName, holder.LastName, holder.Company, holder.Email?.Value,
                 holder.Salutation, holder.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
                 holder.Street, holder.AddressLine2, holder.PostalCode, holder.City, holder.Country, holder.Phone,
                 uuid.ToString()

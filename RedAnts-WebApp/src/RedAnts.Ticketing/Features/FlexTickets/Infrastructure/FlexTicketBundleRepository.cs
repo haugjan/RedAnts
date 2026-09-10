@@ -340,7 +340,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
                     "WHERE SeasonId=@15 AND Uuid LIKE @16",
                     (object[])new object?[]
                     {
-                        (int)category, bundleId, buyerType, h.FirstName, h.LastName, h.Company, h.Email,
+                        (int)category, bundleId, buyerType, h.FirstName, h.LastName, h.Company, h.Email?.Value,
                         h.Salutation, birthday, h.Street, h.AddressLine2, h.PostalCode, h.City, h.Country, h.Phone,
                         seasonId, code + "%"
                     });
@@ -448,7 +448,7 @@ public sealed class FlexTicketBundleRepository(IScopeProvider scopeProvider) : I
             "WHERE Uuid=@13",
             (object[])new object?[]
             {
-                (int)holder.Type, holder.FirstName, holder.LastName, holder.Company, holder.Email,
+                (int)holder.Type, holder.FirstName, holder.LastName, holder.Company, holder.Email?.Value,
                 holder.Salutation, holder.Birthday is { } b ? b.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
                 holder.Street, holder.AddressLine2, holder.PostalCode, holder.City, holder.Country, holder.Phone,
                 uuid.ToString()
