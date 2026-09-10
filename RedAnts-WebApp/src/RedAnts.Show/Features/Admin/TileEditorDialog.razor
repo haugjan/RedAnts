@@ -246,8 +246,8 @@ else
 
 @if (_askDiscard)
 {
-    <div class="se-choosewrap" @onclick="KeepEditing">
-        <div class="se-choosecard" @onclick:stopPropagation="true">
+    <div class="se-choosewrap" @onmousedown="KeepEditing">
+        <div class="se-choosecard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
             <h3>Kein Song gewählt</h3>
             <p class="se-muted" style="margin:0 0 14px">Diese Kachel hat noch keinen Song/keine Datei.</p>
             <div class="se-choosebtns">

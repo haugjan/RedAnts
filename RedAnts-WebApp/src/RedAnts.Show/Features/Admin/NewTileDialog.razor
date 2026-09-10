@@ -1,5 +1,5 @@
-<div class="se-choosewrap" @onclick="CancelAsync">
-    <div class="se-choosecard" @onclick:stopPropagation="true">
+<div class="se-choosewrap" @onmousedown="CancelAsync">
+    <div class="se-choosecard" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
         <h3>Neue Kachel</h3>
         <div class="se-choosebtns">
             <button class="se-btn" @onclick="() => OnChosen.InvokeAsync(NodeKind.Folder)">📁 Ordner</button>

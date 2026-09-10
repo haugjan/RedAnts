@@ -152,18 +152,21 @@
                 var row = Math.floor((cy - m.r.top - PAD) / (m.ch + GAP));
                 return { col: Math.max(0, Math.min(COLS - 1, col)), row: Math.max(0, Math.min(ROWS - 1, row)) };
             }
+            // Verschoben wird nur am Griff, damit ein Klick auf die Kachel zuverlässig den Editor öffnet.
             document.addEventListener('pointerdown', function (e) {
-                var tile = e.target.closest && e.target.closest('.se-ct');
-                if (!tile) return;
-                var canvas = tile.closest('.se-canvas');
-                if (!canvas) return;
+                var grip = e.target.closest && e.target.closest('.se-ct-grip');
+                if (!grip) return;
+                var tile = grip.closest('.se-ct');
+                var canvas = tile && tile.closest('.se-canvas');
+                if (!tile || !canvas) return;
+                e.preventDefault();
                 var tx = +tile.getAttribute('data-x'), ty = +tile.getAttribute('data-y');
                 var cell = cellAt(canvas, e.clientX, e.clientY);
                 drag = {
                     id: tile.getAttribute('data-id'), canvas: canvas,
                     offCol: cell.col - tx, offRow: cell.row - ty, last: ''
                 };
-                if (tile.setPointerCapture) { try { tile.setPointerCapture(e.pointerId); } catch (x) { } }
+                if (grip.setPointerCapture) { try { grip.setPointerCapture(e.pointerId); } catch (x) { } }
             });
             document.addEventListener('pointermove', function (e) {
                 if (!drag || !gd) return;
@@ -176,7 +179,7 @@
                 gd.invokeMethodAsync('SetRect', drag.id, x, y, 1, 1);
             });
             document.addEventListener('pointerup', function () {
-                if (drag && drag.moved) {
+                if (drag) {
                     var sup = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
                     document.addEventListener('click', sup, { capture: true, once: true });
                     setTimeout(function () { document.removeEventListener('click', sup, { capture: true }); }, 350);
