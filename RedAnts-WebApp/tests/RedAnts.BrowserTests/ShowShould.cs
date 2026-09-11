@@ -96,7 +96,7 @@ public sealed class ShowShould(BrowserFixture browser)
     public async Task OpenAndCancelTheTileEditorDialog()
     {
         var page = await OpenAdminAsync();
-        var tile = page.Locator(".se-ct:not(.folder)").First;
+        var tile = page.Locator(".se-ct:not(.folder):not(.control)").First;
         var label = (await tile.Locator(".se-ct-lbl").InnerTextAsync()).Trim();
         await tile.ClickAsync();
 

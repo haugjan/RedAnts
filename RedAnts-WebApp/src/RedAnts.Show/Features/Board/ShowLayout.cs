@@ -10,11 +10,8 @@ public static class ShowLayout
     public const int Rows = 3;
 
     public static readonly (int X, int Y) BackCell = (0, 0);
-    public static readonly (int X, int Y) PauseCell = (Cols - 2, Rows - 1);
-    public static readonly (int X, int Y) FadeCell = (Cols - 1, Rows - 1);
 
-    public static bool IsReserved(int x, int y, bool hasBack) =>
-        (x, y) == PauseCell || (x, y) == FadeCell || (hasBack && (x, y) == BackCell);
+    public static bool IsReserved(int x, int y, bool hasBack) => hasBack && (x, y) == BackCell;
 
     public static IReadOnlyDictionary<string, (int X, int Y, int W, int H)> Resolve(
         IReadOnlyList<ShowButton> nodes, bool reserveTopLeft)
@@ -58,12 +55,23 @@ public static class ShowLayout
         bool hasBack, Func<ShowButton, bool> isActive, bool isPlaying, bool paused)
     {
         if (hasBack && cell == BackCell) return new(number, ShowSlotKind.Back, null, "Zurück", "↩", null, false, true);
-        if (cell == PauseCell) return new(number, ShowSlotKind.Pause, null, paused ? "Weiter" : "Pause", paused ? "▶" : "⏸", null, false, isPlaying);
-        if (cell == FadeCell) return new(number, ShowSlotKind.Fade, null, "Fade-out", "🔉", null, false, isPlaying);
         if (!byCell.TryGetValue(cell, out var node)) return new(number, ShowSlotKind.Empty, null, "", null, null, false, false);
+        if (node.Control is { } control) return ControlSlot(number, node, control, isPlaying, paused);
         if (node.IsFolder) return new(number, ShowSlotKind.Folder, node.Id, node.Label, node.Icon ?? "📁", node.Color, false, true);
         var playable = node.EffectiveSongs.Any(s => !string.IsNullOrWhiteSpace(s.Ref));
         return new(number, ShowSlotKind.Tile, node.Id, node.Label, node.Icon ?? "🔊", node.Color, isActive(node), playable);
+    }
+
+    private static ShowBoardSlot ControlSlot(int number, ShowButton node, ShowControl control, bool isPlaying, bool paused)
+    {
+        var kind = control switch
+        {
+            ShowControl.Pause => ShowSlotKind.Pause,
+            ShowControl.Fade => ShowSlotKind.Fade,
+            ShowControl.Previous => ShowSlotKind.Previous,
+            _ => ShowSlotKind.Next,
+        };
+        return new(number, kind, node.Id, ShowControls.Label(control, paused), ShowControls.Icon(control, paused), node.Color, false, isPlaying);
     }
 
     public static void EnsureEdit(IReadOnlyList<EditButton> nodes, bool reserveBack)
@@ -85,7 +93,7 @@ public static class ShowLayout
 
     private static HashSet<(int, int)> ReservedSet(bool hasBack)
     {
-        var set = new HashSet<(int, int)> { PauseCell, FadeCell };
+        var set = new HashSet<(int, int)>();
         if (hasBack) set.Add(BackCell);
         return set;
     }

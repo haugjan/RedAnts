@@ -2,7 +2,7 @@ using RedAnts.Show.Domain;
 
 namespace RedAnts.Show.Features.Admin;
 
-public enum NodeKind { Sound, Folder, Random }
+public enum NodeKind { Sound, Folder, Random, Control }
 
 public sealed class EditSound
 {
@@ -47,12 +47,13 @@ public sealed class EditButton
     public bool SongsRandom { get; set; }
     public List<EditButton> Children { get; set; } = new();
     public bool Panic { get; set; }
+    public ShowControl? Control { get; set; }
 
     public EditSound FirstSong => Songs.Count > 0 ? Songs[0] : Songs.AddAndReturn(new EditSound());
 
     public static EditButton From(ShowButton b)
     {
-        var kind = b.IsFolder ? NodeKind.Folder : NodeKind.Sound;
+        var kind = b.IsControl ? NodeKind.Control : b.IsFolder ? NodeKind.Folder : NodeKind.Sound;
         var songs = b.Songs is { Count: > 0 } ? b.Songs.Select(EditSound.From).ToList()
             : b.Sound is { } s ? new List<EditSound> { EditSound.From(s) }
             : b.Pool is { Count: > 0 } ? b.Pool.Select(EditSound.From).ToList()
@@ -68,6 +69,7 @@ public sealed class EditButton
             X = b.X, Y = b.Y, W = b.W, H = b.H,
             Kind = kind,
             Panic = b.Panic,
+            Control = b.Control,
             Songs = songs,
             SongsRandom = b.SongsRandom || (b.Songs is null && b.Pool is { Count: > 0 }),
             Children = (b.Children ?? []).Select(From).ToList(),
@@ -77,6 +79,7 @@ public sealed class EditButton
     public ShowButton ToModel() => Kind switch
     {
         _ when Panic => new ShowButton(Id, Label, Icon, Color, Size, null, null, Subtitle, null, X, Y, W, H, true),
+        NodeKind.Control when Control is { } control => ShowProfileLayout.ControlTile(Id, control, X, Y),
         NodeKind.Folder => new ShowButton(Id, Label, Icon, Color, Size, Children.Select(c => c.ToModel()).ToList(), null, Subtitle, null, X, Y, W, H),
         _ => new ShowButton(Id, Label, Icon, Color, Size, null,
             Songs.Count == 1 ? Songs[0].ToModel() : null, Subtitle, null, X, Y, W, H, false,
@@ -96,13 +99,17 @@ public sealed class EditProfile
     public string Color { get; set; } = "#C8102E";
     public List<EditButton> Root { get; set; } = new();
 
-    public static EditProfile From(ShowProfile p) => new()
+    public static EditProfile From(ShowProfile profile)
     {
-        Id = p.Id,
-        Name = p.Name,
-        Color = p.Color ?? "#C8102E",
-        Root = p.Root.Select(EditButton.From).ToList(),
-    };
+        var p = ShowProfileLayout.Upgrade(profile);
+        return new()
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Color = p.Color ?? "#C8102E",
+            Root = p.Root.Select(EditButton.From).ToList(),
+        };
+    }
 
-    public ShowProfile ToModel() => new(Id, Name, Color, Root.Select(b => b.ToModel()).ToList());
+    public ShowProfile ToModel() => new(Id, Name, Color, Root.Select(b => b.ToModel()).ToList(), ShowProfileLayout.Current);
 }

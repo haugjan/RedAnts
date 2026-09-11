@@ -120,6 +120,10 @@
             <InputFile OnChange="e => UploadAsync(e, song)" accept="audio/*" />
             <span>@(_uploading ? "Lädt hoch …" : "Datei ziehen oder klicken – ersetzt sofort")</span>
         </label>
+        <div class="se-grid">
+            <label>Songtitel <input @bind="song.Title" @bind:event="oninput" placeholder="@FriendlyName(song.Ref)" /></label>
+            <label>Interpret <input @bind="song.Artist" @bind:event="oninput" /></label>
+        </div>
     }
     else
     {

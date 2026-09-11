@@ -12,7 +12,7 @@ Das Board (`/show`) muss im Browser offen und einmal angetippt sein (Ton-Freigab
 
 ## Buttons anlegen (einmalig)
 
-Preset-Kategorie **Slots**: `Slot 1` bis `Slot 15` auf die gewünschten Tasten ziehen. Mehr braucht es nicht: Zurück (Slot 1 in einem Ordner), Pause (Slot 14) und Fade-out (Slot 15) liefert das Board selbst. Ohne Verbindung zeigen die Slots nur ihre Nummer.
+Preset-Kategorie **Slots**: `Slot 1` bis `Slot 15` auf die gewünschten Tasten ziehen. Mehr braucht es nicht: Ordner-Zurück (Slot 1 in einem Ordner) und die Steuer-Kacheln Pause, Fade-out, ⏮ Zurück und ⏭ Vor liefert das Board selbst, dort wo sie im Show-Admin platziert sind. Ohne Verbindung zeigen die Slots nur ihre Nummer.
 
 ## Profile
 

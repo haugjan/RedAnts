@@ -5,12 +5,20 @@
             <button class="se-btn" @onclick="() => OnChosen.InvokeAsync(NodeKind.Folder)">📁 Ordner</button>
             <button class="se-btn primary" @onclick="() => OnChosen.InvokeAsync(NodeKind.Sound)">🔊 Song</button>
         </div>
+        <p class="se-choosehint">Steuerung</p>
+        <div class="se-choosebtns se-choosecontrols">
+            @foreach (var control in ShowControls.All)
+            {
+                <button class="se-btn" @onclick="() => OnControlChosen.InvokeAsync(control)">@ShowControls.Icon(control) @ShowControls.Label(control)</button>
+            }
+        </div>
         <button class="se-btn sm se-choosecancel" @onclick="CancelAsync">Abbrechen</button>
     </div>
 </div>
 
 @code {
     [Parameter] public EventCallback<NodeKind> OnChosen { get; set; }
+    [Parameter] public EventCallback<ShowControl> OnControlChosen { get; set; }
     [Parameter] public EventCallback OnCancelled { get; set; }
 
     private Task CancelAsync() => OnCancelled.InvokeAsync();

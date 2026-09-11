@@ -10,14 +10,15 @@ public sealed class ShowProfileRepository(ShowDatabase database) : IShowProfiles
     {
         var rows = await database.RunAsync(db => db.FetchAsync<ShowProfileRecord>(
             "SELECT [Id],[SortOrder],[Json],[UpdatedAt] FROM [show].[Profiles] ORDER BY [SortOrder]"));
-        var profiles = rows
+        var stored = rows
             .Select(r => JsonSerializer.Deserialize<ShowProfile>(r.Json, ShowJson.Options))
             .OfType<ShowProfile>()
             .ToList();
-        if (profiles.Count > 0) return profiles;
-
-        await SaveAllAsync(ShowConfig.Profiles);
-        return ShowConfig.Profiles;
+        var source = stored.Count > 0 ? stored : ShowConfig.Profiles;
+        var profiles = source.Select(ShowProfileLayout.Upgrade).ToList();
+        if (stored.Count == 0 || profiles.Where((p, i) => !ReferenceEquals(p, source[i])).Any())
+            await SaveAllAsync(profiles);
+        return profiles;
     }
 
     public Task SaveAllAsync(IReadOnlyList<ShowProfile> profiles) => database.RunAsync(async db =>

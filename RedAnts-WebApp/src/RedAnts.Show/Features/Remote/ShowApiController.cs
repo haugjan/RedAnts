@@ -97,6 +97,12 @@ public sealed class ShowApiController(
     [HttpGet("fade")]
     public Task<IActionResult> Fade(string? room = null) => Cmd(new ShowCommand("fade", Room: room));
 
+    [HttpGet("previous")]
+    public Task<IActionResult> Previous(string? room = null) => Cmd(new ShowCommand("previous", Room: room));
+
+    [HttpGet("next")]
+    public Task<IActionResult> Next(string? room = null) => Cmd(new ShowCommand("next", Room: room));
+
     [HttpPost("command")]
     public Task<IActionResult> Command([FromBody] ShowCommand cmd) => Cmd(cmd);
 

@@ -12,8 +12,10 @@
   // Daher wird playLocal aus dem echten Klick-Event heraus aufgerufen (siehe
   // Delegations-Handler unten), nicht über den Blazor-Server-Roundtrip.
   const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-  let volume = 0.9;
+  let volume = loadVolume();
   let mediaEl = null;
+  let audioCtx = null;
+  let gainNode = null;
   let activeId = null;
   let activeTimer = null;
   let mediaUnlocked = false;
@@ -24,6 +26,7 @@
     if (mediaUnlocked) return;
     mediaUnlocked = true;
     const el = getMediaEl();
+    routeThroughGain(el);
     if (activeId) return;
     try {
       el.src = SILENT_WAV;
@@ -45,6 +48,46 @@
       mediaEl.addEventListener('error', onLocalEnded);
     }
     return mediaEl;
+  }
+
+  function loadVolume() {
+    try {
+      const v = parseFloat(localStorage.getItem('sb_volume'));
+      return isFinite(v) && v >= 0 && v <= 1 ? v : 0.9;
+    } catch (e) { return 0.9; }
+  }
+
+  function volumeIsFixed(el) {
+    try {
+      const before = el.volume;
+      el.volume = before > 0.5 ? 0.25 : 0.75;
+      const fixed = el.volume === before;
+      el.volume = before;
+      return fixed;
+    } catch (e) { return true; }
+  }
+
+  function routeThroughGain(el) {
+    if (gainNode || !volumeIsFixed(el)) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    try {
+      audioCtx = new Ctx();
+      const gain = audioCtx.createGain();
+      gain.gain.value = volume;
+      audioCtx.createMediaElementSource(el).connect(gain);
+      gain.connect(audioCtx.destination);
+      gainNode = gain;
+    } catch (e) { gainNode = null; }
+  }
+
+  function setLocalLevel(level) {
+    if (gainNode) { gainNode.gain.value = level; return; }
+    if (mediaEl) { try { mediaEl.volume = level; } catch (e) {} }
+  }
+
+  function resumeAudio() {
+    if (audioCtx && audioCtx.state !== 'running') { try { audioCtx.resume(); } catch (e) {} }
   }
 
   function emitActive() {
@@ -83,6 +126,7 @@
     const begin = function () {
       if (token !== playToken) return;
       el.muted = false;
+      resumeAudio();
       const target = startSec > 0 ? startSec : 0;
       try { el.currentTime = target; }
       catch (e) { if (onFail) { onFail(); return; } }
@@ -104,16 +148,19 @@
     if (mediaEl) { try { mediaEl.pause(); } catch {} }
   }
 
-  board.playLocal = function (id, ref, startSec, durationSec) {
+  board.playLocal = function (id, ref, startSec, durationSec, title, artist) {
     board.stopSequence();
-    armSongInfo(false);
+    armSongInfo(true);
     spotifyId = null;
+    spotifyContext = false;
+    cueStart = startSec || 0;
     if (player) { try { player.pause(); } catch {} }
     pauseMedia();
     const el = getMediaEl();
-    el.volume = volume;
+    setLocalLevel(volume);
     activeId = id;
     emitActive();
+    reportSong(title || fileLabel(ref), artist || '');
     playAt(el, resolveSrc(ref), startSec, function () {
       if (durationSec) activeTimer = setTimeout(function () { try { el.pause(); } catch (e) {} onLocalEnded(); }, durationSec * 1000);
     }, onLocalEnded);
@@ -127,10 +174,25 @@
   };
 
   board.setVolume = function (v) {
-    volume = v;
-    if (mediaEl) mediaEl.volume = v;
-    if (player) player.setVolume(v);
+    const next = Math.min(1, Math.max(0, Number(v)));
+    if (!isFinite(next)) return;
+    volume = next;
+    try { localStorage.setItem('sb_volume', String(volume)); } catch (e) {}
+    setLocalLevel(volume);
+    if (player) { try { player.setVolume(volume); } catch (e) {} }
+    queueSpotifyVolume();
   };
+
+  let spotifyVolumeTimer = null;
+
+  function queueSpotifyVolume() {
+    if (!deviceId || !board.isLoggedIn()) return;
+    if (spotifyVolumeTimer) clearTimeout(spotifyVolumeTimer);
+    spotifyVolumeTimer = setTimeout(function () {
+      spotifyVolumeTimer = null;
+      spotifyApi('/me/player/volume?volume_percent=' + Math.round(volume * 100) + '&device_id=' + deviceId, { method: 'PUT' }).catch(function () {});
+    }, 500);
+  }
 
   // ---------- laufender Song für die Fussleiste ----------
   let songInfoOn = false;
@@ -164,10 +226,16 @@
 
   // ---------- Sequenzer: mehrere Songs pro Kachel (Reihenfolge/Zufall, Endlos-Loop) ----------
   let seqToken = 0;
-  board.stopSequence = function () { seqToken++; };
+  let seq = null;
+  let cueStart = 0;
+  let spotifyContext = false;
+  const RESTART_WINDOW_SEC = 3;
+  const HISTORY_LIMIT = 200;
+  board.stopSequence = function () { seqToken++; seq = null; };
 
   function stopSequenceOnError() {
     seqToken++;
+    seq = null;
     armSongInfo(false);
     if (activeId !== null) { activeId = null; emitActive(); }
     if (dotnet) { try { dotnet.invokeMethodAsync('OnSpotifyStopped'); } catch (e) {} }
@@ -198,16 +266,70 @@
       } else {
         const el = getMediaEl();
         if (player) { try { player.pause(); } catch {} }
-        el.volume = volume;
+        setLocalLevel(volume);
         let done = false, cut = null;
         const finish = function () { if (done) return; done = true; el.removeEventListener('ended', onEnd); if (cut) clearTimeout(cut); resolve(true); };
         const onEnd = function () { finish(); };
         el.addEventListener('ended', onEnd, { once: true });
-        reportSong(fileLabel(song.r), '');
+        reportSong(song.ti || fileLabel(song.r), song.ar || '');
         playAt(el, resolveSrc(song.r), song.s, function () {
           if (song.d) cut = setTimeout(function () { try { el.pause(); } catch (e) {} finish(); }, song.d * 1000);
         }, finish);
       }
+    });
+  }
+
+  function newSequence(id, songs, random) {
+    return { id: id, songs: songs, random: !!random, bag: [], history: [], at: -1, current: null, fails: 0 };
+  }
+
+  function shuffledIndices(count, avoidFirst) {
+    const bag = [];
+    for (let i = 0; i < count; i++) bag.push(i);
+    for (let i = count - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = bag[i]; bag[i] = bag[j]; bag[j] = t;
+    }
+    if (count > 1 && bag[count - 1] === avoidFirst) { const t = bag[0]; bag[0] = bag[count - 1]; bag[count - 1] = t; }
+    return bag;
+  }
+
+  function drawIndex(s) {
+    const last = s.at >= 0 ? s.history[s.at] : -1;
+    if (!s.random) return (last + 1) % s.songs.length;
+    if (!s.bag.length) s.bag = shuffledIndices(s.songs.length, last);
+    return s.bag.pop();
+  }
+
+  function advance(s) {
+    if (s.at < s.history.length - 1) { s.at++; return s.history[s.at]; }
+    s.history.push(drawIndex(s));
+    if (s.history.length > HISTORY_LIMIT) s.history.shift();
+    s.at = s.history.length - 1;
+    return s.history[s.at];
+  }
+
+  function retreat(s) {
+    if (s.at > 0) s.at--;
+    return s.history[s.at];
+  }
+
+  function playIndex(index) {
+    const s = seq;
+    if (!s) return;
+    const my = ++seqToken;
+    s.current = index;
+    playOneSong(s.songs[index], my).then(function (played) {
+      if (my !== seqToken || seq !== s) return;
+      if (played === false) {
+        s.fails++;
+        if (s.fails >= 3) { stopSequenceOnError(); return; }
+        setTimeout(function () { if (my === seqToken && seq === s) playIndex(advance(s)); }, 1500);
+        return;
+      }
+      s.fails = 0;
+      if (s.songs.length > 1) playIndex(advance(s));
+      else if (activeId === s.id) { activeId = null; emitActive(); }
     });
   }
 
@@ -217,36 +339,12 @@
     pauseMedia();
     if (player) { try { player.pause(); } catch {} }
     spotifyId = null;
-    const my = ++seqToken;
+    spotifyContext = false;
     activeId = id;
     emitActive();
-    armSongInfo(songs.length > 1 || songs.some(function (s) { return s.t === 'spotify' && isContextRef(s.r); }));
-    const loop = songs.length > 1;
-    const order = songs.map(function (_, i) { return i; });
-    let pos = 0;
-    function nextIndex() {
-      if (random) return Math.floor(Math.random() * songs.length);
-      const i = order[pos % order.length]; pos++; return i;
-    }
-    // Ein einzelner nicht abspielbarer Song darf die Kachel nicht stoppen, eine Störung
-    // von Spotify aber auch nicht im Sekundentakt durch die ganze Liste rasen lassen.
-    let fails = 0;
-    (function step() {
-      if (my !== seqToken) return;
-      const song = songs[nextIndex()];
-      playOneSong(song, my).then(function (played) {
-        if (my !== seqToken) return;
-        if (played === false) {
-          fails++;
-          if (fails >= 3) { stopSequenceOnError(); return; }
-          setTimeout(step, 1500);
-          return;
-        }
-        fails = 0;
-        if (loop) { step(); }
-        else if (activeId === id) { activeId = null; emitActive(); }
-      });
-    })();
+    armSongInfo(true);
+    seq = newSequence(id, songs, random);
+    playIndex(advance(seq));
   };
 
   // Kachel-Klick: Songs direkt im Klick-Event abspielen (iOS-Nutzergeste).
@@ -267,7 +365,9 @@
       const s = songs[0];
       if (!board.isLoggedIn()) { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStatus', 'not-logged-in'); return; }
       board.stopLocal(); board.activateSpotify(); spotifyId = id;
-      armSongInfo(isContextRef(s.r));
+      spotifyContext = isContextRef(s.r);
+      cueStart = s.s || 0;
+      armSongInfo(true);
       const label = tile.getAttribute('data-label') || '';
       board.playSpotify(s.r, (s.s || 0) * 1000, !!s.sh).then(function (status) {
         if (status === 'ok') { if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStarted', id, label, s.d != null ? s.d : null); }
@@ -275,8 +375,7 @@
       });
     } else if (songs.length === 1) {
       const s = songs[0];
-      armSongInfo(false);
-      board.playLocal(id, s.r, s.s || 0, (s.d != null ? s.d : null));
+      board.playLocal(id, s.r, s.s || 0, (s.d != null ? s.d : null), s.ti, s.ar);
       if (dotnet) { try { dotnet.invokeMethodAsync('OnLocalStarted'); } catch (x) {} }
     } else {
       board.playSongs(id, songs, tile.getAttribute('data-random') === '1');
@@ -288,6 +387,7 @@
   document.addEventListener('pointerdown', function () {
     board.activateSpotify();
     unlockMediaOnce();
+    resumeAudio();
     if (dotnet) { try { dotnet.invokeMethodAsync('OnActivated'); } catch (e) {} }
   }, { passive: true });
 
@@ -595,6 +695,7 @@
 
   board.stopSpotify = async function (fade) {
     spotifyId = null;
+    spotifyContext = false;
     armSongInfo(false);
     try {
       if (fade && player) {
@@ -639,11 +740,11 @@
     if (mediaEl && activeId) {
       const steps = 12;
       for (let i = steps - 1; i >= 0; i--) {
-        try { mediaEl.volume = volume * (i / steps); } catch {}
+        setLocalLevel(volume * (i / steps));
         await new Promise(function (r) { setTimeout(r, 90); });
       }
       board.stopLocal();
-      try { mediaEl.volume = volume; } catch {}
+      setLocalLevel(volume);
     }
     if (player) { await board.stopSpotify(true); }
   };
@@ -687,7 +788,7 @@
     } catch (e) {
       toast(e);
     }
-    return { loggedIn: logged, hasClientId: !!board.getClientId(), redirectUri: redirectUri() };
+    return { loggedIn: logged, hasClientId: !!board.getClientId(), redirectUri: redirectUri(), volume: volume };
   };
 
   board.copyText = async function (text) {
@@ -705,6 +806,95 @@
       return ok;
     } catch (e) { return false; }
   };
+
+  function currentSong() { return seq && seq.current !== null ? seq.songs[seq.current] : null; }
+
+  function playingSpotify() {
+    const s = currentSong();
+    return spotifyId !== null || (!!s && s.t === 'spotify');
+  }
+
+  function playingContext() {
+    const s = currentSong();
+    return s ? s.t === 'spotify' && isContextRef(s.r) : spotifyContext;
+  }
+
+  function currentStartSec() {
+    if (playingContext()) return 0;
+    const s = currentSong();
+    return s ? (s.s || 0) : cueStart;
+  }
+
+  async function readPosition() {
+    if (playingSpotify()) {
+      const st = await board.getState();
+      return st && st.duration > 0 ? { pos: st.position / 1000, dur: st.duration / 1000 } : null;
+    }
+    if (mediaEl && activeId && isFinite(mediaEl.duration) && mediaEl.duration > 0) return { pos: mediaEl.currentTime, dur: mediaEl.duration };
+    return null;
+  }
+
+  async function seekTo(sec) {
+    if (playingSpotify()) { if (player) { try { await player.seek(Math.max(0, Math.floor(sec * 1000))); } catch (e) {} } return; }
+    if (mediaEl) { try { mediaEl.currentTime = Math.max(0, sec); } catch (e) {} }
+  }
+
+  async function restartCurrent() {
+    await seekTo(currentStartSec());
+    if (!playingSpotify() && mediaEl && mediaEl.paused && activeId) { const p = mediaEl.play(); if (p && p.catch) p.catch(function () {}); }
+  }
+
+  board.previous = async function () {
+    const p = await readPosition();
+    if (p && p.pos - currentStartSec() > RESTART_WINDOW_SEC) { await restartCurrent(); return; }
+    if (playingContext() && player) { try { await player.previousTrack(); } catch (e) {} return; }
+    if (seq && seq.songs.length > 1) { playIndex(retreat(seq)); return; }
+    await restartCurrent();
+  };
+
+  board.next = async function () {
+    if (playingContext() && player) { try { await player.nextTrack(); } catch (e) {} return; }
+    if (seq && seq.songs.length > 1) playIndex(advance(seq));
+  };
+
+  let seekDragging = false;
+  let seekDuration = 0;
+
+  function clock(sec) {
+    const total = Math.max(0, Math.floor(sec || 0));
+    return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+  }
+
+  async function refreshSeek() {
+    const wrap = document.getElementById('sb-seek-wrap');
+    if (!wrap) return;
+    const p = await readPosition();
+    wrap.hidden = !p;
+    if (!p || seekDragging) return;
+    seekDuration = p.dur;
+    document.getElementById('sb-seek').value = String(Math.round(p.pos / p.dur * 1000));
+    document.getElementById('sb-seek-pos').textContent = clock(p.pos);
+    document.getElementById('sb-seek-dur').textContent = clock(p.dur);
+  }
+
+  setInterval(function () { void refreshSeek(); }, 500);
+
+  document.addEventListener('input', function (e) {
+    const t = e.target;
+    if (!t) return;
+    if (t.id === 'sb-volume') board.setVolume(parseFloat(t.value));
+    if (t.id === 'sb-seek') {
+      seekDragging = true;
+      const pos = document.getElementById('sb-seek-pos');
+      if (pos) pos.textContent = clock(Number(t.value) / 1000 * seekDuration);
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    const t = e.target;
+    if (!t || t.id !== 'sb-seek') return;
+    seekTo(Number(t.value) / 1000 * seekDuration).finally(function () { seekDragging = false; });
+  });
 
   window.showBoard = board;
 })();

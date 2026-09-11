@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace RedAnts.Show.Features.Remote;
 
 [JsonConverter(typeof(JsonStringEnumConverter<ShowSlotKind>))]
-public enum ShowSlotKind { Empty, Tile, Folder, Back, Pause, Fade }
+public enum ShowSlotKind { Empty, Tile, Folder, Back, Pause, Fade, Previous, Next }
 
 public sealed record ShowBoardSlot(
     int Number,

@@ -151,6 +151,10 @@
 .se-choosecard h3 { margin: 0 0 16px; }
 .se-choosebtns { display: flex; gap: 10px; }
 .se-choosebtns .se-btn { flex: 1; justify-content: center; padding: 1rem; font-size: 1rem; }
+.se-choosehint { margin: 14px 0 6px; color: var(--ra-muted); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+.se-choosecontrols { flex-wrap: wrap; }
+.se-choosecontrols .se-btn { flex: 1 1 45%; padding: 0.7rem; font-size: 0.95rem; }
+.se-ct.control { background: linear-gradient(160deg, #4a4a56 0%, #2c2c34 100%); }
 .se-choosecancel { margin-top: 14px; }
 
 .se-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }

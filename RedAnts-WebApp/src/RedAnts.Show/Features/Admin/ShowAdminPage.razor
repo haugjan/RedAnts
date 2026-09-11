@@ -104,11 +104,9 @@
                     {
                         <div class="se-reserved" style="grid-column:1 / span 1; grid-row:1 / span 1">↩ Zurück</div>
                     }
-                    <div class="se-reserved" style="grid-column:@(ShowLayout.PauseCell.X + 1) / span 1; grid-row:@(ShowLayout.PauseCell.Y + 1) / span 1">⏸ Pause</div>
-                    <div class="se-reserved" style="grid-column:@(ShowLayout.FadeCell.X + 1) / span 1; grid-row:@(ShowLayout.FadeCell.Y + 1) / span 1">🔉 Fade</div>
                     @foreach (var node in level)
                     {
-                        <div class="se-ct @(node.Kind == NodeKind.Folder ? "folder" : "") @(node == _selected ? "sel" : "")"
+                        <div class="se-ct @(node.Kind == NodeKind.Folder ? "folder" : "") @(node.Kind == NodeKind.Control ? "control" : "") @(node == _selected ? "sel" : "")"
                              data-id="@node.Id" data-x="@node.X" data-y="@node.Y" data-w="@node.W" data-h="@node.H"
                              @onclick="() => Select(node)"
                              style="grid-column:@(node.X + 1) / span 1; grid-row:@(node.Y + 1) / span 1; --c:@node.Color">
@@ -128,7 +126,7 @@
                     }
                 </div>
 
-                <p class="se-hint">Neue Kachel: auf eine freie Zelle klicken, dann Ordner oder Song wählen. Kachel anklicken zum Bearbeiten, am Griff ⠿ oben links in eine andere Zelle ziehen.</p>
+                <p class="se-hint">Neue Kachel: auf eine freie Zelle klicken, dann Ordner, Song oder eine Steuerung (Pause, Fade-out, Zurück, Vor) wählen. Kachel anklicken zum Bearbeiten (Steuer-Kacheln: entfernen), am Griff ⠿ oben links in eine andere Zelle ziehen.</p>
                 <div class="se-add-tiles">
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Sound)">+ Song</button>
                     <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Ordner</button>
@@ -142,7 +140,7 @@
 
                 @if (_chooseKind)
                 {
-                    <NewTileDialog OnChosen="CommitNewTile" OnCancelled="CancelNewTile" />
+                    <NewTileDialog OnChosen="CommitNewTile" OnControlChosen="CommitControlTile" OnCancelled="CancelNewTile" />
                 }
             </div>
         </div>
@@ -333,8 +331,13 @@
         }
     </text>;
 
-    private void Select(EditButton node)
+    private async Task Select(EditButton node)
     {
+        if (node.Kind == NodeKind.Control)
+        {
+            if (await JS.InvokeAsync<bool>("confirm", $"Steuer-Kachel „{node.Label}“ entfernen?")) RemoveFrom(CurrentLevel(), node);
+            return;
+        }
         _selected = node;
         _selectedIsNew = false;
         _ = JS.InvokeVoidAsync("showEditStop");
@@ -419,6 +422,22 @@
     }
 
     private void CancelNewTile() { _newRect = null; _chooseKind = false; }
+
+    private void CommitControlTile(ShowControl control)
+    {
+        if (_newRect is { } r)
+            CurrentLevel().Add(new EditButton
+            {
+                Kind = NodeKind.Control,
+                Control = control,
+                Label = ShowControls.Label(control),
+                Icon = ShowControls.Icon(control),
+                Color = "#3A3A44",
+                X = r.X, Y = r.Y, W = r.W, H = r.H,
+            });
+        _newRect = null;
+        _chooseKind = false;
+    }
 
     [JSInvokable]
     public Task OnEditPosition(double pos, double dur) => Editor?.ReportPositionAsync(pos, dur) ?? Task.CompletedTask;

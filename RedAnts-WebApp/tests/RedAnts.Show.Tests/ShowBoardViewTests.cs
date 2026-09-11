@@ -17,9 +17,8 @@ public class ShowBoardViewTests
         Assert.Equal(ShowSlotKind.Empty, slots[0].Kind);
         Assert.Equal("goal", slots[1].TileId);
         Assert.Equal("penalty", slots[5].TileId);
-        Assert.Equal(ShowSlotKind.Pause, slots[13].Kind);
-        Assert.Equal(ShowSlotKind.Fade, slots[14].Kind);
-        Assert.False(slots[13].Enabled);
+        Assert.Equal(ShowSlotKind.Empty, slots[13].Kind);
+        Assert.Equal(ShowSlotKind.Empty, slots[14].Kind);
     }
 
     [Fact]
@@ -31,7 +30,43 @@ public class ShowBoardViewTests
         var goal = Assert.Single(slots, s => s.TileId == "goal");
         Assert.Equal(2, goal.Number);
         Assert.True(goal.Active);
-        Assert.True(slots[14].Enabled);
+    }
+
+    [Fact]
+    public void Control_tiles_sit_where_they_are_placed_and_only_work_while_playing()
+    {
+        var nodes = new[]
+        {
+            ShowProfileLayout.ControlTile("prev", ShowControl.Previous, 0, 0),
+            ShowProfileLayout.ControlTile("pause", ShowControl.Pause, 2, 1),
+        };
+
+        var idle = ShowLayout.Slots(nodes, hasBack: false, _ => false, isPlaying: false, paused: false);
+        var paused = ShowLayout.Slots(nodes, hasBack: false, _ => false, isPlaying: true, paused: true);
+
+        Assert.Equal(ShowSlotKind.Previous, idle[0].Kind);
+        Assert.False(idle[0].Enabled);
+        Assert.Equal(ShowSlotKind.Pause, paused[7].Kind);
+        Assert.True(paused[7].Enabled);
+        Assert.Equal("Weiter", paused[7].Label);
+    }
+
+    [Fact]
+    public void Legacy_profiles_get_pause_and_fade_on_every_level()
+    {
+        var folder = new ShowButton("more", "Mehr", Children: [Tile("inner", 0, 0)]);
+        var legacy = new ShowProfile("p", "P", null, [Tile("goal", 3, 2), folder]);
+
+        var upgraded = ShowProfileLayout.Upgrade(legacy);
+
+        Assert.Equal(ShowProfileLayout.Current, upgraded.LayoutVersion);
+        var rootSlots = ShowLayout.Slots(upgraded.Root, hasBack: false, _ => false, isPlaying: true, paused: false);
+        Assert.Equal(ShowSlotKind.Pause, rootSlots[13].Kind);
+        Assert.Equal(ShowSlotKind.Fade, rootSlots[14].Kind);
+        Assert.Contains(rootSlots, s => s.TileId == "goal");
+        var inner = upgraded.Root.Single(n => n.Id == "more").Children!;
+        Assert.Equal(["more-pause", "more-fade", "inner"], inner.Select(n => n.Id));
+        Assert.Same(upgraded, ShowProfileLayout.Upgrade(upgraded));
     }
 
     [Fact]

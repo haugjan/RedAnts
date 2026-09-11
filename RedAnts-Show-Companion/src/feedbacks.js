@@ -5,7 +5,7 @@ const BLACK = 0x000000
 const MUTED = 0x777777
 const DISABLED = 0x262626
 const OFFLINE = 0x1a1a1a
-const CONTROL_COLORS = { Back: 0x333333, Pause: 0x444444, Fade: 0xe07a1f }
+const CONTROL_COLORS = { Back: 0x333333, Pause: 0x444444, Fade: 0xe07a1f, Previous: 0x1d3557, Next: 0x1d3557 }
 
 function slotStyle(slot, number) {
 	if (!slot) return { text: String(number), size: 'auto', color: MUTED, bgcolor: OFFLINE }

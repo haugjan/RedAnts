@@ -32,10 +32,12 @@ public sealed record ShowButton(
     int H = 0,
     bool Panic = false,
     IReadOnlyList<ShowSound>? Songs = null,
-    bool SongsRandom = false)
+    bool SongsRandom = false,
+    ShowControl? Control = null)
 {
     [JsonIgnore] public bool IsFolder => Children is { Count: > 0 };
     [JsonIgnore] public bool IsRandom => Pool is { Count: > 0 };
+    [JsonIgnore] public bool IsControl => Control is not null;
 
     [JsonIgnore]
     public IReadOnlyList<ShowSound> EffectiveSongs =>
@@ -44,4 +46,4 @@ public sealed record ShowButton(
         : Pool ?? Array.Empty<ShowSound>();
 }
 
-public sealed record ShowProfile(string Id, string Name, string? Color, IReadOnlyList<ShowButton> Root);
+public sealed record ShowProfile(string Id, string Name, string? Color, IReadOnlyList<ShowButton> Root, int LayoutVersion = 1);

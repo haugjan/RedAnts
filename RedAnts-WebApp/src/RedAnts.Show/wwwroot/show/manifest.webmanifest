@@ -1,0 +1,18 @@
+{
+  "id": "/show",
+  "name": "Red Ants Soundboard",
+  "short_name": "Soundboard",
+  "description": "Soundboard der Red Ants Rychenberg Winterthur.",
+  "start_url": "/show",
+  "scope": "/show",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#141418",
+  "theme_color": "#141418",
+  "lang": "de",
+  "icons": [
+    { "src": "/_content/RedAnts.Show/show/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/_content/RedAnts.Show/show/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

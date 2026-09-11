@@ -86,6 +86,18 @@
         }
         @foreach (var node in tiles)
         {
+            if (node.Control is { } control)
+            {
+                var cell = layout[node.Id];
+                var controlClass = "sb-tile transport " + ControlClass(control) + (isPlaying ? "" : " off");
+                <button class="@controlClass"
+                        style="grid-column:@(cell.X + 1) / span 1; grid-row:@(cell.Y + 1) / span 1"
+                        disabled="@(!isPlaying)" @onclick="() => RunControlAsync(control)">
+                    <span class="sb-tile-icon">@ShowControls.Icon(control, _paused)</span>
+                    <span class="sb-tile-label">@ShowControls.Label(control, _paused)</span>
+                </button>
+                continue;
+            }
             var songs = node.EffectiveSongs;
             var isFolder = node.IsFolder;
             var isSpotify = songs.Any(s => s.Kind == SoundKind.Spotify);
@@ -124,18 +136,6 @@
                 }
             </button>
         }
-        <button class="sb-tile transport pause@(isPlaying ? "" : " off")"
-                style="grid-column:@(ShowLayout.PauseCell.X + 1) / span 1; grid-row:@(ShowLayout.PauseCell.Y + 1) / span 1"
-                disabled="@(!isPlaying)" @onclick="TogglePauseAsync">
-            <span class="sb-tile-icon">@(_paused ? "▶" : "⏸")</span>
-            <span class="sb-tile-label">@(_paused ? "Weiter" : "Pause")</span>
-        </button>
-        <button class="sb-tile transport fade@(isPlaying ? "" : " off")"
-                style="grid-column:@(ShowLayout.FadeCell.X + 1) / span 1; grid-row:@(ShowLayout.FadeCell.Y + 1) / span 1"
-                disabled="@(!isPlaying)" @onclick="FadeOutAsync">
-            <span class="sb-tile-icon">🔉</span>
-            <span class="sb-tile-label">Fade-out</span>
-        </button>
     </main>
 
     @if (_songMenu is { } menu)
@@ -184,9 +184,14 @@
                 <span class="sb-np-info"><span class="sb-np-title">Bereit</span></span>
             }
         </div>
+        <div class="sb-seek" id="sb-seek-wrap" hidden>
+            <span class="sb-seek-time" id="sb-seek-pos">0:00</span>
+            <input type="range" id="sb-seek" min="0" max="1000" step="1" value="0" aria-label="Position im Song" />
+            <span class="sb-seek-time" id="sb-seek-dur">0:00</span>
+        </div>
         <label class="sb-volume">🔊
-            <input type="range" min="0" max="1" step="0.05" value="@_volume"
-                   @onchange="OnVolumeChanged" />
+            <input type="range" id="sb-volume" min="0" max="1" step="0.05" value="@_volume"
+                   @onchange="OnVolumeChanged" aria-label="Lautstärke" />
         </label>
         <a class="sb-companion" href="@CompanionReleaseUrl" target="_blank" rel="noopener" title="Companion-Modul herunterladen (neuestes Release)">⤓ Companion-Modul</a>
     </footer>
@@ -372,6 +377,8 @@
             case ShowSlotKind.Back: TrimPath(_path.Count - 1); break;
             case ShowSlotKind.Pause: await TogglePauseAsync(); break;
             case ShowSlotKind.Fade: await FadeOutAsync(); break;
+            case ShowSlotKind.Previous: await RunControlAsync(ShowControl.Previous); break;
+            case ShowSlotKind.Next: await RunControlAsync(ShowControl.Next); break;
             case ShowSlotKind.Folder when slot.TileId is { } folderId: _path.Add(folderId); break;
             case ShowSlotKind.Tile when slot.Active: await StopAllAsync(); break;
             case ShowSlotKind.Tile when slot.TileId is { } tileId: await RemotePlayAsync(tileId, null); break;
@@ -398,6 +405,7 @@
             }
             var init = await JS.InvokeAsync<InitResult>("showBoard.init", _ref, SoundBase, AppBase);
             _loggedIn = init.LoggedIn;
+            _volume = init.Volume;
             _clientId = await JS.InvokeAsync<string>("showBoard.getClientId");
             StateHasChanged();
         }
@@ -433,6 +441,8 @@
             s = x.StartSec,
             d = x.DurationSec,
             sh = x.Shuffle,
+            ti = x.Title,
+            ar = x.Artist,
         }));
 
     private string SoundUrl(string reff) => reff.StartsWith("http") ? reff : SoundBase + reff;
@@ -519,6 +529,22 @@
     private async Task PauseAsync() { _paused = true; await JS.InvokeVoidAsync("showBoard.pause"); }
     private async Task ResumeAsync() { _paused = false; await JS.InvokeVoidAsync("showBoard.resume"); }
     private Task TogglePauseAsync() => _paused ? ResumeAsync() : PauseAsync();
+
+    private static string ControlClass(ShowControl control) => control switch
+    {
+        ShowControl.Pause => "pause",
+        ShowControl.Fade => "fade",
+        ShowControl.Previous => "prev",
+        _ => "next",
+    };
+
+    private Task RunControlAsync(ShowControl control) => control switch
+    {
+        ShowControl.Pause => TogglePauseAsync(),
+        ShowControl.Fade => FadeOutAsync(),
+        ShowControl.Previous => JS.InvokeVoidAsync("showBoard.previous").AsTask(),
+        _ => JS.InvokeVoidAsync("showBoard.next").AsTask(),
+    };
     private async Task StopAllAsync() { _paused = false; _nowPlaying = null; _songInfo = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.stopAll"); }
     private async Task FadeOutAsync() { _paused = false; _nowPlaying = null; _songInfo = null; _remainingSec = null; await JS.InvokeVoidAsync("showBoard.fadeOut"); }
 
@@ -683,6 +709,8 @@
                 case "pause": await PauseAsync(); break;
                 case "resume": await ResumeAsync(); break;
                 case "fade": await FadeOutAsync(); break;
+                case "previous": await RunControlAsync(ShowControl.Previous); break;
+                case "next": await RunControlAsync(ShowControl.Next); break;
                 case "back": if (_path.Count > 0) TrimPath(_path.Count - 1); break;
                 case "home": _path.Clear(); break;
                 case "profile": if (cmd.ProfileId is { } pid && Profiles.Any(p => p.Id == pid)) SelectProfile(pid); break;
@@ -712,6 +740,8 @@
             s = x.StartSec,
             d = x.DurationSec,
             sh = x.Shuffle,
+            ti = x.Title,
+            ar = x.Artist,
         }).ToArray();
         _nowPlaying = null;
         _songInfo = null;
@@ -730,5 +760,5 @@
 
     private sealed record NowPlaying(string ButtonId, string Label, DateTime? EndsAt);
     private sealed record ToastItem(int Id, string Text);
-    private sealed record InitResult(bool LoggedIn, bool HasClientId, string RedirectUri);
+    private sealed record InitResult(bool LoggedIn, bool HasClientId, string RedirectUri, double Volume);
 }

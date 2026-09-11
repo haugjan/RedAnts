@@ -16,7 +16,7 @@ This module lives in the RedAnts repository but is a standalone Node package: it
 - **Actions**: `Slot drücken`, `Profil: nächstes`, `Profil: vorheriges`, `Profil wählen`, `Zurück`, `Home`, `Stopp`, `Pause`, `Weiter`, `Fade-out`.
 - **Feedback**: `Slot-Anzeige` sets text (icon + label), text colour and background of a slot; a playing tile is shown inverted, disabled cells dimmed.
 - **Variables**: `connected`, `profile`, `path`, `now_playing`, `unlocked`, `room`, `slot_1` … `slot_15`.
-- **Presets**: `Slots` only (Slot 1–15, no board-specific values); back, pause and fade are board cells and arrive as slots. Without a connection a slot shows its number.
+- **Presets**: `Slots` only (Slot 1–15, no board-specific values); folder back and the control tiles (pause, fade-out, previous, next; placed per level in the Show admin) are board cells and arrive as slots. Without a connection a slot shows its number.
 
 ## Configuration
 
