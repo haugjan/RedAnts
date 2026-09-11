@@ -1,39 +1,37 @@
-const { hexToColor } = require('./state')
+const { SLOT_COUNT } = require('./state')
+
+const WHITE = 0xffffff
+const BLACK = 0x000000
+
+function button(category, name, style, actionId, options, feedbacks) {
+	return {
+		type: 'button',
+		category,
+		name,
+		style: { size: 'auto', color: WHITE, ...style },
+		steps: [{ down: [{ actionId, options: options || {} }], up: [] }],
+		feedbacks: feedbacks || [],
+	}
+}
 
 function presetDefinitions(instance) {
-	const s = instance.state
 	const presets = {}
-	const white = 0xffffff
 
-	for (const tile of s.tiles) {
-		presets['tile_' + tile.id] = {
-			type: 'button',
-			category: 'Kacheln',
-			name: tile.label,
-			style: { text: tile.plain, size: 'auto', color: white, bgcolor: hexToColor(tile.color) },
-			steps: [{ down: [{ actionId: 'play_tile', options: { tile: tile.id } }], up: [] }],
-			feedbacks: [],
-		}
+	for (let n = 1; n <= SLOT_COUNT; n++) {
+		presets['slot_' + n] = button('Slots', 'Slot ' + n, { text: 'Slot ' + n, bgcolor: BLACK }, 'press_slot', { slot: n }, [
+			{ feedbackId: 'slot', options: { slot: n } },
+		])
 	}
 
-	const transport = [
-		{ key: 'stop', text: '⏹ STOP', action: 'stop', bg: 0xc8102e },
-		{ key: 'pause', text: '⏸ PAUSE', action: 'pause', bg: 0x444444 },
-		{ key: 'resume', text: '▶ WEITER', action: 'resume', bg: 0x1c7c43 },
-		{ key: 'fade', text: '🔉 FADE', action: 'fade', bg: 0xe07a1f },
-		{ key: 'back', text: '↩ ZURÜCK', action: 'back', bg: 0x333333 },
-		{ key: 'home', text: '⌂ HOME', action: 'home', bg: 0x333333 },
-	]
-	for (const t of transport) {
-		presets['transport_' + t.key] = {
-			type: 'button',
-			category: 'Transport',
-			name: t.text,
-			style: { text: t.text, size: 'auto', color: white, bgcolor: t.bg },
-			steps: [{ down: [{ actionId: t.action, options: {} }], up: [] }],
-			feedbacks: [],
-		}
-	}
+	const profile = '$(' + instance.label + ':profile)'
+	presets.profile_next = button('Steuerung', 'Profil: nächstes', { text: 'Profil ▶\n' + profile, bgcolor: 0x1d3557 }, 'profile_next')
+	presets.profile_prev = button('Steuerung', 'Profil: vorheriges', { text: '◀ Profil\n' + profile, bgcolor: 0x1d3557 }, 'profile_prev')
+	presets.home = button('Steuerung', 'Home', { text: '⌂\nHome', bgcolor: 0x333333 }, 'home')
+	presets.back = button('Steuerung', 'Zurück', { text: '↩\nZurück', bgcolor: 0x333333 }, 'back')
+	presets.stop = button('Steuerung', 'Stopp', { text: '⏹\nStopp', bgcolor: 0xc8102e }, 'stop')
+	presets.pause = button('Steuerung', 'Pause', { text: '⏸\nPause', bgcolor: 0x444444 }, 'pause')
+	presets.resume = button('Steuerung', 'Weiter', { text: '▶\nWeiter', bgcolor: 0x1c7c43 }, 'resume')
+	presets.fade = button('Steuerung', 'Fade-out', { text: '🔉\nFade', bgcolor: 0xe07a1f }, 'fade')
 
 	return presets
 }

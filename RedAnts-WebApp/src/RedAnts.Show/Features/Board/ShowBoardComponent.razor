@@ -4,6 +4,9 @@
 @inject NavigationManager Nav
 @inject GetShowProfiles.Handler ProfilesQuery
 @inject ListenForShowCommands.Handler RemoteListener
+@inject PublishBoardView.Handler BoardViewPublisher
+@inject WithdrawBoardView.Handler BoardViewWithdrawal
+@inject GetShowRooms.Handler RoomsQuery
 @inject GetSpotifySettings.Handler SpotifySettings
 
 <div class="sb-app">
@@ -17,9 +20,17 @@
                         @onclick="() => SelectProfile(p.Id)">@p.Name</button>
             }
         </div>
-        @if (!string.IsNullOrWhiteSpace(_room))
+        @if (_rooms.Count > 0 || _room is not null)
         {
-            <span class="sb-room" title="Board-Code für die Fernsteuerung (Companion)">🎛 @_room</span>
+            <label class="sb-room" title="Raum (Board-Code) für die Fernsteuerung mit Companion">🎛
+                <select class="sb-room-select" value="@(_room ?? "")" @onchange="OnRoomChangedAsync">
+                    <option value="">Alle Räume</option>
+                    @foreach (var room in RoomChoices())
+                    {
+                        <option value="@room.Name">@(IsLive(room) ? $"{room.Name} ●" : room.Name)</option>
+                    }
+                </select>
+            </label>
         }
         <div class="sb-spotify">
             @if (_loggedIn)
@@ -63,7 +74,7 @@
         var tiles = CurrentNodes();
         var hasBack = _path.Count > 0;
         var layout = ShowLayout.Resolve(tiles, hasBack);
-        var isPlaying = _activeLocalIds.Length > 0 || _nowPlaying is not null;
+        var isPlaying = IsPlaying;
     }
     <main class="sb-board">
         @if (hasBack)
@@ -79,7 +90,7 @@
             var isFolder = node.IsFolder;
             var isSpotify = songs.Any(s => s.Kind == SoundKind.Spotify);
             var isMulti = songs.Count(s => !string.IsNullOrWhiteSpace(s.Ref)) > 1;
-            var isActive = _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
+            var isActive = IsActive(node);
             var pos = layout[node.Id];
             <button class="sb-tile @(isFolder ? "folder" : "") @(isActive ? "active" : "")"
                     style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
@@ -202,8 +213,13 @@
     protected override async Task OnInitializedAsync()
     {
         var query = QueryHelpers.ParseQuery(Nav.ToAbsoluteUri(Nav.Uri).Query);
-        if (query.TryGetValue("room", out var r) && !string.IsNullOrWhiteSpace(r))
-            _room = r.ToString().Trim();
+        if (query.TryGetValue("room", out var r) && NormalizeRoom(r.ToString()) is { } urlRoom)
+        {
+            _room = urlRoom;
+            _roomFromUrl = true;
+        }
+        _rooms = await RoomsQuery.HandleAsync(new GetShowRooms.Query());
+        _roomSignature = RoomSignature(_rooms);
 
         var loaded = await ProfilesQuery.HandleAsync(new GetShowProfiles.Query());
         var src = loaded.Count > 0 ? loaded : _profiles;
@@ -325,11 +341,49 @@
         while (_path.Count > count) _path.RemoveAt(_path.Count - 1);
     }
 
+    private bool IsPlaying => _activeLocalIds.Length > 0 || _nowPlaying is not null;
+
+    private bool IsActive(ShowButton node) => _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
+
+    private IReadOnlyList<ShowBoardSlot> CurrentSlots() =>
+        ShowLayout.Slots(CurrentNodes(), _path.Count > 0, IsActive, IsPlaying, _paused);
+
+    private Task PublishViewAsync() =>
+        BoardViewPublisher.HandleAsync(new PublishBoardView.Command(
+            _boardId,
+            _room,
+            new ShowBoardView(Profile.Id, Profile.Name, Profile.Color, Breadcrumb(), CurrentSlots(), CurrentPlaying()?.Title, _paused, _activated)));
+
+    private void StepProfile(int step)
+    {
+        var index = Profiles.Select(p => p.Id).ToList().IndexOf(_profileId);
+        var next = ((index + step) % Profiles.Count + Profiles.Count) % Profiles.Count;
+        SelectProfile(Profiles[next].Id);
+    }
+
+    private async Task PressSlotAsync(int number)
+    {
+        var slot = CurrentSlots().FirstOrDefault(s => s.Number == number);
+        if (slot is not { Enabled: true }) return;
+        switch (slot.Kind)
+        {
+            case ShowSlotKind.Back: TrimPath(_path.Count - 1); break;
+            case ShowSlotKind.Pause: await TogglePauseAsync(); break;
+            case ShowSlotKind.Fade: await FadeOutAsync(); break;
+            case ShowSlotKind.Folder when slot.TileId is { } folderId: _path.Add(folderId); break;
+            case ShowSlotKind.Tile when slot.Active: await StopAllAsync(); break;
+            case ShowSlotKind.Tile when slot.TileId is { } tileId: await RemotePlayAsync(tileId, null); break;
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await PublishViewAsync();
         if (!firstRender) return;
         _ref = DotNetObjectReference.Create(this);
+        await RestoreRoomAsync();
         _remoteReg = await RemoteListener.HandleAsync(new ListenForShowCommands.Command(_room, HandleRemoteAsync));
+        StateHasChanged();
         _timer = new System.Timers.Timer(500) { AutoReset = true };
         _timer.Elapsed += (_, _) => _ = TickAsync();
         _timer.Start();
@@ -437,6 +491,7 @@
 
     private async Task TickAsync()
     {
+        if (++_ticks % 4 == 0) await InvokeAsync(RefreshRoomsAsync);
         int? newRemaining = null;
         var stop = false;
         if (_nowPlaying?.EndsAt is DateTime end)
@@ -560,6 +615,61 @@
 
     private IDisposable? _remoteReg;
     private string? _room;
+    private readonly Guid _boardId = Guid.NewGuid();
+
+    private const string RoomStorageKey = "redants-show-room";
+    private static readonly TimeSpan RoomLiveWindow = TimeSpan.FromMinutes(1);
+    private IReadOnlyList<ShowRoom> _rooms = [];
+    private string _roomSignature = "";
+    private bool _roomFromUrl;
+    private int _ticks;
+
+    private static string? NormalizeRoom(string? room) =>
+        string.IsNullOrWhiteSpace(room) ? null : room.Trim().ToLowerInvariant();
+
+    private IEnumerable<ShowRoom> RoomChoices() =>
+        _room is null || _rooms.Any(r => r.Name == _room) ? _rooms : _rooms.Append(new ShowRoom(_room, null));
+
+    private static bool IsLive(ShowRoom room) => room.LastSeen is { } at && SwissTime.Timestamp - at < RoomLiveWindow;
+
+    private static string RoomSignature(IEnumerable<ShowRoom> rooms) =>
+        string.Join("|", rooms.Select(r => IsLive(r) ? r.Name + "*" : r.Name));
+
+    private async Task RefreshRoomsAsync()
+    {
+        var rooms = await RoomsQuery.HandleAsync(new GetShowRooms.Query());
+        var signature = RoomSignature(rooms);
+        if (signature == _roomSignature) return;
+        _rooms = rooms;
+        _roomSignature = signature;
+        StateHasChanged();
+    }
+
+    private async Task RestoreRoomAsync()
+    {
+        try
+        {
+            if (_roomFromUrl) await JS.InvokeVoidAsync("localStorage.setItem", RoomStorageKey, _room ?? "");
+            else _room = NormalizeRoom(await JS.InvokeAsync<string?>("localStorage.getItem", RoomStorageKey));
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task OnRoomChangedAsync(ChangeEventArgs e)
+    {
+        _room = NormalizeRoom(e.Value?.ToString());
+        _remoteReg?.Dispose();
+        _remoteReg = await RemoteListener.HandleAsync(new ListenForShowCommands.Command(_room, HandleRemoteAsync));
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", RoomStorageKey, _room ?? "");
+        }
+        catch
+        {
+        }
+    }
 
     private async Task HandleRemoteAsync(ShowCommand cmd)
     {
@@ -574,6 +684,9 @@
                 case "back": if (_path.Count > 0) TrimPath(_path.Count - 1); break;
                 case "home": _path.Clear(); break;
                 case "profile": if (cmd.ProfileId is { } pid && Profiles.Any(p => p.Id == pid)) SelectProfile(pid); break;
+                case "profile-next": StepProfile(1); break;
+                case "profile-prev": StepProfile(-1); break;
+                case "press": if (cmd.Slot is { } slot) await PressSlotAsync(slot); break;
                 case "folder": if (cmd.TileId is { } fid && FindNode(fid) is { IsFolder: true }) _path.Add(fid); break;
                 case "play": if (cmd.TileId is { } id) await RemotePlayAsync(id, null); break;
                 case "song": if (cmd.TileId is { } sid) await RemotePlayAsync(sid, cmd.SongIndex); break;
@@ -607,6 +720,7 @@
     public async ValueTask DisposeAsync()
     {
         _remoteReg?.Dispose();
+        await BoardViewWithdrawal.HandleAsync(new WithdrawBoardView.Command(_boardId));
         _timer?.Dispose();
         try { await JS.InvokeVoidAsync("showBoard.stopAll"); } catch { }
         _ref?.Dispose();

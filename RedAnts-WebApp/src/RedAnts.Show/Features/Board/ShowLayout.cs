@@ -1,5 +1,6 @@
 using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Admin;
+using RedAnts.Show.Features.Remote;
 
 namespace RedAnts.Show.Features.Board;
 
@@ -34,6 +35,35 @@ public static class ShowLayout
             result[n.Id] = (x, y, 1, 1);
         }
         return result;
+    }
+
+    public static IReadOnlyList<ShowBoardSlot> Slots(
+        IReadOnlyList<ShowButton> nodes, bool hasBack, Func<ShowButton, bool> isActive, bool isPlaying, bool paused)
+    {
+        var layout = Resolve(nodes, hasBack);
+        var byCell = new Dictionary<(int X, int Y), ShowButton>();
+        foreach (var node in nodes)
+            if (layout.TryGetValue(node.Id, out var pos))
+                byCell[(pos.X, pos.Y)] = node;
+
+        var slots = new List<ShowBoardSlot>(Cols * Rows);
+        for (var y = 0; y < Rows; y++)
+            for (var x = 0; x < Cols; x++)
+                slots.Add(SlotAt(y * Cols + x + 1, (x, y), byCell, hasBack, isActive, isPlaying, paused));
+        return slots;
+    }
+
+    private static ShowBoardSlot SlotAt(
+        int number, (int X, int Y) cell, Dictionary<(int X, int Y), ShowButton> byCell,
+        bool hasBack, Func<ShowButton, bool> isActive, bool isPlaying, bool paused)
+    {
+        if (hasBack && cell == BackCell) return new(number, ShowSlotKind.Back, null, "Zurück", "↩", null, false, true);
+        if (cell == PauseCell) return new(number, ShowSlotKind.Pause, null, paused ? "Weiter" : "Pause", paused ? "▶" : "⏸", null, false, isPlaying);
+        if (cell == FadeCell) return new(number, ShowSlotKind.Fade, null, "Fade-out", "🔉", null, false, isPlaying);
+        if (!byCell.TryGetValue(cell, out var node)) return new(number, ShowSlotKind.Empty, null, "", null, null, false, false);
+        if (node.IsFolder) return new(number, ShowSlotKind.Folder, node.Id, node.Label, node.Icon ?? "📁", node.Color, false, true);
+        var playable = node.EffectiveSongs.Any(s => !string.IsNullOrWhiteSpace(s.Ref));
+        return new(number, ShowSlotKind.Tile, node.Id, node.Label, node.Icon ?? "🔊", node.Color, isActive(node), playable);
     }
 
     public static void EnsureEdit(IReadOnlyList<EditButton> nodes, bool reserveBack)

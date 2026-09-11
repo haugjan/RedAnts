@@ -1,56 +1,41 @@
 const { control } = require('./api')
+const { SLOT_COUNT, clampSlot } = require('./state')
+
+function simple(instance, name, path) {
+	return { name, options: [], callback: async () => control(instance, path) }
+}
 
 function actionDefinitions(instance) {
-	const s = instance.state
-	const tileDefault = s.tileChoices[0] ? s.tileChoices[0].id : ''
-	const folderDefault = s.folderChoices[0] ? s.folderChoices[0].id : ''
-	const profileDefault = s.profileChoices[0] ? s.profileChoices[0].id : ''
+	const profiles = instance.profiles || []
 
 	return {
-		play_tile: {
-			name: 'Kachel abspielen',
-			options: [
-				{ type: 'dropdown', id: 'tile', label: 'Kachel', default: tileDefault, choices: s.tileChoices, allowCustom: true },
-			],
-			callback: async (a) => control(instance, '/api/show/play/' + encodeURIComponent(a.options.tile)),
+		press_slot: {
+			name: 'Slot drücken (Inhalt kommt vom Board)',
+			options: [{ type: 'number', id: 'slot', label: 'Slot (1–' + SLOT_COUNT + ')', default: 1, min: 1, max: SLOT_COUNT }],
+			callback: async (a) => control(instance, '/api/show/press/' + clampSlot(a.options.slot)),
 		},
-		play_song: {
-			name: 'Einzelnen Song abspielen',
-			options: [
-				{ type: 'dropdown', id: 'tile', label: 'Kachel', default: tileDefault, choices: s.tileChoices, allowCustom: true },
-				{ type: 'number', id: 'index', label: 'Song-Index (0-basiert)', default: 0, min: 0, max: 63 },
-			],
-			callback: async (a) =>
-				control(instance, '/api/show/song/' + encodeURIComponent(a.options.tile) + '/' + Number(a.options.index || 0)),
-		},
-		open_folder: {
-			name: 'Ordner oeffnen',
-			options: [
-				{ type: 'dropdown', id: 'folder', label: 'Ordner', default: folderDefault, choices: s.folderChoices, allowCustom: true },
-			],
-			callback: async (a) => control(instance, '/api/show/folder/' + encodeURIComponent(a.options.folder)),
-		},
-		back: {
-			name: 'Zurueck (Ordner hoch)',
-			options: [],
-			callback: async () => control(instance, '/api/show/back'),
-		},
-		home: {
-			name: 'Home (Wurzel-Ebene)',
-			options: [],
-			callback: async () => control(instance, '/api/show/home'),
-		},
+		profile_next: simple(instance, 'Profil: nächstes', '/api/show/profile-next'),
+		profile_prev: simple(instance, 'Profil: vorheriges', '/api/show/profile-prev'),
 		switch_profile: {
-			name: 'Profil wechseln',
+			name: 'Profil wählen',
 			options: [
-				{ type: 'dropdown', id: 'profile', label: 'Profil', default: profileDefault, choices: s.profileChoices, allowCustom: true },
+				{
+					type: 'dropdown',
+					id: 'profile',
+					label: 'Profil',
+					default: profiles[0] ? profiles[0].id : '',
+					choices: profiles,
+					allowCustom: true,
+				},
 			],
 			callback: async (a) => control(instance, '/api/show/profile/' + encodeURIComponent(a.options.profile)),
 		},
-		stop: { name: 'Stopp', options: [], callback: async () => control(instance, '/api/show/stop') },
-		pause: { name: 'Pause', options: [], callback: async () => control(instance, '/api/show/pause') },
-		resume: { name: 'Weiter (Resume)', options: [], callback: async () => control(instance, '/api/show/resume') },
-		fade: { name: 'Fade-out', options: [], callback: async () => control(instance, '/api/show/fade') },
+		back: simple(instance, 'Zurück (Ordner hoch)', '/api/show/back'),
+		home: simple(instance, 'Home (Wurzel-Ebene)', '/api/show/home'),
+		stop: simple(instance, 'Stopp', '/api/show/stop'),
+		pause: simple(instance, 'Pause', '/api/show/pause'),
+		resume: simple(instance, 'Weiter', '/api/show/resume'),
+		fade: simple(instance, 'Fade-out', '/api/show/fade'),
 	}
 }
 

@@ -2,8 +2,8 @@
 	"id": "redants-show",
 	"name": "redants-show",
 	"shortname": "RedAnts Show",
-	"description": "Fernsteuerung des Red Ants Soundboards (Show-Slice) ueber die /api/show HTTP-API.",
-	"version": "1.0.0",
+	"description": "Fernsteuerung des Red Ants Soundboards: die Slots 1-15 spiegeln live, was das Board gerade zeigt.",
+	"version": "1.1.0",
 	"license": "MIT",
 	"repository": "https://github.com/haugjan/RedAnts",
 	"bugs": "https://github.com/haugjan/RedAnts/issues",
@@ -12,7 +12,7 @@
 	],
 	"legacyIds": [],
 	"runtime": {
-		"type": "node18",
+		"type": "node22",
 		"api": "nodejs-ipc",
 		"apiVersion": "1.7.0",
 		"entrypoint": "../src/main.js"

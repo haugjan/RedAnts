@@ -1,41 +1,25 @@
-function flatten(stateJson) {
+const SLOT_COUNT = 15
+
+function profileChoices(stateJson) {
 	const profiles = (stateJson && stateJson.profiles) || []
-	const tiles = []
-	const folders = []
+	return profiles.map((p) => ({ id: p.id, label: p.name }))
+}
 
-	for (const profile of profiles) {
-		const walk = (nodes, trail) => {
-			for (const node of nodes || []) {
-				const path = trail ? trail + ' › ' + node.label : node.label
-				if (node.folder) {
-					folders.push({ id: node.id, label: profile.name + ' › ' + path, color: node.color })
-					walk(node.children, path)
-				} else {
-					tiles.push({
-						id: node.id,
-						label: profile.name + ' › ' + path,
-						plain: node.label,
-						color: node.color,
-						songs: node.songs || 0,
-						profileId: profile.id,
-					})
-				}
-			}
-		}
-		walk(profile.tiles, '')
-	}
+function slotAt(view, number) {
+	if (!view || !Array.isArray(view.slots)) return null
+	return view.slots.find((s) => s.number === Number(number)) || null
+}
 
-	const profileChoices = profiles.map((p) => ({ id: p.id, label: p.name }))
-	const tileChoices = tiles.map((t) => ({ id: t.id, label: t.label }))
-	const folderChoices = folders.map((f) => ({ id: f.id, label: f.label }))
-
-	return { profiles, tiles, folders, profileChoices, tileChoices, folderChoices }
+function clampSlot(value) {
+	const n = Math.round(Number(value) || 1)
+	return Math.min(SLOT_COUNT, Math.max(1, n))
 }
 
 function hexToColor(hex) {
-	if (!hex) return 0x3c3c3c
-	const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim())
-	return m ? parseInt(m[1], 16) : 0x3c3c3c
+	const value = String(hex || '').trim().replace(/^#/, '')
+	if (/^[0-9a-f]{6}$/i.test(value)) return parseInt(value, 16)
+	if (/^[0-9a-f]{3}$/i.test(value)) return parseInt(value.replace(/./g, (c) => c + c), 16)
+	return 0x3c3c3c
 }
 
-module.exports = { flatten, hexToColor }
+module.exports = { SLOT_COUNT, profileChoices, slotAt, clampSlot, hexToColor }

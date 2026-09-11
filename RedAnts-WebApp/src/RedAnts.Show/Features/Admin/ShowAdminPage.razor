@@ -3,6 +3,8 @@
 @inject GetShowProfiles.Handler ProfilesQuery
 @inject SaveShowProfiles.Handler ProfilesSave
 @inject GetSpotifySettings.Handler SpotifyState
+@inject GetShowRooms.Handler RoomsQuery
+@inject DeleteShowRoom.Handler RoomDeletion
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @implements IDisposable
@@ -15,6 +17,7 @@
             <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
             <button class="se-btn" @onclick="ToggleSpotifySettings">🟢 Spotify</button>
+            <button class="se-btn" @onclick="ToggleRoomsAsync">🎛 Räume</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="@BoardUrl" target="_blank">▶ Board öffnen</a>
             @if (_status is { Length: > 0 })
@@ -32,6 +35,26 @@
     @if (_showSpotify)
     {
         <SpotifySettingsDialog OnClosed="() => _showSpotify = false" OnSaved="RefreshSpotifyStateAsync" />
+    }
+
+    @if (_showRooms)
+    {
+        <div class="se-rooms">
+            <strong>Räume (von Companion gemeldet)</strong>
+            @if (_rooms.Count == 0)
+            {
+                <p class="se-muted">Noch kein Raum gemeldet. Ein Raum erscheint, sobald Companion mit einem Board-Code (Room) verbindet.</p>
+            }
+            @foreach (var room in _rooms)
+            {
+                <div class="se-room-row">
+                    <span class="se-room-name">🎛 @room.Name</span>
+                    <span class="se-muted">@(room.LastSeen is { } at ? "zuletzt " + SwissTime.ToSwiss(at).ToString("dd.MM.yyyy HH:mm") : "seit dem letzten Neustart nicht gesehen")</span>
+                    <button class="se-btn sm danger" @onclick="() => DeleteRoomAsync(room.Name)">🗑 Löschen</button>
+                </div>
+            }
+            <p class="se-muted">Ein gelöschter Raum erscheint wieder, sobald Companion ihn erneut sendet.</p>
+        </div>
     }
 
     @if (_profile is null)
@@ -199,6 +222,24 @@
         _spotifyConfigured = (await SpotifyState.HandleAsync(new GetSpotifySettings.Query())).Configured;
 
     private void ToggleSpotifySettings() => _showSpotify = !_showSpotify;
+
+    private bool _showRooms;
+    private IReadOnlyList<ShowRoom> _rooms = [];
+
+    private async Task ToggleRoomsAsync()
+    {
+        _showRooms = !_showRooms;
+        if (_showRooms) await LoadRoomsAsync();
+    }
+
+    private async Task LoadRoomsAsync() => _rooms = await RoomsQuery.HandleAsync(new GetShowRooms.Query());
+
+    private async Task DeleteRoomAsync(string room)
+    {
+        await RoomDeletion.HandleAsync(new DeleteShowRoom.Command(room));
+        await LoadRoomsAsync();
+        _status = $"Raum „{room}“ gelöscht.";
+    }
 
     private void SelectProfile(EditProfile p) { _profile = p; _selected = null; }
 

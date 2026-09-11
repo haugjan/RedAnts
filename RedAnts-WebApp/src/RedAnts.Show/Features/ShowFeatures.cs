@@ -26,6 +26,12 @@ public static class ShowFeatures
         typeof(DownloadShowSound.Handler),
         typeof(RestoreShowSound.Handler),
         typeof(ListenForShowCommands.Handler),
+        typeof(PublishBoardView.Handler),
+        typeof(WithdrawBoardView.Handler),
+        typeof(GetBoardView.Handler),
+        typeof(GetShowRooms.Handler),
+        typeof(RecordShowRoom.Handler),
+        typeof(DeleteShowRoom.Handler),
         typeof(OpenShowSound.Handler)
     ];
 

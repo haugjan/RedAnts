@@ -6,7 +6,12 @@ namespace RedAnts.Show.Features.Remote;
 
 [ApiController]
 [Route("api/show")]
-public sealed class ShowApiController(DispatchShowCommand.Handler dispatch, GetShowProfiles.Handler profileQuery, IConfiguration config) : ControllerBase
+public sealed class ShowApiController(
+    DispatchShowCommand.Handler dispatch,
+    GetShowProfiles.Handler profileQuery,
+    GetBoardView.Handler viewQuery,
+    RecordShowRoom.Handler roomRecorder,
+    IConfiguration config) : ControllerBase
 {
     private bool KeyOk()
     {
@@ -44,6 +49,18 @@ public sealed class ShowApiController(DispatchShowCommand.Handler dispatch, GetS
         children = b.IsFolder ? b.Children!.Select(MapTile).ToList() : null,
     };
 
+    [HttpGet("view")]
+    public async Task<IActionResult> BoardView(string? room = null, long? since = null)
+    {
+        if (!KeyOk()) return Unauthorized();
+        await roomRecorder.HandleAsync(new RecordShowRoom.Command(room));
+        var published = await viewQuery.HandleAsync(new GetBoardView.Query(room, since), HttpContext.RequestAborted);
+        return new JsonResult(new { connected = published is not null, version = published?.Version ?? 0, view = published?.View });
+    }
+
+    [HttpGet("press/{slot:int}")]
+    public Task<IActionResult> Press(int slot, string? room = null) => Cmd(new ShowCommand("press", Room: room, Slot: slot));
+
     [HttpGet("play/{id}")]
     public Task<IActionResult> Play(string id, string? room = null) => Cmd(new ShowCommand("play", TileId: id, Room: room));
 
@@ -61,6 +78,12 @@ public sealed class ShowApiController(DispatchShowCommand.Handler dispatch, GetS
 
     [HttpGet("profile/{id}")]
     public Task<IActionResult> Profile(string id, string? room = null) => Cmd(new ShowCommand("profile", ProfileId: id, Room: room));
+
+    [HttpGet("profile-next")]
+    public Task<IActionResult> NextProfile(string? room = null) => Cmd(new ShowCommand("profile-next", Room: room));
+
+    [HttpGet("profile-prev")]
+    public Task<IActionResult> PreviousProfile(string? room = null) => Cmd(new ShowCommand("profile-prev", Room: room));
 
     [HttpGet("stop")]
     public Task<IActionResult> Stop(string? room = null) => Cmd(new ShowCommand("stop", Room: room));
@@ -80,6 +103,7 @@ public sealed class ShowApiController(DispatchShowCommand.Handler dispatch, GetS
     private async Task<IActionResult> Cmd(ShowCommand cmd)
     {
         if (!KeyOk()) return Unauthorized();
+        await roomRecorder.HandleAsync(new RecordShowRoom.Command(cmd.Room));
         var reached = await dispatch.HandleAsync(new DispatchShowCommand.Command(cmd));
         return Ok(new { ok = true, boards = reached });
     }

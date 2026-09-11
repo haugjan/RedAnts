@@ -1,18 +1,22 @@
 # companion-module-redants-show
 
-Bitfocus Companion module for the Red Ants Soundboard (the `Show` slice of the RedAnts app). It talks to the existing HTTP control API under `/api/show` and loads the board layout dynamically, so tiles, folders and profiles show up as Companion actions and drag-and-drop presets and stay in sync when the board changes.
+Bitfocus Companion module for the Red Ants Soundboard (the `Show` slice of the RedAnts app). Companion buttons are only **slots 1–15**; their text, icon, colour and what a press triggers come live from the board that is open in a browser.
 
-This module lives in the RedAnts repository but is a standalone Node package: it is built and installed into Companion separately from the .NET app.
+This module lives in the RedAnts repository but is a standalone Node package: it is built and released separately from the .NET app (`.github/workflows/companion-release.yml` publishes a `.tgz` on every change on `main`).
 
-## What it does
+## How it works
 
-- Polls `GET /api/show/state` and builds, dynamically:
-  - **Actions**: `Kachel abspielen`, `Einzelnen Song abspielen`, `Ordner oeffnen`, `Zurueck`, `Home`, `Profil wechseln`, `Stopp`, `Pause`, `Weiter`, `Fade-out`.
-  - **Presets**: one draggable button per playable tile (label + colour from the board) plus a `Transport` set.
-  - **Variables**: `profiles_count`, `tiles_count`, `folders_count`, `room`.
-- Sends control commands to `GET /api/show/{play|song|folder|back|home|profile|stop|pause|resume|fade}`.
+- The board (`/show`) publishes its current view (profile, open folder, the 15 cells of its 5×3 grid, what is playing) to the server whenever it re-renders.
+- The module long-polls `GET /api/show/view?since=<version>`; the server answers as soon as the view changes (or after 25 s), so the Streamdeck follows the board without delay.
+- Slot `n` is the board cell in row `(n-1) / 5`, column `(n-1) % 5`. `GET /api/show/press/{n}` makes the board do what a tap on that cell does: play or stop a tile, open a folder, go back, pause/resume or fade.
+- Profiles: the slots follow the board's active profile and folder. `profile-next`, `profile-prev` and `profile/{id}` switch it remotely.
 
-The commands are relayed by the server to a **connected board circuit**. A board (`/show`) must be open in a browser, otherwise the API answers `{ ok: true, boards: 0 }` and nothing plays.
+## Actions, feedbacks, variables, presets
+
+- **Actions**: `Slot drücken`, `Profil: nächstes`, `Profil: vorheriges`, `Profil wählen`, `Zurück`, `Home`, `Stopp`, `Pause`, `Weiter`, `Fade-out`.
+- **Feedback**: `Slot-Anzeige` sets text (icon + label), text colour and background of a slot; a playing tile is shown inverted, disabled cells dimmed.
+- **Variables**: `connected`, `profile`, `path`, `now_playing`, `unlocked`, `room`, `slot_1` … `slot_15`.
+- **Presets**: `Slots` (Slot 1–15, no board-specific values) and `Steuerung`.
 
 ## Configuration
 
@@ -20,32 +24,16 @@ The commands are relayed by the server to a **connected board circuit**. A board
 |---|---|
 | Server-URL | `https://show.redants.ch` (prod) or `https://show-dev.redants.ch` (dev) |
 | API-Key | `Show:ApiKey`, falling back to the board password (`Show:BoardPassword`) |
-| Board-Code (Room) | optional; scopes commands to one board (see below). Empty = all boards |
-| Abfrage-Intervall | seconds between `/state` polls (default 15) |
+| Board-Code (Room) | optional; binds the module to the board opened with `?room=CODE`. Empty = the most recently active board, and commands reach every board |
 
-## Multiple boards / multiple games at once (rooms)
+## Build
 
-The server API is otherwise a broadcast: without a room, a `play`/`stop` reaches **every** connected board. To run several games against the **same server instance** without cross-triggering, use a **Board-Code (room)**:
-
-1. Open each board with a room in the URL, e.g. `https://show.redants.ch/show?room=halleA&key=...`. The board shows the code as a badge in the header.
-2. Enter the same code in this module's `Board-Code (Room)` field.
-3. The server then delivers each command only to boards registered with that code (`ShowRemote` matches the room; `Register(room, handler)` / `DispatchAsync` filter). An empty room still broadcasts, which keeps the single-board setup working unchanged.
-
-So: one server, N boards, each `board <-> Companion` pair isolated by its room. The catalog (`/state`) stays shared and read-only, which is fine because it only feeds the action/preset dropdowns.
-
-## Build & install into Companion
-
-Requires Node 18+ and yarn.
+Requires Node 22 and yarn.
 
 ```
 cd RedAnts-Show-Companion
 yarn install
-yarn build        # produces pkg/ via @companion-module/tools
+yarn package      # produces pkg.tgz via @companion-module/tools
 ```
 
-Then in Companion: `Settings -> Developer modules path` -> point it at this folder (dev), or import the built package. See the Bitfocus docs on developer modules for your Companion version. Depending on the Companion version you may need to change `companion/manifest.json` -> `runtime.type` to `node22`.
-
-## Limitations / next steps
-
-- Live "which tile is currently playing" feedback needs a new server endpoint that reports playback state (the board knows it client-side; `/api/show/state` only returns the layout). Once such an endpoint exists, add a boolean feedback and highlight the active tile.
-- Playing a tile assumes the target board is on the profile/folder that contains it; use `Profil wechseln` / `Ordner oeffnen` first, or place presets per profile.
+Import the `.tgz` in Companion under Modules → Import module package, or download it from the GitHub release.

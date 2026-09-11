@@ -101,7 +101,9 @@ html, body {
 
 .sb-room { align-self: center; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.04em; color: #fff;
   background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25);
-  padding: 0.3rem 0.7rem; border-radius: 999px; white-space: nowrap; }
+  padding: 0.3rem 0.7rem; border-radius: 999px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.sb-room-select { appearance: none; border: none; background: transparent; color: #fff; font: inherit; letter-spacing: inherit; cursor: pointer; padding: 0 0.2rem; max-width: 14rem; }
+.sb-room-select option { color: #111; background: #fff; }
 
 /* ---------- Board: fills the screen, tiles scale ---------- */
 .sb-board {
