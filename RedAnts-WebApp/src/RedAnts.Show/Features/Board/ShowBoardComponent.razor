@@ -188,7 +188,7 @@
             <input type="range" min="0" max="1" step="0.05" value="@_volume"
                    @onchange="OnVolumeChanged" />
         </label>
-        <a class="sb-companion" href="/show/companion" target="_blank" title="Companion / Streamdeck-Konfiguration">⤓ Companion</a>
+        <a class="sb-companion" href="@CompanionReleaseUrl" target="_blank" rel="noopener" title="Companion-Modul herunterladen (neuestes Release)">⤓ Companion-Modul</a>
     </footer>
 
 
@@ -202,6 +202,8 @@
 
 @code {
     private const string AppBase = "/show/";
+
+    private const string CompanionReleaseUrl = "https://github.com/haugjan/RedAnts/releases/latest";
 
     private const string SoundBase = ShowSoundDelivery.BoardBase;
 
