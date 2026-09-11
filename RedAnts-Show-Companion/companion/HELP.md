@@ -12,12 +12,11 @@ Das Board (`/show`) muss im Browser offen und einmal angetippt sein (Ton-Freigab
 
 ## Buttons anlegen (einmalig)
 
-- Preset-Kategorie **Slots**: `Slot 1` bis `Slot 15` auf die gewünschten Tasten ziehen. Jeder Slot hat die Aktion *Slot drücken* und die Anzeige *Slot-Anzeige* mit derselben Nummer.
-- Preset-Kategorie **Steuerung**: Profil vor/zurück (zeigt das aktive Profil), Home, Zurück, Stopp, Pause, Weiter, Fade-out.
+Preset-Kategorie **Slots**: `Slot 1` bis `Slot 15` auf die gewünschten Tasten ziehen. Mehr braucht es nicht: Zurück (Slot 1 in einem Ordner), Pause (Slot 14) und Fade-out (Slot 15) liefert das Board selbst. Ohne Verbindung zeigen die Slots nur ihre Nummer.
 
 ## Profile
 
-Die Slots folgen immer dem Profil und Ordner, die das Board gerade zeigt. Ein Profilwechsel am Board oder über *Profil: nächstes/vorheriges* bzw. *Profil wählen* ändert sofort alle Slots.
+Die Slots folgen immer dem Profil und Ordner, die das Board gerade zeigt. Ein Profilwechsel am Board ändert sofort alle Slots. Wer trotzdem eine eigene Taste will, findet die Aktionen *Profil: nächstes/vorheriges* und *Profil wählen*.
 
 ## Räume
 
