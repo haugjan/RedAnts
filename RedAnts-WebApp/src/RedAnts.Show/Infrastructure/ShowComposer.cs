@@ -5,6 +5,7 @@ using RedAnts.Show.Features.Remote;
 using RedAnts.Show.Features.Remote.Infrastructure;
 using RedAnts.Show.Features.Sounds;
 using RedAnts.Show.Features.Sounds.Infrastructure;
+using QuestPDF.Infrastructure;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Manifest;
 
@@ -14,9 +15,11 @@ public sealed class ShowComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
+        QuestPDF.Settings.License = LicenseType.Community;
         builder.AddComponent<ShowMigrationComponent>();
         builder.Services.AddSingleton<ShowDatabase>();
         builder.Services.AddSingleton<IShowProfiles, ShowProfileRepository>();
+        builder.Services.AddSingleton<IShowBoardPdf, ShowBoardPdfRenderer>();
         builder.Services.AddSingleton<IShowSettings, ShowSettingsRepository>();
         builder.Services.AddSingleton<IShowRemote, ShowRemote>();
         builder.Services.AddSingleton<IShowBoardViews, ShowBoardViews>();

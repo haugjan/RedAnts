@@ -11,12 +11,20 @@ public sealed class ShowAdminController(
     OpenShowSound.Handler sounds,
     StartSpotifyConnect.Handler spotifyConnect,
     CompleteSpotifyConnect.Handler spotifyComplete,
-    GetSpotifyAccessToken.Handler spotifyToken) : Controller
+    GetSpotifyAccessToken.Handler spotifyToken,
+    ExportShowBoards.Handler export) : Controller
 {
     private const string StateCookie = "show_spotify_state";
 
     [HttpGet("")]
     public IActionResult Index() => View("ShowAdmin");
+
+    [HttpGet("export.pdf")]
+    public async Task<IActionResult> ExportPdf()
+    {
+        var pdf = await export.HandleAsync(new ExportShowBoards.Query());
+        return File(pdf, "application/pdf", $"show-konfiguration-{DateTime.Now:yyyy-MM-dd}.pdf");
+    }
 
     [HttpGet("sound/{**path}")]
     public Task<IActionResult> Sound(string? path) => this.StreamShowSoundAsync(sounds, path);

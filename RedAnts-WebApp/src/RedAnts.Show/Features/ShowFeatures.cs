@@ -11,6 +11,7 @@ public static class ShowFeatures
     [
         typeof(GetShowProfiles.Handler),
         typeof(SaveShowProfiles.Handler),
+        typeof(ExportShowBoards.Handler),
         typeof(SetShowSetting.Handler),
         typeof(DispatchShowCommand.Handler),
         typeof(SearchSpotify.Handler),

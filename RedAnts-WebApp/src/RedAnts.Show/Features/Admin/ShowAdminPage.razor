@@ -20,6 +20,7 @@
             <button class="se-btn" @onclick="ToggleRoomsAsync">🎛 Räume</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="@BoardUrl" target="_blank">▶ Board öffnen</a>
+            <a class="se-btn" href="/admin/show/export.pdf" target="_blank">🖨 PDF-Export</a>
             @if (_status is { Length: > 0 })
             {
                 <span class="se-status">@_status</span>
