@@ -30,15 +30,11 @@ var deck     = new TcuDeck(udp, lower, state, logger, clockControl);
 
 const string BaseUrl = "http://localhost:5150/";
 
-// Spielkonfig laden: UI Automation liefert nur Teamnamen, der Kader kommt
-// ausschliesslich aus der Spielkonfig-Datei — deshalb immer beides ausführen.
-var tcuDir = ResolveTcuDir(args);
-logger.Log($"TCunihockey-Ordner: {tcuDir}");
 
 _ = Task.Run(async () =>
 {
     await Task.Delay(300);
-    await LoadStateAsync(reader, state, tcuDir);
+    await LoadStateAsync(reader);
 
     // Shortcut- und Kartenbeschriftung stehen in der System-Konfig, die
     // TcuConsole nicht liest — sie kommen aus dem laufenden Fenster.
@@ -120,7 +116,7 @@ async Task PushSnapshot(TcuState.Snapshot s)
                 try
                 {
                     logger.Log($"Neues Spiel erkannt: {s.Match} — Kader wird eingelesen...");
-                    if (await LoadStateAsync(reader, state, tcuDir))
+                    if (await LoadStateAsync(reader))
                     {
                         ui.ReadLabels(state);
                         logger.PrintState(state);
@@ -173,39 +169,13 @@ try
         try { ctx = await listener.GetContextAsync(); }
         catch (HttpListenerException) { break; }
 
-        _ = Task.Run(() => HandleRequest(ctx, state, udp, ui, lower, logger, reader, deck, tcuDir, cts, listener));
+        _ = Task.Run(() => HandleRequest(ctx, state, udp, ui, lower, logger, reader, deck, cts, listener));
     }
 }
 finally
 {
     listener.Stop();
     logger.Log("Beendet.");
-}
-
-// ── Wo liegt TCunihockey? ──────────────────────────────────────────────────
-//
-// Gesucht wird der Ordner mit TCunihockey.exe bzw. dessen Configurations —
-// dort liegt die Spielkonfig, aus der der Kader gelesen wird, wenn der Heap
-// des laufenden Prozesses nicht zu lesen ist.
-//
-// Früher stand hier eine feste Rechnung "vier Ebenen über der Exe". Die passt
-// nur zum Entwickler-Layout (bin\Debug\net8.0-windows): im entpackten Release
-// liegt die Exe flach, und vier Ebenen höher landet man auf C:\ — die Suche
-// lief dann ins Leere, ohne dass es auffiel. Jetzt wird aufwärts gesucht, was
-// beide Layouts trifft.
-static string ResolveTcuDir(string[] args)
-{
-    var arg = Array.IndexOf(args, "--tcu");
-    if (arg >= 0 && arg + 1 < args.Length) return Path.GetFullPath(args[arg + 1]);
-
-    var dir = new DirectoryInfo(AppContext.BaseDirectory);
-    for (var i = 0; i < 6 && dir is not null; i++, dir = dir.Parent)
-    {
-        if (File.Exists(Path.Combine(dir.FullName, "TCunihockey.exe")) ||
-            Directory.Exists(Path.Combine(dir.FullName, "Configurations")))
-            return dir.FullName;
-    }
-    return AppContext.BaseDirectory;
 }
 
 // ── Mit oder ohne Zeitsteuerung ────────────────────────────────────────────
@@ -249,28 +219,20 @@ static bool ChooseClockControl(string[] args)
 }
 
 // ── Spielzustand laden ─────────────────────────────────────────────────────
-// Vorrang hat TCunihockey selbst: TryReloadFromUiAsync liest Teamnamen aus dem
-// Fenster und den Kader aus dem Heap des laufenden Prozesses. Das ist die
-// einzige Quelle, die zeigt, welches Spiel TCunihockey WIRKLICH geladen hat.
+// Einzige Quelle ist TCunihockey selbst: Kader, Startaufstellung und
+// Mannschaftsnamen aus dem Heap des laufenden Prozesses.
 //
-// Die Spielkonfig-Datei ist nur Rückfall für den Fall, dass TCunihockey nicht
-// läuft oder der Heap nicht lesbar ist. Sie darf einen erfolgreichen
-// Speicher-Read nicht überschreiben — im Ordner kann durchaus die Konfig eines
-// anderen Spiels liegen (Auto-Discover nimmt schlicht die neueste gültige).
-static async Task<bool> LoadStateAsync(TcuStateReader reader, TcuGameState state, string tcuDir)
-{
-    var fromApp = await reader.TryReloadFromUiAsync();
-    if (fromApp && state.HomePlayers.Count + state.AwayPlayers.Count > 0) return true;
-
-    var fromFile = await reader.AutoDiscoverAsync(tcuDir);
-    return fromApp || fromFile;
-}
+// Einen Rückfall auf Spielkonfig-Dateien gibt es bewusst nicht mehr. Er griff,
+// sobald TCunihockey minimiert war, und nahm schlicht die neueste Datei im
+// Ordner — das war eine Beispielkonfig mit einem fremden Kader. Ein leeres Deck
+// fällt auf, ein falscher Kader nicht.
+static Task<bool> LoadStateAsync(TcuStateReader reader) => reader.TryReloadFromUiAsync();
 
 // ── Request-Handler ────────────────────────────────────────────────────────
 static async Task HandleRequest(
     HttpListenerContext ctx,
     TcuGameState state, TcuUdp udp, TcuUi ui, TcuLower lower, TcuLogger logger,
-    TcuStateReader reader, TcuDeck deck, string tcuDir,
+    TcuStateReader reader, TcuDeck deck,
     CancellationTokenSource cts, HttpListener listener)
 {
     var req  = ctx.Request;
@@ -330,7 +292,7 @@ static async Task HandleRequest(
         }
         else if (method == "POST" && path == "/state/reload")
         {
-            var ok = await LoadStateAsync(reader, state, tcuDir);
+            var ok = await LoadStateAsync(reader);
             ui.ReadLabels(state);
             logger.PrintState(state);
             deck.Bump();

@@ -168,6 +168,14 @@ public sealed class TcuState(TcuLogger logger)
             return false;
         }
 
+        // Was UI Automation nicht findet — bei minimiertem TCunihockey die
+        // Mannschaftsnamen, an denen ein Spielwechsel erkannt wird —, kommt aus
+        // dem Heap: dort hält jedes Steuerelement sein Fenster-Handle.
+        var fehlend = Anchors.Where(a => !_handles.ContainsKey(a)).ToArray();
+        if (fehlend.Length > 0)
+            foreach (var (id, h) in new TcuMemory(logger).ControlHandles(fehlend))
+                _handles[id] = h;
+
         if (_handles.Count == 0) return false;
 
         _boundTo = main;

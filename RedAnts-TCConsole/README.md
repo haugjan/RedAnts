@@ -58,11 +58,13 @@ Download, wenn `release.txt` diese Version bereits nennt, und verweigert die
 Installation, solange TcuConsole läuft (`-Force` beendet es vorher). Es
 überschreibt, statt zu spiegeln — ausgetauschte Icons bleiben also erhalten.
 
-## Wo TCunihockey gesucht wird
+## Woher der Kader kommt
 
-Beim Start sucht TcuConsole aufwärts nach dem Ordner mit `TCunihockey.exe` bzw.
-`Configurations` und meldet ihn im Log. Aus `C:\TCUnihockey\TcuConsole` findet
-es damit `C:\TCUnihockey`. Liegt es woanders, hilft `--tcu <pfad>`.
+Ausschliesslich aus dem laufenden TCunihockey: Kader, Startaufstellung und
+Mannschaftsnamen liest TcuConsole aus dessen Speicher — auch bei minimiertem
+Fenster. Spielkonfig-Dateien im Ordner werden **nicht** mehr herangezogen. Läuft
+TCunihockey nicht oder ist sein Speicher nicht lesbar, bleibt die Spielerwahl
+leer; ein leeres Deck fällt auf, ein falscher Kader nicht.
 
 ## Mit oder ohne Zeitsteuerung
 

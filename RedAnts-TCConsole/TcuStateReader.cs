@@ -15,74 +15,69 @@ public class TcuStateReader(TcuGameState state, TcuLogger logger)
     static readonly HashSet<string> SkipKeys = new(StringComparer.OrdinalIgnoreCase)
         { "TeamLong", "TeamShort", "Coach", "Starting6", "Line1", "Line2", "Line3", "Line4", "Goal" };
 
-    // ── UI Automation: liest Teamnamen aus dem laufenden TCUnihockey ──────────
+    // ── Aus dem laufenden TCunihockey ────────────────────────────────────────
+    // Einzige Quelle für Kader, Startaufstellung und Mannschaftsnamen — alles
+    // aus dem Heap von TCunihockey, die Namen über die Fenster-Handles ihrer
+    // Labels (siehe TcuMemory).
+    //
+    // Früher kamen die Namen über UI Automation, und fehlte der Heimname, brach
+    // das Einlesen ab, bevor der Kader gelesen war. Bei minimiertem TCunihockey
+    // findet UI Automation diese Labels nicht; dann griff der Rückfall auf die
+    // neueste Spielkonfig-Datei im Ordner und lud eine Beispielkonfig mit fremdem
+    // Kader. Den Rückfall gibt es nicht mehr: ist der Kader nicht lesbar, bleibt
+    // die Spielerwahl leer — ein leeres Deck fällt auf, ein falscher Kader nicht.
     public Task<bool> TryReloadFromUiAsync() => Task.Run(() =>
     {
         try
         {
-            // Über TcuWindow statt MainWindowHandle: hat TCunihockey ein
-            // Meldungsfenster offen, zeigt MainWindowHandle auf dieses und die
-            // Teamnamen wären nicht auffindbar.
-            var hwnd = TcuWindow.Handle();
-            if (hwnd == 0)
+            if (TcuWindow.Handle() == 0)
             {
                 logger.Log("Bedienfenster von TCUnihockey nicht gefunden", LogLevel.Warning);
+                Clear();
                 return false;
             }
 
-            var root = AutomationElement.FromHandle(hwnd);
-            if (root is null) return false;
-
-            string ReadById(string id)
+            var mem = new TcuMemory(logger).TryRead();
+            if (mem is null || mem.HomePlayers.Count + mem.AwayPlayers.Count == 0)
             {
-                try
-                {
-                    var el = root.FindFirst(TreeScope.Descendants,
-                        new PropertyCondition(AutomationElement.AutomationIdProperty, id));
-                    return el?.Current.Name.Trim() ?? "";
-                }
-                catch { return ""; }
+                logger.Log("Kader aus TCUnihockey nicht lesbar — die Spielerwahl bleibt leer", LogLevel.Warning);
+                Clear();
+                return false;
             }
 
-            var homeTeam = ReadById("LblHome");
-            var awayTeam = ReadById("LblAway");
-
-            if (string.IsNullOrWhiteSpace(homeTeam)) return false;
-
-            state.HomeTeam      = homeTeam;
-            state.AwayTeam      = awayTeam;
-            state.HomeTeamShort = ReadById("LblScoreboardHome");
-            state.AwayTeamShort = ReadById("LblScoreboardAway");
+            state.HomeTeam      = mem.HomeTeam;
+            state.AwayTeam      = mem.AwayTeam;
+            state.HomeTeamShort = mem.HomeTeamShort;
+            state.AwayTeamShort = mem.AwayTeamShort;
+            state.HomePlayers   = mem.HomePlayers;
+            state.AwayPlayers   = mem.AwayPlayers;
+            // Startaufstellung als Nummernliste, z.B. "46,6,00,10,12,14".
+            state.HomeStarting6 = SplitNumbers(mem.Starting6Home);
+            state.AwayStarting6 = SplitNumbers(mem.Starting6Away);
             state.LoadedAt      = DateTime.Now;
 
-            // Kader: UI Automation sieht ihn nicht (er existiert nur als
-            // ContextMenuStrip, dessen Einträge erst beim Öffnen im Baum
-            // auftauchen). Deshalb direkt aus dem Heap von TCunihockey.
-            var mem = new TcuMemory(logger).TryRead();
-            if (mem is not null && (mem.HomePlayers.Count > 0 || mem.AwayPlayers.Count > 0))
-            {
-                state.HomePlayers   = mem.HomePlayers;
-                state.AwayPlayers   = mem.AwayPlayers;
-                // Startaufstellung als Nummernliste, z.B. "46,6,00,10,12,14".
-                state.HomeStarting6 = SplitNumbers(mem.Starting6Home);
-                state.AwayStarting6 = SplitNumbers(mem.Starting6Away);
-                logger.Log($"Aus TCUnihockey gelesen: {state.HomeTeam} vs {state.AwayTeam} " +
-                           $"({mem.HomePlayers.Count + mem.AwayPlayers.Count} Spieler aus dem Speicher, " +
-                           $"Stand {mem.ScoreHome}:{mem.ScoreAway})");
-            }
-            else
-            {
-                logger.Log($"Aus TCUnihockey gelesen: {state.HomeTeam} vs {state.AwayTeam} " +
-                           "(Kader nicht lesbar — Rückfall auf die Spielkonfig-Datei)", LogLevel.Warning);
-            }
+            logger.Log($"Aus TCUnihockey gelesen: {state.HomeTeam} vs {state.AwayTeam} " +
+                       $"({mem.HomePlayers.Count + mem.AwayPlayers.Count} Spieler, " +
+                       $"Stand {mem.ScoreHome}:{mem.ScoreAway})");
             return true;
         }
         catch (Exception ex)
         {
-            logger.Log($"UI Automation Fehler: {ex.Message}", LogLevel.Error);
+            logger.Log($"Einlesen aus TCUnihockey fehlgeschlagen: {ex.Message}", LogLevel.Error);
+            Clear();
             return false;
         }
     });
+
+    /// <summary>Kein lesbarer Kader heisst: keiner. Stehen bleiben darf der
+    /// alte nicht — nach einem Spielwechsel wäre er der falsche.</summary>
+    void Clear()
+    {
+        state.HomePlayers   = [];
+        state.AwayPlayers   = [];
+        state.HomeStarting6 = [];
+        state.AwayStarting6 = [];
+    }
 
     // ── Datei: liest vollständigen Spielkonfig (inkl. Spieler) ───────────────
     public async Task<bool> LoadFromFileAsync(string path)
@@ -94,49 +89,6 @@ public class TcuStateReader(TcuGameState state, TcuLogger logger)
         }
         var text = await File.ReadAllTextAsync(path);
         return ParseGameConfig(text);
-    }
-
-    // ── Auto-Discover: neueste Spielkonfig im TCUnihockey-Ordner ─────────────
-    // Durchsucht den Hauptordner UND Configurations\ (dort legt TCUnihockey
-    // die Spielkonfigs ab). Neueste gültige Datei gewinnt.
-    public async Task<bool> AutoDiscoverAsync(string directory)
-    {
-        string[] dirs = [directory, Path.Combine(directory, "Configurations")];
-
-        var candidates = new List<FileInfo>();
-        foreach (var dir in dirs)
-        {
-            try
-            {
-                if (!Directory.Exists(dir)) continue;
-                candidates.AddRange(Directory
-                    .GetFiles(dir, "*.txt")
-                    .Select(f => new FileInfo(f))
-                    // leere Platzhalter und offensichtliche Nicht-Configs überspringen
-                    .Where(f => f.Length is > 0 and < 1_000_000));
-            }
-            catch (Exception ex)
-            {
-                logger.Log($"Auto-Discover: {dir} nicht lesbar ({ex.Message})", LogLevel.Warning);
-            }
-        }
-
-        foreach (var fi in candidates.OrderByDescending(f => f.LastWriteTime))
-        {
-            string text;
-            try { text = await File.ReadAllTextAsync(fi.FullName); }
-            catch { continue; }
-
-            if (text.Contains("[Game-Config]") && text.Contains("[Home]"))
-            {
-                logger.Log($"Auto-Discover: {fi.FullName}");
-                return ParseGameConfig(text);
-            }
-        }
-
-        logger.Log($"Auto-Discover: keine gültige Spielkonfig gefunden " +
-                   $"({candidates.Count} .txt geprüft in {string.Join(", ", dirs)})", LogLevel.Warning);
-        return false;
     }
 
     public bool ParseGameConfig(string text)
