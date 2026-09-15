@@ -1,124 +1,178 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows.Automation;
 
 namespace TcuConsole;
 
 /// <summary>
-/// Öffnet das Spieler-Kontextmenü von TCunihockey und wählt einen Eintrag.
+/// Wählt einen Eintrag in einem Menü von TCunihockey — ohne Maus, ohne
+/// Tastatur und ohne TCunihockey den Fokus zu geben.
 ///
-/// Gebraucht wird das für genau eine Sache: das Eigentor. Es hat keinen
-/// UDP-Befehl und keinen Knopf im Fenster — es steht ausschliesslich als
-/// letzter Eintrag im Menü, das ein Rechtsklick auf die Spielernummer öffnet.
-/// (Geprüft: Gegner-Nummer bei scharfem Tor-Modus wählt trotzdem den eigenen
-/// Spieler; "0", "ET" und leer fallen alle auf den Spieler "00" zurück.)
+/// Früher ging das über einen echten Rechtsklick mit anschliessendem globalem
+/// Escape. Beides trifft das, was gerade vorne liegt: war TCunihockey verdeckt
+/// oder minimiert, ging das Kontextmenü des Desktops auf.
 ///
-/// Warum echte Mauseingabe und nicht PostMessage: WinForms öffnet ein
-/// ContextMenuStrip nicht auf eine zugestellte Nachricht hin. Durchprobiert
-/// wurden WM_RBUTTONDOWN/UP und WM_CONTEXTMENU auf allen 14 Bedienelementen des
-/// Mannschaftsbereichs — kein einziges öffnete ein Menü. Mit echtem Rechtsklick
-/// erscheint es sofort.
+/// TCunihockey öffnet seine Menüs auf zwei Arten, und für jede gibt es einen
+/// eigenen Weg (nachgelesen im Code von TCunihockey und von WinForms, am
+/// laufenden TCunihockey bei minimiertem Fenster geprüft):
 ///
-/// Der Eingriff ist deshalb so kurz wie möglich gehalten: Mauszeiger und
-/// Vordergrundfenster werden vorher gemerkt und hinterher zurückgesetzt, und
-/// der Menüeintrag wird nicht angeklickt, sondern über UI Automation aufgerufen
-/// — die Maus muss also nur einmal an eine Stelle und wieder zurück.
+///  * Am Element angehängt (ContextMenuStrip, beim Spielstand): WM_CONTEXTMENU
+///    mit lParam = -1 öffnet es. WinForms zeigt das Menü dann mittig am Element
+///    und prüft nicht, was auf dem Bildschirm liegt — es geht auch minimiert.
+///
+///  * Aus einem Click-Handler geöffnet (die Spielerwahl mit "Eigentor"): WinForms
+///    löst Click nur aus, wenn das Element an seiner Bildschirmstelle zuoberst
+///    liegt. Das Fenster wird dafür, falls nötig, kurz ohne Aktivierung nach oben
+///    geholt, der Klick als Fensternachricht zugestellt und die Lage danach
+///    wiederhergestellt. Der Fokus bleibt, wo er ist.
+///
+/// Den Eintrag löst in beiden Fällen UI Automation aus. Ein Menü, in dem der
+/// Eintrag fehlt, wird gezielt an seinem eigenen Fenster geschlossen.
 /// </summary>
 public static class TcuMenu
 {
     /// <summary>Wie lange auf das Menü gewartet wird.</summary>
     const int MenuTimeoutMs = 1500;
 
+    /// <summary>Wie lange auf das angehobene Fenster gewartet wird.</summary>
+    const int RaiseTimeoutMs = 1000;
+
     /// <summary>
-    /// Rechtsklick auf <paramref name="target"/>, dann den Eintrag mit diesem
-    /// Namen aufrufen. Rückgabe: Meldung fürs Log, null bei Erfolg.
+    /// Öffnet das am Element angehängte Menü und wählt den Eintrag. Rückgabe:
+    /// Meldung fürs Log, null bei Erfolg.
     /// </summary>
-    public static string? Pick(nint target, string entry, TcuLogger logger)
+    public static string? PickAttached(nint target, string entry, TcuLogger logger)
     {
         if (target == 0) return "Kein Ziel für das Kontextmenü";
+
+        var pid = ProcessId();
+        if (pid == 0) return "TCunihockey läuft nicht";
+
+        var vorher = TopLevel(pid);
+        if (SendMessageTimeoutW(target, WM_CONTEXTMENU, target, -1, SMTO_ABORTIFHUNG, 1000, out _) == 0)
+            return "TCunihockey reagiert nicht";
+
+        return Choose(pid, vorher, entry, logger);
+    }
+
+    /// <summary>
+    /// Klickt das Element per Fensternachricht an, wartet auf das Menü, das
+    /// TCunihockey daraufhin öffnet, und wählt den Eintrag. Rückgabe: Meldung
+    /// fürs Log, null bei Erfolg.
+    /// </summary>
+    public static string? PickClicked(nint target, string entry, TcuLogger logger)
+    {
+        if (target == 0) return "Kein Ziel für das Menü";
 
         var main = TcuWindow.Handle();
         if (main == 0) return "Bedienfenster nicht gefunden";
 
-        var proc = Process.GetProcessesByName(TcuWindow.ProcessName).FirstOrDefault();
-        if (proc is null) return "TCunihockey läuft nicht";
-        var pid = proc.Id;
-        proc.Dispose();
+        var pid = ProcessId();
+        if (pid == 0) return "TCunihockey läuft nicht";
 
-        GetWindowRect(target, out var r);
-        GetCursorPos(out var mausVorher);
-        var fensterVorher = GetForegroundWindow();
-        var vorher        = TopLevel(pid);
+        var lage = Raise(main, target);
+        try
+        {
+            if (lage is { Ok: false })
+                return "TCunihockey liess sich nicht nach oben holen";
+
+            var vorher = TopLevel(pid);
+            GetClientRect(target, out var c);
+            var point = MakeLParam((c.R - c.L) / 2, (c.B - c.T) / 2);
+            PostMessageW(target, WM_LBUTTONDOWN, MK_LBUTTON, point);
+            PostMessageW(target, WM_LBUTTONUP, 0, point);
+
+            return Choose(pid, vorher, entry, logger);
+        }
+        finally
+        {
+            lage?.Restore();
+        }
+    }
+
+    static string? Choose(int pid, HashSet<nint> vorher, string entry, TcuLogger logger)
+    {
+        var menu = WaitForMenu(pid, vorher);
+        if (menu == 0) return "Menü ist nicht aufgegangen";
 
         try
         {
-            var x = r.L + (r.R - r.L) / 2;
-            var y = r.T + (r.B - r.T) / 2;
-
-            // Vor dem Klick prüfen, dass an dieser Stelle wirklich TCunihockey
-            // liegt. Ein echter Mausklick geht an das Fenster unter dem Zeiger —
-            // ist TCunihockey verdeckt, landete er in einer fremden Anwendung.
-            // Lieber gar nicht klicken als irgendwohin.
-            if (!Frei(x, y, main))
-            {
-                SetForegroundWindow(main);
-                Thread.Sleep(250);
-                SetCursorPos(x, y);
-                Thread.Sleep(80);
-                if (!Frei(x, y, main))
-                    return "TCunihockey ist verdeckt — Fenster in den Vordergrund holen";
-            }
-
-            SetCursorPos(x, y);
-            Thread.Sleep(60);
-            mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
-            Thread.Sleep(40);
-            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
-
-            var menu = WaitForMenu(pid, vorher);
-            if (menu == 0) return "Kontextmenü ist nicht aufgegangen";
-
             var item = FindEntry(menu, entry);
             if (item is null)
             {
-                Close();
+                CloseMenu(menu);
                 return $"Eintrag '{entry}' steht nicht im Menü";
             }
 
             item.Invoke();
-            logger.LogUi($"Kontextmenü: '{entry}' gewählt");
+            logger.LogUi($"Menü: '{entry}' gewählt");
             return null;
         }
         catch (Exception ex)
         {
-            Close();
-            return $"Kontextmenü fehlgeschlagen: {ex.Message}";
-        }
-        finally
-        {
-            // Immer zurückgeben, was wir uns geliehen haben — sonst steht der
-            // Mauszeiger nach jedem Eigentor woanders.
-            SetCursorPos(mausVorher.X, mausVorher.Y);
-            if (fensterVorher != 0 && fensterVorher != main) SetForegroundWindow(fensterVorher);
-        }
-
-        static void Close()
-        {
-            keybd_event(VK_ESCAPE, 0, 0, 0);
-            keybd_event(VK_ESCAPE, 0, KEYEVENTF_KEYUP, 0);
-            Thread.Sleep(120);
+            CloseMenu(menu);
+            return $"Menü fehlgeschlagen: {ex.Message}";
         }
     }
 
-    /// <summary>Liegt an dieser Bildschirmstelle das gesuchte Fenster —
-    /// also nichts darüber?</summary>
-    static bool Frei(int x, int y, nint main)
+    // ── Fenster nach oben holen, ohne es zu aktivieren ───────────────────────
+
+    sealed class Lage(nint main, bool wasIconic, nint above)
     {
-        var unter = WindowFromPoint(new POINT { X = x, Y = y });
-        if (unter == 0) return false;
-        var wurzel = GetAncestor(unter, GA_ROOT);
-        return wurzel == main || unter == main;
+        public bool Ok { get; set; }
+
+        public void Restore()
+        {
+            SetWindowPos(main, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+            if (above != 0) SetWindowPos(main, above, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+            if (wasIconic) ShowWindowAsync(main, SW_SHOWMINNOACTIVE);
+        }
+    }
+
+    /// <summary>
+    /// Holt TCunihockey nach oben, wenn das Element nicht schon zuoberst liegt.
+    /// null heisst: nicht nötig, nichts zurückzusetzen.
+    /// </summary>
+    static Lage? Raise(nint main, nint target)
+    {
+        var wasIconic = IsIconic(main);
+        if (!wasIconic && OnTop(main, target)) return null;
+
+        var lage = new Lage(main, wasIconic, GetWindow(main, GW_HWNDPREV));
+        if (wasIconic) ShowWindowAsync(main, SW_SHOWNOACTIVATE);
+        SetWindowPos(main, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+
+        var bis = Environment.TickCount64 + RaiseTimeoutMs;
+        while (Environment.TickCount64 < bis)
+        {
+            if (!IsIconic(main) && OnTop(main, target)) { lage.Ok = true; break; }
+            Thread.Sleep(30);
+        }
+        return lage;
+    }
+
+    /// <summary>
+    /// Liegt TCunihockey an der Stelle des Elements zuoberst? Verglichen wird
+    /// das Hauptfenster, nicht das Element: ein Label meldet sich bei einer
+    /// Trefferprüfung aus einem fremden Prozess als durchlässig, und
+    /// WindowFromPoint liefert dann das Fenster darunter. TCunihockey selbst
+    /// prüft im eigenen Thread, dort antwortet das Label mit "getroffen".
+    /// </summary>
+    static bool OnTop(nint main, nint target)
+    {
+        GetWindowRect(target, out var r);
+        var unter = WindowFromPoint(new POINT { X = (r.L + r.R) / 2, Y = (r.T + r.B) / 2 });
+        return unter != 0 && (unter == main || GetAncestor(unter, GA_ROOT) == main);
+    }
+
+    // ── Menü ─────────────────────────────────────────────────────────────────
+
+    /// <summary>Schliesst ein Menü gezielt an seinem Fenster — keine globale
+    /// Taste, die in einer anderen Anwendung landen könnte.</summary>
+    static void CloseMenu(nint menu)
+    {
+        PostMessageW(menu, WM_KEYDOWN, VK_ESCAPE, 0);
+        PostMessageW(menu, WM_KEYUP, VK_ESCAPE, 0);
+        Thread.Sleep(120);
     }
 
     /// <summary>Wartet auf das neue Menüfenster des Prozesses.</summary>
@@ -149,6 +203,14 @@ public static class TcuMenu
         return null;
     }
 
+    static int ProcessId()
+    {
+        var main = TcuWindow.Handle();
+        if (main == 0) return 0;
+        GetWindowThreadProcessId(main, out var pid);
+        return pid;
+    }
+
     static HashSet<nint> TopLevel(int pid)
     {
         var set = new HashSet<nint>();
@@ -163,27 +225,35 @@ public static class TcuMenu
         return set;
     }
 
+    static nint MakeLParam(int x, int y) => (nint)((y << 16) | (x & 0xFFFF));
+
     // ── Win32 ────────────────────────────────────────────────────────────────
-    const uint MOUSEEVENTF_RIGHTDOWN = 0x0008, MOUSEEVENTF_RIGHTUP = 0x0010;
-    const uint KEYEVENTF_KEYUP = 0x0002;
-    const byte VK_ESCAPE = 0x1B;
+    const int  WM_CONTEXTMENU = 0x007B;
+    const int  WM_KEYDOWN     = 0x0100, WM_KEYUP = 0x0101;
+    const int  WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202;
+    const int  MK_LBUTTON     = 0x0001;
+    const int  VK_ESCAPE      = 0x1B;
+    const uint SMTO_ABORTIFHUNG = 0x0002;
+    const uint GA_ROOT = 2, GW_HWNDPREV = 3;
+    const int  SW_SHOWNOACTIVATE = 4, SW_SHOWMINNOACTIVE = 7;
+    const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOACTIVATE = 0x0010;
+    const nint HWND_TOPMOST = -1, HWND_NOTOPMOST = -2;
 
     delegate bool EnumProc(nint hwnd, nint lParam);
 
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, nint lParam);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(nint hwnd, out int pid);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(nint hwnd);
+    [DllImport("user32.dll")] static extern bool IsIconic(nint hwnd);
     [DllImport("user32.dll")] static extern bool GetWindowRect(nint hwnd, out RECT r);
-    [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
-    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] static extern nint GetForegroundWindow();
-    [DllImport("user32.dll")] static extern bool SetForegroundWindow(nint hwnd);
-    [DllImport("user32.dll")] static extern void mouse_event(uint flags, int dx, int dy, uint data, nint extra);
-    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, nint extra);
+    [DllImport("user32.dll")] static extern bool GetClientRect(nint hwnd, out RECT r);
     [DllImport("user32.dll")] static extern nint WindowFromPoint(POINT p);
     [DllImport("user32.dll")] static extern nint GetAncestor(nint hwnd, uint flags);
-
-    const uint GA_ROOT = 2;
+    [DllImport("user32.dll")] static extern nint GetWindow(nint hwnd, uint cmd);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(nint hwnd, nint after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] static extern bool ShowWindowAsync(nint hwnd, int cmd);
+    [DllImport("user32.dll")] static extern bool PostMessageW(nint hwnd, int msg, nint wParam, nint lParam);
+    [DllImport("user32.dll")] static extern nint SendMessageTimeoutW(nint hwnd, int msg, nint wParam, nint lParam, uint flags, uint timeout, out nint result);
 
     [StructLayout(LayoutKind.Sequential)] struct RECT  { public int L, T, R, B; }
     [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }

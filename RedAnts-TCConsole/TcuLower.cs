@@ -334,8 +334,10 @@ public sealed class TcuLower(
     /// Eigentor: derselbe Ablauf wie ein Tor, nur dass statt einer
     /// Spielernummer der Menüeintrag "Eigentor" gewählt wird.
     ///
-    /// Der Eintrag steht ausschliesslich im Kontextmenü der Spielernummer — es
-    /// gibt dafür weder einen UDP-Befehl noch einen Knopf im Fenster.
+    /// Der Eintrag steht ausschliesslich in der Spielerwahl, die TCunihockey auf
+    /// einen Klick auf die Spielernummer öffnet — es gibt dafür weder einen
+    /// UDP-Befehl noch einen Knopf; lowerthird_home_player nimmt nur Nummern aus
+    /// dem Kader. TcuMenu klickt per Fensternachricht, ohne Maus und ohne Fokus.
     /// </summary>
     async Task<string?> OwnGoal(string side)
     {
@@ -346,7 +348,7 @@ public sealed class TcuLower(
         await Task.Delay(ArmMs);
 
         var ziel = reader.Handle(side == "away" ? TcuState.IdNumberAway : TcuState.IdNumberHome);
-        note = TcuMenu.Pick(ziel, "Eigentor", logger);
+        note = TcuMenu.PickClicked(ziel, "Eigentor", logger);
         if (note is not null) return note;
 
         // Wie beim Tor: erst der Verursacher, dann der Stand, dann Sendung.
@@ -368,18 +370,24 @@ public sealed class TcuLower(
     /// UDP-Befehl existiert nicht: scoreboard_home_score gibt es nur als
     /// TcuExternal und nur im Modus "Alle Daten" der externen Uhr.
     ///
+    /// Das Menü hängt am Stand-Label; TcuMenu öffnet es per WM_CONTEXTMENU —
+    /// ohne Maus, ohne Fokus, auch bei minimiertem TCunihockey.
+    ///
     /// TCunihockey hängt das Menü ab, solange die Uhr läuft oder die Anzeige
-    /// eingeblendet ist. Dann geht kein Menü auf, und die Meldung sagt warum.
+    /// eingeblendet ist, und sperrt in genau diesen beiden Fällen auch das
+    /// Zeitfeld. Das wird vorher geprüft, damit die Meldung den Grund nennt
+    /// statt nur "kein Menü".
     /// </summary>
     string? Score(string side, string delta)
     {
         if (delta != "-1") return $"Stand-Korrektur '{delta}' wird nicht unterstützt";
 
+        if (reader.ScoreMenuAttached() == false)
+            return "Stand-Korrektur gesperrt: Uhr läuft oder Anzeige ist eingeblendet — " +
+                   "TCunihockey erlaubt sie nur bei stehender Uhr und ausgeblendeter Anzeige";
+
         var ziel = reader.Handle(side == "away" ? TcuState.IdScoreAway : TcuState.IdScoreHome);
-        var note = TcuMenu.Pick(ziel, "-1", logger);
-        return note is null
-            ? null
-            : $"{note} — TCunihockey erlaubt die Korrektur nur bei stehender Uhr und ausgeblendeter Anzeige";
+        return TcuMenu.PickAttached(ziel, "-1", logger);
     }
 
     /// <summary>Beschriftung der Kopfzeile auf den Spielerseiten.</summary>

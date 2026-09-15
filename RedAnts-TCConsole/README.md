@@ -97,8 +97,8 @@ Mannschaftsname, aktueller Stand und **−1**.
 
 - **−1** löst den Eintrag „-1" im Kontextmenü des Stands in TCunihockey aus.
   Das ist der Korrekturweg, den TCunihockey selbst vorsieht, ohne
-  Nebenwirkungen. Wie beim Eigentor wird dafür kurz der Mauszeiger bewegt und
-  danach zurückgesetzt; TCunihockey darf nicht verdeckt sein.
+  Nebenwirkungen. TcuConsole öffnet das Menü per Fensternachricht — ohne Maus,
+  ohne Fokus, auch wenn TCunihockey minimiert oder verdeckt ist.
 - **Nur bei stehender Uhr und ausgeblendeter Anzeige.** Sonst nimmt
   TCunihockey das Menü weg. Bei laufender Uhr ist die Taste gesperrt
   („−1 (Uhr läuft)"); bei eingeblendeter Anzeige meldet TcuConsole den Grund
@@ -110,6 +110,22 @@ Mannschaftsname, aktueller Stand und **−1**.
 - Einen UDP-Befehl für den Stand gibt es nicht: `scoreboard_home_score` kennt
   TCunihockey nur als `TcuExternal=` und nur im Modus „Alle Daten" der externen
   Uhr.
+
+## Ohne Maus und ohne Fokus
+
+Eigentor und die Stand-Korrektur wählen Einträge in Menüs von TCunihockey.
+TcuConsole erledigt das ausschliesslich über Fensternachrichten und UI
+Automation: es bewegt nie die Maus, sendet keine Tasten und holt TCunihockey
+nicht in den Vordergrund. Beides funktioniert auch, wenn TCunihockey minimiert
+oder verdeckt ist.
+
+- **Stand −1:** Das Menü hängt am Stand und öffnet sich auf eine
+  Fensternachricht, egal wo TCunihockey liegt.
+- **Eigentor:** Die Spielerwahl öffnet TCunihockey nur auf einen Klick, der das
+  Feld an seiner Bildschirmstelle zuoberst trifft. Ist TCunihockey verdeckt oder
+  minimiert, holt TcuConsole es dafür für rund eine Sekunde **ohne Aktivierung**
+  nach oben und stellt Lage und Minimierung danach wieder her — kurz sichtbar,
+  aber ohne Fokuswechsel.
 
 ## Das Deck
 

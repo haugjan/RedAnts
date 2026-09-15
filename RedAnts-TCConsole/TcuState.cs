@@ -43,7 +43,7 @@ public sealed class TcuState(TcuLogger logger)
     public const string IdTeamHome = "LblHome";
     public const string IdTeamAway = "LblAway";
 
-    // Die Spielernummern: Ziel des Rechtsklicks für das Eigentor-Menü.
+    // Die Spielernummern: ein Klick darauf öffnet die Spielerwahl mit "Eigentor".
     public const string IdNumberHome = "LblHomePlayerNumber";
     public const string IdNumberAway = "LblAwayPlayerNumber";
 
@@ -92,10 +92,17 @@ public sealed class TcuState(TcuLogger logger)
     }
 
     // ── Zuordnung herstellen ─────────────────────────────────────────────────
-    // UI Automation kennt die Kennungen, liefert aber NativeWindowHandle = 0
-    // (geprüft: für alle Anker). Die Brücke ist deshalb die Bildschirmlage:
-    // jedes Element wird über sein Rechteck dem Kind-Fenster mit demselben
-    // Rechteck zugeordnet. Das läuft einmal je Fenster, nicht je Takt.
+    // UI Automation kennt die Kennungen. Das Fenster-Handle kommt bevorzugt
+    // direkt über NativeWindowHandle: am 2026-09-15 lieferte das für alle
+    // geprüften Anker einen Wert, auch bei minimiertem TCunihockey. Eine frühere
+    // Messung ergab dort 0; für diesen Fall bleibt die Zuordnung über die
+    // Bildschirmlage als Rückfall — jedes Element über sein Rechteck zum
+    // Kind-Fenster mit demselben Rechteck.
+    //
+    // Allein über die Bildschirmlage scheiterte die Zuordnung, sobald
+    // TCunihockey minimiert war: dann liegen die Rechtecke ausserhalb des
+    // Bildschirms, und TcuConsole fand weder Stand noch Drittel noch die
+    // Spielernummer fürs Eigentor. Das läuft einmal je Fenster, nicht je Takt.
     bool Bind(nint main)
     {
         if (_boundTo == main && _handles.Count > 0) return true;
@@ -137,10 +144,16 @@ public sealed class TcuState(TcuLogger logger)
             foreach (AutomationElement el in root.FindAll(TreeScope.Descendants, Condition.TrueCondition))
             {
                 string id;
-                System.Windows.Rect b;
-                try { id = el.Current.AutomationId ?? ""; b = el.Current.BoundingRectangle; }
+                nint native;
+                try { id = el.Current.AutomationId ?? ""; native = el.Current.NativeWindowHandle; }
                 catch { continue; }
                 if (!wanted.Contains(id) || _handles.ContainsKey(id)) continue;
+
+                if (native != 0) { _handles[id] = native; continue; }
+
+                System.Windows.Rect b;
+                try { b = el.Current.BoundingRectangle; }
+                catch { continue; }
 
                 // 2 px Spiel: UIA rundet die Werte anders als GetWindowRect.
                 var hit = kids.FirstOrDefault(k =>
@@ -235,6 +248,23 @@ public sealed class TcuState(TcuLogger logger)
 
         return _handles.TryGetValue(IdSponsorLive, out var liveH) && liveH != 0
             ? !IsWindowEnabled(liveH)
+            : null;
+    }
+
+    /// <summary>
+    /// Hängt das Kontextmenü mit "-1" gerade am Spielstand? TCunihockey nimmt es
+    /// weg, solange die Uhr läuft oder die Anzeige eingeblendet ist, und sperrt
+    /// in genau diesen beiden Fällen auch das Zeitfeld (nachgelesen in
+    /// BtnScoreboardStartStop_Click und BtnScoreboardLive_Click). Die Sperre ist
+    /// damit ein billiges Zeichen für das Menü — IsWindowEnabled, kein Neuzeichnen.
+    /// </summary>
+    public bool? ScoreMenuAttached()
+    {
+        var main = TcuWindow.Handle();
+        if (main == 0 || !Bind(main)) return null;
+
+        return _handles.TryGetValue(IdClock, out var clockH) && clockH != 0
+            ? IsWindowEnabled(clockH)
             : null;
     }
 
