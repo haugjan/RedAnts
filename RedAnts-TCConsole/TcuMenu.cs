@@ -36,6 +36,14 @@ public static class TcuMenu
     /// <summary>Wie lange auf das angehobene Fenster gewartet wird.</summary>
     const int RaiseTimeoutMs = 1000;
 
+    /// <summary>Pause zwischen Anheben und Klick.</summary>
+    const int SettleMs = 400;
+
+    /// <summary>Wie oft der Klick höchstens zugestellt wird, und wie lange je
+    /// Versuch auf das Menü gewartet wird.</summary>
+    const int ClickAttempts = 3;
+    const int AttemptTimeoutMs = 700;
+
     /// <summary>
     /// Öffnet das am Element angehängte Menü und wählt den Eintrag. Rückgabe:
     /// Meldung fürs Log, null bei Erfolg.
@@ -75,13 +83,37 @@ public static class TcuMenu
             if (lage is { Ok: false })
                 return "TCunihockey liess sich nicht nach oben holen";
 
-            var vorher = TopLevel(pid);
+            // Am laufenden TCunihockey gemessen: ein Klick direkt nach dem
+            // Anheben öffnete kein Menü (das Menüfenster war danach aber
+            // erzeugt), mit 400 ms Pause ging es beim ersten Klick auf. Ob
+            // TCunihockey die neue Lage erst verarbeiten muss oder das allererste
+            // Anzeigen einer Sitzung sofort wieder zugeht, liess sich nicht
+            // trennen — beides fangen die Pause und die Wiederholung ab.
+            if (lage is not null) Thread.Sleep(SettleMs);
+
             GetClientRect(target, out var c);
             var point = MakeLParam((c.R - c.L) / 2, (c.B - c.T) / 2);
-            PostMessageW(target, WM_LBUTTONDOWN, MK_LBUTTON, point);
-            PostMessageW(target, WM_LBUTTONUP, 0, point);
 
-            return Choose(pid, vorher, entry, logger);
+            for (var versuch = 1; versuch <= ClickAttempts; versuch++)
+            {
+                if (lage is not null && !OnTop(main, target))
+                {
+                    SetWindowPos(main, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+                    Thread.Sleep(SettleMs);
+                }
+
+                var vorher = TopLevel(pid);
+                PostMessageW(target, WM_LBUTTONDOWN, MK_LBUTTON, point);
+                PostMessageW(target, WM_LBUTTONUP, 0, point);
+
+                var menu = WaitForMenu(pid, vorher, AttemptTimeoutMs);
+                if (menu == 0) continue;
+
+                if (versuch > 1) logger.LogUi($"Menü beim {versuch}. Klick aufgegangen");
+                return ChooseIn(menu, entry, logger);
+            }
+
+            return $"Menü ist nach {ClickAttempts} Klicks nicht aufgegangen";
         }
         finally
         {
@@ -91,9 +123,12 @@ public static class TcuMenu
 
     static string? Choose(int pid, HashSet<nint> vorher, string entry, TcuLogger logger)
     {
-        var menu = WaitForMenu(pid, vorher);
-        if (menu == 0) return "Menü ist nicht aufgegangen";
+        var menu = WaitForMenu(pid, vorher, MenuTimeoutMs);
+        return menu == 0 ? "Menü ist nicht aufgegangen" : ChooseIn(menu, entry, logger);
+    }
 
+    static string? ChooseIn(nint menu, string entry, TcuLogger logger)
+    {
         try
         {
             var item = FindEntry(menu, entry);
@@ -176,9 +211,9 @@ public static class TcuMenu
     }
 
     /// <summary>Wartet auf das neue Menüfenster des Prozesses.</summary>
-    static nint WaitForMenu(int pid, HashSet<nint> vorher)
+    static nint WaitForMenu(int pid, HashSet<nint> vorher, int timeoutMs)
     {
-        var bis = Environment.TickCount64 + MenuTimeoutMs;
+        var bis = Environment.TickCount64 + timeoutMs;
         while (Environment.TickCount64 < bis)
         {
             var neu = TopLevel(pid).Except(vorher).ToList();
