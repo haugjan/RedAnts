@@ -271,8 +271,8 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         b.Nav   (1, 0, "Strafe",      CHeimBg, DeckContext.PenaltyHome, TcuIcons.Strafe);
         b.Action(1, 1, "Spieler",     CHeimBg, ["TcuUi=prepare|name|home"], TcuIcons.Spieler,    target: DeckContext.PlayerHome, mode: "name_home");
         b.Action(1, 2, "Best Player", CHeimBg, ["TcuUi=prepare|best|home"], TcuIcons.BestPlayer, target: DeckContext.PlayerHome, mode: "best_home");
-        b.Action(1, 3, "Starting 6",  CHeimBg, ["TcuUi=s6|home"],           TcuIcons.Starting6,  target: DeckContext.Starting6Home, mode: "s6_home");
-        b.Action(1, 4, "Starting 6",  CGastBg, ["TcuUi=s6|away"],           TcuIcons.Starting6,  target: DeckContext.Starting6Away, mode: "s6_away");
+        Starting6Key(b, 1, 3, "home", CHeimBg);
+        Starting6Key(b, 1, 4, "away", CGastBg);
         b.Action(1, 5, "Best Player", CGastBg, ["TcuUi=prepare|best|away"], TcuIcons.BestPlayer, target: DeckContext.PlayerAway, mode: "best_away");
         b.Action(1, 6, "Spieler",     CGastBg, ["TcuUi=prepare|name|away"], TcuIcons.Spieler,    target: DeckContext.PlayerAway, mode: "name_away");
         b.Nav   (1, 7, "Strafe",      CGastBg, DeckContext.PenaltyAway, TcuIcons.Strafe);
@@ -311,6 +311,29 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         b.Action(3, 7, "Einblender", (Live?.LowerThirdLive ?? false) ? CStateOn : CStateOff, ["TcuUi=toggle"], TcuIcons.EinblenderEin, forceText: CWhite);
 
         b.Highlight(_activeMode, CActive);
+    }
+
+    // Starting 6 nur mit vollständiger Aufstellung. TCunihockey greift an zwei
+    // Stellen über das Ende der Liste hinaus, ohne es abzufangen:
+    //  * Einblenden liest immer sechs Einträge aus der Nummernliste, "-" und
+    //    leere Stellen zählen dabei mit.
+    //  * "Weiter" liest CurrentEvent._Text.Split(',')[Zähler - 1] in einem Thread
+    //    ausserhalb des try und beendet TCunihockey (IndexOutOfRangeException,
+    //    zweimal am 2026-09-15 mit leerer Aufstellung).
+    // Unter sechs Einträgen gibt es die Taste deshalb gar nicht erst; das
+    // Weiterschalten sichert TcuLower zusätzlich über die Namen ab.
+    void Starting6Key(DeckBuilder b, int row, int col, string side, int bg)
+    {
+        var raw = side == "away" ? game.AwayStarting6Raw : game.HomeStarting6Raw;
+        if (TcuLower.Starting6Entries(raw) < 6)
+        {
+            b.Label(row, col, "Starting 6\n(Aufstellung\nunvollständig)", CNeutral);
+            return;
+        }
+
+        b.Action(row, col, "Starting 6", bg, [$"TcuUi=s6|{side}"], TcuIcons.Starting6,
+                 target: side == "away" ? DeckContext.Starting6Away : DeckContext.Starting6Home,
+                 mode: $"s6_{side}");
     }
 
     // ── Spielerwahl ──────────────────────────────────────────────────────────

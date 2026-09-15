@@ -130,9 +130,25 @@ public sealed class TcuLower(
             // die Namen, ausgewählt wird nichts — TCunihockey führt die Reihe
             // selbst und blättert mit "Weiter" durch.
             case "s6":
+            {
+                // TCunihockey liest beim Einblenden immer sechs Einträge aus der
+                // Nummernliste und scheitert mit weniger (siehe
+                // TcuDeck.Starting6Key). Frisch aus dem Speicher gelesen, nicht aus
+                // dem Stand beim Einlesen — die Aufstellung kann sich seither
+                // geändert haben.
+                var side = Side(Arg(1));
+                var mem  = new TcuMemory(logger).TryRead();
+                var raw  = mem is null
+                    ? (side == "away" ? game.AwayStarting6Raw : game.HomeStarting6Raw)
+                    : (side == "away" ? mem.Starting6Away : mem.Starting6Home);
+                if (Starting6Entries(raw) < 6)
+                    return $"Startaufstellung in TCunihockey unvollständig ({Starting6Entries(raw)} von 6 Einträgen) — " +
+                           "Starting 6 nicht ausgelöst, TCunihockey scheitert damit beim Einblenden";
+
                 await Clear();
-                udp.Send($"{P}lowerthird_{Side(Arg(1))}_starting6");
+                udp.Send($"{P}lowerthird_{side}_starting6");
                 return null;
+            }
 
             // "Weiter": beim ersten Druck einblenden (TCunihockey zeigt dann von
             // selbst den ersten Spieler), danach je einen weiter.
@@ -142,11 +158,38 @@ public sealed class TcuLower(
             // gemeldete Fehler; deshalb wird hier abgeriegelt.
             case "s6next":
             {
-                if (!IsLive()) { udp.Send($"{P}lowerthird_show"); return null; }
+                var mem = new TcuMemory(logger).TryRead();
+
+                if (!IsLive())
+                {
+                    // Einblenden: TCunihockey liest dabei sechs Einträge aus der
+                    // Nummernliste der scharfen Aufstellung (CurrentEvent._Name) und
+                    // scheitert mit weniger an einer IndexOutOfRangeException.
+                    if (mem is not null && Starting6Entries(mem.CurrentEventName) < 6)
+                        return $"Startaufstellung unvollständig ({Starting6Entries(mem.CurrentEventName)} von 6 Einträgen) — " +
+                               "nicht eingeblendet, TCunihockey scheitert damit";
+
+                    udp.Send($"{P}lowerthird_show");
+                    return null;
+                }
 
                 var stand = reader.Starting6();
                 if (stand is (var gezeigt, var total) && total > 0 && gezeigt >= total)
                     return $"Starting Six ist beim letzten Namen ({gezeigt}/{total}) — nicht weitergeschaltet";
+
+                // TCunihockey zeigt immer "/6", auch wenn die Aufstellung weniger
+                // Namen hat. "Weiter" liest dann CurrentEvent._Text.Split(',')
+                // [Zähler] in einem Thread ohne Fehlerbehandlung, und ein Eintrag
+                // hinter dem letzten beendet TCunihockey (IndexOutOfRangeException,
+                // zweimal am 2026-09-15). Deshalb zählen die Namen, die TCunihockey
+                // wirklich hat — frisch aus dem Speicher.
+                if (mem is not null)
+                {
+                    var namen = mem.CurrentEventText.Length == 0 ? 0 : mem.CurrentEventText.Split(',').Length;
+                    if (mem.Starting6Count >= namen)
+                        return $"Starting Six ist beim letzten Namen ({mem.Starting6Count} von {namen}) — " +
+                               "nicht weitergeschaltet, sonst stürzt TCunihockey ab";
+                }
 
                 udp.Send($"{P}lowerthird_next");
                 return null;
@@ -389,6 +432,11 @@ public sealed class TcuLower(
         var ziel = reader.Handle(side == "away" ? TcuState.IdScoreAway : TcuState.IdScoreHome);
         return TcuMenu.PickAttached(ziel, "-1", logger);
     }
+
+    /// <summary>Einträge einer Nummernliste, so wie TCunihockey sie zählt: jedes
+    /// Komma trennt, "-" und leere Stellen zählen mit.</summary>
+    internal static int Starting6Entries(string raw) =>
+        raw.Length == 0 ? 0 : raw.Split(',').Length;
 
     /// <summary>Beschriftung der Kopfzeile auf den Spielerseiten.</summary>
     static string ModeLabel(string kind, string arg) => kind switch

@@ -54,6 +54,8 @@ public class TcuStateReader(TcuGameState state, TcuLogger logger)
             // Startaufstellung als Nummernliste, z.B. "46,6,00,10,12,14".
             state.HomeStarting6 = SplitNumbers(mem.Starting6Home);
             state.AwayStarting6 = SplitNumbers(mem.Starting6Away);
+            state.HomeStarting6Raw = mem.Starting6Home;
+            state.AwayStarting6Raw = mem.Starting6Away;
             state.LoadedAt      = DateTime.Now;
 
             logger.Log($"Aus TCUnihockey gelesen: {state.HomeTeam} vs {state.AwayTeam} " +
@@ -77,6 +79,8 @@ public class TcuStateReader(TcuGameState state, TcuLogger logger)
         state.AwayPlayers   = [];
         state.HomeStarting6 = [];
         state.AwayStarting6 = [];
+        state.HomeStarting6Raw = "";
+        state.AwayStarting6Raw = "";
     }
 
     // ── Datei: liest vollständigen Spielkonfig (inkl. Spieler) ───────────────
@@ -127,7 +131,7 @@ public class TcuStateReader(TcuGameState state, TcuLogger logger)
     /// <summary>Zerlegt "46,6,00,10,12,14" in die einzelnen Nummern. Als Text,
     /// damit "00" nicht zu "0" wird — sonst wäre der Eintrag nicht mehr dem
     /// Spieler zuzuordnen. Leerstellen wie in "17,-,00,9,22" fallen weg.</summary>
-    static List<string> SplitNumbers(string value) =>
+    internal static List<string> SplitNumbers(string value) =>
         value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
              .Where(s => s != "-")
              .ToList();

@@ -113,6 +113,23 @@ Mannschaftsname, aktueller Stand und **−1**.
   TCunihockey nur als `TcuExternal=` und nur im Modus „Alle Daten" der externen
   Uhr.
 
+## Starting 6
+
+Die Taste gibt es nur, wenn die Startaufstellung in TCunihockey **mindestens
+sechs Einträge** hat; sonst steht „Starting 6 (Aufstellung unvollständig)"
+darauf. Grund sind zwei Stellen in TCunihockey, die über das Ende der Liste
+hinausgreifen, ohne den Fehler abzufangen:
+
+- **Einblenden** liest immer sechs Einträge aus der Nummernliste. „-" und leere
+  Stellen zählen dabei mit — „17,-,00,9,22" hat fünf und scheitert.
+- **Weiter** liest nach jedem Druck den nächsten Namen. Gibt es keinen mehr,
+  **beendet sich TCunihockey** (am 2026-09-15 zweimal mit leerer Aufstellung).
+  TCunihockey zeigt dabei immer „/6", auch wenn weniger Namen da sind.
+
+TcuConsole liest die Aufstellung deshalb vor jedem Druck frisch aus dem Speicher
+von TCunihockey und schaltet nicht weiter, wenn kein Name mehr folgt — die
+Meldung dazu steht im Log.
+
 ## Ohne Maus und ohne Fokus
 
 Eigentor und die Stand-Korrektur wählen Einträge in Menüs von TCunihockey.

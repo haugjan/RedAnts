@@ -49,6 +49,12 @@ public sealed class TcuMemory(TcuLogger logger)
         public string Starting6Home { get; init; } = "";
         public string Starting6Away { get; init; } = "";
         public int    Starting6Count { get; init; }
+        /// <summary>CurrentEvent._Text: bei Starting 6 die gezeigten Namen,
+        /// durch Komma getrennt — genau die Liste, die "Weiter" indiziert.</summary>
+        public string CurrentEventText { get; init; } = "";
+        /// <summary>CurrentEvent._Name: bei scharf gestellter Starting 6 die
+        /// Nummernliste, aus der das Einblenden sechs Einträge liest.</summary>
+        public string CurrentEventName { get; init; } = "";
         public bool   PlayerSelectionHome { get; init; }
         public bool   PlayerSelectionAway { get; init; }
         public int    ExternalMode { get; init; }
@@ -74,6 +80,8 @@ public sealed class TcuMemory(TcuLogger logger)
             Starting6Home       = Str(frm, "strNumbersHomeStarting6"),
             Starting6Away       = Str(frm, "strNumbersAwayStarting6"),
             Starting6Count      = Int(frm, "intCountStarting6"),
+            CurrentEventText    = EventField(frm, "_Text"),
+            CurrentEventName    = EventField(frm, "_Name"),
             PlayerSelectionHome = Bool(frm, "isPlayerSelectionHomeAllowed"),
             PlayerSelectionAway = Bool(frm, "isPlayerSelectionAwayAllowed"),
             ExternalMode        = Int(frm, "intControlExternalMode"),
@@ -210,6 +218,14 @@ public sealed class TcuMemory(TcuLogger logger)
     }
 
     static string Str(ClrObject o, string f) { try { return o.ReadStringField(f) ?? ""; } catch { return ""; } }
+
+    // CurrentEvent ist eine Struktur (FrmMain+EventInfo) direkt im Formular,
+    // kein eigenes Objekt — deshalb über ReadValueTypeField.
+    static string EventField(ClrObject frm, string field)
+    {
+        try { return frm.ReadValueTypeField("CurrentEvent").ReadStringField(field) ?? ""; }
+        catch { return ""; }
+    }
     static int    Int(ClrObject o, string f) { try { return o.ReadField<int>(f);      } catch { return 0;  } }
     static bool   Bool(ClrObject o, string f){ try { return o.ReadField<bool>(f);     } catch { return false; } }
 

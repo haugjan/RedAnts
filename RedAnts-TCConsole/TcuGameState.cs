@@ -31,6 +31,13 @@ public class TcuGameState
     public List<string> HomeStarting6 { get; set; } = [];
     public List<string> AwayStarting6 { get; set; } = [];
 
+    /// <summary>Die Nummernliste der Startaufstellung unverändert, wie
+    /// TCunihockey sie hält — mit "-" und leeren Stellen. TCunihockey liest beim
+    /// Einblenden immer sechs Einträge daraus; ob das gutgeht, lässt sich nur an
+    /// dieser Rohfassung zählen, nicht an der bereinigten Liste.</summary>
+    public string HomeStarting6Raw { get; set; } = "";
+    public string AwayStarting6Raw { get; set; } = "";
+
     /// <summary>Die Spieler der Startaufstellung, aufgelöst über die Nummern.
     /// Unbekannte Nummern werden übersprungen.</summary>
     public List<Player> Starting6(string side)
