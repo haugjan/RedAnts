@@ -64,6 +64,30 @@ Beim Start sucht TcuConsole aufwärts nach dem Ordner mit `TCunihockey.exe` bzw.
 `Configurations` und meldet ihn im Log. Aus `C:\TCUnihockey\TcuConsole` findet
 es damit `C:\TCUnihockey`. Liegt es woanders, hilft `--tcu <pfad>`.
 
+## Mit oder ohne Zeitsteuerung
+
+Beim Start fragt TcuConsole:
+
+```
+Mit Zeitsteuerung (Uhr Start/Stop, −1 s, +1 s)? [J/n]
+```
+
+- **J** oder **Enter**: wie bisher, die Uhr wird über das Deck bedient.
+- **N**: die Tasten **28** (−1 s), **29** (+1 s) und **30** (Uhr Start/Stop)
+  bleiben leer. Sie rücken bewusst nicht nach — die Zuordnung in Companion ist
+  fest, eine verschobene Taste läge sonst unter dem falschen Finger.
+- Keine Eingabe innert 15 Sekunden gilt als **Ja**, damit ein unbeaufsichtigt
+  gestartetes TcuConsole nicht an der Frage hängen bleibt.
+
+Ohne Rückfrage geht es mit einem Parameter, etwa für zwei Verknüpfungen:
+
+```
+TcuConsole.exe --mit-uhr
+TcuConsole.exe --ohne-uhr
+```
+
+Die Wahl gilt bis zum nächsten Start.
+
 ## Das Deck
 
 TcuConsole führt 32 Tasten (4×8) und navigiert zwischen den Kontexten selbst.

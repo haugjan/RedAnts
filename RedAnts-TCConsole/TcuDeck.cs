@@ -12,8 +12,14 @@ namespace TcuConsole;
 /// Seiten. Die Seiten leben als <see cref="DeckContext"/> weiter, nur navigiert
 /// jetzt TcuConsole selbst zwischen ihnen statt Companion.
 /// </summary>
-public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLogger logger)
+public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLogger logger, bool clockControl)
 {
+    /// <summary>Mit Zeitsteuerung: Uhr Start/Stop, −1 s und +1 s stehen auf der
+    /// Startseite (Tasten 28 bis 30). Ohne bleiben diese Plätze leer — sie
+    /// rücken nicht nach, weil die Zuordnung in Companion fest ist. Beim Start
+    /// von TcuConsole gewählt.</summary>
+    public bool ClockControl => clockControl;
+
     public const int Columns = 8;
     public const int Rows    = 4;
     public const int SlotCount = Columns * Rows;
@@ -81,9 +87,11 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         Bump();
     }
 
-    static bool Differs(TcuState.Snapshot a, TcuState.Snapshot b) =>
+    // Ohne Zeitsteuerung steht keine Uhr-Taste auf dem Deck, die umfärben
+    // müsste — ein Start oder Stop der Uhr darf dann keinen Long-Poll wecken.
+    bool Differs(TcuState.Snapshot a, TcuState.Snapshot b) =>
         a.ScoreHome != b.ScoreHome || a.ScoreAway != b.ScoreAway ||
-        a.PeriodLabel != b.PeriodLabel || a.ClockRunning != b.ClockRunning ||
+        a.PeriodLabel != b.PeriodLabel || (clockControl && a.ClockRunning != b.ClockRunning) ||
         a.LowerThirdLive != b.LowerThirdLive || a.SponsorAuto != b.SponsorAuto ||
         a.Match != b.Match;
 
@@ -274,15 +282,20 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         Panic(b, home: false);
         b.Action(3, 1, "Kommentar", CInfo, ["TcuUi=lt|commentary"], TcuIcons.Kommentar,      mode: "commentary");
         b.Action(3, 2, "Schiri",    CInfo, ["TcuUi=lt|referee"],    TcuIcons.Schiedsrichter, mode: "referee");
-        b.Action(3, 3, "◀ Uhr −1 s\n(aus)", CTimer, ["TcuController=scoreboard_hide", "TcuController=scoreboard_secmin"]);
-        b.Action(3, 4, "▶ Uhr +1 s\n(aus)", CTimer, ["TcuController=scoreboard_hide", "TcuController=scoreboard_secplus"]);
+        // Spieluhr nur mit Zeitsteuerung. Ohne bleiben die drei Plätze leer:
+        // DeckBuilder füllt fehlende Tasten mit schwarzen, nicht drückbaren auf.
+        if (clockControl)
+        {
+            b.Action(3, 3, "◀ Uhr −1 s\n(aus)", CTimer, ["TcuController=scoreboard_hide", "TcuController=scoreboard_secmin"]);
+            b.Action(3, 4, "▶ Uhr +1 s\n(aus)", CTimer, ["TcuController=scoreboard_hide", "TcuController=scoreboard_secplus"]);
 
-        // Uhr: grün solange sie läuft, rot sobald sie steht — umgekehrt zu
-        // Einblender und Werbung, wo rot "auf Sendung" heisst. Mitten im Spiel
-        // ist die stehende Uhr der Zustand, den man sofort sehen will.
-        b.Action(3, 5, "⏱ Uhr\nStart / Stop",
-                 (Live?.ClockRunning ?? false) ? CStateOff : CStateOn,
-                 ["TcuController=scoreboard_show", "TcuController=scoreboard_togglestartstop"]);
+            // Uhr: grün solange sie läuft, rot sobald sie steht — umgekehrt zu
+            // Einblender und Werbung, wo rot "auf Sendung" heisst. Mitten im Spiel
+            // ist die stehende Uhr der Zustand, den man sofort sehen will.
+            b.Action(3, 5, "⏱ Uhr\nStart / Stop",
+                     (Live?.ClockRunning ?? false) ? CStateOff : CStateOn,
+                     ["TcuController=scoreboard_show", "TcuController=scoreboard_togglestartstop"]);
+        }
 
         var werbung = lower.SponsorOn(Live?.SponsorAuto ?? false);
         b.Action(3, 6, "Werbung",    werbung ? CStateOn : CStateOff, ["TcuUi=sponsor|toggle"], TcuIcons.Werbung,       forceText: CWhite);

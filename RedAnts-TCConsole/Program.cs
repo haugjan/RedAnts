@@ -15,9 +15,18 @@ var ui       = new TcuUi(logger);
 var live     = new TcuState(logger);
 var lower    = new TcuLower(udp, ui, live, state, logger);
 var bridge   = new TcuUiBridge(lower, logger);
-var deck     = new TcuDeck(udp, lower, state, logger);
 
 logger.PrintBanner();
+
+// Mit oder ohne Zeitsteuerung? Ohne fehlen auf dem Deck Uhr Start/Stop, −1 s
+// und +1 s — für Spiele, bei denen die Uhr nicht über das Deck bedient wird.
+// Bewusst vor dem Listener: das Deck steht erst, wenn feststeht, wie es aussieht.
+var clockControl = ChooseClockControl(args);
+logger.Log(clockControl
+    ? "Zeitsteuerung: mit Uhr (Start/Stop, −1 s, +1 s auf dem Deck)"
+    : "Zeitsteuerung: ohne Uhr — die Tasten 28 bis 30 bleiben leer");
+
+var deck     = new TcuDeck(udp, lower, state, logger, clockControl);
 
 const string BaseUrl = "http://localhost:5150/";
 
@@ -197,6 +206,46 @@ static string ResolveTcuDir(string[] args)
             return dir.FullName;
     }
     return AppContext.BaseDirectory;
+}
+
+// ── Mit oder ohne Zeitsteuerung ────────────────────────────────────────────
+//
+// --ohne-uhr / --mit-uhr legen es ohne Rückfrage fest (z. B. zwei
+// Verknüpfungen). Sonst wird gefragt. Nach 15 Sekunden ohne Eingabe gilt "Ja":
+// das ist das frühere Verhalten, und ein unbeaufsichtigt gestartetes TcuConsole
+// soll nicht an der Frage hängen bleiben, während der Stream läuft. Ohne
+// Konsole (Eingabe umgeleitet) wird gar nicht erst gefragt.
+static bool ChooseClockControl(string[] args)
+{
+    if (args.Contains("--ohne-uhr", StringComparer.OrdinalIgnoreCase)) return false;
+    if (args.Contains("--mit-uhr", StringComparer.OrdinalIgnoreCase)) return true;
+
+    const int TimeoutSeconds = 15;
+    try
+    {
+        if (Console.IsInputRedirected) return true;
+
+        Console.WriteLine();
+        Console.Write($"  Mit Zeitsteuerung (Uhr Start/Stop, −1 s, +1 s)? [J/n]  " +
+                      $"(Enter oder {TimeoutSeconds} s ohne Eingabe = Ja): ");
+
+        var until = DateTime.UtcNow.AddSeconds(TimeoutSeconds);
+        while (DateTime.UtcNow < until)
+        {
+            if (!Console.KeyAvailable) { Thread.Sleep(50); continue; }
+
+            var key = Console.ReadKey(intercept: true).Key;
+            if (key == ConsoleKey.N) { Console.WriteLine("Nein"); return false; }
+            if (key is ConsoleKey.J or ConsoleKey.Y or ConsoleKey.Enter) { Console.WriteLine("Ja"); return true; }
+        }
+
+        Console.WriteLine("Ja (keine Eingabe)");
+        return true;
+    }
+    catch (InvalidOperationException)
+    {
+        return true;
+    }
 }
 
 // ── Spielzustand laden ─────────────────────────────────────────────────────
