@@ -1,4 +1,4 @@
-name: TCConsole release
+name: TCConsole — Windows-App (ZIP)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - 'feature/**'
     paths:
       - 'RedAnts-TCConsole/**'
-      - '.github/workflows/tcconsole-release.yml'
+      - '.github/workflows/tcconsole-app-release.yml'
   workflow_dispatch:
 
 permissions:

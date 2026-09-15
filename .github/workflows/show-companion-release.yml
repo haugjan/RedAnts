@@ -1,4 +1,4 @@
-name: Companion module release
+name: Show — Companion module (Bitfocus)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - 'feature/**'
     paths:
       - 'RedAnts-Show-Companion/**'
-      - '.github/workflows/companion-release.yml'
+      - '.github/workflows/show-companion-release.yml'
   workflow_dispatch:
 
 permissions:

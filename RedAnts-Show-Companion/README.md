@@ -2,7 +2,7 @@
 
 Bitfocus Companion module for the Red Ants Soundboard (the `Show` slice of the RedAnts app). Companion buttons are only **slots 1–15**; their text, icon, colour and what a press triggers come live from the board that is open in a browser.
 
-This module lives in the RedAnts repository but is a standalone Node package: it is built and released separately from the .NET app (`.github/workflows/companion-release.yml` publishes a `.tgz` on every change on `main`).
+This module lives in the RedAnts repository but is a standalone Node package: it is built and released separately from the .NET app (`.github/workflows/show-companion-release.yml` publishes a `.tgz` on every change on `main`).
 
 ## How it works
 
