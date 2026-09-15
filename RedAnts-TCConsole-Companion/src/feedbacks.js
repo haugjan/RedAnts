@@ -26,6 +26,21 @@ function slotStyle(instance, number) {
 	return style
 }
 
+// Companion laesst Feedbacks auch in der Preset-Vorschau laufen: jede
+// Vorschau-Taste ist ein eigenes Control mit der Kennung
+// "preset:<Verbindung>:<Preset>:<Hash>" (geprueft an Companion 5.0.3), echte
+// Tasten heissen "bank:<id>". Ohne diese Weiche zeigte die Preset-Liste den
+// aktuellen Inhalt von TcuConsole statt der Nummern — und aenderte sich mit
+// jedem Kontextwechsel, sodass beim Zuweisen nicht erkennbar war, welches
+// Preset welche Taste ist.
+function isPresetPreview(feedback) {
+	return String(feedback.controlId || '').startsWith('preset:')
+}
+
+function numberStyle(number) {
+	return { text: String(number), size: 'auto', color: 0xffffff, bgcolor: OFFLINE }
+}
+
 function feedbackDefinitions(instance) {
 	return {
 		slot: {
@@ -41,7 +56,10 @@ function feedbackDefinitions(instance) {
 					max: SLOT_COUNT,
 				},
 			],
-			callback: (feedback) => slotStyle(instance, clampSlot(feedback.options.slot)),
+			callback: (feedback) => {
+				const number = clampSlot(feedback.options.slot)
+				return isPresetPreview(feedback) ? numberStyle(number) : slotStyle(instance, number)
+			},
 		},
 	}
 }

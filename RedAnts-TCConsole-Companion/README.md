@@ -16,7 +16,11 @@ Die Zuordnung wird deshalb **einmal** angelegt und nie wieder angefasst:
 - Feedback `slot` mit derselben Nummer (liefert Text, Farbe und Tastenbild)
 
 Für jede der 32 Tasten gibt es ein fertiges Preset unter „Tasten 1–32" — einfach
-auf das Deck ziehen. Das Raster ist 4×8, durchnummeriert zeilenweise von links
+auf das Deck ziehen. In der Preset-Liste tragen sie nur ihre Nummer; Bild, Farbe
+und Beschriftung erscheinen erst auf der platzierten Taste, zur Laufzeit von
+TcuConsole. (Companion führt Feedbacks auch in der Vorschau aus; das Modul
+erkennt Vorschau-Tasten an ihrer Kennung `preset:…` und zeigt dort bewusst nur
+die Nummer.) Das Raster ist 4×8, durchnummeriert zeilenweise von links
 oben (1) nach rechts unten (32); Stream Deck XL passt genau.
 
 ## Einrichtung
