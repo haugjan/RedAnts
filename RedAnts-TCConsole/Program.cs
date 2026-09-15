@@ -11,11 +11,11 @@ var udp      = new TcuUdp();
 var state    = new TcuGameState();
 var logger   = new TcuLogger();
 var reader   = new TcuStateReader(state, logger);
-var companion = new CompanionPush(logger);
 var ui       = new TcuUi(logger);
 var live     = new TcuState(logger);
 var lower    = new TcuLower(udp, ui, live, state, logger);
 var bridge   = new TcuUiBridge(lower, logger);
+var deck     = new TcuDeck(udp, lower, state, logger);
 
 logger.PrintBanner();
 
@@ -25,38 +25,45 @@ const string BaseUrl = "http://localhost:5150/";
 // ausschliesslich aus der Spielkonfig-Datei — deshalb immer beides ausführen.
 var tcuDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\"));
 
-// Zielpfad für den Datei-Export: --export <pfad>, sonst neben TCunihockey.exe
-var exportArg  = Array.IndexOf(args, "--export");
-var exportPath = exportArg >= 0 && exportArg + 1 < args.Length
-    ? Path.GetFullPath(args[exportArg + 1])
-    : Path.Combine(tcuDir, "tcu.companionconfig");
-
 _ = Task.Run(async () =>
 {
     await Task.Delay(300);
-    var ok = await LoadStateAsync(reader, state, tcuDir);
+    await LoadStateAsync(reader, state, tcuDir);
 
     // Shortcut- und Kartenbeschriftung stehen in der System-Konfig, die
-    // TcuConsole nicht liest — sie kommen aus dem laufenden Fenster. Muss vor
-    // ExportConfig laufen, sonst tragen die Knöpfe auf Seite 8 nur Nummern.
+    // TcuConsole nicht liest — sie kommen aus dem laufenden Fenster.
     ui.ReadLabels(state);
     logger.PrintState(state);
 
-    // Erst schreiben und die Pfade ausgeben, dann pushen: der Label-Push geht
-    // gegen Companion und kann bei nicht erreichbarem Companion in Timeouts
-    // laufen — das darf die Startausgabe nicht verzögern.
-    ExportConfig(state, exportPath, logger);
-    logger.PrintDownloadInfo(BaseUrl, state, exportPath);
+    // Der Kader steht jetzt: das Deck zeigt die Spielernamen erst danach.
+    deck.Bump();
+
+    logger.PrintDownloadInfo(BaseUrl, state);
     logger.Log("Bereit. Warte auf Befehle von Companion...");
     logger.Log("");
-
-    if (ok) _ = Task.Run(() => companion.PushAsync(state));
 });
 
 // Minimaler HTTP-Listener (kein Web-Framework)
+//
+// Zusätzlich zu "localhost" auch 127.0.0.1: http.sys prüft den Host-Kopf gegen
+// das Präfix und beantwortet eine Anfrage an 127.0.0.1 sonst mit 400 — was im
+// Companion-Modul wie ein Fehler des Moduls aussähe. Das Präfix auf eine feste
+// IP braucht je nach Rechner eine URL-Reservierung; scheitert es daran, läuft
+// der Listener eben nur auf localhost weiter.
 var listener = new HttpListener();
 listener.Prefixes.Add(BaseUrl);
-listener.Start();
+listener.Prefixes.Add("http://127.0.0.1:5150/");
+try
+{
+    listener.Start();
+}
+catch (HttpListenerException)
+{
+    listener = new HttpListener();
+    listener.Prefixes.Add(BaseUrl);
+    listener.Start();
+    logger.Log("127.0.0.1 nicht reservierbar — im Modul muss localhost stehen", LogLevel.Warning);
+}
 
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); listener.Stop(); };
@@ -68,9 +75,9 @@ logger.Log($"HTTP-Listener auf {BaseUrl}");
 // andere bedienbar.
 _ = Task.Run(() => bridge.RunAsync(cts.Token));
 
-// Spielzustand laufend aufs Deck: liest aus dem Fenster von TCunihockey und
-// schreibt nur bei Änderung. Läuft unabhängig — fällt Companion aus, bleibt die
-// Steuerung bedienbar.
+// Spielzustand laufend aufs Deck: liest aus dem Fenster von TCunihockey. Das
+// Deck meldet die Änderung an die wartenden Long-Polls weiter — fällt Companion
+// aus, bleibt die Steuerung trotzdem bedienbar.
 //
 // Die Zuschauerzahl wird nur EINMAL übernommen, und nur wenn TcuConsole selbst
 // noch keine kennt: im Mitteilungsfeld steht, was TcuConsole zuletzt dort
@@ -78,7 +85,6 @@ _ = Task.Run(() => bridge.RunAsync(cts.Token));
 // darf das Feld den laufenden Zähler nicht mehr überschreiben — dort steht dann
 // womöglich längst eine Störungsmeldung.
 var spectatorsTaken = false;
-var lastSpectators  = -1;
 
 // Erkennung eines Spielwechsels. Die Mannschaftsnamen stehen im Fenster und
 // kosten nichts; der Kader dagegen ist nur über den Heap von TCunihockey
@@ -108,7 +114,7 @@ async Task PushSnapshot(TcuState.Snapshot s)
                     {
                         ui.ReadLabels(state);
                         logger.PrintState(state);
-                        await companion.PushAsync(state);
+                        deck.Bump();
                     }
                     else logger.Log("Kader konnte nicht gelesen werden", LogLevel.Warning);
                 }
@@ -116,27 +122,6 @@ async Task PushSnapshot(TcuState.Snapshot s)
             });
         }
     }
-
-    // Stand und Drittel in die Anzeigefelder auf Seite 1. Die Spieluhr steht
-    // nicht mehr auf dem Deck — sie wird direkt synchronisiert.
-    await companion.PushButtonAsync(
-        CompanionConfig.MainPage, CompanionConfig.ScoreHomeRow, CompanionConfig.ScoreHomeCol, s.ScoreHome);
-    await companion.PushButtonAsync(
-        CompanionConfig.MainPage, CompanionConfig.ScoreAwayRow, CompanionConfig.ScoreAwayCol, s.ScoreAway);
-    await companion.PushButtonAsync(
-        CompanionConfig.MainPage, CompanionConfig.PeriodRow, CompanionConfig.PeriodCol, s.PeriodLabel);
-
-    // Zustand für die Knopffarben. Werbung: "läuft" heisst hier "Automatik an" —
-    // TcuConsole schaltet beides immer gemeinsam, und die Automatik ist der
-    // einzige der beiden Zustände, der sich aus dem Fenster lesen lässt.
-    var werbung = lower.SponsorOn(s.SponsorAuto);
-    await companion.SetVariableAsync(CompanionConfig.LowerThirdVariable,  s.LowerThirdLive ? "1" : "0");
-    await companion.SetVariableAsync(CompanionConfig.SponsorLiveVariable, werbung ? "1" : "0");
-    await companion.SetVariableAsync(CompanionConfig.SponsorAutoVariable, werbung ? "1" : "0");
-    // Spieluhr: färbt den Start/Stop-Knopf. Der Wert ist beobachtet, nicht
-    // mitgezählt — TcuState sieht, ob sich die Anzeige bewegt. Dadurch stimmt
-    // die Farbe auch, wenn am TCunihockey-Fenster selbst gestartet wurde.
-    await companion.SetVariableAsync(CompanionConfig.ClockRunningVariable, s.ClockRunning ? "1" : "0");
 
     // Zuschauerzahl: EINMAL beim Start aus dem Mitteilungsfeld übernehmen —
     // dort steht, was TcuConsole zuletzt selbst hineingeschrieben hat. Danach
@@ -152,13 +137,11 @@ async Task PushSnapshot(TcuState.Snapshot s)
         }
     }
 
-    if (state.Spectators != lastSpectators)
-    {
-        lastSpectators = state.Spectators;
-        await companion.PushButtonAsync(
-            CompanionConfig.SpectatorsPage, CompanionConfig.SpectatorsRow,
-            CompanionConfig.SpectatorsCol, $"Zuschauer\n{state.Spectators}");
-    }
+    // Stand, Drittel und die Farben der Zustandsknöpfe stecken jetzt in der
+    // Ansicht. Das Deck vergleicht selbst und weckt die Long-Polls nur, wenn
+    // sich davon etwas geändert hat.
+    deck.Update(s);
+    await Task.CompletedTask;
 }
 
 _ = Task.Run(() => live.RunAsync(PushSnapshot, cts.Token));
@@ -169,10 +152,8 @@ lower.StateChanged = async () =>
 {
     var s = live.Read();
     if (s is not null) await PushSnapshot(s);
+    deck.Bump();
 };
-
-// Kopfzeile der Spielerseiten: zeigt, wofür der nächste Spielerdruck gilt.
-lower.ModeLabelChanged = label => companion.PushModeLabelAsync(label);
 
 try
 {
@@ -182,7 +163,7 @@ try
         try { ctx = await listener.GetContextAsync(); }
         catch (HttpListenerException) { break; }
 
-        _ = Task.Run(() => HandleRequest(ctx, state, udp, ui, lower, logger, reader, companion, tcuDir, exportPath, cts, listener));
+        _ = Task.Run(() => HandleRequest(ctx, state, udp, ui, lower, logger, reader, deck, tcuDir, cts, listener));
     }
 }
 finally
@@ -209,26 +190,11 @@ static async Task<bool> LoadStateAsync(TcuStateReader reader, TcuGameState state
     return fromApp || fromFile;
 }
 
-// ── Companion-Config als Datei ablegen ─────────────────────────────────────
-static void ExportConfig(TcuGameState state, string path, TcuLogger logger)
-{
-    try
-    {
-        var full = CompanionConfig.WriteToFile(state, path);
-        logger.Log($"Config geschrieben: {full}");
-    }
-    catch (Exception ex)
-    {
-        logger.Log($"Config konnte nicht geschrieben werden ({path}): {ex.Message}",
-                   LogLevel.Warning);
-    }
-}
-
 // ── Request-Handler ────────────────────────────────────────────────────────
 static async Task HandleRequest(
     HttpListenerContext ctx,
     TcuGameState state, TcuUdp udp, TcuUi ui, TcuLower lower, TcuLogger logger,
-    TcuStateReader reader, CompanionPush companion, string tcuDir, string exportPath,
+    TcuStateReader reader, TcuDeck deck, string tcuDir,
     CancellationTokenSource cts, HttpListener listener)
 {
     var req  = ctx.Request;
@@ -246,7 +212,37 @@ static async Task HandleRequest(
         object? result = null;
         int status = 200;
 
-        if (method == "GET" && path == "/state")
+        // ── Deck ─────────────────────────────────────────────────────────────
+        // Die Ansicht wird gehalten, bis sich etwas ändert oder die Wartezeit
+        // abläuft. 25 s liegen unter dem Timeout des Moduls (40 s), damit dort
+        // keine Anfrage abbricht.
+        if (method == "GET" && path == "/deck/view")
+        {
+            var since = long.TryParse(req.QueryString["since"], out var v) ? v : 0;
+            await deck.WaitAsync(since, TimeSpan.FromSeconds(25), cts.Token);
+            result = deck.View();
+        }
+        // Tastenbilder einzeln und nur auf Anfrage: 32 Base64-Bilder bei jedem
+        // Takt wären ein Vielfaches der Ansicht selbst. Das Modul merkt sich
+        // jedes Bild unter seinem Schlüssel.
+        else if (method == "GET" && path == "/deck/image")
+        {
+            result = new { image = TcuDeck.Image(req.QueryString["key"] ?? "") };
+        }
+        else if (method == "POST" && path.StartsWith("/deck/press/"))
+        {
+            if (!int.TryParse(path["/deck/press/".Length..], out var slot))
+            {
+                status = 400;
+                result = new { error = "Keine Tastennummer" };
+            }
+            else
+            {
+                var note = await deck.PressAsync(slot);
+                result = new { ok = note is null, note };
+            }
+        }
+        else if (method == "GET" && path == "/state")
         {
             result = state.ToDto();
         }
@@ -261,7 +257,7 @@ static async Task HandleRequest(
             var ok = await LoadStateAsync(reader, state, tcuDir);
             ui.ReadLabels(state);
             logger.PrintState(state);
-            if (ok) { _ = Task.Run(() => companion.PushAsync(state)); ExportConfig(state, exportPath, logger); }
+            deck.Bump();
             result = new { success = ok };
         }
         else if (method == "POST" && path == "/state/load")
@@ -271,14 +267,9 @@ static async Task HandleRequest(
             var file = doc.RootElement.GetProperty("path").GetString() ?? "";
             var ok   = await reader.LoadFromFileAsync(file);
             logger.PrintState(state);
-            if (ok) { _ = Task.Run(() => companion.PushAsync(state)); ExportConfig(state, exportPath, logger); }
+            deck.Bump();
             if (!ok) status = 400;
             result = new { success = ok };
-        }
-        else if (method == "POST" && path == "/companion/push")
-        {
-            _ = Task.Run(() => companion.PushAsync(state));
-            result = new { queued = true };
         }
         else if (method == "POST" && path == "/action")
         {
@@ -297,17 +288,6 @@ static async Task HandleRequest(
                     result = new { sent = cmds.Length, notes = notes.Count == 0 ? null : notes.ToArray() };
                 }
             }
-        }
-        else if (method == "GET" && path == "/companion/config")
-        {
-            var bytes = CompanionConfig.Generate(state);
-            resp.ContentType = "application/octet-stream";
-            resp.Headers.Add("Content-Disposition", "attachment; filename=\"tcu.companionconfig\"");
-            resp.StatusCode = 200;
-            resp.ContentLength64 = bytes.Length;
-            await resp.OutputStream.WriteAsync(bytes);
-            resp.Close();
-            return;
         }
         else if (method == "POST" && path == "/shutdown")
         {

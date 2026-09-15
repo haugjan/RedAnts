@@ -1,0 +1,63 @@
+name: TCConsole module release
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'RedAnts-TCConsole-Companion/**'
+      - '.github/workflows/tcconsole-module-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: RedAnts-TCConsole-Companion
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Stamp version
+        id: version
+        run: |
+          VERSION=$(node -e "const [major, minor] = require('./package.json').version.split('.'); console.log(major + '.' + minor + '.' + process.env.GITHUB_RUN_NUMBER)")
+          node -e "
+            const fs = require('fs');
+            for (const file of ['package.json', 'companion/manifest.json']) {
+              const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+              json.version = process.argv[1];
+              fs.writeFileSync(file, JSON.stringify(json, null, '\t') + '\n');
+            }
+          " "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - run: yarn install --frozen-lockfile
+
+      - run: yarn package
+
+      - name: Name package
+        run: mv *.tgz "redants-tcconsole-${{ steps.version.outputs.version }}.tgz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: redants-tcconsole-${{ steps.version.outputs.version }}
+          path: RedAnts-TCConsole-Companion/redants-tcconsole-*.tgz
+
+      - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: tcconsole-module-v${{ steps.version.outputs.version }}
+          name: RedAnts TCConsole Companion ${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          make_latest: false
+          generate_release_notes: true
+          files: RedAnts-TCConsole-Companion/redants-tcconsole-*.tgz

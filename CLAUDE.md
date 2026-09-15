@@ -11,6 +11,16 @@ Three independent applications, one folder each. Paths in this file are relative
 | `RedAnts-WebApp/` | The Umbraco web app: `src/` (Host, Ticketing, Show), `tests/`, `RedAnts.slnx`, `Directory.Packages.props`, `docs/`, `deploy/` (Azure setup), `scripts/`. This is the only folder the deploy pipeline watches (`.github/workflows/deploy.yml` triggers on `RedAnts-WebApp/**` and on the workflow file itself). |
 | `RedAnts-Show-Companion/` | Bitfocus Companion module (Node/yarn) that remote-controls the soundboard through `/api/show`. The npm package keeps its required name `companion-module-redants-show`. |
 | `RedAnts-TCConsole/` | WPF tool (`TcuConsole.csproj`, .NET 8, own `Directory.Packages.props`) for the TCU console. `.github/workflows/tcconsole-release.yml` builds a zipped release on every change here: the version is `<Version>` from the csproj with the run number as patch, the tag is `tcconsole-v<version>`, and the zip carries the framework-dependent publish output plus `Update-TcuConsole.ps1`, which installs the newest release on the streaming PC. The TCunihockey vendor application it drives is third-party software and deliberately not in this repo. |
+| `RedAnts-TCConsole-Companion/` | Bitfocus Companion module (Node/yarn, npm package `companion-module-redants-tcconsole`) for TCConsole. Released by `tcconsole-module-release.yml` under the tag `tcconsole-module-v<version>`. |
+
+## The TCConsole deck
+
+TcuConsole drives a **fixed 32-key deck** (4 rows x 8 columns, numbered 1..32 row by row). The Companion module knows nothing but those numbers: the operator assigns key N once to the action `press_slot` with option N plus the feedback `slot` with option N (the module ships one preset per key), and never touches the assignment again. What a key shows and what a press does is decided entirely by `TcuDeck.cs`.
+
+- **Contexts instead of Companion pages.** The eleven pages of the old generated `.companionconfig` live on as `DeckContext` values (`Main`, `PlayerHome/Away`, `GoalHome/Away`, `Starting6Home/Away`, `PenaltyHome/Away`, `Message`, `Period`). TcuConsole navigates between them itself; "Zurück" (key 17) and PANIC (key 25) keep their fixed places in every context.
+- **Endpoints** on the existing listener (`http://localhost:5150`, plus `127.0.0.1` when reservable): `GET /deck/view?since=<version>` long-polls for at most 25 s and returns the 32 slots, `POST /deck/press/{1..32}` executes the key, `GET /deck/image?key=<key>` returns one button image. The module's request timeout is 40 s, so the server's wait must stay below it.
+- **Button images** are built by `TcuIcons` with the caption rendered into the PNG (Companion cannot bound the text area). The view carries only the cache key `icon|label|textcolor`; the module fetches each image once and keeps it. Do not inline the images into the view — that would be 32 base64 blobs per tick.
+- The generated `.companionconfig` and the label push into Companion's REST API are **gone**. Never reintroduce a push: the deck is pulled, and the player names now arrive as part of the view.
 
 ## Tech stack
 

@@ -60,6 +60,11 @@ public sealed class TcuLower(
     /// Modus scharf gestellt ist ("Tor", "Spieler", "Strafe 2'").</summary>
     public Func<string, Task>? ModeLabelChanged { get; set; }
 
+    /// <summary>Dieselbe Beschriftung zum Abfragen — das Deck baut seine
+    /// Kopfzeile bei jeder Ansicht neu auf und braucht den Wert, nicht das
+    /// Ereignis.</summary>
+    public string HeadLabel { get; private set; } = "";
+
     // ── Öffentlicher Einstieg ────────────────────────────────────────────────
     /// <summary>Führt einen Befehl der Brücke aus. Rückgabe: Meldung fürs Log,
     /// null bei Erfolg.</summary>
@@ -250,7 +255,8 @@ public sealed class TcuLower(
         // der nächste Spielerdruck bewirkt. Die Seiten dienen allen Modi, ohne
         // diesen Hinweis wäre nach dem Seitenwechsel nicht mehr erkennbar,
         // welcher gerade scharf ist.
-        if (ModeLabelChanged is not null) await ModeLabelChanged(ModeLabel(_pendingKind, arg));
+        HeadLabel = ModeLabel(_pendingKind, arg);
+        if (ModeLabelChanged is not null) await ModeLabelChanged(HeadLabel);
 
         switch (_pendingKind)
         {

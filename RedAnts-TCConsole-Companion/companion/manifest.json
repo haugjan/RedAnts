@@ -1,0 +1,23 @@
+{
+	"id": "redants-tcconsole",
+	"name": "redants-tcconsole",
+	"shortname": "RedAnts TCConsole",
+	"description": "Steuert TCunihockey ueber TcuConsole: die Tasten 1-32 werden einmal zugewiesen, Inhalt und Bedeutung kommen live von TcuConsole.",
+	"version": "1.0.0",
+	"license": "MIT",
+	"repository": "https://github.com/haugjan/RedAnts",
+	"bugs": "https://github.com/haugjan/RedAnts/issues",
+	"maintainers": [
+		{ "name": "Red Ants Rychenberg Winterthur", "email": "tickets@redants.ch" }
+	],
+	"legacyIds": [],
+	"runtime": {
+		"type": "node22",
+		"api": "nodejs-ipc",
+		"apiVersion": "1.7.0",
+		"entrypoint": "../src/main.js"
+	},
+	"manufacturer": "Red Ants Rychenberg Winterthur",
+	"products": ["TCunihockey"],
+	"keywords": ["floorball", "livestream", "scoreboard", "tcunihockey"]
+}

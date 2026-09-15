@@ -58,33 +58,31 @@ public class TcuLogger
     }
 
     // ── Wo die Companion-Config abzuholen ist ────────────────────────────────
-    public void PrintDownloadInfo(string baseUrl, TcuGameState state, string exportPath)
+    public void PrintDownloadInfo(string baseUrl, TcuGameState state)
     {
         lock (_lock)
         {
-            var url   = baseUrl.TrimEnd('/') + "/companion/config";
+            var url   = baseUrl.TrimEnd('/') + "/deck/view";
             var kader = state.HomePlayers.Count + state.AwayPlayers.Count;
 
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine("  Companion-Config — Download:");
+            Console.WriteLine("  Companion-Modul — Server-URL:");
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"    {url}");
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine("  Companion-Config — Datei:");
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"    {exportPath}");
+            Console.WriteLine($"    {baseUrl.TrimEnd('/')}");
             Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine("    Import in Companion: Settings → Import / Export → Import");
+            Console.WriteLine($"    Ansicht der 32 Tasten: {url}");
+            Console.WriteLine("    Im Modul RedAnts TCConsole eintragen; die Tasten 1–32 werden");
+            Console.WriteLine("    einmalig zugewiesen und bleiben danach unverändert.");
 
             if (kader == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("    Achtung: kein Kader geladen — die Spielerseiten blieben leer.");
+                Console.WriteLine("    Achtung: kein Kader geladen — die Spielerwahl bliebe leer.");
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkGray;
-                Console.WriteLine($"    Enthält aktuell {kader} Spieler. Wird bei jedem Abruf neu erzeugt.");
+                Console.WriteLine($"    Kader: {kader} Spieler. Die Namen stehen live auf den Tasten.");
             }
 
             Console.ResetColor();
