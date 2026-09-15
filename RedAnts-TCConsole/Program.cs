@@ -23,7 +23,8 @@ const string BaseUrl = "http://localhost:5150/";
 
 // Spielkonfig laden: UI Automation liefert nur Teamnamen, der Kader kommt
 // ausschliesslich aus der Spielkonfig-Datei — deshalb immer beides ausführen.
-var tcuDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\"));
+var tcuDir = ResolveTcuDir(args);
+logger.Log($"TCunihockey-Ordner: {tcuDir}");
 
 _ = Task.Run(async () =>
 {
@@ -170,6 +171,32 @@ finally
 {
     listener.Stop();
     logger.Log("Beendet.");
+}
+
+// ── Wo liegt TCunihockey? ──────────────────────────────────────────────────
+//
+// Gesucht wird der Ordner mit TCunihockey.exe bzw. dessen Configurations —
+// dort liegt die Spielkonfig, aus der der Kader gelesen wird, wenn der Heap
+// des laufenden Prozesses nicht zu lesen ist.
+//
+// Früher stand hier eine feste Rechnung "vier Ebenen über der Exe". Die passt
+// nur zum Entwickler-Layout (bin\Debug\net8.0-windows): im entpackten Release
+// liegt die Exe flach, und vier Ebenen höher landet man auf C:\ — die Suche
+// lief dann ins Leere, ohne dass es auffiel. Jetzt wird aufwärts gesucht, was
+// beide Layouts trifft.
+static string ResolveTcuDir(string[] args)
+{
+    var arg = Array.IndexOf(args, "--tcu");
+    if (arg >= 0 && arg + 1 < args.Length) return Path.GetFullPath(args[arg + 1]);
+
+    var dir = new DirectoryInfo(AppContext.BaseDirectory);
+    for (var i = 0; i < 6 && dir is not null; i++, dir = dir.Parent)
+    {
+        if (File.Exists(Path.Combine(dir.FullName, "TCunihockey.exe")) ||
+            Directory.Exists(Path.Combine(dir.FullName, "Configurations")))
+            return dir.FullName;
+    }
+    return AppContext.BaseDirectory;
 }
 
 // ── Spielzustand laden ─────────────────────────────────────────────────────
