@@ -87,11 +87,15 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         Bump();
     }
 
-    // Ohne Zeitsteuerung steht keine Uhr-Taste auf dem Deck, die umfärben
-    // müsste — ein Start oder Stop der Uhr darf dann keinen Long-Poll wecken.
+    // Die Uhr zählt nur, wo eine Taste von ihr abhängt: die Uhr-Tasten der
+    // Startseite (nur mit Zeitsteuerung) und das "−1" der Stand-Seiten, das bei
+    // laufender Uhr gesperrt ist. Sonst darf ein Start oder Stop der Uhr keinen
+    // Long-Poll wecken.
+    bool WatchesClock => clockControl || Context is DeckContext.ScoreHome or DeckContext.ScoreAway;
+
     bool Differs(TcuState.Snapshot a, TcuState.Snapshot b) =>
         a.ScoreHome != b.ScoreHome || a.ScoreAway != b.ScoreAway ||
-        a.PeriodLabel != b.PeriodLabel || (clockControl && a.ClockRunning != b.ClockRunning) ||
+        a.PeriodLabel != b.PeriodLabel || (WatchesClock && a.ClockRunning != b.ClockRunning) ||
         a.LowerThirdLive != b.LowerThirdLive || a.SponsorAuto != b.SponsorAuto ||
         a.Match != b.Match;
 
@@ -172,6 +176,8 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         DeckContext.PenaltyAway  => "Strafe Gast",
         DeckContext.Message      => "Meldung",
         DeckContext.Period       => "Drittel",
+        DeckContext.ScoreHome    => "Stand Heim",
+        DeckContext.ScoreAway    => "Stand Gast",
         _                        => "",
     };
 
@@ -241,6 +247,8 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
             case DeckContext.PenaltyAway:   Penalty(b, "away", CGastBg);              break;
             case DeckContext.Message:       Message(b);                               break;
             case DeckContext.Period:        Period(b);                                break;
+            case DeckContext.ScoreHome:     Score(b, "home", CHeimBg);                break;
+            case DeckContext.ScoreAway:     Score(b, "away", CGastBg);                break;
         }
 
         return b.ToSlots();
@@ -272,8 +280,9 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         // Zeile 2 — Meldung, Spielstand, Grafiksteuerung
         b.Nav  (2, 1, "Meldung", CMeld, DeckContext.Message, TcuIcons.Meldung);
         b.Nav  (2, 2, Live?.PeriodLabel ?? "Drittel", CPeriod, DeckContext.Period);
-        b.Label(2, 3, Live?.ScoreHome ?? "–", CHeimBg);
-        b.Label(2, 4, Live?.ScoreAway ?? "–", CGastBg);
+        // Stand: ein Druck öffnet die Korrekturseite der Mannschaft.
+        b.Nav  (2, 3, Live?.ScoreHome ?? "–", CHeimBg, DeckContext.ScoreHome);
+        b.Nav  (2, 4, Live?.ScoreAway ?? "–", CGastBg, DeckContext.ScoreAway);
         b.Action(2, 5, "Highlight", CHighlit, ["TcuUi=highlight"],  TcuIcons.Highlight, mode: "highlight");
         b.Action(2, 6, "Resultat",  CRes,     ["TcuUi=lt|result"],  TcuIcons.Resultat,  mode: "result");
         b.Action(2, 7, "Opener",    COpener,  ["TcuUi=lt|opener"],  TcuIcons.Opener,    mode: "opener");
@@ -432,6 +441,34 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
         Letters(b, "DRITTEL");
     }
 
+    // ── Spielstand korrigieren ───────────────────────────────────────────────
+    //
+    // Erreicht über die Stand-Tasten der Startseite. Die ganze Seite trägt die
+    // Farbe der Mannschaft, damit auf einen Blick klar ist, welcher Stand
+    // geändert wird; nur Zurück und PANIC behalten ihre festen Farben.
+    //
+    // "−1" löst den Eintrag im Kontextmenü des Stands aus — der einzige Weg, den
+    // TCunihockey für eine Korrektur nach unten kennt, ohne Nebenwirkung.
+    // TCunihockey nimmt dieses Menü aber weg, solange die Uhr läuft oder die
+    // Anzeige eingeblendet ist (so steht es in dessen Code). Bei laufender Uhr
+    // ist die Taste deshalb gar nicht erst drückbar; ob die Anzeige eingeblendet
+    // ist, lässt sich nicht lesen — dann meldet sich der Druck mit dem Grund.
+    void Score(DeckBuilder b, string side, int bg)
+    {
+        var home = side == "home";
+        b.Label(0, 3, home ? game.HomeTeam : game.AwayTeam, bg);
+
+        if (Live?.ClockRunning ?? false) b.Label(1, 2, "−1\n(Uhr läuft)", bg);
+        else                             b.Action(1, 2, "−1", bg, [$"TcuUi=score|{side}|-1"]);
+
+        b.Label(1, 3, (home ? Live?.ScoreHome : Live?.ScoreAway) ?? "–", bg);
+
+        Back(b);
+        Panic(b, home: true);
+        Letters(b, "STAND", bg);
+        b.Fill(bg);
+    }
+
     // ── Wiederkehrende Tasten ────────────────────────────────────────────────
     static void Back(DeckBuilder b) =>
         b.Nav(BackRow, BackCol, "◀ Zurück", CBack, DeckContext.Main);
@@ -445,10 +482,16 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
                   "TcuController=sponsor_hide"],
                  target: home ? DeckContext.Main : null, mode: "", forceText: CWhite);
 
-    static void Letters(DeckBuilder b, string word)
+    // Sechs Felder in der unteren Reihe. Ist das Wort länger, trägt das letzte
+    // den Rest ("MELDU" + "NG", "DRITT" + "EL") — wie in der früheren Config.
+    // Vorher wurde nach sechs Zeichen abgeschnitten, aus MELDUNG wurde MELDUN.
+    static void Letters(DeckBuilder b, string word, int color = CLetter)
     {
         for (var i = 0; i < word.Length && i < 6; i++)
-            b.Label(3, i + 1, word[i].ToString(), CLetter, forceText: CWhite);
+        {
+            var text = i < 5 ? word[i].ToString() : word[5..];
+            b.Label(3, i + 1, text, color, forceText: color == CLetter ? CWhite : null);
+        }
     }
 
     static string Trunc(string s, int max) =>
@@ -483,6 +526,15 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
             var fg = forceText ?? Fg(bg);
             _slots[Number(row, col)] = new DeckSlot(
                 Number(row, col), label, null, bg, fg, Pressable: false, [], null, null);
+        }
+
+        /// <summary>Füllt alle noch freien Plätze mit leeren Tasten in dieser
+        /// Farbe — für Seiten, die als Ganzes eine Farbe tragen.</summary>
+        public void Fill(int color)
+        {
+            for (var n = 1; n <= SlotCount; n++)
+                if (!_slots.ContainsKey(n))
+                    _slots[n] = new DeckSlot(n, "", null, color, Fg(color), Pressable: false, [], null, null);
         }
 
         public void Empty(int row, int col) =>
@@ -544,6 +596,7 @@ public enum DeckContext
     PenaltyHome, PenaltyAway,
     Message,
     Period,
+    ScoreHome, ScoreAway,
 }
 
 /// <summary>Eine Taste. <paramref name="Commands"/> und <paramref name="Target"/>

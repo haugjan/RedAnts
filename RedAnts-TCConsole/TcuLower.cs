@@ -108,6 +108,10 @@ public sealed class TcuLower(
                 udp.Send($"{P}lowerthird_hide");
                 return null;
 
+            // ── Stand korrigieren ────────────────────────────────────────────
+            case "score":
+                return Score(Side(Arg(1)), Arg(2));
+
             // ── Spielerwahl vorbereiten ──────────────────────────────────────
             // Blendet aus und stellt den Modus scharf. Eingeblendet wird erst,
             // wenn der Spieler gewählt ist.
@@ -353,6 +357,29 @@ public sealed class TcuLower(
         await Task.Delay(ArmMs);
         udp.Send($"{P}lowerthird_show");
         return null;
+    }
+
+    /// <summary>
+    /// Korrigiert den Spielstand um eins nach unten, über den Eintrag "-1" im
+    /// Kontextmenü des Stands.
+    ///
+    /// Das ist der Weg, den TCunihockey selbst dafür vorsieht, ohne
+    /// Nebenwirkung — anders als "+1", das es nur im Tor-Ablauf gibt. Ein
+    /// UDP-Befehl existiert nicht: scoreboard_home_score gibt es nur als
+    /// TcuExternal und nur im Modus "Alle Daten" der externen Uhr.
+    ///
+    /// TCunihockey hängt das Menü ab, solange die Uhr läuft oder die Anzeige
+    /// eingeblendet ist. Dann geht kein Menü auf, und die Meldung sagt warum.
+    /// </summary>
+    string? Score(string side, string delta)
+    {
+        if (delta != "-1") return $"Stand-Korrektur '{delta}' wird nicht unterstützt";
+
+        var ziel = reader.Handle(side == "away" ? TcuState.IdScoreAway : TcuState.IdScoreHome);
+        var note = TcuMenu.Pick(ziel, "-1", logger);
+        return note is null
+            ? null
+            : $"{note} — TCunihockey erlaubt die Korrektur nur bei stehender Uhr und ausgeblendeter Anzeige";
     }
 
     /// <summary>Beschriftung der Kopfzeile auf den Spielerseiten.</summary>

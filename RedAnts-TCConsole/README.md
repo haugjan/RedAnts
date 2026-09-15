@@ -88,6 +88,29 @@ TcuConsole.exe --ohne-uhr
 
 Die Wahl gilt bis zum nächsten Start.
 
+## Spielstand korrigieren
+
+Ein Druck auf einen der beiden Stände der Startseite (Tasten **20** Heim,
+**21** Gast) öffnet die Seite „Stand Heim" bzw. „Stand Gast" — ganz in der
+Farbe der Mannschaft, nur Zurück und PANIC behalten ihre Farben. Darauf:
+Mannschaftsname, aktueller Stand und **−1**.
+
+- **−1** löst den Eintrag „-1" im Kontextmenü des Stands in TCunihockey aus.
+  Das ist der Korrekturweg, den TCunihockey selbst vorsieht, ohne
+  Nebenwirkungen. Wie beim Eigentor wird dafür kurz der Mauszeiger bewegt und
+  danach zurückgesetzt; TCunihockey darf nicht verdeckt sein.
+- **Nur bei stehender Uhr und ausgeblendeter Anzeige.** Sonst nimmt
+  TCunihockey das Menü weg. Bei laufender Uhr ist die Taste gesperrt
+  („−1 (Uhr läuft)"); bei eingeblendeter Anzeige meldet TcuConsole den Grund
+  im Log.
+- **Kein +1** — bewusst. TCunihockey kennt „+1" nur im Tor-Ablauf, und das
+  hält mit der RedAnts-Konfiguration eine laufende Uhr an, blendet die Anzeige
+  aus und legt eine Tor-Einblendung in die Vorschau. Tore zählen weiter über
+  „Tor".
+- Einen UDP-Befehl für den Stand gibt es nicht: `scoreboard_home_score` kennt
+  TCunihockey nur als `TcuExternal=` und nur im Modus „Alle Daten" der externen
+  Uhr.
+
 ## Das Deck
 
 TcuConsole führt 32 Tasten (4×8) und navigiert zwischen den Kontexten selbst.
