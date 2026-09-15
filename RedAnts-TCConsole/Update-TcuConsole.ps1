@@ -20,7 +20,8 @@ if (-not $Destination) {
 }
 
 Write-Host "Suche neuestes TCConsole-Release in $Repository ..."
-$release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases?per_page=100" -Headers @{ 'User-Agent' = $scriptName } |
+$releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases?per_page=100" -Headers @{ 'User-Agent' = $scriptName }
+$release = $releases |
     Where-Object { -not $_.draft -and $_.tag_name.StartsWith($tagPrefix) } |
     Sort-Object { [datetime]$_.published_at } -Descending |
     Select-Object -First 1
