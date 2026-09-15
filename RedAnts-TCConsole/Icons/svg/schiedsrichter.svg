@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Schiedsrichter: Trillerpfeife -->
+  <path fill="currentColor" fill-rule="evenodd"
+        d="M42,46 H14 A7,7 0 0 0 7,53 V63 A7,7 0 0 0 14,70 H42 Z
+           M42,46 C48,32 58,28 74,28 H92 A26,26 0 0 1 118,54 V58 A26,26 0 0 1 92,84 H74 C56,84 48,80 42,70 Z
+           M58,38 H80 A4,4 0 0 1 84,42 V48 A4,4 0 0 1 80,52 H58 A4,4 0 0 1 54,48 V42 A4,4 0 0 1 58,38 Z"/>
+  <circle cx="102" cy="21" r="9" fill="none" stroke="currentColor" stroke-width="6"/>
+  <g class="as" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round">
+    <path d="M126,32 L136,24"/>
+    <path d="M131,52 L142,50"/>
+  </g>
+</svg>

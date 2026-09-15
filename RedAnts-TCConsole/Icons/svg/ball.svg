@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Unihockeyball: Kugel mit Lochung. Motiv liegt in y=8..96, darunter Platz fuer Beschriftung -->
+  <circle cx="72" cy="52" r="40" fill="none" stroke="currentColor" stroke-width="7"/>
+  <g class="af" fill="currentColor">
+    <circle cx="72" cy="52" r="8.5"/>
+    <circle cx="72" cy="23" r="6"/>
+    <circle cx="47" cy="37" r="6"/>
+    <circle cx="97" cy="37" r="6"/>
+    <circle cx="47" cy="67" r="6"/>
+    <circle cx="97" cy="67" r="6"/>
+    <circle cx="72" cy="81" r="6"/>
+  </g>
+</svg>

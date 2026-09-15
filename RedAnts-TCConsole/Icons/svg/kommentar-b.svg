@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Kommentar B: zwei Kommentatoren mit Headset -->
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Person rechts (hinten) -->
+    <circle cx="101" cy="33" r="13" stroke-width="6"/>
+    <path d="M78,96 V86 A23,18 0 0 1 124,86 V96" stroke-width="6"/>
+    <path d="M85,31 A16,16 0 0 1 117,31" stroke-width="6"/>
+    <!-- Person links (vorne) -->
+    <circle cx="48" cy="40" r="15" stroke-width="7"/>
+    <path d="M20,96 V84 A26,20 0 0 1 72,84 V96" stroke-width="7"/>
+    <path d="M30,38 A18,18 0 0 1 66,38" stroke-width="7"/>
+  </g>
+  <g fill="currentColor">
+    <rect x="80" y="27" width="9" height="13" rx="4"/>
+    <rect x="24" y="33" width="10" height="15" rx="5"/>
+  </g>
+  <!-- Mikrofonbuegel (Akzent) -->
+  <g class="as" fill="none" stroke="currentColor" stroke-linecap="round">
+    <path d="M84,40 C84,50 93,53 100,50" stroke-width="5"/>
+    <path d="M29,48 C29,60 40,64 49,61" stroke-width="6"/>
+  </g>
+</svg>

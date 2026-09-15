@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Bestplayer B: Pokal mit Stern -->
+  <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M46,24 H34 A11,11 0 0 0 47,46"/>
+    <path d="M98,24 H110 A11,11 0 0 1 97,46"/>
+    <path d="M44,14 H100 V36 A28,26 0 0 1 44,36 Z"/>
+    <path d="M72,62 V74"/>
+  </g>
+  <g fill="currentColor">
+    <rect x="52" y="74" width="40" height="10" rx="3"/>
+    <rect x="42" y="86" width="60" height="10" rx="3"/>
+  </g>
+  <path class="af" fill="currentColor"
+        d="M72,20 L75.53,28.79 L85,29.42 L77.73,35.5 L80.04,44.7 L72,39.66 L63.96,44.7 L66.27,35.5 L59,29.42 L68.47,28.79 Z"/>
+</svg>

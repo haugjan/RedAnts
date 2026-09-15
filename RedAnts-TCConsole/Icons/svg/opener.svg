@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Opener: Bildschirm mit Play -->
+  <rect x="14" y="10" width="116" height="66" rx="10" fill="none" stroke="currentColor" stroke-width="7"/>
+  <path class="af" fill="currentColor" d="M60,26 L90,43 L60,60 Z"/>
+  <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round">
+    <path d="M72,76 V88"/>
+    <path d="M50,92 H94"/>
+  </g>
+</svg>

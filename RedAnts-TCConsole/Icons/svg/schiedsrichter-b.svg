@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Schiedsrichter B: Bueste mit gestreiftem Trikot und Pfeife -->
+  <circle cx="74" cy="28" r="16" fill="currentColor"/>
+  <rect x="66" y="40" width="16" height="20" fill="currentColor"/>
+  <!-- Oberkoerper mit ausgesparten Streifen -->
+  <path fill="currentColor" fill-rule="evenodd"
+        d="M40,96 V80 A34,26 0 0 1 108,80 V96 Z
+           M61,64 H69 V96 H61 Z
+           M79,64 H87 V96 H79 Z"/>
+  <!-- Pfeife (Akzent) -->
+  <path class="af" fill="currentColor" fill-rule="evenodd" transform="translate(2,4) scale(0.42)"
+        d="M40,44 H14 A6,6 0 0 0 8,50 V64 A6,6 0 0 0 14,70 H40 Z
+           M40,30 H92 A24,24 0 0 1 116,54 V60 A24,24 0 0 1 92,84 H40 Z
+           M48,30 H68 V44 H48 Z"/>
+</svg>

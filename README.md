@@ -8,7 +8,7 @@ Public website and self-service ticketing application for Red Ants Rychenberg Wi
 |---|---|
 | `RedAnts-WebApp/` | The Umbraco web app (`src/`, `tests/`, `RedAnts.slnx`, `docs/`, `deploy/`, `scripts/`). Only changes here (and to `.github/workflows/deploy.yml`) trigger a deployment. |
 | `RedAnts-Show-Companion/` | Bitfocus Companion module for the soundboard (npm package `companion-module-redants-show`). |
-| `RedAnts-TCConsole/` | WPF tool for the TCU console (.NET 8, Windows). |
+| `RedAnts-TCConsole/` | WPF tool for the TCU console (.NET 8, Windows). Every change here publishes a zipped release (`tcconsole-v*`); `Update-TcuConsole.ps1` installs the newest one on the streaming PC. |
 
 All commands below are meant to be run from the repository root.
 

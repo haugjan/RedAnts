@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Highlights: Funkeln / Sparkles -->
+  <path fill="currentColor" d="M60,10 C63,34 76,47 100,50 C76,53 63,66 60,90 C57,66 44,53 20,50 C44,47 57,34 60,10 Z"/>
+  <g class="af" fill="currentColor">
+    <path d="M114,20 C115,28 117,30 125,31 C117,32 115,34 114,42 C113,34 111,32 103,31 C111,30 113,28 114,20 Z"/>
+    <path d="M112,66 C113,75 116,78 125,79 C116,80 113,83 112,92 C111,83 108,80 99,79 C108,78 111,75 112,66 Z"/>
+  </g>
+</svg>

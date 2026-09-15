@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <style>.af{fill:var(--accent,currentColor)}.as{stroke:var(--accent,currentColor)}</style>
+  <!-- Kommentar: Kommentatoren-Headset -->
+  <path d="M30,56 A42,42 0 0 1 114,56" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
+  <g fill="currentColor">
+    <rect x="18" y="46" width="24" height="36" rx="11"/>
+    <rect x="102" y="46" width="24" height="36" rx="11"/>
+  </g>
+  <!-- Mikrofonbuegel (Akzent) -->
+  <path class="as" d="M30,80 C30,94 44,96 56,92" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+  <rect class="af" x="54" y="83" width="20" height="12" rx="6" fill="currentColor"/>
+</svg>
