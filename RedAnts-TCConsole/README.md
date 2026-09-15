@@ -34,11 +34,24 @@ Expand-Archive $zip -DestinationPath C:\TCUnihockey\TcuConsole -Force
 von TCunihockey (`System.Security.AccessControl.dll`,
 `Microsoft.Win32.Registry.dll`), die sonst überschrieben würden.
 
-Jedes weitere Update danach:
+Jedes weitere Update danach: **Doppelklick auf
+`C:\TCUnihockey\TcuConsole\Update-TcuConsole.cmd`**.
+
+Der Starter ruft das PowerShell-Skript mit `-ExecutionPolicy Bypass` auf. Windows
+lässt PowerShell-Skripte standardmässig nicht zu (Richtlinie `Restricted`) und
+meldet dann "running scripts is disabled on this system". Der Starter umgeht das
+nur für diesen einen Aufruf, ohne die Richtlinie des Rechners zu ändern. Das
+Fenster bleibt am Ende offen, damit die Meldung lesbar ist.
+
+Aus einer Konsole geht es gleichwertig so:
 
 ```powershell
-C:\TCUnihockey\TcuConsole\Update-TcuConsole.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\TCUnihockey\TcuConsole\Update-TcuConsole.ps1
 ```
+
+Die Batch-Datei steht bewusst auf einer einzigen Zeile: cmd.exe liest eine
+laufende Batch-Datei zeilenweise nach, und das Update überschreibt sie gerade.
+Eine Zeile ist vollständig eingelesen, bevor PowerShell startet.
 
 Das Skript nimmt das neueste Release mit dem Tag `tcconsole-v*`, überspringt den
 Download, wenn `release.txt` diese Version bereits nennt, und verweigert die
