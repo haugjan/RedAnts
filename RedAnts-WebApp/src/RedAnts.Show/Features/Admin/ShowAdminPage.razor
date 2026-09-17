@@ -123,8 +123,7 @@
                     <input class="se-color" type="color" @bind="_profile.Color" title="Profilfarbe" />
                 </div>
                 <div class="se-prof-btns">
-                    <button class="se-btn sm" @onclick="DuplicateProfile">⧉ Duplizieren</button>
-                    <button class="se-btn sm danger" @onclick="DeleteProfile">🗑 Löschen</button>
+                    <button class="se-proflink" @onclick="DeleteProfile" title="Profil löschen">🗑 Profil löschen</button>
                 </div>
                 <div class="se-ftree">
                     <button class="se-fnode @(_levelStack.Count == 0 ? "cur" : "")" @onclick="() => GoLevel(0)">🏠 Hauptseite</button>
@@ -292,18 +291,6 @@
         var p = new EditProfile { Name = "Neues Profil" };
         _profiles.Add(p);
         _profile = p;
-        _selected = null;
-    }
-
-    private void DuplicateProfile()
-    {
-        if (_profile is null) return;
-        var json = JsonSerializer.Serialize(_profile.ToModel(), ShowJson.Options);
-        var copy = EditProfile.From(JsonSerializer.Deserialize<ShowProfile>(json, ShowJson.Options)!);
-        copy.Id = Guid.NewGuid().ToString("N")[..6];
-        copy.Name = _profile.Name + " (Kopie)";
-        _profiles.Add(copy);
-        _profile = copy;
         _selected = null;
     }
 
