@@ -73,6 +73,23 @@ public sealed partial class ShowSoundUploader(IOptions<ShowStorageOptions> optio
         return ms.ToArray();
     }
 
+    public async Task<IReadOnlyList<ShowBlobInfo>> ListAsync(string prefix)
+    {
+        var container = Container();
+        if (!await container.ExistsAsync()) return [];
+        var list = new List<ShowBlobInfo>();
+        await foreach (var b in container.GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix, CancellationToken.None))
+            list.Add(new ShowBlobInfo(b.Name, b.Properties.ContentLength ?? 0, b.Properties.LastModified));
+        return list;
+    }
+
+    public async Task<bool> DeleteAsync(string blobPath)
+    {
+        var container = Container();
+        var response = await container.DeleteBlobIfExistsAsync(blobPath, DeleteSnapshotsOption.IncludeSnapshots);
+        return response.Value;
+    }
+
     private static string Sanitize(string name)
     {
         var cleaned = Whitespace().Replace(name.Trim(), "-");

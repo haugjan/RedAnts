@@ -12,6 +12,8 @@ public static class ShowFeatures
         typeof(GetShowProfiles.Handler),
         typeof(SaveShowProfiles.Handler),
         typeof(ExportShowBoards.Handler),
+        typeof(FindUnusedSounds.Handler),
+        typeof(DeleteUnusedSounds.Handler),
         typeof(SetShowSetting.Handler),
         typeof(DispatchShowCommand.Handler),
         typeof(SearchSpotify.Handler),

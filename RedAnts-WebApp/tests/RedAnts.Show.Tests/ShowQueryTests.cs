@@ -209,6 +209,11 @@ public class ShowQueryTests
             Task.FromResult(Stored.TryGetValue(blobPath, out var bytes)
                 ? new ShowSoundContent(new MemoryStream(bytes), "audio/mpeg", null, null)
                 : null);
+
+        public Task<IReadOnlyList<ShowBlobInfo>> ListAsync(string prefix) =>
+            Task.FromResult<IReadOnlyList<ShowBlobInfo>>(Stored.Keys.Where(k => k.StartsWith(prefix)).Select(k => new ShowBlobInfo(k, Stored[k].Length, null)).ToList());
+
+        public Task<bool> DeleteAsync(string blobPath) => Task.FromResult(Stored.Remove(blobPath));
     }
 
     private sealed class RecordingRemote : IShowRemote

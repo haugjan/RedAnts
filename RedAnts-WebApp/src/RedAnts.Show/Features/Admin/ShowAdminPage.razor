@@ -5,6 +5,8 @@
 @inject GetSpotifySettings.Handler SpotifyState
 @inject GetShowRooms.Handler RoomsQuery
 @inject DeleteShowRoom.Handler RoomDeletion
+@inject FindUnusedSounds.Handler UnusedQuery
+@inject DeleteUnusedSounds.Handler UnusedDeletion
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @implements IDisposable
@@ -18,6 +20,7 @@
             <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
             <button class="se-btn" @onclick="ToggleSpotifySettings">🟢 Spotify</button>
             <button class="se-btn" @onclick="ToggleRoomsAsync">🎛 Räume</button>
+            <button class="se-btn" @onclick="ToggleCleanupAsync">🧹 Aufräumen</button>
             <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
             <a class="se-btn" href="@BoardUrl" target="_blank">▶ Board öffnen</a>
             <a class="se-btn" href="/admin/show/export.pdf" target="_blank">🖨 PDF-Export</a>
@@ -55,6 +58,47 @@
                 </div>
             }
             <p class="se-muted">Ein gelöschter Raum erscheint wieder, sobald Companion ihn erneut sendet.</p>
+        </div>
+    }
+
+    @if (_showCleanup)
+    {
+        <div class="se-rooms">
+            <strong>Nicht verwendete Songs (Blob-Speicher)</strong>
+            @if (_cleanup is null)
+            {
+                <p class="se-muted">@(_cleanupStatus is { Length: > 0 } ? _cleanupStatus : "Wird geprüft …")</p>
+            }
+            else
+            {
+                <p class="se-muted">@_cleanup.TotalBlobs Dateien im Speicher · @_cleanup.ReferencedCount verwendet · @_cleanup.Unused.Count nicht verwendet (@FormatSize(_cleanup.DeletableBytes) löschbar).</p>
+                @if (_cleanupStatus is { Length: > 0 })
+                {
+                    <p class="se-ok">@_cleanupStatus</p>
+                }
+                @if (_cleanup.Unused.Count == 0)
+                {
+                    <p class="se-muted">Keine verwaisten Dateien. Alles sauber.</p>
+                }
+                else
+                {
+                    <div class="se-cleanlist">
+                        @foreach (var u in _cleanup.Unused)
+                        {
+                            <div class="se-room-row">
+                                <span class="se-room-name">🎵 @SoundName(u.Path)</span>
+                                <span class="se-muted">@FormatSize(u.SizeBytes)@(u.LastModified is { } lm ? " · " + SwissTime.ToSwiss(lm).ToString("dd.MM.yyyy") : "")@(u.RecentlyUploaded ? " · kürzlich hochgeladen (übersprungen)" : "")</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="se-prof-btns">
+                        <button class="se-btn sm danger" @onclick="RunCleanupAsync" disabled="@(_cleanupBusy || DeletableCount == 0)">
+                            @(_cleanupBusy ? "Löscht …" : $"🗑 {DeletableCount} Dateien endgültig löschen")
+                        </button>
+                    </div>
+                    <p class="se-muted">Bitte offene Änderungen zuerst speichern. Kürzlich (weniger als 1 h) hochgeladene Dateien werden zur Sicherheit nicht gelöscht.</p>
+                }
+            }
         </div>
     }
 
@@ -136,6 +180,7 @@
                 @if (_selected is { } sel)
                 {
                     <TileEditorDialog @ref="_editor" @key="sel" Node="sel" IsNew="_selectedIsNew" SpotifyConfigured="_spotifyConfigured"
+                                      MoveTargets="BuildMoveTargets(sel)" OnMoveRequested="MoveSelectedToAsync"
                                       OnClosed="CloseEditor" OnRemoved="RemoveSelected" OnSaveRequested="SaveAsync" />
                 }
 
@@ -265,10 +310,13 @@
     private async Task DeleteProfile()
     {
         if (_profile is null) return;
-        if (!await JS.InvokeAsync<bool>("confirm", $"Profil „{_profile.Name}“ wirklich löschen?")) return;
+        if (_profiles.Count <= 1) { _status = "Das letzte Profil kann nicht gelöscht werden."; return; }
+        if (!await JS.InvokeAsync<bool>("confirm", $"Profil „{_profile.Name}“ wirklich löschen? Das wird sofort gespeichert.")) return;
         _profiles.Remove(_profile);
         _profile = _profiles.FirstOrDefault();
         _selected = null;
+        _levelStack.Clear();
+        await SaveAsync();
     }
 
     private List<EditButton> CurrentLevel()
@@ -455,4 +503,121 @@
         else return;
         await InvokeAsync(StateHasChanged);
     }
+
+    private List<MoveTarget> BuildMoveTargets(EditButton node)
+    {
+        var excluded = new HashSet<string>();
+        CollectSubtreeIds(node, excluded);
+        var list = new List<MoveTarget> { new(null, "Hauptseite", 0) };
+        void Walk(List<EditButton> nodes, int depth)
+        {
+            foreach (var f in nodes.Where(n => n.Kind == NodeKind.Folder))
+            {
+                if (excluded.Contains(f.Id)) continue;
+                list.Add(new MoveTarget(f.Id, f.Label, depth));
+                Walk(f.Children, depth + 1);
+            }
+        }
+        if (_profile is not null) Walk(_profile.Root, 1);
+        return list;
+    }
+
+    private static void CollectSubtreeIds(EditButton node, HashSet<string> acc)
+    {
+        acc.Add(node.Id);
+        foreach (var c in node.Children) CollectSubtreeIds(c, acc);
+    }
+
+    private static EditButton? FindById(List<EditButton> nodes, string id)
+    {
+        foreach (var n in nodes)
+        {
+            if (n.Id == id) return n;
+            if (n.Kind == NodeKind.Folder && FindById(n.Children, id) is { } hit) return hit;
+        }
+        return null;
+    }
+
+    private async Task MoveSelectedToAsync(string? targetId)
+    {
+        if (_selected is not { } node || _profile is null) return;
+        List<EditButton> target;
+        bool targetIsSub;
+        if (targetId is null) { target = _profile.Root; targetIsSub = false; }
+        else
+        {
+            var folder = FindById(_profile.Root, targetId);
+            if (folder is null || folder.Kind != NodeKind.Folder) return;
+            var guard = new HashSet<string>();
+            CollectSubtreeIds(node, guard);
+            if (guard.Contains(folder.Id)) return;
+            target = folder.Children;
+            targetIsSub = true;
+        }
+        if (!RemoveFrom(_profile.Root, node)) return;
+        var (x, y) = FreeCell(target, targetIsSub);
+        node.X = x; node.Y = y; node.W = 1; node.H = 1;
+        target.Add(node);
+        _selected = null;
+        if (targetId is null) _levelStack.Clear();
+        else if (FindById(_profile.Root, targetId) is { } tf) NavigateTo(tf);
+        await SaveAsync();
+    }
+
+    private static (int X, int Y) FreeCell(List<EditButton> level, bool isSub)
+    {
+        for (var y = 0; y < ShowLayout.Rows; y++)
+            for (var x = 0; x < ShowLayout.Cols; x++)
+            {
+                if (ShowLayout.IsReserved(x, y, isSub)) continue;
+                if (level.Any(o => Math.Max(0, o.X) == x && Math.Max(0, o.Y) == y)) continue;
+                return (x, y);
+            }
+        return (-1, -1);
+    }
+
+    private bool _showCleanup;
+    private bool _cleanupBusy;
+    private string _cleanupStatus = "";
+    private FindUnusedSounds.Result? _cleanup;
+
+    private int DeletableCount => _cleanup?.Unused.Count(u => !u.RecentlyUploaded) ?? 0;
+
+    private async Task ToggleCleanupAsync()
+    {
+        _showCleanup = !_showCleanup;
+        if (_showCleanup) await LoadCleanupAsync();
+    }
+
+    private async Task LoadCleanupAsync()
+    {
+        _cleanup = null;
+        _cleanupStatus = "";
+        try { _cleanup = await UnusedQuery.HandleAsync(new FindUnusedSounds.Query()); }
+        catch (Exception ex) { _cleanupStatus = "Fehler: " + ex.Message; }
+    }
+
+    private async Task RunCleanupAsync()
+    {
+        if (_cleanup is null || _cleanupBusy) return;
+        var paths = _cleanup.Unused.Where(u => !u.RecentlyUploaded).Select(u => u.Path).ToList();
+        if (paths.Count == 0) return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"{paths.Count} nicht verwendete Dateien endgültig aus dem Blob-Speicher löschen? Das kann nicht rückgängig gemacht werden.")) return;
+        _cleanupBusy = true;
+        try
+        {
+            var result = await UnusedDeletion.HandleAsync(new DeleteUnusedSounds.Command(paths));
+            await LoadCleanupAsync();
+            _cleanupStatus = $"{result.Deleted} Dateien gelöscht ({FormatSize(result.FreedBytes)} frei)" + (result.Skipped > 0 ? $", {result.Skipped} übersprungen" : "") + ".";
+        }
+        catch (Exception ex) { _cleanupStatus = "Fehler: " + ex.Message; }
+        finally { _cleanupBusy = false; }
+    }
+
+    private static string SoundName(string path) => path.StartsWith("sounds/") ? path["sounds/".Length..] : path;
+
+    private static string FormatSize(long bytes) =>
+        bytes >= 1024 * 1024 ? $"{bytes / 1024.0 / 1024.0:0.0} MB"
+        : bytes >= 1024 ? $"{bytes / 1024.0:0} KB"
+        : $"{bytes} B";
 }

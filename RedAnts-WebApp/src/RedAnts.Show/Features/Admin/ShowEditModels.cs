@@ -4,6 +4,8 @@ namespace RedAnts.Show.Features.Admin;
 
 public enum NodeKind { Sound, Folder, Random, Control }
 
+public sealed record MoveTarget(string? Id, string Label, int Depth);
+
 public sealed class EditSound
 {
     public SoundKind Kind { get; set; } = SoundKind.Local;

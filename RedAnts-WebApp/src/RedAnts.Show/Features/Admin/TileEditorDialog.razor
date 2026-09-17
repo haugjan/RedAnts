@@ -246,6 +246,18 @@ else
         <button class="se-btn sm" @onclick="CancelTileAsync">Abbrechen</button>
     }
     <button class="se-btn sm primary" @onclick="SaveAsync" disabled="@_saving">@(_saving ? "Speichert …" : "💾 Speichern")</button>
+    @if (!_isNew && MoveTargets.Count > 0)
+    {
+        <label class="se-move">↪
+            <select @onchange="OnMoveChanged">
+                <option value="__none" selected>Verschieben nach …</option>
+                @foreach (var t in MoveTargets)
+                {
+                    <option value="@(t.Id ?? "__root")">@DepthPad(t.Depth)@t.Label</option>
+                }
+            </select>
+        </label>
+    }
     <button class="se-btn sm danger se-editdel" @onclick="DeleteAsync">🗑 Kachel löschen</button>
 </div>
 </div>
@@ -277,8 +289,19 @@ else
     [Parameter] public EventCallback OnClosed { get; set; }
     [Parameter] public EventCallback OnRemoved { get; set; }
     [Parameter] public EventCallback OnSaveRequested { get; set; }
+    [Parameter] public IReadOnlyList<MoveTarget> MoveTargets { get; set; } = [];
+    [Parameter] public EventCallback<string?> OnMoveRequested { get; set; }
 
     private bool _saving;
+
+    private async Task OnMoveChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (string.IsNullOrEmpty(value) || value == "__none") return;
+        await OnMoveRequested.InvokeAsync(value == "__root" ? null : value);
+    }
+
+    private static string DepthPad(int depth) => depth <= 0 ? "" : new string(' ', depth * 2) + "› ";
 
     private async Task SaveAsync()
     {
