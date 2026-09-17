@@ -274,9 +274,10 @@ app.UseTicketingShortHostRedirect();
 
 // Keep each surface on its own host: backoffice on admin[-dev].redants.ch, scanner on
 // scan[-dev].redants.ch, soundboard on show[-dev].redants.ch, everything else on the public
-// tickets host. A path that belongs to another surface redirects to its canonical host instead
-// of being served, so every surface has exactly one URL. Shared plumbing (assets, Blazor, API,
-// health) stays reachable everywhere; localhost / *.azurewebsites.net are left alone.
+// tickets host. A path that belongs to another surface is not served here; a GET lands on a
+// short interstitial that forwards to the canonical host after 5 seconds (or on click), so an
+// old wrong-host link visibly moves to the one correct URL. Shared plumbing (assets, Blazor,
+// API, health) stays reachable everywhere; localhost / *.azurewebsites.net are left alone.
 app.Use(async (context, next) =>
 {
     var host = context.Request.Host.Host;
@@ -284,8 +285,18 @@ app.Use(async (context, next) =>
         && SiteHosts.SurfaceOfPath(context.Request.Path.Value) is { } pathSurface
         && !SiteHosts.HostServes(host, pathSurface))
     {
-        context.Response.Redirect(SiteHosts.BaseUrlFor(pathSurface, SiteHosts.IsDevHost(host))
-            + context.Request.Path + context.Request.QueryString);
+        var dev = SiteHosts.IsDevHost(host);
+        var target = SiteHosts.BaseUrlFor(pathSurface, dev) + context.Request.Path + context.Request.QueryString;
+        if (!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method))
+        {
+            context.Response.Redirect(target);
+            return;
+        }
+        context.Response.StatusCode = StatusCodes.Status200OK;
+        context.Response.ContentType = "text/html; charset=utf-8";
+        context.Response.Headers.CacheControl = "no-store";
+        await context.Response.WriteAsync(
+            RedAnts.Infrastructure.Shared.SurfaceRedirectPage.Html(target, SiteHosts.HostFor(pathSurface, dev)));
         return;
     }
     await next();
