@@ -62,8 +62,8 @@
     private string Absolute(string relative)
     {
         if (relative.StartsWith("http")) return relative;
-        var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
-        return origin + relative;
+        var host = new Uri(Navigation.BaseUri).Host;
+        return SiteHosts.UrlFor(SiteSurface.Tickets, host, relative);
     }
 
     private async Task CopyAsync(string? relative, bool isPublic)

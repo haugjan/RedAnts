@@ -63,6 +63,9 @@ public class SiteHostsTests
     {
         Assert.Equal("https://show.redants.ch/show", SiteHosts.UrlFor(SiteSurface.Show, "admin.redants.ch", "/show"));
         Assert.Equal("https://show-dev.redants.ch/show", SiteHosts.UrlFor(SiteSurface.Show, "admin-dev.redants.ch", "/show"));
+        Assert.Equal("https://scan.redants.ch/scan/DunkleMandel", SiteHosts.UrlFor(SiteSurface.Scan, "admin.redants.ch", "/scan/DunkleMandel"));
+        Assert.Equal("https://scan-dev.redants.ch/scan/DunkleMandel", SiteHosts.UrlFor(SiteSurface.Scan, "admin-dev.redants.ch", "/scan/DunkleMandel"));
+        Assert.Equal("https://tickets.redants.ch/tickets/event/abc", SiteHosts.UrlFor(SiteSurface.Tickets, "admin.redants.ch", "/tickets/event/abc"));
     }
 
     [Fact]
