@@ -26,7 +26,7 @@ logger.Log(clockControl
     ? "Zeitsteuerung: mit Uhr (Start/Stop, −1 s, +1 s auf dem Deck)"
     : "Zeitsteuerung: ohne Uhr — die Tasten 28 bis 30 bleiben leer");
 
-var deck     = new TcuDeck(udp, lower, state, logger, clockControl);
+var deck     = new TcuDeck(udp, lower, live, state, logger, clockControl);
 
 const string BaseUrl = "http://localhost:5150/";
 
@@ -160,6 +160,9 @@ lower.StateChanged = async () =>
     if (s is not null) await PushSnapshot(s);
     deck.Bump();
 };
+
+// Die Starting Six ist durch: TcuLower hat ausgeblendet, das Deck geht zurück.
+lower.Starting6Finished = () => deck.GoHome();
 
 try
 {

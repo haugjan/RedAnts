@@ -60,6 +60,10 @@ public sealed class TcuLower(
     /// Modus scharf gestellt ist ("Tor", "Spieler", "Strafe 2'").</summary>
     public Func<string, Task>? ModeLabelChanged { get; set; }
 
+    /// <summary>Wird gerufen, wenn die Starting Six durch ist — nach der letzten
+    /// Spielerin wird ausgeblendet, und das Deck kehrt zur Startseite zurück.</summary>
+    public Action? Starting6Finished { get; set; }
+
     /// <summary>Dieselbe Beschriftung zum Abfragen — das Deck baut seine
     /// Kopfzeile bei jeder Ansicht neu auf und braucht den Wert, nicht das
     /// Ereignis.</summary>
@@ -145,6 +149,15 @@ public sealed class TcuLower(
                     return $"Startaufstellung in TCunihockey unvollständig ({Starting6Entries(raw)} von 6 Einträgen) — " +
                            "Starting 6 nicht ausgelöst, TCunihockey scheitert damit beim Einblenden";
 
+                // ",,,,," hat formal sechs Einträge, aber keinen Namen: TCunihockey
+                // vergleicht die Nummern wörtlich mit dem Kader.
+                var kader   = mem is null
+                    ? (side == "away" ? game.AwayPlayers : game.HomePlayers)
+                    : (side == "away" ? mem.AwayPlayers : mem.HomePlayers);
+                var bekannt = TcuStateReader.SplitNumbers(raw).Count(nr => kader.Any(p => p.Display == nr));
+                if (bekannt == 0)
+                    return "Keine Nummer der Startaufstellung steht im Kader — Starting 6 nicht ausgelöst";
+
                 await Clear();
                 udp.Send($"{P}lowerthird_{side}_starting6");
                 return null;
@@ -174,8 +187,7 @@ public sealed class TcuLower(
                 }
 
                 var stand = reader.Starting6();
-                if (stand is (var gezeigt, var total) && total > 0 && gezeigt >= total)
-                    return $"Starting Six ist beim letzten Namen ({gezeigt}/{total}) — nicht weitergeschaltet";
+                var letzte = stand is (var gezeigt, var total) && total > 0 && gezeigt >= total;
 
                 // TCunihockey zeigt immer "/6", auch wenn die Aufstellung weniger
                 // Namen hat. "Weiter" liest dann CurrentEvent._Text.Split(',')
@@ -186,9 +198,18 @@ public sealed class TcuLower(
                 if (mem is not null)
                 {
                     var namen = mem.CurrentEventText.Length == 0 ? 0 : mem.CurrentEventText.Split(',').Length;
-                    if (mem.Starting6Count >= namen)
-                        return $"Starting Six ist beim letzten Namen ({mem.Starting6Count} von {namen}) — " +
-                               "nicht weitergeschaltet, sonst stürzt TCunihockey ab";
+                    if (mem.Starting6Count >= namen) letzte = true;
+                }
+
+                if (letzte)
+                {
+                    // Nach der letzten Spielerin ist die Reihe zu Ende: ausblenden
+                    // und das Deck zurück auf die Startseite. Ein weiteres "Weiter"
+                    // würde TCunihockey über das Ende der Liste lesen lassen und
+                    // beenden.
+                    udp.Send($"{P}lowerthird_hide");
+                    Starting6Finished?.Invoke();
+                    return null;
                 }
 
                 udp.Send($"{P}lowerthird_next");

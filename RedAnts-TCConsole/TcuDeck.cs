@@ -12,7 +12,7 @@ namespace TcuConsole;
 /// Seiten. Die Seiten leben als <see cref="DeckContext"/> weiter, nur navigiert
 /// jetzt TcuConsole selbst zwischen ihnen statt Companion.
 /// </summary>
-public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLogger logger, bool clockControl)
+public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuState reader, TcuGameState game, TcuLogger logger, bool clockControl)
 {
     /// <summary>Mit Zeitsteuerung: Uhr Start/Stop, −1 s und +1 s stehen auf der
     /// Startseite (Tasten 28 bis 30). Ohne bleiben diese Plätze leer — sie
@@ -81,10 +81,25 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
             // Nur melden, was das Deck auch zeigt. Die Spieluhr tickt jede
             // Sekunde weiter, steht aber nicht auf dem Deck — ohne diesen
             // Vergleich liefe der Long-Poll im Sekundentakt leer durch.
-            if (Live is not null && !Differs(Live, snapshot)) { Live = snapshot; return; }
+            if (Live is not null && !Differs(Live, snapshot) && !Starting6Moved()) { Live = snapshot; return; }
             Live = snapshot;
         }
         Bump();
+    }
+
+    // Auf der Starting-6-Seite leuchtet die Spielerin, die gerade eingeblendet
+    // ist. TCunihockey schreibt den Zähler erst nach seinem vMix-Aufruf in den
+    // Knopf ">>> (n/6)" — der Takt muss ihn deshalb selbst beobachten, sonst
+    // hinkte die Markierung einen Druck hinterher.
+    int _lastStarting6 = -1;
+
+    bool Starting6Moved()
+    {
+        if (Context is not (DeckContext.Starting6Home or DeckContext.Starting6Away)) return false;
+        var n = reader.Starting6()?.Gezeigt ?? 0;
+        if (n == _lastStarting6) return false;
+        _lastStarting6 = n;
+        return true;
     }
 
     // Die Uhr zählt nur, wo eine Taste von ihr abhängt: die Uhr-Tasten der
@@ -224,7 +239,13 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
     /// der abgeschlossen ist.</summary>
     public void GoHome()
     {
-        lock (_gate) Context = DeckContext.Main;
+        // Der Vorgang ist abgeschlossen — auf der Startseite soll kein Modus
+        // mehr leuchten.
+        lock (_gate)
+        {
+            Context = DeckContext.Main;
+            _activeMode = "";
+        }
         Bump();
     }
 
@@ -324,8 +345,10 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
     // Weiterschalten sichert TcuLower zusätzlich über die Namen ab.
     void Starting6Key(DeckBuilder b, int row, int col, string side, int bg)
     {
+        // Zusätzlich muss mindestens eine Nummer im Kader stehen: ",,,,," hat
+        // formal sechs Einträge, TCunihockey blendete aber keinen Namen ein.
         var raw = side == "away" ? game.AwayStarting6Raw : game.HomeStarting6Raw;
-        if (TcuLower.Starting6Entries(raw) < 6)
+        if (TcuLower.Starting6Entries(raw) < 6 || game.Starting6(side).Count == 0)
         {
             b.Label(row, col, "Starting 6\n(Aufstellung\nunvollständig)", CNeutral);
             return;
@@ -394,11 +417,19 @@ public sealed class TcuDeck(TcuUdp udp, TcuLower lower, TcuGameState game, TcuLo
     void Starting6(DeckBuilder b, string side, int bg)
     {
         var six = game.Starting6(side);
+
+        // Die gerade eingeblendete Spielerin leuchtet. n aus ">>> (n/6)" ist
+        // genau ihre Position in der Namensliste, die TCunihockey einblendet —
+        // dieselbe Reihenfolge wie six, denn beide überspringen Nummern, die
+        // nicht im Kader stehen. Nur solange eingeblendet ist: danach bleibt der
+        // Knopftext stehen und würde eine längst ausgeblendete Spielerin zeigen.
+        var aktuell = (Live?.LowerThirdLive ?? false) && reader.Starting6() is (var gezeigt, _) ? gezeigt : 0;
+
         for (var i = 0; i < 6; i++)
         {
             var p = i < six.Count ? six[i] : null;
             if (p is null) b.Empty(0, i);
-            else b.Label(0, i, $"{p.Display}\n{Trunc(p.Name, 10)}", bg);
+            else b.Label(0, i, $"{p.Display}\n{Trunc(p.Name, 10)}", i + 1 == aktuell ? CActive : bg);
         }
 
         b.Action(0, 7, "▶▶ Weiter", CPeriod, [$"TcuUi=s6next|{side}"]);

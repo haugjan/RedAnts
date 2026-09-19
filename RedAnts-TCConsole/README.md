@@ -127,8 +127,13 @@ hinausgreifen, ohne den Fehler abzufangen:
   TCunihockey zeigt dabei immer „/6", auch wenn weniger Namen da sind.
 
 TcuConsole liest die Aufstellung deshalb vor jedem Druck frisch aus dem Speicher
-von TCunihockey und schaltet nicht weiter, wenn kein Name mehr folgt — die
-Meldung dazu steht im Log.
+von TCunihockey. Ohne eine einzige Nummer im Kader (etwa `,,,,,`) gibt es die
+Taste ebenfalls nicht.
+
+Während die Starting Six läuft, **leuchtet auf dem Deck die Spielerin, die
+gerade eingeblendet ist**. Nach der letzten Spielerin blendet „Weiter" die
+Starting Six aus und schickt das Deck zurück auf die Startseite — ein weiteres
+„Weiter" gibt es nicht, denn genau das liess TCunihockey abstürzen.
 
 ## Ohne Maus und ohne Fokus
 
