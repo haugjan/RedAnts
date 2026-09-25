@@ -110,7 +110,7 @@
                     @onclick="() => HandleButtonAsync(node)">
                 @if (isFolder)
                 {
-                    <span class="sb-fhead"><span class="sb-fico">📂</span>@node.Label</span>
+                    <span class="sb-fhead"><span class="sb-fico">📂</span><span class="sb-flabel">@node.Label</span></span>
                     <span class="sb-tile-icon fbody">@(node.Icon ?? "📁")</span>
                 }
                 else

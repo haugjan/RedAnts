@@ -149,19 +149,26 @@ html, body {
   color: #fff;
   border: none;
   justify-content: center;
-  padding-top: clamp(24px, 5vmin, 48px);
+  /* Platz für eine bis zu zweizeilige Kopfzeile, die absolut darüber liegt */
+  padding-top: clamp(26px, 26cqh, 68px);
 }
 .sb-fhead {
   position: absolute; top: 0; left: 0; right: 0;
-  display: flex; align-items: center; gap: 0.5ch;
+  display: flex; align-items: flex-start; gap: 0.5ch;
   padding: 0.35em 0.7em;
   background: color-mix(in srgb, var(--tile-color, #555) 100%, #000);
   filter: brightness(0.62);
-  font-weight: 900; font-size: clamp(0.9rem, 1.45vw, 1.55rem); line-height: 1.1;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* an der Kachel messen, nicht am Viewport - sonst wächst der Titel über die Kachel hinaus */
+  font-weight: 900; font-size: clamp(0.7rem, 7cqw, 1.3rem); line-height: 1.15;
+  overflow: hidden;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
 }
-.sb-fico { font-size: 1.1em; }
+.sb-flabel {
+  flex: 1 1 auto; min-width: 0;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.sb-fico { font-size: 1.1em; flex: 0 0 auto; }
 .sb-tile-icon.fbody { font-size: clamp(1.8rem, 3vw, 3.6rem); filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4)); }
 .sb-tile.random { background: linear-gradient(135deg, #e07a1f 0%, #c8102e 100%); }
 .sb-tile.back { background: rgba(255, 255, 255, 0.08); color: var(--ra-muted); box-shadow: none; }
