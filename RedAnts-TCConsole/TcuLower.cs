@@ -32,6 +32,22 @@ public sealed class TcuLower(
     /// <summary>Pause zwischen Moduswechsel und Einblenden.</summary>
     const int ArmMs = 120;
 
+    /// <summary>So lange wird nach "+1" auf den neuen Stand gewartet.
+    /// TCunihockey blendet beim Tor zuerst die Matchuhr aus und hält dafür
+    /// seine Oberfläche 1000 ms an (Thread.Sleep in BtnHomeGoalPlus_Click);
+    /// erst danach zählt es und schreibt den Stand in die Einblendung.
+    /// Gemessen: 31 ms ohne, 1031 ms mit eingeblendeter Matchuhr.</summary>
+    const int GoalTimeoutMs = 3000;
+
+    /// <summary>Abtastung beim Warten auf den neuen Stand.</summary>
+    const int GoalPollMs = 20;
+
+    /// <summary>Abstand zwischen dem neuen Stand und der Einblendung. Mit "+1"
+    /// schreibt TCunihockey den Stand in zwei Titel der Matchuhr; die
+    /// Einblendung ist ein dritter, und TCunihockey lässt vMix für dessen
+    /// Aufbau fest 200 ms. Je Titel der Matchuhr dieselbe Zeit.</summary>
+    const int ScoreSettleMs = 400;
+
     // Ein Vorgang nach dem anderen. Zwei verschränkte Abläufe würden sich die
     // Wartezeit gegenseitig zerschneiden — der zweite käme mitten in die
     // Ausblendung des ersten.
@@ -350,7 +366,8 @@ public sealed class TcuLower(
 
     /// <summary>
     /// Spieler gewählt: Nummer setzen, bei "Tor" den Stand erhöhen, dann
-    /// einblenden.
+    /// einblenden. Beim Tor erst, wenn der neue Stand in der Einblendung steht
+    /// (siehe CountGoal).
     ///
     /// <paramref name="nr"/> ist entweder eine Spielernummer oder — so kommt es
     /// vom Deck — ein Platz im Raster als "#7". Der Platz wird hier gegen den
@@ -383,8 +400,7 @@ public sealed class TcuLower(
         {
             // Reihenfolge ist die Anforderung: erst der Spieler, dann +1.
             await Task.Delay(ArmMs);
-            var note = ui.Execute($"TcuUi=team|{s}|+1", game);
-            if (note is not null) logger.Log($"Torzählung: {note}", LogLevel.Warning);
+            await CountGoal(s);
         }
 
         await Task.Delay(ArmMs);
@@ -392,6 +408,58 @@ public sealed class TcuLower(
 
         _pendingKind = "";
         return null;
+    }
+
+    /// <summary>
+    /// Zählt das Tor und wartet, bis TCunihockey den neuen Stand in die
+    /// Einblendung geschrieben hat.
+    ///
+    /// Gemeldet am 2026-09-28: die Matchuhr zeigte 4:0, die Einblendung der
+    /// Torschützin noch 3:0.
+    ///
+    /// Nachgelesen im Code von TCunihockey: beim Einblenden geht an vMix, was
+    /// in diesem Augenblick in CurrentEvent._Event steht. "Tor" leert das Feld,
+    /// erst "+1" füllt es mit dem neuen Stand, bei eingeblendeter Matchuhr
+    /// eine Sekunde nach dem Klick. Eingeblendet wird deshalb erst, wenn der
+    /// Stand in der Vorschau steht, nicht nach einer festen Pause.
+    ///
+    /// Nachstellen liess sich der Fehler nicht: mit einem Mitschnitt anstelle
+    /// von vMix sendete TCunihockey in allen Läufen den neuen Stand, auch im
+    /// Ablauf davor. vMix selbst stand für die Messung nicht zur Verfügung.
+    /// Was den Ablauf von der Bedienung von Hand unterscheidet, ist der
+    /// Abstand: dort liegen zwischen "+1" und "Live" Sekunden, hier gingen der
+    /// Stand der Matchuhr und der Text der Einblendung rund 30 bis 150 ms
+    /// nacheinander an vMix. ScoreSettleMs stellt den Abstand wieder her. Das
+    /// ist eine Annahme, keine Messung: vMix baue die Einblendung sonst nicht
+    /// rechtzeitig neu auf.
+    /// </summary>
+    async Task CountGoal(string side)
+    {
+        var before = reader.GoalInsertScore(side);
+
+        var note = ui.Execute($"TcuUi=team|{side}|+1", game);
+        if (note is not null)
+        {
+            logger.Log($"Torzählung: {note}", LogLevel.Warning);
+            return;
+        }
+
+        var began = Environment.TickCount64;
+        while (Environment.TickCount64 - began < GoalTimeoutMs)
+        {
+            await Task.Delay(GoalPollMs);
+
+            var now = reader.GoalInsertScore(side);
+            if (now is { Length: > 0 } && now != before)
+            {
+                logger.LogUi($"Stand {now} steht nach {Environment.TickCount64 - began} ms in der Einblendung");
+                await Task.Delay(ScoreSettleMs);
+                return;
+            }
+        }
+
+        logger.Log($"Torzählung: nach {GoalTimeoutMs} ms steht kein neuer Stand in der Einblendung " +
+                   $"(vorher '{before}'), eingeblendet wird trotzdem", LogLevel.Warning);
     }
 
     /// <summary>
@@ -417,8 +485,7 @@ public sealed class TcuLower(
 
         // Wie beim Tor: erst der Verursacher, dann der Stand, dann Sendung.
         await Task.Delay(ArmMs);
-        note = ui.Execute($"TcuUi=team|{side}|+1", game);
-        if (note is not null) logger.Log($"Torzählung: {note}", LogLevel.Warning);
+        await CountGoal(side);
 
         await Task.Delay(ArmMs);
         udp.Send($"{P}lowerthird_show");

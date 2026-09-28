@@ -47,6 +47,10 @@ public sealed class TcuState(TcuLogger logger)
     public const string IdNumberHome = "LblHomePlayerNumber";
     public const string IdNumberAway = "LblAwayPlayerNumber";
 
+    /// <summary>Zweite Zeile der Vorschau. Beim Tor steht dort der Stand, den
+    /// TCunihockey mit der Einblendung sendet (CurrentEvent._Event).</summary>
+    public const string IdPreviewEvent = "LblLine2";
+
     /// <summary>Zähler der Starting Six, als ">>> (n/6)". Sichtbar nur, solange
     /// die Reihe läuft.</summary>
     public const string IdStarting6 = "BtnLiveNext";
@@ -60,7 +64,8 @@ public sealed class TcuState(TcuLogger logger)
 
     static readonly string[] Anchors =
         [IdPeriod, IdClock, IdScoreHome, IdScoreAway, IdMessage, IdSponsorLive,
-         IdNumberHome, IdNumberAway, IdTeamHome, IdTeamAway, .. LiveSentinels];
+         IdNumberHome, IdNumberAway, IdTeamHome, IdTeamAway, IdPreviewEvent,
+         .. LiveSentinels];
 
     readonly Dictionary<string, nint> _handles = new();
     nint _boundTo;   // Fenster, für das die Zuordnung gilt
@@ -274,6 +279,23 @@ public sealed class TcuState(TcuLogger logger)
         return _handles.TryGetValue(IdClock, out var clockH) && clockH != 0
             ? IsWindowEnabled(clockH)
             : null;
+    }
+
+    /// <summary>
+    /// Was beim Tor als Stand auf Sendung ginge: die zweite Zeile der Vorschau.
+    /// TCunihockey schreibt sie am Ende von "+1", nachdem es den Stand erhöht
+    /// hat. Ist das Feld nicht zugeordnet, gilt der Stand der Matchuhr, der
+    /// sich im selben Schritt ändert. Null, wenn nichts davon lesbar ist.
+    /// </summary>
+    public string? GoalInsertScore(string side)
+    {
+        var main = TcuWindow.Handle();
+        if (main == 0 || !Bind(main)) return null;
+
+        if (_handles.ContainsKey(IdPreviewEvent)) return Text(IdPreviewEvent);
+
+        var id = side == "away" ? IdScoreAway : IdScoreHome;
+        return _handles.ContainsKey(id) ? Text(id) : null;
     }
 
     /// <summary>Fenster-Handle eines Ankers, 0 wenn unbekannt. Für die

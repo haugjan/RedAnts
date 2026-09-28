@@ -90,6 +90,27 @@ TcuConsole.exe --ohne-uhr
 
 Die Wahl gilt bis zum nächsten Start.
 
+## Tor melden
+
+„Tor" stellt in TCunihockey nur den Modus scharf. Gezählt wird erst mit der Wahl
+der Torschützin, „Zurück" zählt also nichts.
+
+Nach der Wahl drückt TcuConsole „+1", wartet, bis TCunihockey den neuen Stand in
+die Einblendung geschrieben hat, und blendet erst dann ein. Im Log steht dazu:
+
+```
+Stand 4:0 steht nach 31 ms in der Einblendung
+```
+
+Ist die Matchuhr eingeblendet, nimmt TCunihockey sie beim Tor zuerst von der
+Anzeige und zählt eine Sekunde später. Die Einblendung kommt dann entsprechend
+später.
+
+Steht nach drei Sekunden kein neuer Stand in der Einblendung, meldet das Log
+`Torzählung: …` und TcuConsole blendet trotzdem ein. Diese Zeile ist der
+Hinweis, wo zu suchen ist, falls die Einblendung noch einmal einen alten Stand
+zeigt.
+
 ## Spielstand korrigieren
 
 Ein Druck auf einen der beiden Stände der Startseite (Tasten **20** Heim,
