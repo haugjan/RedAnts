@@ -1,13 +1,14 @@
-@model RedAnts.Ticketing.Features.Checkout.CheckoutProcessingView
+﻿@model RedAnts.Ticketing.Features.Checkout.CheckoutProcessingView
 @using RedAnts.Ticketing.Features.Checkout
 @using RedAnts.Ticketing.Features.Tickets
 @using RedAnts.Ticketing.Domain.Sales
 @{
     Layout = "_TicketsLayout";
-    ViewData["Title"] = "Zahlung wird verarbeitet";
+    ViewData["Title"] = Model.AlreadyPaid ? "Vielen Dank" : "Zahlung wird verarbeitet";
 }
 
 <link rel="stylesheet" href="/_content/RedAnts.Ticketing/css/ticket-card.css" asp-append-version="true" />
+<link rel="stylesheet" href="/_content/RedAnts.Ticketing/css/checkout-done.css" asp-append-version="true" />
 
 <div class="text-center py-4" id="processing" style="@(Model.AlreadyPaid ? "display:none;" : "")">
     <div class="spinner-border text-danger mb-3" role="status"><span class="visually-hidden">…</span></div>
@@ -16,16 +17,16 @@
 </div>
 
 <div id="paid" style="@(Model.AlreadyPaid ? "" : "display:none;")">
-    <div class="text-center py-4">
-        <div style="font-size:3rem; line-height:1; color:#1c7c43;">&#10003;</div>
-        <h1 class="mt-2">Vielen Dank!</h1>
-        <p class="text-muted">Deine Zahlung ist bestätigt.</p>
+    <div class="rc-done">
+        <div class="rc-done__mark">&#10003;</div>
+        <h1>Vielen Dank!</h1>
+        <p class="rc-done__note">Deine Zahlung ist bestätigt.</p>
         <p>Deine Tickets gehen per E-Mail an <strong>@Model.Email</strong>.</p>
     </div>
 
     @if (Model.AddOnInfoTexts.Count > 0)
     {
-        <h2 class="h5 mb-2 text-center">Zu deinen Zusatzoptionen</h2>
+        <h2 class="rc-section-title text-center">Zu deinen Zusatzoptionen</h2>
         @foreach (var info in Model.AddOnInfoTexts)
         {
             <div class="ra-addon-note small mb-2">@info</div>
@@ -34,7 +35,7 @@
 
     @if (Model.Tickets.Count > 0)
     {
-        <h2 class="h5 mb-3 text-center">Deine Tickets</h2>
+        <h2 class="rc-section-title text-center">Deine Tickets</h2>
         <div class="ra-ticket-grid">
             @foreach (var t in Model.Tickets)
             {
@@ -60,13 +61,6 @@
         <a href="/" class="btn btn-outline-secondary">Zur Startseite</a>
     </div>
 </div>
-
-<style>
-    .ra-ticket-grid { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; background: #f4f4f5; border-radius: 14px; padding: 24px 18px; }
-    .ra-ticket-cell { display: flex; flex-direction: column; align-items: center; width: 300px; max-width: 100%; }
-    .ra-ticket-cell .rtk-card { --rtk-notch: #f4f4f5; }
-    .ra-addon-note { white-space: pre-line; background: #f4f4f5; border-left: 4px solid #C8102E; border-radius: 4px; padding: 12px 14px; color: #323232; text-align: left; }
-</style>
 
 <script>
 (function () {

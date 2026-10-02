@@ -1,0 +1,60 @@
+.rc-done { text-align: center; padding: 1.5rem 0; }
+.rc-done__mark { font-size: 3rem; line-height: 1; color: #1c7c43; }
+.rc-done h1 { margin: 0.5rem 0 0.5rem; }
+.rc-done p { margin-bottom: 0.5rem; }
+.rc-done__note { color: #6c757d; }
+
+.rc-section-title { font-family: 'Oswald', Impact, sans-serif; font-size: 1.25rem; margin: 0 0 0.75rem; }
+
+.ra-ticket-grid {
+  display: flex; flex-wrap: wrap; gap: 22px; justify-content: center;
+  background: #f4f4f5; border-radius: 14px; padding: 24px 18px;
+}
+.ra-ticket-cell { display: flex; flex-direction: column; align-items: center; width: 300px; max-width: 100%; }
+.ra-ticket-cell .rtk-card { --rtk-notch: #f4f4f5; }
+
+.rc-actions { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; margin-top: 0.75rem; }
+.rc-btn {
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none; font-family: 'Oswald', Impact, sans-serif;
+  text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; font-size: 0.92rem;
+  padding: 0.62rem 1rem; border-radius: 10px; color: #fff;
+}
+.rc-btn--open { background: #D02D38; }
+.rc-btn--open:hover { background: #B0242E; color: #fff; }
+.rc-btn--pdf { background: #14171A; }
+.rc-btn--pdf:hover { background: #2a2e33; color: #fff; }
+.rc-btn--wa { background: #25D366; }
+.rc-btn--wa:hover { background: #1ebe5b; color: #fff; }
+
+.ra-addon-note {
+  white-space: pre-line; background: #f4f4f5; border-left: 4px solid #C8102E;
+  border-radius: 4px; padding: 12px 14px; color: #323232; text-align: left;
+}
+
+.rc-summary__row { display: flex; justify-content: space-between; gap: 1rem; }
+.rc-summary__row > :last-child { text-align: right; }
+.rc-summary__hint { color: #6c757d; font-size: 0.85rem; }
+
+@media (max-width: 600px) {
+  .page-header { min-height: 132px; }
+  .page-header-inner { padding-bottom: 16px; }
+  .page-header-title::after { height: 4px; margin-top: 8px; }
+  .tk-main { padding-top: 0.75rem; padding-bottom: 1.5rem; }
+
+  .rc-done {
+    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
+    gap: 0 10px; padding: 0.25rem 0 0.75rem;
+  }
+  .rc-done__mark { font-size: 1.8rem; }
+  .rc-done h1 { font-size: 1.55rem; margin: 0; }
+  .rc-done p { flex-basis: 100%; margin-bottom: 0.25rem; font-size: 0.95rem; }
+
+  .rc-summary { padding: 14px; }
+  .rc-summary__row { font-size: 0.92rem; }
+  .rc-summary hr { margin: 0.6rem 0; }
+  .rc-summary p { margin-bottom: 0.5rem; font-size: 0.92rem; }
+
+  .rc-section-title { font-size: 1.1rem; margin-bottom: 0.5rem; }
+  .ra-ticket-grid { gap: 14px; padding: 14px 10px; border-radius: 12px; }
+}

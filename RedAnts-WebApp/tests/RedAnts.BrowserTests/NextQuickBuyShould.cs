@@ -60,6 +60,39 @@ public sealed class NextQuickBuyShould(BrowserFixture browser)
         await browser.ShotAsync(page, "next-quickbuy-se");
     }
 
+    [E2EFact]
+    public async Task HandOverEveryTicketOfAQuickBuy()
+    {
+        var page = await browser.NewPageAsync();
+        await page.SetViewportSizeAsync(375, 667);
+        await page.GotoAsync("/next");
+
+        var rows = page.Locator("[data-nq-row]");
+        await Assertions.Expect(rows.First).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await rows.First.Locator("[data-nq-step='1']").ClickAsync();
+        await rows.Nth(1).Locator("[data-nq-step='1']").ClickAsync();
+
+        await page.FillAsync("#nqEmail", "agent-quickbuy@redants.ch");
+        await page.CheckAsync("#nqPrivacy");
+        await page.ClickAsync("#nqBuy");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        if (page.Url.Contains("payrexx", StringComparison.OrdinalIgnoreCase)) return;
+
+        await Assertions.Expect(page.Locator(".ra-ticket-cell")).ToHaveCountAsync(3);
+
+        await page.ScreenshotAsync(new PageScreenshotOptions
+        {
+            Path = Path.Combine(browser.ScreenshotDirectory, "next-quickbuy-done-fold.png")
+        });
+        await browser.ShotAsync(page, "next-quickbuy-done");
+
+        var firstTicket = await page.Locator(".ra-ticket-cell").First.BoundingBoxAsync();
+        Assert.NotNull(firstTicket);
+        Assert.True(firstTicket.Y < 607,
+            $"Das erste Ticket beginnt erst bei {firstTicket.Y} px, auf dem iPhone SE sieht man also nicht mehr, dass unten Tickets folgen.");
+    }
+
     private async Task<IPage> OpenAsync()
     {
         var page = await browser.NewPageAsync();
