@@ -43,6 +43,23 @@ public sealed class NextQuickBuyShould(BrowserFixture browser)
         await Assertions.Expect(page.Locator("#nqBuyLabel")).ToContainTextAsync("Anzahl wählen");
     }
 
+    [E2EFact]
+    public async Task KeepTheBuyButtonOnScreenOnASmallPhone()
+    {
+        var page = await browser.NewPageAsync();
+        await page.SetViewportSizeAsync(375, 667);
+        await page.GotoAsync("/next");
+
+        var buy = page.Locator("#nqBuy");
+        await Assertions.Expect(buy).ToBeVisibleAsync(new() { Timeout = 30_000 });
+
+        var box = await buy.BoundingBoxAsync();
+        Assert.NotNull(box);
+        Assert.True(box.Y + box.Height <= 667,
+            $"Der Kaufen-Knopf endet bei {box.Y + box.Height} px und liegt damit unter der Bildschirmkante des iPhone SE.");
+        await browser.ShotAsync(page, "next-quickbuy-se");
+    }
+
     private async Task<IPage> OpenAsync()
     {
         var page = await browser.NewPageAsync();
