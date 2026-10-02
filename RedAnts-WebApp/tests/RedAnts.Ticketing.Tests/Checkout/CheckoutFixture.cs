@@ -67,6 +67,9 @@ internal sealed class CheckoutFixture
     public static BillingAddress Billing(string? phone = null) => BillingAddress.Create(
         BuyerType.Private, "Anna", "Muster", null, "Bahnhofstrasse 1", null, "8400", "Winterthur", "Schweiz", "anna@example.ch", phone);
 
+    public static BillingAddress GuestBilling() => BillingAddress.FromPersistence(
+        (int)BuyerType.Private, "", "", null, "", null, "", "", "Schweiz", "gast@example.ch", null);
+
     public static Cart CartWithTickets(int quantity = 2)
     {
         var cart = Cart.Empty();
@@ -81,10 +84,10 @@ internal sealed class CheckoutFixture
         return cart;
     }
 
-    public async Task<Order> PlacedDraftAsync(Cart? cart = null)
+    public async Task<Order> PlacedDraftAsync(Cart? cart = null, BillingAddress? billing = null)
     {
         Payrexx.Enabled = true;
-        var result = await PlaceOrder.HandleAsync(new PlaceOrder.Command(cart ?? CartWithTickets(), Billing(), false, CheckoutSource.Checkout));
+        var result = await PlaceOrder.HandleAsync(new PlaceOrder.Command(cart ?? CartWithTickets(), billing ?? Billing(), false, CheckoutSource.Checkout));
         var required = Assert.IsType<PlaceOrder.Result.PaymentRequired>(result);
         return Orders.Stored.Single(o => o.Id == required.OrderId);
     }

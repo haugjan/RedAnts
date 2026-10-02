@@ -1,4 +1,4 @@
-using RedAnts.Ticketing.Domain.Sales;
+﻿using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Orders;
 using RedAnts.Ticketing.Features.Tickets;
@@ -37,7 +37,7 @@ public static class GetOrderConfirmation
             foreach (var item in snapshot?.Items ?? [])
                 names[(item.Kind, item.IsSeasonPass ? item.SeasonId : item.EventId, item.TierId)] = (item.EventName, item.CategoryName);
 
-            var displayName = order.BillingAddress.ToBuyer().DisplayName;
+            var displayName = order.BillingAddress.ToBuyer()?.DisplayName;
             var holderName = string.IsNullOrWhiteSpace(displayName) ? null : displayName;
 
             var result = new List<ConfirmationTicket>();

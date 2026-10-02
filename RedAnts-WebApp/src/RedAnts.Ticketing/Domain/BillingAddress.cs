@@ -67,8 +67,12 @@ public sealed record BillingAddress
             PostalCode.FromPersistence(postalCode), city ?? "", string.IsNullOrWhiteSpace(country) ? "Schweiz" : country,
             EmailAddress.TryCreate(email) ?? default, phone);
 
-    /// <summary>The buyer captured on this address, for copying onto the issued tickets.</summary>
-    public Buyer ToBuyer() => Buyer.Create(Type, FirstName, LastName, Company);
+    /// <summary>The buyer captured on this address, for copying onto the issued tickets. Null when a guest left the name blank.</summary>
+    public Buyer? ToBuyer() => HasBuyerName ? Buyer.Create(Type, FirstName, LastName, Company) : null;
+
+    private bool HasBuyerName => Type == BuyerType.Company
+        ? !string.IsNullOrWhiteSpace(Company)
+        : !string.IsNullOrWhiteSpace(FirstName) && !string.IsNullOrWhiteSpace(LastName);
 
     public string FullName => Type == BuyerType.Company
         ? Company ?? ""

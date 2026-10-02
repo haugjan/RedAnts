@@ -21,6 +21,20 @@ public class OrderFulfillmentTests
     }
 
     [Fact]
+    public async Task A_guest_without_a_name_still_gets_the_tickets()
+    {
+        var fixture = new CheckoutFixture();
+        var order = await fixture.PlacedDraftAsync(billing: CheckoutFixture.GuestBilling());
+
+        var fulfilled = await fixture.Fulfillment.FulfillAsync(order.Id);
+
+        Assert.True(fulfilled);
+        Assert.Equal(2, fixture.Tickets.Stored.Count);
+        Assert.All(fixture.Tickets.Stored, ticket => Assert.Null(ticket.Buyer));
+        Assert.Single(fixture.Mailer.Sent);
+    }
+
+    [Fact]
     public async Task A_failing_ticket_write_stops_before_the_mail_and_keeps_the_reservation()
     {
         var fixture = new CheckoutFixture();

@@ -1,4 +1,4 @@
-using RedAnts.Ticketing.Domain.Sales;
+﻿using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Catalog;
 using RedAnts.Ticketing.Features.Email;
 using RedAnts.Ticketing.Features.MemberCards;
@@ -39,7 +39,7 @@ public sealed class OrderFulfillment(
 
         var billing = order.BillingAddress;
         var buyer = billing.ToBuyer();
-        var holderName = string.IsNullOrWhiteSpace(buyer.DisplayName) ? null : buyer.DisplayName;
+        var holderName = string.IsNullOrWhiteSpace(buyer?.DisplayName) ? null : buyer.DisplayName;
 
         var issued = await unitOfWork.RunAsync<Issued?>(async () =>
         {
@@ -75,14 +75,14 @@ public sealed class OrderFulfillment(
         return true;
     }
 
-    private async Task<OrderMailTicket> IssuePassAsync(OrderSnapshotItem item, Order order, Buyer buyer, string? holderName)
+    private async Task<OrderMailTicket> IssuePassAsync(OrderSnapshotItem item, Order order, Buyer? buyer, string? holderName)
     {
         var pass = await passes.SaveAsync(SeasonPass.Create(item.SeasonId, item.TierId, item.UnitPrice, order.Id, buyer, Channel));
         var category = await CategoryNameAsync(pass.Uuid, item.CategoryName);
         return new OrderMailTicket(TicketType.SeasonPass, pass.Uuid, item.SeasonId, item.EventName, category, holderName);
     }
 
-    private async Task<OrderMailTicket> IssueTicketAsync(OrderSnapshotItem item, Order order, Buyer buyer, string? holderName)
+    private async Task<OrderMailTicket> IssueTicketAsync(OrderSnapshotItem item, Order order, Buyer? buyer, string? holderName)
     {
         var originType = item.OriginType is { } type ? (TicketType)type : (TicketType?)null;
         var originUuid = Guid.TryParse(item.OriginCardUuid, out var parsed) ? parsed : (Guid?)null;
