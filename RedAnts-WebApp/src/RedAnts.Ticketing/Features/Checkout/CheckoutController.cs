@@ -26,6 +26,8 @@ public sealed class CheckoutController(
     private const string PrivacyError = "Bitte akzeptiere die AGB und die Datenschutzerklärung.";
     private const string CaptchaError = "Bitte bestätige, dass du kein Roboter bist.";
     private const string MobileError = "Für die gewählte Zusatzoption ist deine Mobilnummer zwingend. Bitte gib sie an.";
+    private const string QuantityError = "Bitte wähle mindestens ein Ticket.";
+    private const string SoldOutError = "Diese Tickets sind nicht mehr verfügbar.";
 
     [HttpGet("/checkout")]
     public async Task<IActionResult> Address(string? payment = null)
@@ -94,14 +96,19 @@ public sealed class CheckoutController(
 
     [HttpPost("/next/buy")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> QuickBuy(int eventId, int tierId, string email, string? name, bool acceptNewsletter, bool acceptPrivacy)
+    public async Task<IActionResult> QuickBuy(int eventId, Dictionary<int, int>? quantities, string email, bool acceptNewsletter, bool acceptPrivacy)
     {
         email = (email ?? "").Trim();
+        var lines = (quantities ?? [])
+            .Where(q => q.Value > 0)
+            .Select(q => new GetQuickBuyCart.Line(q.Key, q.Value))
+            .ToList();
+
         IActionResult Back(string error)
         {
             TempData["QuickError"] = error;
             TempData["QuickEmail"] = email;
-            TempData["QuickName"] = name ?? "";
+            TempData["QuickQuantities"] = string.Join(",", lines.Select(l => $"{l.TierId}:{l.Quantity}"));
             return Redirect("/next");
         }
 
@@ -109,12 +116,13 @@ public sealed class CheckoutController(
         try { buyerEmail = EmailAddress.Create(email); }
         catch (ValidationException ex) { return Back(ex.Message); }
         if (!acceptPrivacy) return Back(PrivacyError);
+        if (lines.Count == 0) return Back(QuantityError);
         if (!await CaptchaPassesAsync()) return Back(CaptchaError);
 
-        var oneTicket = await quickBuyCart.HandleAsync(new GetQuickBuyCart.Query(eventId, tierId));
-        if (oneTicket is null) return Back("Dieses Ticket ist nicht mehr verfügbar.");
+        var tickets = await quickBuyCart.HandleAsync(new GetQuickBuyCart.Query(eventId, lines));
+        if (tickets is null) return Back(SoldOutError);
 
-        var result = await placeOrder.HandleAsync(new PlaceOrder.Command(oneTicket, GuestBilling(buyerEmail, name), acceptNewsletter, CheckoutSource.QuickBuy));
+        var result = await placeOrder.HandleAsync(new PlaceOrder.Command(tickets, GuestBilling(buyerEmail, null), acceptNewsletter, CheckoutSource.QuickBuy));
         return await FinishAsync(result, error => Task.FromResult(Back(error)));
     }
 

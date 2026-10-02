@@ -1,116 +1,49 @@
 @model RedAnts.Ticketing.Features.Public.NextQuickBuyModel
+@using System.Globalization
 @using RedAnts.Ticketing.Features.Shared
-@using RedAnts.Ticketing.Infrastructure
 @{
-    Layout = "_TicketsLayout";
+    Layout = "_QuickBuyLayout";
     ViewData["Title"] = Model.HasEvent ? Model.Title : "Direktkauf";
-    ViewData["HeaderImage"] = Model.HasEvent ? Model.ImageUrl : null;
     var culture = DisplayCulture.From(Context.Request);
-}
-
-@section Head {
-    <style>
-        .tk-main { max-width: 900px; padding-left: 2.5rem; padding-right: 2.5rem; }
-        .nq-facts { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0 0 1.5rem; padding: 1rem 1.25rem; background: #f7f7f7; border-left: 4px solid var(--ra-red); }
-        .nq-fact { display: flex; flex-direction: column; gap: 2px; }
-        .nq-fact__label { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: #68676b; }
-        .nq-fact__value { font-weight: 700; font-size: 1.08rem; }
-        .nq-logos { display: flex; align-items: center; gap: 1.25rem; margin: 0 0 1.75rem; }
-        .nq-logos img { height: 64px; width: auto; }
-        .nq-logos .vs { font-family: 'Oswald', sans-serif; font-size: 1.4rem; font-weight: 700; text-transform: uppercase; color: #68676b; }
-        .nq-section-title { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.03em; font-size: 1.4rem; margin: 1.75rem 0 0.75rem; }
-        .nq-cat { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
-        .nq-cat__name { font-weight: 700; }
-        .nq-cat__age { font-weight: 400; font-size: .85rem; color: #666; }
-        .nq-cat__price { color: #68676b; margin-left: 0.5rem; font-weight: 400; }
-        .nq-cat__action { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ra-red); text-transform: uppercase; }
-        .nq-cat__note { display: block; font-size: 0.8rem; color: #68676b; margin-top: 0.15rem; }
-        .nq-cat__stock { display: inline-block; margin-left: 0.5rem; font-family: 'Oswald', sans-serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; color: #3f8f5c; vertical-align: baseline; }
-        .nq-cat__stock.is-low { padding: 0.15rem 0.6rem; border-radius: 999px; background: #fdecea; color: #c0392b; font-weight: 700; }
-        .nq-soldout { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; font-size: 0.95rem; color: #68676b; }
-        .nq-empty { color: #68676b; }
-        .nq-more { display: inline-block; margin-top: 1.25rem; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; font-size: 0.95rem; color: var(--ra-red); text-decoration: none; }
-        .nq-more:hover { text-decoration: underline; }
-    </style>
+    var selected = Model.Categories
+        .Where(c => c.Available && Model.QuantityOf(c.TierId) > 0)
+        .Select(c => $"{Model.QuantityOf(c.TierId)} × {c.Name}")
+        .ToList();
 }
 
 @if (!Model.HasEvent)
 {
-    <a href="/ticketing/" class="tk-back">&larr; Zur Übersicht</a>
     <p class="nq-empty">Aktuell steht kein Anlass zum Direktkauf bereit.</p>
 }
 else
 {
-    <a href="/ticketing/" class="tk-back">&larr; Zur Übersicht</a>
-
-    <div class="nq-facts">
-        <div class="nq-fact">
-            <span class="nq-fact__label">Datum</span>
-            <span class="nq-fact__value">@Model.Date.ToDateTime(TimeOnly.MinValue).ToString("dddd, dd.MM.yyyy", culture)</span>
-        </div>
-        @if (!Model.TimeUnknown)
+    <h1 class="nq-title">@Model.Title</h1>
+    <div class="nq-rule"></div>
+    <div class="nq-meta">
+        @if (!string.IsNullOrEmpty(Model.HomeLogoUrl))
         {
-            <div class="nq-fact">
-                <span class="nq-fact__label">Zeit</span>
-                <span class="nq-fact__value">@Model.StartTime.ToString("HH:mm") Uhr</span>
-            </div>
+            <img src="@Model.HomeLogoUrl" alt="Heimteam" />
         }
-        @if (!string.IsNullOrWhiteSpace(Model.VenueName))
+        @if (!string.IsNullOrEmpty(Model.AwayLogoUrl))
         {
-            <div class="nq-fact">
-                <span class="nq-fact__label">Ort</span>
-                <span class="nq-fact__value">@Model.VenueName</span>
-            </div>
+            <img src="@Model.AwayLogoUrl" alt="Auswärtsteam" />
         }
+        <span class="nq-meta__text">
+            @Model.Date.ToDateTime(TimeOnly.MinValue).ToString("ddd dd.MM.yyyy", culture)@if (!Model.TimeUnknown)
+            {<text> · @Model.StartTime.ToString("HH:mm") Uhr</text>}@if (!string.IsNullOrWhiteSpace(Model.VenueName))
+            {<text> · @Model.VenueName</text>}
+        </span>
     </div>
-
-    @if (!string.IsNullOrEmpty(Model.HomeLogoUrl) || !string.IsNullOrEmpty(Model.AwayLogoUrl))
-    {
-        <div class="nq-logos">
-            @if (!string.IsNullOrEmpty(Model.HomeLogoUrl)) { <img src="@Model.HomeLogoUrl" alt="Heimteam" /> }
-            <span class="vs">vs</span>
-            @if (!string.IsNullOrEmpty(Model.AwayLogoUrl)) { <img src="@Model.AwayLogoUrl" alt="Auswärtsteam" /> }
-        </div>
-    }
 
     @if (!string.IsNullOrEmpty(Model.Error))
     {
-        <div class="alert alert-danger">@Model.Error</div>
+        <p class="nq-error" role="alert">@Model.Error</p>
     }
 
-    <form method="post" action="/next/buy">
+    <form class="nq-form" id="nqForm" method="post" action="/next/buy" data-nq-max="@Model.MaxPerCategory">
         @Html.AntiForgeryToken()
         <input type="hidden" name="eventId" value="@Model.EventId" />
 
-        <div class="mb-3">
-            <label class="form-label fw-bold" for="nqEmail">E-Mail *</label>
-            <input class="form-control" type="email" id="nqEmail" name="email" required
-                   autocomplete="email" inputmode="email" placeholder="für die Ticket-Zustellung" value="@Model.Email" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label" for="nqName">Name <span class="text-muted">(optional)</span></label>
-            <input class="form-control" type="text" id="nqName" name="name" autocomplete="name" value="@Model.Name" />
-        </div>
-
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" name="acceptPrivacy" value="true" id="nqPrivacy" required />
-            <label class="form-check-label" for="nqPrivacy">
-                Ich akzeptiere die <a href="/agb" target="_blank" rel="noopener">AGB</a> und die <a href="/datenschutz" target="_blank" rel="noopener">Datenschutzerklärung</a>. *
-            </label>
-        </div>
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" name="acceptNewsletter" value="true" id="nqNewsletter" />
-            <label class="form-check-label" for="nqNewsletter">
-                Ich möchte den Newsletter der Red Ants abonnieren.
-            </label>
-        </div>
-
-        @if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
-        {
-            <div class="cf-turnstile mt-3" data-sitekey="@Model.TurnstileSiteKey"></div>
-        }
-
-        <h2 class="nq-section-title">Tickets</h2>
         @if (Model.Categories.Count == 0)
         {
             <p class="nq-empty">Für diesen Anlass sind aktuell keine Tickets verfügbar.</p>
@@ -119,53 +52,86 @@ else
         {
             foreach (var cat in Model.Categories)
             {
-                <div class="nq-cat">
-                    <div>
-                        <span class="nq-cat__name">@cat.Name@if (cat.AgeText is { } ageText)
-                            {<span class="nq-cat__age"> (@ageText)</span>}</span>
-                        @if (cat.OriginalPrice is { } orig)
-                        {
-                            <span class="nq-cat__price"><s style="opacity:.6">CHF @MoneyFormat.Chf(orig)</s> CHF @MoneyFormat.Chf(cat.Price)</span>
-                        }
-                        else
-                        {
-                            <span class="nq-cat__price">CHF @MoneyFormat.Chf(cat.Price)</span>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(cat.ActionText))
-                        {
-                            <span class="nq-cat__action">@cat.ActionText</span>
-                        }
-                        @if (cat.AvailableUntil is { } until)
-                        {
-                            <span class="nq-cat__note">verfügbar bis @until.ToString("dd.MM.yyyy")</span>
-                        }
-                        @if (cat.Remaining is { } rem)
-                        {
-                            <span class="nq-cat__stock @(rem <= 10 ? "is-low" : "")">@(rem <= 0 ? "Ausverkauft" : rem == 1 ? "Nur noch 1 verfügbar" : rem <= 10 ? $"Nur noch {rem} verfügbar" : $"Noch {rem} verfügbar")</span>
-                        }
+                var quantity = Model.QuantityOf(cat.TierId);
+                <div class="nq-cat @(quantity > 0 ? "nq-cat--active" : "")"
+                     data-nq-row data-nq-name="@cat.Name" data-nq-limit="@Model.LimitOf(cat)"
+                     data-nq-price="@cat.Price.ToString(CultureInfo.InvariantCulture)">
+                    <div class="nq-cat__text">
+                        <span class="nq-cat__name">@cat.Name</span>
+                        <span class="nq-cat__meta">
+                            @if (cat.AgeText is { } ageText)
+                            {<text>@ageText · </text>}@if (cat.OriginalPrice is { } original)
+                            {<s>CHF @MoneyFormat.Chf(original)</s><text> </text>}CHF @MoneyFormat.Chf(cat.Price)@if (!string.IsNullOrWhiteSpace(cat.ActionText))
+                            {<text> · </text><span class="nq-cat__action">@cat.ActionText</span>}@if (cat.AvailableUntil is { } until)
+                            {<text> · bis @until.ToString("dd.MM.yyyy")</text>}@if (cat.Available && cat.Remaining is { } remaining && remaining <= 10)
+                            {<text> · </text><span class="nq-cat__low">@(remaining == 1 ? "nur noch 1" : $"nur noch {remaining}")</span>}
+                        </span>
                     </div>
                     @if (cat.Available)
                     {
-                        <button type="submit" name="tierId" value="@cat.TierId" class="btn btn-danger">Kaufen</button>
+                        <div class="nq-step">
+                            <button type="button" class="nq-step__btn" data-nq-step="-1" aria-label="@cat.Name: ein Ticket weniger">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#101010" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+                            </button>
+                            <input class="nq-step__value @(quantity > 0 ? "" : "nq-step__value--zero")" type="number"
+                                   inputmode="numeric" min="0" max="@Model.LimitOf(cat)" step="1"
+                                   name="quantities[@cat.TierId]" value="@quantity"
+                                   data-nq-input aria-label="Anzahl @cat.Name" />
+                            <button type="button" class="nq-step__btn nq-step__btn--plus" data-nq-step="1" aria-label="@cat.Name: ein Ticket mehr">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                            </button>
+                        </div>
                     }
                     else
                     {
-                        <span class="nq-soldout">Ausverkauft</span>
+                        <span class="nq-cat__out">Ausverkauft</span>
                     }
                 </div>
             }
         }
 
-        @if (!string.IsNullOrEmpty(Model.EventUrl))
+        <label class="nq-label" for="nqEmail">E-Mail für die Tickets *</label>
+        <input class="nq-input" type="email" id="nqEmail" name="email" required
+               autocomplete="email" inputmode="email" placeholder="name@@example.ch" value="@Model.Email" />
+
+        <div class="nq-check">
+            <input type="checkbox" name="acceptPrivacy" value="true" id="nqPrivacy" required />
+            <label for="nqPrivacy">
+                Ich akzeptiere <a href="/agb" target="_blank" rel="noopener">AGB</a> und
+                <a href="/datenschutz" target="_blank" rel="noopener">Datenschutz</a>. *
+            </label>
+        </div>
+        <div class="nq-check">
+            <input type="checkbox" name="acceptNewsletter" value="true" id="nqNewsletter" />
+            <label for="nqNewsletter">Newsletter der Red Ants abonnieren</label>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
         {
-            <a href="@Model.EventUrl" class="nq-more">Mehrere Tickets kaufen? Zur normalen Ticketseite &rarr;</a>
+            <div class="nq-captcha cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-appearance="interaction-only"></div>
         }
 
-        <p class="text-muted small mt-3 mb-0">Alle Preise verstehen sich ohne MwSt. Der Verein ist nicht mehrwertsteuerpflichtig.</p>
+        <button class="nq-buy" type="submit" id="nqBuy">
+            <span class="nq-buy__label" id="nqBuyLabel">@(Model.TotalQuantity == 0 ? "Anzahl wählen" : $"Kaufen · CHF {MoneyFormat.Chf(Model.Total)}")</span>
+            <span class="nq-buy__detail" id="nqBuyDetail">@(selected.Count == 0 ? "noch nichts gewählt" : string.Join(", ", selected))</span>
+        </button>
+
+        <p class="nq-fine">
+            Alle Tickets kommen in einer E-Mail, jedes mit eigenem QR-Code. Alle Preise verstehen sich ohne MwSt.,
+            der Verein ist nicht mehrwertsteuerpflichtig.
+            @if (!string.IsNullOrEmpty(Model.EventUrl))
+            {
+                <a href="@Model.EventUrl">Saisonkarten und grössere Mengen</a><text> · </text>
+            }
+            <a href="/impressum">Impressum</a>
+        </p>
     </form>
 }
 
-@if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
-{
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+@section Scripts {
+    <script src="/_content/RedAnts.Ticketing/js/next-quickbuy.js" asp-append-version="true"></script>
+    @if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
+    {
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    }
 }
