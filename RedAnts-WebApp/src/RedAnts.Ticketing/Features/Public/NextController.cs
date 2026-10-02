@@ -23,8 +23,7 @@ public sealed class NextController(GetNextEvent.Handler nextEvent, GetCheckoutSe
             target.Id, target.Name,
             target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,
             target.Date, target.StartTime, target.TimeUnknown,
-            target.VenueName, target.Categories,
-            entered.Count > 0 ? entered : FirstCategoryPreselected(target.Categories),
+            target.VenueName, target.Categories, entered,
             error, email, siteKey, target.Url);
         return View("NextQuickBuy", model);
     }
@@ -34,12 +33,6 @@ public sealed class NextController(GetNextEvent.Handler nextEvent, GetCheckoutSe
         .Select(part => part.Split(':'))
         .Where(pair => pair.Length == 2 && int.TryParse(pair[0], out _) && int.TryParse(pair[1], out _))
         .ToDictionary(pair => int.Parse(pair[0]), pair => int.Parse(pair[1]));
-
-    private static Dictionary<int, int> FirstCategoryPreselected(IReadOnlyList<AvailableTicketCategory> categories)
-    {
-        var first = categories.FirstOrDefault(c => c.Available);
-        return first is null ? [] : new Dictionary<int, int> { [first.TierId] = 1 };
-    }
 
     [HttpGet("/next/embed")]
     public async Task<IActionResult> Embed()

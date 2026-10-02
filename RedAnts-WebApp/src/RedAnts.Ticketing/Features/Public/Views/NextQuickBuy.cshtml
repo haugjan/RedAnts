@@ -108,7 +108,7 @@ else
 
         @if (!string.IsNullOrEmpty(Model.TurnstileSiteKey))
         {
-            <div class="nq-captcha cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-appearance="interaction-only"></div>
+            <div class="nq-captcha cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-size="flexible"></div>
         }
 
         <button class="nq-buy" type="submit" id="nqBuy">

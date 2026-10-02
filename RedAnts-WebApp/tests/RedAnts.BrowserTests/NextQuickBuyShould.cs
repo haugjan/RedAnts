@@ -35,9 +35,11 @@ public sealed class NextQuickBuyShould(BrowserFixture browser)
         await Assertions.Expect(row).ToBeVisibleAsync(new() { Timeout = 30_000 });
 
         var minus = row.Locator("[data-nq-step='-1']");
-        for (var click = await QuantityOfAsync(row); click > 0; click--)
-            await minus.ClickAsync();
+        await Assertions.Expect(minus).ToBeDisabledAsync();
+        await row.Locator("[data-nq-step='1']").ClickAsync();
+        await minus.ClickAsync();
 
+        Assert.Equal(0, await QuantityOfAsync(row));
         await Assertions.Expect(minus).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("#nqBuy")).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("#nqBuyLabel")).ToContainTextAsync("Anzahl wählen");
@@ -70,14 +72,23 @@ public sealed class NextQuickBuyShould(BrowserFixture browser)
         var rows = page.Locator("[data-nq-row]");
         await Assertions.Expect(rows.First).ToBeVisibleAsync(new() { Timeout = 30_000 });
         await rows.First.Locator("[data-nq-step='1']").ClickAsync();
+        await rows.First.Locator("[data-nq-step='1']").ClickAsync();
         await rows.Nth(1).Locator("[data-nq-step='1']").ClickAsync();
 
         await page.FillAsync("#nqEmail", "agent-quickbuy@redants.ch");
         await page.CheckAsync("#nqPrivacy");
-        await page.ClickAsync("#nqBuy");
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await WaitForCaptchaAsync(page);
+        await page.RunAndWaitForResponseAsync(
+            async () => await page.ClickAsync("#nqBuy"),
+            response => response.Url.Contains("/next/buy", StringComparison.OrdinalIgnoreCase));
+        await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+
+        var rejected = page.Locator(".nq-error");
+        if (await rejected.CountAsync() > 0)
+            Assert.Fail($"Der Kauf wurde abgewiesen: {await rejected.InnerTextAsync()}");
 
         if (page.Url.Contains("payrexx", StringComparison.OrdinalIgnoreCase)) return;
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
         await Assertions.Expect(page.Locator(".ra-ticket-cell")).ToHaveCountAsync(3);
 
@@ -91,6 +102,15 @@ public sealed class NextQuickBuyShould(BrowserFixture browser)
         Assert.NotNull(firstTicket);
         Assert.True(firstTicket.Y < 607,
             $"Das erste Ticket beginnt erst bei {firstTicket.Y} px, auf dem iPhone SE sieht man also nicht mehr, dass unten Tickets folgen.");
+    }
+
+    private static async Task WaitForCaptchaAsync(IPage page)
+    {
+        if (await page.Locator(".cf-turnstile").CountAsync() == 0) return;
+        await page.WaitForFunctionAsync(
+            @"() => { const token = document.querySelector('input[name=""cf-turnstile-response""]'); return !!token && token.value.length > 0; }",
+            null,
+            new PageWaitForFunctionOptions { Timeout = 20_000 });
     }
 
     private async Task<IPage> OpenAsync()
