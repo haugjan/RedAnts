@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="/" />
+    <title>Matchuhr</title>
+    <link rel="stylesheet" href="app.css" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <div id="components-reconnect-modal">Verbindung zum Server unterbrochen …</div>
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script src="reconnect.js"></script>
+</body>
+</html>

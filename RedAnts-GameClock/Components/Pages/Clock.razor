@@ -1,0 +1,62 @@
+@page "/"
+@implements IDisposable
+@inject ClockHub Hub
+@inject IOptions<GameClockOptions> Options
+
+<div class="screen @(state.IsBreak ? "pause" : "") @(Offline ? "offline" : "")">
+    <div class="stage">
+        <div class="time">@state.Time</div>
+        <div class="row">
+            <img class="ra" src="@Options.Value.Home.Logo" alt="@Options.Value.Home.Name" />
+            <span>@state.HomeScore : @state.GuestScore</span>
+            @if (Options.Value.FindGuest(state.Guest) is { } guest)
+            {
+                <img src="@guest.Logo" alt="@guest.Name" />
+            }
+            else
+            {
+                <span class="abbr">@state.Guest</span>
+            }
+        </div>
+        <div class="per">@state.PeriodLabel</div>
+    </div>
+    <div class="status"><i></i><span>@StatusText</span></div>
+</div>
+
+@code {
+    static readonly TimeSpan OfflineAfter = TimeSpan.FromSeconds(3);
+
+    ClockState state = ClockState.Empty;
+    Timer? watchdog;
+
+    TimeSpan Age => DateTime.Now - state.Received;
+    bool Offline => !state.HasData || Age > OfflineAfter;
+
+    string StatusText => !state.HasData ? "Warte auf Matchuhr …"
+        : Offline ? $"Keine Daten von der Matchuhr seit {Age.TotalSeconds:0} s"
+        : "live";
+
+    protected override void OnInitialized()
+    {
+        state = Hub.Current;
+        Hub.Changed += OnChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+            watchdog = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    void OnChanged(ClockState next) => InvokeAsync(() =>
+    {
+        state = next;
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Hub.Changed -= OnChanged;
+        watchdog?.Dispose();
+    }
+}

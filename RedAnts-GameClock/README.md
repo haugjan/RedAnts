@@ -1,6 +1,6 @@
 # RedAnts GameClock (Matchuhr)
 
-Kleine Webapp (.NET 8, ASP.NET Core), die die UDP-Telegramme der Hallen-Matchuhr empfängt und Spielzeit, Spielstand und Drittel live im Browser anzeigt. Schwarzer Hintergrund, Zeit maximal gross, Logos Red Ants (immer Heim) und Gastteam.
+Kleine Blazor-Server-Webapp (.NET 8), die die UDP-Telegramme der Hallen-Matchuhr empfängt und Spielzeit, Spielstand und Drittel live im Browser anzeigt. Schwarzer Hintergrund, Zeit maximal gross, Logos Red Ants (immer Heim) und Gastteam.
 
 ## Starten
 
@@ -30,8 +30,17 @@ Die Anzeige läuft unter `http://localhost:5080/` und von anderen Geräten unter
 | `GameClock:Port` | `50085` | UDP-Port, auf dem die Matchuhr sendet |
 | `GameClock:Ip` | `172.20.1.143` | Absender-IP der Matchuhr, `any` für alle |
 | `GameClock:LogDir` | `logs` | Rohdaten-Log, eine Zeile pro Änderung |
+| `GameClock:Home` | Red Ants | Name und Logo des Heimteams |
+| `GameClock:Guests` | BEO, UBO | Gastteams, Schlüssel = Kürzel, das die Uhr sendet; Logos unter `wwwroot/logos/` |
 
-Gastteams mit Logo stehen in `wwwroot/teams.json` (Schlüssel = Kürzel, das die Uhr sendet). Ohne Eintrag zeigt die Anzeige das Kürzel als Text.
+Ohne Eintrag in `Guests` zeigt die Anzeige das Kürzel als Text.
+
+## Aufbau
+
+- `UdpReceiver` (Hosted Service) liest die Telegramme, schreibt Änderungen ins Rohdaten-Log und reicht sie an `ClockHub` weiter (bei Änderung sofort, sonst 1x pro Sekunde).
+- `Components/Pages/Clock.razor` (Interactive Server) abonniert `ClockHub.Changed` und zeigt nach 3 s ohne Daten einen Hinweis.
+- `wwwroot/reconnect.js` startet Blazor mit unbegrenzten Reconnect-Versuchen und lädt die Seite neu, wenn der Server die Sitzung nicht mehr kennt (z.B. nach Neustart).
+- `GET /api/state` liefert den aktuellen Stand als JSON.
 
 ## Telegramm der Matchuhr
 
