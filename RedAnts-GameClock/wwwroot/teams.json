@@ -1,0 +1,7 @@
+{
+  "home": { "name": "Red Ants", "logo": "logos/redants.png" },
+  "guests": {
+    "BEO": { "name": "UH Berner Oberland", "logo": "logos/beo.webp" },
+    "UBO": { "name": "UH Berner Oberland", "logo": "logos/beo.webp" }
+  }
+}
