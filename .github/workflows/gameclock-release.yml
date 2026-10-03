@@ -36,24 +36,26 @@ jobs:
       - name: Publish
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          PACKAGE="$RUNNER_TEMP/package"
           for RID in win-x64 linux-x64 linux-arm64; do
             dotnet publish RedAnts.GameClock.csproj -c Release -r "$RID" --self-contained true \
-              -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
-              -p:Version="$VERSION" -o "package/$RID"
-            echo "$VERSION" > "package/$RID/release.txt"
+              -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none \
+              -p:Version="$VERSION" -o "$PACKAGE/$RID"
+            echo "$VERSION" > "$PACKAGE/$RID/release.txt"
           done
-          cp Start-GameClock.ps1 Start-GameClock.cmd package/win-x64/
-          cp start-gameclock.sh package/linux-x64/
-          cp start-gameclock.sh package/linux-arm64/
-          chmod +x package/linux-*/RedAnts.GameClock package/linux-*/start-gameclock.sh
+          cp Start-GameClock.ps1 Start-GameClock.cmd "$PACKAGE/win-x64/"
+          cp start-gameclock.sh "$PACKAGE/linux-x64/"
+          cp start-gameclock.sh "$PACKAGE/linux-arm64/"
+          chmod +x "$PACKAGE"/linux-*/RedAnts.GameClock "$PACKAGE"/linux-*/start-gameclock.sh
 
       - name: Assemble packages
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          PACKAGE="$RUNNER_TEMP/package"
           mkdir -p dist
-          (cd package/win-x64 && zip -qr "../../dist/gameclock-$VERSION-win-x64.zip" .)
-          tar -czf "dist/gameclock-$VERSION-linux-x64.tar.gz" -C package/linux-x64 .
-          tar -czf "dist/gameclock-$VERSION-linux-arm64.tar.gz" -C package/linux-arm64 .
+          (cd "$PACKAGE/win-x64" && zip -qr "$GITHUB_WORKSPACE/RedAnts-GameClock/dist/gameclock-$VERSION-win-x64.zip" .)
+          tar -czf "dist/gameclock-$VERSION-linux-x64.tar.gz" -C "$PACKAGE/linux-x64" .
+          tar -czf "dist/gameclock-$VERSION-linux-arm64.tar.gz" -C "$PACKAGE/linux-arm64" .
           cp Start-GameClock.ps1 Start-GameClock.cmd start-gameclock.sh dist/
 
       - uses: actions/upload-artifact@v4
