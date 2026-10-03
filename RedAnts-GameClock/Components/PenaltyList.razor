@@ -1,0 +1,17 @@
+<div class="penalties @Side">
+    @foreach (var penalty in Penalties)
+    {
+        <div class="penalty">
+            @if (penalty.Player.Length > 0)
+            {
+                <span class="player">#@penalty.Player</span>
+            }
+            <span class="ptime">@penalty.Time</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Penalty> Penalties { get; set; } = [];
+    [Parameter, EditorRequired] public string Side { get; set; } = "";
+}

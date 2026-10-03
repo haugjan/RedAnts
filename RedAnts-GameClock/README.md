@@ -52,12 +52,16 @@ UDP, UTF-32 Big-Endian, alle 100 ms, Felder mit `;` getrennt:
 
 | Index | Bedeutung |
 |---|---|
-| 0 | Zeit (`mm:ss`; Spielzeit zählt aufwärts, Pause und Timeout abwärts) |
+| 0 | Zeit: `mm:ss`, in der letzten Minute `ss.z` (Zehntel, rot angezeigt); Spielzeit zählt aufwärts, Pause und Timeout abwärts |
 | 1 / 2 | Tore Heim / Gast |
-| 3 | Drittel |
+| 3 | Periode: 1–3 Drittel, 4 Verlängerung, 5 Penaltyschiessen (5 ist eine Annahme) |
+| 4 / 5 | Strafe Heim 1 / 2: `<Nr> <mm:ss>`, leer ohne Strafe |
+| 6 / 7 | Strafe Gast 1 / 2 |
 | 10 / 11 | Kürzel Heim / Gast |
-| 12 | Modus: `GAME TIME`, `INTERMISSION`, `TIME-OUT` |
-| 4–9, 13–19 | noch nicht entschlüsselt (Strafen vermutet); siehe Rohdaten-Log |
+| 12 | Modus: `GAME TIME`, `INTERMISSION` (Pause), `TIME-OUT`; laut iCast ausserdem Warmup, Time to Warmup, Time to Face-Off, Local Time |
+| 8–9, 13–19 | nicht entschlüsselt; siehe Rohdaten-Log |
+
+Die Quelle ist die Scoreboard-Ausgabe von iCast (iCast Sweden AB). Die Belegung der Strafenfelder stammt aus dem bestehenden Node-RED-Flow für vMix und ist noch nicht an einer echten Strafe überprüft.
 
 Zeigt die Hallenuhr die Tageszeit, sendet sie nichts; die Anzeige blendet dann nach 3 s ab.
 

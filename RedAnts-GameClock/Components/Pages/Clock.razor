@@ -5,10 +5,11 @@
 
 <div class="screen @(state.IsBreak ? "pause" : "") @(Offline ? "offline" : "")">
     <div class="stage">
-        <div class="time">@state.Time</div>
+        <div class="time @(state.IsLastMinute && state.IsGameTime ? "last-minute" : "")">@state.Time</div>
         <div class="row">
+            <PenaltyList Penalties="state.HomePenalties" Side="home" />
             <img class="ra" src="@Options.Value.Home.Logo" alt="@Options.Value.Home.Name" />
-            <span>@state.HomeScore : @state.GuestScore</span>
+            <span class="score">@state.HomeScore : @state.GuestScore</span>
             @if (Options.Value.FindGuest(state.Guest) is { } guest)
             {
                 <img src="@guest.Logo" alt="@guest.Name" />
@@ -17,8 +18,9 @@
             {
                 <span class="abbr">@state.Guest</span>
             }
+            <PenaltyList Penalties="state.GuestPenalties" Side="guest" />
         </div>
-        <div class="per">@state.PeriodLabel</div>
+        <div class="per @(state.Period is ClockState.Overtime or ClockState.Shootout && state.IsGameTime ? "extra" : "")">@state.PeriodLabel</div>
     </div>
     <div class="status"><i></i><span>@StatusText</span></div>
 </div>

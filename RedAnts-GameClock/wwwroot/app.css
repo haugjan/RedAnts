@@ -11,12 +11,20 @@ body { font-family: 'Teko', 'Bahnschrift', 'Arial Narrow', sans-serif; font-weig
     display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .time { font-size: 30cqw; line-height: .8; font-variant-numeric: tabular-nums; }
-.row { display: flex; align-items: center; gap: 3cqw; margin-top: 2cqw; font-size: 9cqw; font-variant-numeric: tabular-nums; }
+.row { display: grid; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; gap: 3cqw; width: 100%; margin-top: 2cqw; font-size: 9cqw; font-variant-numeric: tabular-nums; }
 .row img { height: 9cqw; width: 9cqw; object-fit: contain; }
 .row .abbr { font-size: 5cqw; color: #aaa; width: 9cqw; text-align: center; }
 img.ra { filter: drop-shadow(0 0 .25cqw rgba(255, 255, 255, .55)); }
 .per { font-size: 3.5cqw; color: #888; letter-spacing: .6cqw; margin-top: 1cqw; min-height: 4.5cqw; }
 .pause .time { color: #ffcf3f; }
+.time.last-minute { color: #ff5a5a; }
+.per.extra { color: #ffcf3f; }
+
+.penalties { display: flex; flex-direction: column; gap: .4cqw; font-size: 4.5cqw; line-height: 1; color: #ffcf3f; font-variant-numeric: tabular-nums; }
+.penalties.home { justify-self: end; align-items: flex-end; }
+.penalties.guest { justify-self: start; align-items: flex-start; }
+.penalty { display: flex; gap: 1.2cqw; align-items: baseline; }
+.penalty .player { color: #aaa; font-size: 3.2cqw; }
 
 .status { position: fixed; right: 12px; bottom: 10px; font: 13px system-ui, sans-serif; color: #555; display: flex; align-items: center; gap: 6px; }
 .status i { width: 8px; height: 8px; border-radius: 50%; background: #2a2; }
