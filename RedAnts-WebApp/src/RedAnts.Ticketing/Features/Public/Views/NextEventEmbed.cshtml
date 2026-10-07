@@ -35,27 +35,25 @@
         .ne-stage { position: relative; flex: 1 1 auto; width: 100%; }
         .ne-slide { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: clamp(0.25rem, 1.4vh, 0.9rem); padding: clamp(0.4rem, 2vh, 0.65rem) 0 0; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
         .ne-slide.is-on { opacity: 1; pointer-events: auto; transition-delay: 0.5s; }
-        .ne-title { width: 100%; text-align: left; text-transform: uppercase; font-weight: 700; font-size: clamp(1.15rem, 6vw, 2.3rem); line-height: 1.05; margin: 0; }
+        .ne-title { width: 100%; text-align: left; text-transform: uppercase; font-weight: 700; font-size: clamp(1.15rem, 6vw, 2.3rem); line-height: 1.05; margin: 0; padding-right: clamp(58px, 18vw, 82px); }
         .ne-title::after { content: ""; display: block; width: 40px; height: 3px; background: var(--red); margin: clamp(0.35rem, 1.6vh, 0.6rem) 0 0; }
         .ne-date { text-transform: uppercase; letter-spacing: 0.05em; color: #555; font-size: clamp(0.85rem, 3.2vw, 1.2rem); margin: 0; }
         .ne-logos { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 4.5vw, 2rem); margin: 0; }
         .ne-logos img { height: clamp(38px, min(15vh, 15vw), 90px); width: auto; object-fit: contain; }
         .ne-vs { font-weight: 700; text-transform: uppercase; font-size: clamp(1.2rem, 5vw, 2rem); color: #999; }
-        .ne-cta { display: inline-block; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; font-size: clamp(0.95rem, 3.8vw, 1.45rem); background: var(--red); color: #fff; text-decoration: none; padding: clamp(0.55rem, 2.2vh, 0.95rem) clamp(1.4rem, 6.5vw, 2.6rem); transition: background 0.15s; }
-        .ne-cta:hover { background: var(--red-dark); color: #fff; }
         .ne-empty { text-transform: uppercase; color: #777; letter-spacing: 0.05em; padding: 1.5rem; margin: auto; }
 
-        .ne--solo .ne-title { font-size: clamp(1.4rem, 7.5vw, 2.9rem); }
-        .ne--solo .ne-logos img { height: clamp(52px, min(22vh, 22vw), 120px); }
-        .ne-awaybar { display: flex; align-items: center; justify-content: center; gap: 0.45rem; flex-wrap: wrap; margin: 0; }
-        .ne-awaytag { background: #2E2E2E; color: #fff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: clamp(0.6rem, 2.4vw, 0.76rem); padding: 0.16rem 0.45rem; }
+        .ne-corner { --corner: clamp(74px, 23vw, 106px); position: absolute; top: 0; right: 0; width: var(--corner); height: var(--corner); overflow: hidden; pointer-events: none; z-index: 1; }
+        .ne-corner span { position: absolute; width: calc(var(--corner) * 1.42); right: calc(var(--corner) * -0.36); top: calc(var(--corner) * 0.24); transform: rotate(45deg); background: var(--red); color: #fff; text-align: center; padding: 0.16rem 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: clamp(0.52rem, 2vw, 0.68rem); }
         .ne-place { margin: 0; font-size: clamp(0.63rem, 2.4vw, 0.78rem); text-transform: uppercase; letter-spacing: 0.05em; color: #9a9a9a; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .ne-home { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; margin-top: clamp(0.3rem, 1.4vh, 0.6rem); padding: 0.52rem 0.6rem; background: var(--red); color: #fff; text-decoration: none; transition: background 0.15s; }
         .ne-home:hover { background: var(--red-dark); color: #fff; }
-        .ne-home-text { flex: 1 1 auto; min-width: 0; text-align: left; text-transform: uppercase; letter-spacing: 0.04em; font-size: clamp(0.64rem, 2.5vw, 0.8rem); color: rgba(255, 255, 255, 0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .ne-home-text b { color: #fff; font-weight: 700; }
-        .ne-home-go { flex: 0 0 auto; text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; font-size: clamp(0.64rem, 2.5vw, 0.8rem); color: #fff; }
+        .ne-home-text { flex: 1 1 auto; min-width: 0; text-align: left; text-transform: uppercase; color: #fff; }
+        .ne-home-kicker { display: block; font-size: clamp(0.54rem, 2.1vw, 0.66rem); font-weight: 700; letter-spacing: 0.12em; color: rgba(255, 255, 255, 0.78); line-height: 1.2; }
+        .ne-home-line { display: block; font-weight: 700; font-size: clamp(0.66rem, 2.6vw, 0.84rem); letter-spacing: 0.03em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ne-home-go { flex: 0 0 auto; text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; font-size: clamp(0.64rem, 2.5vw, 0.8rem); background: #fff; color: var(--red); padding: 0.3rem 0.6rem; }
+        .ne-home:hover .ne-home-go { color: var(--red-dark); }
 
         .ne-dots { flex: 0 0 auto; display: flex; justify-content: flex-end; align-items: center; gap: 0.35rem; padding: 0.3rem 0.15rem 0.15rem; }
         .ne-dot { width: 0.52rem; height: 0.52rem; border-radius: 50%; border: 1px solid #c4c4c4; background: #fff; padding: 0; cursor: pointer; }
@@ -73,23 +71,17 @@
     }
     else
     {
-        <div class="ne @(Model.Games.Count == 1 ? "ne--solo" : "")">
+        <div class="ne">
             <div class="ne-stage">
                 @foreach (var game in Model.Games)
                 {
                     <div class="ne-slide @(game.IsAway ? "ne-slide--away" : "ne-slide--home")">
-                        <h1 class="ne-title">@game.Title</h1>
                         @if (game.IsAway)
                         {
-                            <p class="ne-awaybar">
-                                <span class="ne-awaytag">Auswärts</span>
-                                <span class="ne-date">@LongDate(game)</span>
-                            </p>
+                            <span class="ne-corner"><span>Auswärts</span></span>
                         }
-                        else
-                        {
-                            <p class="ne-date">@LongDate(game)</p>
-                        }
+                        <h1 class="ne-title">@game.Title</h1>
+                        <p class="ne-date">@LongDate(game)</p>
                         @if (!string.IsNullOrEmpty(game.LeftLogoUrl) || !string.IsNullOrEmpty(game.RightLogoUrl))
                         {
                             <div class="ne-logos">
@@ -104,23 +96,21 @@
                                 }
                             </div>
                         }
-                        @if (game.IsAway)
+                        @if (!string.IsNullOrWhiteSpace(game.Place))
                         {
-                            @if (!string.IsNullOrWhiteSpace(game.Place))
-                            {
-                                <p class="ne-place">@game.Place</p>
-                            }
-                            @if (homeGame is not null)
-                            {
-                                <a class="ne-home" href="@RedAnts.Ticketing.Features.Public.NextEventEmbedModel.TicketsUrl(homeGame)" target="_top" rel="noopener">
-                                    <span class="ne-home-text"><b>Heimspiel @ShortDate(homeGame)</b> · @RedAnts.Ticketing.Features.Public.NextEventEmbedModel.Opponent(homeGame)</span>
-                                    <span class="ne-home-go">Tickets kaufen →</span>
-                                </a>
-                            }
+                            <p class="ne-place">@game.Place</p>
                         }
-                        else
+                        @if (homeGame is not null)
                         {
-                            <a class="ne-cta" href="@RedAnts.Ticketing.Features.Public.NextEventEmbedModel.TicketsUrl(game)" target="_top" rel="noopener">Hier Tickets kaufen</a>
+                            <a class="ne-home" href="@RedAnts.Ticketing.Features.Public.NextEventEmbedModel.TicketsUrl(homeGame)" target="_top" rel="noopener">
+                                <span class="ne-home-text">
+                                    <span class="ne-home-kicker">@(game.IsAway ? "Nächstes Heimspiel" : "Dieses Heimspiel")</span>
+                                    <span class="ne-home-line">@ShortDate(homeGame) · @(game.IsAway || string.IsNullOrWhiteSpace(homeGame.Place)
+                                                                                 ? RedAnts.Ticketing.Features.Public.NextEventEmbedModel.Opponent(homeGame)
+                                                                                 : homeGame.Place)</span>
+                                </span>
+                                <span class="ne-home-go">Tickets kaufen</span>
+                            </a>
                         }
                     </div>
                 }
