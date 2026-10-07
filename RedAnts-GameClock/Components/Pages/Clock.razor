@@ -7,7 +7,7 @@
 
 <div class="screen @(state.IsBreak ? "pause" : "") @(Offline ? "offline" : "")">
     <div class="stage">
-        <div class="time @(state.IsLastMinute && state.IsGameTime ? "last-minute" : "")">@state.Time</div>
+        <div class="time @(state.IsLastMinute && state.IsGameTime ? "last-minute" : "")"><ClockDigits Value="@state.Time" /></div>
         <div class="row">
             <PenaltyList Penalties="state.HomePenalties" Side="home" />
             <TeamBadge Team="Teams.Home(state)" Class="ra" />

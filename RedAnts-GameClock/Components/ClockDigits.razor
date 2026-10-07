@@ -1,0 +1,10 @@
+@foreach (var character in Value)
+{
+    <span class="@(Separators.Contains(character) ? "sep" : "digit")">@character</span>
+}
+
+@code {
+    const string Separators = ":.";
+
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+}
