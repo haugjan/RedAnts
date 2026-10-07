@@ -140,35 +140,46 @@ Zeigt die Hallenuhr die Tageszeit, sendet sie nichts; die Anzeige blendet dann n
 
 ## Telegramm der Matchuhr (Bodet ScorePad)
 
-Der ScorePad baut über seinen RJ45-Port eine TCP-Verbindung zu dieser Anzeige auf (Standard-Port 4001). Jede Nachricht
-ist ein Rahmen:
+Der ScorePad baut über seinen RJ45-Port eine TCP-Verbindung zu dieser Anzeige auf. Einzurichten im
+`Menu technicien` (Code 4934) unter `communication Protocols`: Protokoll **TV** anlegen, IP-Adresse und Port dieses
+Rechners eintragen, Sportart starten. Der Ausgang gibt es nur auf der MAIN-Tastatur.
+
+Jede Nachricht ist ein Rahmen:
 
 ```
-01      7f       02     47 31 31 ...        03     2d
-SOH   Adresse   STX    Nutzdaten           ETX    LRC
+01      7f       02     47      31 31 ...        03     2d
+SOH   Adresse   STX   CTRL    Nachricht         ETX    LRC
 ```
 
-Die LRC ist das XOR aller Bytes ab Index 1 bis und mit ETX, danach `& 0x7F`; ein Ergebnis unter `0x20` wird um `0x20`
-erhöht. Die beiden Bytes an Index 4 und 5 sind die Nachrichtennummer als ASCII-Ziffern. Ein Leerzeichen (`0x20`) steht
-in Zahlenfeldern für eine führende Null.
+Die LRC ist das XOR aller Bytes ab SOH (ausgeschlossen) bis und mit ETX, danach `LRC = LRC and 0x7f`, und
+`IF LRC < 32 THEN LRC = LRC + 32`. Die beiden ersten Nachrichtenbytes sind die Nummer als ASCII-Ziffern. Ein
+Leerzeichen (`0x20`) steht in Zahlenfeldern für eine führende Null, `'7'` ist die Kennung für Floorball.
+
+Byteangaben hier als Index im ganzen Rahmen ab 0:
 
 | Nachricht | Index | Bedeutung |
 |---|---|---|
-| **11** | 8–9 / 10–11 | Minuten / Sekunden |
+| **11** Spielstand | 6 / 7 | Statuswort (Bit 1: 1 = Uhr steht) / Sportart |
+| | 8–9 / 10–11 | Minuten / Sekunden |
 | | 12–14 / 15–17 | Tore Heim / Gast, dreistellig |
-| | 18 | Periode |
-| **12** | 8 / 9–10 | Strafe Heim 1: Minuten / Sekunden |
-| | 12 / 13–14 | Strafe Heim 2 |
-| **13** | 8 / 9–10, 12 / 13–14 | Strafen Gast 1 und 2 |
+| | 18 | Nummer des laufenden Drittels |
+| **12** Strafen Heim | 7 / 8 / 9–10 | Anzeiger / Minuten / Sekunden der 1. Strafe |
+| | 11 / 12 / 13–14 | dasselbe für die 2. Strafe |
+| **13** Strafen Gast | wie 12 | |
+| **14** dritte Strafe | 7–10 / 11–14 | dritte Strafe Heim / Gast |
+| **15** Spielernummern | 7–12 / 13–18 | Zehner und Einer je Strafe, Heim / Gast; `20H 20H` = keine Nummer |
 
-Beispiel aus der Praxis: `01 7f 02 47 31 31 80 37 20 34 30 37 20 30 31 20 30 30 31 03 2d` ist Nachricht 11 mit
-`04:07`, Stand `1:0`, erstes Drittel; die LRC `0x2d` rechnet sich nach.
+In der letzten Minute läuft die Uhr in Zehnteln. Dann steht an Index 10 statt einer Ziffer das Trennzeichen `'D'`
+(`0x44`), und die Zeit liest sich als `ss.z`, zum Beispiel `56.4`.
 
-Anders als iCast liefert der ScorePad in diesen Nachrichten weder Teamkürzel noch einen Modus, und die Strafen tragen
-keine Spielernummer. Die Anzeige zeigt eine Strafe, solange ihre Zeit nicht `00:00` ist. Die Felder an Index 6 und 7
-führen Statusbits, die hier noch nicht ausgewertet werden. Das Rahmenformat ist an einem echten Telegramm
-nachgerechnet, die offizielle Beschreibung von Bodet (Dokument 608264, "Network output and protocols") ist noch nicht
-gegengelesen.
+Der Anzeiger einer Strafe ist ein Siebensegment-Code, der zwischen zwei Werten blinkt (etwa `0x81` und `0x80`). Die
+Anzeige stützt sich darum nicht darauf, sondern zeigt eine Strafe, solange ihre Zeit nicht `00:00` ist.
+
+Anders als iCast sendet der ScorePad in diesen Nachrichten weder Teamkürzel noch einen Modus; Heim und Gast werden in
+der Konfiguration fest gesetzt. Die Belegung stammt aus Bodets eigener Beschreibung (Dokument 608264B, "Scorepad
+Network output and protocols"); weil `static.bodet-sport.com` nicht mehr auflöst, über das Internet Archive. Das
+dokumentierte Beispiel `01 7f 02 47 31 31 80 37 20 34 30 37 20 30 31 20 30 30 31 03 2d` liest sich damit als `04:07`,
+Stand `1:0`, erstes Drittel, und die LRC `0x2d` rechnet sich nach; beides prüft ein Test.
 
 ## Release
 

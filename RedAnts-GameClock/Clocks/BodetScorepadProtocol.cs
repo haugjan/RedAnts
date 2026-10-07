@@ -10,15 +10,23 @@ public sealed class BodetScorepadProtocol : IClockProtocol
     public const byte StartOfText = 0x02;
     public const byte EndOfText = 0x03;
 
+    public const byte Floorball = (byte)'7';
+    public const byte TenthSeparator = (byte)'D';
+
     public const int MatchMessage = 11;
     public const int HomePenaltyMessage = 12;
     public const int GuestPenaltyMessage = 13;
+    public const int ThirdPenaltyMessage = 14;
+    public const int PlayerNumberMessage = 15;
+
+    static readonly int[] Known =
+        [MatchMessage, HomePenaltyMessage, GuestPenaltyMessage, ThirdPenaltyMessage, PlayerNumberMessage];
 
     public string Key => Id;
 
     public string Name => "Bodet ScorePad";
 
-    public string Description => "Bodet ScorePad über TCP, Rahmen mit SOH/STX/ETX und LRC; die Uhr verbindet sich auf diesen Port";
+    public string Description => "Bodet ScorePad über TCP, Protokoll TV; Rahmen mit SOH/STX/ETX und LRC, die Uhr verbindet sich auf diesen Port";
 
     public int DefaultPort => 4001;
 
@@ -33,8 +41,9 @@ public sealed class BodetScorepadProtocol : IClockProtocol
         var valid = BodetFrame.Take(payload, out _).Where(BodetFrame.IsValid).ToArray();
         if (valid.Length == 0) return 0;
 
-        var known = valid.Count(f => BodetFrame.TypeOf(f) is MatchMessage or HomePenaltyMessage or GuestPenaltyMessage);
-        return Math.Min(60 + known * 20, 100);
+        var known = valid.Count(frame => Known.Contains(BodetFrame.TypeOf(frame)));
+        var floorball = valid.Count(frame => BodetFrame.SportOf(frame) == Floorball);
+        return Math.Min(50 + known * 15 + floorball * 15, 100);
     }
 }
 
@@ -51,6 +60,7 @@ public static class BodetFrame
     public static bool IsValid(byte[] frame) =>
         frame.Length >= 6
         && frame[0] == BodetScorepadProtocol.StartOfHeading
+        && frame[2] == BodetScorepadProtocol.StartOfText
         && frame[^2] == BodetScorepadProtocol.EndOfText
         && frame[^1] == Lrc(frame, frame.Length - 1);
 
@@ -58,6 +68,11 @@ public static class BodetFrame
         frame.Length > 5 && char.IsAsciiDigit((char)frame[4]) && char.IsAsciiDigit((char)frame[5])
             ? (frame[4] - '0') * 10 + (frame[5] - '0')
             : -1;
+
+    public static byte SportOf(byte[] frame) =>
+        TypeOf(frame) == BodetScorepadProtocol.MatchMessage
+            ? At(frame, 7)
+            : At(frame, 6);
 
     public static IReadOnlyList<byte[]> Take(IReadOnlyList<byte> data, out int consumed)
     {
@@ -78,33 +93,46 @@ public static class BodetFrame
         return frames;
     }
 
-    public static int Digit(byte value) => value == 0x20 ? 0 : char.IsAsciiDigit((char)value) ? value - '0' : 0;
+    public static byte At(byte[] frame, int index) => index < frame.Length ? frame[index] : (byte)0x20;
+
+    public static int Digit(byte value) => char.IsAsciiDigit((char)value) ? value - '0' : 0;
 
     public static int Number(byte[] frame, int from, int count)
     {
         var value = 0;
-        for (var i = from; i < from + count; i++)
-            value = value * 10 + (i < frame.Length ? Digit(frame[i]) : 0);
+        for (var i = from; i < from + count; i++) value = value * 10 + Digit(At(frame, i));
         return value;
+    }
+
+    public static string Text(byte[] frame, int from, int count)
+    {
+        var text = new string(Enumerable.Range(from, count).Select(i => (char)At(frame, i)).ToArray()).Trim();
+        return text.All(char.IsAsciiDigit) ? text.TrimStart('0') : "";
     }
 
     public static string Clock(int minutes, int seconds) => $"{minutes:00}:{seconds:00}";
 }
 
+public sealed record BodetPenalty(string Time, string Player)
+{
+    public static readonly BodetPenalty None = new("", "");
+
+    public bool Running => Time.Length > 0 && Time != "00:00";
+}
+
 public sealed class BodetParser : IClockParser
 {
     const int MaximumBuffer = 8192;
-    const string NoPenalty = "00:00";
+    const int Slots = 3;
 
     readonly List<byte> _buffer = [];
-    readonly string[] _home = ["", ""];
-    readonly string[] _guest = ["", ""];
+    readonly BodetPenalty[] _home = [BodetPenalty.None, BodetPenalty.None, BodetPenalty.None];
+    readonly BodetPenalty[] _guest = [BodetPenalty.None, BodetPenalty.None, BodetPenalty.None];
 
     string _time = "";
     string _homeScore = "0";
     string _guestScore = "0";
     string _period = "";
-    string _raw = "";
 
     public ClockState? Read(byte[] payload)
     {
@@ -120,12 +148,11 @@ public sealed class BodetParser : IClockParser
         foreach (var frame in valid) seen |= Apply(frame);
         if (!seen || _time.Length == 0) return null;
 
-        _raw = string.Join(" | ", valid.Select(ClockFieldReader.Hex));
-
         return new ClockState(
             _time, _homeScore, _guestScore, _period, "", "", "",
             Penalties(_home), Penalties(_guest),
-            [_time, _homeScore, _guestScore, _period], _raw, DateTime.Now);
+            [_time, _homeScore, _guestScore, _period],
+            string.Join(" | ", valid.Select(ClockFieldReader.Hex)), DateTime.Now);
     }
 
     public string Describe(byte[] payload)
@@ -141,18 +168,33 @@ public sealed class BodetParser : IClockParser
         switch (BodetFrame.TypeOf(frame))
         {
             case BodetScorepadProtocol.MatchMessage when frame.Length >= 20:
-                _time = BodetFrame.Clock(BodetFrame.Number(frame, 8, 2), BodetFrame.Number(frame, 10, 2));
+                _time = ReadClock(frame, 8);
                 _homeScore = BodetFrame.Number(frame, 12, 3).ToString();
                 _guestScore = BodetFrame.Number(frame, 15, 3).ToString();
-                _period = BodetFrame.Digit(frame[18]) is var period && period > 0 ? period.ToString() : "";
+                _period = BodetFrame.Digit(BodetFrame.At(frame, 18)) is var period && period > 0 ? period.ToString() : "";
                 return true;
 
             case BodetScorepadProtocol.HomePenaltyMessage when frame.Length >= 16:
-                ReadPenalties(frame, _home);
+                ReadPenalty(frame, 8, _home, 0);
+                ReadPenalty(frame, 12, _home, 1);
                 return true;
 
             case BodetScorepadProtocol.GuestPenaltyMessage when frame.Length >= 16:
-                ReadPenalties(frame, _guest);
+                ReadPenalty(frame, 8, _guest, 0);
+                ReadPenalty(frame, 12, _guest, 1);
+                return true;
+
+            case BodetScorepadProtocol.ThirdPenaltyMessage when frame.Length >= 16:
+                ReadPenalty(frame, 8, _home, 2);
+                ReadPenalty(frame, 12, _guest, 2);
+                return true;
+
+            case BodetScorepadProtocol.PlayerNumberMessage when frame.Length >= 20:
+                for (var slot = 0; slot < Slots; slot++)
+                {
+                    _home[slot] = _home[slot] with { Player = BodetFrame.Text(frame, 7 + slot * 2, 2) };
+                    _guest[slot] = _guest[slot] with { Player = BodetFrame.Text(frame, 13 + slot * 2, 2) };
+                }
                 return true;
 
             default:
@@ -160,14 +202,19 @@ public sealed class BodetParser : IClockParser
         }
     }
 
-    static void ReadPenalties(byte[] frame, string[] target)
-    {
-        target[0] = BodetFrame.Clock(BodetFrame.Number(frame, 8, 1), BodetFrame.Number(frame, 9, 2));
-        target[1] = BodetFrame.Clock(BodetFrame.Number(frame, 12, 1), BodetFrame.Number(frame, 13, 2));
-    }
+    static string ReadClock(byte[] frame, int from) =>
+        BodetFrame.At(frame, from + 2) == BodetScorepadProtocol.TenthSeparator
+            ? $"{(char)BodetFrame.At(frame, from)}{(char)BodetFrame.At(frame, from + 1)}.{(char)BodetFrame.At(frame, from + 3)}"
+            : BodetFrame.Clock(BodetFrame.Number(frame, from, 2), BodetFrame.Number(frame, from + 2, 2));
 
-    static IReadOnlyList<Penalty> Penalties(string[] times) =>
-        times.Where(time => time.Length > 0 && time != NoPenalty)
-            .Select(time => new Penalty("", time))
+    static void ReadPenalty(byte[] frame, int from, BodetPenalty[] target, int slot) =>
+        target[slot] = target[slot] with
+        {
+            Time = BodetFrame.Clock(BodetFrame.Number(frame, from, 1), BodetFrame.Number(frame, from + 1, 2)),
+        };
+
+    static IReadOnlyList<Penalty> Penalties(BodetPenalty[] penalties) =>
+        penalties.Where(penalty => penalty.Running)
+            .Select(penalty => new Penalty(penalty.Player, penalty.Time))
             .ToList();
 }
