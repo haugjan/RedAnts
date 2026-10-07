@@ -1,0 +1,185 @@
+@inject TeamDirectory Directory
+@inject DataFolder Data
+@inject ClockHub Hub
+
+<section>
+    <h2>Teams und Logos</h2>
+
+    <div class="grid">
+        <div>
+            <label for="season">Saison</label>
+            <input id="season" type="number" min="2000" max="2100" @bind="Config.Teams.Season" />
+        </div>
+        <div>
+            <label for="league">Liga</label>
+            <select id="league" @bind="Config.Teams.GameClass">
+                @foreach (var league in TeamDirectory.Leagues)
+                {
+                    <option value="@league.GameClass">@league.Label</option>
+                }
+            </select>
+        </div>
+        <div class="bottom">
+            <button @onclick="() => Load(true)" disabled="@loading">
+                @(loading ? "Teams werden geladen …" : teams.Count > 0 ? "Liste neu laden" : "Teams laden")
+            </button>
+        </div>
+        <div class="bottom">
+            <button @onclick="AssignAll" disabled="@(teams.Count == 0 || Rows.Count == 0)">Automatisch zuordnen</button>
+        </div>
+    </div>
+
+    <div class="hint">
+        Die Namen und Logos kommen aus der swissunihockey-API. Die Logos werden heruntergeladen und liegen danach
+        lokal, die Anzeige braucht also im Spiel kein Internet. Jeder Name und jedes Logo lässt sich hier überschreiben.
+    </div>
+
+    @if (fault is { } message)
+    {
+        <div class="note">@message</div>
+    }
+    else if (teams.Count > 0)
+    {
+        <div class="hint">@teams.Count Teams geladen.</div>
+    }
+
+    <h2 class="spaced">Heimteam</h2>
+    <table>
+        <tbody>
+            <TeamRow Entry="Config.Teams.Home" Abbreviation="@HomeAbbreviation" Teams="teams" Label="Heim"
+                     OnPick="Pick" OnUpload="Upload" OnClear="Clear" />
+        </tbody>
+    </table>
+    <div class="hint">
+        Das Heimteam gilt, solange die Uhr kein bekanntes Kürzel sendet. Sendet sie eines, zählt die Zuordnung unten.
+    </div>
+
+    <h2 class="spaced">Kürzel der Matchuhr</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Kürzel</th>
+                <th>Name</th>
+                <th>Logo</th>
+                <th>Team aus der Liga</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var (abbreviation, entry) in Rows)
+            {
+                <TeamRow Entry="entry" Abbreviation="@abbreviation" Teams="teams" Label="@abbreviation"
+                         OnPick="Pick" OnUpload="Upload" OnClear="Clear" OnRemove="Remove" />
+            }
+            @if (Rows.Count == 0)
+            {
+                <tr><td colspan="5" class="hint">Noch kein Kürzel bekannt. Sobald die Uhr sendet, erscheint es hier.</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="actions">
+        <input type="text" class="narrow" placeholder="Kürzel, z.B. RED" maxlength="8" @bind="newAbbreviation" />
+        <button @onclick="Add" disabled="@(newAbbreviation.Trim().Length == 0)">Kürzel hinzufügen</button>
+        @if (LiveAbbreviations.Any(a => !Config.Teams.ByAbbreviation.ContainsKey(a)))
+        {
+            <span class="hint">Die Uhr sendet gerade: @string.Join(", ", LiveAbbreviations)</span>
+        }
+    </div>
+</section>
+
+@code {
+    const long MaxLogoBytes = 4L * 1024 * 1024;
+
+    static readonly string[] AllowedExtensions = [".png", ".webp", ".jpg", ".jpeg", ".svg", ".gif"];
+
+    [Parameter, EditorRequired] public GameClockConfig Config { get; set; } = new();
+
+    IReadOnlyList<DirectoryTeam> teams = [];
+    string newAbbreviation = "";
+    string? fault;
+    bool loading;
+
+    string HomeAbbreviation => Hub.Current.Home;
+
+    string[] LiveAbbreviations =>
+        new[] { Hub.Current.Home, Hub.Current.Guest }.Where(a => a.Length > 0).Distinct().ToArray();
+
+    List<KeyValuePair<string, TeamEntry>> Rows
+    {
+        get
+        {
+            foreach (var abbreviation in LiveAbbreviations)
+                if (!Config.Teams.ByAbbreviation.ContainsKey(abbreviation))
+                    Config.Teams.ByAbbreviation[abbreviation] = new TeamEntry();
+            return Config.Teams.ByAbbreviation.OrderBy(e => e.Key, StringComparer.CurrentCulture).ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await Load(false);
+
+    async Task Load(bool refresh)
+    {
+        loading = true;
+        fault = null;
+        try
+        {
+            teams = await Directory.LoadAsync(Config.Teams.Season, Config.Teams.GameClass, refresh, CancellationToken.None);
+            if (teams.Count == 0) fault = "Die swissunihockey-API hat keine Teams geliefert.";
+        }
+        catch (Exception e)
+        {
+            fault = $"Teams konnten nicht geladen werden: {e.Message}. Namen und Logos lassen sich auch von Hand setzen.";
+        }
+        finally { loading = false; }
+    }
+
+    async Task Pick((TeamEntry Entry, DirectoryTeam Team) selection)
+    {
+        selection.Entry.Name = selection.Team.Name;
+        try { selection.Entry.Logo = await Directory.CacheLogoAsync(selection.Team, CancellationToken.None); }
+        catch (Exception e) { fault = $"Logo von {selection.Team.Name} konnte nicht geladen werden: {e.Message}"; }
+    }
+
+    async Task Upload((TeamEntry Entry, IBrowserFile File) upload)
+    {
+        fault = null;
+        var extension = Path.GetExtension(upload.File.Name).ToLowerInvariant();
+        if (!AllowedExtensions.Contains(extension))
+        {
+            fault = $"{upload.File.Name}: nur PNG, WEBP, JPG, SVG oder GIF.";
+            return;
+        }
+
+        var name = $"custom-{Guid.NewGuid():n}{extension}";
+        try
+        {
+            await using var source = upload.File.OpenReadStream(MaxLogoBytes);
+            await using var target = File.Create(Path.Combine(Data.Logos, name));
+            await source.CopyToAsync(target);
+            upload.Entry.Logo = LogoFiles.Url(name);
+        }
+        catch (Exception e) { fault = $"Logo konnte nicht gespeichert werden: {e.Message}"; }
+    }
+
+    void Clear(TeamEntry entry) => entry.Logo = "";
+
+    void Remove(string abbreviation) => Config.Teams.ByAbbreviation.Remove(abbreviation);
+
+    void Add()
+    {
+        var abbreviation = newAbbreviation.Trim().ToUpperInvariant();
+        if (abbreviation.Length > 0) Config.Teams.ByAbbreviation.TryAdd(abbreviation, new TeamEntry());
+        newAbbreviation = "";
+    }
+
+    async Task AssignAll()
+    {
+        foreach (var (abbreviation, entry) in Rows)
+        {
+            if (entry.Name.Length > 0 || entry.Logo.Length > 0) continue;
+            var best = teams.FirstOrDefault(team => TeamMatching.Score(abbreviation, team.Name) >= 70);
+            if (best is not null) await Pick((entry, best));
+        }
+    }
+}

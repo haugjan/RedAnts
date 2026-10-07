@@ -36,3 +36,9 @@ img.ra { filter: drop-shadow(0 0 .25cqw rgba(255, 255, 255, .55)); }
 #components-reconnect-modal.components-reconnect-show,
 #components-reconnect-modal.components-reconnect-failed,
 #components-reconnect-modal.components-reconnect-rejected { display: block; }
+
+.gear { position: fixed; top: 0; right: 0; width: 7rem; height: 7rem; display: flex; align-items: flex-start; justify-content: flex-end; padding: .9rem; opacity: 0; transition: opacity .15s ease; cursor: pointer; }
+.gear:hover, .gear:focus-visible { opacity: .7; }
+.gear svg { width: 1.8rem; height: 1.8rem; fill: #fff; }
+.offline .gear { opacity: .25; }
+.offline .gear:hover { opacity: .8; }

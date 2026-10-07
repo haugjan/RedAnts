@@ -1,0 +1,44 @@
+@page "/setup"
+@inject ConfigStore Store
+@inject NavigationManager Navigation
+
+<div class="setup">
+    <h1>Matchuhr einrichten</h1>
+    <p class="lead">
+        Matchuhr, Teams und vMix werden hier festgelegt. Die Einstellungen liegen in
+        <span class="mono">@Store.File</span> und stehen beim nächsten Start wieder zur Verfügung.
+    </p>
+
+    <ClockSection Config="draft" />
+    <TeamsSection Config="draft" />
+    <VmixSection Config="draft" />
+
+    <div class="sticky">
+        <div class="actions">
+            <button class="primary" @onclick="Save">Speichern und anzeigen</button>
+            <button @onclick="Revert">Verwerfen</button>
+            @if (Store.Current.Configured)
+            {
+                <a class="back" href="/">Zur Anzeige ohne Speichern</a>
+            }
+            else
+            {
+                <span class="hint">Erste Einrichtung: einmal speichern, danach startet die Anzeige direkt.</span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    GameClockConfig draft = new();
+
+    protected override void OnInitialized() => draft = Store.Current.Copy();
+
+    async Task Save()
+    {
+        await Store.SaveAsync(draft);
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+
+    void Revert() => draft = Store.Current.Copy();
+}

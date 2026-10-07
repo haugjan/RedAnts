@@ -1,0 +1,63 @@
+<tr>
+    <td class="tight"><span class="pill">@Label</span></td>
+    <td>
+        <input type="text" placeholder="@Abbreviation" @bind="Entry.Name" />
+    </td>
+    <td class="tight">
+        <div class="badge">
+            @if (Entry.Logo.Length > 0)
+            {
+                <img src="@Entry.Logo" alt="@Entry.Name" />
+                <button title="Logo entfernen" @onclick="() => OnClear.InvokeAsync(Entry)">&times;</button>
+            }
+            else
+            {
+                <InputFile OnChange="Send" accept="image/*" />
+            }
+        </div>
+    </td>
+    <td>
+        <select value="" @onchange="Choose" disabled="@(Teams.Count == 0)">
+            <option value="">@(Teams.Count == 0 ? "keine Liste geladen" : "Team wählen")</option>
+            @foreach (var team in Ranked)
+            {
+                <option value="@team.Id">@(Suggested(team) ? $"{team.Name} (passt zu {Abbreviation})" : team.Name)</option>
+            }
+        </select>
+    </td>
+    <td class="tight">
+        @if (OnRemove.HasDelegate)
+        {
+            <button @onclick="() => OnRemove.InvokeAsync(Abbreviation)">Entfernen</button>
+        }
+    </td>
+</tr>
+
+@code {
+    const int SuggestionScore = 70;
+
+    [Parameter, EditorRequired] public TeamEntry Entry { get; set; } = new();
+    [Parameter, EditorRequired] public string Abbreviation { get; set; } = "";
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<DirectoryTeam> Teams { get; set; } = [];
+    [Parameter] public EventCallback<(TeamEntry Entry, DirectoryTeam Team)> OnPick { get; set; }
+    [Parameter] public EventCallback<(TeamEntry Entry, IBrowserFile File)> OnUpload { get; set; }
+    [Parameter] public EventCallback<TeamEntry> OnClear { get; set; }
+    [Parameter] public EventCallback<string> OnRemove { get; set; }
+
+    IEnumerable<DirectoryTeam> Ranked =>
+        Teams.OrderByDescending(team => TeamMatching.Score(Abbreviation, team.Name))
+            .ThenBy(team => team.Name, StringComparer.CurrentCulture);
+
+    bool Suggested(DirectoryTeam team) =>
+        Abbreviation.Length > 0 && TeamMatching.Score(Abbreviation, team.Name) >= SuggestionScore;
+
+    Task Choose(ChangeEventArgs args)
+    {
+        if (!int.TryParse(args.Value?.ToString(), out var id)) return Task.CompletedTask;
+        var team = Teams.FirstOrDefault(t => t.Id == id);
+        return team is null ? Task.CompletedTask : OnPick.InvokeAsync((Entry, team));
+    }
+
+    Task Send(InputFileChangeEventArgs args) => OnUpload.InvokeAsync((Entry, args.File));
+}

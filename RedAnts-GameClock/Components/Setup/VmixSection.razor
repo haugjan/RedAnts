@@ -1,0 +1,179 @@
+@inject VmixPublisher Publisher
+
+<section>
+    <h2>vMix</h2>
+
+    <div class="check">
+        <input id="vmix-on" type="checkbox" @bind="Config.Vmix.Enabled" />
+        <label for="vmix-on">Spielzeit, Stand, Drittel und Strafen an vMix senden</label>
+    </div>
+
+    <div class="grid">
+        <div>
+            <label for="vmix-host">Adresse</label>
+            <input id="vmix-host" type="text" placeholder="127.0.0.1" @bind="Config.Vmix.Host" />
+        </div>
+        <div>
+            <label for="vmix-port">Port</label>
+            <input id="vmix-port" type="number" min="1" max="65535" @bind="Config.Vmix.Port" />
+            <div class="hint">vMix hört auf 8099.</div>
+        </div>
+        <div>
+            <label for="vmix-input">Titel</label>
+            @if (inputs.Count > 0)
+            {
+                <select id="vmix-input" @bind="Config.Vmix.Input">
+                    @foreach (var input in inputs)
+                    {
+                        <option value="@input.Title">@input.Title (@input.Type)</option>
+                    }
+                </select>
+            }
+            else
+            {
+                <input id="vmix-input" type="text" @bind="Config.Vmix.Input" />
+            }
+        </div>
+        <div class="bottom">
+            <button @onclick="LoadInputs" disabled="@loading">@(loading ? "vMix wird gefragt …" : "Titel aus vMix laden")</button>
+        </div>
+    </div>
+
+    @if (fault is { } message)
+    {
+        <div class="note">@message</div>
+    }
+
+    <div class="actions">
+        <button @onclick="UseLuplPreset">Vorgabe L-UPL einsetzen</button>
+        <span class="hint">
+            Die Vorgabe trifft denselben Titel und dieselben Felder wie TCunihockey:
+            <span class="mono">@VmixSlots.LuplInput</span>.
+        </span>
+    </div>
+
+    <h2 class="spaced">Felder</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Wert</th>
+                <th>Feld in vMix</th>
+                <th>Hinweis</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var slot in VmixSlots.All)
+            {
+                <tr>
+                    <td class="tight">@slot.Label</td>
+                    <td>
+                        <input type="text" list="@ListFor(slot.Kind)" value="@FieldOf(slot.Key)"
+                               @onchange="args => SetField(slot.Key, args)" />
+                    </td>
+                    <td class="hint">@slot.Hint</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <datalist id="vmix-text-fields">
+        @foreach (var name in Selected?.TextFields ?? [])
+        {
+            <option value="@name"></option>
+        }
+    </datalist>
+    <datalist id="vmix-image-fields">
+        @foreach (var name in Selected?.ImageFields ?? [])
+        {
+            <option value="@name"></option>
+        }
+    </datalist>
+
+    <div class="hint">
+        Steht <span class="mono">@VmixSlots.DigitMarker</span> im Feldnamen, geht jede Ziffer einzeln an
+        @string.Join(", ", VmixSlots.DigitPositions) &mdash; so arbeitet der L-UPL-Titel. Ohne die Stelle geht der ganze Wert in ein Feld.
+    </div>
+
+    <div class="grid spaced">
+        <div>
+            <label for="vmix-fill">Farbe der Strafboxen</label>
+            <input id="vmix-fill" type="color" @bind="Config.Vmix.PenaltyFill" />
+            <div class="hint">Wird mit FF sichtbar und mit 00 unsichtbar geschaltet.</div>
+        </div>
+        <div>
+            <div class="check">
+                <input id="vmix-logos" type="checkbox" @bind="Config.Vmix.SendLogos" />
+                <label for="vmix-logos">Logos mitsenden</label>
+            </div>
+            <div class="hint">
+                vMix lädt das Bild selbst von der Festplatte. Das geht nur, wenn die Anzeige auf dem vMix-Rechner läuft.
+            </div>
+        </div>
+    </div>
+
+    <div class="rows spaced">
+        <div class="row2">
+            <span>Verbindung</span>
+            <div>
+                @if (!Publisher.Enabled)
+                {
+                    <span>ausgeschaltet</span>
+                }
+                else if (Publisher.Connected)
+                {
+                    <span class="ok">verbunden</span>
+                }
+                else
+                {
+                    <span class="bad">@(Publisher.Fault ?? "nicht verbunden")</span>
+                }
+            </div>
+        </div>
+        <div class="row2">
+            <span>Gesendet</span>
+            <div>@Publisher.Commands Befehle@(Publisher.LastSent is { } sent ? $", zuletzt {sent:HH:mm:ss}" : "")</div>
+        </div>
+    </div>
+    <div class="hint">Der Stand hier gilt für die gespeicherte Einstellung, nicht für ungespeicherte Änderungen.</div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public GameClockConfig Config { get; set; } = new();
+
+    IReadOnlyList<VmixInput> inputs = [];
+    string? fault;
+    bool loading;
+
+    VmixInput? Selected => inputs.FirstOrDefault(input => input.Title == Config.Vmix.Input);
+
+    static string ListFor(VmixSlotKind kind) =>
+        kind == VmixSlotKind.Image ? "vmix-image-fields" : "vmix-text-fields";
+
+    string FieldOf(string key) => Config.Vmix.Fields.TryGetValue(key, out var field) ? field : "";
+
+    void SetField(string key, ChangeEventArgs args) => Config.Vmix.Fields[key] = args.Value?.ToString()?.Trim() ?? "";
+
+    void UseLuplPreset()
+    {
+        Config.Vmix.Input = VmixSlots.LuplInput;
+        Config.Vmix.Fields = VmixSlots.LuplPreset();
+    }
+
+    async Task LoadInputs()
+    {
+        loading = true;
+        fault = null;
+        try
+        {
+            await using var connection = await VmixConnection.OpenAsync(Config.Vmix.Host, Config.Vmix.Port, CancellationToken.None);
+            var state = await connection.ReadStateAsync(CancellationToken.None);
+            inputs = VmixInput.From(state).Where(input => input.TextFields.Count > 0 || input.ImageFields.Count > 0).ToList();
+            if (inputs.Count == 0) fault = "vMix meldet keinen Titel mit Textfeldern.";
+        }
+        catch (Exception e)
+        {
+            fault = $"vMix auf {Config.Vmix.Host}:{Config.Vmix.Port} antwortet nicht: {e.Message}";
+        }
+        finally { loading = false; }
+    }
+}

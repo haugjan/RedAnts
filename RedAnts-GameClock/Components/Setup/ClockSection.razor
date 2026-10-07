@@ -1,0 +1,227 @@
+@inject ClockProtocols Protocols
+@inject ClockFeed Feed
+@inject ClockHub Hub
+@inject ClockScanner Scanner
+
+<section>
+    <h2>Matchuhr</h2>
+
+    <div class="grid">
+        <div>
+            <label for="protocol">Typ</label>
+            <select id="protocol" value="@Config.Clock.Protocol" @onchange="PickProtocol">
+                @foreach (var protocol in Protocols.All)
+                {
+                    <option value="@protocol.Key">@protocol.Name</option>
+                }
+            </select>
+            <div class="hint">@Protocols.Find(Config.Clock.Protocol).Description</div>
+        </div>
+        <div>
+            <label for="port">UDP-Port</label>
+            <input id="port" type="number" min="1" max="65535" @bind="Config.Clock.Port" />
+        </div>
+        <div>
+            <label for="source">Absender-IP</label>
+            <input id="source" type="text" placeholder="any" @bind="Config.Clock.SourceIp" />
+            <div class="hint">Leer oder <span class="mono">any</span> nimmt jeden Absender an.</div>
+        </div>
+        <div>
+            <label for="encoding">Zeichensatz</label>
+            <select id="encoding" @bind="Config.Clock.Encoding">
+                @foreach (var encoding in LineDecoder.All)
+                {
+                    <option value="@encoding">@encoding</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (Config.Clock.Protocol == DelimitedProtocol.Id)
+    {
+        <h2 class="spaced">Feldzuordnung</h2>
+        <div class="grid">
+            <div>
+                <label for="separator">Trennzeichen</label>
+                <select id="separator" @bind="Config.Clock.Layout.Separator">
+                    <option value=";">Semikolon</option>
+                    <option value=",">Komma</option>
+                    <option value="|">Pipe</option>
+                    <option value="tab">Tabulator</option>
+                    <option value="space">Leerzeichen</option>
+                </select>
+            </div>
+            <FieldIndex Label="Zeit" @bind-Value="Config.Clock.Layout.Time" />
+            <FieldIndex Label="Tore Heim" @bind-Value="Config.Clock.Layout.HomeScore" />
+            <FieldIndex Label="Tore Gast" @bind-Value="Config.Clock.Layout.GuestScore" />
+            <FieldIndex Label="Periode" @bind-Value="Config.Clock.Layout.Period" />
+            <FieldIndex Label="Modus" @bind-Value="Config.Clock.Layout.Mode" />
+            <FieldIndex Label="Kürzel Heim" @bind-Value="Config.Clock.Layout.HomeAbbreviation" />
+            <FieldIndex Label="Kürzel Gast" @bind-Value="Config.Clock.Layout.GuestAbbreviation" />
+            <FieldIndex Label="Strafe Heim 1" @bind-Value="Config.Clock.Layout.HomePenalty1" />
+            <FieldIndex Label="Strafe Heim 2" @bind-Value="Config.Clock.Layout.HomePenalty2" />
+            <FieldIndex Label="Strafe Gast 1" @bind-Value="Config.Clock.Layout.GuestPenalty1" />
+            <FieldIndex Label="Strafe Gast 2" @bind-Value="Config.Clock.Layout.GuestPenalty2" />
+        </div>
+        <div class="hint">Feldnummern ab 0. Minus eins bedeutet: die Uhr sendet dieses Feld nicht.</div>
+    }
+
+    <div class="actions">
+        <button @onclick="Scan" disabled="@Busy">@(scanning ? "Suche läuft …" : "Suchlauf starten")</button>
+        <button @onclick="Sweep" disabled="@Busy">@(sweeping ? "Netz wird abgesucht …" : "Netz absuchen")</button>
+        <span class="hint">
+            Der Suchlauf hört @ScanSeconds Sekunden auf @Ports.Length Ports mit und bestimmt Typ und Zeichensatz selbst.
+            Der laufende Empfang pausiert dabei.
+        </span>
+    </div>
+
+    @if (scan is not null)
+    {
+        @if (scan.Findings.Count == 0)
+        {
+            <div class="note">
+                Nichts empfangen. Sendet die Uhr an eine einzelne Adresse, muss die Anzeige auf diesem Rechner laufen,
+                oder die Uhr muss an die Broadcast-Adresse senden. Zeigt die Hallenuhr die Tageszeit, sendet sie nichts.
+            </div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Absender</th>
+                        <th>Port</th>
+                        <th>Typ</th>
+                        <th>Zeichensatz</th>
+                        <th>Telegramme</th>
+                        <th>Vorschau</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var finding in scan.Findings)
+                    {
+                        <tr>
+                            <td class="mono">@finding.Source</td>
+                            <td class="tight">@finding.Port</td>
+                            <td>@finding.ProtocolName <span class="pill">@finding.Score</span></td>
+                            <td class="tight">@finding.Encoding</td>
+                            <td class="tight">@finding.Datagrams</td>
+                            <td class="mono">@Preview(finding)</td>
+                            <td class="tight"><button @onclick="() => Apply(finding)">Übernehmen</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if (scan.BlockedPorts.Count > 0)
+        {
+            <div class="hint">Belegt und darum übersprungen: @string.Join(", ", scan.BlockedPorts)</div>
+        }
+    }
+
+    @if (hosts is not null)
+    {
+        <div class="hint spaced">
+            @if (hosts.Count == 0)
+            {
+                <text>Kein Gerät hat geantwortet.</text>
+            }
+            else
+            {
+                <text>Erreichbar: @string.Join(", ", hosts.Select(Describe))</text>
+            }
+        </div>
+    }
+
+    <div class="rows spaced">
+        <div class="row2">
+            <span>Empfang</span>
+            <div>
+                @if (Feed.Fault is { } fault)
+                {
+                    <span class="bad">@fault</span>
+                }
+                else if (Feed.Listening.Length > 0)
+                {
+                    <span class="ok">@Feed.Listening</span>
+                }
+                else
+                {
+                    <span>pausiert</span>
+                }
+            </div>
+        </div>
+        <div class="row2">
+            <span>Telegramme</span>
+            <div>@Feed.Received empfangen, @Feed.Rejected nicht lesbar</div>
+        </div>
+        <div class="row2">
+            <span>Letzte Zeile</span>
+            <div class="mono">@(Feed.LastRaw.Length > 0 ? Feed.LastRaw : "—")</div>
+        </div>
+        <div class="row2">
+            <span>Gelesen als</span>
+            <div class="preview">
+                <b>@Hub.Current.Time</b>
+                <span>@Hub.Current.HomeScore : @Hub.Current.GuestScore</span>
+                <span>@Hub.Current.PeriodLabel</span>
+                <span class="mono">@Hub.Current.Home / @Hub.Current.Guest</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    const int ScanSeconds = 8;
+
+    [Parameter, EditorRequired] public GameClockConfig Config { get; set; } = new();
+
+    ScanResult? scan;
+    IReadOnlyList<HostFinding>? hosts;
+    bool scanning;
+    bool sweeping;
+
+    bool Busy => scanning || sweeping;
+
+    int[] Ports => ClockScanner.CandidatePorts.Append(Config.Clock.Port).Distinct().ToArray();
+
+    static string Preview(ClockFinding finding) =>
+        finding.Preview is { } state
+            ? $"{state.Time} · {state.HomeScore}:{state.GuestScore} · {state.Home}/{state.Guest} · {state.Mode}"
+            : finding.Sample;
+
+    static string Describe(HostFinding host) =>
+        host.Name.Length > 0 ? $"{host.Address} ({host.Name})" : host.Address;
+
+    void PickProtocol(ChangeEventArgs args)
+    {
+        var protocol = Protocols.Find(args.Value?.ToString() ?? ICastProtocol.Id);
+        Config.Clock.Protocol = protocol.Key;
+        Config.Clock.Encoding = protocol.DefaultEncoding;
+    }
+
+    async Task Scan()
+    {
+        scanning = true;
+        scan = null;
+        try { scan = await Scanner.ScanAsync(Ports, TimeSpan.FromSeconds(ScanSeconds), CancellationToken.None); }
+        finally { scanning = false; }
+    }
+
+    async Task Sweep()
+    {
+        sweeping = true;
+        hosts = null;
+        try { hosts = await ClockScanner.SweepAsync(CancellationToken.None); }
+        finally { sweeping = false; }
+    }
+
+    void Apply(ClockFinding finding)
+    {
+        Config.Clock.Protocol = finding.ProtocolKey.Length > 0 ? finding.ProtocolKey : DelimitedProtocol.Id;
+        Config.Clock.Port = finding.Port;
+        Config.Clock.SourceIp = finding.Source;
+        Config.Clock.Encoding = finding.Encoding;
+    }
+}

@@ -1,0 +1,13 @@
+<div>
+    <label>@Label</label>
+    <input type="number" min="-1" max="63" value="@Value" @onchange="Set" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public int Value { get; set; }
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+
+    Task Set(ChangeEventArgs args) =>
+        ValueChanged.InvokeAsync(int.TryParse(args.Value?.ToString(), out var index) ? index : DelimitedLayout.None);
+}

@@ -1,0 +1,13 @@
+@if (Team.HasLogo)
+{
+    <img class="@Class" src="@Team.Logo" alt="@Team.Name" />
+}
+else
+{
+    <span class="abbr">@Team.Name</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public TeamView Team { get; set; } = new("", "");
+    [Parameter] public string Class { get; set; } = "";
+}

@@ -1,28 +1,26 @@
 @page "/"
 @implements IDisposable
 @inject ClockHub Hub
-@inject IOptions<GameClockOptions> Options
+@inject ConfigStore Store
+@inject TeamResolver Teams
+@inject NavigationManager Navigation
 
 <div class="screen @(state.IsBreak ? "pause" : "") @(Offline ? "offline" : "")">
     <div class="stage">
         <div class="time @(state.IsLastMinute && state.IsGameTime ? "last-minute" : "")">@state.Time</div>
         <div class="row">
             <PenaltyList Penalties="state.HomePenalties" Side="home" />
-            <img class="ra" src="@Options.Value.Home.Logo" alt="@Options.Value.Home.Name" />
+            <TeamBadge Team="Teams.Home(state)" Class="ra" />
             <span class="score">@state.HomeScore : @state.GuestScore</span>
-            @if (Options.Value.FindGuest(state.Guest) is { } guest)
-            {
-                <img src="@guest.Logo" alt="@guest.Name" />
-            }
-            else
-            {
-                <span class="abbr">@state.Guest</span>
-            }
+            <TeamBadge Team="Teams.Guest(state)" />
             <PenaltyList Penalties="state.GuestPenalties" Side="guest" />
         </div>
         <div class="per @(state.Period is ClockState.Overtime or ClockState.Shootout && state.IsGameTime ? "extra" : "")">@state.PeriodLabel</div>
     </div>
     <div class="status"><i></i><span>@StatusText</span></div>
+    <a class="gear" href="setup" title="Konfiguration">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8.4-2.1.1-1.4-.1-1.4 2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2.4-1.4L15.3 2h-4l-.4 2.3a7.6 7.6 0 0 0-2.4 1.4l-2.3-1-2 3.4 2 1.5-.1 1.4.1 1.4-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2.4 1.4l.4 2.3h4l.4-2.3a7.6 7.6 0 0 0 2.4-1.4l2.3 1 2-3.4-2-1.5Z" /></svg>
+    </a>
 </div>
 
 @code {
@@ -40,13 +38,19 @@
 
     protected override void OnInitialized()
     {
+        if (!Store.Current.Configured)
+        {
+            Navigation.NavigateTo("setup");
+            return;
+        }
+
         state = Hub.Current;
         Hub.Changed += OnChanged;
     }
 
     protected override void OnAfterRender(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && Store.Current.Configured)
             watchdog = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 

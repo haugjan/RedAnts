@@ -1,4 +1,4 @@
-namespace RedAnts.GameClock;
+namespace RedAnts.GameClock.Clocks;
 
 public sealed record Penalty(string Player, string Time)
 {
@@ -56,16 +56,6 @@ public sealed record ClockState(
         }
     }
 
-    public static ClockState? Parse(string raw)
-    {
-        var f = raw.Split(';').Select(x => x.Trim()).ToArray();
-        if (f.Length < 13) return null;
-        return new ClockState(
-            f[0], f[1], f[2], f[3], f[10], f[11], f[12],
-            Penalties(f[4], f[5]), Penalties(f[6], f[7]),
-            f, raw, DateTime.Now);
-    }
-
-    static IReadOnlyList<Penalty> Penalties(params string[] fields) =>
+    public static IReadOnlyList<Penalty> Penalties(params string[] fields) =>
         fields.Select(Penalty.Parse).OfType<Penalty>().ToList();
 }
