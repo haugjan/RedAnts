@@ -1,4 +1,4 @@
-using RedAnts.Ticketing.Domain.Admission;
+﻿using RedAnts.Ticketing.Domain.Admission;
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Admission;
 using RedAnts.Ticketing.Features.Catalog;
@@ -343,6 +343,17 @@ internal sealed class RecordingAddOnNotifier : IAddOnNotifier
     }
 }
 
+internal sealed class RecordingNewsletterNotifier : INewsletterNotifier
+{
+    public List<(string Email, string? Name, string Source)> Notifications { get; } = [];
+
+    public Task NotifyNewSignupAsync(string email, string? name, string source, CancellationToken cancellationToken = default)
+    {
+        Notifications.Add((email, name, source));
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class RecordingOrderMailer : IOrderMailer
 {
     public List<OrderMailModel> Sent { get; } = [];
@@ -373,10 +384,11 @@ internal sealed class RecordingNewsletterSignupRepository : INewsletterSignupRep
     public List<(int Id, NewsletterTransferStatus Status)> StatusChanges { get; } = [];
     public List<int> MarkedTransferred { get; } = [];
 
-    public Task SubscribeAsync(string email, string? name, string source)
+    public Task<bool> SubscribeIfNewAsync(string email, string? name, string source)
     {
+        if (Subscriptions.Any(s => s.Email == email)) return Task.FromResult(false);
         Subscriptions.Add((email, name, source));
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
 
     public Task SetTransferStatusAsync(int id, NewsletterTransferStatus status)

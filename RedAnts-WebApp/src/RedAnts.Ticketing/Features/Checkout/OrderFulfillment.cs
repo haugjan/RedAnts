@@ -17,6 +17,7 @@ public sealed class OrderFulfillment(
     IConvertibleCards convertibleCards,
     IOrderAddOns orderAddOns,
     IAddOnNotifier addOnNotifier,
+    INewsletterNotifier newsletterNotifier,
     ISeasonAddOnRepository seasonAddOns,
     IOrderMailer mailer,
     IPublicBaseUrl publicUrl,
@@ -69,8 +70,9 @@ public sealed class OrderFulfillment(
             order.OrderNumber, billing.Email.Value, billing.FullName, order.TotalGross.Amount,
             publicUrl.Resolve(), issued.Tickets, addOnInfos));
 
-        if (snapshot.SubscribeNewsletter)
-            await newsletter.SubscribeAsync(billing.Email.Value, billing.FullName, snapshot.NewsletterSource);
+        if (snapshot.SubscribeNewsletter
+            && await newsletter.SubscribeIfNewAsync(billing.Email.Value, billing.FullName, snapshot.NewsletterSource))
+            await newsletterNotifier.NotifyNewSignupAsync(billing.Email.Value, billing.FullName, snapshot.NewsletterSource);
 
         return true;
     }

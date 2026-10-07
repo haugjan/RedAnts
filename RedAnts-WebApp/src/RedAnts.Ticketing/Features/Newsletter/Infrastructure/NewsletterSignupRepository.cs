@@ -6,13 +6,13 @@ namespace RedAnts.Ticketing.Features.Newsletter.Infrastructure;
 
 public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : INewsletterSignupRepository
 {
-    public async Task SubscribeAsync(string email, string? name, string source)
+    public async Task<bool> SubscribeIfNewAsync(string email, string? name, string source)
     {
         var signup = NewsletterSignup.Create(email, name, source);
         using var scope = scopeProvider.CreateScope(autoComplete: true);
         var existing = await scope.Database.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM NewsletterSignups WHERE Email = @0", signup.Email.Value);
-        if (existing > 0) return;
+        if (existing > 0) return false;
         await scope.Database.InsertAsync(new NewsletterSignupRecord
         {
             Email = signup.Email.Value,
@@ -22,6 +22,7 @@ public sealed class NewsletterSignupRepository(IScopeProvider scopeProvider) : I
             Status = (int)signup.Status,
             TransferredAt = signup.TransferredAt
         });
+        return true;
     }
 
     public async Task MarkTransferredAsync(IEnumerable<int> ids)

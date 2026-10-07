@@ -1,4 +1,4 @@
-using Xunit;
+﻿using Xunit;
 
 namespace RedAnts.Ticketing.Tests.Checkout;
 
@@ -48,5 +48,46 @@ public class OrderFulfillmentTests
         Assert.Empty(fixture.OrderItems.Saved);
         Assert.Empty(fixture.Newsletter.Subscriptions);
         Assert.Equal(2, fixture.EventReserved);
+    }
+
+    [Fact]
+    public async Task A_newsletter_signup_that_is_new_notifies_the_office()
+    {
+        var fixture = new CheckoutFixture();
+        var order = await fixture.PlacedDraftAsync(subscribeNewsletter: true);
+
+        await fixture.Fulfillment.FulfillAsync(order.Id);
+
+        var subscription = Assert.Single(fixture.Newsletter.Subscriptions);
+        var notification = Assert.Single(fixture.NewsletterNotifier.Notifications);
+        Assert.Equal(subscription.Email, notification.Email);
+        Assert.Equal(subscription.Name, notification.Name);
+        Assert.Equal(subscription.Source, notification.Source);
+    }
+
+    [Fact]
+    public async Task An_address_already_on_the_list_is_not_notified_again()
+    {
+        var fixture = new CheckoutFixture();
+        var first = await fixture.PlacedDraftAsync(subscribeNewsletter: true);
+        await fixture.Fulfillment.FulfillAsync(first.Id);
+        var second = await fixture.PlacedDraftAsync(subscribeNewsletter: true);
+
+        await fixture.Fulfillment.FulfillAsync(second.Id);
+
+        Assert.Single(fixture.Newsletter.Subscriptions);
+        Assert.Single(fixture.NewsletterNotifier.Notifications);
+    }
+
+    [Fact]
+    public async Task Without_the_newsletter_box_nothing_is_subscribed_or_notified()
+    {
+        var fixture = new CheckoutFixture();
+        var order = await fixture.PlacedDraftAsync();
+
+        await fixture.Fulfillment.FulfillAsync(order.Id);
+
+        Assert.Empty(fixture.Newsletter.Subscriptions);
+        Assert.Empty(fixture.NewsletterNotifier.Notifications);
     }
 }

@@ -34,6 +34,7 @@ public sealed class EmailComposer : IComposer
         builder.Services.AddScoped<IEventTicketMailer, EventTicketMailer>();
         builder.Services.AddScoped<IFlexTicketMailer, FlexTicketMailer>();
         builder.Services.AddScoped<IAddOnNotifier, AddOnNotifier>();
+        builder.Services.AddScoped<INewsletterNotifier, NewsletterNotifier>();
         builder.Services.AddUnique<Umbraco.Cms.Core.Mail.IEmailSender, UmbracoEmailBridge>();
     }
 }

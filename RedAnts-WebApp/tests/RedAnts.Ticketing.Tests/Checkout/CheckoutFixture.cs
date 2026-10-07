@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Admission;
 using RedAnts.Ticketing.Domain.Sales;
@@ -32,6 +32,7 @@ internal sealed class CheckoutFixture
     public RecordingOrderMailer Mailer { get; } = new();
     public RecordingOrderItems OrderItems { get; } = new();
     public RecordingNewsletterSignupRepository Newsletter { get; } = new();
+    public RecordingNewsletterNotifier NewsletterNotifier { get; } = new();
     public RecordingUnitOfWork UnitOfWork { get; } = new();
 
     public CheckoutFixture()
@@ -52,7 +53,7 @@ internal sealed class CheckoutFixture
 
     public AddConversionToCart.Handler AddConversion => new(Carts, ConvertibleCards);
 
-    public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, SeasonAddOns,
+    public OrderFulfillment Fulfillment => new(Orders, OrderLog, Tickets, Passes, ConvertibleCards, OrderAddOns, AddOnNotifier, NewsletterNotifier, SeasonAddOns,
         Mailer, new StubPublicBaseUrl(), OrderItems, Newsletter, new EmptyIssuedTickets(), UnitOfWork, Reservation, NullLogger<OrderFulfillment>.Instance);
 
     public PlaceOrder.Handler PlaceOrder => new(Carts, Orders, OrderLog, Eligibility, SeasonAddOns, Payrexx, new StubPublicBaseUrl(),
@@ -84,10 +85,10 @@ internal sealed class CheckoutFixture
         return cart;
     }
 
-    public async Task<Order> PlacedDraftAsync(Cart? cart = null, BillingAddress? billing = null)
+    public async Task<Order> PlacedDraftAsync(Cart? cart = null, BillingAddress? billing = null, bool subscribeNewsletter = false)
     {
         Payrexx.Enabled = true;
-        var result = await PlaceOrder.HandleAsync(new PlaceOrder.Command(cart ?? CartWithTickets(), billing ?? Billing(), false, CheckoutSource.Checkout));
+        var result = await PlaceOrder.HandleAsync(new PlaceOrder.Command(cart ?? CartWithTickets(), billing ?? Billing(), subscribeNewsletter, CheckoutSource.Checkout));
         var required = Assert.IsType<PlaceOrder.Result.PaymentRequired>(result);
         return Orders.Stored.Single(o => o.Id == required.OrderId);
     }
