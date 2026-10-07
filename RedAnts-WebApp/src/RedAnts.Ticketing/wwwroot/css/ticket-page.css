@@ -41,7 +41,7 @@ a.wt-match[href]:hover { border-color: #C8102E; }
 .wt-match-title { font-family: 'Oswald', Impact, sans-serif; font-weight: 600; font-size: 1rem; line-height: 1.15; }
 .wt-match-meta { color: #6b7178; font-size: .82rem; margin-top: .15rem; }
 .wt-match--away { background: #fafafa; border-style: dashed; }
-.wt-badge-away { display: inline-block; background: #2E2E2E; color: #fff; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .05em; font-size: .68rem; padding: .1rem .4rem; border-radius: 6px; margin-left: .35rem; vertical-align: .08em; }
+.wt-badge-away { display: inline-block; background: #2E2E2E; color: #fff; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .05em; font-size: .64rem; padding: .05rem .35rem; border-radius: 5px; margin-right: .4rem; vertical-align: .06em; }
 .wt-badge-today { display: inline-block; background: #C8102E; color: #fff; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .05em; font-size: .68rem; padding: .1rem .4rem; border-radius: 6px; margin-left: .35rem; vertical-align: .08em; }
 .wt-chev { flex: 0 0 auto; color: #c4c8cd; font-size: 1.2rem; }
 .wt-more { display: inline-block; margin-top: .6rem; font-family: 'Oswald', Impact, sans-serif; text-transform: uppercase; letter-spacing: .04em; font-size: .82rem; color: #C8102E; text-decoration: none; }

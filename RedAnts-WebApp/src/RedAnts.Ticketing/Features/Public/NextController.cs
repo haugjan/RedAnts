@@ -53,10 +53,20 @@ public sealed record NextEventEmbedModel(IReadOnlyList<EmbedGame> Games)
 
     public bool HasGames => Games.Count > 0;
 
+    private static readonly string[] HomePrefixes = ["Red Ants vs.", "Red Ants vs", "Red Ants –", "Red Ants -"];
+
     public EmbedGame? HomeGame => Games.LastOrDefault(game => !game.IsAway);
 
     public static string TicketsUrl(EmbedGame game) =>
         string.IsNullOrEmpty(game.TicketsUrl) ? "/ticketing/" : game.TicketsUrl;
+
+    public static string Opponent(EmbedGame game)
+    {
+        foreach (var prefix in HomePrefixes)
+            if (game.Title.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return game.Title[prefix.Length..].Trim();
+        return game.Title;
+    }
 }
 
 public sealed record NextQuickBuyModel(

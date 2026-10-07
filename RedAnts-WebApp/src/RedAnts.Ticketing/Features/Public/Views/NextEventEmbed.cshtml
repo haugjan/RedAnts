@@ -33,20 +33,20 @@
         body { font-family: var(--display); color: var(--ink); background: transparent; min-height: 100%; display: flex; align-items: stretch; justify-content: center; overflow: hidden; }
         .ne { max-width: 680px; width: 100%; height: 100%; margin: 0 auto; display: flex; flex-direction: column; text-align: center; }
         .ne-stage { position: relative; flex: 1 1 auto; width: 100%; }
-        .ne-slide { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: clamp(0.25rem, 1.4vh, 0.9rem); padding: clamp(0.4rem, 2vh, 0.65rem) 0 0; opacity: 0; transition: opacity 0.45s ease; pointer-events: none; }
-        .ne-slide.is-on { opacity: 1; pointer-events: auto; }
-        .ne-title { width: 100%; text-align: left; text-transform: uppercase; font-weight: 700; font-size: clamp(1.4rem, 7.5vw, 2.9rem); line-height: 1.05; margin: 0; }
+        .ne-slide { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: clamp(0.25rem, 1.4vh, 0.9rem); padding: clamp(0.4rem, 2vh, 0.65rem) 0 0; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+        .ne-slide.is-on { opacity: 1; pointer-events: auto; transition-delay: 0.5s; }
+        .ne-title { width: 100%; text-align: left; text-transform: uppercase; font-weight: 700; font-size: clamp(1.15rem, 6vw, 2.3rem); line-height: 1.05; margin: 0; }
         .ne-title::after { content: ""; display: block; width: 40px; height: 3px; background: var(--red); margin: clamp(0.35rem, 1.6vh, 0.6rem) 0 0; }
         .ne-date { text-transform: uppercase; letter-spacing: 0.05em; color: #555; font-size: clamp(0.85rem, 3.2vw, 1.2rem); margin: 0; }
         .ne-logos { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 4.5vw, 2rem); margin: 0; }
-        .ne-logos img { height: clamp(52px, min(22vh, 22vw), 120px); width: auto; object-fit: contain; }
+        .ne-logos img { height: clamp(38px, min(15vh, 15vw), 90px); width: auto; object-fit: contain; }
         .ne-vs { font-weight: 700; text-transform: uppercase; font-size: clamp(1.2rem, 5vw, 2rem); color: #999; }
         .ne-cta { display: inline-block; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; font-size: clamp(0.95rem, 3.8vw, 1.45rem); background: var(--red); color: #fff; text-decoration: none; padding: clamp(0.55rem, 2.2vh, 0.95rem) clamp(1.4rem, 6.5vw, 2.6rem); transition: background 0.15s; }
         .ne-cta:hover { background: var(--red-dark); color: #fff; }
         .ne-empty { text-transform: uppercase; color: #777; letter-spacing: 0.05em; padding: 1.5rem; margin: auto; }
 
-        .ne-slide--away .ne-title { font-size: clamp(1.15rem, 6vw, 2.3rem); }
-        .ne-slide--away .ne-logos img { height: clamp(38px, min(15vh, 15vw), 90px); }
+        .ne--solo .ne-title { font-size: clamp(1.4rem, 7.5vw, 2.9rem); }
+        .ne--solo .ne-logos img { height: clamp(52px, min(22vh, 22vw), 120px); }
         .ne-awaybar { display: flex; align-items: center; justify-content: center; gap: 0.45rem; flex-wrap: wrap; margin: 0; }
         .ne-awaytag { background: #2E2E2E; color: #fff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: clamp(0.6rem, 2.4vw, 0.76rem); padding: 0.16rem 0.45rem; }
         .ne-place { margin: 0; font-size: clamp(0.63rem, 2.4vw, 0.78rem); text-transform: uppercase; letter-spacing: 0.05em; color: #9a9a9a; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -73,7 +73,7 @@
     }
     else
     {
-        <div class="ne">
+        <div class="ne @(Model.Games.Count == 1 ? "ne--solo" : "")">
             <div class="ne-stage">
                 @foreach (var game in Model.Games)
                 {
@@ -113,7 +113,7 @@
                             @if (homeGame is not null)
                             {
                                 <a class="ne-home" href="@RedAnts.Ticketing.Features.Public.NextEventEmbedModel.TicketsUrl(homeGame)" target="_top" rel="noopener">
-                                    <span class="ne-home-text"><b>Heimspiel @ShortDate(homeGame)</b> · @homeGame.Title</span>
+                                    <span class="ne-home-text"><b>Heimspiel @ShortDate(homeGame)</b> · @RedAnts.Ticketing.Features.Public.NextEventEmbedModel.Opponent(homeGame)</span>
                                     <span class="ne-home-go">Tickets kaufen →</span>
                                 </a>
                             }
@@ -158,7 +158,7 @@
                 function start() {
                     stop();
                     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-                    timer = setInterval(function () { show(index + 1); }, 6000);
+                    timer = setInterval(function () { show(index + 1); }, 10000);
                 }
 
                 dots.forEach(function (dot, i) {

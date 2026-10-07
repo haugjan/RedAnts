@@ -59,8 +59,8 @@
                             @if (!string.IsNullOrEmpty(m.AwayLogo)) { <img src="@m.AwayLogo" alt="" onerror="this.remove()" /> }
                         </span>
                         <span class="wt-match-body">
-                            <span class="wt-match-title">@m.Title@if (m.IsAway) { <span class="wt-badge-away">Auswärts</span> }@if (m.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
-                            <span class="wt-match-meta">@m.DateText@(string.IsNullOrEmpty(m.VenueName) ? "" : $" · {m.VenueName}")</span>
+                            <span class="wt-match-title">@m.Title@if (m.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
+                            <span class="wt-match-meta">@if (m.IsAway) { <span class="wt-badge-away">Auswärts</span> }@m.DateText@(string.IsNullOrEmpty(m.VenueName) ? "" : $" · {m.VenueName}")</span>
                         </span>
                     </div>
                 }
