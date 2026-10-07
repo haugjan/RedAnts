@@ -180,6 +180,20 @@ public class BodetScorepadProtocolTests
     }
 
     [Fact]
+    public void WritesEveryFrameToTheLogInFull()
+    {
+        var chunk = Match("09:12", 3, 2, 3)
+            .Concat(Penalty(BodetScorepadProtocol.HomePenaltyMessage, "1:05", "0:00"))
+            .ToArray();
+
+        var logged = Parser().Describe(chunk);
+
+        Assert.Contains("01 7f 02 47 31 31", logged);
+        Assert.Contains("01 7f 02 47 31 32", logged);
+        Assert.DoesNotContain("…", logged);
+    }
+
+    [Fact]
     public void SendsNoTeamAbbreviations()
     {
         var state = Parser().Read(Documented);

@@ -38,9 +38,11 @@ public static class ClockFieldReader
     public static bool LooksLikeScore(string value) =>
         value.Length is > 0 and <= 3 && value.All(char.IsAsciiDigit);
 
-    public static string Hex(byte[] payload, int limit = 48) =>
-        string.Join(' ', payload.Take(limit).Select(b => b.ToString("x2")))
-        + (payload.Length > limit ? $" … ({payload.Length} Bytes)" : "");
+    const int HexLimit = 64;
+
+    public static string Hex(byte[] payload) =>
+        string.Join(' ', payload.Take(HexLimit).Select(b => b.ToString("x2")))
+        + (payload.Length > HexLimit ? $" … ({payload.Length} Bytes)" : "");
 }
 
 public abstract class TextProtocol : IClockProtocol
