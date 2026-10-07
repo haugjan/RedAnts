@@ -3,6 +3,7 @@
 // Still functional; migrate to the async management services at the Umbraco 18 upgrade.
 #pragma warning disable CS0618
 using RedAnts.Ticketing.Domain;
+using RedAnts.Ticketing.Features.Catalog.Shop;
 using RedAnts.Ticketing.Infrastructure;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Models.PublishedContent;
@@ -36,6 +37,22 @@ internal static class CatalogContentMapper
 
     private static string? MediaUrl(IPublishedContent node, string alias) =>
         node.Value<IPublishedContent>(alias)?.Url();
+
+    public static ExternalEvent ToExternalEvent(IPublishedContent node)
+    {
+        var start = node.Value<DateTime>(A.EventStart);
+
+        return new ExternalEvent(
+            node.Id,
+            node.Name,
+            node.Parent?.Id ?? 0,
+            DateOnly.FromDateTime(start),
+            TimeOnly.FromDateTime(start),
+            node.Value<bool>(A.EventTimeUnknown),
+            node.Value<string>(A.ExternalEventLocation),
+            MediaUrl(node, A.EventHomeTeamLogo),
+            MediaUrl(node, A.EventAwayTeamLogo));
+    }
 
     public static Event ToEvent(IPublishedContent node)
     {
@@ -83,6 +100,9 @@ internal sealed class CatalogContentSource(IPublishedContentQuery query, IUmbrac
 
     public IEnumerable<IPublishedContent> Events() =>
         Seasons().SelectMany(s => (s.Children() ?? []).Where(c => c.ContentType.Alias == A.EventType));
+
+    public IEnumerable<IPublishedContent> ExternalEvents() =>
+        Seasons().SelectMany(s => (s.Children() ?? []).Where(c => c.ContentType.Alias == A.ExternalEventType));
 }
 
 public sealed class UmbracoSeasons(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : ISeasonReader
@@ -165,5 +185,20 @@ public sealed class UmbracoEvents(IPublishedContentQuery query, IUmbracoContextF
         {
             var node = _src.ById(id);
             return node?.ContentType.Alias == A.EventType ? CatalogContentMapper.ToEvent(node) : null;
+        }));
+}
+
+public sealed class UmbracoExternalEvents(IPublishedContentQuery query, IUmbracoContextFactory contextFactory) : IExternalEventReader
+{
+    private readonly CatalogContentSource _src = new(query, contextFactory);
+
+    public Task<IReadOnlyList<ExternalEvent>> GetUpcomingAsync() =>
+        Task.FromResult(_src.Read<IReadOnlyList<ExternalEvent>>(() =>
+        {
+            var today = SwissTime.Today;
+            return _src.ExternalEvents().Select(CatalogContentMapper.ToExternalEvent)
+                .Where(e => e.Date >= today)
+                .OrderBy(e => e.Date).ThenBy(e => e.StartTime)
+                .ToList();
         }));
 }

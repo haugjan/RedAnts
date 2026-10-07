@@ -4,7 +4,10 @@ using RedAnts.Ticketing.Features.Checkout;
 
 namespace RedAnts.Ticketing.Features.Public;
 
-public sealed class NextController(GetNextEvent.Handler nextEvent, GetCheckoutSettings.Handler checkoutSettings) : Controller
+public sealed class NextController(
+    GetNextEvent.Handler nextEvent,
+    GetEmbedSchedule.Handler embedSchedule,
+    GetCheckoutSettings.Handler checkoutSettings) : Controller
 {
     [HttpGet("/next")]
     public async Task<IActionResult> Next()
@@ -39,27 +42,21 @@ public sealed class NextController(GetNextEvent.Handler nextEvent, GetCheckoutSe
     {
         Response.Headers["Content-Security-Policy"] = "frame-ancestors *";
 
-        var target = await nextEvent.HandleAsync(new GetNextEvent.Query());
-        if (target is null)
-            return View("NextEventEmbed", NextEventEmbedModel.None);
-
-        var ticketsUrl = !string.IsNullOrEmpty(target.AbsoluteUrl) ? target.AbsoluteUrl : "/ticketing/";
-
-        var model = new NextEventEmbedModel(
-            target.Name, target.HomeTeamLogoUrl, target.AwayTeamLogoUrl,
-            target.Date, target.StartTime, target.TimeUnknown, ticketsUrl);
-        return View("NextEventEmbed", model);
+        var games = await embedSchedule.HandleAsync(new GetEmbedSchedule.Query());
+        return View("NextEventEmbed", new NextEventEmbedModel(games));
     }
 }
 
-public sealed record NextEventEmbedModel(
-    string Title, string? HomeLogoUrl, string? AwayLogoUrl,
-    DateOnly Date, TimeOnly StartTime, bool TimeUnknown, string TicketsUrl)
+public sealed record NextEventEmbedModel(IReadOnlyList<EmbedGame> Games)
 {
-    public static readonly NextEventEmbedModel None =
-        new("", null, null, default, default, false, "/ticketing/");
+    public static readonly NextEventEmbedModel None = new([]);
 
-    public bool HasEvent => !string.IsNullOrEmpty(Title);
+    public bool HasGames => Games.Count > 0;
+
+    public EmbedGame? HomeGame => Games.LastOrDefault(game => !game.IsAway);
+
+    public static string TicketsUrl(EmbedGame game) =>
+        string.IsNullOrEmpty(game.TicketsUrl) ? "/ticketing/" : game.TicketsUrl;
 }
 
 public sealed record NextQuickBuyModel(

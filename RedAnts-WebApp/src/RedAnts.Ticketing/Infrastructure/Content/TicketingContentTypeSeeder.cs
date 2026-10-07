@@ -50,6 +50,7 @@ public sealed class TicketingContentTypeSeeder(
         {
             EnsureContentTypes();
             EnsurePublicPageTypes();
+            EnsureExternalEventType();
             EnsureEventExtraProperties();
             EnsureVenueArrivalProperty();
             EnsureVenueAddressProperty();
@@ -255,6 +256,46 @@ public sealed class TicketingContentTypeSeeder(
             }
             if (folderChanged) contentTypeService.Save(seasonsFolder, SuperUser);
         }
+    }
+
+    private void EnsureExternalEventType()
+    {
+        var all = dataTypeService.GetAll().ToList();
+        var textBox = all.First(d => d.EditorAlias == "Umbraco.TextBox");
+        var mediaPicker = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.MediaPicker3") ?? textBox;
+        var boolean = all.FirstOrDefault(d => d.EditorAlias == "Umbraco.TrueFalse") ?? EnsureToggle(all);
+        var dateTimeCh = EnsureDatePicker(all, "Ticketing Datum + Zeit (CH)", "DD.MM.YYYY HH:mm");
+
+        var external = contentTypeService.Get(A.ExternalEventType);
+        if (external is null)
+        {
+            external = new ContentType(shortStringHelper, Constants.System.Root)
+            {
+                Alias = A.ExternalEventType, Name = "Externer Anlass", Icon = "icon-globe"
+            };
+            external.AddPropertyType(Prop(dateTimeCh, A.EventStart, "Beginn"), Group, GroupName);
+            external.AddPropertyType(PropWithHint(boolean, A.EventTimeUnknown, "Zeit noch unbekannt",
+                "Wenn aktiviert, wird überall nur das Datum angezeigt."), Group, GroupName);
+            external.AddPropertyType(PropWithHint(textBox, A.ExternalEventLocation, "Ort",
+                "Freier Text, zum Beispiel 'Stighag, Kloten'."), Group, GroupName);
+            external.AddPropertyType(PropWithHint(mediaPicker, A.EventHomeTeamLogo, "Logo Heimteam",
+                "Das gastgebende Team."), "media", "Bilder");
+            external.AddPropertyType(PropWithHint(mediaPicker, A.EventAwayTeamLogo, "Logo Auswärtsteam",
+                "In der Regel die Red Ants."), "media", "Bilder");
+            contentTypeService.Save(external, SuperUser);
+            logger.LogInformation("TicketingContentTypeSeeder: created the external-event document type.");
+        }
+
+        var season = contentTypeService.Get(A.SeasonType);
+        if (season is null) return;
+
+        var allowed = season.AllowedContentTypes?.ToList() ?? new List<ContentTypeSort>();
+        if (allowed.Any(s => s.Alias == A.ExternalEventType)) return;
+
+        allowed.Add(new ContentTypeSort(external.Key, allowed.Count, external.Alias));
+        season.AllowedContentTypes = allowed;
+        contentTypeService.Save(season, SuperUser);
+        logger.LogInformation("TicketingContentTypeSeeder: allowed external events below a season.");
     }
 
     private void EnsureEventExtraProperties()

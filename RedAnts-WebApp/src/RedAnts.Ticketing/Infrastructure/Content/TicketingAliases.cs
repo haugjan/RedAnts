@@ -8,6 +8,7 @@ internal static class TicketingAliases
     public const string SeasonType = "season";
     public const string VenueType = "venue";
     public const string EventType = "event";
+    public const string ExternalEventType = "externalEvent";
 
     public const string HeaderText = "headerText";
     public const string HeaderImage = "headerImage";
@@ -36,6 +37,8 @@ internal static class TicketingAliases
     public const string EventImage = "eventImage";
     public const string EventHomeTeamLogo = "homeTeamLogo";
     public const string EventAwayTeamLogo = "awayTeamLogo";
+
+    public const string ExternalEventLocation = "location";
 
     public const string MailTextsType = "mailTexts";
 

@@ -68,6 +68,7 @@ public static class TicketingFeatures
         typeof(GetSeasonForSale.Handler),
         typeof(GetSeasonPassOffers.Handler),
         typeof(GetNextEvent.Handler),
+        typeof(GetEmbedSchedule.Handler),
         typeof(GetVenue.Handler),
         typeof(GetSeasonChoices.Handler),
         typeof(GetSeasonsForAdmin.Handler),

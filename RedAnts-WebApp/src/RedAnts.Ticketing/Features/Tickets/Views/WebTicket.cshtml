@@ -104,7 +104,7 @@
                             @if (!string.IsNullOrEmpty(next.AwayLogo)) { <img src="@next.AwayLogo" alt="" onerror="this.remove()" /> }
                         </span>
                         <span class="wt-match-body">
-                            <span class="wt-match-title">@next.Title@if (next.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
+                            <span class="wt-match-title">@next.Title@if (next.IsAway) { <span class="wt-badge-away">Auswärts</span> }@if (next.IsToday) { <span class="wt-badge-today">Heute</span> }</span>
                             <span class="wt-match-meta">@next.DateText@(string.IsNullOrEmpty(next.VenueName) ? "" : $" · {next.VenueName}")</span>
                         </span>
                     </div>

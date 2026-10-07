@@ -7,6 +7,7 @@ public sealed class WebTicketResolution(
     ITicketTokens tokens,
     IIssuedTicketReader tickets,
     IEventReader events,
+    IExternalEventReader externalEvents,
     ISeasonReader seasons,
     IVenueReader venues,
     IContentUrls contentUrls)
@@ -46,28 +47,44 @@ public sealed class WebTicketResolution(
     public async Task<IReadOnlyList<UpcomingMatch>> UpcomingAsync(int limit)
     {
         var today = SwissTime.Today;
-        var upcoming = (await events.GetPublicOpenAsync())
-            .OrderBy(e => e.Date).ThenBy(e => e.StartTime)
-            .Take(limit)
-            .ToList();
-
         var venueNames = new Dictionary<int, string?>();
-        var result = new List<UpcomingMatch>(upcoming.Count);
-        foreach (var ev in upcoming)
+        var result = new List<UpcomingMatch>();
+
+        foreach (var ev in await events.GetPublicOpenAsync())
         {
             if (ev.VenueId > 0 && !venueNames.ContainsKey(ev.VenueId))
                 venueNames[ev.VenueId] = (await venues.FindByIdAsync(ev.VenueId))?.Name;
             var url = contentUrls.GetUrl(ev.Id);
             result.Add(new UpcomingMatch(
                 Title: ev.Name,
+                Date: ev.Date,
+                StartTime: ev.StartTime,
                 DateText: EventDateText(ev.Date, ev.StartTime, ev.TimeUnknown),
                 VenueName: ev.VenueId > 0 ? venueNames[ev.VenueId] : null,
                 Url: string.IsNullOrEmpty(url) ? null : url,
                 HomeLogo: ev.HomeTeamLogoUrl,
                 AwayLogo: ev.AwayTeamLogoUrl,
-                IsToday: ev.Date == today));
+                IsToday: ev.Date == today,
+                IsAway: false));
         }
-        return result;
+
+        foreach (var ex in await externalEvents.GetUpcomingAsync())
+            result.Add(new UpcomingMatch(
+                Title: ex.Name,
+                Date: ex.Date,
+                StartTime: ex.StartTime,
+                DateText: EventDateText(ex.Date, ex.StartTime, ex.TimeUnknown),
+                VenueName: ex.Location,
+                Url: null,
+                HomeLogo: ex.HomeTeamLogoUrl,
+                AwayLogo: ex.AwayTeamLogoUrl,
+                IsToday: ex.Date == today,
+                IsAway: true));
+
+        return result
+            .OrderBy(m => m.Date).ThenBy(m => m.StartTime)
+            .Take(limit)
+            .ToList();
     }
 
     public string QrUrl(Guid uuid, IPublicBaseUrl publicUrl) => publicUrl.TicketUrl(tokens.CreateShort(uuid));
@@ -111,9 +128,12 @@ public sealed class WebTicketResolution(
 
 public sealed record UpcomingMatch(
     string Title,
+    DateOnly Date,
+    TimeOnly StartTime,
     string DateText,
     string? VenueName,
     string? Url,
     string? HomeLogo,
     string? AwayLogo,
-    bool IsToday);
+    bool IsToday,
+    bool IsAway = false);

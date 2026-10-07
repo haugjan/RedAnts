@@ -28,6 +28,8 @@ public class TicketingComposer : IComposer
         builder.Services.AddScoped<IEventForSaleReader, EventForSaleReader>();
         builder.Services.AddScoped<ISeasonForSaleReader, SeasonForSaleReader>();
         builder.Services.AddScoped<INextEventReader, NextEventReader>();
+        builder.Services.AddScoped<IExternalEventReader, UmbracoExternalEvents>();
+        builder.Services.AddScoped<IEmbedScheduleReader, EmbedScheduleReader>();
         builder.Services.AddScoped<IEventsForAdminReader, EventsForAdminReader>();
         builder.Services.AddScoped<ISeasonsForAdminReader, SeasonsForAdminReader>();
 

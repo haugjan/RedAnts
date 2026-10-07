@@ -1,6 +1,7 @@
 using RedAnts.Ticketing.Domain;
 using RedAnts.Ticketing.Domain.Sales;
 using RedAnts.Ticketing.Features.Catalog;
+using RedAnts.Ticketing.Features.Catalog.Shop;
 using RedAnts.Ticketing.Features.Tickets;
 using RedAnts.Ticketing.Tests.Admission;
 using RedAnts.Ticketing.Tests.Catalog;
@@ -17,6 +18,7 @@ public class WebTicketQueryTests
     private readonly StubTicketTokens _tokens = new();
     private readonly StubIssuedTickets _issued = new();
     private readonly StubEvents _events = new();
+    private readonly StubExternalEvents _externalEvents = new();
     private readonly StubSeasons _seasons = new();
     private readonly StubVenues _venues = new();
     private readonly StubContentUrls _urls = new();
@@ -32,7 +34,7 @@ public class WebTicketQueryTests
         _venues.Venues.Add(Venue.FromPersistence(7, "Halle", null, null, null));
     }
 
-    private WebTicketResolution Resolution => new(_tokens, _issued, _events, _seasons, _venues, _urls);
+    private WebTicketResolution Resolution => new(_tokens, _issued, _events, _externalEvents, _seasons, _venues, _urls);
 
     [Fact]
     public async Task Web_ticket_is_resolved_from_the_full_token_with_its_context_and_qr()
@@ -157,6 +159,14 @@ internal sealed class StubEvents : IEventReader
         Task.FromResult<IReadOnlyList<Event>>(Events.Where(e => e.SeasonId == seasonId).ToList());
 
     public Task<Event?> FindByIdAsync(int id) => Task.FromResult(Events.FirstOrDefault(e => e.Id == id));
+}
+
+internal sealed class StubExternalEvents : IExternalEventReader
+{
+    public List<ExternalEvent> Events { get; } = [];
+
+    public Task<IReadOnlyList<ExternalEvent>> GetUpcomingAsync() =>
+        Task.FromResult<IReadOnlyList<ExternalEvent>>(Events);
 }
 
 internal sealed class StubSeasons : ISeasonReader

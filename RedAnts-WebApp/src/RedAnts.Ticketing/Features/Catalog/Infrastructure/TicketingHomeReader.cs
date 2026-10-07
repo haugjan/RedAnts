@@ -5,6 +5,7 @@ namespace RedAnts.Ticketing.Features.Catalog.Infrastructure;
 
 public sealed class TicketingHomeReader(
     IEventReader events,
+    IExternalEventReader externalEvents,
     ISeasonReader seasons,
     IVenueReader venues,
     IEventPricing pricing,
@@ -21,7 +22,14 @@ public sealed class TicketingHomeReader(
             var item = SaleOffers.ToUpcoming(e, await venueNames.ForAsync(e.VenueId), urls.GetUrl(e.Id), await pricing.GetAvailableAsync(e.Id));
             if (item.Buyable || item.SoldOut) upcoming.Add(item);
         }
+
+        foreach (var x in (await externalEvents.GetUpcomingAsync()).Where(x => openSeasonIds.Contains(x.SeasonId)))
+            upcoming.Add(new UpcomingEvent(
+                x.Id, x.Name, x.Date, x.StartTime, x.TimeUnknown, x.Location, null,
+                x.HomeTeamLogoUrl, x.AwayTeamLogoUrl, null, false, false, true));
+
+        var ordered = upcoming.OrderBy(e => e.Date).ThenBy(e => e.StartTime).ToList();
         var passOffers = (await seasonOffers.GetPassOffersAsync()).Where(s => s.Offers.Count > 0).ToList();
-        return new TicketingHome(upcoming, passOffers);
+        return new TicketingHome(ordered, passOffers);
     }
 }

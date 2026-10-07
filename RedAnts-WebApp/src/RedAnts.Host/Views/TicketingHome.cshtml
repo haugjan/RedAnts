@@ -87,8 +87,9 @@
                     @foreach (var evt in buyableEvents)
                     {
                         var soldOut = evt.SoldOut;
+                        var away = evt.IsAway;
                         <li class="event-item">
-                            <a class="event-item-link @(soldOut ? "event-item-link--soldout" : "")" href="@(soldOut ? null : evt.Url)" aria-disabled="@(soldOut ? "true" : null)">
+                            <a class="event-item-link @(soldOut ? "event-item-link--soldout" : "") @(away ? "event-item-link--away" : "")" href="@(soldOut || away ? null : evt.Url)" aria-disabled="@(soldOut || away ? "true" : null)">
                                 @if (!string.IsNullOrEmpty(evt.HomeTeamLogoUrl) || !string.IsNullOrEmpty(evt.AwayTeamLogoUrl))
                                 {
                                     <span class="event-item-logos">
@@ -102,13 +103,13 @@
                                     <span class="event-item-thumb" style="background-image:url('@evt.ImageUrl');"></span>
                                 }
                                 <span class="event-item-body">
-                                    <span class="event-item-date">@evt.Date.ToString("dd.MM.yyyy")@(evt.TimeUnknown ? "" : $" · {evt.StartTime:HH:mm} Uhr")</span>
+                                    <span class="event-item-date">@if (away) { <span class="event-item-away-tag">Auswärts</span> }@evt.Date.ToString("dd.MM.yyyy")@(evt.TimeUnknown ? "" : $" · {evt.StartTime:HH:mm} Uhr")</span>
                                     <span class="event-item-name">@evt.Name</span>
                                     <span class="event-item-venue">
                                         @if (!string.IsNullOrEmpty(evt.VenueName)) { <text>@evt.VenueName</text> }
                                     </span>
                                 </span>
-                                <span class="event-item-cta @(soldOut ? "event-item-cta--soldout" : "")">@(soldOut ? "Ausverkauft" : "Zu den Tickets →")</span>
+                                <span class="event-item-cta @(soldOut ? "event-item-cta--soldout" : "") @(away ? "event-item-cta--away" : "")">@(away ? "Auswärtsspiel" : soldOut ? "Ausverkauft" : "Zu den Tickets →")</span>
                             </a>
                         </li>
                     }
@@ -149,6 +150,12 @@
     .event-item-link--soldout:hover .event-item-name { color: #101010; }
     .event-item-link--soldout .event-item-name, .event-item-link--soldout .event-item-logos, .event-item-link--soldout .event-item-thumb { opacity: .55; }
     .event-item-cta--soldout { color: #666; text-transform: uppercase; letter-spacing: .4px; font-size: .85rem; }
+    .event-item-away-tag { display: inline-block; background: #2E2E2E; color: #fff; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: .08rem .35rem; margin-right: .4rem; vertical-align: .05em; }
+    .event-item-link--away { cursor: default; }
+    .event-item-link--away:hover { background: none; box-shadow: none; border-bottom-color: #eee; border-radius: 0; }
+    .event-item-link--away:hover .event-item-name { color: #101010; }
+    .event-item-link--away .event-item-date { color: #8a8a8a; }
+    .event-item-cta--away { color: #8a8a8a; text-transform: uppercase; letter-spacing: .4px; font-size: .85rem; }
     @@media (max-width: 560px) { .event-item-cta:not(.event-item-cta--soldout) { display: none; } .event-item-thumb { width: 56px; height: 56px; } }
 
     .pass-season-label { font-family: 'Oswald', sans-serif; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .04em; color: #101010; margin: 4px 0 10px; }

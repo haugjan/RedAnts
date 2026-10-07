@@ -12,4 +12,5 @@ public sealed record UpcomingEvent(
     string? AwayTeamLogoUrl,
     string? Url,
     bool Buyable,
-    bool SoldOut);
+    bool SoldOut,
+    bool IsAway = false);
