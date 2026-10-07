@@ -44,25 +44,30 @@ Gespeichert wird in `data/gameclock.json` neben der Exe. Der Ordner `data/` lieg
 
 ### Matchuhr
 
-Typ, UDP-Port, Absender-IP und Zeichensatz stehen in der Oberfläche. Unterstützt sind:
+Unterstützt werden ausschliesslich Matchuhren mit Netzwerkausgabe. Typ, Port, Absender-IP und Zeichensatz stehen in
+der Oberfläche:
 
-- **iCast Scoreboard** — die Scoreboard-Ausgabe von iCast Sweden AB, wie sie in der Win4 Stratos-Halle läuft.
-- **Allgemeine Zeile mit Trennzeichen** — für jede andere Uhr, die eine Zeile per UDP schickt. Trennzeichen und
-  Feldnummern werden selbst gesetzt, ohne Codeänderung. Praktisch alle Anzeigesysteme, die ihre Daten ins Netz geben,
-  tun das in dieser Form, direkt oder über eine Brücke an der TV-Schnittstelle (RS485).
+| Typ | Transport | Port | Herkunft |
+|---|---|---|---|
+| **iCast Scoreboard** | UDP | 50085 | iCast Sweden AB, wie in der Win4 Stratos-Halle |
+| **Bodet ScorePad** | TCP | 4001 | Bodet Sport, die Uhr verbindet sich auf diesen Port |
+| **Allgemeine Zeile mit Trennzeichen** | UDP | frei | jede andere Uhr, die eine Zeile ins Netz schickt |
 
-Ein neuer fester Typ ist eine Klasse mit `IClockProtocol` in `Clocks/`, in `Program.cs` registriert; `ClockProtocols`
-und der Suchlauf nehmen ihn dann von selbst auf.
+Der allgemeine Typ deckt alles ab, was eine Zeile mit Trennzeichen sendet: Trennzeichen und Feldnummern werden in der
+Oberfläche gesetzt, ohne Codeänderung. Ein neuer fester Typ ist eine Klasse mit `IClockProtocol` in `Clocks/`, in
+`Program.cs` registriert; `ClockProtocols` und der Suchlauf nehmen ihn dann von selbst auf. Rein serielle Tafeln
+(RS232, RS485, Clock-and-Data) sind bewusst nicht unterstützt.
 
 ### Suchlauf
 
 Matchuhren senden von sich aus, sie antworten nicht auf Anfragen. Der Suchlauf hört darum 8 Sekunden gleichzeitig auf
-20 gebräuchliche Ports mit, erkennt den Zeichensatz am Bytemuster, lässt jedes Protokoll den Mitschnitt bewerten und
-zeigt Absender, Port, Typ und eine gelesene Vorschau. Ein Klick übernimmt alles in die Konfiguration. Der laufende
-Empfang pausiert für die Dauer des Suchlaufs, danach bindet er sich neu.
+20 gebräuchlichen UDP-Ports und 5 TCP-Ports mit, erkennt den Zeichensatz am Bytemuster, lässt jedes Protokoll den
+Mitschnitt bewerten und zeigt Absender, Port, Transport, Typ und eine gelesene Vorschau. Ein Klick übernimmt alles in
+die Konfiguration. Der laufende Empfang pausiert für die Dauer des Suchlaufs, danach bindet er sich neu.
 
 `Netz absuchen` pingt zusätzlich die lokalen Subnetze ab und listet die erreichbaren Geräte. Das hilft, wenn nichts
-ankommt, weil die Uhr an eine einzelne Adresse sendet statt an die Broadcast-Adresse.
+ankommt, weil die Uhr per UDP an eine einzelne Adresse sendet statt an die Broadcast-Adresse, oder weil bei TCP in der
+Uhr noch die falsche Zieladresse steht.
 
 ### Teams und Logos
 
@@ -70,9 +75,10 @@ Namen und Logos aller L-UPL-Vereine kommen aus der swissunihockey-API
 (`/api/teams?season=…&league=24&game_class=11|21`). Die Logos werden einmal heruntergeladen und liegen danach unter
 `data/logos/`, die Anzeige braucht im Spiel also kein Internet.
 
-Die Uhr sendet nur ein Kürzel (`RED`, `UBO`). `Automatisch zuordnen` vergleicht es mit den Teamnamen (Initialen,
+Sendet die Uhr ein Kürzel (`RED`, `UBO`), vergleicht `Automatisch zuordnen` es mit den Teamnamen (Initialen,
 Wortanfänge, Umlaute aufgelöst) und übernimmt den Treffer. Jeder Name und jedes Logo lässt sich überschreiben, eigene
-Logos lassen sich hochladen. Ohne Zuordnung zeigt die Anzeige das Kürzel als Text.
+Logos lassen sich hochladen. Ohne Zuordnung zeigt die Anzeige das Kürzel als Text. Der Bodet ScorePad sendet keine
+Kürzel; dort zählen die festen Einträge für Heim und Gast.
 
 ### vMix
 
@@ -94,9 +100,10 @@ Die bestehende vMix-Produktion muss dafür nicht angefasst werden.
 
 ## Aufbau
 
-- `Clocks/ClockFeed` (Hosted Service) liest die Telegramme, schreibt Änderungen ins Rohdaten-Log und reicht sie an
-  `ClockHub` weiter (bei Änderung sofort, sonst 1x pro Sekunde). Eine gespeicherte Konfiguration bindet den Empfang neu.
-- `Clocks/ClockScanner` übernimmt für den Suchlauf exklusiv die Sockets.
+- `Clocks/ClockFeed` (Hosted Service) nimmt UDP-Telegramme oder eine TCP-Verbindung entgegen, schreibt Änderungen ins
+  Rohdaten-Log und reicht sie an `ClockHub` weiter (bei Änderung sofort, sonst 1x pro Sekunde). Eine gespeicherte
+  Konfiguration bindet den Empfang neu. Jede TCP-Verbindung bekommt einen frischen Parser.
+- `Clocks/ClockScanner` übernimmt für den Suchlauf exklusiv die Sockets, UDP und TCP.
 - `Vmix/VmixPublisher` (Hosted Service) hängt am `ClockHub` und hält die TCP-Verbindung zu vMix.
 - `Components/Pages/Clock.razor` (Interactive Server) zeigt nach 3 s ohne Daten einen Hinweis.
 - `Components/Pages/Setup.razor` mit den drei Abschnitten Matchuhr, Teams und vMix.
@@ -130,6 +137,38 @@ Die Felder 0–12 stehen so im Handbuch von iCast Sweden AB; die Belegung der St
 bestehenden Node-RED-Flow für vMix und ist noch nicht an einer echten Strafe überprüft.
 
 Zeigt die Hallenuhr die Tageszeit, sendet sie nichts; die Anzeige blendet dann nach 3 s ab.
+
+## Telegramm der Matchuhr (Bodet ScorePad)
+
+Der ScorePad baut über seinen RJ45-Port eine TCP-Verbindung zu dieser Anzeige auf (Standard-Port 4001). Jede Nachricht
+ist ein Rahmen:
+
+```
+01      7f       02     47 31 31 ...        03     2d
+SOH   Adresse   STX    Nutzdaten           ETX    LRC
+```
+
+Die LRC ist das XOR aller Bytes ab Index 1 bis und mit ETX, danach `& 0x7F`; ein Ergebnis unter `0x20` wird um `0x20`
+erhöht. Die beiden Bytes an Index 4 und 5 sind die Nachrichtennummer als ASCII-Ziffern. Ein Leerzeichen (`0x20`) steht
+in Zahlenfeldern für eine führende Null.
+
+| Nachricht | Index | Bedeutung |
+|---|---|---|
+| **11** | 8–9 / 10–11 | Minuten / Sekunden |
+| | 12–14 / 15–17 | Tore Heim / Gast, dreistellig |
+| | 18 | Periode |
+| **12** | 8 / 9–10 | Strafe Heim 1: Minuten / Sekunden |
+| | 12 / 13–14 | Strafe Heim 2 |
+| **13** | 8 / 9–10, 12 / 13–14 | Strafen Gast 1 und 2 |
+
+Beispiel aus der Praxis: `01 7f 02 47 31 31 80 37 20 34 30 37 20 30 31 20 30 30 31 03 2d` ist Nachricht 11 mit
+`04:07`, Stand `1:0`, erstes Drittel; die LRC `0x2d` rechnet sich nach.
+
+Anders als iCast liefert der ScorePad in diesen Nachrichten weder Teamkürzel noch einen Modus, und die Strafen tragen
+keine Spielernummer. Die Anzeige zeigt eine Strafe, solange ihre Zeit nicht `00:00` ist. Die Felder an Index 6 und 7
+führen Statusbits, die hier noch nicht ausgewertet werden. Das Rahmenformat ist an einem echten Telegramm
+nachgerechnet, die offizielle Beschreibung von Bodet (Dokument 608264, "Network output and protocols") ist noch nicht
+gegengelesen.
 
 ## Release
 

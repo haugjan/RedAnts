@@ -18,7 +18,7 @@
             <div class="hint">@Protocols.Find(Config.Clock.Protocol).Description</div>
         </div>
         <div>
-            <label for="port">UDP-Port</label>
+            <label for="port">Port (@Protocols.Find(Config.Clock.Protocol).Transport.ToString().ToUpperInvariant())</label>
             <input id="port" type="number" min="1" max="65535" @bind="Config.Clock.Port" />
         </div>
         <div>
@@ -70,8 +70,8 @@
         <button @onclick="Scan" disabled="@Busy">@(scanning ? "Suche läuft …" : "Suchlauf starten")</button>
         <button @onclick="Sweep" disabled="@Busy">@(sweeping ? "Netz wird abgesucht …" : "Netz absuchen")</button>
         <span class="hint">
-            Der Suchlauf hört @ScanSeconds Sekunden auf @Ports.Length Ports mit und bestimmt Typ und Zeichensatz selbst.
-            Der laufende Empfang pausiert dabei.
+            Der Suchlauf hört @ScanSeconds Sekunden auf @UdpPorts.Length UDP- und @TcpPorts.Length TCP-Ports mit und
+            bestimmt Typ und Zeichensatz selbst. Der laufende Empfang pausiert dabei.
         </span>
     </div>
 
@@ -80,8 +80,9 @@
         @if (scan.Findings.Count == 0)
         {
             <div class="note">
-                Nichts empfangen. Sendet die Uhr an eine einzelne Adresse, muss die Anzeige auf diesem Rechner laufen,
-                oder die Uhr muss an die Broadcast-Adresse senden. Zeigt die Hallenuhr die Tageszeit, sendet sie nichts.
+                Nichts empfangen. Sendet die Uhr per UDP an eine einzelne Adresse, muss die Anzeige auf diesem Rechner
+                laufen, oder die Uhr muss an die Broadcast-Adresse senden. Bei TCP muss in der Uhr die Adresse dieses
+                Rechners eingetragen sein. Zeigt die Hallenuhr die Tageszeit, sendet sie nichts.
             </div>
         }
         else
@@ -91,6 +92,7 @@
                     <tr>
                         <th>Absender</th>
                         <th>Port</th>
+                        <th>Transport</th>
                         <th>Typ</th>
                         <th>Zeichensatz</th>
                         <th>Telegramme</th>
@@ -104,9 +106,10 @@
                         <tr>
                             <td class="mono">@finding.Source</td>
                             <td class="tight">@finding.Port</td>
+                            <td class="tight">@finding.Transport.ToString().ToUpperInvariant()</td>
                             <td>@finding.ProtocolName <span class="pill">@finding.Score</span></td>
                             <td class="tight">@finding.Encoding</td>
-                            <td class="tight">@finding.Datagrams</td>
+                            <td class="tight">@finding.Packets</td>
                             <td class="mono">@Preview(finding)</td>
                             <td class="tight"><button @onclick="() => Apply(finding)">Übernehmen</button></td>
                         </tr>
@@ -184,7 +187,14 @@
 
     bool Busy => scanning || sweeping;
 
-    int[] Ports => ClockScanner.CandidatePorts.Append(Config.Clock.Port).Distinct().ToArray();
+    int[] UdpPorts => WithConfigured(ClockScanner.UdpPorts, ClockTransport.Udp);
+
+    int[] TcpPorts => WithConfigured(ClockScanner.TcpPorts, ClockTransport.Tcp);
+
+    int[] WithConfigured(int[] ports, ClockTransport transport) =>
+        Protocols.Find(Config.Clock.Protocol).Transport == transport
+            ? ports.Append(Config.Clock.Port).Distinct().ToArray()
+            : ports;
 
     static string Preview(ClockFinding finding) =>
         finding.Preview is { } state
@@ -199,13 +209,14 @@
         var protocol = Protocols.Find(args.Value?.ToString() ?? ICastProtocol.Id);
         Config.Clock.Protocol = protocol.Key;
         Config.Clock.Encoding = protocol.DefaultEncoding;
+        Config.Clock.Port = protocol.DefaultPort;
     }
 
     async Task Scan()
     {
         scanning = true;
         scan = null;
-        try { scan = await Scanner.ScanAsync(Ports, TimeSpan.FromSeconds(ScanSeconds), CancellationToken.None); }
+        try { scan = await Scanner.ScanAsync(UdpPorts, TcpPorts, TimeSpan.FromSeconds(ScanSeconds), CancellationToken.None); }
         finally { scanning = false; }
     }
 

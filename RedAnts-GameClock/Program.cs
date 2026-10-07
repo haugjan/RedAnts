@@ -16,6 +16,7 @@ builder.Services.AddSingleton<DataFolder>();
 builder.Services.AddSingleton<ConfigStore>();
 builder.Services.AddSingleton<ClockHub>();
 builder.Services.AddSingleton<IClockProtocol, ICastProtocol>();
+builder.Services.AddSingleton<IClockProtocol, BodetScorepadProtocol>();
 builder.Services.AddSingleton<IClockProtocol, DelimitedProtocol>();
 builder.Services.AddSingleton<ClockProtocols>();
 builder.Services.AddSingleton<ClockFeed>();

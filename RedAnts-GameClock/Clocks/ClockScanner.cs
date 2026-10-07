@@ -2,12 +2,13 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using RedAnts.GameClock.Configuration;
 
 namespace RedAnts.GameClock.Clocks;
 
 public sealed record ClockFinding(
-    int Port, string Source, string ProtocolKey, string ProtocolName,
-    string Encoding, string Sample, string[] Fields, ClockState? Preview, int Score, int Datagrams);
+    ClockTransport Transport, int Port, string Source, string ProtocolKey, string ProtocolName,
+    string Encoding, string Sample, ClockState? Preview, int Score, int Packets);
 
 public sealed record ScanResult(IReadOnlyList<ClockFinding> Findings, IReadOnlyList<int> BlockedPorts);
 
@@ -15,51 +16,64 @@ public sealed record HostFinding(string Address, long RoundTrip, string Name);
 
 public sealed class ClockScanner(ClockFeed feed, ClockProtocols protocols, ILogger<ClockScanner> log)
 {
-    public static readonly int[] CandidatePorts =
+    public static readonly int[] UdpPorts =
     [
         50085, 50086, 50087, 1024, 2000, 3000, 4000, 5000, 6000, 7000, 7001,
         8000, 9000, 9001, 10000, 10001, 12345, 20000, 30000, 50000,
     ];
 
-    public Task<ScanResult> ScanAsync(IEnumerable<int> ports, TimeSpan duration, CancellationToken stop) =>
-        feed.ExclusiveAsync(token => Collect(ports.Distinct().ToArray(), duration, token), stop);
+    public static readonly int[] TcpPorts = [4001, 4000, 5000, 6000, 10001];
 
-    async Task<ScanResult> Collect(int[] ports, TimeSpan duration, CancellationToken stop)
+    public Task<ScanResult> ScanAsync(IEnumerable<int> udpPorts, IEnumerable<int> tcpPorts, TimeSpan duration, CancellationToken stop) =>
+        feed.ExclusiveAsync(token => Collect(udpPorts.Distinct().ToArray(), tcpPorts.Distinct().ToArray(), duration, token), stop);
+
+    async Task<ScanResult> Collect(int[] udpPorts, int[] tcpPorts, TimeSpan duration, CancellationToken stop)
     {
-        var samples = new ConcurrentDictionary<(int Port, string Source), (string Raw, string Encoding, int Count)>();
+        var samples = new ConcurrentDictionary<(ClockTransport Transport, int Port, string Source), Sample>();
         var blocked = new List<int>();
         var sockets = new List<UdpClient>();
+        var listeners = new List<TcpListener>();
 
-        foreach (var port in ports)
+        foreach (var port in udpPorts)
         {
-            try { sockets.Add(Bind(port)); }
+            try { sockets.Add(BindUdp(port)); }
             catch (SocketException) { blocked.Add(port); }
         }
 
-        log.LogInformation("Suchlauf auf {Count} Ports für {Seconds} s", sockets.Count, duration.TotalSeconds);
+        foreach (var port in tcpPorts)
+        {
+            try { listeners.Add(BindTcp(port)); }
+            catch (SocketException) { blocked.Add(port); }
+        }
+
+        log.LogInformation("Suchlauf auf {Udp} UDP- und {Tcp} TCP-Ports für {Seconds} s",
+            sockets.Count, listeners.Count, duration.TotalSeconds);
 
         using var window = CancellationTokenSource.CreateLinkedTokenSource(stop);
         window.CancelAfter(duration);
 
         try
         {
-            await Task.WhenAll(sockets.Select(socket => Drain(socket, samples, window.Token)));
+            await Task.WhenAll(
+                sockets.Select(socket => DrainUdp(socket, samples, window.Token))
+                    .Concat(listeners.Select(listener => DrainTcp(listener, samples, window.Token))));
         }
         finally
         {
             foreach (var socket in sockets) socket.Dispose();
+            foreach (var listener in listeners) listener.Stop();
         }
 
         var findings = samples
-            .Select(entry => Classify(entry.Key.Port, entry.Key.Source, entry.Value.Raw, entry.Value.Encoding, entry.Value.Count))
-            .OrderByDescending(f => f.Score)
-            .ThenByDescending(f => f.Datagrams)
+            .Select(entry => Classify(entry.Key.Transport, entry.Key.Port, entry.Key.Source, entry.Value))
+            .OrderByDescending(finding => finding.Score)
+            .ThenByDescending(finding => finding.Packets)
             .ToList();
 
         return new ScanResult(findings, blocked);
     }
 
-    async Task Drain(UdpClient socket, ConcurrentDictionary<(int, string), (string, string, int)> samples, CancellationToken stop)
+    static async Task DrainUdp(UdpClient socket, ConcurrentDictionary<(ClockTransport, int, string), Sample> samples, CancellationToken stop)
     {
         var port = ((IPEndPoint)socket.Client.LocalEndPoint!).Port;
         while (!stop.IsCancellationRequested)
@@ -70,41 +84,86 @@ public sealed class ClockScanner(ClockFeed feed, ClockProtocols protocols, ILogg
             catch (ObjectDisposedException) { return; }
             catch (SocketException) { continue; }
 
-            if (result.Buffer.Length == 0) continue;
-            var encoding = LineDecoder.Detect(result.Buffer);
-            var raw = LineDecoder.Decode(result.Buffer, encoding);
-            if (raw.Length == 0) continue;
-
-            var key = (port, result.RemoteEndPoint.Address.ToString());
-            samples.AddOrUpdate(key, (raw, encoding, 1), (_, existing) => (raw, encoding, existing.Item3 + 1));
+            Remember(samples, ClockTransport.Udp, port, result.RemoteEndPoint.Address.ToString(), result.Buffer);
         }
     }
 
-    ClockFinding Classify(int port, string source, string raw, string encoding, int count)
+    static async Task DrainTcp(TcpListener listener, ConcurrentDictionary<(ClockTransport, int, string), Sample> samples, CancellationToken stop)
     {
-        var best = protocols.Best(raw);
-        var protocol = best?.Protocol;
-        var preview = protocol?.Parse(raw, Probe(port, source, encoding, protocol.Key));
-        return new ClockFinding(
-            port, source,
-            protocol?.Key ?? "",
-            protocol?.Name ?? "unbekannt",
-            encoding, raw,
-            raw.Split(';'),
-            preview,
-            best?.Score ?? 0,
-            count);
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        while (!stop.IsCancellationRequested)
+        {
+            TcpClient client;
+            try { client = await listener.AcceptTcpClientAsync(stop); }
+            catch (OperationCanceledException) { return; }
+            catch (ObjectDisposedException) { return; }
+            catch (SocketException) { continue; }
+
+            using (client)
+            {
+                var source = ((IPEndPoint?)client.Client.RemoteEndPoint)?.Address.ToString() ?? "unbekannt";
+                var buffer = new byte[4096];
+                await using var stream = client.GetStream();
+                while (!stop.IsCancellationRequested)
+                {
+                    int read;
+                    try { read = await stream.ReadAsync(buffer, stop); }
+                    catch (Exception) { break; }
+                    if (read == 0) break;
+                    Remember(samples, ClockTransport.Tcp, port, source, buffer[..read]);
+                }
+            }
+        }
     }
 
-    static Configuration.ClockSourceConfig Probe(int port, string source, string encoding, string protocol) =>
-        new() { Port = port, SourceIp = source, Encoding = encoding, Protocol = protocol };
+    static void Remember(ConcurrentDictionary<(ClockTransport, int, string), Sample> samples,
+        ClockTransport transport, int port, string source, byte[] payload)
+    {
+        if (payload.Length == 0) return;
+        samples.AddOrUpdate((transport, port, source),
+            new Sample(payload, 1),
+            (_, existing) => new Sample(payload, existing.Packets + 1));
+    }
 
-    static UdpClient Bind(int port)
+    ClockFinding Classify(ClockTransport transport, int port, string source, Sample sample)
+    {
+        var best = protocols.Best(sample.Payload);
+        var protocol = best?.Protocol;
+        var encoding = LineDecoder.Detect(sample.Payload);
+        var config = new ClockSourceConfig
+        {
+            Port = port,
+            SourceIp = source,
+            Encoding = encoding,
+            Protocol = protocol?.Key ?? DelimitedProtocol.Id,
+        };
+
+        var parser = protocol?.CreateParser(config);
+        return new ClockFinding(
+            transport, port, source,
+            protocol?.Key ?? "",
+            protocol?.Name ?? "unbekannt",
+            encoding,
+            parser?.Describe(sample.Payload) ?? ClockFieldReader.Hex(sample.Payload),
+            parser?.Read(sample.Payload),
+            best?.Score ?? 0,
+            sample.Packets);
+    }
+
+    static UdpClient BindUdp(int port)
     {
         var udp = new UdpClient();
         udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         udp.Client.Bind(new IPEndPoint(IPAddress.Any, port));
         return udp;
+    }
+
+    static TcpListener BindTcp(int port)
+    {
+        var listener = new TcpListener(IPAddress.Any, port);
+        listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        listener.Start();
+        return listener;
     }
 
     public static async Task<IReadOnlyList<HostFinding>> SweepAsync(CancellationToken stop)
@@ -133,7 +192,7 @@ public sealed class ClockScanner(ClockFeed feed, ClockProtocols protocols, ILogg
             catch (Exception) { }
         });
 
-        return found.OrderBy(h => h.Address.Split('.').Select(int.Parse).ToArray(), new OctetComparer()).ToList();
+        return found.OrderBy(host => host.Address.Split('.').Select(int.Parse).ToArray(), new OctetComparer()).ToList();
     }
 
     static async Task<string> NameOf(IPAddress address)
@@ -141,6 +200,8 @@ public sealed class ClockScanner(ClockFeed feed, ClockProtocols protocols, ILogg
         try { return (await Dns.GetHostEntryAsync(address)).HostName; }
         catch (Exception) { return ""; }
     }
+
+    sealed record Sample(byte[] Payload, int Packets);
 
     sealed class OctetComparer : IComparer<int[]>
     {

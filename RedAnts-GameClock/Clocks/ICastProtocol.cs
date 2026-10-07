@@ -3,7 +3,7 @@ using static RedAnts.GameClock.Clocks.ClockFieldReader;
 
 namespace RedAnts.GameClock.Clocks;
 
-public sealed class ICastProtocol : IClockProtocol
+public sealed class ICastProtocol : TextProtocol
 {
     public const string Id = "icast";
 
@@ -16,17 +16,17 @@ public sealed class ICastProtocol : IClockProtocol
         "TIME TO WARMUP", "TIME TO FACE-OFF", "LOCAL TIME", "POWERBREAK",
     ];
 
-    public string Key => Id;
+    public override string Key => Id;
 
-    public string Name => "iCast Scoreboard";
+    public override string Name => "iCast Scoreboard";
 
-    public string Description => "iCast Sweden AB, 10 Telegramme pro Sekunde, Felder mit ; getrennt, UTF-32 Big Endian";
+    public override string Description => "iCast Sweden AB, 10 Telegramme pro Sekunde, Felder mit ; getrennt, UTF-32 Big Endian";
 
-    public int DefaultPort => 50085;
+    public override int DefaultPort => 50085;
 
-    public string DefaultEncoding => LineDecoder.Utf32Be;
+    public override string DefaultEncoding => LineDecoder.Utf32Be;
 
-    public ClockState? Parse(string line, ClockSourceConfig config)
+    public override ClockState? Parse(string line, ClockSourceConfig config)
     {
         var fields = Split(line);
         if (fields.Length < MinimumFields) return null;
@@ -39,7 +39,7 @@ public sealed class ICastProtocol : IClockProtocol
             fields, line, DateTime.Now);
     }
 
-    public int Match(string line)
+    public override int MatchLine(string line)
     {
         var fields = Split(line);
         if (fields.Length < MinimumFields) return 0;

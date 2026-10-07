@@ -3,23 +3,23 @@ using static RedAnts.GameClock.Clocks.ClockFieldReader;
 
 namespace RedAnts.GameClock.Clocks;
 
-public sealed class DelimitedProtocol : IClockProtocol
+public sealed class DelimitedProtocol : TextProtocol
 {
     public const string Id = "delimited";
 
     public static readonly char[] Separators = [';', ',', '\t', '|', ' '];
 
-    public string Key => Id;
+    public override string Key => Id;
 
-    public string Name => "Allgemeine Zeile mit Trennzeichen";
+    public override string Name => "Allgemeine Zeile mit Trennzeichen";
 
-    public string Description => "Jede Uhr, die eine Zeile mit Trennzeichen sendet; Trennzeichen und Feldnummern werden selbst gesetzt";
+    public override string Description => "Jede Uhr, die eine Zeile mit Trennzeichen sendet; Trennzeichen und Feldnummern werden selbst gesetzt";
 
-    public int DefaultPort => 50085;
+    public override int DefaultPort => 50085;
 
-    public string DefaultEncoding => LineDecoder.Auto;
+    public override string DefaultEncoding => LineDecoder.Auto;
 
-    public ClockState? Parse(string line, ClockSourceConfig config)
+    public override ClockState? Parse(string line, ClockSourceConfig config)
     {
         var layout = config.Layout;
         var fields = line.Split(Separator(layout.Separator)).Select(x => x.Trim()).ToArray();
@@ -41,7 +41,7 @@ public sealed class DelimitedProtocol : IClockProtocol
             fields, line, DateTime.Now);
     }
 
-    public int Match(string line)
+    public override int MatchLine(string line)
     {
         foreach (var separator in Separators)
         {

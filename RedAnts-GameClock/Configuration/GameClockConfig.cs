@@ -89,6 +89,7 @@ public sealed class TeamConfig
     public int Season { get; set; } = 2026;
     public int GameClass { get; set; } = 21;
     public TeamEntry Home { get; set; } = new();
+    public TeamEntry Guest { get; set; } = new();
     public Dictionary<string, TeamEntry> ByAbbreviation { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public TeamEntry? Find(string abbreviation) =>
@@ -99,6 +100,7 @@ public sealed class TeamConfig
         Season = Season,
         GameClass = GameClass,
         Home = Home.Copy(),
+        Guest = Guest.Copy(),
         ByAbbreviation = ByAbbreviation.ToDictionary(e => e.Key, e => e.Value.Copy(), StringComparer.OrdinalIgnoreCase),
     };
 }

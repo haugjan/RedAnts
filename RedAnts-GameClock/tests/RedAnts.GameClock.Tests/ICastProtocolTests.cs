@@ -52,12 +52,12 @@ public class ICastProtocolTests
     [Fact]
     public void ScoresAKnownTimeTypeHighest()
     {
-        var known = _protocol.Match(Hall);
-        var unknown = _protocol.Match("19:38;2;6;3;;;;;0;0;RED;UBO;SOMETHING");
+        var known = _protocol.MatchLine(Hall);
+        var unknown = _protocol.MatchLine("19:38;2;6;3;;;;;0;0;RED;UBO;SOMETHING");
 
         Assert.Equal(100, known);
         Assert.InRange(unknown, 1, 99);
-        Assert.Equal(0, _protocol.Match("hello world"));
+        Assert.Equal(0, _protocol.MatchLine("hello world"));
     }
 
     [Fact]

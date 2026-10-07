@@ -19,6 +19,8 @@ public sealed class ClockFeed(
 
     CancellationTokenSource? _session;
     volatile bool _yield;
+    string _lastRaw = "";
+    DateTime _lastPublish = DateTime.MinValue;
 
     public string Listening { get; private set; } = "";
 
@@ -89,45 +91,18 @@ public sealed class ClockFeed(
             var logDir = Path.Combine(env.ContentRootPath, options.Value.LogDir);
             Directory.CreateDirectory(logDir);
 
-            using var udp = Bind(config.Port);
+            _lastRaw = "";
+            _lastPublish = DateTime.MinValue;
             Fault = null;
-            Listening = $"{protocol.Name} auf UDP {config.Port} ({(source is null ? "alle Absender" : source.ToString())})";
-            log.LogInformation("Hoere auf UDP-Port {Port} (Quelle: {Source}, Protokoll: {Protocol})",
-                config.Port, source?.ToString() ?? "alle", protocol.Key);
+            Listening = $"{protocol.Name} auf {protocol.Transport.ToString().ToUpperInvariant()} {config.Port} " +
+                        $"({(source is null ? "alle Absender" : source.ToString())})";
+            log.LogInformation("Hoere auf {Transport}-Port {Port} (Quelle: {Source}, Protokoll: {Protocol})",
+                protocol.Transport, config.Port, source?.ToString() ?? "alle", protocol.Key);
 
-            var lastRaw = "";
-            var lastPublish = DateTime.MinValue;
-            while (!stop.IsCancellationRequested)
-            {
-                UdpReceiveResult result;
-                try { result = await udp.ReceiveAsync(stop); }
-                catch (SocketException) { continue; }
-
-                if (source is not null && !result.RemoteEndPoint.Address.Equals(source)) continue;
-
-                Received++;
-                var raw = LineDecoder.Decode(result.Buffer, config.Encoding);
-                LastRaw = raw;
-
-                var changed = raw != lastRaw;
-                if (!changed && DateTime.Now - lastPublish < Heartbeat) continue;
-
-                if (protocol.Parse(raw, config) is not { } state)
-                {
-                    Rejected++;
-                    lastRaw = raw;
-                    continue;
-                }
-
-                hub.Publish(state);
-                lastPublish = DateTime.Now;
-
-                if (changed)
-                {
-                    lastRaw = raw;
-                    await AppendRawLog(logDir, raw, stop);
-                }
-            }
+            if (protocol.Transport == ClockTransport.Tcp)
+                await ReceiveTcpAsync(config, protocol, source, logDir, stop);
+            else
+                await ReceiveUdpAsync(config, protocol, source, logDir, stop);
         }
         finally
         {
@@ -136,7 +111,81 @@ public sealed class ClockFeed(
         }
     }
 
-    static UdpClient Bind(int port)
+    async Task ReceiveUdpAsync(ClockSourceConfig config, IClockProtocol protocol, IPAddress? source, string logDir, CancellationToken stop)
+    {
+        using var udp = BindUdp(config.Port);
+        var parser = protocol.CreateParser(config);
+
+        while (!stop.IsCancellationRequested)
+        {
+            UdpReceiveResult result;
+            try { result = await udp.ReceiveAsync(stop); }
+            catch (SocketException) { continue; }
+
+            if (source is not null && !result.RemoteEndPoint.Address.Equals(source)) continue;
+            await Handle(result.Buffer, parser, logDir, stop);
+        }
+    }
+
+    async Task ReceiveTcpAsync(ClockSourceConfig config, IClockProtocol protocol, IPAddress? source, string logDir, CancellationToken stop)
+    {
+        var listener = new TcpListener(IPAddress.Any, config.Port);
+        listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        listener.Start();
+        try
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                using var client = await listener.AcceptTcpClientAsync(stop);
+                var remote = (IPEndPoint?)client.Client.RemoteEndPoint;
+                if (source is not null && remote is not null && !remote.Address.Equals(source)) continue;
+
+                log.LogInformation("Matchuhr {Remote} verbunden", remote?.ToString() ?? "unbekannt");
+                var parser = protocol.CreateParser(config);
+                var buffer = new byte[4096];
+
+                await using var stream = client.GetStream();
+                while (!stop.IsCancellationRequested)
+                {
+                    int read;
+                    try { read = await stream.ReadAsync(buffer, stop); }
+                    catch (IOException) { break; }
+                    if (read == 0) break;
+                    await Handle(buffer[..read], parser, logDir, stop);
+                }
+            }
+        }
+        finally { listener.Stop(); }
+    }
+
+    async Task Handle(byte[] payload, IClockParser parser, string logDir, CancellationToken stop)
+    {
+        if (payload.Length == 0) return;
+
+        Received++;
+        var raw = parser.Describe(payload);
+        LastRaw = raw;
+
+        if (parser.Read(payload) is not { } state)
+        {
+            Rejected++;
+            return;
+        }
+
+        var changed = raw != _lastRaw;
+        if (!changed && DateTime.Now - _lastPublish < Heartbeat) return;
+
+        hub.Publish(state);
+        _lastPublish = DateTime.Now;
+
+        if (changed)
+        {
+            _lastRaw = raw;
+            await AppendRawLog(logDir, raw, stop);
+        }
+    }
+
+    static UdpClient BindUdp(int port)
     {
         var udp = new UdpClient();
         udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);

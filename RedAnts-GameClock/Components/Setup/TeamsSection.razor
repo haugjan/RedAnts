@@ -43,15 +43,18 @@
         <div class="hint">@teams.Count Teams geladen.</div>
     }
 
-    <h2 class="spaced">Heimteam</h2>
+    <h2 class="spaced">Heim- und Gastteam</h2>
     <table>
         <tbody>
             <TeamRow Entry="Config.Teams.Home" Abbreviation="@HomeAbbreviation" Teams="teams" Label="Heim"
                      OnPick="Pick" OnUpload="Upload" OnClear="Clear" />
+            <TeamRow Entry="Config.Teams.Guest" Abbreviation="@GuestAbbreviation" Teams="teams" Label="Gast"
+                     OnPick="Pick" OnUpload="Upload" OnClear="Clear" />
         </tbody>
     </table>
     <div class="hint">
-        Das Heimteam gilt, solange die Uhr kein bekanntes Kürzel sendet. Sendet sie eines, zählt die Zuordnung unten.
+        Heim und Gast gelten, solange die Uhr kein bekanntes Kürzel sendet. Der Bodet ScorePad sendet gar keine Kürzel,
+        dort zählen nur diese beiden Zeilen. Sendet die Uhr ein Kürzel, zählt die Zuordnung unten.
     </div>
 
     <h2 class="spaced">Kürzel der Matchuhr</h2>
@@ -101,6 +104,8 @@
     bool loading;
 
     string HomeAbbreviation => Hub.Current.Home;
+
+    string GuestAbbreviation => Hub.Current.Guest;
 
     string[] LiveAbbreviations =>
         new[] { Hub.Current.Home, Hub.Current.Guest }.Where(a => a.Length > 0).Distinct().ToArray();

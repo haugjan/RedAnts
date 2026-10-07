@@ -12,7 +12,7 @@ public sealed class TeamResolver(ConfigStore store, DataFolder data)
 {
     public TeamView Home(ClockState state) => Resolve(state.Home, store.Current.Teams.Home);
 
-    public TeamView Guest(ClockState state) => Resolve(state.Guest, null);
+    public TeamView Guest(ClockState state) => Resolve(state.Guest, store.Current.Teams.Guest);
 
     public string LocalLogoPath(TeamView team)
     {

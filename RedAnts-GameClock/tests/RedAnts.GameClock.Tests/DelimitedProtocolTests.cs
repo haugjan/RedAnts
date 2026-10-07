@@ -70,7 +70,7 @@ public class DelimitedProtocolTests
     [Fact]
     public void RecognisesAnyLineThatCarriesAClock()
     {
-        Assert.True(_protocol.Match("2|11:24|4|3") > 0);
-        Assert.True(_protocol.Match("nothing here") < _protocol.Match("2;11:24;4;3"));
+        Assert.True(_protocol.MatchLine("2|11:24|4|3") > 0);
+        Assert.True(_protocol.MatchLine("nothing here") < _protocol.MatchLine("2;11:24;4;3"));
     }
 }

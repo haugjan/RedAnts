@@ -10,16 +10,10 @@ public sealed class ClockProtocols(IEnumerable<IClockProtocol> protocols)
         _all.FirstOrDefault(p => p.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
         ?? _all.First(p => p.Key == ICastProtocol.Id);
 
-    public IEnumerable<IClockProtocol> Ranked(string line) =>
-        _all.Select(p => (Protocol: p, Score: p.Match(line)))
-            .Where(x => x.Score > 0)
-            .OrderByDescending(x => x.Score)
-            .Select(x => x.Protocol);
-
-    public (IClockProtocol Protocol, int Score)? Best(string line) =>
-        _all.Select(p => (Protocol: p, Score: p.Match(line)))
-            .Where(x => x.Score > 0)
-            .OrderByDescending(x => x.Score)
-            .Select(x => ((IClockProtocol, int)?)(x.Protocol, x.Score))
+    public (IClockProtocol Protocol, int Score)? Best(byte[] payload) =>
+        _all.Select(protocol => (Protocol: protocol, Score: protocol.Match(payload)))
+            .Where(candidate => candidate.Score > 0)
+            .OrderByDescending(candidate => candidate.Score)
+            .Select(candidate => ((IClockProtocol, int)?)(candidate.Protocol, candidate.Score))
             .FirstOrDefault();
 }

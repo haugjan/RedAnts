@@ -1,0 +1,183 @@
+using RedAnts.GameClock.Clocks;
+using RedAnts.GameClock.Configuration;
+using Xunit;
+
+namespace RedAnts.GameClock.Tests;
+
+public class BodetScorepadProtocolTests
+{
+    static readonly byte[] Documented =
+    [
+        0x01, 0x7f, 0x02, 0x47, 0x31, 0x31, 0x80, 0x37, 0x20, 0x34, 0x30,
+        0x37, 0x20, 0x30, 0x31, 0x20, 0x30, 0x30, 0x31, 0x03, 0x2d,
+    ];
+
+    readonly BodetScorepadProtocol _protocol = new();
+
+    IClockParser Parser() => _protocol.CreateParser(new ClockSourceConfig { Protocol = BodetScorepadProtocol.Id });
+
+    [Fact]
+    public void ReadsTheDocumentedFrame()
+    {
+        var state = Parser().Read(Documented);
+
+        Assert.NotNull(state);
+        Assert.Equal("04:07", state.Time);
+        Assert.Equal("1", state.HomeScore);
+        Assert.Equal("0", state.GuestScore);
+        Assert.Equal("1", state.Period);
+    }
+
+    [Fact]
+    public void ComputesTheLrcOfTheDocumentedFrame() =>
+        Assert.Equal(0x2d, BodetFrame.Lrc(Documented, Documented.Length - 1));
+
+    [Fact]
+    public void AcceptsOnlyFramesWithAMatchingLrc()
+    {
+        var broken = Documented.ToArray();
+        broken[^1] ^= 0x01;
+
+        Assert.True(BodetFrame.IsValid(Documented));
+        Assert.False(BodetFrame.IsValid(broken));
+        Assert.Null(Parser().Read(broken));
+    }
+
+    [Fact]
+    public void TakesTheClockTheScoreAndThePeriodFromMessageEleven()
+    {
+        var state = Parser().Read(Match("17:35", 4, 1, 2));
+
+        Assert.NotNull(state);
+        Assert.Equal("17:35", state.Time);
+        Assert.Equal("4", state.HomeScore);
+        Assert.Equal("1", state.GuestScore);
+        Assert.Equal("2", state.Period);
+    }
+
+    [Fact]
+    public void KeepsTheClockWhileAPenaltyMessageArrives()
+    {
+        var parser = Parser();
+        parser.Read(Match("17:35", 4, 1, 2));
+
+        var state = parser.Read(Penalty(BodetScorepadProtocol.GuestPenaltyMessage, "1:29", "0:00"));
+
+        Assert.NotNull(state);
+        Assert.Equal("17:35", state.Time);
+        Assert.Equal("4", state.HomeScore);
+        Assert.Collection(state.GuestPenalties, only => Assert.Equal("01:29", only.Time));
+        Assert.Empty(state.HomePenalties);
+    }
+
+    [Fact]
+    public void ReadsBothPenaltiesOfATeam()
+    {
+        var parser = Parser();
+        parser.Read(Match("17:35", 0, 0, 1));
+
+        var state = parser.Read(Penalty(BodetScorepadProtocol.HomePenaltyMessage, "2:00", "0:45"));
+
+        Assert.NotNull(state);
+        Assert.Collection(state.HomePenalties,
+            first => Assert.Equal("02:00", first.Time),
+            second => Assert.Equal("00:45", second.Time));
+    }
+
+    [Fact]
+    public void TreatsAZeroPenaltyAsNoPenalty()
+    {
+        var parser = Parser();
+        parser.Read(Match("17:35", 0, 0, 1));
+
+        var state = parser.Read(Penalty(BodetScorepadProtocol.HomePenaltyMessage, "0:00", "0:00"));
+
+        Assert.NotNull(state);
+        Assert.Empty(state.HomePenalties);
+    }
+
+    [Fact]
+    public void ReassemblesAFrameThatArrivesInTwoChunks()
+    {
+        var frame = Match("12:03", 2, 2, 3);
+        var parser = Parser();
+
+        Assert.Null(parser.Read(frame[..9]));
+
+        var state = parser.Read(frame[9..]);
+
+        Assert.NotNull(state);
+        Assert.Equal("12:03", state.Time);
+    }
+
+    [Fact]
+    public void ReadsSeveralFramesFromOneChunk()
+    {
+        var chunk = Match("09:12", 3, 2, 3).Concat(Penalty(BodetScorepadProtocol.HomePenaltyMessage, "1:05", "0:00")).ToArray();
+
+        var state = Parser().Read(chunk);
+
+        Assert.NotNull(state);
+        Assert.Equal("09:12", state.Time);
+        Assert.Collection(state.HomePenalties, only => Assert.Equal("01:05", only.Time));
+    }
+
+    [Fact]
+    public void SendsNoTeamAbbreviations()
+    {
+        var state = Parser().Read(Documented);
+
+        Assert.NotNull(state);
+        Assert.Equal("", state.Home);
+        Assert.Equal("", state.Guest);
+    }
+
+    [Fact]
+    public void RecognisesItsOwnFramesAndNothingElse()
+    {
+        Assert.True(_protocol.Match(Documented) >= 80);
+        Assert.Equal(0, _protocol.Match([0x41, 0x42, 0x43]));
+        Assert.Equal(ClockTransport.Tcp, _protocol.Transport);
+        Assert.Equal(4001, _protocol.DefaultPort);
+    }
+
+    static byte[] Match(string clock, int home, int guest, int period)
+    {
+        var minutes = clock[..2];
+        var seconds = clock[3..];
+        return Frame(
+        [
+            (byte)'G', (byte)'1', (byte)'1', 0x80, (byte)'7',
+            (byte)minutes[0], (byte)minutes[1], (byte)seconds[0], (byte)seconds[1],
+            .. Padded(home), .. Padded(guest), (byte)('0' + period),
+        ]);
+    }
+
+    static byte[] Penalty(int message, string first, string second)
+    {
+        var type = message.ToString();
+        return Frame(
+        [
+            (byte)'G', (byte)type[0], (byte)type[1], 0x80,
+            Flag(first), (byte)first[0], (byte)first[2], (byte)first[3],
+            Flag(second), (byte)second[0], (byte)second[2], (byte)second[3],
+        ]);
+    }
+
+    static byte Flag(string penalty) => penalty == "0:00" ? (byte)0x80 : (byte)0x90;
+
+    static byte[] Padded(int score) =>
+        score.ToString("000").Select(c => (byte)c).ToArray();
+
+    static byte[] Frame(byte[] body)
+    {
+        var frame = new byte[body.Length + 5];
+        frame[0] = BodetScorepadProtocol.StartOfHeading;
+        frame[1] = 0x7f;
+        frame[2] = BodetScorepadProtocol.StartOfText;
+        body.CopyTo(frame, 3);
+        frame[^2] = BodetScorepadProtocol.EndOfText;
+        frame[^1] = BodetFrame.Lrc(frame, frame.Length - 1);
+        return frame;
+    }
+}
