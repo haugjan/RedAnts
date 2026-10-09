@@ -34,6 +34,25 @@ credential for `repo:haugjan/RedAnts:ref:refs/heads/main`, grants it the **Websi
 role on the app, and prints the three OIDC ids for the GitHub secrets below. It prompts only for
 the SQL admin password (never written to disk).
 
+## Custom domains
+
+Every surface is a custom domain on the same App Service, routed by host in `Program.cs`
+(`SiteHosts`): `tickets`, `scan`, `admin`, `show` and `game`, each as `<prefix>.redants.ch` on
+prod and `<prefix>-dev.redants.ch` on dev. `azure-setup.sh` does not bind them; a new surface
+needs three manual steps per environment, in this order:
+
+```bash
+az network dns record-set cname set-record -g RG_RedAnts -z redants.ch   -n game --cname app-redants-prod.azurewebsites.net
+az webapp config hostname add -g RG_RedAnts --webapp-name app-redants-prod   --hostname game.redants.ch
+az webapp config ssl create -g RG_RedAnts --name app-redants-prod   --hostname game.redants.ch
+```
+
+The third command orders the free App Service managed certificate and binds it (SNI); it needs
+the CNAME to resolve first. Repeat with `game-dev` and `app-redants-dev`. Until the hostname is
+bound, the surface is reachable only through the App Service default host
+(`https://app-redants-dev.azurewebsites.net/game`), because the host router leaves
+`*.azurewebsites.net` and `localhost` alone.
+
 ## Media on Azure Blob Storage
 
 Uploaded media is stored in Azure Blob Storage (durable across redeploys and scale-out) via

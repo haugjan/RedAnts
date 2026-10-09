@@ -6,7 +6,7 @@ Public website and self-service ticketing application for Red Ants Rychenberg Wi
 
 | Folder | Application |
 |---|---|
-| `RedAnts-WebApp/` | The Umbraco web app (`src/`, `tests/`, `RedAnts.slnx`, `docs/`, `deploy/`, `scripts/`). Only changes here (and to `.github/workflows/deploy.yml`) trigger a deployment. |
+| `RedAnts-WebApp/` | The Umbraco web app (`src/`, `tests/`, `RedAnts.slnx`, `docs/`, `deploy/`, `scripts/`). Holds four projects beside the kernel: Host, Ticketing, Show and Game (the Unihockey-Manager at `game[-dev].redants.ch`). Only changes here (and to `.github/workflows/deploy.yml`) trigger a deployment. |
 | `RedAnts-Show-Companion/` | Bitfocus Companion module for the soundboard (npm package `companion-module-redants-show`). |
 | `RedAnts-TCConsole/` | WPF tool for the TCU console (.NET 8, Windows). Every change here publishes a zipped release (`tcconsole-v*`); `Update-TcuConsole.ps1` installs the newest one on the streaming PC. |
 | `RedAnts-TCConsole-Companion/` | Bitfocus Companion module for TCConsole: 32 fixed keys, assigned once, driven live by TcuConsole. |
@@ -21,6 +21,7 @@ Each surface has its own custom domain, routed by host in `Program.cs`:
 |---|---|---|
 | Public / tickets | `tickets.redants.ch` | `tickets-dev.redants.ch` |
 | Scanning | `scan.redants.ch` | `scan-dev.redants.ch` |
+| Unihockey-Manager | `game.redants.ch` | `game-dev.redants.ch` |
 | Admin / backoffice | `admin.redants.ch` | `admin-dev.redants.ch` |
 
 App Services `app-redants-prod` / `app-redants-dev` (Switzerland North). Only `tickets.redants.ch` is search-indexed; all other hosts (every `*-dev`, the scan/admin subdomains, `*.azurewebsites.net`) send `noindex`. Payrexx: prod uses the live `redants` instance, dev the `redants-test` instance.
