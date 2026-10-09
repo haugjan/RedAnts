@@ -1,0 +1,241 @@
+@using RedAnts.Game.Domain
+@using RedAnts.Game.Features.Players
+@using RedAnts.Game.Features.Settings
+@inject GetGameOverview.Handler OverviewQuery
+@inject GetGameSettings.Handler SettingsQuery
+@inject SetGameSetting.Handler SettingChange
+@inject ImportGamePlayers.Handler Import
+
+<div class="ga">
+    <header class="ga-top">
+        <h1>Game · Unihockey-Manager</h1>
+        <a href="/game" target="_blank">Spiel öffnen</a>
+    </header>
+
+    <section class="ga-panel">
+        <h2>Stand</h2>
+        <div class="ga-stats">
+            <div><b class="ga-num">@(_overview?.PlayerCount ?? 0)</b><span>Spielerinnen</span></div>
+            <div><b class="ga-num">@(_overview?.WithPortrait ?? 0)</b><span>mit Portrait</span></div>
+            <div><b class="ga-num">@(_overview?.SquadCount ?? 0)</b><span>Kader</span></div>
+            <div><b class="ga-num">@(_settings?.Budget ?? Squad.DefaultBudget)</b><span>FB Budget</span></div>
+            <div><b>@SquadLayout.Lines × @SquadLayout.PerLine + @SquadLayout.Goalies</b><span>Linien, Goalies</span></div>
+        </div>
+        @if (_settings is { Season.Length: > 0 } || _settings is { AsOf.Length: > 0 })
+        {
+            <p class="ga-note">Daten: Saison @(_settings!.Season), Stand @(_settings.AsOf)</p>
+        }
+    </section>
+
+    <section class="ga-panel">
+        <h2>Runde und Budget</h2>
+        <div class="ga-row">
+            <div class="ga-field">
+                <label for="roundLabel">Rundentitel</label>
+                <input id="roundLabel" type="text" @bind="_roundLabel" maxlength="40" />
+            </div>
+            <div class="ga-field">
+                <label for="budget">Budget in FB</label>
+                <input id="budget" type="number" min="100" max="100000" step="10" @bind="_budget" />
+            </div>
+            <button class="ga-btn ga-btn--go" @onclick="SaveSettingsAsync" disabled="@_busy">Speichern</button>
+        </div>
+        <p class="ga-note">
+            Das Kader hat @SquadLayout.Goalies Goalies und @SquadLayout.Lines Linien mit je
+            @SquadLayout.DefencePerLine Verteidigung und @SquadLayout.ForwardsPerLine Sturm, zusammen
+            @SquadLayout.Slots Plätze.
+        </p>
+    </section>
+
+    <section class="ga-panel">
+        <h2>Spielerinnen importieren</h2>
+        <p class="ga-note">
+            Erwartet wird die Scouting-Datei als JSON mit einem Feld <code>Players</code>. Der Import
+            ersetzt den gesamten Bestand, bestehende Kader behalten ihre Plätze.
+        </p>
+        <div class="ga-row" style="margin:10px 0">
+            <InputFile OnChange="LoadFileAsync" accept=".json,application/json" />
+            @if (_fileName is { Length: > 0 })
+            {
+                <span class="ga-note">@_fileName</span>
+            }
+        </div>
+        <textarea @bind="_json" placeholder="JSON hier einfügen" aria-label="Importdaten"></textarea>
+        <div class="ga-row" style="margin-top:10px">
+            <button class="ga-btn ga-btn--go" @onclick="ImportAsync" disabled="@_busy">Import starten</button>
+            <button class="ga-btn" @onclick="() => { _json = string.Empty; _fileName = string.Empty; }" disabled="@_busy">Feld leeren</button>
+        </div>
+        @if (_message is { Length: > 0 })
+        {
+            <p class="ga-note @(_failed ? "ga-bad" : "ga-ok")">@_message</p>
+        }
+    </section>
+
+    <section class="ga-panel">
+        <h2>Kader der Managerinnen</h2>
+        @if (_overview is null || _overview.Squads.Count == 0)
+        {
+            <p class="ga-note">Noch kein Kader gesetzt.</p>
+        }
+        else
+        {
+            <div class="ga-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Plätze</th>
+                            <th>Wert</th>
+                            <th>Zuletzt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var squad in _overview.Squads)
+                        {
+                            <tr>
+                                <td>@squad.Name</td>
+                                <td class="ga-num">@squad.Placed von @SquadLayout.Slots</td>
+                                <td class="ga-num">@squad.Spent FB</td>
+                                <td>@SwissTime.ToSwiss(squad.UpdatedAt).ToString("dd.MM.yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="ga-panel">
+        <h2>Spielerinnen</h2>
+        @if (_overview is null || _overview.Players.Count == 0)
+        {
+            <p class="ga-note">Noch keine Spielerinnen geladen.</p>
+        }
+        else
+        {
+            <div class="ga-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Pos</th>
+                            <th>Verein</th>
+                            <th>MW</th>
+                            <th>Ø Pkt</th>
+                            <th>Sp</th>
+                            <th>Status</th>
+                            <th>Bild</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var player in _overview.Players)
+                        {
+                            <tr>
+                                <td>@player.Name</td>
+                                <td>@player.Position.ShortLabel()</td>
+                                <td>@player.Club</td>
+                                <td class="ga-num">@player.MarketValue</td>
+                                <td class="ga-num">@player.RawAverage.ToString("0.00")</td>
+                                <td class="ga-num">@player.Games</td>
+                                <td>@player.Status.Label()</td>
+                                <td>@(player.HasPortrait ? "ja" : "nein")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private GameOverview? _overview;
+    private GameSettingsView? _settings;
+    private string _json = "";
+    private string _fileName = "";
+    private string _roundLabel = "";
+    private int _budget = Squad.DefaultBudget;
+    private string _message = "";
+    private bool _failed;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _settings = await SettingsQuery.HandleAsync(new GetGameSettings.Query());
+        _roundLabel = _settings.RoundLabel;
+        _budget = _settings.Budget;
+        _overview = await OverviewQuery.HandleAsync(new GetGameOverview.Query());
+    }
+
+    private async Task LoadFileAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file is null) return;
+
+        _busy = true;
+        _message = "";
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 32L * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            _json = await reader.ReadToEndAsync();
+            _fileName = $"{file.Name}, {_json.Length / 1024} KB gelesen";
+        }
+        catch (Exception ex)
+        {
+            _failed = true;
+            _message = $"Die Datei konnte nicht gelesen werden: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        _busy = true;
+        try
+        {
+            var result = await Import.HandleAsync(new ImportGamePlayers.Command(_json));
+            _failed = false;
+            _message = $"{result.Imported} Spielerinnen importiert.";
+            _json = "";
+            _fileName = "";
+            await LoadAsync();
+        }
+        catch (DomainException ex)
+        {
+            _failed = true;
+            _message = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        _busy = true;
+        try
+        {
+            await SettingChange.HandleAsync(new SetGameSetting.Command(GameSettingKeys.RoundLabel, _roundLabel));
+            await SettingChange.HandleAsync(new SetGameSetting.Command(GameSettingKeys.Budget, _budget.ToString()));
+            _failed = false;
+            _message = "Gespeichert.";
+            await LoadAsync();
+        }
+        catch (DomainException ex)
+        {
+            _failed = true;
+            _message = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

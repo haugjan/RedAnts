@@ -6,10 +6,10 @@ namespace RedAnts.Architecture.Tests;
 
 public class HandlerRules
 {
-    private static readonly Regex SliceNamespace = new(@"^RedAnts\.(Ticketing|Show)\.Features(\.|$)");
+    private static readonly Regex SliceNamespace = new(@"^RedAnts\.(Ticketing|Show|Game)\.Features(\.|$)");
 
     private static readonly Regex SliceHome =
-        new(@"^RedAnts\.(Ticketing|Show)\.Features\.(?!Shared\b)[A-Za-z]+(\.(?!Admin\b|Views\b|Infrastructure\b|Shared\b)[A-Za-z]+)?$");
+        new(@"^RedAnts\.(Ticketing|Show|Game)\.Features\.(?!Shared\b)[A-Za-z]+(\.(?!Admin\b|Views\b|Infrastructure\b|Shared\b)[A-Za-z]+)?$");
 
     private static IEnumerable<IType> Handlers => RedAntsArchitecture.OwnTypes.Where(IsHandler);
 
@@ -53,7 +53,8 @@ public class HandlerRules
     public static IEnumerable<object[]> Modules =>
     [
         ["Ticketing", RedAntsArchitecture.Ticketing, RedAnts.Ticketing.Features.TicketingFeatures.Handlers],
-        ["Show", RedAntsArchitecture.Show, RedAnts.Show.Features.ShowFeatures.Handlers]
+        ["Show", RedAntsArchitecture.Show, RedAnts.Show.Features.ShowFeatures.Handlers],
+        ["Game", RedAntsArchitecture.Game, RedAnts.Game.Features.GameFeatures.Handlers]
     ];
 
     [Theory]

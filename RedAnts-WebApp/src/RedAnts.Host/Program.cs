@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Domain;
+using RedAnts.Game.Infrastructure;
 using RedAnts.Show.Infrastructure;
 using RedAnts.Ticketing.Infrastructure;
 using Umbraco.StorageProviders.AzureBlob.IO;
@@ -55,6 +56,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options => optio
 
 builder.Services.AddTicketing(builder.Configuration);
 builder.Services.AddShow(builder.Configuration);
+builder.Services.AddGame(builder.Configuration);
 
 var umbracoBuilder = builder.CreateUmbracoBuilder()
     .AddBackOffice()
@@ -320,6 +322,8 @@ app.UseTicketingScanAuth();
 
 app.UseShow();
 
+app.UseGame();
+
 // Always-on password gate for the public soundboard (dev + prod), independent of
 // the site gate. Only protects the board surface (/show); assets and the backoffice
 // editor stay reachable.
@@ -463,6 +467,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/umbraco-entra-signout")
         || path.StartsWithSegments("/admin/ticketing")
         || path.StartsWithSegments("/admin/show")
+        || path.StartsWithSegments("/admin/game")
         || path.StartsWithSegments("/App_Plugins")
         || path.StartsWithSegments("/_blazor")
         || path.StartsWithSegments("/_content")

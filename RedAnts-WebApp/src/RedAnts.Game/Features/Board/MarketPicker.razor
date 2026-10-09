@@ -1,0 +1,48 @@
+@using RedAnts.Game.Features.Shared
+@using RedAnts.Game.Features.Squad
+
+<div class="g-dialog g-dialog--wide" role="dialog" aria-modal="true" aria-label="Spielerin wählen">
+    <div class="g-dialog-in">
+        <div class="g-pick-hd">
+            <div>
+                <span class="g-l">@Slot.Label</span>
+                <h2>@Slot.Role.Label() wählen</h2>
+            </div>
+            <button type="button" class="g-btn" @onclick="OnClose">Schliessen</button>
+        </div>
+        <div class="g-pick-body">
+            <div class="g-pick-search">
+                <input type="search" placeholder="Name suchen" aria-label="Name suchen"
+                       value="@Search" @onchange="OnSearchAsync" />
+            </div>
+
+            @if (Players.Count == 0)
+            {
+                <p class="g-empty">Keine Spielerin gefunden.</p>
+            }
+            else
+            {
+                <div class="g-grid">
+                    @foreach (var player in Players)
+                    {
+                        <PortraitCard Card="player"
+                                      OverlayValue="@player.RawAverage.ToString("0.00")"
+                                      OverlayCaption="Ø Punkte"
+                                      OnClick="() => OnPick.InvokeAsync(player.PlayerId)" />
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SquadSlotView Slot { get; set; } = default!;
+    [Parameter] public IReadOnlyList<PlayerCardView> Players { get; set; } = [];
+    [Parameter] public string Search { get; set; } = "";
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public EventCallback<int> OnPick { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Task OnSearchAsync(ChangeEventArgs args) => OnSearch.InvokeAsync(args.Value?.ToString() ?? "");
+}

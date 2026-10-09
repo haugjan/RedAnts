@@ -1,0 +1,120 @@
+:root {
+    color-scheme: light;
+    --ga-red: #AA253B;
+    --ga-ink: #121214;
+    --ga-ink-2: #6E7076;
+    --ga-line: #D5D6D9;
+    --ga-paper: #FFFFFF;
+    --ga-ground: #F2F2F3;
+    --ga-ok: #2E6B45;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    background: var(--ga-ground);
+    color: var(--ga-ink);
+    font: 400 14px/1.5 Archivo, "Segoe UI", system-ui, sans-serif;
+}
+
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--ga-red); outline-offset: 2px; }
+
+.ga {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 18px 18px 60px;
+    display: grid;
+    gap: 22px;
+}
+
+.ga-top { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; justify-content: space-between; }
+
+.ga-top h1 {
+    margin: 0;
+    font: 400 26px/1 "Archivo Black", Archivo, sans-serif;
+    letter-spacing: -.03em;
+    text-transform: uppercase;
+}
+
+.ga-top a { color: var(--ga-red); font-weight: 600; text-decoration: none; }
+.ga-top a:hover { text-decoration: underline; }
+
+.ga-panel { background: var(--ga-paper); border: 1px solid var(--ga-line); padding: 16px; }
+
+.ga-panel h2 {
+    margin: 0 0 12px;
+    font: 700 12px/1 Archivo, sans-serif;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ga-ink-2);
+}
+
+.ga-stats { display: flex; flex-wrap: wrap; gap: 0 28px; }
+.ga-stats div { padding: 4px 0; }
+.ga-stats b { display: block; font: 400 26px/1 "Archivo Black", Archivo, sans-serif; letter-spacing: -.04em; }
+
+.ga-stats span {
+    display: block;
+    font: 700 9px/1.3 Archivo, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ga-ink-2);
+}
+
+.ga-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.ga-field { display: grid; gap: 4px; }
+
+.ga-field label {
+    font: 700 9.5px/1.3 Archivo, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ga-ink-2);
+}
+
+.ga-field input, .ga-field select { border: 1px solid var(--ga-ink); background: #fff; padding: 8px 10px; }
+.ga-field input[type="number"] { width: 130px; }
+
+textarea {
+    width: 100%;
+    min-height: 150px;
+    border: 1px solid var(--ga-ink);
+    background: #fff;
+    padding: 10px;
+    font: 400 12px/1.5 ui-monospace, Consolas, monospace;
+    resize: vertical;
+}
+
+.ga-btn {
+    border: 2px solid var(--ga-ink);
+    background: #fff;
+    padding: 9px 14px;
+    font: 700 11px/1 Archivo, sans-serif;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+
+.ga-btn--go { background: var(--ga-red); border-color: var(--ga-red); color: #fff; }
+.ga-btn[disabled] { opacity: .5; cursor: default; }
+
+.ga-note { font-size: 13px; color: var(--ga-ink-2); margin: 8px 0 0; }
+.ga-ok { color: var(--ga-ok); font-weight: 600; }
+.ga-bad { color: var(--ga-red); font-weight: 600; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+th {
+    text-align: left;
+    font: 700 9.5px/1.3 Archivo, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--ga-ink);
+    padding: 7px 10px;
+}
+
+td { padding: 7px 10px; border-bottom: 1px solid var(--ga-line); vertical-align: top; }
+td.ga-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ga-scroll { max-height: 420px; overflow-y: auto; }

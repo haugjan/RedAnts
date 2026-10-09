@@ -1,0 +1,130 @@
+@using RedAnts.Game.Features.Players
+
+<div class="g-dialog" role="dialog" aria-modal="true" aria-label="Blatt der Spielerin">
+    <div class="g-dialog-in">
+        <div class="g-sh-top">
+            @if (!string.IsNullOrEmpty(Sheet.Card.PortraitUrl))
+            {
+                <img src="@Sheet.Card.PortraitUrl" alt="Portrait @Sheet.Card.FullName" />
+            }
+            else
+            {
+                <span></span>
+            }
+            <div>
+                <div class="g-sh-nm">@Sheet.Card.LastName</div>
+                <div class="g-sh-fn">
+                    @Sheet.Card.FirstName · @Sheet.Card.Position.Label() · @Sheet.Card.Club@(Sheet.BirthYear is { } year ? $" · {year}" : "")
+                </div>
+                <span class="g-sh-mv"><b class="g-num">@Sheet.Card.MarketValue</b><span>FB Marktwert</span></span>
+            </div>
+            <button type="button" class="g-x" aria-label="Schliessen" @onclick="OnClose">×</button>
+        </div>
+
+        <div class="g-sh-body">
+            <div class="g-keys">
+                <div><b class="g-hi g-num">@Sheet.Card.RawAverage.ToString("0.00")</b><span>Ø Punkte</span></div>
+                <div><b class="g-num">@Sheet.Card.Goals</b><span>Tore</span></div>
+                <div><b class="g-num">@Sheet.Card.Assists</b><span>Assists</span></div>
+                <div><b class="g-num">@Sheet.Card.Games</b><span>Spiele</span></div>
+            </div>
+
+            @if (Sheet.Form.Count > 0)
+            {
+                <div>
+                    <span class="g-trail">
+                        @foreach (var points in Sheet.Form)
+                        {
+                            <i style="height:@(BarHeight(points))px"></i>
+                        }
+                    </span>
+                    <span class="g-trail-cap">Rohpunkte pro Spiel, ein Kästchen pro Spiel</span>
+                </div>
+            }
+
+            <div class="g-sh-acts">
+                @if (SlotInSquad is { } slot)
+                {
+                    <button type="button" class="g-btn" @onclick="() => OnRemove.InvokeAsync(slot)">Vom Platz nehmen</button>
+                }
+                else
+                {
+                    <button type="button" class="g-btn g-btn--go" @onclick="() => OnPlace.InvokeAsync(Sheet.Card.PlayerId)">Ins Kader</button>
+                }
+            </div>
+
+            @if (Sheet.PointsFrom.Count > 0)
+            {
+                <details class="g-fold">
+                    <summary>Woher die Punkte kommen</summary>
+                    <div class="g-fold-in">
+                        <table class="g-kv">
+                            @foreach (var row in Sheet.PointsFrom)
+                            {
+                                <tr>
+                                    <th>@row.Label</th>
+                                    <td class="g-num">@(row.Points > 0 ? "+" : "")@row.Points</td>
+                                </tr>
+                            }
+                            <tr class="g-sum">
+                                <th>Rohpunkte</th>
+                                <td class="g-num">@Sheet.RawTotal</td>
+                            </tr>
+                        </table>
+                    </div>
+                </details>
+            }
+
+            @if (Sheet.Form.Count > 0)
+            {
+                <details class="g-fold">
+                    <summary>Jedes Spiel, @Sheet.Card.Games Partien</summary>
+                    <div class="g-fold-in">
+                        <ul class="g-games">
+                            @for (var index = 0; index < Sheet.Form.Count; index++)
+                            {
+                                <li data-neg="@(Sheet.Form[index] < 0)">
+                                    <span>@(index + 1)</span>
+                                    <b>@Sheet.Form[index]</b>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </details>
+            }
+
+            <details class="g-fold">
+                <summary>Lizenz, Status, Rest</summary>
+                <div class="g-fold-in g-facts">
+                    <div>Status <b>@(Sheet.Card.Status.Label() is { Length: > 0 } label ? label : "offen")</b></div>
+                    <div>Lizenz <b>@(Sheet.Licence ?? "keine aktive")</b></div>
+                    @if (!string.IsNullOrEmpty(Sheet.Height))
+                    {
+                        <div>Grösse <b>@Sheet.Height</b></div>
+                    }
+                    <div>Beste Partie <b class="g-num">@Sheet.PeakPoints</b> Pkt in Spiel @Sheet.PeakGame</div>
+                    <div>Letzte 5 Spiele <b class="g-num">@Sheet.RecentAverage.ToString("0.00")</b> Ø</div>
+                    <div>Strafminuten <b class="g-num">@Sheet.PenaltyMinutes</b></div>
+                    <div>Gegentore pro Spiel <b class="g-num">@Sheet.GoalsAgainstPerGame.ToString("0.0")</b></div>
+                    <div>Bestplayer <b class="g-num">@Sheet.BestPlayer</b></div>
+                    @if (!string.IsNullOrEmpty(Sheet.Season))
+                    {
+                        <div>Saison <b>@Sheet.Season</b></div>
+                    }
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PlayerSheetView Sheet { get; set; } = default!;
+    [Parameter] public int? SlotInSquad { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<int> OnPlace { get; set; }
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+
+    private int Max => Sheet.Form.Count == 0 ? 1 : Math.Max(1, Sheet.Form.Max());
+
+    private int BarHeight(int points) => 4 + (int)Math.Round(Math.Max(points, 0) * 22d / Max);
+}

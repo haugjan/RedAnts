@@ -1,0 +1,22 @@
+@model string
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <base href="/" />
+    <title>Unihockey-Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Archivo+Narrow:wght@500;600;700&display=swap" />
+    <link rel="stylesheet" href="/_content/RedAnts.Game/game/game.css" asp-append-version="true" />
+</head>
+<body>
+    <component type="typeof(RedAnts.Game.Features.Board.GameBoardPage)" render-mode="Server" param-ManagerToken="@Model" />
+    <script src="/_framework/blazor.server.js"></script>
+</body>
+</html>

@@ -10,11 +10,11 @@ namespace RedAnts.Architecture.Tests;
 public class UiRules
 {
     private static readonly Regex PortNamespace =
-        new(@"^RedAnts\.(Ticketing|Show)\.Features\.(?!Shared\b)[A-Za-z]+(\.(?!Admin\b|Infrastructure\b|Views\b|Shared\b)[A-Za-z]+)?$");
+        new(@"^RedAnts\.(Ticketing|Show|Game)\.Features\.(?!Shared\b)[A-Za-z]+(\.(?!Admin\b|Infrastructure\b|Views\b|Shared\b)[A-Za-z]+)?$");
 
     private static readonly Dictionary<string, string> Exceptions = RedAntsArchitecture.ReadBaseline("ui-port-exceptions.txt");
 
-    private static readonly HashSet<string> UiTypeNames = new[] { RedAntsArchitecture.Ticketing, RedAntsArchitecture.Show, RedAntsArchitecture.Host }
+    private static readonly HashSet<string> UiTypeNames = new[] { RedAntsArchitecture.Ticketing, RedAntsArchitecture.Show, RedAntsArchitecture.Game, RedAntsArchitecture.Host }
         .SelectMany(RedAntsArchitecture.ReflectedTypes)
         .Where(IsUi)
         .Select(t => t.FullName!)

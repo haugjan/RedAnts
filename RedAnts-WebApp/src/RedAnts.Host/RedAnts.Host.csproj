@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\RedAnts.Kernel\RedAnts.Kernel.csproj" />
     <ProjectReference Include="..\RedAnts.Ticketing\RedAnts.Ticketing.csproj" />
+    <ProjectReference Include="..\RedAnts.Game\RedAnts.Game.csproj" />
     <ProjectReference Include="..\RedAnts.Show\RedAnts.Show.csproj" />
   </ItemGroup>
 

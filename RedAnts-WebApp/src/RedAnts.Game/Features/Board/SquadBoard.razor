@@ -1,0 +1,92 @@
+@using RedAnts.Game.Features.Squad
+
+@if (Squad is null)
+{
+    <p class="g-empty">Das Kader wird geladen.</p>
+}
+else
+{
+    <div class="g-ph">
+        <span class="g-l">Aufstellung</span>
+        <span class="g-r">@Squad.Placed von @Squad.Total besetzt · @Squad.Spent FB</span>
+    </div>
+    <div class="g-pad">
+        <div class="g-name">
+            <input type="text" value="@Squad.Name" maxlength="40" aria-label="Name des Kaders"
+                   @onchange="OnRenameAsync" />
+        </div>
+
+        <div class="g-money">
+            <div><b class="g-num">@Squad.Free</b> <span>FB frei</span></div>
+            <div class="g-bar" data-over="@(Squad.Spent > Squad.Budget)">
+                <i style="width:@(Percent)%"></i>
+            </div>
+            <div><b class="g-num">@Squad.Budget</b> <span>FB Budget</span></div>
+        </div>
+
+        @foreach (var line in Squad.Lines)
+        {
+            <section class="g-line">
+                <div class="g-line-hd">
+                    <h2>@line.Label</h2>
+                    <span>@LineSummary(line)</span>
+                </div>
+                <div class="g-slots">
+                    @foreach (var slot in line.Slots)
+                    {
+                        @if (slot.Player is { } player)
+                        {
+                            <div class="g-slot g-slot--set">
+                                <button type="button" class="g-slot-open"
+                                        style="all:unset;display:block;cursor:pointer;height:100%;width:100%"
+                                        @onclick="() => OnOpenPlayer.InvokeAsync(player.PlayerId)"
+                                        aria-label="@player.FullName ansehen">
+                                    @if (!string.IsNullOrEmpty(player.PortraitUrl))
+                                    {
+                                        <img src="@player.PortraitUrl" alt="Portrait @player.FullName" loading="lazy" />
+                                    }
+                                </button>
+                                <button type="button" class="g-out" aria-label="@player.FullName vom Platz nehmen"
+                                        @onclick="() => OnClearSlot.InvokeAsync(slot.Slot)">×</button>
+                                <span class="g-snm">@player.LastName</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <button type="button" class="g-slot"
+                                    @onclick="() => OnPickSlot.InvokeAsync(slot)"
+                                    aria-label="@slot.Label besetzen">
+                                <span>
+                                    <span class="g-plus">+</span>
+                                    <span class="g-lbl">@slot.Role.Label()</span>
+                                </span>
+                            </button>
+                        }
+                    }
+                </div>
+            </section>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public SquadView? Squad { get; set; }
+    [Parameter] public EventCallback<SquadSlotView> OnPickSlot { get; set; }
+    [Parameter] public EventCallback<int> OnClearSlot { get; set; }
+    [Parameter] public EventCallback<int> OnOpenPlayer { get; set; }
+    [Parameter] public EventCallback<string> OnRename { get; set; }
+
+    private int Percent => Squad is null || Squad.Budget == 0
+        ? 0
+        : Math.Min(100, (int)Math.Round(Squad.Spent * 100d / Squad.Budget));
+
+    private static string LineSummary(SquadLineView line)
+    {
+        var set = line.Slots.Count(slot => slot.Player is not null);
+        var value = line.Slots.Where(slot => slot.Player is not null).Sum(slot => slot.Player!.MarketValue);
+        return $"{set} von {line.Slots.Count} · {value} FB";
+    }
+
+    private Task OnRenameAsync(ChangeEventArgs args) =>
+        OnRename.InvokeAsync(args.Value?.ToString() ?? "");
+}

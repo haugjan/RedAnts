@@ -1,0 +1,221 @@
+@using RedAnts.Game.Features.Players
+@using RedAnts.Game.Features.Round
+@using RedAnts.Game.Features.Settings
+@using RedAnts.Game.Features.Shared
+@using RedAnts.Game.Features.Squad
+@inject GetRoundHighlights.Handler RoundQuery
+@inject GetMySquad.Handler SquadQuery
+@inject GetMarketPlayers.Handler MarketQuery
+@inject GetPlayerSheet.Handler SheetQuery
+@inject PlacePlayerInSquad.Handler Placement
+@inject ClearSquadSlot.Handler SlotClearing
+@inject RenameSquad.Handler Renaming
+@inject GetGameSettings.Handler SettingsQuery
+
+<div class="g-app">
+    <nav class="g-nav" role="tablist" aria-label="Ansichten">
+        <button type="button" role="tab" class="g-word" aria-selected="@(_view == View.Round)"
+                @onclick="() => ShowAsync(View.Round)">Runde</button>
+        <button type="button" role="tab" class="g-word" aria-selected="@(_view == View.Squad)"
+                @onclick="() => ShowAsync(View.Squad)">Mein Kader</button>
+    </nav>
+
+    @if (_error is { Length: > 0 })
+    {
+        <p class="g-err">@_error</p>
+    }
+
+    @if (_view == View.Round)
+    {
+        <RoundBoard Round="_round" OnOpenPlayer="OpenSheetAsync" />
+    }
+    else
+    {
+        <SquadBoard Squad="_squad"
+                    OnPickSlot="OpenPickerAsync"
+                    OnClearSlot="ClearSlotAsync"
+                    OnOpenPlayer="OpenSheetAsync"
+                    OnRename="RenameAsync" />
+    }
+
+    <p class="g-src">@Source</p>
+</div>
+
+@if (_picking is { } slot)
+{
+    <MarketPicker Slot="slot"
+                  Players="_market"
+                  Search="@_search"
+                  OnSearch="SearchAsync"
+                  OnPick="PickAsync"
+                  OnClose="ClosePicker" />
+}
+
+@if (_sheet is { } sheet)
+{
+    <PlayerSheetPanel Sheet="sheet"
+                      SlotInSquad="SlotOf(sheet.Card.PlayerId)"
+                      OnClose="CloseSheet"
+                      OnPlace="PlaceFromSheetAsync"
+                      OnRemove="ClearSlotAsync" />
+}
+
+@code {
+    private enum View { Round, Squad }
+
+    [Parameter] public string ManagerToken { get; set; } = "";
+
+    private View _view = View.Round;
+    private RoundOverview? _round;
+    private SquadView? _squad;
+    private PlayerSheetView? _sheet;
+    private SquadSlotView? _picking;
+    private IReadOnlyList<PlayerCardView> _market = [];
+    private GameSettingsView? _settings;
+    private string _search = "";
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsQuery.HandleAsync(new GetGameSettings.Query());
+        await LoadRoundAsync();
+        await LoadSquadAsync();
+    }
+
+    private string Source
+    {
+        get
+        {
+            var parts = new List<string> { "Portraits und Zahlen: Swiss Unihockey" };
+            if (_settings is { Season.Length: > 0 }) parts.Add($"Saison {_settings.Season}");
+            if (_settings is { AsOf.Length: > 0 }) parts.Add($"Stand {_settings.AsOf}");
+            if (_squad is not null) parts.Add($"Budget {_squad.Budget} FB");
+            return string.Join(" · ", parts) + ".";
+        }
+    }
+
+    private async Task ShowAsync(View view)
+    {
+        _view = view;
+        _error = null;
+        if (view == View.Squad) await LoadSquadAsync();
+        else await LoadRoundAsync();
+    }
+
+    private async Task LoadRoundAsync() =>
+        _round = await RoundQuery.HandleAsync(new GetRoundHighlights.Query());
+
+    private async Task LoadSquadAsync() =>
+        _squad = await SquadQuery.HandleAsync(new GetMySquad.Query(ManagerToken));
+
+    private int? SlotOf(int playerId) => _squad?.Lines
+        .SelectMany(line => line.Slots)
+        .FirstOrDefault(slot => slot.Player?.PlayerId == playerId)?.Slot;
+
+    private async Task OpenSheetAsync(int playerId)
+    {
+        _error = null;
+        _sheet = await SheetQuery.HandleAsync(new GetPlayerSheet.Query(playerId));
+    }
+
+    private void CloseSheet() => _sheet = null;
+
+    private async Task OpenPickerAsync(SquadSlotView slot)
+    {
+        _error = null;
+        _search = "";
+        _picking = slot;
+        await LoadMarketAsync();
+    }
+
+    private void ClosePicker()
+    {
+        _picking = null;
+        _market = [];
+    }
+
+    private async Task SearchAsync(string term)
+    {
+        _search = term;
+        await LoadMarketAsync();
+    }
+
+    private async Task LoadMarketAsync()
+    {
+        if (_picking is not { } slot) return;
+        _market = await MarketQuery.HandleAsync(new GetMarketPlayers.Query(slot.Role, _search));
+    }
+
+    private async Task PickAsync(int playerId)
+    {
+        if (_picking is not { } slot) return;
+        if (await PlaceAsync(slot.Slot, playerId)) ClosePicker();
+    }
+
+    private async Task PlaceFromSheetAsync(int playerId)
+    {
+        if (_sheet is not { } sheet) return;
+        var free = _squad?.Lines
+            .SelectMany(line => line.Slots)
+            .FirstOrDefault(slot => slot.Player is null && slot.Role == sheet.Card.Position);
+
+        if (free is null)
+        {
+            _error = $"Für {sheet.Card.Position.Label()} ist kein Platz mehr frei.";
+            _sheet = null;
+            _view = View.Squad;
+            return;
+        }
+
+        if (await PlaceAsync(free.Slot, playerId))
+        {
+            _sheet = null;
+            _view = View.Squad;
+        }
+    }
+
+    private async Task<bool> PlaceAsync(int slot, int playerId)
+    {
+        try
+        {
+            await Placement.HandleAsync(new PlacePlayerInSquad.Command(ManagerToken, slot, playerId));
+            await LoadSquadAsync();
+            _error = null;
+            return true;
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+            return false;
+        }
+    }
+
+    private async Task ClearSlotAsync(int slot)
+    {
+        try
+        {
+            await SlotClearing.HandleAsync(new ClearSquadSlot.Command(ManagerToken, slot));
+            _sheet = null;
+            await LoadSquadAsync();
+            _error = null;
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task RenameAsync(string name)
+    {
+        try
+        {
+            await Renaming.HandleAsync(new RenameSquad.Command(ManagerToken, name));
+            await LoadSquadAsync();
+            _error = null;
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

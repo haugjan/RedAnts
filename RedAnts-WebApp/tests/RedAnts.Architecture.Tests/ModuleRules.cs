@@ -26,6 +26,15 @@ public class ModuleRules
             .And().DoNotHaveNameEndingWith("Composer")
             .As("Show internals");
 
+    private static readonly IObjectProvider<IType> Game =
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Game(\..*)?$").As("Game");
+
+    private static readonly IObjectProvider<IType> GameInternals =
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Game\.(Domain(\..*)?|(\w+\.)*Infrastructure(\..*)?)$")
+            .And().DoNotHaveNameEndingWith("Extensions")
+            .And().DoNotHaveNameEndingWith("Composer")
+            .As("Game internals");
+
     private static readonly IObjectProvider<IType> WebsiteInternals =
         Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|Features|Infrastructure)\.Website(\..*)?$")
             .As("Website internals");
@@ -41,6 +50,17 @@ public class ModuleRules
             .Check(RedAntsArchitecture.Loaded);
 
     [Fact]
+    public void Host_uses_game_only_through_its_extension_methods_and_ports() =>
+        Types().That().ResideInAssembly(RedAntsArchitecture.Host).Should().NotDependOnAny(GameInternals)
+            .Check(RedAntsArchitecture.Loaded);
+
+    [Fact]
+    public void Game_does_not_use_ticketing_or_show() =>
+        Types().That().ResideInAssembly(RedAntsArchitecture.Game)
+            .Should().NotDependOnAny(Ticketing).AndShould().NotDependOnAny(Show)
+            .Check(RedAntsArchitecture.Loaded);
+
+    [Fact]
     public void Show_does_not_use_ticketing() =>
         Types().That().ResideInAssembly(RedAntsArchitecture.Show).Should().NotDependOnAny(Ticketing)
             .Check(RedAntsArchitecture.Loaded);
@@ -48,6 +68,7 @@ public class ModuleRules
     [Fact]
     public void Ticketing_does_not_use_show_or_website() =>
         Types().That().ResideInAssembly(RedAntsArchitecture.Ticketing)
-            .Should().NotDependOnAny(Show).AndShould().NotDependOnAny(WebsiteInternals)
+            .Should().NotDependOnAny(Show).AndShould().NotDependOnAny(Game)
+            .AndShould().NotDependOnAny(WebsiteInternals)
             .Check(RedAntsArchitecture.Loaded);
 }

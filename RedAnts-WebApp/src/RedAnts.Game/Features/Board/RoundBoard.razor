@@ -1,0 +1,73 @@
+@using RedAnts.Game.Features.Round
+
+@if (Round is null)
+{
+    <p class="g-empty">Die Runde wird geladen.</p>
+}
+else if (!Round.HasPlayers)
+{
+    <p class="g-empty">Noch keine Spielerinnen im Spiel. Im Backoffice unter Game lassen sich die Daten laden.</p>
+}
+else
+{
+    @if (Round.Lead is { } lead)
+    {
+        <section class="g-hero">
+            <div class="g-hero-img">
+                @if (!string.IsNullOrEmpty(lead.Player.PortraitUrl))
+                {
+                    <img src="@lead.Player.PortraitUrl" alt="Portrait @lead.Player.FullName" />
+                }
+            </div>
+            <div class="g-hero-txt">
+                <span class="g-hero-lbl">@lead.Kind</span>
+                <div class="g-hero-nm">@lead.Player.LastName</div>
+                <div class="g-hero-fn">@lead.Player.FirstName · @lead.Player.Position.Label() · @lead.Player.Club</div>
+                <span class="g-hero-big">
+                    <b class="g-num">@lead.Value</b>
+                    <span>@lead.Caption</span>
+                </span>
+                <button type="button" class="g-hero-more" @onclick="() => OnOpenPlayer.InvokeAsync(lead.Player.PlayerId)">
+                    Blatt öffnen
+                </button>
+            </div>
+        </section>
+    }
+
+    @if (Round.More.Count > 0)
+    {
+        <div class="g-ph">
+            <span class="g-l">Mehr aus der Runde</span>
+            <span class="g-r">@Context</span>
+        </div>
+        <div class="g-pad">
+            <div class="g-grid g-grid--hi">
+                @foreach (var highlight in Round.More)
+                {
+                    <PortraitCard Card="highlight.Player"
+                                  Label="@highlight.Kind"
+                                  OverlayValue="@highlight.Value"
+                                  OverlayCaption="@highlight.Caption"
+                                  OnClick="() => OnOpenPlayer.InvokeAsync(highlight.Player.PlayerId)" />
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public RoundOverview? Round { get; set; }
+    [Parameter] public EventCallback<int> OnOpenPlayer { get; set; }
+
+    private string Context
+    {
+        get
+        {
+            if (Round is null) return "";
+            var parts = new List<string>();
+            if (Round.Season.Length > 0) parts.Add(Round.Season);
+            if (Round.AsOf.Length > 0) parts.Add($"Stand {Round.AsOf}");
+            return string.Join(" · ", parts);
+        }
+    }
+}

@@ -6,6 +6,7 @@ public enum SiteSurface
     Admin,
     Scan,
     Show,
+    Game,
 }
 
 public static class SiteHosts
@@ -23,6 +24,7 @@ public static class SiteHosts
         SiteSurface.Admin => "admin",
         SiteSurface.Scan => "scan",
         SiteSurface.Show => "show",
+        SiteSurface.Game => "game",
         _ => "tickets",
     };
 
@@ -35,7 +37,7 @@ public static class SiteHosts
     public static SiteSurface SurfaceOfHost(string? host)
     {
         if (host is null) return SiteSurface.Tickets;
-        foreach (var surface in new[] { SiteSurface.Admin, SiteSurface.Scan, SiteSurface.Show })
+        foreach (var surface in new[] { SiteSurface.Admin, SiteSurface.Scan, SiteSurface.Show, SiteSurface.Game })
         {
             var prefix = Prefix(surface);
             if (host.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)
@@ -56,6 +58,7 @@ public static class SiteHosts
         SiteSurface.Admin => "/umbraco",
         SiteSurface.Scan => "/scan",
         SiteSurface.Show => "/show",
+        SiteSurface.Game => "/game",
         _ => "/ticketing/",
     };
 
@@ -77,6 +80,9 @@ public static class SiteHosts
 
         if (StartsWithSegment(path, "/show"))
             return SiteSurface.Show;
+
+        if (StartsWithSegment(path, "/game"))
+            return SiteSurface.Game;
 
         return HasExtension(path) ? null : SiteSurface.Tickets;
     }

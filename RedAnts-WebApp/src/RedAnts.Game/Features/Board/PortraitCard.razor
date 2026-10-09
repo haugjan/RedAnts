@@ -1,0 +1,64 @@
+@using RedAnts.Game.Features.Shared
+
+<button type="button" class="g-card" data-pos="@((int)Card.Position)" @onclick="OnClick">
+    <span class="g-shot">
+        @if (!string.IsNullOrEmpty(Card.PortraitUrl))
+        {
+            <img src="@Card.PortraitUrl" alt="Portrait @Card.FullName" loading="lazy" />
+        }
+        else
+        {
+            <span class="g-shot-empty">@Initials</span>
+        }
+
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <span class="g-hl">@Label</span>
+        }
+        else if (Card.Status.IsWorthShowing())
+        {
+            <span class="g-st" data-st="@((int)Card.Status)">@Card.Status.Label()</span>
+        }
+
+        @if (!string.IsNullOrEmpty(Card.Number))
+        {
+            <span class="g-nr">@Card.Number</span>
+        }
+
+        <span class="g-tag">@Card.MarketValue<i>FB</i></span>
+
+        @if (!string.IsNullOrEmpty(OverlayValue))
+        {
+            <span class="g-ov">
+                <b class="g-num">@OverlayValue</b>
+                <span>@OverlayCaption</span>
+            </span>
+        }
+        else
+        {
+            <span class="g-pos">@Card.Position.ShortLabel()</span>
+        }
+    </span>
+    <span class="g-nm">@Card.LastName</span>
+    <span class="g-fn">@FirstLine</span>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public PlayerCardView Card { get; set; } = default!;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? OverlayValue { get; set; }
+    [Parameter] public string? OverlayCaption { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string FirstLine => string.IsNullOrEmpty(Card.FirstName) ? Card.Club : $"{Card.FirstName} · {Card.Club}";
+
+    private string Initials
+    {
+        get
+        {
+            var first = Card.FirstName.Length > 0 ? Card.FirstName[0].ToString() : "";
+            var last = Card.LastName.Length > 0 ? Card.LastName[0].ToString() : "";
+            return (first + last).ToUpperInvariant();
+        }
+    }
+}
