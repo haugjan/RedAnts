@@ -33,6 +33,7 @@
     <script src="/_content/RedAnts.Ticketing/js/jsQR.js" asp-append-version="true"></script>
     <script src="/_content/RedAnts.Ticketing/js/ticket-scanner.js" asp-append-version="true"></script>
     <script src="_framework/blazor.server.js" autostart="false"></script>
+    <script src="/js/circuit-reload.js" asp-append-version="true"></script>
 
     <script>
         (function () {
@@ -44,7 +45,7 @@
                     setTimeout(function () { location.reload(); }, 3000);
                 }
             }
-            Blazor.start()
+            window.redants.startCircuit()
                 .then(function () { sessionStorage.removeItem(KEY); })
                 .catch(retryOnce);
         })();

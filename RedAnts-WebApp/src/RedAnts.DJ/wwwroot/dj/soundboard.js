@@ -428,6 +428,8 @@
   let deviceId = null;
   let transferredFor = null;
   let spotifyId = null;
+  window.redants = window.redants || {};
+  window.redants.mediaPlaying = function () { return activeId !== null || spotifyId !== null; };
   let spotifyActivated = false;
 
   // iOS-Freischaltung des SDK-Audioelements (muss in einer Nutzergeste passieren).

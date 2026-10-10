@@ -21,6 +21,8 @@
 <body>
     <component type="typeof(RedAnts.DJ.Features.Board.DJBoardComponent)" render-mode="Server" />
     <script src="/_content/RedAnts.DJ/dj/soundboard.js" asp-append-version="true"></script>
-    <script src="/_framework/blazor.server.js"></script>
+    <script src="/_framework/blazor.server.js" autostart="false"></script>
+    <script src="/js/circuit-reload.js" asp-append-version="true"></script>
+    <script>window.redants.startCircuit();</script>
 </body>
 </html>
