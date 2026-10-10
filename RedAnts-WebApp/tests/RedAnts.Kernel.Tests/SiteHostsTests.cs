@@ -23,6 +23,7 @@ public class SiteHostsTests
     [InlineData("/scanner-test", SiteSurface.Scan)]
     [InlineData("/dj", SiteSurface.DJ)]
     [InlineData("/dj/sound/x.mp3", SiteSurface.DJ)]
+    [InlineData("/show", SiteSurface.DJ)]
     [InlineData("/cart", SiteSurface.Tickets)]
     [InlineData("/ticket/abc", SiteSurface.Tickets)]
     public void SurfaceOfPath_maps_surface_paths(string path, SiteSurface expected) =>

@@ -16,5 +16,26 @@ public static class DJExtensions
         return services;
     }
 
-    public static WebApplication UseDJ(this WebApplication app) => app;
+    public static WebApplication UseDJ(this WebApplication app)
+    {
+        app.Use(async (context, next) =>
+        {
+            if (LegacyShowPath(context.Request.Path) is { } target)
+            {
+                var permanent = HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method);
+                context.Response.Redirect(target + context.Request.QueryString, permanent, preserveMethod: !permanent);
+                return;
+            }
+            await next();
+        });
+        return app;
+    }
+
+    private static string? LegacyShowPath(PathString path)
+    {
+        if (path.StartsWithSegments("/api/show", out var rest)) return "/api/dj" + rest;
+        if (path.StartsWithSegments("/admin/show", out rest)) return "/admin/dj" + rest;
+        if (path.StartsWithSegments("/show", out rest)) return "/dj" + rest;
+        return null;
+    }
 }
