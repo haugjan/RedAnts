@@ -37,21 +37,37 @@ the SQL admin password (never written to disk).
 ## Custom domains
 
 Every surface is a custom domain on the same App Service, routed by host in `Program.cs`
-(`SiteHosts`): `tickets`, `scan`, `admin`, `show` and `game`, each as `<prefix>.redants.ch` on
-prod and `<prefix>-dev.redants.ch` on dev. `azure-setup.sh` does not bind them; a new surface
-needs three manual steps per environment, in this order:
+(`SiteHosts`): `tickets`, `scan`, `admin`, `show` and `game`, each as `<prefix>.redants.ch` on prod
+and `<prefix>-dev.redants.ch` on dev, plus the short hosts `t` and `d`. The DNS zone `redants.ch`
+lives in Azure DNS in the resource group `rg_redants` (lower case, unlike `RG_RedAnts` for the apps).
+`azure-setup.sh` does not bind hostnames. Four steps per host, in this order (the example binds
+`game-dev` to the dev app, as it was run on 2026-10-10):
 
 ```bash
-az network dns record-set cname set-record -g RG_RedAnts -z redants.ch   -n game --cname app-redants-prod.azurewebsites.net
-az webapp config hostname add -g RG_RedAnts --webapp-name app-redants-prod   --hostname game.redants.ch
-az webapp config ssl create -g RG_RedAnts --name app-redants-prod   --hostname game.redants.ch
+VID=$(az webapp show -g RG_RedAnts -n app-redants-dev --query customDomainVerificationId -o tsv)
+
+az network dns record-set cname set-record -g rg_redants -z redants.ch   -n game-dev --cname app-redants-dev.azurewebsites.net
+az network dns record-set txt add-record -g rg_redants -z redants.ch   -n asuid.game-dev --value "$VID"
+
+az webapp config hostname add -g RG_RedAnts --webapp-name app-redants-dev   --hostname game-dev.redants.ch
+
+az webapp config ssl create -g RG_RedAnts --name app-redants-dev --hostname game-dev.redants.ch
+THUMB=$(az resource show -g RG_RedAnts -n game-dev.redants.ch   --resource-type Microsoft.Web/certificates --query properties.thumbprint -o tsv)
+az webapp config ssl bind -g RG_RedAnts --name app-redants-dev   --certificate-thumbprint "$THUMB" --ssl-type SNI
 ```
 
-The third command orders the free App Service managed certificate and binds it (SNI); it needs
-the CNAME to resolve first. Repeat with `game-dev` and `app-redants-dev`. Until the hostname is
-bound, the surface is reachable only through the App Service default host
+The `asuid` TXT record is what Azure checks before it accepts the hostname; without it the add
+fails. `ssl create` only orders the free managed certificate and prints a deserialization warning
+from the CLI preview command, so read the thumbprint off the certificate resource (not from
+`az webapp config ssl list`, which does not show it right away) and bind it yourself; the hostname
+is done when `az webapp config hostname list` shows `SniEnabled`. For the first seconds after the
+bind, single paths can answer with a reset connection, which settles by itself.
+
+Until a hostname is bound, the surface is reachable only through the App Service default host
 (`https://app-redants-dev.azurewebsites.net/game`), because the host router leaves
-`*.azurewebsites.net` and `localhost` alone.
+`*.azurewebsites.net` and `localhost` alone. A prod hostname should be bound together with the prod
+deploy of that surface: bound earlier, it serves whatever the current `main` does under that path,
+which for an unknown path is the ticket shop.
 
 ## Media on Azure Blob Storage
 
