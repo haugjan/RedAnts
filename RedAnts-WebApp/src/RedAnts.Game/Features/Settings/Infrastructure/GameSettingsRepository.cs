@@ -17,6 +17,9 @@ public sealed class GameSettingsRepository(GameDatabase database, ILogger<GameSe
             ? budget
             : Domain.Squad.DefaultBudget;
 
+    public int Round =>
+        int.TryParse(Get(GameSettingKeys.Round), out var round) && round > 0 ? round : 1;
+
     public async Task LoadAsync()
     {
         try

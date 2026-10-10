@@ -16,7 +16,7 @@
                 <div class="g-sh-fn">
                     @Sheet.Card.FirstName · @Sheet.Card.Position.Label() · @Sheet.Card.Club@(Sheet.BirthYear is { } year ? $" · {year}" : "")
                 </div>
-                <span class="g-sh-mv"><b class="g-num">@Sheet.Card.MarketValue</b><span>FB Marktwert</span></span>
+                <span class="g-sh-mv"><b class="g-num">@Sheet.Card.MarketValue</b><span><FloorbuckMark /> Marktwert</span></span>
             </div>
             <button type="button" class="g-x" aria-label="Schliessen" @onclick="OnClose">×</button>
         </div>

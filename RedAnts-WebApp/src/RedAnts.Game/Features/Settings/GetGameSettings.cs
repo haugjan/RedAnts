@@ -2,7 +2,7 @@ using RedAnts.Game.Domain;
 
 namespace RedAnts.Game.Features.Settings;
 
-public sealed record GameSettingsView(int Budget, string RoundLabel, string Season, string AsOf);
+public sealed record GameSettingsView(int Budget, int Round, string RoundLabel, string Season, string AsOf);
 
 public static class GetGameSettings
 {
@@ -12,6 +12,7 @@ public static class GetGameSettings
     {
         public Task<GameSettingsView> HandleAsync(Query query) => Task.FromResult(new GameSettingsView(
             settings.Budget,
+            settings.Round,
             settings.Get(GameSettingKeys.RoundLabel) ?? GameSettingKeys.DefaultRoundLabel,
             settings.Get(GameSettingKeys.Season) ?? "",
             settings.Get(GameSettingKeys.AsOf) ?? ""));

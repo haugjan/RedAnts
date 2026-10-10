@@ -1,0 +1,83 @@
+@using RedAnts.Game.Features.Shared
+@using RedAnts.Game.Features.Standings
+
+@if (Standings is null)
+{
+    <p class="g-empty">Der Spielstand wird geladen.</p>
+}
+else if (Standings.Mine is null)
+{
+    <div class="g-ph">
+        <span class="g-l">Spielstand</span>
+        <span class="g-r">Runde @Standings.Round von @Standings.RoundsPlayed</span>
+    </div>
+    <div class="g-pad">
+        <p class="g-empty">Noch kein Kader gesetzt. Mit dem Kader fängt der Spielstand an.</p>
+        <button type="button" class="g-btn g-btn--go" @onclick="OnOpenSquad">Kader aufstellen</button>
+    </div>
+}
+else
+{
+    <div class="g-ph">
+        <span class="g-l">Spielstand</span>
+        <span class="g-r">Runde @Standings.Round von @Standings.RoundsPlayed</span>
+    </div>
+
+    <div class="g-pad">
+        <section class="g-score">
+            <div class="g-score-main">
+                <span class="g-score-rank">@Standings.Mine.Rank<i>.</i></span>
+                <span class="g-score-of">von @Standings.Managers</span>
+            </div>
+            <div class="g-score-fig">
+                <b class="g-num">@Standings.Mine.TotalPoints</b>
+                <span>Punkte total</span>
+            </div>
+            <div class="g-score-fig">
+                <b class="g-num">@Signed(Standings.Mine.RoundPoints)</b>
+                <span>in Runde @Standings.Round</span>
+            </div>
+            <button type="button" class="g-btn" @onclick="() => OnOpenSquadDetail.InvokeAsync(Standings.Mine.ManagerToken)">
+                Meine Punkte aufschlüsseln
+            </button>
+        </section>
+
+        @if (!Standings.HasField)
+        {
+            <p class="g-note">Noch keine Mitspielerinnen. Im Backoffice unter Game lassen sich Demokader anlegen.</p>
+        }
+
+        <div class="g-line-hd">
+            <h2>Rangliste</h2>
+            <span>Antippen für Details</span>
+        </div>
+
+        <ol class="g-ranks">
+            @foreach (var row in Standings.Rows)
+            {
+                <li>
+                    <button type="button" class="g-rank @(row.IsMine ? "g-rank--mine" : "")"
+                            @onclick="() => OnOpenSquadDetail.InvokeAsync(row.ManagerToken)">
+                        <span class="g-rank-no">@row.Rank</span>
+                        <span class="g-rank-name">
+                            <b>@row.Name</b>
+                            <span>@row.Placed von @Total Plätze</span>
+                        </span>
+                        <span class="g-rank-round">@Signed(row.RoundPoints)</span>
+                        <span class="g-rank-total g-num">@row.TotalPoints</span>
+                    </button>
+                </li>
+            }
+        </ol>
+    </div>
+}
+
+@code {
+    [Parameter] public StandingsView? Standings { get; set; }
+    [Parameter] public EventCallback<string> OnOpenSquadDetail { get; set; }
+    [Parameter] public EventCallback OnOpenSquad { get; set; }
+
+    private static int Total => Domain.SquadLayout.Slots;
+
+    private static string Signed(int points) => points > 0 ? $"+{points}" : points.ToString();
+}

@@ -8,7 +8,7 @@ else
 {
     <div class="g-ph">
         <span class="g-l">Aufstellung</span>
-        <span class="g-r">@Squad.Placed von @Squad.Total besetzt · @Squad.Spent FB</span>
+        <span class="g-r">@Squad.Placed von @Squad.Total besetzt</span>
     </div>
     <div class="g-pad">
         <div class="g-name">
@@ -17,11 +17,11 @@ else
         </div>
 
         <div class="g-money">
-            <div><b class="g-num">@Squad.Free</b> <span>FB frei</span></div>
+            <div><b class="g-num">@Squad.Free</b> <span><FloorbuckMark /> frei</span></div>
             <div class="g-bar" data-over="@(Squad.Spent > Squad.Budget)">
                 <i style="width:@(Percent)%"></i>
             </div>
-            <div><b class="g-num">@Squad.Budget</b> <span>FB Budget</span></div>
+            <div><b class="g-num">@Squad.Budget</b> <span><FloorbuckMark /> Budget</span></div>
         </div>
 
         @foreach (var line in Squad.Lines)
@@ -84,7 +84,7 @@ else
     {
         var set = line.Slots.Count(slot => slot.Player is not null);
         var value = line.Slots.Where(slot => slot.Player is not null).Sum(slot => slot.Player!.MarketValue);
-        return $"{set} von {line.Slots.Count} · {value} FB";
+        return $"{set} von {line.Slots.Count} · {value}";
     }
 
     private Task OnRenameAsync(ChangeEventArgs args) =>

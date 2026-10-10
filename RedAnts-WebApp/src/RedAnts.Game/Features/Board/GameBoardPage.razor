@@ -3,10 +3,13 @@
 @using RedAnts.Game.Features.Settings
 @using RedAnts.Game.Features.Shared
 @using RedAnts.Game.Features.Squad
+@using RedAnts.Game.Features.Standings
 @inject GetRoundHighlights.Handler RoundQuery
 @inject GetMySquad.Handler SquadQuery
 @inject GetMarketPlayers.Handler MarketQuery
 @inject GetPlayerSheet.Handler SheetQuery
+@inject GetStandings.Handler StandingsQuery
+@inject GetSquadDetail.Handler SquadDetailQuery
 @inject PlacePlayerInSquad.Handler Placement
 @inject ClearSquadSlot.Handler SlotClearing
 @inject RenameSquad.Handler Renaming
@@ -18,6 +21,8 @@
                 @onclick="() => ShowAsync(View.Round)">Runde</button>
         <button type="button" role="tab" class="g-word" aria-selected="@(_view == View.Squad)"
                 @onclick="() => ShowAsync(View.Squad)">Mein Kader</button>
+        <button type="button" role="tab" class="g-word" aria-selected="@(_view == View.Standings)"
+                @onclick="() => ShowAsync(View.Standings)">Spielstand</button>
     </nav>
 
     @if (_error is { Length: > 0 })
@@ -29,13 +34,19 @@
     {
         <RoundBoard Round="_round" OnOpenPlayer="OpenSheetAsync" />
     }
-    else
+    else if (_view == View.Squad)
     {
         <SquadBoard Squad="_squad"
                     OnPickSlot="OpenPickerAsync"
                     OnClearSlot="ClearSlotAsync"
                     OnOpenPlayer="OpenSheetAsync"
                     OnRename="RenameAsync" />
+    }
+    else
+    {
+        <StandingsBoard Standings="_standings"
+                        OnOpenSquadDetail="OpenSquadDetailAsync"
+                        OnOpenSquad="() => ShowAsync(View.Squad)" />
     }
 
     <p class="g-src">@Source</p>
@@ -60,14 +71,21 @@
                       OnRemove="ClearSlotAsync" />
 }
 
+@if (_squadDetail is { } detail)
+{
+    <SquadDetailPanel Detail="detail" OnClose="() => _squadDetail = null" />
+}
+
 @code {
-    private enum View { Round, Squad }
+    private enum View { Round, Squad, Standings }
 
     [Parameter] public string ManagerToken { get; set; } = "";
 
     private View _view = View.Round;
     private RoundOverview? _round;
     private SquadView? _squad;
+    private StandingsView? _standings;
+    private SquadDetailView? _squadDetail;
     private PlayerSheetView? _sheet;
     private SquadSlotView? _picking;
     private IReadOnlyList<PlayerCardView> _market = [];
@@ -89,7 +107,8 @@
             var parts = new List<string> { "Portraits und Zahlen: Swiss Unihockey" };
             if (_settings is { Season.Length: > 0 }) parts.Add($"Saison {_settings.Season}");
             if (_settings is { AsOf.Length: > 0 }) parts.Add($"Stand {_settings.AsOf}");
-            if (_squad is not null) parts.Add($"Budget {_squad.Budget} FB");
+            if (_squad is not null) parts.Add($"Budget {_squad.Budget} Floorbucks");
+            parts.Add("eine Runde ist ein Spieltag der Saison");
             return string.Join(" · ", parts) + ".";
         }
     }
@@ -99,6 +118,7 @@
         _view = view;
         _error = null;
         if (view == View.Squad) await LoadSquadAsync();
+        else if (view == View.Standings) await LoadStandingsAsync();
         else await LoadRoundAsync();
     }
 
@@ -107,6 +127,9 @@
 
     private async Task LoadSquadAsync() =>
         _squad = await SquadQuery.HandleAsync(new GetMySquad.Query(ManagerToken));
+
+    private async Task LoadStandingsAsync() =>
+        _standings = await StandingsQuery.HandleAsync(new GetStandings.Query(ManagerToken));
 
     private int? SlotOf(int playerId) => _squad?.Lines
         .SelectMany(line => line.Slots)
@@ -119,6 +142,19 @@
     }
 
     private void CloseSheet() => _sheet = null;
+
+    private async Task OpenSquadDetailAsync(string managerToken)
+    {
+        _error = null;
+        try
+        {
+            _squadDetail = await SquadDetailQuery.HandleAsync(new GetSquadDetail.Query(managerToken));
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+    }
 
     private async Task OpenPickerAsync(SquadSlotView slot)
     {
@@ -180,6 +216,7 @@
         {
             await Placement.HandleAsync(new PlacePlayerInSquad.Command(ManagerToken, slot, playerId));
             await LoadSquadAsync();
+            _standings = null;
             _error = null;
             return true;
         }
@@ -196,6 +233,7 @@
         {
             await SlotClearing.HandleAsync(new ClearSquadSlot.Command(ManagerToken, slot));
             _sheet = null;
+            _standings = null;
             await LoadSquadAsync();
             _error = null;
         }
@@ -210,6 +248,7 @@
         try
         {
             await Renaming.HandleAsync(new RenameSquad.Command(ManagerToken, name));
+            _standings = null;
             await LoadSquadAsync();
             _error = null;
         }

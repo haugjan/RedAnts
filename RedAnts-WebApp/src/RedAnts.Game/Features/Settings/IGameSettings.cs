@@ -6,6 +6,8 @@ public interface IGameSettings
 
     int Budget { get; }
 
+    int Round { get; }
+
     Task LoadAsync();
 
     Task SetAsync(string key, string? value);

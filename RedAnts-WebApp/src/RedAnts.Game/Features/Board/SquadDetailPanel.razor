@@ -1,0 +1,105 @@
+@using RedAnts.Game.Features.Shared
+@using RedAnts.Game.Features.Standings
+
+<div class="g-dialog" role="dialog" aria-modal="true" aria-label="Spielstand eines Kaders">
+    <div class="g-dialog-in">
+        <div class="g-sh-top g-sh-top--plain">
+            <div>
+                <div class="g-sh-nm">@Detail.Name</div>
+                <div class="g-sh-fn">Rang @Detail.Rank · Runde @Detail.Round</div>
+            </div>
+            <button type="button" class="g-x" aria-label="Schliessen" @onclick="OnClose">×</button>
+        </div>
+
+        <div class="g-sh-body">
+            <div class="g-keys">
+                <div><b class="g-hi g-num">@Detail.TotalPoints</b><span>Punkte total</span></div>
+                <div><b class="g-num">@Signed(Detail.RoundPoints)</b><span>in Runde @Detail.Round</span></div>
+                <div><b class="g-num">@Detail.Contributions.Count</b><span>Spielerinnen</span></div>
+                <div>
+                    <b class="g-num">@Detail.Contributions.Sum(c => c.Player.MarketValue)</b>
+                    <span>Kaderwert <FloorbuckMark /></span>
+                </div>
+            </div>
+
+            @if (Detail.PointsByRound.Count > 0)
+            {
+                <div>
+                    <span class="g-trail">
+                        @for (var round = 1; round <= Detail.PointsByRound.Count; round++)
+                        {
+                            <i style="height:@(BarHeight(Detail.PointsByRound[round - 1]))px"
+                               class="@(round == Detail.Round ? "g-now" : "")"></i>
+                        }
+                    </span>
+                    <span class="g-trail-cap">Punkte pro Runde, die aktuelle dunkel</span>
+                </div>
+            }
+
+            @if (Detail.Contributions.Count > 0)
+            {
+                <div class="g-contribs">
+                    @foreach (var contribution in Detail.Contributions.Take(Top))
+                    {
+                        <div class="g-contrib">
+                            <span class="g-contrib-face">
+                                @if (!string.IsNullOrEmpty(contribution.Player.PortraitUrl))
+                                {
+                                    <img src="@contribution.Player.PortraitUrl"
+                                         alt="Portrait @contribution.Player.FullName" loading="lazy" />
+                                }
+                            </span>
+                            <span class="g-contrib-name">
+                                <b>@contribution.Player.LastName</b>
+                                <span>@contribution.Player.Position.ShortLabel() · @contribution.Player.Club</span>
+                            </span>
+                            <span class="g-contrib-round">@Signed(contribution.RoundPoints)</span>
+                            <span class="g-contrib-total g-num">@contribution.TotalPoints</span>
+                        </div>
+                    }
+                </div>
+
+                @if (Detail.Contributions.Count > Top)
+                {
+                    <details class="g-fold">
+                        <summary>Alle @Detail.Contributions.Count Spielerinnen</summary>
+                        <div class="g-fold-in">
+                            <table class="g-kv">
+                                <tr>
+                                    <th>Spielerin</th>
+                                    <td>Runde</td>
+                                    <td>Total</td>
+                                </tr>
+                                @foreach (var contribution in Detail.Contributions)
+                                {
+                                    <tr>
+                                        <th>@contribution.Player.LastName, @contribution.Player.FirstName</th>
+                                        <td class="g-num">@Signed(contribution.RoundPoints)</td>
+                                        <td class="g-num">@contribution.TotalPoints</td>
+                                    </tr>
+                                }
+                            </table>
+                        </div>
+                    </details>
+                }
+            }
+            else
+            {
+                <p class="g-note">Dieses Kader hat noch keine Spielerin gesetzt.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private const int Top = 5;
+
+    [Parameter, EditorRequired] public SquadDetailView Detail { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private int Max => Detail.PointsByRound.Count == 0 ? 1 : Math.Max(1, Detail.PointsByRound.Max());
+
+    private int BarHeight(int points) => 4 + (int)Math.Round(Math.Max(points, 0) * 22d / Max);
+
+    private static string Signed(int points) => points > 0 ? $"+{points}" : points.ToString();
+}

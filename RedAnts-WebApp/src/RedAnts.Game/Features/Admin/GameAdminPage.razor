@@ -5,6 +5,8 @@
 @inject GetGameSettings.Handler SettingsQuery
 @inject SetGameSetting.Handler SettingChange
 @inject ImportGamePlayers.Handler Import
+@inject CreateDemoSquads.Handler DemoCreation
+@inject DeleteDemoSquads.Handler DemoRemoval
 
 <div class="ga">
     <header class="ga-top">
@@ -18,7 +20,8 @@
             <div><b class="ga-num">@(_overview?.PlayerCount ?? 0)</b><span>Spielerinnen</span></div>
             <div><b class="ga-num">@(_overview?.WithPortrait ?? 0)</b><span>mit Portrait</span></div>
             <div><b class="ga-num">@(_overview?.SquadCount ?? 0)</b><span>Kader</span></div>
-            <div><b class="ga-num">@(_settings?.Budget ?? Squad.DefaultBudget)</b><span>FB Budget</span></div>
+            <div><b class="ga-num">@(_settings?.Budget ?? Squad.DefaultBudget)</b><span>Floorbucks Budget</span></div>
+            <div><b class="ga-num">@(_settings?.Round ?? 1)</b><span>aktuelle Runde</span></div>
             <div><b>@SquadLayout.Lines × @SquadLayout.PerLine + @SquadLayout.Goalies</b><span>Linien, Goalies</span></div>
         </div>
         @if (_settings is { Season.Length: > 0 } || _settings is { AsOf.Length: > 0 })
@@ -35,11 +38,19 @@
                 <input id="roundLabel" type="text" @bind="_roundLabel" maxlength="40" />
             </div>
             <div class="ga-field">
-                <label for="budget">Budget in FB</label>
+                <label for="budget">Budget in Floorbucks</label>
                 <input id="budget" type="number" min="100" max="100000" step="10" @bind="_budget" />
+            </div>
+            <div class="ga-field">
+                <label for="round">Aktuelle Runde</label>
+                <input id="round" type="number" min="1" max="200" step="1" @bind="_round" />
             </div>
             <button class="ga-btn ga-btn--go" @onclick="SaveSettingsAsync" disabled="@_busy">Speichern</button>
         </div>
+        <p class="ga-note">
+            Eine Runde ist ein Spieltag der Saison: der Spielstand zählt für jede Spielerin im Kader
+            die Punkte aus ihrem Spiel Nummer @(_round), die Gesamtwertung die Runden 1 bis @(_round).
+        </p>
         <p class="ga-note">
             Das Kader hat @SquadLayout.Goalies Goalies und @SquadLayout.Lines Linien mit je
             @SquadLayout.DefencePerLine Verteidigung und @SquadLayout.ForwardsPerLine Sturm, zusammen
@@ -72,6 +83,22 @@
     </section>
 
     <section class="ga-panel">
+        <h2>Demokader</h2>
+        <p class="ga-note">
+            Gegnerinnen zum Ausprobieren der Rangliste. Sie heissen „Demo …", werden zufällig im Budget
+            gefüllt und lassen sich jederzeit wieder entfernen.
+        </p>
+        <div class="ga-row" style="margin-top:10px">
+            <div class="ga-field">
+                <label for="demo">Anzahl</label>
+                <input id="demo" type="number" min="1" max="@CreateDemoSquads.MaxCount" step="1" @bind="_demoCount" />
+            </div>
+            <button class="ga-btn" @onclick="CreateDemoAsync" disabled="@_busy">Demokader anlegen</button>
+            <button class="ga-btn" @onclick="DeleteDemoAsync" disabled="@_busy">Alle Demokader löschen</button>
+        </div>
+    </section>
+
+    <section class="ga-panel">
         <h2>Kader der Managerinnen</h2>
         @if (_overview is null || _overview.Squads.Count == 0)
         {
@@ -95,7 +122,7 @@
                             <tr>
                                 <td>@squad.Name</td>
                                 <td class="ga-num">@squad.Placed von @SquadLayout.Slots</td>
-                                <td class="ga-num">@squad.Spent FB</td>
+                                <td class="ga-num">@squad.Spent</td>
                                 <td>@SwissTime.ToSwiss(squad.UpdatedAt).ToString("dd.MM.yyyy HH:mm")</td>
                             </tr>
                         }
@@ -155,6 +182,8 @@
     private string _fileName = "";
     private string _roundLabel = "";
     private int _budget = Squad.DefaultBudget;
+    private int _round = 1;
+    private int _demoCount = 3;
     private string _message = "";
     private bool _failed;
     private bool _busy;
@@ -166,6 +195,7 @@
         _settings = await SettingsQuery.HandleAsync(new GetGameSettings.Query());
         _roundLabel = _settings.RoundLabel;
         _budget = _settings.Budget;
+        _round = _settings.Round;
         _overview = await OverviewQuery.HandleAsync(new GetGameOverview.Query());
     }
 
@@ -217,6 +247,50 @@
         }
     }
 
+    private async Task CreateDemoAsync()
+    {
+        _busy = true;
+        try
+        {
+            var created = await DemoCreation.HandleAsync(new CreateDemoSquads.Command(_demoCount));
+            _failed = created == 0;
+            _message = created == 0
+                ? "Es liess sich kein Demokader füllen. Reicht das Budget für 22 Plätze?"
+                : $"{created} Demokader angelegt.";
+            await LoadAsync();
+        }
+        catch (DomainException ex)
+        {
+            _failed = true;
+            _message = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteDemoAsync()
+    {
+        _busy = true;
+        try
+        {
+            var removed = await DemoRemoval.HandleAsync(new DeleteDemoSquads.Command());
+            _failed = false;
+            _message = $"{removed} Demokader entfernt.";
+            await LoadAsync();
+        }
+        catch (DomainException ex)
+        {
+            _failed = true;
+            _message = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
     private async Task SaveSettingsAsync()
     {
         _busy = true;
@@ -224,6 +298,7 @@
         {
             await SettingChange.HandleAsync(new SetGameSetting.Command(GameSettingKeys.RoundLabel, _roundLabel));
             await SettingChange.HandleAsync(new SetGameSetting.Command(GameSettingKeys.Budget, _budget.ToString()));
+            await SettingChange.HandleAsync(new SetGameSetting.Command(GameSettingKeys.Round, _round.ToString()));
             _failed = false;
             _message = "Gespeichert.";
             await LoadAsync();
