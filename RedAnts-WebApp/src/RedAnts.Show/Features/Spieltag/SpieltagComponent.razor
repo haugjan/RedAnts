@@ -1,0 +1,301 @@
+@using System.Text.Json
+@inject GetHalls.Handler HallsQuery
+@inject GetHall.Handler HallQuery
+@inject GetHallStatus.Handler StatusQuery
+@inject GetGame.Handler GameQuery
+@inject GetUpcomingGames.Handler UpcomingQuery
+@inject LoadGameFromSwissUnihockey.Handler GameLoader
+@inject ImportGameConfig.Handler GameImport
+@inject SetActiveGame.Handler ActiveGame
+@inject RunScene.Handler SceneRunner
+@inject PanicHall.Handler Panic
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="sp">
+    <header class="sp-top">
+        <h1>Spieltag</h1>
+        <div class="sp-hall">
+            <select @onchange="OnHallChanged">
+                @foreach (var hall in _halls)
+                {
+                    <option value="@hall.Id" selected="@(hall.Id == _hallId)">@hall.Name</option>
+                }
+            </select>
+            @if (_halls.Count == 0)
+            {
+                <span class="sp-hint">Noch keine Halle eingerichtet (Backoffice, Section Show).</span>
+            }
+        </div>
+        <button class="sp-panic" @onclick="PanicAsync" disabled="@(_status is not { Connected: true })">PANIC</button>
+    </header>
+
+    @if (_message is { Length: > 0 })
+    {
+        <div class="sp-message @(_messageIsError ? "error" : "")">@_message</div>
+    }
+
+    @if (_hall is not null)
+    {
+        <section class="sp-grid">
+            <div class="sp-card">
+                <h2>Agent</h2>
+                <div class="sp-lamps">
+                    <span class="sp-lamp @(_status?.Connected == true ? "on" : "off")">Agent @(_status?.Connected == true ? "verbunden" : "nicht verbunden")</span>
+                    @foreach (var lamp in Lamps())
+                    {
+                        <span class="sp-lamp @(lamp.Ok ? "on" : "off")">@lamp.Label</span>
+                    }
+                </div>
+                @if (_status?.AgentVersion is { Length: > 0 } version)
+                {
+                    <p class="sp-hint">Version @version, verbunden seit @(_status.ConnectedAt?.ToString("HH:mm"))</p>
+                }
+                <div class="sp-score">
+                    <span class="sp-team">@(_game?.Home.ShortName ?? "Heim")</span>
+                    <span class="sp-digits">@(Score("home")) : @(Score("away"))</span>
+                    <span class="sp-team">@(_game?.Away.ShortName ?? "Gast")</span>
+                </div>
+                <p class="sp-clock">@ClockText()</p>
+                @if (ReportValue(AgentReportKinds.Overlay, "title") is { Length: > 0 } overlay)
+                {
+                    <p class="sp-hint">Eingeblendet: @overlay</p>
+                }
+                @if (ReportValue(AgentReportKinds.Deck, "context") is { Length: > 0 } context)
+                {
+                    <p class="sp-hint">Deck: @context</p>
+                }
+            </div>
+
+            <div class="sp-card">
+                <h2>Aktives Spiel</h2>
+                @if (_game is null)
+                {
+                    <p class="sp-hint">Kein Spiel geladen.</p>
+                }
+                else
+                {
+                    <p class="sp-title">@_game.Title</p>
+                    <p class="sp-hint">@_game.League · @(_game.Date?.ToString("dd.MM.yyyy HH:mm") ?? "ohne Datum") · @_game.Location</p>
+                    <p>@_game.Home.LongName: @_game.Home.Players.Count Spielerinnen@(_game.Home.HasStarting6 ? ", Starting 6 gesetzt" : ", Starting 6 fehlt")</p>
+                    <p>@_game.Away.LongName: @_game.Away.Players.Count Spielerinnen@(_game.Away.HasStarting6 ? ", Starting 6 gesetzt" : ", Starting 6 fehlt")</p>
+                    <p class="sp-hint">Schiedsrichter: @(_game.Referee1.Length > 0 ? _game.Referee1 : "?"), @(_game.Referee2.Length > 0 ? _game.Referee2 : "?")</p>
+                    <div class="sp-actions">
+                        @if (_game.Source == GameSource.SwissUnihockey)
+                        {
+                            <button class="sp-btn" @onclick="() => LoadGameAsync(_game.Id)" disabled="@_busy">↺ Neu laden</button>
+                        }
+                        <button class="sp-btn" @onclick="UnloadGameAsync" disabled="@_busy">Spiel entladen</button>
+                    </div>
+                }
+            </div>
+
+            <div class="sp-card">
+                <h2>Spiel laden</h2>
+                <div class="sp-actions">
+                    <button class="sp-btn" @onclick="LoadUpcomingAsync" disabled="@_busy">swissunihockey: nächste Spiele</button>
+                </div>
+                @if (_upcoming is { Count: > 0 })
+                {
+                    <ul class="sp-list">
+                        @foreach (var game in _upcoming.Take(8))
+                        {
+                            <li>
+                                <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away</span>
+                                <button class="sp-btn small" @onclick="() => LoadGameAsync(game.Id)" disabled="@_busy">Laden</button>
+                            </li>
+                        }
+                    </ul>
+                }
+                else if (_upcoming is { Count: 0 })
+                {
+                    <p class="sp-hint">Keine kommenden Spiele gefunden.</p>
+                }
+                <details>
+                    <summary>Game-Config-Datei einfügen (TCunihockey-Format)</summary>
+                    <textarea class="sp-textarea" @bind="_configText" rows="8" placeholder="[Game]&#10;GameNr=…"></textarea>
+                    <button class="sp-btn" @onclick="ImportConfigAsync" disabled="@_busy">Importieren</button>
+                </details>
+            </div>
+
+            <div class="sp-card">
+                <h2>Einblender</h2>
+                <div class="sp-actions">
+                    <button class="sp-btn" @onclick="@(() => RunAsync("ausblenden"))" disabled="@(_status is not { Connected: true })">Ausblenden</button>
+                    <button class="sp-btn" @onclick="@(() => RunAsync("sponsoren"))" disabled="@(_status is not { Connected: true })">Sponsoren-Loop</button>
+                    <button class="sp-btn" @onclick="@(() => RunAsync("pause"))" disabled="@(_status is not { Connected: true })">Pause</button>
+                </div>
+                <h3>Mitteilung</h3>
+                <div class="sp-shortcuts">
+                    @foreach (var shortcut in _hall.Shortcuts)
+                    {
+                        <button class="sp-btn small" @onclick="() => _messageText = shortcut">@Shorten(shortcut)</button>
+                    }
+                </div>
+                <textarea class="sp-textarea" @bind="_messageText" rows="2"></textarea>
+                <button class="sp-btn" @onclick="SendMessageAsync" disabled="@(_status is not { Connected: true } || string.IsNullOrWhiteSpace(_messageText))">Mitteilung einblenden</button>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<HallRow> _halls = [];
+    private string? _hallId;
+    private Hall? _hall;
+    private HallStatus? _status;
+    private Game? _game;
+    private IReadOnlyList<UpcomingGame>? _upcoming;
+    private string _configText = "";
+    private string _messageText = "";
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+    private readonly CancellationTokenSource _polling = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
+        var wanted = HallFromUrl();
+        _hallId = _halls.FirstOrDefault(h => h.Id == wanted)?.Id ?? _halls.FirstOrDefault()?.Id;
+        await RefreshAsync();
+        _ = PollAsync();
+    }
+
+    private string? HallFromUrl()
+    {
+        var query = new Uri(Nav.Uri).Query;
+        return Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query).TryGetValue("halle", out var value) ? value.ToString() : null;
+    }
+
+    private async Task PollAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_polling.Token))
+            {
+                if (_hallId is null) continue;
+                _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(_hallId));
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task OnHallChanged(ChangeEventArgs e)
+    {
+        _hallId = e.Value?.ToString();
+        _upcoming = null;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_hallId is null) { _hall = null; return; }
+        _hall = await HallQuery.HandleAsync(new GetHall.Query(_hallId));
+        _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(_hallId));
+        _game = _hall?.ActiveGameId is { } id ? await GameQuery.HandleAsync(new GetGame.Query(id)) : null;
+    }
+
+    private async Task LoadUpcomingAsync() => await Guarded(async () =>
+    {
+        _upcoming = await UpcomingQuery.HandleAsync(new GetUpcomingGames.Query(_hallId!));
+    });
+
+    private async Task LoadGameAsync(string gameId) => await Guarded(async () =>
+    {
+        var game = await GameLoader.HandleAsync(new LoadGameFromSwissUnihockey.Command(_hallId!, gameId));
+        await RefreshAsync();
+        Notify($"Spiel {game.Title} geladen: {game.Home.Players.Count} + {game.Away.Players.Count} Spielerinnen.");
+    });
+
+    private async Task ImportConfigAsync() => await Guarded(async () =>
+    {
+        var game = await GameImport.HandleAsync(new ImportGameConfig.Command(_hallId!, _configText));
+        _configText = "";
+        await RefreshAsync();
+        Notify($"Spiel {game.Id} aus der Datei übernommen.");
+    });
+
+    private async Task UnloadGameAsync() => await Guarded(async () =>
+    {
+        await ActiveGame.HandleAsync(new SetActiveGame.Command(_hallId!, null));
+        await RefreshAsync();
+    });
+
+    private async Task RunAsync(string sceneId) => await Guarded(async () =>
+    {
+        var sent = await SceneRunner.HandleAsync(new RunScene.Command(_hallId!, sceneId));
+        if (!sent) Fail("Kein Agent verbunden.");
+    });
+
+    private async Task SendMessageAsync() => await Guarded(async () =>
+    {
+        var args = new Dictionary<string, string> { ["text"] = _messageText.Trim() };
+        var sent = await SceneRunner.HandleAsync(new RunScene.Command(_hallId!, "mitteilung", args));
+        if (!sent) Fail("Kein Agent verbunden.");
+    });
+
+    private async Task PanicAsync() => await Guarded(async () =>
+    {
+        var sent = await Panic.HandleAsync(new PanicHall.Command(_hallId!));
+        Notify(sent ? "PANIC gesendet." : "Kein Agent verbunden.");
+    });
+
+    private async Task Guarded(Func<Task> work)
+    {
+        if (_hallId is null) return;
+        _busy = true;
+        _message = null;
+        try { await work(); }
+        catch (DomainException ex) { Fail(ex.Message); }
+        catch (HttpRequestException ex) { Fail("swissunihockey nicht erreichbar: " + ex.Message); }
+        finally { _busy = false; }
+    }
+
+    private void Notify(string text) { _message = text; _messageIsError = false; }
+    private void Fail(string text) { _message = text; _messageIsError = true; }
+
+    private string Score(string side)
+    {
+        var value = ReportValue(AgentReportKinds.Score, side);
+        return value is { Length: > 0 } ? value : "–";
+    }
+
+    private string ClockText()
+    {
+        var time = ReportValue(AgentReportKinds.Clock, "time");
+        var period = ReportValue(AgentReportKinds.Clock, "period");
+        return time is { Length: > 0 } ? $"{time} · Drittel {period}" : "Uhr: keine Daten";
+    }
+
+    private IEnumerable<(string Label, bool Ok)> Lamps()
+    {
+        var json = _status?.Report(AgentReportKinds.Status)?.Json;
+        if (json is null) yield break;
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object) yield break;
+        foreach (var property in document.RootElement.EnumerateObject())
+            if (property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                yield return (property.Name, property.Value.GetBoolean());
+    }
+
+    private string? ReportValue(string kind, string property)
+    {
+        var json = _status?.Report(kind)?.Json;
+        if (json is null) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.ValueKind == JsonValueKind.Object && document.RootElement.TryGetProperty(property, out var value)
+                ? value.ToString()
+                : null;
+        }
+        catch (JsonException) { return null; }
+    }
+
+    private static string Shorten(string text) => text.Length <= 28 ? text : text[..27] + "…";
+
+    public void Dispose() => _polling.Cancel();
+}

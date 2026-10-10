@@ -1,0 +1,252 @@
+@using System.Text.Json
+@inject GetHalls.Handler HallsQuery
+@inject GetHall.Handler HallQuery
+@inject CreateHall.Handler HallCreation
+@inject SaveHall.Handler HallSave
+@inject RenewAgentKey.Handler KeyRenewal
+@inject DeleteHall.Handler HallDeletion
+@inject GetScenes.Handler ScenesQuery
+@inject SaveScenes.Handler ScenesSave
+
+<div class="sa">
+    <header class="sa-top">
+        <h1>Show · Hallen und Szenen</h1>
+        @if (_status is { Length: > 0 })
+        {
+            <span class="sa-status @(_statusIsError ? "error" : "")">@_status</span>
+        }
+    </header>
+
+    <div class="sa-columns">
+        <aside class="sa-side">
+            <h2>Hallen</h2>
+            <ul class="sa-list">
+                @foreach (var hall in _halls)
+                {
+                    <li class="@(hall.Id == _hall?.Id ? "active" : "")" @onclick="() => SelectAsync(hall.Id)">
+                        <span class="sa-lamp @(hall.AgentConnected ? "on" : "off")"></span>@hall.Name <small>@hall.Id</small>
+                    </li>
+                }
+            </ul>
+            <h3>Neue Halle</h3>
+            <input class="sa-input" placeholder="Kennung, z.B. win4" @bind="_newId" />
+            <input class="sa-input" placeholder="Name" @bind="_newName" />
+            <button class="sa-btn" @onclick="CreateAsync">Anlegen</button>
+            <p class="sa-hint">Spieltag-Seite: <a href="/spieltag" target="_blank">/spieltag</a></p>
+        </aside>
+
+        <main class="sa-main">
+            @if (_hall is not null)
+            {
+                <section class="sa-card">
+                    <h2>@_hall.Name <small>@_hall.Id</small></h2>
+                    <div class="sa-form">
+                        <label>Name <input class="sa-input" @bind="_hall.Name" @bind:after="Touch" /></label>
+                        <label>Team-ID swissunihockey <input class="sa-input" type="number" @bind="_hall.TeamId" @bind:after="Touch" /></label>
+                        <label>Saison (Startjahr) <input class="sa-input" type="number" @bind="_hall.Season" @bind:after="Touch" /></label>
+                        <label>vMix Host <input class="sa-input" @bind="_hall.VmixHost" @bind:after="Touch" placeholder="192.168.1.20" /></label>
+                        <label>vMix Port <input class="sa-input" type="number" @bind="_hall.VmixPort" @bind:after="Touch" /></label>
+                        <label>sedna Host (iCast-Mac) <input class="sa-input" @bind="_hall.SednaHost" @bind:after="Touch" /></label>
+                        <label>sedna Port <input class="sa-input" type="number" @bind="_hall.SednaPort" @bind:after="Touch" /></label>
+                        <label>Uhr
+                            <select class="sa-input" @bind="_hall.ClockType" @bind:after="Touch">
+                                <option value="iCast">iCast (UDP)</option>
+                                <option value="Bodet">Bodet ScorePad (TCP)</option>
+                                <option value="None">keine, Agent zählt selbst</option>
+                            </select>
+                        </label>
+                        <label>Uhr-Port <input class="sa-input" type="number" @bind="_hall.ClockPort" @bind:after="Touch" /></label>
+                        <label>Bilderordner auf dem vMix-Rechner <input class="sa-input" @bind="_hall.ImageFolder" @bind:after="Touch" placeholder="C:\Livestream\Bilder" /></label>
+                    </div>
+
+                    <h3>Agent</h3>
+                    <p class="sa-hint">Hallen-ID <code>@_hall.Id</code>, Schlüssel <code>@_hall.AgentKey</code></p>
+                    <button class="sa-btn" @onclick="RenewKeyAsync">Schlüssel erneuern</button>
+
+                    <h3>LED-Vorlagen (sedna-Befehle)</h3>
+                    <table class="sa-table">
+                        <thead><tr><th>Ereignis</th><th>Befehl</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var template in _hall.LedTemplates)
+                            {
+                                <tr>
+                                    <td><input class="sa-input" @bind="template.Event" @bind:after="Touch" /></td>
+                                    <td><input class="sa-input wide" @bind="template.Command" @bind:after="Touch" /></td>
+                                    <td><button class="sa-btn small" @onclick="() => RemoveTemplate(template)">✕</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button class="sa-btn small" @onclick="AddTemplate">+ Vorlage</button>
+
+                    <h3>Shortcut-Texte (eine Zeile je Text)</h3>
+                    <textarea class="sa-input wide" rows="5" @bind="_hall.ShortcutText" @bind:after="Touch"></textarea>
+
+                    <h3>vMix-Titel (JSON)</h3>
+                    <textarea class="sa-input wide mono" rows="8" @bind="_hall.OverlayJson" @bind:after="Touch"></textarea>
+
+                    <div class="sa-actions">
+                        <button class="sa-btn primary" @onclick="SaveHallAsync" disabled="@(!_dirty)">💾 Halle speichern</button>
+                        <button class="sa-btn danger" @onclick="DeleteAsync">Halle löschen</button>
+                    </div>
+                </section>
+            }
+
+            <section class="sa-card">
+                <h2>Szenen (JSON)</h2>
+                <p class="sa-hint">Aktionen: @string.Join(", ", SceneActions.All)</p>
+                <textarea class="sa-input wide mono" rows="18" @bind="_scenesJson"></textarea>
+                <div class="sa-actions">
+                    <button class="sa-btn primary" @onclick="SaveScenesAsync">💾 Szenen speichern</button>
+                    <button class="sa-btn" @onclick="ResetScenes">⟲ Standard einfügen</button>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+@code {
+    private sealed class HallEdit
+    {
+        public string Id = "";
+        public string Name = "";
+        public string AgentKey = "";
+        public int TeamId;
+        public int Season;
+        public string VmixHost = "";
+        public int VmixPort;
+        public string SednaHost = "";
+        public int SednaPort;
+        public string ClockType = "iCast";
+        public int ClockPort;
+        public string ImageFolder = "";
+        public List<TemplateEdit> LedTemplates = [];
+        public string ShortcutText = "";
+        public string OverlayJson = "[]";
+        public string? ActiveGameId;
+
+        public static HallEdit From(Hall hall) => new()
+        {
+            Id = hall.Id,
+            Name = hall.Name,
+            AgentKey = hall.AgentKey,
+            TeamId = hall.TeamId,
+            Season = hall.Season,
+            VmixHost = hall.Devices.VmixHost,
+            VmixPort = hall.Devices.VmixPort,
+            SednaHost = hall.Devices.SednaHost,
+            SednaPort = hall.Devices.SednaPort,
+            ClockType = hall.Devices.ClockType,
+            ClockPort = hall.Devices.ClockPort,
+            ImageFolder = hall.Devices.ImageFolder,
+            LedTemplates = hall.LedTemplates.Select(t => new TemplateEdit { Event = t.Event, Command = t.Command }).ToList(),
+            ShortcutText = string.Join("\n", hall.Shortcuts),
+            OverlayJson = JsonSerializer.Serialize(hall.OverlayTitles, ShowJson.Pretty),
+            ActiveGameId = hall.ActiveGameId,
+        };
+
+        public Hall ToHall() => new(
+            Id, Name, AgentKey, TeamId, Season,
+            new HallDevices(VmixHost.Trim(), VmixPort, SednaHost.Trim(), SednaPort, ClockType, ClockPort, ImageFolder.Trim()),
+            LedTemplates.Where(t => t.Event.Trim().Length > 0).Select(t => new LedTemplate(t.Event.Trim(), t.Command.Trim())).ToList(),
+            JsonSerializer.Deserialize<List<OverlayTitle>>(OverlayJson, ShowJson.Options) ?? [],
+            ShortcutText.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),
+            ActiveGameId);
+    }
+
+    private sealed class TemplateEdit
+    {
+        public string Event = "";
+        public string Command = "";
+    }
+
+    private IReadOnlyList<HallRow> _halls = [];
+    private HallEdit? _hall;
+    private bool _dirty;
+    private string _newId = "";
+    private string _newName = "";
+    private string _scenesJson = "[]";
+    private string? _status;
+    private bool _statusIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadHallsAsync();
+        if (_halls.Count > 0) await SelectAsync(_halls[0].Id);
+        _scenesJson = JsonSerializer.Serialize(await ScenesQuery.HandleAsync(new GetScenes.Query()), ShowJson.Pretty);
+    }
+
+    private async Task ReloadHallsAsync() => _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
+
+    private async Task SelectAsync(string id)
+    {
+        var hall = await HallQuery.HandleAsync(new GetHall.Query(id));
+        _hall = hall is null ? null : HallEdit.From(hall);
+        _dirty = false;
+    }
+
+    private void Touch() => _dirty = true;
+
+    private void AddTemplate() { _hall?.LedTemplates.Add(new TemplateEdit()); Touch(); }
+
+    private void RemoveTemplate(TemplateEdit template) { _hall?.LedTemplates.Remove(template); Touch(); }
+
+    private async Task CreateAsync() => await Guarded(async () =>
+    {
+        var hall = await HallCreation.HandleAsync(new CreateHall.Command(_newId, _newName));
+        _newId = ""; _newName = "";
+        await ReloadHallsAsync();
+        await SelectAsync(hall.Id);
+        Notify($"Halle {hall.Name} angelegt.");
+    });
+
+    private async Task SaveHallAsync() => await Guarded(async () =>
+    {
+        if (_hall is null) return;
+        Hall hall;
+        try { hall = _hall.ToHall(); }
+        catch (JsonException ex) { throw new ValidationException("OverlayTitles", "vMix-Titel: ungültiges JSON (" + ex.Message + ")"); }
+        var saved = await HallSave.HandleAsync(new SaveHall.Command(hall));
+        _hall = HallEdit.From(saved);
+        _dirty = false;
+        await ReloadHallsAsync();
+        Notify("Halle gespeichert; ein verbundener Agent hat die Änderung bereits.");
+    });
+
+    private async Task RenewKeyAsync() => await Guarded(async () =>
+    {
+        if (_hall is null) return;
+        var renewed = await KeyRenewal.HandleAsync(new RenewAgentKey.Command(_hall.Id));
+        _hall.AgentKey = renewed.AgentKey;
+        Notify("Neuer Schlüssel erzeugt; den Agenten mit dem neuen Schlüssel starten.");
+    });
+
+    private async Task DeleteAsync() => await Guarded(async () =>
+    {
+        if (_hall is null) return;
+        await HallDeletion.HandleAsync(new DeleteHall.Command(_hall.Id));
+        _hall = null;
+        await ReloadHallsAsync();
+        Notify("Halle gelöscht.");
+    });
+
+    private async Task SaveScenesAsync() => await Guarded(async () =>
+    {
+        List<Scene> scenes;
+        try { scenes = JsonSerializer.Deserialize<List<Scene>>(_scenesJson, ShowJson.Options) ?? []; }
+        catch (JsonException ex) { throw new ValidationException("Scenes", "Szenen: ungültiges JSON (" + ex.Message + ")"); }
+        await ScenesSave.HandleAsync(new SaveScenes.Command(scenes));
+        Notify($"{scenes.Count} Szenen gespeichert.");
+    });
+
+    private void ResetScenes() => _scenesJson = JsonSerializer.Serialize(DefaultScenes.All, ShowJson.Pretty);
+
+    private async Task Guarded(Func<Task> work)
+    {
+        _status = null;
+        try { await work(); }
+        catch (DomainException ex) { _status = ex.Message; _statusIsError = true; }
+    }
+
+    private void Notify(string text) { _status = text; _statusIsError = false; }
+}

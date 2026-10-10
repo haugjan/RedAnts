@@ -1,0 +1,36 @@
+html, body { margin: 0; min-height: 100%; background: #141418; color: #e9edf1; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+.sa { padding: 16px; }
+.sa-top { display: flex; align-items: center; gap: 16px; }
+.sa-top h1 { font-size: 1.3rem; margin: 0 0 12px; }
+.sa-status { padding: 6px 12px; border-radius: 6px; background: #1e7b34; }
+.sa-status.error { background: #8a1f1f; }
+.sa-columns { display: grid; grid-template-columns: 260px 1fr; gap: 16px; }
+.sa-side, .sa-card { background: #1b1e24; border: 1px solid #2b3038; border-radius: 10px; padding: 14px 16px; }
+.sa-card { margin-bottom: 16px; }
+.sa-side h2, .sa-card h2 { margin: 0 0 10px; font-size: 1rem; text-transform: uppercase; letter-spacing: .04em; color: #9aa4ad; }
+.sa-card h2 small, .sa-list small { color: #6c757d; font-weight: 400; margin-left: 6px; }
+.sa-side h3, .sa-card h3 { margin: 16px 0 6px; font-size: .95rem; color: #9aa4ad; }
+.sa-list { list-style: none; padding: 0; margin: 0 0 10px; }
+.sa-list li { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.sa-list li:hover { background: #242830; }
+.sa-list li.active { background: #2b3038; }
+.sa-lamp { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.sa-lamp.on { background: #2ecc71; }
+.sa-lamp.off { background: #c0392b; }
+.sa-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 16px; }
+.sa-form label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: #9aa4ad; }
+.sa-input { background: #0f1115; color: #e9edf1; border: 1px solid #3a3f47; border-radius: 6px; padding: 8px; font-size: .95rem; width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+.sa-input.wide { width: 100%; }
+.sa-input.mono { font-family: Consolas, 'Cascadia Mono', monospace; font-size: .85rem; }
+.sa-table { width: 100%; border-collapse: collapse; }
+.sa-table th { text-align: left; font-size: .8rem; color: #9aa4ad; padding: 4px; }
+.sa-table td { padding: 2px 4px; }
+.sa-btn { background: #2b3038; color: #e9edf1; border: 1px solid #3a3f47; border-radius: 6px; padding: 8px 14px; font-size: .95rem; cursor: pointer; }
+.sa-btn.small { padding: 4px 8px; font-size: .85rem; }
+.sa-btn.primary { background: #1e7b34; border-color: #1e7b34; }
+.sa-btn.danger { background: #6b2525; border-color: #6b2525; }
+.sa-btn:disabled { opacity: .4; cursor: default; }
+.sa-actions { display: flex; gap: 8px; margin-top: 12px; }
+.sa-hint { color: #9aa4ad; font-size: .85rem; }
+.sa-hint code { background: #0f1115; padding: 2px 6px; border-radius: 4px; }
+a { color: #8ab4f8; }

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>RedAnts.Show</RootNamespace>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.Net.Http.Json" />
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="RedAnts.Domain" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <UmbracoJsonSchemaFiles Remove="@(UmbracoJsonSchemaFiles)" />
+    <UmbracoPackageSchemaFiles Remove="@(UmbracoPackageSchemaFiles)" />
+    <UmbracoJsonSchemaReferences Remove="@(UmbracoJsonSchemaReferences)" />
+    <Content Remove="appsettings-schema.json;appsettings-schema.*.json;umbraco-package-schema.json" />
+    <Content Update="**\*.cshtml" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RedAnts.Kernel\RedAnts.Kernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Umbraco.Cms" />
+  </ItemGroup>
+</Project>

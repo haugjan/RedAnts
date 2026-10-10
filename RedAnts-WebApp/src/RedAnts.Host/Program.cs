@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Domain;
 using RedAnts.DJ.Infrastructure;
+using RedAnts.Show.Infrastructure;
 using RedAnts.Ticketing.Infrastructure;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
@@ -55,6 +56,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options => optio
 
 builder.Services.AddTicketing(builder.Configuration);
 builder.Services.AddDJ(builder.Configuration);
+builder.Services.AddShow(builder.Configuration);
 
 var umbracoBuilder = builder.CreateUmbracoBuilder()
     .AddBackOffice()
@@ -386,7 +388,7 @@ app.UseDJ();
 
         app.Use(async (context, next) =>
         {
-            if (!context.Request.Path.StartsWithSegments("/dj"))
+            if (!context.Request.Path.StartsWithSegments("/dj") && !context.Request.Path.StartsWithSegments("/spieltag"))
             {
                 await next();
                 return;
@@ -481,6 +483,9 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/scan")
         || path.StartsWithSegments("/dj")
         || path.StartsWithSegments("/api/dj")
+        || path.StartsWithSegments("/admin/show")
+        || path.StartsWithSegments("/spieltag")
+        || path.StartsWithSegments("/hubs/halle")
         || path.StartsWithSegments("/payrexx/webhook")
         || path.StartsWithSegments("/checkout/success")
         || path.StartsWithSegments("/checkout/cancel")
@@ -568,6 +573,7 @@ app.UseStaticFiles();
 app.UseSession();
 
 app.MapBlazorHub();
+app.MapShow();
 
 app.UseUmbraco()
     .WithMiddleware(u =>

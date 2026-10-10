@@ -34,7 +34,6 @@ public static class DJExtensions
     private static string? LegacyShowPath(PathString path)
     {
         if (path.StartsWithSegments("/api/show", out var rest)) return "/api/dj" + rest;
-        if (path.StartsWithSegments("/admin/show", out rest)) return "/admin/dj" + rest;
         if (path.StartsWithSegments("/show", out rest)) return "/dj" + rest;
         return null;
     }
