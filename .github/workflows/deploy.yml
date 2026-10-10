@@ -144,7 +144,7 @@ jobs:
             SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient" "Migrations__RunAtBoot=false")
           fi
           if [ -n "$MEDIA_ACCOUNT_URL" ]; then
-            SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL")
+            SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL" "DataProtection__BlobUri=${MEDIA_ACCOUNT_URL%/}/dataprotection/keys.xml")
           fi
           if [ -n "$SHOW_ACCOUNT_URL" ]; then
             SETTINGS+=("Show__Storage__AccountUrl=$SHOW_ACCOUNT_URL")
@@ -247,13 +247,11 @@ jobs:
             tail -n 40 migrate.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Deploy (az webapp deploy over ARM)
+      - name: Start the staging slot
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
-        run: |
-          az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
-            --src-path app.zip --type zip --track-status false --restart false --timeout 600000 --clean true
-      - name: Configure app settings (prod — single write, one restart)
+        run: az webapp start --resource-group RG_RedAnts --name "$WEBAPP" --slot staging --output none
+      - name: Configure app settings on the staging slot
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
           PAYREXX_API_SECRET: ${{ secrets.PAYREXX_API_SECRET }}
@@ -264,11 +262,11 @@ jobs:
           MEDIA_ACCOUNT_URL: ${{ vars.MEDIA_ACCOUNT_URL }}
           SHOW_ACCOUNT_URL: ${{ vars.SHOW_ACCOUNT_URL }}
         run: |
-          # A per-deploy-unique marker guarantees the appsettings write is an actual change, so
-          # Azure performs exactly one restart and the freshly deployed code is loaded. Without it,
-          # an unchanged settings write is a no-op that never restarts and the old worker (old code)
-          # keeps serving after a --restart false deploy.
-          SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment "Deploy__Marker=${{ github.run_id }}.${{ github.run_attempt }}")
+          # Prod ships through the staging slot: settings and code land in the slot, the slot is
+          # warmed, then swapped into production. Nothing in this job restarts the live worker.
+          # The swap warm-up settings are not sticky and travel with the code, so they are written
+          # on every deploy.
+          SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment WEBSITE_SWAP_WARMUP_PING_PATH=/health WEBSITE_SWAP_WARMUP_PING_STATUSES=200)
           if [ -n "$PAYREXX_API_SECRET" ]; then
             SETTINGS+=(Payrexx__Instance=redants "Payrexx__ApiSecret=$PAYREXX_API_SECRET")
           else
@@ -283,7 +281,7 @@ jobs:
             SETTINGS+=("ConnectionStrings__umbracoDbDSN=$APP_DSN" "ConnectionStrings__umbracoDbDSN_ProviderName=Microsoft.Data.SqlClient" "Migrations__RunAtBoot=false")
           fi
           if [ -n "$MEDIA_ACCOUNT_URL" ]; then
-            SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL")
+            SETTINGS+=("Umbraco__Storage__AzureBlob__Media__AccountUrl=$MEDIA_ACCOUNT_URL" "DataProtection__BlobUri=${MEDIA_ACCOUNT_URL%/}/dataprotection/keys.xml")
           fi
           if [ -n "$SHOW_ACCOUNT_URL" ]; then
             SETTINGS+=("Show__Storage__AccountUrl=$SHOW_ACCOUNT_URL")
@@ -293,20 +291,22 @@ jobs:
           else
             echo "SMTP secrets not set; leaving unchanged."
           fi
-          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" \
+          az webapp config appsettings set --resource-group RG_RedAnts --name "$WEBAPP" --slot staging \
             --settings "${SETTINGS[@]}" --output none
-          echo "Applied ${#SETTINGS[@]} app settings to $WEBAPP in a single write (one restart)."
-      - name: Warm up the site
+          echo "Applied ${#SETTINGS[@]} app settings to the staging slot of $WEBAPP."
+      - name: Deploy to the staging slot
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
-          BASE="https://$WEBAPP.azurewebsites.net"
-          # Deploy runs with --restart false (see deploy-dev): appsettings write is the sole restart,
-          # new code + new settings land together. /health returns 200 once ASP.NET is listening.
-          echo "Waiting for the app-settings restart to take the old worker down..."
-          sleep 30
+          az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" --slot staging \
+            --src-path app.zip --type zip --track-status false --restart true --timeout 600000 --clean true
+      - name: Warm up the staging slot
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          BASE="https://$WEBAPP-staging.azurewebsites.net"
           wait_up() {
-            for i in $(seq 1 30); do
+            for i in $(seq 1 36); do
               S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health") || S="000"
               echo "Attempt $i: GET /health -> $S"
               case "$S" in 200) return 0 ;; esac
@@ -314,21 +314,41 @@ jobs:
             done
             return 1
           }
+          warm() {
+            OUT=$(curl -s --max-time 180 "$BASE/warmup") || OUT=""
+            echo "$OUT"
+            [ -n "$OUT" ] && ! echo "$OUT" | grep -q ' -> 500'
+          }
           if ! wait_up; then
-            echo "App did not respond within the warm-up window (best-effort)."; exit 0
+            echo "The staging slot did not come up; production stays untouched."; exit 1
           fi
-          echo "Up. Warming core pages via /warmup..."
-          OUT=$(curl -s --max-time 120 "$BASE/warmup") || OUT=""
-          echo "$OUT"
-          # A freshly swapped worker occasionally boots into a broken state after the zip
-          # deploy (500s on runtime-compiled pages until the next restart). One clean
-          # restart heals it, so detect 500s in the warm-up output and restart once.
-          if [ -z "$OUT" ] || echo "$OUT" | grep -q ' -> 500'; then
-            echo "Warm-up saw errors; restarting once and re-warming..."
-            az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" || true
-            sleep 30
-            if wait_up; then
-              curl -s --max-time 120 "$BASE/warmup" || echo "(re-warmup failed, best-effort)"
-            fi
-          fi
+          if warm; then exit 0; fi
+          # A freshly deployed worker occasionally boots into a broken state (500s on
+          # runtime-compiled pages until the next restart). One clean restart heals it.
+          echo "Warm-up saw errors; restarting the slot once and re-warming..."
+          az webapp restart --resource-group RG_RedAnts --name "$WEBAPP" --slot staging --output none
+          sleep 30
+          if wait_up && warm; then exit 0; fi
+          echo "The staging slot still fails after a restart; production stays untouched."; exit 1
+      - name: Swap the staging slot into production
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          az webapp deployment slot swap --resource-group RG_RedAnts --name "$WEBAPP" \
+            --slot staging --target-slot production --output none
+      - name: Verify production and stop the old slot
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+        run: |
+          BASE="https://$WEBAPP.azurewebsites.net"
+          for i in $(seq 1 18); do
+            S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$BASE/health") || S="000"
+            echo "Attempt $i: GET /health -> $S"
+            case "$S" in 200) break ;; esac
+            sleep 10
+          done
+          curl -s --max-time 180 "$BASE/warmup" || echo "(production warm-up failed, best-effort)"
+          # The old worker now lives in the staging slot. Stopping it frees the shared P0v3 worker
+          # and keeps its background jobs from running on the old code; the next deploy starts it again.
+          az webapp stop --resource-group RG_RedAnts --name "$WEBAPP" --slot staging --output none
           exit 0

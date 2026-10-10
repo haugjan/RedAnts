@@ -111,7 +111,7 @@ Host-based routing (`Program.cs`): the root `/` redirects by host — `scan[-dev
 | Admin / backoffice | `admin.redants.ch` | `admin-dev.redants.ch` |
 | DJ (soundboard) | `show.redants.ch` | `show-dev.redants.ch` |
 
-Underlying App Services: `app-redants-prod` / `app-redants-dev`. **Only `tickets.redants.ch` is search-indexed** (`index,follow`); every other host — all `*-dev`, plus `scan.*`/`admin.*` and `*.azurewebsites.net` — is `noindex,nofollow`.
+Underlying App Services: `app-redants-prod` (plan `asp-redants-prod`, Premium P0v3, with a `staging` slot that every prod deploy goes through) / `app-redants-dev` (B1, no slot). **Only `tickets.redants.ch` is search-indexed** (`index,follow`); every other host — all `*-dev`, plus `scan.*`/`admin.*` and `*.azurewebsites.net` — is `noindex,nofollow`.
 
 ## Public URLs
 
@@ -144,7 +144,7 @@ Ticketing public and intern links use **fixed MVC routes** (`/tickets/event/{sqi
 Parallel sessions (S1–S7) each work in their own worktree `C:\development\RedAnts-s<N>` on their own branch `feature/s<N>-<short>`, never directly on `main`, and commit immediately. After each change, classify it:
 
 - **Simple (no DB/schema change)** — CSS, views/layout, text, front-end, PDF/mail templates, config without a migration: **run it locally, do NOT deploy to dev.** `dotnet run --project RedAnts-WebApp/src/RedAnts.Host` (`ASPNETCORE_ENVIRONMENT=Development`, `--no-build` once built) on the session's own port `560<N>` (S1 → 5601 … S7 → 5607) against the Azure **dev** DB (the user-secrets DSN). Give the user the **localhost URL** (`http://localhost:560<N>/…`, reachable because the agent runs on the user's own machine) plus a one-line summary. Deploying every simple change to the single shared `app-redants-dev` makes parallel sessions overwrite each other, so don't.
-- **Complicated** — DB schema/migrations/seeders, or a flow that needs the real domain (Payrexx payment, backoffice/OIDC login, host-based `scan.`/`admin.` behaviour): **push the feature branch** (the pipeline deploys DEV only; `deploy-prod` is gated to `main`), watch the run, and report the matching dev link — tickets `tickets-dev.redants.ch`, scanning `scan-dev.redants.ch`, admin `admin-dev.redants.ch` (prod: the same hosts without `-dev`).
+- **Complicated** — DB schema/migrations/seeders, or a flow that needs the real domain (Payrexx payment, backoffice/OIDC login, host-based `scan.`/`admin.` behaviour): **push the feature branch** (the pipeline deploys DEV only; `deploy-prod` is gated to `main`), watch the run, and report the matching dev link — tickets `tickets-dev.redants.ch`, scanning `scan-dev.redants.ch`, admin `admin-dev.redants.ch` (prod: the same hosts without `-dev`). Prod deploys land in the `staging` slot (settings, zip, `/health`, `/warmup`, swap, stop the old slot), so HTTP traffic sees no interruption; the data protection key ring is shared through Blob Storage for that reason, and migrations must stay additive because the old code serves against the new schema until the swap. Blazor pages reload themselves once their circuit is gone: every page that hosts a Blazor component loads `blazor.server.js` with `autostart="false"` and starts it via `window.redants.startCircuit()` from `/js/circuit-reload.js`.
 
 Then always ask **"Auf prod deployen? Ja/Nein"** (Ja first, so the user can arrow + Enter). On **Ja**: `git push origin HEAD:main` (prod deploys); watch the CI build and report when green.
 
