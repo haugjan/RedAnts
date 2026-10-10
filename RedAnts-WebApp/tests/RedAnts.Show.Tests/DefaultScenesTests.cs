@@ -24,6 +24,17 @@ public class DefaultScenesTests
         Assert.Equal("home", goal.Side);
     }
 
+    [Theory]
+    [InlineData("strafe-heim", "PlayerHome")]
+    [InlineData("strafe-gast", "PlayerAway")]
+    public void Penalty_scenes_open_the_player_page_before_waiting_for_a_pick(string id, string context)
+    {
+        var scene = DefaultScenes.All.Single(s => s.Id == id);
+        var actions = scene.Steps.Select(s => s.Action).ToList();
+        Assert.Equal(context, scene.Steps.First(s => s.Action == SceneActions.DeckContext).Target);
+        Assert.True(actions.IndexOf(SceneActions.DeckContext) < actions.IndexOf(SceneActions.PlayerPick));
+    }
+
     [Fact]
     public void Panic_hides_everything_and_returns_to_main()
     {

@@ -52,8 +52,8 @@ public static class DefaultScenes
     [
         Goal("tor-heim", "Tor Heim", "home", "led:tor-heim"),
         Goal("tor-gast", "Tor Gast", "away", "led:tor-gast"),
-        PlayerOverlay("strafe-heim", "Strafe Heim", "home", "PenaltyHome", "penalty"),
-        PlayerOverlay("strafe-gast", "Strafe Gast", "away", "PenaltyAway", "penalty"),
+        PlayerOverlay("strafe-heim", "Strafe Heim", "home", "PlayerHome", "penalty"),
+        PlayerOverlay("strafe-gast", "Strafe Gast", "away", "PlayerAway", "penalty"),
         PlayerOverlay("name-heim", "Name Heim", "home", "PlayerHome", "name"),
         PlayerOverlay("name-gast", "Name Gast", "away", "PlayerAway", "name"),
         PlayerOverlay("bestplayer-heim", "Best Player Heim", "home", "PlayerHome", "bestplayer"),
