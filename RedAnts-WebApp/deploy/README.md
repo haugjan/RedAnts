@@ -104,3 +104,33 @@ Media (storage accounts `stredantsprod`, `stredantsdev`, `stredants`):
 - Blob soft delete and container soft delete both retain 14 days; blob versioning and change feed
   are enabled. Deleted or overwritten media can be restored within the retention window
   (`az storage blob undelete` / restore a prior version).
+
+## Staging slot (prod)
+
+Prod deploys go through the `staging` slot of `app-redants-prod` (plan `asp-redants-prod`,
+Premium P0v3): the pipeline starts the slot, writes the app settings, zip-deploys into it,
+waits for `/health`, runs `/warmup`, swaps it into production and stops the slot again. The
+one-time setup, done on 2026-10-10:
+
+1. Scale the plan: `az appservice plan update -g RG_RedAnts -n asp-redants-prod --sku P0V3`
+   (restarts the app once; Basic has no slots and no custom error pages).
+2. Create the slot from the production configuration:
+   `az webapp deployment slot create -g RG_RedAnts -n app-redants-prod --slot staging --configuration-source app-redants-prod`,
+   then `az webapp identity assign ... --slot staging` for its own system-assigned identity.
+3. Give that identity the same rights as the production identity: `Storage Blob Data Contributor`
+   on `stredantsprod` and a user `app-redants-prod/slots/staging` in `sqldb-redants-prod` with
+   `db_datareader`, `db_datawriter` and `UPDATE` on `OrderNumberSeq`, `RefundNumberSeq`,
+   `JournalSeq` (same statements as `docs/setup-entra-access.ps1` uses for the app).
+4. Stop the slot; the pipeline starts it at the beginning of every prod deploy.
+5. Data protection key ring: private container `dataprotection` on `stredantsprod` and
+   `stredantsdev`, seeded once with the existing key files from `/home/ASP.NET/DataProtection-Keys`
+   (Kudu VFS) wrapped in a `<repository>` root and uploaded as `keys.xml` with `--if-none-match '*'`.
+   The pipeline sets `DataProtection__BlobUri` next to the media account URL.
+6. Maintenance page: `wwwroot/503.html` with the photo and favicon paths rewritten to
+   `https://cdn.jsdelivr.net/gh/haugjan/RedAnts@<commit>/RedAnts-WebApp/src/RedAnts.Host/wwwroot/...`,
+   base64-encoded and sent as `{"properties":{"content":"..."}}` with
+   `az rest --method put --url .../sites/app-redants-prod/errorpages/503?api-version=2022-03-01`
+   (under 10 KB). Re-upload when the page or the photos change.
+
+Rollback after a bad swap: `az webapp start ... --slot staging`, then
+`az webapp deployment slot swap ... --slot staging --target-slot production` again.
