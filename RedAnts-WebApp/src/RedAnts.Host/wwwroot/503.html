@@ -14,10 +14,10 @@
         html, body { margin: 0; }
         body { font-family: Verdana, Geneva, Tahoma, sans-serif; color: var(--ink); background: #ffffff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem; }
         .e503 { max-width: 720px; width: 100%; text-align: center; }
-        .scene { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 auto 2.5rem; width: 100%; max-width: 600px; height: 30vh; min-height: 180px; max-height: 260px; border-bottom: 3px solid #eee; padding-bottom: 5px; position: relative; overflow: hidden; }
-        .player { height: 100%; max-width: 33%; width: auto; z-index: 2; object-fit: contain; mix-blend-mode: multiply; }
-        .mopper { height: 90%; max-width: 40%; width: auto; position: absolute; left: 50%; bottom: 5px; margin-left: -20%; z-index: 1; animation: mop 2.5s infinite alternate ease-in-out; object-fit: contain; mix-blend-mode: multiply; }
-        @keyframes mop { 0% { transform: translateX(-65%); } 100% { transform: translateX(65%); } }
+        .scene { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 auto 2.5rem; width: 100%; aspect-ratio: 30 / 13; border-bottom: 3px solid #eee; padding-bottom: 5px; position: relative; overflow: hidden; }
+        .player { width: 24%; height: auto; z-index: 2; mix-blend-mode: multiply; }
+        .mopper { width: 28%; height: auto; position: absolute; left: 36%; bottom: 5px; z-index: 1; animation: mop 2.5s infinite alternate ease-in-out; mix-blend-mode: multiply; }
+        @keyframes mop { 0% { transform: translateX(-36%); } 100% { transform: translateX(36%); } }
         @media (prefers-reduced-motion: reduce) { .mopper { animation: none; } }
         .e503-title { font-family: var(--display); text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; color: var(--ink); font-size: clamp(2.2rem, 6vw, 3.5rem); line-height: 1; margin: 0; }
         .e503-title::after { content: ""; display: block; width: 64px; height: 5px; background: var(--red); margin: 1.2rem auto 0; }
