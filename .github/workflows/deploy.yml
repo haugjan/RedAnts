@@ -117,7 +117,7 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
-            --src-path app.zip --type zip --track-status false --restart false --timeout 600000
+            --src-path app.zip --type zip --track-status false --restart false --timeout 600000 --clean true
       - name: Configure app settings (dev — single write, one restart)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -252,7 +252,7 @@ jobs:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
           az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
-            --src-path app.zip --type zip --track-status false --restart false --timeout 600000
+            --src-path app.zip --type zip --track-status false --restart false --timeout 600000 --clean true
       - name: Configure app settings (prod — single write, one restart)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
