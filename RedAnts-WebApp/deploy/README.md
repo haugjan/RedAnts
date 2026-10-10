@@ -128,9 +128,14 @@ one-time setup, done on 2026-10-10:
    The pipeline sets `DataProtection__BlobUri` next to the media account URL.
 6. Maintenance page: `wwwroot/503.html` with the photo and favicon paths rewritten to
    `https://cdn.jsdelivr.net/gh/haugjan/RedAnts@<commit>/RedAnts-WebApp/src/RedAnts.Host/wwwroot/...`,
-   base64-encoded and sent as `{"properties":{"content":"..."}}` with
+   base64-encoded and sent as
+   `{"properties":{"content":"<base64>","alwaysUse":true,"contentType":"text/html","statusCode":503}}` with
    `az rest --method put --url .../sites/app-redants-prod/errorpages/503?api-version=2022-03-01`
-   (under 10 KB). Re-upload when the page or the photos change.
+   (under 10 KB), once for the app and once for `.../slots/staging/errorpages/503`. **`alwaysUse`
+   (the portal's "Apply to all requests") is required**: with the default `false` App Service keeps
+   serving its own "Web App - Unavailable" page, which is how the first upload behaved. Verified by
+   putting the same HTML on the stopped slot as its 403 page and requesting the slot host. Re-upload
+   when the page or the photos change; `https://tickets.redants.ch/503.html` is the app-served preview.
 
 Rollback after a bad swap: `az webapp start ... --slot staging`, then
 `az webapp deployment slot swap ... --slot staging --target-slot production` again.
