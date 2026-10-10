@@ -4,6 +4,10 @@
 > der `RedAnts-WebApp/**` berührt (beides deployt und startet die App Services neu; der DJ-Board-Browser und das Streamdeck
 > hängen daran). Am 10.10.2026 hat ein Deploy prod und dev 25 Minuten gekostet (Dateileichen in wwwroot, seit `8f95cd7`
 > deployt die Pipeline mit `--clean true`). Docs-Commits ausserhalb von `RedAnts-WebApp/` sind erlaubt.
+>
+> Ausnahme am Abend des 10.10.2026, vom Betreiber freigegeben: Tarifwechsel von prod auf P0v3, Staging-Slot mit Swap in der
+> Pipeline, Schlüsselring im Blob Storage und die 503-Wartungsseite gingen auf dev und prod. Danach gilt die Sperre unverändert
+> bis Sonntag, 12.10.2026.
 
 > Worktree-Modell wie gehabt (`C:\development\RedAnts-s<N>`, eigener Branch je Session).
 > Runde 1–4 sind komplett in `main` (inkl. Payrexx-Zahlung). Diese Runde bündelt
