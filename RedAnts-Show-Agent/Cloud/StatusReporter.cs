@@ -28,7 +28,6 @@ public sealed class StatusReporter(
         ["LED"] = led.Configured && led.Fault is null && led.Connected,
         ["version"] = AgentConfig.Version,
         ["hall"] = payload.Hall.Id,
-        ["synced"] = payload.Synced,
         ["syncedAt"] = payload.Synced ? payload.Current.SentAt : null,
         ["game"] = payload.Game.Title,
         ["deck"] = deck.Context.ToString(),
@@ -38,7 +37,6 @@ public sealed class StatusReporter(
         ["clockFault"] = clock.Fault,
         ["clockReceived"] = clock.Received,
         ["ledFault"] = led.Fault,
-        ["cloud"] = cloud.Connected,
         ["cloudFault"] = cloud.Fault,
     };
 
