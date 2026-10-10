@@ -70,6 +70,12 @@
                     Per WhatsApp teilen
                 </a>
                 <button id="wtInstall" class="wt-btn wt-btn--install" type="button" hidden>Als App installieren</button>
+                <p id="wtInstallHint" class="wt-install-hint" hidden>
+                    Tippe auf das Teilen-Symbol
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Teilen"><path d="M12 3v12" /><path d="M8 7l4-4 4 4" /><path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2" /></svg>
+                    und dann auf «Zum Home-Bildschirm». Das Ticket liegt danach wie eine App auf deinem Home-Bildschirm.
+                    Ist der Link in WhatsApp geöffnet, zuerst «In Safari öffnen» wählen.
+                </p>
             </div>
 
             <details class="wt-namebar">
@@ -138,17 +144,27 @@
             (function () {
                 var deferred = null;
                 var btn = document.getElementById('wtInstall');
+                var hint = document.getElementById('wtInstallHint');
+                var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+                var apple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                if (btn && apple && !standalone) btn.hidden = false;
                 window.addEventListener('beforeinstallprompt', function (e) {
                     e.preventDefault();
                     deferred = e;
-                    if (btn) btn.hidden = false;
+                    if (btn && !standalone) btn.hidden = false;
                 });
                 if (btn) btn.addEventListener('click', function () {
-                    if (!deferred) return;
-                    deferred.prompt();
-                    deferred.userChoice.finally(function () { deferred = null; btn.hidden = true; });
+                    if (deferred) {
+                        deferred.prompt();
+                        deferred.userChoice.finally(function () { deferred = null; btn.hidden = true; });
+                        return;
+                    }
+                    if (hint) hint.hidden = !hint.hidden;
                 });
-                window.addEventListener('appinstalled', function () { if (btn) btn.hidden = true; });
+                window.addEventListener('appinstalled', function () {
+                    if (btn) btn.hidden = true;
+                    if (hint) hint.hidden = true;
+                });
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('/ticket-sw.js', { scope: '/ticket/' }).catch(function () { });
                 }
