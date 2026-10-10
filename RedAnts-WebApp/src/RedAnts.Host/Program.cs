@@ -388,7 +388,7 @@ app.UseDJ();
 
         app.Use(async (context, next) =>
         {
-            if (!context.Request.Path.StartsWithSegments("/dj") && !context.Request.Path.StartsWithSegments("/spieltag"))
+            if (!context.Request.Path.StartsWithSegments("/dj") && !context.Request.Path.StartsWithSegments("/matchday"))
             {
                 await next();
                 return;
@@ -484,7 +484,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/dj")
         || path.StartsWithSegments("/api/dj")
         || path.StartsWithSegments("/admin/show")
-        || path.StartsWithSegments("/spieltag")
+        || path.StartsWithSegments("/matchday")
         || path.StartsWithSegments("/hubs/halle")
         || path.StartsWithSegments("/payrexx/webhook")
         || path.StartsWithSegments("/checkout/success")
