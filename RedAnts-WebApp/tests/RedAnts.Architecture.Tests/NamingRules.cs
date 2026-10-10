@@ -6,7 +6,7 @@ namespace RedAnts.Architecture.Tests;
 
 public class NamingRules
 {
-    private static readonly Regex DomainNamespace = new(@"^RedAnts\.(Domain|(Ticketing|Show)\.Domain)(\.|$)");
+    private static readonly Regex DomainNamespace = new(@"^RedAnts\.(Domain|(Ticketing|DJ)\.Domain)(\.|$)");
 
     private static readonly string[] ForbiddenSuffixes =
         ["Service", "Manager", "Adapter", "Port", "Editor", "Store", "Impl", "Helper", "Util", "Utils"];

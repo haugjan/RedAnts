@@ -9,13 +9,13 @@ namespace RedAnts.Architecture.Tests;
 public class LayerRules
 {
     private static readonly IObjectProvider<IType> Domain =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|(Ticketing|Show)\.Domain)(\..*)?$").As("Domain");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|(Ticketing|DJ)\.Domain)(\..*)?$").As("Domain");
 
     private static readonly IObjectProvider<IType> TicketingAndWebsiteFeatures =
         Types().That().ResideInNamespaceMatching(@"^RedAnts\.Ticketing\.Features(\.(?!Infrastructure\b)\w+)*$|^RedAnts\.Features\.Website(\..*)?$").As("Features");
 
-    private static readonly IObjectProvider<IType> ShowFeatures =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.Show\.Features(\.(?!Infrastructure\b)\w+)*$").As("Show features");
+    private static readonly IObjectProvider<IType> DJFeatures =
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.DJ\.Features(\.(?!Infrastructure\b)\w+)*$").As("DJ features");
 
     private static readonly IObjectProvider<IType> Infrastructure =
         Types().That().ResideInNamespaceMatching(@"^RedAnts\.(\w+\.)*Infrastructure(\.\w+)*$").As("Infrastructure");
@@ -23,7 +23,7 @@ public class LayerRules
     [Fact]
     public void Domain_depends_on_nothing_above_it() =>
         Types().That().Are(Domain).Should().NotDependOnAny(TicketingAndWebsiteFeatures)
-            .AndShould().NotDependOnAny(ShowFeatures)
+            .AndShould().NotDependOnAny(DJFeatures)
             .AndShould().NotDependOnAny(Infrastructure)
             .Check(RedAntsArchitecture.Loaded);
 
@@ -42,12 +42,12 @@ public class LayerRules
             .Check(RedAntsArchitecture.Loaded);
 
     [Fact]
-    public void Show_features_do_not_depend_on_infrastructure() =>
-        Types().That().Are(ShowFeatures).Should().NotDependOnAny(Infrastructure)
+    public void DJ_features_do_not_depend_on_infrastructure() =>
+        Types().That().Are(DJFeatures).Should().NotDependOnAny(Infrastructure)
             .Check(RedAntsArchitecture.Loaded);
 
     [Theory]
-    [InlineData(@"^RedAnts\.((Ticketing|Show)\.(Domain|Features|Infrastructure)|(Features|Infrastructure)\.(Website|Shared))(\..*)?$")]
+    [InlineData(@"^RedAnts\.((Ticketing|DJ)\.(Domain|Features|Infrastructure)|(Features|Infrastructure)\.(Website|Shared))(\..*)?$")]
     [InlineData(@"^(Umbraco|NPoco|Microsoft\.AspNetCore|Microsoft\.Extensions)(\..*)?$")]
     public void Kernel_depends_only_on_the_base_class_library(string namespacePattern) =>
         Types().That().ResideInAssembly(RedAntsArchitecture.Kernel)

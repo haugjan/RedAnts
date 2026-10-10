@@ -5,7 +5,7 @@ public enum SiteSurface
     Tickets,
     Admin,
     Scan,
-    Show,
+    DJ,
 }
 
 public static class SiteHosts
@@ -22,7 +22,7 @@ public static class SiteHosts
     {
         SiteSurface.Admin => "admin",
         SiteSurface.Scan => "scan",
-        SiteSurface.Show => "show",
+        SiteSurface.DJ => "show",
         _ => "tickets",
     };
 
@@ -35,15 +35,16 @@ public static class SiteHosts
     public static SiteSurface SurfaceOfHost(string? host)
     {
         if (host is null) return SiteSurface.Tickets;
-        foreach (var surface in new[] { SiteSurface.Admin, SiteSurface.Scan, SiteSurface.Show })
-        {
-            var prefix = Prefix(surface);
-            if (host.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)
-                || host.StartsWith(prefix + "-dev.", StringComparison.OrdinalIgnoreCase))
-                return surface;
-        }
-        return SiteSurface.Tickets;
+        foreach (var surface in new[] { SiteSurface.Admin, SiteSurface.Scan, SiteSurface.DJ })
+            if (HostHasPrefix(host, Prefix(surface))) return surface;
+        return HostHasPrefix(host, DJHostAlias) ? SiteSurface.DJ : SiteSurface.Tickets;
     }
+
+    private const string DJHostAlias = "dj";
+
+    private static bool HostHasPrefix(string host, string prefix) =>
+        host.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)
+        || host.StartsWith(prefix + "-dev.", StringComparison.OrdinalIgnoreCase);
 
     public static bool HostServes(string? host, SiteSurface surface) =>
         SurfaceOfHost(host) == surface;
@@ -55,7 +56,7 @@ public static class SiteHosts
     {
         SiteSurface.Admin => "/umbraco",
         SiteSurface.Scan => "/scan",
-        SiteSurface.Show => "/show",
+        SiteSurface.DJ => "/dj",
         _ => "/ticketing/",
     };
 
@@ -75,8 +76,8 @@ public static class SiteHosts
         if (StartsWithSegment(path, "/scan") || StartsWithSegment(path, "/scanner-test"))
             return SiteSurface.Scan;
 
-        if (StartsWithSegment(path, "/show"))
-            return SiteSurface.Show;
+        if (StartsWithSegment(path, "/dj"))
+            return SiteSurface.DJ;
 
         return HasExtension(path) ? null : SiteSurface.Tickets;
     }

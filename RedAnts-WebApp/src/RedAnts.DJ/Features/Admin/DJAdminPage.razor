@@ -1,0 +1,610 @@
+@using System.Text.Json
+@using Microsoft.JSInterop
+@inject GetDJProfiles.Handler ProfilesQuery
+@inject SaveDJProfiles.Handler ProfilesSave
+@inject GetSpotifySettings.Handler SpotifyState
+@inject GetDJRooms.Handler RoomsQuery
+@inject DeleteDJRoom.Handler RoomDeletion
+@inject FindUnusedSounds.Handler UnusedQuery
+@inject DeleteUnusedSounds.Handler UnusedDeletion
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="se">
+    <header class="se-top">
+        <h1>DJ · Soundboard-Konfiguration</h1>
+        <div class="se-actions">
+            <button class="se-btn primary" @onclick="SaveAsync">💾 Speichern</button>
+            <button class="se-btn" @onclick="LoadAsync">↺ Neu laden</button>
+            <button class="se-btn" @onclick="() => _showIo = !_showIo">⇅ Import/Export</button>
+            <button class="se-btn" @onclick="ToggleSpotifySettings">🟢 Spotify</button>
+            <button class="se-btn" @onclick="ToggleRoomsAsync">🎛 Räume</button>
+            <button class="se-btn" @onclick="ToggleCleanupAsync">🧹 Aufräumen</button>
+            <button class="se-btn" @onclick="ResetAsync">⟲ Vorlage</button>
+            <a class="se-btn" href="@BoardUrl" target="_blank">▶ Board öffnen</a>
+            <a class="se-btn" href="/admin/dj/export.pdf" target="_blank">🖨 PDF-Export</a>
+            @if (_status is { Length: > 0 })
+            {
+                <span class="se-status">@_status</span>
+            }
+        </div>
+    </header>
+
+    @if (_showIo)
+    {
+        <ProfileBundlePanel Profiles="_profiles" OnImported="ApplyImportedAsync" />
+    }
+
+    @if (_showSpotify)
+    {
+        <SpotifySettingsDialog OnClosed="() => _showSpotify = false" OnSaved="RefreshSpotifyStateAsync" />
+    }
+
+    @if (_showRooms)
+    {
+        <div class="se-rooms">
+            <strong>Räume (von Companion gemeldet)</strong>
+            @if (_rooms.Count == 0)
+            {
+                <p class="se-muted">Noch kein Raum gemeldet. Ein Raum erscheint, sobald Companion mit einem Board-Code (Room) verbindet.</p>
+            }
+            @foreach (var room in _rooms)
+            {
+                <div class="se-room-row">
+                    <span class="se-room-name">🎛 @room.Name</span>
+                    <span class="se-muted">@(room.LastSeen is { } at ? "zuletzt " + SwissTime.ToSwiss(at).ToString("dd.MM.yyyy HH:mm") : "seit dem letzten Neustart nicht gesehen")</span>
+                    <button class="se-btn sm danger" @onclick="() => DeleteRoomAsync(room.Name)">🗑 Löschen</button>
+                </div>
+            }
+            <p class="se-muted">Ein gelöschter Raum erscheint wieder, sobald Companion ihn erneut sendet.</p>
+        </div>
+    }
+
+    @if (_showCleanup)
+    {
+        <div class="se-rooms">
+            <strong>Nicht verwendete Songs (Blob-Speicher)</strong>
+            @if (_cleanup is null)
+            {
+                <p class="se-muted">@(_cleanupStatus is { Length: > 0 } ? _cleanupStatus : "Wird geprüft …")</p>
+            }
+            else
+            {
+                <p class="se-muted">@_cleanup.TotalBlobs Dateien im Speicher · @_cleanup.ReferencedCount verwendet · @_cleanup.Unused.Count nicht verwendet (@FormatSize(_cleanup.DeletableBytes) löschbar).</p>
+                @if (_cleanupStatus is { Length: > 0 })
+                {
+                    <p class="se-ok">@_cleanupStatus</p>
+                }
+                @if (_cleanup.Unused.Count == 0)
+                {
+                    <p class="se-muted">Keine verwaisten Dateien. Alles sauber.</p>
+                }
+                else
+                {
+                    <div class="se-cleanlist">
+                        @foreach (var u in _cleanup.Unused)
+                        {
+                            <div class="se-room-row">
+                                <span class="se-room-name">🎵 @SoundName(u.Path)</span>
+                                <span class="se-muted">@FormatSize(u.SizeBytes)@(u.LastModified is { } lm ? " · " + SwissTime.ToSwiss(lm).ToString("dd.MM.yyyy") : "")@(u.RecentlyUploaded ? " · kürzlich hochgeladen (übersprungen)" : "")</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="se-prof-btns">
+                        <button class="se-btn sm danger" @onclick="RunCleanupAsync" disabled="@(_cleanupBusy || DeletableCount == 0)">
+                            @(_cleanupBusy ? "Löscht …" : $"🗑 {DeletableCount} Dateien endgültig löschen")
+                        </button>
+                    </div>
+                    <p class="se-muted">Bitte offene Änderungen zuerst speichern. Kürzlich (weniger als 1 h) hochgeladene Dateien werden zur Sicherheit nicht gelöscht.</p>
+                }
+            }
+        </div>
+    }
+
+    @if (_profile is null)
+    {
+        <p class="se-muted">Wird geladen …</p>
+    }
+    else
+    {
+        <div class="se-tabs">
+            @foreach (var p in _profiles)
+            {
+                <button class="se-tab @(p == _profile ? "active" : "")" @onclick="() => SelectProfile(p)">@p.Name</button>
+            }
+            <button class="se-tab add" title="Neues Profil" @onclick="AddProfile">+ Profil</button>
+        </div>
+
+        <div class="se-body">
+            <div class="se-tree">
+                <div class="se-prof-head">
+                    <input class="se-in" @bind="_profile.Name" @bind:event="oninput" />
+                    <input class="se-color" type="color" @bind="_profile.Color" title="Profilfarbe" />
+                </div>
+                <div class="se-prof-btns">
+                    <button class="se-proflink" @onclick="DeleteProfile" title="Profil löschen">🗑 Profil löschen</button>
+                </div>
+                <div class="se-ftree">
+                    <button class="se-fnode @(_levelStack.Count == 0 ? "cur" : "")" @onclick="() => GoLevel(0)">🏠 Hauptseite</button>
+                    @RenderFolders(_profile.Root, 1)
+                </div>
+            </div>
+
+            <div class="se-detail">
+                <div class="se-canvas-head">
+                    <strong>Anordnung (5 × 3, Streamdeck)</strong>
+                    <button class="se-crumb2" @onclick="() => GoLevel(0)">@_profile.Name</button>
+                    @for (var d = 0; d < _levelStack.Count; d++)
+                    {
+                        var depth = d;
+                        <span class="se-sep2">›</span>
+                        <button class="se-crumb2" @onclick="() => GoLevel(depth + 1)">@_levelStack[depth].Label</button>
+                    }
+                </div>
+                @{ var level = CurrentLevel(); var canvasHasBack = _levelStack.Count > 0; DJLayout.EnsureEdit(level, canvasHasBack); }
+                <div class="se-canvas">
+                    @if (canvasHasBack)
+                    {
+                        <div class="se-reserved" style="grid-column:1 / span 1; grid-row:1 / span 1">↩ Zurück</div>
+                    }
+                    @foreach (var node in level)
+                    {
+                        <div class="se-ct @(node.Kind == NodeKind.Folder ? "folder" : "") @(node.Kind == NodeKind.Control ? "control" : "") @(node == _selected ? "sel" : "")"
+                             data-id="@node.Id" data-x="@node.X" data-y="@node.Y" data-w="@node.W" data-h="@node.H"
+                             @onclick="() => Select(node)"
+                             style="grid-column:@(node.X + 1) / span 1; grid-row:@(node.Y + 1) / span 1; --c:@node.Color">
+                            <span class="se-ct-grip" title="Zum Verschieben hier ziehen">⠿</span>
+                            @if (node.Kind == NodeKind.Folder)
+                            {
+                                <span class="se-ct-fhead"><span>📂</span>@node.Label</span>
+                                <span class="se-ct-ico fbody">@(string.IsNullOrEmpty(node.Icon) ? "📁" : node.Icon)</span>
+                                <button class="se-ct-open" @onclick:stopPropagation="true" @onclick="() => EnterLevel(node)">öffnen ↳</button>
+                            }
+                            else
+                            {
+                                <span class="se-ct-ico">@(string.IsNullOrEmpty(node.Icon) ? "🔊" : node.Icon)</span>
+                                <span class="se-ct-lbl">@node.Label</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <p class="se-hint">Neue Kachel: auf eine freie Zelle klicken, dann Ordner, Song oder eine Steuerung (Pause, Fade-out, Zurück, Vor) wählen. Kachel anklicken zum Bearbeiten (Steuer-Kacheln: entfernen), am Griff ⠿ oben links in eine andere Zelle ziehen.</p>
+                <div class="se-add-tiles">
+                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Sound)">+ Song</button>
+                    <button class="se-btn sm" @onclick="() => AddChild(CurrentLevel(), NodeKind.Folder)">+ Ordner</button>
+                </div>
+
+                @if (_selected is { } sel)
+                {
+                    <TileEditorDialog @ref="_editor" @key="sel" Node="sel" IsNew="_selectedIsNew" SpotifyConfigured="_spotifyConfigured"
+                                      MoveTargets="BuildMoveTargets(sel)" OnMoveRequested="MoveSelectedToAsync"
+                                      OnClosed="CloseEditor" OnRemoved="RemoveSelected" OnSaveRequested="SaveAsync" />
+                }
+
+                @if (_chooseKind)
+                {
+                    <NewTileDialog OnChosen="CommitNewTile" OnControlChosen="CommitControlTile" OnCancelled="CancelNewTile" />
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string BoardUrl => SiteHosts.UrlFor(SiteSurface.DJ, new Uri(Nav.BaseUri).Host, "/dj");
+
+    private List<EditProfile> _profiles = new();
+    private EditProfile? _profile;
+    private EditButton? _selected;
+    private bool _selectedIsNew;
+    private string _status = "";
+    private bool _showIo;
+    private bool _showSpotify;
+    private bool _spotifyConfigured;
+    private bool _chooseKind;
+    private (int X, int Y, int W, int H)? _newRect;
+    private readonly List<EditButton> _levelStack = new();
+    private DotNetObjectReference<DJAdminPage>? _gridRef;
+    private TileEditorDialog? _editor;
+
+    private TileEditorDialog? Editor => _selected is null ? null : _editor;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _gridRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("djGridInit", _gridRef);
+    }
+
+    public void Dispose() => _gridRef?.Dispose();
+
+    private async Task LoadAsync()
+    {
+        var loaded = await ProfilesQuery.HandleAsync(new GetDJProfiles.Query());
+        _profiles = loaded.Select(EditProfile.From).ToList();
+        foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
+        _profile = _profiles.FirstOrDefault();
+        _selected = null;
+        _status = "";
+        await RefreshSpotifyStateAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await ProfilesSave.HandleAsync(new SaveDJProfiles.Command(_profiles.Select(p => p.ToModel()).ToList()));
+            _status = $"Gespeichert · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (DomainException ex) { _status = ex.Message; }
+        catch (Exception ex) { _status = "Fehler: " + ex.Message; }
+    }
+
+    private async Task ResetAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Alle Profile auf die Standard-Vorlage zurücksetzen? Gespeicherte Änderungen gehen verloren.")) return;
+        await ProfilesSave.HandleAsync(new SaveDJProfiles.Command(DJConfig.Profiles));
+        await LoadAsync();
+        _status = "Auf Vorlage zurückgesetzt.";
+    }
+
+    private Task ApplyImportedAsync(List<DJProfile> imported)
+    {
+        _profiles = imported.Select(EditProfile.From).ToList();
+        foreach (var p in _profiles) p.Root.RemoveAll(b => b.Panic);
+        _profile = _profiles.First();
+        _selected = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshSpotifyStateAsync() =>
+        _spotifyConfigured = (await SpotifyState.HandleAsync(new GetSpotifySettings.Query())).Configured;
+
+    private void ToggleSpotifySettings() => _showSpotify = !_showSpotify;
+
+    private bool _showRooms;
+    private IReadOnlyList<DJRoom> _rooms = [];
+
+    private async Task ToggleRoomsAsync()
+    {
+        _showRooms = !_showRooms;
+        if (_showRooms) await LoadRoomsAsync();
+    }
+
+    private async Task LoadRoomsAsync() => _rooms = await RoomsQuery.HandleAsync(new GetDJRooms.Query());
+
+    private async Task DeleteRoomAsync(string room)
+    {
+        await RoomDeletion.HandleAsync(new DeleteDJRoom.Command(room));
+        await LoadRoomsAsync();
+        _status = $"Raum „{room}“ gelöscht.";
+    }
+
+    private void SelectProfile(EditProfile p) { _profile = p; _selected = null; }
+
+    private void AddProfile()
+    {
+        var p = new EditProfile { Name = "Neues Profil" };
+        _profiles.Add(p);
+        _profile = p;
+        _selected = null;
+    }
+
+    private async Task DeleteProfile()
+    {
+        if (_profile is null) return;
+        if (_profiles.Count <= 1) { _status = "Das letzte Profil kann nicht gelöscht werden."; return; }
+        if (!await JS.InvokeAsync<bool>("confirm", $"Profil „{_profile.Name}“ wirklich löschen? Das wird sofort gespeichert.")) return;
+        _profiles.Remove(_profile);
+        _profile = _profiles.FirstOrDefault();
+        _selected = null;
+        _levelStack.Clear();
+        await SaveAsync();
+    }
+
+    private List<EditButton> CurrentLevel()
+    {
+        if (_profile is null) return new();
+        while (_levelStack.Count > 0 && !Contains(_profile.Root, _levelStack[^1]))
+            _levelStack.RemoveAt(_levelStack.Count - 1);
+        return _levelStack.Count > 0 ? _levelStack[^1].Children : _profile.Root;
+    }
+
+    private static bool Contains(List<EditButton> nodes, EditButton target)
+    {
+        foreach (var n in nodes)
+        {
+            if (n == target) return true;
+            if (n.Kind == NodeKind.Folder && Contains(n.Children, target)) return true;
+        }
+        return false;
+    }
+
+    private void GoLevel(int depth) { while (_levelStack.Count > depth) _levelStack.RemoveAt(_levelStack.Count - 1); }
+    private void EnterLevel(EditButton folder) { if (folder.Kind == NodeKind.Folder) { _levelStack.Add(folder); _selected = null; } }
+
+    private void NavigateTo(EditButton folder)
+    {
+        if (_profile is null) return;
+        var path = new List<EditButton>();
+        if (FindPath(_profile.Root, folder, path)) { _levelStack.Clear(); _levelStack.AddRange(path); }
+        _selected = null;
+    }
+
+    private static bool FindPath(List<EditButton> nodes, EditButton target, List<EditButton> path)
+    {
+        foreach (var n in nodes.Where(x => x.Kind == NodeKind.Folder))
+        {
+            path.Add(n);
+            if (n == target) return true;
+            if (FindPath(n.Children, target, path)) return true;
+            path.RemoveAt(path.Count - 1);
+        }
+        return false;
+    }
+
+    private static bool RemoveFrom(List<EditButton> nodes, EditButton target)
+    {
+        if (nodes.Remove(target)) return true;
+        foreach (var n in nodes.Where(x => x.Kind == NodeKind.Folder))
+            if (RemoveFrom(n.Children, target)) return true;
+        return false;
+    }
+
+    private RenderFragment RenderFolders(List<EditButton> nodes, int depth) =>
+    @<text>
+        @foreach (var f in nodes.Where(n => n.Kind == NodeKind.Folder))
+        {
+            <div class="se-fnode-row">
+                <button class="se-fnode @(_levelStack.Count > 0 && _levelStack[^1] == f ? "cur" : "")"
+                        style="padding-left:@(depth * 14)px" @onclick="() => NavigateTo(f)">📁 @f.Label</button>
+            </div>
+            @RenderFolders(f.Children, depth + 1)
+        }
+    </text>;
+
+    private async Task Select(EditButton node)
+    {
+        if (node.Kind == NodeKind.Control)
+        {
+            if (await JS.InvokeAsync<bool>("confirm", $"Steuer-Kachel „{node.Label}“ entfernen?")) RemoveFrom(CurrentLevel(), node);
+            return;
+        }
+        _selected = node;
+        _selectedIsNew = false;
+        _ = JS.InvokeVoidAsync("djEditStop");
+    }
+
+    private void AddChild(List<EditButton> list, NodeKind kind)
+    {
+        var b = new EditButton { Kind = kind, Label = kind == NodeKind.Folder ? "Ordner" : "Neu", Icon = kind == NodeKind.Folder ? "📁" : "🔊" };
+        list.Add(b);
+        _selected = b;
+        _selectedIsNew = true;
+    }
+
+    private void CloseEditor()
+    {
+        _selected = null;
+        _selectedIsNew = false;
+        _ = JS.InvokeVoidAsync("djEditStop");
+        _ = JS.InvokeVoidAsync("djPreviewStop");
+    }
+
+    private void RemoveSelected()
+    {
+        if (_selected is { } node && _profile is not null) RemoveFrom(_profile.Root, node);
+        CloseEditor();
+    }
+
+    [JSInvokable]
+    public Task SetRect(string id, int x, int y, int w, int h)
+    {
+        var level = CurrentLevel();
+        var n = level.FirstOrDefault(b => b.Id == id);
+        if (n is null) return Task.CompletedTask;
+        x = Math.Clamp(x, 0, DJLayout.Cols - 1);
+        y = Math.Clamp(y, 0, DJLayout.Rows - 1);
+        if (DJLayout.IsReserved(x, y, _levelStack.Count > 0)) return Task.CompletedTask;
+        if (Overlaps(level, n, x, y, 1, 1)) return Task.CompletedTask;
+        if (n.X == x && n.Y == y) return Task.CompletedTask;
+        n.X = x; n.Y = y; n.W = 1; n.H = 1;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static bool Overlaps(List<EditButton> level, EditButton self, int x, int y, int w, int h)
+    {
+        foreach (var o in level)
+        {
+            if (o == self) continue;
+            int ox = Math.Max(0, o.X), oy = Math.Max(0, o.Y);
+            int ow = o.W <= 0 ? 1 : o.W, oh = o.H <= 0 ? 1 : o.H;
+            if (x < ox + ow && x + w > ox && y < oy + oh && y + h > oy) return true;
+        }
+        return false;
+    }
+
+    [JSInvokable]
+    public Task CreateRect(int x, int y, int w, int h)
+    {
+        x = Math.Clamp(x, 0, DJLayout.Cols - 1);
+        y = Math.Clamp(y, 0, DJLayout.Rows - 1);
+        if (DJLayout.IsReserved(x, y, _levelStack.Count > 0)) return Task.CompletedTask;
+        if (Overlaps(CurrentLevel(), new EditButton(), x, y, 1, 1)) return Task.CompletedTask;
+        _newRect = (x, y, 1, 1);
+        _chooseKind = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void CommitNewTile(NodeKind kind)
+    {
+        if (_newRect is not { } r) { _chooseKind = false; return; }
+        var b = new EditButton
+        {
+            Kind = kind,
+            Label = kind == NodeKind.Folder ? "Ordner" : "Neu",
+            Icon = kind == NodeKind.Folder ? "📁" : "🔊",
+            X = r.X, Y = r.Y, W = r.W, H = r.H,
+        };
+        CurrentLevel().Add(b);
+        _selected = b;
+        _selectedIsNew = true;
+        _newRect = null;
+        _chooseKind = false;
+    }
+
+    private void CancelNewTile() { _newRect = null; _chooseKind = false; }
+
+    private void CommitControlTile(DJControl control)
+    {
+        if (_newRect is { } r)
+            CurrentLevel().Add(new EditButton
+            {
+                Kind = NodeKind.Control,
+                Control = control,
+                Label = DJControls.Label(control),
+                Icon = DJControls.Icon(control),
+                Color = "#3A3A44",
+                X = r.X, Y = r.Y, W = r.W, H = r.H,
+            });
+        _newRect = null;
+        _chooseKind = false;
+    }
+
+    [JSInvokable]
+    public Task OnEditPosition(double pos, double dur) => Editor?.ReportPositionAsync(pos, dur) ?? Task.CompletedTask;
+
+    [JSInvokable]
+    public Task OnEditStopped() => Editor?.ReportStoppedAsync() ?? Task.CompletedTask;
+
+    [JSInvokable]
+    public async Task OnEditorEscape()
+    {
+        if (Editor is { } editor) { await editor.HandleEscapeAsync(); return; }
+        if (_chooseKind) CancelNewTile();
+        else if (_showSpotify) _showSpotify = false;
+        else return;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private List<MoveTarget> BuildMoveTargets(EditButton node)
+    {
+        var excluded = new HashSet<string>();
+        CollectSubtreeIds(node, excluded);
+        var list = new List<MoveTarget> { new(null, "Hauptseite", 0) };
+        void Walk(List<EditButton> nodes, int depth)
+        {
+            foreach (var f in nodes.Where(n => n.Kind == NodeKind.Folder))
+            {
+                if (excluded.Contains(f.Id)) continue;
+                list.Add(new MoveTarget(f.Id, f.Label, depth));
+                Walk(f.Children, depth + 1);
+            }
+        }
+        if (_profile is not null) Walk(_profile.Root, 1);
+        return list;
+    }
+
+    private static void CollectSubtreeIds(EditButton node, HashSet<string> acc)
+    {
+        acc.Add(node.Id);
+        foreach (var c in node.Children) CollectSubtreeIds(c, acc);
+    }
+
+    private static EditButton? FindById(List<EditButton> nodes, string id)
+    {
+        foreach (var n in nodes)
+        {
+            if (n.Id == id) return n;
+            if (n.Kind == NodeKind.Folder && FindById(n.Children, id) is { } hit) return hit;
+        }
+        return null;
+    }
+
+    private async Task MoveSelectedToAsync(string? targetId)
+    {
+        if (_selected is not { } node || _profile is null) return;
+        List<EditButton> target;
+        bool targetIsSub;
+        if (targetId is null) { target = _profile.Root; targetIsSub = false; }
+        else
+        {
+            var folder = FindById(_profile.Root, targetId);
+            if (folder is null || folder.Kind != NodeKind.Folder) return;
+            var guard = new HashSet<string>();
+            CollectSubtreeIds(node, guard);
+            if (guard.Contains(folder.Id)) return;
+            target = folder.Children;
+            targetIsSub = true;
+        }
+        if (!RemoveFrom(_profile.Root, node)) return;
+        var (x, y) = FreeCell(target, targetIsSub);
+        node.X = x; node.Y = y; node.W = 1; node.H = 1;
+        target.Add(node);
+        _selected = null;
+        if (targetId is null) _levelStack.Clear();
+        else if (FindById(_profile.Root, targetId) is { } tf) NavigateTo(tf);
+        await SaveAsync();
+    }
+
+    private static (int X, int Y) FreeCell(List<EditButton> level, bool isSub)
+    {
+        for (var y = 0; y < DJLayout.Rows; y++)
+            for (var x = 0; x < DJLayout.Cols; x++)
+            {
+                if (DJLayout.IsReserved(x, y, isSub)) continue;
+                if (level.Any(o => Math.Max(0, o.X) == x && Math.Max(0, o.Y) == y)) continue;
+                return (x, y);
+            }
+        return (-1, -1);
+    }
+
+    private bool _showCleanup;
+    private bool _cleanupBusy;
+    private string _cleanupStatus = "";
+    private FindUnusedSounds.Result? _cleanup;
+
+    private int DeletableCount => _cleanup?.Unused.Count(u => !u.RecentlyUploaded) ?? 0;
+
+    private async Task ToggleCleanupAsync()
+    {
+        _showCleanup = !_showCleanup;
+        if (_showCleanup) await LoadCleanupAsync();
+    }
+
+    private async Task LoadCleanupAsync()
+    {
+        _cleanup = null;
+        _cleanupStatus = "";
+        try { _cleanup = await UnusedQuery.HandleAsync(new FindUnusedSounds.Query()); }
+        catch (Exception ex) { _cleanupStatus = "Fehler: " + ex.Message; }
+    }
+
+    private async Task RunCleanupAsync()
+    {
+        if (_cleanup is null || _cleanupBusy) return;
+        var paths = _cleanup.Unused.Where(u => !u.RecentlyUploaded).Select(u => u.Path).ToList();
+        if (paths.Count == 0) return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"{paths.Count} nicht verwendete Dateien endgültig aus dem Blob-Speicher löschen? Das kann nicht rückgängig gemacht werden.")) return;
+        _cleanupBusy = true;
+        try
+        {
+            var result = await UnusedDeletion.HandleAsync(new DeleteUnusedSounds.Command(paths));
+            await LoadCleanupAsync();
+            _cleanupStatus = $"{result.Deleted} Dateien gelöscht ({FormatSize(result.FreedBytes)} frei)" + (result.Skipped > 0 ? $", {result.Skipped} übersprungen" : "") + ".";
+        }
+        catch (Exception ex) { _cleanupStatus = "Fehler: " + ex.Message; }
+        finally { _cleanupBusy = false; }
+    }
+
+    private static string SoundName(string path) => path.StartsWith("sounds/") ? path["sounds/".Length..] : path;
+
+    private static string FormatSize(long bytes) =>
+        bytes >= 1024 * 1024 ? $"{bytes / 1024.0 / 1024.0:0.0} MB"
+        : bytes >= 1024 ? $"{bytes / 1024.0:0} KB"
+        : $"{bytes} B";
+}

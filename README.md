@@ -7,7 +7,7 @@ Public website and self-service ticketing application for Red Ants Rychenberg Wi
 | Folder | Application |
 |---|---|
 | `RedAnts-WebApp/` | The Umbraco web app (`src/`, `tests/`, `RedAnts.slnx`, `docs/`, `deploy/`, `scripts/`). Only changes here (and to `.github/workflows/deploy.yml`) trigger a deployment. |
-| `RedAnts-Show-Companion/` | Bitfocus Companion module for the soundboard (npm package `companion-module-redants-show`). |
+| `RedAnts-DJ-Companion/` | Bitfocus Companion module for the soundboard (npm package `companion-module-redants-dj`). |
 | `RedAnts-TCConsole/` | WPF tool for the TCU console (.NET 8, Windows). Every change here publishes a zipped release (`tcconsole-v*`); `Update-TcuConsole.ps1` installs the newest one on the streaming PC. |
 | `RedAnts-TCConsole-Companion/` | Bitfocus Companion module for TCConsole: 32 fixed keys, assigned once, driven live by TcuConsole. |
 
@@ -70,8 +70,8 @@ The solution `RedAnts-WebApp/RedAnts.slnx` is split per slice (details in `ARCHI
 |------|---------|
 | `RedAnts-WebApp/src/RedAnts.Host/` | Web app (`AssemblyName=RedAnts`): `Program.cs`, Umbraco, `Infrastructure/Shared`, Website slice, Umbraco template views, shared `wwwroot/`, `uSync/`. |
 | `RedAnts-WebApp/src/RedAnts.Ticketing/` | Razor class library: the whole ticketing slice cut into capability folders (`Domain/`, `Features/<Capability>/` with slices, ports, `Admin/`, `Views/` and `Infrastructure/` adapters, top-level `Infrastructure/` for boot and migrations), compiled views, assets under `/_content/RedAnts.Ticketing/`. |
-| `RedAnts-WebApp/src/RedAnts.Show/` | Razor class library: the soundboard (`/show`, backoffice section "Show", SQL schema `show`) with the capabilities `Features/Board`, `Admin`, `Remote` and `Sounds`. |
-| `RedAnts-WebApp/tests/` | One xunit project per slice (`RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.Show.Tests`) plus `RedAnts.BrowserTests` (Playwright, skipped unless `E2E_BASE_URL` is set). |
+| `RedAnts-WebApp/src/RedAnts.DJ/` | Razor class library: the soundboard (`/dj`, backoffice section "DJ", SQL schema `show`) with the capabilities `Features/Board`, `Admin`, `Remote` and `Sounds`. |
+| `RedAnts-WebApp/tests/` | One xunit project per slice (`RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.DJ.Tests`) plus `RedAnts.BrowserTests` (Playwright, skipped unless `E2E_BASE_URL` is set). |
 
 Each module layers internally as `Domain/` → `Features/<Capability>/` (slices and ports at the root, `Admin/` UI, `Views/`, `Infrastructure/` adapters) → top-level `Infrastructure/` (boot, migrations, content seeding). MVC views are resolved per capability by `FeatureViewLocationExpander`.
 

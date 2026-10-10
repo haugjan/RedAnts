@@ -7,8 +7,8 @@ namespace RedAnts.Architecture.Tests;
 
 public class PortRules
 {
-    private static readonly Regex ModuleNamespace = new(@"^RedAnts\.(Ticketing|Show)\.");
-    private static readonly Regex CapabilityNamespace = new(@"^RedAnts\.(Ticketing|Show)\.Features\.[A-Za-z]+$");
+    private static readonly Regex ModuleNamespace = new(@"^RedAnts\.(Ticketing|DJ)\.");
+    private static readonly Regex CapabilityNamespace = new(@"^RedAnts\.(Ticketing|DJ)\.Features\.[A-Za-z]+$");
     private static readonly Regex InfrastructureNamespace = new(@"\.Infrastructure(\.|$)");
     private static readonly Regex RepositoryName = new(@"^I[A-Z][A-Za-z]*Repository$");
     private static readonly string[] AllowedToUseInfrastructure = ["Composer", "Extensions", "Features"];
@@ -18,7 +18,7 @@ public class PortRules
 
     private static readonly Dictionary<string, string> CollectionBaseline = RedAntsArchitecture.ReadBaseline("repository-collection-methods.txt");
 
-    private static IEnumerable<string> RepositoryCollectionMethods => new[] { RedAntsArchitecture.Ticketing, RedAntsArchitecture.Show }
+    private static IEnumerable<string> RepositoryCollectionMethods => new[] { RedAntsArchitecture.Ticketing, RedAntsArchitecture.DJ }
         .SelectMany(RedAntsArchitecture.ReflectedTypes)
         .Where(t => t.IsInterface && RepositoryName.IsMatch(t.Name) && ModuleNamespace.IsMatch(t.Namespace ?? ""))
         .SelectMany(t => t.GetMethods()

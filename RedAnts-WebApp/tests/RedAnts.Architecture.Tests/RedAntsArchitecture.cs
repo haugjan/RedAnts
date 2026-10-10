@@ -9,11 +9,11 @@ public static class RedAntsArchitecture
 {
     public static readonly Assembly Kernel = Assembly.Load("RedAnts.Kernel");
     public static readonly Assembly Ticketing = Assembly.Load("RedAnts.Ticketing");
-    public static readonly Assembly Show = Assembly.Load("RedAnts.Show");
+    public static readonly Assembly DJ = Assembly.Load("RedAnts.DJ");
     public static readonly Assembly Host = Assembly.Load("RedAnts");
 
     public static readonly ArchUnitNET.Domain.Architecture Loaded = new ArchLoader()
-        .LoadAssemblies(Kernel, Ticketing, Show, Host)
+        .LoadAssemblies(Kernel, Ticketing, DJ, Host)
         .Build();
 
     public static IEnumerable<IType> OwnTypes => Loaded.Types.Where(t =>

@@ -1,0 +1,764 @@
+@using Microsoft.AspNetCore.WebUtilities
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject GetDJProfiles.Handler ProfilesQuery
+@inject ListenForDJCommands.Handler RemoteListener
+@inject PublishBoardView.Handler BoardViewPublisher
+@inject WithdrawBoardView.Handler BoardViewWithdrawal
+@inject GetDJRooms.Handler RoomsQuery
+@inject GetSpotifySettings.Handler SpotifySettings
+
+<div class="sb-app">
+    <header class="sb-header">
+        <img class="sb-logo" src="/img/logo-redants-white.png" alt="Red Ants Rychenberg Winterthur" />
+        <div class="sb-profiles">
+            @foreach (var p in Profiles)
+            {
+                <button class="sb-profile @(p.Id == _profileId ? "active" : "")"
+                        style="--profile-color:@(p.Color ?? "#8ecae6")"
+                        @onclick="() => SelectProfile(p.Id)">@p.Name</button>
+            }
+        </div>
+        @if (_rooms.Count > 0 || _room is not null)
+        {
+            <label class="sb-room" title="Raum (Board-Code) für die Fernsteuerung mit Companion">🎛
+                <select class="sb-room-select" value="@(_room ?? "")" @onchange="OnRoomChangedAsync">
+                    <option value="">Alle Räume</option>
+                    @foreach (var room in RoomChoices())
+                    {
+                        <option value="@room.Name">@(IsLive(room) ? $"{room.Name} ●" : room.Name)</option>
+                    }
+                </select>
+            </label>
+        }
+        <div class="sb-spotify">
+            @if (_loggedIn)
+            {
+                <span class="sb-connected">
+                    <span class="sb-dot @(_playerReady ? "ready" : "")"></span>
+                    @(_displayName ?? "Spotify")
+                    <button class="sb-link" @onclick="LogoutAsync">trennen</button>
+                </span>
+            }
+            else if (string.IsNullOrWhiteSpace(_clientId))
+            {
+                <span class="sb-hint">Spotify-Client-ID im Admin-Bereich hinterlegen</span>
+            }
+            else
+            {
+                <button class="sb-login" @onclick="LoginAsync">Mit Spotify verbinden</button>
+            }
+        </div>
+    </header>
+
+    <nav class="sb-breadcrumb">
+        <button class="sb-crumb" @onclick="() => _path.Clear()">@Profile.Name</button>
+        @{
+            var crumbs = Breadcrumb();
+        }
+        @for (var i = 0; i < crumbs.Count; i++)
+        {
+            var idx = i;
+            <span class="sb-sep">›</span>
+            <button class="sb-crumb" @onclick="() => TrimPath(idx + 1)">@crumbs[idx]</button>
+        }
+    </nav>
+
+    @if (!_activated)
+    {
+        <div class="sb-activate">👆 Einmal tippen, damit auch die Fernsteuerung / das Streamdeck Ton abspielt.</div>
+    }
+
+    @{
+        var tiles = CurrentNodes();
+        var hasBack = _path.Count > 0;
+        var layout = DJLayout.Resolve(tiles, hasBack);
+        var isPlaying = IsPlaying;
+    }
+    <main class="sb-board">
+        @if (hasBack)
+        {
+            <button class="sb-tile back" style="grid-column:1 / span 1; grid-row:1 / span 1" @onclick="() => TrimPath(_path.Count - 1)">
+                <span class="sb-tile-icon">↩</span>
+                <span class="sb-tile-label">Zurück</span>
+            </button>
+        }
+        @foreach (var node in tiles)
+        {
+            if (node.Control is { } control)
+            {
+                var cell = layout[node.Id];
+                var controlClass = "sb-tile transport " + ControlClass(control) + (isPlaying ? "" : " off");
+                <button class="@controlClass"
+                        style="grid-column:@(cell.X + 1) / span 1; grid-row:@(cell.Y + 1) / span 1"
+                        disabled="@(!isPlaying)" @onclick="() => RunControlAsync(control)">
+                    <span class="sb-tile-icon">@DJControls.Icon(control, _paused)</span>
+                    <span class="sb-tile-label">@DJControls.Label(control, _paused)</span>
+                </button>
+                continue;
+            }
+            var songs = node.EffectiveSongs;
+            var isFolder = node.IsFolder;
+            var isSpotify = songs.Any(s => s.Kind == SoundKind.Spotify);
+            var isMulti = songs.Count(s => !string.IsNullOrWhiteSpace(s.Ref)) > 1;
+            var isActive = IsActive(node);
+            var pos = layout[node.Id];
+            <button class="sb-tile @(isFolder ? "folder" : "") @(isActive ? "active" : "")"
+                    style="--tile-color:@(node.Color ?? "#555"); grid-column:@(pos.X + 1) / span @pos.W; grid-row:@(pos.Y + 1) / span @pos.H"
+                    @attributes="TileAttrs(node)"
+                    @onclick="() => HandleButtonAsync(node)">
+                @if (isFolder)
+                {
+                    <span class="sb-fhead"><span class="sb-fico">📂</span><span class="sb-flabel">@node.Label</span></span>
+                    <span class="sb-tile-icon fbody">@(node.Icon ?? "📁")</span>
+                }
+                else
+                {
+                    <span class="sb-tile-icon">@(node.Icon ?? "🔊")</span>
+                    <span class="sb-tile-label">@node.Label</span>
+                    @if (!string.IsNullOrEmpty(node.Subtitle))
+                    {
+                        <span class="sb-tile-sub">@node.Subtitle</span>
+                    }
+                }
+                @if (isMulti)
+                {
+                    <span class="sb-badge multi">@songs.Count(s => !string.IsNullOrWhiteSpace(s.Ref)) Songs @(node.SongsRandom ? "🔀" : "🔁")</span>
+                }
+                @if (isSpotify)
+                {
+                    <span class="sb-badge spotify">Spotify</span>
+                }
+                @if (isActive)
+                {
+                    <span class="sb-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                }
+            </button>
+        }
+    </main>
+
+    @if (_songMenu is { } menu)
+    {
+        <div class="sb-backdrop" @onmousedown="() => _songMenu = null">
+            <div class="sb-songmenu" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
+                <div class="sb-songmenu-head">
+                    <span>@menu.Label</span>
+                    <button class="sb-link" @onclick="() => _songMenu = null">✕</button>
+                </div>
+                @for (var i = 0; i < menu.Songs.Count; i++)
+                {
+                    var song = menu.Songs[i];
+                    var nr = i + 1;
+                    <button class="sb-songitem" data-play="songs" data-force="1"
+                            data-id="@($"{menu.Id}:{i}")"
+                            data-songs="@SongsJson(new[] { song })"
+                            data-label="@menu.Label"
+                            @onclick="() => _songMenu = null">
+                        <span class="sb-songitem-nr">@nr</span>
+                        <span class="sb-songitem-name">@SongLabel(song)</span>
+                        <span class="sb-songitem-badge">@(song.Kind == SoundKind.Spotify ? "Spotify" : "Datei")</span>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+
+    <footer class="sb-footer">
+        <div class="sb-nowplaying">
+            @{ var cur = CurrentPlaying(); }
+            @if (cur is { } c)
+            {
+                <span class="sb-np-ico">@c.Icon</span>
+                <span class="sb-np-info">
+                    <span class="sb-np-title">@c.Title</span>
+                    @if (!string.IsNullOrEmpty(c.Sub))
+                    {
+                        <span class="sb-np-sub">@c.Sub</span>
+                    }
+                </span>
+            }
+            else
+            {
+                <span class="sb-np-ico">🔇</span>
+                <span class="sb-np-info"><span class="sb-np-title">Bereit</span></span>
+            }
+        </div>
+        <div class="sb-seek" id="sb-seek-wrap" hidden>
+            <span class="sb-seek-time" id="sb-seek-pos">0:00</span>
+            <input type="range" id="sb-seek" min="0" max="1000" step="1" value="0" aria-label="Position im Song" />
+            <span class="sb-seek-time" id="sb-seek-dur">0:00</span>
+        </div>
+        <label class="sb-volume">🔊
+            <input type="range" id="sb-volume" min="0" max="1" step="0.05" value="@_volume"
+                   @onchange="OnVolumeChanged" aria-label="Lautstärke" />
+        </label>
+        <a class="sb-companion" href="@CompanionReleaseUrl" target="_blank" rel="noopener" title="Companion-Modul herunterladen (neuestes Release)">⤓ Companion-Modul</a>
+    </footer>
+
+
+    <div class="sb-toasts">
+        @foreach (var t in _toasts)
+        {
+            <div class="sb-toast">@t.Text</div>
+        }
+    </div>
+</div>
+
+@code {
+    private const string AppBase = "/dj/";
+
+    private const string CompanionReleaseUrl = "https://github.com/haugjan/RedAnts/releases/latest";
+
+    private const string SoundBase = DJSoundDelivery.BoardBase;
+
+    private IReadOnlyList<DJProfile> _profiles = DJConfig.Profiles;
+    private IReadOnlyList<DJProfile> Profiles => _profiles;
+
+    private string _profileId = DJConfig.Profiles[0].Id;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var query = QueryHelpers.ParseQuery(Nav.ToAbsoluteUri(Nav.Uri).Query);
+        if (query.TryGetValue("room", out var r) && NormalizeRoom(r.ToString()) is { } urlRoom)
+        {
+            _room = urlRoom;
+            _roomFromUrl = true;
+        }
+        _rooms = await RoomsQuery.HandleAsync(new GetDJRooms.Query());
+        _roomSignature = RoomSignature(_rooms);
+
+        var loaded = await ProfilesQuery.HandleAsync(new GetDJProfiles.Query());
+        var src = loaded.Count > 0 ? loaded : _profiles;
+        _profiles = src.Select(p => p with { Root = p.Root.Where(b => !b.Panic).ToList() }).ToList();
+        if (_profiles.All(p => p.Id != _profileId)) _profileId = _profiles[0].Id;
+    }
+    private readonly List<string> _path = new();
+    private string[] _activeLocalIds = [];
+    private NowPlaying? _nowPlaying;
+    private (string Title, string Sub)? _songInfo;
+    private int? _remainingSec;
+    private double _volume = 0.9;
+
+    private string _clientId = "";
+    private bool _loggedIn;
+    private bool _playerReady;
+    private string? _displayName;
+
+    private readonly List<ToastItem> _toasts = new();
+    private int _toastCounter;
+
+    private DotNetObjectReference<DJBoardComponent>? _ref;
+    private System.Timers.Timer? _timer;
+
+    private DJProfile Profile => Profiles.FirstOrDefault(p => p.Id == _profileId) ?? Profiles[0];
+
+    private IReadOnlyList<DJButton> CurrentNodes()
+    {
+        var nodes = Profile.Root;
+        foreach (var id in _path)
+        {
+            var folder = nodes.FirstOrDefault(n => n.Id == id);
+            if (folder?.Children is not { } children) return Profile.Root;
+            nodes = children;
+        }
+        return nodes;
+    }
+
+    private List<string> Breadcrumb()
+    {
+        var labels = new List<string>();
+        var nodes = Profile.Root;
+        foreach (var id in _path)
+        {
+            var folder = nodes.FirstOrDefault(n => n.Id == id);
+            if (folder?.Children is not { } children) break;
+            labels.Add(folder.Label);
+            nodes = children;
+        }
+        return labels;
+    }
+
+    private (string Icon, string Title, string? Sub)? CurrentPlaying()
+    {
+        string? id = _nowPlaying?.ButtonId ?? (_activeLocalIds.Length > 0 ? _activeLocalIds[^1] : null);
+        if (id is null) return null;
+        var n = FindNode(id);
+        if (n is not null) return (n.Icon ?? "🎵", n.Label, SongLine() ?? n.Subtitle);
+        return ("🎵", _nowPlaying?.Label ?? "", SongLine());
+    }
+
+    private string? SongLine()
+    {
+        if (_songInfo is not { } s) return null;
+        return s.Sub.Length > 0 ? $"♪ {s.Title} · {s.Sub}" : $"♪ {s.Title}";
+    }
+
+    private DJButton? FindNode(string id)
+    {
+        static DJButton? Search(IReadOnlyList<DJButton> nodes, string id)
+        {
+            foreach (var n in nodes)
+            {
+                if (n.Id == id) return n;
+                if (n.Children is { } c && Search(c, id) is { } hit) return hit;
+            }
+            return null;
+        }
+        return Search(Profile.Root, id);
+    }
+
+    private SongMenu? _songMenu;
+    private sealed record SongMenu(string Id, string Label, IReadOnlyList<DJSound> Songs);
+
+    [JSInvokable]
+    public Task OnLongPress(string id)
+    {
+        var n = FindNode(id);
+        if (n is not null)
+        {
+            var songs = n.EffectiveSongs.Where(s => !string.IsNullOrWhiteSpace(s.Ref)).ToList();
+            if (songs.Count > 1) _songMenu = new SongMenu(id, n.Label, songs);
+        }
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static string SongLabel(DJSound s)
+    {
+        if (s.Kind == SoundKind.Spotify)
+        {
+            var p = DJSpotifyLink.Parse(s.Ref);
+            return p is { } v ? $"Spotify · {v.Kind} {v.Id[..Math.Min(8, v.Id.Length)]}…" : "Spotify-Track";
+        }
+        var r = s.Ref;
+        if (r.StartsWith("sounds/")) r = r["sounds/".Length..];
+        var slash = r.LastIndexOf('/');
+        if (slash >= 0) r = r[(slash + 1)..];
+        return r;
+    }
+
+    private void SelectProfile(string id)
+    {
+        _profileId = id;
+        _path.Clear();
+    }
+
+    private void TrimPath(int count)
+    {
+        while (_path.Count > count) _path.RemoveAt(_path.Count - 1);
+    }
+
+    private bool IsPlaying => _activeLocalIds.Length > 0 || _nowPlaying is not null;
+
+    private bool IsActive(DJButton node) => _activeLocalIds.Contains(node.Id) || _nowPlaying?.ButtonId == node.Id;
+
+    private IReadOnlyList<DJBoardSlot> CurrentSlots() =>
+        DJLayout.Slots(CurrentNodes(), _path.Count > 0, IsActive, IsPlaying, _paused);
+
+    private Task PublishViewAsync() =>
+        BoardViewPublisher.HandleAsync(new PublishBoardView.Command(
+            _boardId,
+            _room,
+            new DJBoardView(Profile.Id, Profile.Name, Profile.Color, Breadcrumb(), CurrentSlots(), CurrentPlaying()?.Title, _paused, _activated)));
+
+    private void StepProfile(int step)
+    {
+        var index = Profiles.Select(p => p.Id).ToList().IndexOf(_profileId);
+        var next = ((index + step) % Profiles.Count + Profiles.Count) % Profiles.Count;
+        SelectProfile(Profiles[next].Id);
+    }
+
+    private async Task PressSlotAsync(int number)
+    {
+        var slot = CurrentSlots().FirstOrDefault(s => s.Number == number);
+        if (slot is not { Enabled: true }) return;
+        switch (slot.Kind)
+        {
+            case DJSlotKind.Back: TrimPath(_path.Count - 1); break;
+            case DJSlotKind.Pause: await TogglePauseAsync(); break;
+            case DJSlotKind.Fade: await FadeOutAsync(); break;
+            case DJSlotKind.Previous: await RunControlAsync(DJControl.Previous); break;
+            case DJSlotKind.Next: await RunControlAsync(DJControl.Next); break;
+            case DJSlotKind.Folder when slot.TileId is { } folderId: _path.Add(folderId); break;
+            case DJSlotKind.Tile when slot.Active: await StopAllAsync(); break;
+            case DJSlotKind.Tile when slot.TileId is { } tileId: await RemotePlayAsync(tileId, null); break;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await PublishViewAsync();
+        if (!firstRender) return;
+        _ref = DotNetObjectReference.Create(this);
+        await RestoreRoomAsync();
+        _remoteReg = await RemoteListener.HandleAsync(new ListenForDJCommands.Command(_room, HandleRemoteAsync));
+        StateHasChanged();
+        _timer = new System.Timers.Timer(500) { AutoReset = true };
+        _timer.Elapsed += (_, _) => _ = TickAsync();
+        _timer.Start();
+        try
+        {
+            var configuredId = (await SpotifySettings.HandleAsync(new GetSpotifySettings.Query())).EffectiveClientId.Trim();
+            if (configuredId.Length > 0)
+            {
+                await JS.InvokeVoidAsync("djBoard.setClientId", configuredId);
+            }
+            var init = await JS.InvokeAsync<InitResult>("djBoard.init", _ref, SoundBase, AppBase);
+            _loggedIn = init.LoggedIn;
+            _volume = init.Volume;
+            _clientId = await JS.InvokeAsync<string>("djBoard.getClientId");
+            StateHasChanged();
+        }
+        catch
+        {
+        }
+    }
+
+    private void HandleButtonAsync(DJButton node)
+    {
+        if (node.IsFolder) _path.Add(node.Id);
+    }
+
+    private Dictionary<string, object> TileAttrs(DJButton node)
+    {
+        var a = new Dictionary<string, object> { ["data-id"] = node.Id };
+        if (node.IsFolder) return a;
+        var songs = node.EffectiveSongs.Where(s => !string.IsNullOrWhiteSpace(s.Ref)).ToList();
+        if (songs.Count == 0) return a;
+        a["data-play"] = "songs";
+        a["data-songs"] = SongsJson(songs);
+        a["data-random"] = node.SongsRandom ? "1" : "0";
+        a["data-label"] = node.Label;
+        if (songs.Count > 1) a["data-multi"] = "1";
+        return a;
+    }
+
+    private string SongsJson(IEnumerable<DJSound> songs) =>
+        System.Text.Json.JsonSerializer.Serialize(songs.Select(x => new
+        {
+            t = x.Kind == SoundKind.Spotify ? "spotify" : "local",
+            r = x.Kind == SoundKind.Spotify ? x.Ref : SoundUrl(x.Ref),
+            s = x.StartSec,
+            d = x.DurationSec,
+            sh = x.Shuffle,
+            ti = x.Title,
+            ar = x.Artist,
+        }));
+
+    private string SoundUrl(string reff) => reff.StartsWith("http") ? reff : SoundBase + reff;
+
+    private static string Num(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    [JSInvokable]
+    public Task OnLocalStarted()
+    {
+        _nowPlaying = null;
+        _remainingSec = null;
+        _paused = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnSongInfo(string title, string sub)
+    {
+        _songInfo = string.IsNullOrWhiteSpace(title) ? null : (title.Trim(), (sub ?? "").Trim());
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnSpotifyStarted(string id, string label, double? durationSec)
+    {
+        _paused = false;
+        var endsAt = durationSec is { } d ? DateTime.UtcNow.AddSeconds(d) : (DateTime?)null;
+        _nowPlaying = new NowPlaying(id, label, endsAt);
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnSpotifyStopped()
+    {
+        _nowPlaying = null;
+        _songInfo = null;
+        _remainingSec = null;
+        _paused = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnSpotifyStatus(string status)
+    {
+        string msg;
+        if (status == "not-logged-in") msg = "Zuerst mit Spotify verbinden (Button oben rechts)";
+        else if (status == "not-ready") msg = "Spotify-Player ist noch nicht bereit, einen Moment...";
+        else if (status.Contains("PREMIUM_REQUIRED", StringComparison.OrdinalIgnoreCase))
+            msg = "Spotify Premium erforderlich: Der eingeloggte Account muss ein Premium-Abo haben.";
+        else if (status.Contains("429"))
+            msg = status;
+        else if (status.Contains("403"))
+            msg = "Spotify hat den Befehl abgelehnt (403). Meist läuft das Konto gerade auf einem anderen Gerät oder der Player wurde übernommen. Wiedergabe hier nochmals starten. Detail: " + status;
+        else msg = "Spotify: " + status;
+        Toast(msg);
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task TickAsync()
+    {
+        if (++_ticks % 4 == 0) await InvokeAsync(RefreshRoomsAsync);
+        int? newRemaining = null;
+        var stop = false;
+        if (_nowPlaying?.EndsAt is DateTime end)
+        {
+            var secs = (int)Math.Ceiling((end - DateTime.UtcNow).TotalSeconds);
+            newRemaining = Math.Max(0, secs);
+            if (DateTime.UtcNow >= end) stop = true;
+        }
+        if (stop)
+        {
+            await InvokeAsync(() => StopSpotifyAsync(true));
+            return;
+        }
+        if (newRemaining != _remainingSec)
+        {
+            _remainingSec = newRemaining;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool _paused;
+
+    private async Task PauseAsync() { _paused = true; await JS.InvokeVoidAsync("djBoard.pause"); }
+    private async Task ResumeAsync() { _paused = false; await JS.InvokeVoidAsync("djBoard.resume"); }
+    private Task TogglePauseAsync() => _paused ? ResumeAsync() : PauseAsync();
+
+    private static string ControlClass(DJControl control) => control switch
+    {
+        DJControl.Pause => "pause",
+        DJControl.Fade => "fade",
+        DJControl.Previous => "prev",
+        _ => "next",
+    };
+
+    private Task RunControlAsync(DJControl control) => control switch
+    {
+        DJControl.Pause => TogglePauseAsync(),
+        DJControl.Fade => FadeOutAsync(),
+        DJControl.Previous => JS.InvokeVoidAsync("djBoard.previous").AsTask(),
+        _ => JS.InvokeVoidAsync("djBoard.next").AsTask(),
+    };
+    private async Task StopAllAsync() { _paused = false; _nowPlaying = null; _songInfo = null; _remainingSec = null; await JS.InvokeVoidAsync("djBoard.stopAll"); }
+    private async Task FadeOutAsync() { _paused = false; _nowPlaying = null; _songInfo = null; _remainingSec = null; await JS.InvokeVoidAsync("djBoard.fadeOut"); }
+
+    private async Task StopSpotifyAsync(bool fade)
+    {
+        _nowPlaying = null;
+        _songInfo = null;
+        _remainingSec = null;
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("djBoard.stopSpotify", fade); } catch { }
+    }
+
+    private async Task OnVolumeChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var v))
+        {
+            _volume = v;
+            await JS.InvokeVoidAsync("djBoard.setVolume", v);
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        try { await JS.InvokeVoidAsync("djBoard.startLogin"); }
+        catch (Exception ex) { Toast(ex.Message); }
+    }
+
+    private async Task LogoutAsync()
+    {
+        await JS.InvokeVoidAsync("djBoard.logout");
+        _loggedIn = false;
+        _playerReady = false;
+        _displayName = null;
+    }
+
+    private const int MaxToasts = 3;
+
+    private void Toast(string text)
+    {
+        if (_toasts.Any(t => t.Text == text)) return;
+        while (_toasts.Count >= MaxToasts) _toasts.RemoveAt(0);
+        var id = ++_toastCounter;
+        _toasts.Add(new ToastItem(id, text));
+        _ = RemoveToastLaterAsync(id);
+        StateHasChanged();
+    }
+
+    private async Task RemoveToastLaterAsync(int id)
+    {
+        await Task.Delay(5000);
+        _toasts.RemoveAll(t => t.Id == id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnActiveChanged(string[] ids)
+    {
+        _activeLocalIds = ids;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnPlayerReady()
+    {
+        _playerReady = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnDisplayName(string name)
+    {
+        _displayName = name;
+        _loggedIn = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnToast(string message) => Toast(message);
+
+    [JSInvokable]
+    public async Task OnEscape()
+    {
+        await StopAllAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool _activated;
+
+    [JSInvokable]
+    public Task OnActivated()
+    {
+        if (_activated) return Task.CompletedTask;
+        _activated = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private IDisposable? _remoteReg;
+    private string? _room;
+    private readonly Guid _boardId = Guid.NewGuid();
+
+    private const string RoomStorageKey = "redants-dj-room";
+    private static readonly TimeSpan RoomLiveWindow = TimeSpan.FromMinutes(1);
+    private IReadOnlyList<DJRoom> _rooms = [];
+    private string _roomSignature = "";
+    private bool _roomFromUrl;
+    private int _ticks;
+
+    private static string? NormalizeRoom(string? room) =>
+        string.IsNullOrWhiteSpace(room) ? null : room.Trim().ToLowerInvariant();
+
+    private IEnumerable<DJRoom> RoomChoices() =>
+        _room is null || _rooms.Any(r => r.Name == _room) ? _rooms : _rooms.Append(new DJRoom(_room, null));
+
+    private static bool IsLive(DJRoom room) => room.LastSeen is { } at && SwissTime.Timestamp - at < RoomLiveWindow;
+
+    private static string RoomSignature(IEnumerable<DJRoom> rooms) =>
+        string.Join("|", rooms.Select(r => IsLive(r) ? r.Name + "*" : r.Name));
+
+    private async Task RefreshRoomsAsync()
+    {
+        var rooms = await RoomsQuery.HandleAsync(new GetDJRooms.Query());
+        var signature = RoomSignature(rooms);
+        if (signature == _roomSignature) return;
+        _rooms = rooms;
+        _roomSignature = signature;
+        StateHasChanged();
+    }
+
+    private async Task RestoreRoomAsync()
+    {
+        try
+        {
+            if (_roomFromUrl) await JS.InvokeVoidAsync("localStorage.setItem", RoomStorageKey, _room ?? "");
+            else _room = NormalizeRoom(await JS.InvokeAsync<string?>("localStorage.getItem", RoomStorageKey));
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task OnRoomChangedAsync(ChangeEventArgs e)
+    {
+        _room = NormalizeRoom(e.Value?.ToString());
+        _remoteReg?.Dispose();
+        _remoteReg = await RemoteListener.HandleAsync(new ListenForDJCommands.Command(_room, HandleRemoteAsync));
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", RoomStorageKey, _room ?? "");
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task HandleRemoteAsync(DJCommand cmd)
+    {
+        await InvokeAsync(async () =>
+        {
+            switch (cmd.Action)
+            {
+                case "stop": await StopAllAsync(); break;
+                case "pause": await PauseAsync(); break;
+                case "resume": await ResumeAsync(); break;
+                case "fade": await FadeOutAsync(); break;
+                case "previous": await RunControlAsync(DJControl.Previous); break;
+                case "next": await RunControlAsync(DJControl.Next); break;
+                case "back": if (_path.Count > 0) TrimPath(_path.Count - 1); break;
+                case "home": _path.Clear(); break;
+                case "profile": if (cmd.ProfileId is { } pid && Profiles.Any(p => p.Id == pid)) SelectProfile(pid); break;
+                case "profile-next": StepProfile(1); break;
+                case "profile-prev": StepProfile(-1); break;
+                case "press": if (cmd.Slot is { } slot) await PressSlotAsync(slot); break;
+                case "folder": if (cmd.TileId is { } fid && FindNode(fid) is { IsFolder: true }) _path.Add(fid); break;
+                case "play": if (cmd.TileId is { } id) await RemotePlayAsync(id, null); break;
+                case "song": if (cmd.TileId is { } sid) await RemotePlayAsync(sid, cmd.SongIndex); break;
+            }
+            StateHasChanged();
+        });
+    }
+
+    private async Task RemotePlayAsync(string id, int? songIndex)
+    {
+        var n = FindNode(id);
+        if (n is null) return;
+        if (n.IsFolder) { _path.Add(id); return; }
+        var songs = n.EffectiveSongs.Where(s => !string.IsNullOrWhiteSpace(s.Ref)).ToList();
+        if (songs.Count == 0) return;
+        if (songIndex is { } si && si >= 0 && si < songs.Count) songs = new() { songs[si] };
+        var arr = songs.Select(x => new
+        {
+            t = x.Kind == SoundKind.Spotify ? "spotify" : "local",
+            r = x.Kind == SoundKind.Spotify ? x.Ref : SoundUrl(x.Ref),
+            s = x.StartSec,
+            d = x.DurationSec,
+            sh = x.Shuffle,
+            ti = x.Title,
+            ar = x.Artist,
+        }).ToArray();
+        _nowPlaying = null;
+        _songInfo = null;
+        _paused = false;
+        await JS.InvokeVoidAsync("djBoard.playSongs", id, arr, n.SongsRandom && songIndex is null);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _remoteReg?.Dispose();
+        await BoardViewWithdrawal.HandleAsync(new WithdrawBoardView.Command(_boardId));
+        _timer?.Dispose();
+        try { await JS.InvokeVoidAsync("djBoard.stopAll"); } catch { }
+        _ref?.Dispose();
+    }
+
+    private sealed record NowPlaying(string ButtonId, string Label, DateTime? EndsAt);
+    private sealed record ToastItem(int Id, string Text);
+    private sealed record InitResult(bool LoggedIn, bool HasClientId, string RedirectUri, double Volume);
+}

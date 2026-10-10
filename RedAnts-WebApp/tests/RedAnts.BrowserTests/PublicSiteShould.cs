@@ -16,7 +16,7 @@ public sealed class PublicSiteShould(BrowserFixture browser)
     }
 
     [E2EFact]
-    public async Task ShowTheTicketingHome()
+    public async Task DJTheTicketingHome()
     {
         var page = await browser.NewPageAsync();
         var response = await page.GotoAsync("/ticketing/");
@@ -28,7 +28,7 @@ public sealed class PublicSiteShould(BrowserFixture browser)
     }
 
     [E2EFact]
-    public async Task ShowTheSeasonList()
+    public async Task DJTheSeasonList()
     {
         var page = await browser.NewPageAsync();
         var response = await page.GotoAsync("/seasons/");

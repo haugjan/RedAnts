@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Domain;
-using RedAnts.Show.Infrastructure;
+using RedAnts.DJ.Infrastructure;
 using RedAnts.Ticketing.Infrastructure;
 using Umbraco.StorageProviders.AzureBlob.IO;
 
@@ -54,7 +54,7 @@ builder.Services.Configure<StaticFileOptions>(options => options.ContentTypeProv
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options => options.Filters.Add<RedAnts.Infrastructure.Shared.DomainErrorFilter>());
 
 builder.Services.AddTicketing(builder.Configuration);
-builder.Services.AddShow(builder.Configuration);
+builder.Services.AddDJ(builder.Configuration);
 
 var umbracoBuilder = builder.CreateUmbracoBuilder()
     .AddBackOffice()
@@ -173,7 +173,7 @@ const string publicCsp =
     "form-action 'self' https://payrexx.com https://*.payrexx.com; " +
     "frame-ancestors 'self'";
 
-const string showCsp =
+const string djCsp =
     "default-src 'self'; base-uri 'self'; object-src 'none'; " +
     "img-src 'self' data: https:; " +
     "font-src 'self' data:; " +
@@ -212,8 +212,8 @@ app.Use(async (context, next) =>
             || path.StartsWithSegments("/scanner-test");
         if (!headers.ContainsKey("Content-Security-Policy"))
         {
-            if (path.StartsWithSegments("/show"))
-                headers["Content-Security-Policy"] = showCsp;
+            if (path.StartsWithSegments("/dj"))
+                headers["Content-Security-Policy"] = djCsp;
             else if (!cspExempt)
                 headers["Content-Security-Policy"] = publicCsp;
         }
@@ -318,18 +318,18 @@ app.UseTicketingAnalytics();
 
 app.UseTicketingScanAuth();
 
-app.UseShow();
+app.UseDJ();
 
 // Always-on password gate for the public soundboard (dev + prod), independent of
-// the site gate. Only protects the board surface (/show); assets and the backoffice
+// the site gate. Only protects the board surface (/dj); assets and the backoffice
 // editor stay reachable.
 {
-    var showPassword = app.Configuration["Show:BoardPassword"];
-    if (!string.IsNullOrEmpty(showPassword))
+    var djPassword = app.Configuration["Show:BoardPassword"];
+    if (!string.IsNullOrEmpty(djPassword))
     {
-        const string showGateCookie = "RedAnts.ShowGate";
-        const string showGatePath = "/show/__gate";
-        const string showGateHtml =
+        const string djGateCookie = "RedAnts.DJGate";
+        const string djGatePath = "/dj/__gate";
+        const string djGateHtml =
             "<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\">" +
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Red Ants Soundboard</title>" +
             "<style>" +
@@ -347,38 +347,38 @@ app.UseShow();
             "<button type=\"submit\">Weiter</button>{ERROR}" +
             "</form></body></html>";
 
-        var showCookieDomain = app.Configuration["BasicAuth:CookieDomain"];
-        var showProtector = app.Services
+        var djCookieDomain = app.Configuration["BasicAuth:CookieDomain"];
+        var djProtector = app.Services
             .GetRequiredService<IDataProtectionProvider>()
-            .CreateProtector("RedAnts.ShowGate.v1");
+            .CreateProtector("RedAnts.DJGate.v1");
 
-        static string SafeReturnShow(string? value) =>
-            !string.IsNullOrEmpty(value) && value.StartsWith('/') && !value.StartsWith("//") ? value : "/show";
+        static string SafeReturnDJ(string? value) =>
+            !string.IsNullOrEmpty(value) && value.StartsWith('/') && !value.StartsWith("//") ? value : "/dj";
 
-        bool HasShowGate(HttpContext ctx)
+        bool HasDJGate(HttpContext ctx)
         {
-            var value = ctx.Request.Cookies[showGateCookie];
+            var value = ctx.Request.Cookies[djGateCookie];
             if (string.IsNullOrEmpty(value)) return false;
-            try { return showProtector.Unprotect(value) == "ok"; }
+            try { return djProtector.Unprotect(value) == "ok"; }
             catch { return false; }
         }
 
-        void SetShowGateCookie(HttpContext ctx) =>
-            ctx.Response.Cookies.Append(showGateCookie, showProtector.Protect("ok"), new CookieOptions
+        void SetDJGateCookie(HttpContext ctx) =>
+            ctx.Response.Cookies.Append(djGateCookie, djProtector.Protect("ok"), new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.Lax,
                 MaxAge = TimeSpan.FromDays(30),
-                Domain = string.IsNullOrWhiteSpace(showCookieDomain) ? null : showCookieDomain,
+                Domain = string.IsNullOrWhiteSpace(djCookieDomain) ? null : djCookieDomain,
             });
 
-        async Task WriteShowGate(HttpContext ctx, string returnUrl, bool failed)
+        async Task WriteDJGate(HttpContext ctx, string returnUrl, bool failed)
         {
             ctx.Response.StatusCode = failed ? StatusCodes.Status401Unauthorized : StatusCodes.Status200OK;
             ctx.Response.ContentType = "text/html; charset=utf-8";
-            var action = System.Net.WebUtility.HtmlEncode($"{showGatePath}?returnUrl={Uri.EscapeDataString(returnUrl)}");
-            await ctx.Response.WriteAsync(showGateHtml
+            var action = System.Net.WebUtility.HtmlEncode($"{djGatePath}?returnUrl={Uri.EscapeDataString(returnUrl)}");
+            await ctx.Response.WriteAsync(djGateHtml
                 .Replace("{ACTION}", action)
                 .Replace("{RETURN}", System.Net.WebUtility.HtmlEncode(returnUrl))
                 .Replace("{ERROR}", failed ? "<p class=\"err\">Falsches Passwort.</p>" : ""));
@@ -386,46 +386,46 @@ app.UseShow();
 
         app.Use(async (context, next) =>
         {
-            if (!context.Request.Path.StartsWithSegments("/show"))
+            if (!context.Request.Path.StartsWithSegments("/dj"))
             {
                 await next();
                 return;
             }
 
-            if (context.Request.Path.StartsWithSegments(showGatePath))
+            if (context.Request.Path.StartsWithSegments(djGatePath))
             {
                 if (HttpMethods.IsPost(context.Request.Method))
                 {
                     var form = await context.Request.ReadFormAsync();
-                    var returnUrl = SafeReturnShow(form["returnUrl"].ToString());
-                    if (form["password"].ToString() == showPassword)
+                    var returnUrl = SafeReturnDJ(form["returnUrl"].ToString());
+                    if (form["password"].ToString() == djPassword)
                     {
-                        SetShowGateCookie(context);
+                        SetDJGateCookie(context);
                         context.Response.Redirect(returnUrl);
                         return;
                     }
-                    await WriteShowGate(context, returnUrl, true);
+                    await WriteDJGate(context, returnUrl, true);
                     return;
                 }
-                await WriteShowGate(context, SafeReturnShow(context.Request.Query["returnUrl"].ToString()), false);
+                await WriteDJGate(context, SafeReturnDJ(context.Request.Query["returnUrl"].ToString()), false);
                 return;
             }
 
-            if (context.Request.Query["key"].ToString() == showPassword)
+            if (context.Request.Query["key"].ToString() == djPassword)
             {
-                SetShowGateCookie(context);
+                SetDJGateCookie(context);
                 await next();
                 return;
             }
 
-            if (HasShowGate(context))
+            if (HasDJGate(context))
             {
                 await next();
                 return;
             }
 
             var target = context.Request.Path + context.Request.QueryString;
-            context.Response.Redirect($"{showGatePath}?returnUrl={Uri.EscapeDataString(target)}");
+            context.Response.Redirect($"{djGatePath}?returnUrl={Uri.EscapeDataString(target)}");
         });
     }
 }
@@ -462,7 +462,7 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/umbraco-entra-signin")
         || path.StartsWithSegments("/umbraco-entra-signout")
         || path.StartsWithSegments("/admin/ticketing")
-        || path.StartsWithSegments("/admin/show")
+        || path.StartsWithSegments("/admin/dj")
         || path.StartsWithSegments("/App_Plugins")
         || path.StartsWithSegments("/_blazor")
         || path.StartsWithSegments("/_content")
@@ -479,8 +479,8 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/agb")
         || path.StartsWithSegments("/scanner-test")
         || path.StartsWithSegments("/scan")
-        || path.StartsWithSegments("/show")
-        || path.StartsWithSegments("/api/show")
+        || path.StartsWithSegments("/dj")
+        || path.StartsWithSegments("/api/dj")
         || path.StartsWithSegments("/payrexx/webhook")
         || path.StartsWithSegments("/checkout/success")
         || path.StartsWithSegments("/checkout/cancel")

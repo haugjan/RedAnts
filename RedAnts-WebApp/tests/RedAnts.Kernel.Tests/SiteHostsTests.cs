@@ -8,7 +8,9 @@ public class SiteHostsTests
     [InlineData("admin.redants.ch", SiteSurface.Admin)]
     [InlineData("admin-dev.redants.ch", SiteSurface.Admin)]
     [InlineData("scan.redants.ch", SiteSurface.Scan)]
-    [InlineData("show-dev.redants.ch", SiteSurface.Show)]
+    [InlineData("show-dev.redants.ch", SiteSurface.DJ)]
+    [InlineData("dj.redants.ch", SiteSurface.DJ)]
+    [InlineData("dj-dev.redants.ch", SiteSurface.DJ)]
     [InlineData("tickets.redants.ch", SiteSurface.Tickets)]
     [InlineData("localhost", SiteSurface.Tickets)]
     public void SurfaceOfHost_maps_every_host(string host, SiteSurface expected) =>
@@ -16,11 +18,11 @@ public class SiteHostsTests
 
     [Theory]
     [InlineData("/umbraco", SiteSurface.Admin)]
-    [InlineData("/admin/show", SiteSurface.Admin)]
+    [InlineData("/admin/dj", SiteSurface.Admin)]
     [InlineData("/scan", SiteSurface.Scan)]
     [InlineData("/scanner-test", SiteSurface.Scan)]
-    [InlineData("/show", SiteSurface.Show)]
-    [InlineData("/show/sound/x.mp3", SiteSurface.Show)]
+    [InlineData("/dj", SiteSurface.DJ)]
+    [InlineData("/dj/sound/x.mp3", SiteSurface.DJ)]
     [InlineData("/cart", SiteSurface.Tickets)]
     [InlineData("/ticket/abc", SiteSurface.Tickets)]
     public void SurfaceOfPath_maps_surface_paths(string path, SiteSurface expected) =>
@@ -29,8 +31,8 @@ public class SiteHostsTests
     [Theory]
     [InlineData("/")]
     [InlineData("/_blazor/negotiate")]
-    [InlineData("/_content/RedAnts.Show/show/soundboard.js")]
-    [InlineData("/api/show/state")]
+    [InlineData("/_content/RedAnts.DJ/dj/soundboard.js")]
+    [InlineData("/api/dj/state")]
     [InlineData("/health")]
     [InlineData("/media/1/logo.png")]
     [InlineData("/__gate")]
@@ -46,23 +48,23 @@ public class SiteHostsTests
     [Fact]
     public void HostFor_switches_between_prod_and_dev()
     {
-        Assert.Equal("show.redants.ch", SiteHosts.HostFor(SiteSurface.Show, dev: false));
-        Assert.Equal("show-dev.redants.ch", SiteHosts.HostFor(SiteSurface.Show, dev: true));
+        Assert.Equal("show.redants.ch", SiteHosts.HostFor(SiteSurface.DJ, dev: false));
+        Assert.Equal("show-dev.redants.ch", SiteHosts.HostFor(SiteSurface.DJ, dev: true));
         Assert.Equal("https://admin-dev.redants.ch", SiteHosts.BaseUrlFor(SiteSurface.Admin, dev: true));
     }
 
     [Fact]
     public void UrlFor_stays_relative_on_the_owning_host_and_on_localhost()
     {
-        Assert.Equal("/show", SiteHosts.UrlFor(SiteSurface.Show, "show.redants.ch", "/show"));
-        Assert.Equal("/show", SiteHosts.UrlFor(SiteSurface.Show, "localhost", "/show"));
+        Assert.Equal("/dj", SiteHosts.UrlFor(SiteSurface.DJ, "show.redants.ch", "/dj"));
+        Assert.Equal("/dj", SiteHosts.UrlFor(SiteSurface.DJ, "localhost", "/dj"));
     }
 
     [Fact]
     public void UrlFor_crosses_to_the_canonical_host_and_keeps_the_stage()
     {
-        Assert.Equal("https://show.redants.ch/show", SiteHosts.UrlFor(SiteSurface.Show, "admin.redants.ch", "/show"));
-        Assert.Equal("https://show-dev.redants.ch/show", SiteHosts.UrlFor(SiteSurface.Show, "admin-dev.redants.ch", "/show"));
+        Assert.Equal("https://show.redants.ch/dj", SiteHosts.UrlFor(SiteSurface.DJ, "admin.redants.ch", "/dj"));
+        Assert.Equal("https://show-dev.redants.ch/dj", SiteHosts.UrlFor(SiteSurface.DJ, "admin-dev.redants.ch", "/dj"));
         Assert.Equal("https://scan.redants.ch/scan/DunkleMandel", SiteHosts.UrlFor(SiteSurface.Scan, "admin.redants.ch", "/scan/DunkleMandel"));
         Assert.Equal("https://scan-dev.redants.ch/scan/DunkleMandel", SiteHosts.UrlFor(SiteSurface.Scan, "admin-dev.redants.ch", "/scan/DunkleMandel"));
         Assert.Equal("https://tickets.redants.ch/tickets/event/abc", SiteHosts.UrlFor(SiteSurface.Tickets, "admin.redants.ch", "/tickets/event/abc"));
@@ -81,7 +83,7 @@ public class SiteHostsTests
     {
         Assert.Equal("/umbraco", SiteHosts.RootPathFor(SiteSurface.Admin));
         Assert.Equal("/scan", SiteHosts.RootPathFor(SiteSurface.Scan));
-        Assert.Equal("/show", SiteHosts.RootPathFor(SiteSurface.Show));
+        Assert.Equal("/dj", SiteHosts.RootPathFor(SiteSurface.DJ));
         Assert.Equal("/ticketing/", SiteHosts.RootPathFor(SiteSurface.Tickets));
     }
 }

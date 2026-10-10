@@ -15,7 +15,7 @@ Co-Authored-By. Admin-Bausteine wiederverwenden (`InlineSelectEdit`, `InlineNumb
 `InlineDateEdit`, `ConfirmDialog`, `OrderLogOverlay`/`VisitsOverlay`-Muster, `AdminFormat`,
 `AdminIdentity`-CascadingParameter). Host-`.cshtml` durch Starten der App verifizieren
 (`dotnet run --project RedAnts-WebApp/src/RedAnts.Host` mit `ASPNETCORE_ENVIRONMENT=Development`);
-Ticketing/Show-Views und `.razor` kompilieren beim Build.
+Ticketing/DJ-Views und `.razor` kompilieren beim Build.
 
 ## Reihenfolge / Abhängigkeiten
 
