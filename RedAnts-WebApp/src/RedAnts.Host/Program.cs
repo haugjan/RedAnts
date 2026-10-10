@@ -30,6 +30,11 @@ var kvUri = builder.Configuration["Azure:KeyVaultUri"];
 if (!string.IsNullOrEmpty(kvUri))
     builder.Configuration.AddAzureKeyVault(new Uri(kvUri), new AzureId::Azure.Identity.DefaultAzureCredential());
 
+var dataProtectionBlobUri = builder.Configuration["DataProtection:BlobUri"];
+if (!string.IsNullOrWhiteSpace(dataProtectionBlobUri))
+    builder.Services.AddDataProtection()
+        .PersistKeysToAzureBlobStorage(new Uri(dataProtectionBlobUri), new AzureId::Azure.Identity.DefaultAzureCredential());
+
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
 builder.Services.Configure<HostOptions>(options =>
