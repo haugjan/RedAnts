@@ -1,0 +1,57 @@
+name: Show-Agent — Hallen-Agent
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'RedAnts-Show-Agent/**'
+      - '.github/workflows/show-agent-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: RedAnts-Show-Agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Stamp version
+        id: version
+        run: |
+          BASE=$(grep -oP '(?<=<Version>)[^<]+' RedAnts.Show.Agent.csproj)
+          VERSION="$(echo "$BASE" | cut -d. -f1-2).$GITHUB_RUN_NUMBER"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test tests/RedAnts.Show.Agent.Tests/RedAnts.Show.Agent.Tests.csproj --nologo
+
+      - name: Publish
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          PACKAGE="$RUNNER_TEMP/package/win-x64"
+          dotnet publish RedAnts.Show.Agent.csproj -c Release -r win-x64 --self-contained true \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none \
+            -p:Version="$VERSION" -o "$PACKAGE"
+          echo "$VERSION" > "$PACKAGE/release.txt"
+          cp Start-ShowAgent.ps1 Start-ShowAgent.cmd "$PACKAGE/"
+          mkdir -p dist
+          (cd "$PACKAGE" && zip -qr "$GITHUB_WORKSPACE/RedAnts-Show-Agent/dist/show-agent-$VERSION-win-x64.zip" .)
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: show-agent-v${{ steps.version.outputs.version }}
+          name: Show-Agent ${{ steps.version.outputs.version }}
+          files: RedAnts-Show-Agent/dist/*
+          generate_release_notes: true
