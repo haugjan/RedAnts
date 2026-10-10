@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -87,10 +88,15 @@ public sealed class DJSpotifyAccount(
             CacheAccess(json);
             return _access;
         }
-        catch (Exception ex)
+        catch (SpotifyTokenRejected ex)
         {
             logger.LogWarning(ex, "Spotify refresh token rejected; the account connection was dropped.");
             await DisconnectAsync();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Spotify token refresh failed; the account stays connected for the next attempt.");
             return null;
         }
     }
@@ -117,10 +123,14 @@ public sealed class DJSpotifyAccount(
         if (!res.IsSuccessStatusCode)
         {
             var err = await res.Content.ReadAsStringAsync();
+            if (res.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
+                throw new SpotifyTokenRejected((int)res.StatusCode, err);
             throw new HttpRequestException($"Spotify-Token {(int)res.StatusCode}: {err}");
         }
         return await res.Content.ReadFromJsonAsync<JsonElement>();
     }
+
+    private sealed class SpotifyTokenRejected(int status, string body) : Exception($"Spotify-Token {status}: {body}");
 
     private async Task<string> ReadAccountNameAsync()
     {
