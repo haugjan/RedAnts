@@ -1,0 +1,6 @@
+# Migration steps that drop, rename or retype something that already exists.
+# One line per step: <File>:<MigrationClass> <reason and maintenance window>.
+# Migrations run before the deploy and the old code serves against the new schema until the slot swap,
+# so a new destructive step needs a planned window; expand first, remove in a later deploy.
+TicketingMigration.cs:AdjustMemberCardColumns dropped the unused MembershipCards.Price column; applied to dev and prod in 2026 before deploys went through the staging slot
+TicketingMigration.cs:ConvertTimestampsToDateTimeOffset retyped the timestamp columns to datetimeoffset in place (drops and recreates defaults and indexes); applied to dev and prod in 2026 before deploys went through the staging slot

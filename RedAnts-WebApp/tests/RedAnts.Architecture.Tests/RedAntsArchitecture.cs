@@ -31,6 +31,20 @@ public static class RedAntsArchitecture
         }
     }
 
+    public static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "RedAnts.slnx")))
+            dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("RedAnts.slnx not found above " + AppContext.BaseDirectory);
+    }
+
+    public static bool IsBuildOutput(string path)
+    {
+        var sep = Path.DirectorySeparatorChar;
+        return path.Contains($"{sep}obj{sep}") || path.Contains($"{sep}bin{sep}");
+    }
+
     public static Dictionary<string, string> ReadBaseline(string fileName) =>
         File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, fileName))
             .Select(l => l.Trim())
