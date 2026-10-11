@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="redants-ch/RedAnts"
+REPO="haugjan/RedAnts"
 HOME_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/redants/show-agent"
 EXE="$HOME_DIR/RedAnts.Show.Agent"
 RELEASE_FILE="$HOME_DIR/release.txt"

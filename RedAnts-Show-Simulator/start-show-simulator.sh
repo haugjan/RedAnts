@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="redants-ch/RedAnts"
+REPO="haugjan/RedAnts"
 PORT="${1:-5090}"
 HOME_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/redants/show-simulator"
 EXE="$HOME_DIR/RedAnts.Show.Simulator"

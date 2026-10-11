@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repo = "redants-ch/RedAnts"
+$repo = "haugjan/RedAnts"
 $home = Join-Path $env:LOCALAPPDATA "RedAnts\ShowSimulator"
 $exe = Join-Path $home "RedAnts.Show.Simulator.exe"
 $releaseFile = Join-Path $home "release.txt"
