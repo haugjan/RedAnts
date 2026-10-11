@@ -85,11 +85,31 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
         _refresh = true;
         log.LogInformation("vMix {Host}:{Port} verbunden", devices.VmixHost, devices.VmixPort);
 
-        await PublishScoreboardAsync(live.Clock, stop);
-        while (!stop.IsCancellationRequested)
+        using var session = CancellationTokenSource.CreateLinkedTokenSource(stop);
+        var drain = Task.Run(async () =>
         {
-            var state = await _pending.Reader.ReadAsync(stop);
-            await PublishScoreboardAsync(state, stop);
+            try { await connection.DrainAsync(session.Token); }
+            catch (Exception e) when (e is not OperationCanceledException) { Fault = e.Message; }
+            finally { session.Cancel(); }
+        }, stop);
+
+        try
+        {
+            await PublishScoreboardAsync(live.Clock, session.Token);
+            while (!session.IsCancellationRequested)
+            {
+                var state = await _pending.Reader.ReadAsync(session.Token);
+                await PublishScoreboardAsync(state, session.Token);
+            }
+        }
+        catch (OperationCanceledException) when (!stop.IsCancellationRequested)
+        {
+            throw new IOException(Fault ?? "vMix hat die Verbindung geschlossen");
+        }
+        finally
+        {
+            session.Cancel();
+            await drain;
         }
     }
 

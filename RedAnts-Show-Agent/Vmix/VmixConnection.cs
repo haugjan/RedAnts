@@ -32,6 +32,25 @@ public sealed class VmixConnection : IAsyncDisposable
         await _stream.FlushAsync(stop);
     }
 
+    public async Task DrainAsync(CancellationToken stop)
+    {
+        while (!stop.IsCancellationRequested)
+            await ReadLineAsync(stop);
+    }
+
+    async Task<string> ReadLineAsync(CancellationToken stop)
+    {
+        var line = new StringBuilder();
+        var single = new byte[1];
+        while (line.Length < 4096)
+        {
+            if (await _stream.ReadAsync(single, stop) == 0) throw new IOException("vMix hat die Verbindung geschlossen");
+            if (single[0] == (byte)'\n') return line.ToString().TrimEnd('\r');
+            line.Append((char)single[0]);
+        }
+        return line.ToString();
+    }
+
     public static string Function(string name, params (string Key, string Value)[] args) =>
         $"FUNCTION {name}" + (args.Length == 0 ? "" : " " + string.Join('&', args.Select(a => $"{a.Key}={WebUtility.UrlEncode(a.Value)}")));
 
