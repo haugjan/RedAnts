@@ -47,16 +47,6 @@ public static class ShowSchema
                 CONSTRAINT [PK_show_Sounds] PRIMARY KEY CLUSTERED ([Id] ASC)
             );
         END
-        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'States' AND schema_id = SCHEMA_ID('show'))
-        BEGIN
-            CREATE TABLE [show].[States](
-                [Id] nvarchar(60) NOT NULL,
-                [SortOrder] int NOT NULL,
-                [Json] nvarchar(max) NOT NULL,
-                [UpdatedAt] datetime2(0) NOT NULL,
-                CONSTRAINT [PK_show_States] PRIMARY KEY CLUSTERED ([Id] ASC)
-            );
-        END
         IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AgentReports' AND schema_id = SCHEMA_ID('show'))
         BEGIN
             CREATE TABLE [show].[AgentReports](

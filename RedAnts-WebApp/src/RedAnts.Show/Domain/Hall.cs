@@ -14,6 +14,16 @@ public sealed record HallDevices(
     string ImageFolder = "",
     string DjRoom = "");
 
+public sealed record HallCapabilities(
+    bool Sound = true,
+    bool Clock = true,
+    bool Vmix = true,
+    bool Led = true,
+    bool Light = false)
+{
+    public static readonly HallCapabilities Default = new();
+}
+
 public sealed record LedTemplate(string Event, string Command);
 
 public sealed record OverlayTitle(string Kind, string Input, int Channel, IReadOnlyDictionary<string, string> Fields);
@@ -30,8 +40,11 @@ public sealed partial record Hall(
     IReadOnlyList<string> Shortcuts,
     string? ActiveGameId = null,
     IReadOnlyList<AutomationRule>? Automation = null,
-    IReadOnlyList<DeckLayout>? Decks = null)
+    IReadOnlyList<DeckLayout>? Decks = null,
+    HallCapabilities? Offered = null)
 {
+    public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
+
     public IReadOnlyList<AutomationRule> Rules => Automation ?? [];
 
     public IReadOnlyList<DeckLayout> DeckLayouts => Decks is { Count: > 0 } decks ? decks : DefaultDecks.All;

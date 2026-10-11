@@ -1,10 +1,8 @@
 @inherits HallTab
 @using RedAnts.Show.Features.Music
 @using RedAnts.Show.Features.Scenes
-@using RedAnts.Show.Features.States
 @inject GetScenes.Handler ScenesQuery
 @inject GetSounds.Handler SoundsQuery
-@inject GetShowStates.Handler StatesQuery
 
 <section class="sa-card">
     <h2>Decks <small>@(Hall?.Name ?? "keine Halle")</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
@@ -229,7 +227,7 @@
     private Dictionary<int, KeyEdit> _keys = [];
     private IReadOnlyList<Scene> _scenes = [];
     private IReadOnlyList<SoundCommand> _sounds = [];
-    private IReadOnlyList<ShowState> _states = [];
+    private readonly IReadOnlyList<ShowState> _states = DefaultStates.All;
     private string _deckId = DeckLayout.FieldDeck;
     private int _selected = 1;
 
@@ -239,7 +237,6 @@
     {
         _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
         _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
-        _states = await StatesQuery.HandleAsync(new GetShowStates.Query());
         await base.OnInitializedAsync();
     }
 

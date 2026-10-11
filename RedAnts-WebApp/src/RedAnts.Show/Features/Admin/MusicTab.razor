@@ -9,12 +9,13 @@
 <section class="sa-card">
     <h2>Musik <small>Befehle für alle Hallen</small> <StatusLine Text="@_status" IsError="@_statusIsError" /></h2>
     <p class="sa-hint">
-        Ein Befehl ist eine Kachel mit einem oder mehreren Songs: Datei aus dem Speicher oder Spotify, je Song Cue-Start und Cue-Länge,
+        Ein Befehl ist eine Kachel mit einem oder mehreren Songs: Datei aus dem Speicher oder Spotify, je Song Cue-Start und Länge,
         dazu Reihenfolge, Loop, Lautstärke und Fade-out. Szenen und Deck-Tasten verweisen auf diese Befehle; abgespielt wird im Browser.
     </p>
 
-    <div class="sa-columns">
+    <div class="sa-music">
         <aside>
+            <h3>Befehle</h3>
             <ul class="sa-list">
                 @foreach (var sound in _sounds)
                 {
@@ -30,95 +31,172 @@
             </div>
         </aside>
 
-        <div>
-            @if (_current is null)
-            {
-                <p class="sa-hint">Keinen Befehl gewählt.</p>
-            }
-            else
-            {
+        @if (_current is null)
+        {
+            <div><p class="sa-hint">Keinen Befehl gewählt.</p></div>
+            <div></div>
+        }
+        else
+        {
+            <div>
                 <div class="sa-form">
-                    <label>Bezeichnung <input class="sa-input" @bind="_current.Label" /></label>
+                    <label>Bezeichnung <input class="sa-input" @bind="_current.Label" @bind:event="oninput" /></label>
                     <label>Kennung <input class="sa-input" @bind="_current.Id" /></label>
                     <label>Farbe <input class="sa-input" type="color" @bind="_current.Color" /></label>
-                    <label>Lautstärke %<input class="sa-input" type="number" min="0" max="100" @bind="_current.Volume" /></label>
+                    <label>Lautstärke % <input class="sa-input" type="number" min="0" max="100" @bind="_current.Volume" /></label>
                     <label>Fade-out s <input class="sa-input" type="number" step="0.5" @bind="_current.FadeOutSec" /></label>
                     <label class="sa-check"><input type="checkbox" @bind="_current.Loop" /> endlos wiederholen</label>
-                    @if (_current.Tracks.Count > 1)
-                    {
-                        <label class="sa-check"><input type="checkbox" @bind="_current.Random" /> zufällige Reihenfolge</label>
-                    }
                 </div>
 
                 <h3>Songs (@_current.Tracks.Count)</h3>
-                <table class="sa-table">
-                    <thead>
-                        <tr><th style="width:90px">Quelle</th><th>Datei oder Spotify</th><th style="width:110px">Cue ab s</th><th style="width:110px">Länge s</th><th style="width:120px"></th></tr>
-                    </thead>
-                    <tbody>
-                        @for (var i = 0; i < _current.Tracks.Count; i++)
-                        {
-                            var index = i;
-                            var track = _current.Tracks[index];
-                            <tr @key="track">
-                                <td>
-                                    <select class="sa-input" @bind="track.Source">
-                                        <option value="@SoundSource.Blob">Datei</option>
-                                        <option value="@SoundSource.Spotify">Spotify</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <input class="sa-input wide" @bind="track.Ref" @bind:after="() => DescribeAsync(track)" placeholder="@(track.Source == SoundSource.Spotify ? "spotify:track:… oder Link" : "datei.mp3")" />
-                                    @if (track.Title.Length > 0)
-                                    {
-                                        <span class="sa-hint">@track.Display</span>
-                                    }
-                                </td>
-                                <td><input class="sa-input" type="number" step="0.5" @bind="track.StartSec" /></td>
-                                <td><input class="sa-input" type="number" step="0.5" @bind="track.DurationSec" /></td>
-                                <td class="sa-rowops">
-                                    @if (track.Source == SoundSource.Blob && track.Ref.Length > 0)
-                                    {
-                                        <a class="sa-btn small" href="/dj/sound/@track.Ref" target="_blank" title="anhören">▶</a>
-                                    }
-                                    <button class="sa-btn small" disabled="@(index == 0)" @onclick="() => Move(index, -1)">↑</button>
-                                    <button class="sa-btn small" disabled="@(index == _current.Tracks.Count - 1)" @onclick="() => Move(index, 1)">↓</button>
-                                    <button class="sa-btn small" @onclick="() => _current.Tracks.RemoveAt(index)">✕</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-
+                @if (_current.Tracks.Count > 1)
+                {
+                    <div class="sa-choice">
+                        <button type="button" class="@(!_current.Random ? "active" : "")" @onclick="() => _current.Random = false">➡ Der Reihe nach</button>
+                        <button type="button" class="@(_current.Random ? "active" : "")" @onclick="() => _current.Random = true">🔀 Zufällig</button>
+                    </div>
+                }
+                <div class="sa-songs">
+                    @for (var i = 0; i < _current.Tracks.Count; i++)
+                    {
+                        var index = i;
+                        var track = _current.Tracks[index];
+                        <div class="sa-song @(track == _song ? "active" : "")" @onclick="() => SelectSong(track)" @key="track">
+                            <span class="sa-song-n">@(index + 1)</span>
+                            <span class="sa-song-name">@Name(track)<small>@CueText(track)</small></span>
+                            <span class="sa-song-ops">
+                                <button class="sa-btn small" disabled="@(index == 0)" @onclick="() => Move(index, -1)" @onclick:stopPropagation="true">↑</button>
+                                <button class="sa-btn small" disabled="@(index == _current.Tracks.Count - 1)" @onclick="() => Move(index, 1)" @onclick:stopPropagation="true">↓</button>
+                                <button class="sa-btn small" @onclick="() => RemoveTrack(index)" @onclick:stopPropagation="true">✕</button>
+                            </span>
+                        </div>
+                    }
+                </div>
                 <div class="sa-actions">
                     <button class="sa-btn small" @onclick="AddTrack">+ Song</button>
-                    <label class="sa-btn small">
-                        ⬆ Datei hochladen
-                        <InputFile OnChange="UploadAsync" style="display:none" accept="audio/*" />
-                    </label>
                     <button class="sa-btn small danger" @onclick="Remove">Befehl löschen</button>
                 </div>
+            </div>
 
-                <h3>Spotify suchen</h3>
-                <div class="sa-actions">
-                    <input class="sa-input" style="max-width:320px" placeholder="Titel oder Interpret" @bind="_term" @bind:event="oninput" />
-                    <button class="sa-btn small" @onclick="SearchAsync">Suchen</button>
-                </div>
-                @if (_hits.Count > 0)
+            <div class="sa-songeditor">
+                @if (_song is null)
                 {
-                    <ul class="sa-list">
-                        @foreach (var hit in _hits)
-                        {
-                            <li @onclick="() => AddSpotify(hit)" @key="hit.Uri">@hit.Name <small>@hit.Artist</small></li>
-                        }
-                    </ul>
+                    <p class="sa-hint">Links einen Song wählen.</p>
                 }
-            }
-        </div>
+                else
+                {
+                    <h3>Song @(_current.Tracks.IndexOf(_song) + 1) bearbeiten</h3>
+                    <div class="sa-choice">
+                        <button type="button" class="@(_song.Source == SoundSource.Blob ? "active" : "")" @onclick="() => SetSource(SoundSource.Blob)">🎵 Datei</button>
+                        <button type="button" class="@(_song.Source == SoundSource.Spotify ? "active" : "")" @onclick="() => SetSource(SoundSource.Spotify)">🟢 Spotify</button>
+                    </div>
+
+                    @if (_song.Source == SoundSource.Blob)
+                    {
+                        <label class="sa-drop">
+                            <InputFile OnChange="UploadAsync" accept="audio/*" />
+                            <span>@(_uploading ? "Lädt hoch …" : "Datei wählen, ersetzt diesen Song sofort")</span>
+                        </label>
+                        <div class="sa-form">
+                            <label>Datei <input class="sa-input" @bind="_song.Ref" @bind:after="Rewind" placeholder="tor.mp3" /></label>
+                            <label>Songtitel <input class="sa-input" @bind="_song.Title" @bind:event="oninput" /></label>
+                            <label>Interpret <input class="sa-input" @bind="_song.Artist" @bind:event="oninput" /></label>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="sa-actions">
+                            <input class="sa-input" style="max-width:260px" placeholder="Auf Spotify suchen" @bind="_term" @bind:event="oninput" @onkeyup="SearchOnEnterAsync" />
+                            <button class="sa-btn small" @onclick="SearchAsync">🔍 Suchen</button>
+                        </div>
+                        <label class="sa-full">Spotify-Link, URI oder ID
+                            <input class="sa-input wide" value="@_song.Ref" @onchange="PasteSpotifyAsync" placeholder="https://open.spotify.com/… · spotify:track:…" />
+                        </label>
+                        @if (_hits.Count > 0)
+                        {
+                            <ul class="sa-list">
+                                @foreach (var hit in _hits)
+                                {
+                                    <li @onclick="() => TakeHit(hit)" @key="hit.Uri">@hit.Name <small>@hit.Artist</small></li>
+                                }
+                            </ul>
+                        }
+                        @if (_song.Title.Length > 0)
+                        {
+                            <p class="sa-hint">@_song.Title@(_song.Artist.Length > 0 ? " · " + _song.Artist : "")</p>
+                        }
+                    }
+
+                    <h3>Cue</h3>
+                    <div class="sa-timeline" title="Verhältnis von Cue und Länge; die genaue Zeit zeigt der Player unten">
+                        <div class="sa-tl-track">
+                            <div class="sa-tl-sel" style="left:@Pct(_song.StartSec)%; width:@Pct(_song.DurationSec ?? Math.Max(0, Scale - _song.StartSec))%"></div>
+                            <div class="sa-tl-mark start" style="left:@Pct(_song.StartSec)%"></div>
+                            @if (_song.DurationSec is { } length)
+                            {
+                                <div class="sa-tl-mark end" style="left:@Pct(_song.StartSec + length)%"></div>
+                            }
+                        </div>
+                        <div class="sa-tl-times"><span>0:00</span><span>@Clock(_song.StartSec) bis @(_song.DurationSec is { } d ? Clock(_song.StartSec + d) : "Ende")</span><span>@Clock(Scale)</span></div>
+                    </div>
+
+                    <div class="sa-cue">
+                        <label>Cue-Start (m:ss.mmm, ↑↓ = 50 ms)
+                            <input class="sa-input" value="@Clock(_song.StartSec)" @onchange="SetCue" @onkeydown="NudgeCue" placeholder="0:00.000" />
+                        </label>
+                        <div class="sa-nudge">
+                            <button class="sa-btn small" @onclick="() => NudgeStart(-1)">−1 s</button>
+                            <button class="sa-btn small" @onclick="() => NudgeStart(-0.1)">−0,1</button>
+                            <button class="sa-btn small" @onclick="() => NudgeStart(0.1)">+0,1</button>
+                            <button class="sa-btn small" @onclick="() => NudgeStart(1)">+1 s</button>
+                            <button class="sa-btn small" @onclick="() => SetStart(0)">Anfang</button>
+                        </div>
+                    </div>
+                    <div class="sa-cue">
+                        <label>Länge (leer = bis zum Ende, ↑↓ = 50 ms)
+                            <input class="sa-input" value="@(_song.DurationSec is { } dv ? Clock(dv) : "")" @onchange="SetLength" @onkeydown="NudgeLength" placeholder="ganzer Song" />
+                        </label>
+                        <div class="sa-nudge">
+                            <button class="sa-btn small" @onclick="() => NudgeDuration(-1)">−1 s</button>
+                            <button class="sa-btn small" @onclick="() => NudgeDuration(-0.1)">−0,1</button>
+                            <button class="sa-btn small" @onclick="() => NudgeDuration(0.1)">+0,1</button>
+                            <button class="sa-btn small" @onclick="() => NudgeDuration(1)">+1 s</button>
+                            <button class="sa-btn small" @onclick="ClearLength">ganzer Song</button>
+                        </div>
+                    </div>
+
+                    @if (_song.Source == SoundSource.Blob && _song.Ref.Trim().Length > 0)
+                    {
+                        <h3>Vorhören</h3>
+                        <div class="sa-actions">
+                            <button class="sa-btn @(_preview == Preview.Section ? "primary" : "")" @onclick="() => Listen(Preview.Section)">▶ Abschnitt ab Cue</button>
+                            <button class="sa-btn @(_preview == Preview.Full ? "primary" : "")" @onclick="() => Listen(Preview.Full)">▶ Ganzer Song</button>
+                            <button class="sa-btn" @onclick="() => Listen(Preview.None)">⏹ Stopp</button>
+                        </div>
+                        @if (_preview != Preview.None)
+                        {
+                            <audio class="sa-audio" controls autoplay src="@PreviewUrl()" @key="PreviewUrl()"></audio>
+                            <p class="sa-hint">
+                                Der Player zeigt die Position. Eine Stelle gefunden? Die Zeit oben eintippen oder mit den Knöpfen feinjustieren,
+                                dann «Abschnitt ab Cue» zum Gegenhören.
+                            </p>
+                        }
+                    }
+                    else if (_song.Source == SoundSource.Spotify)
+                    {
+                        <p class="sa-hint">Spotify lässt sich hier noch nicht vorhören; Cue und Länge gelten trotzdem.</p>
+                    }
+                }
+            </div>
+        }
     </div>
 </section>
 
 @code {
+    private const double NudgeStep = 0.05;
+
+    private enum Preview { None, Section, Full }
+
     private sealed class SoundEdit
     {
         public string Id = "";
@@ -159,8 +237,6 @@
         public double StartSec;
         public double? DurationSec;
 
-        public string Display => Artist.Length > 0 ? $"{Title} · {Artist}" : Title;
-
         public static TrackEdit From(SoundTrack track) => new()
         {
             Source = track.Source,
@@ -171,15 +247,20 @@
             DurationSec = track.DurationSec,
         };
 
-        public SoundTrack ToTrack() => new(Source, Ref.Trim(), Title, Artist, StartSec, DurationSec);
+        public SoundTrack ToTrack() => new(Source, Ref.Trim(), Title.Trim(), Artist.Trim(), StartSec, DurationSec);
     }
 
     private List<SoundEdit> _sounds = [];
     private SoundEdit? _current;
+    private TrackEdit? _song;
     private IReadOnlyList<SpotifyHit> _hits = [];
+    private Preview _preview = Preview.None;
     private string _term = "";
     private string? _status;
     private bool _statusIsError;
+    private bool _uploading;
+
+    private double Scale => Math.Max(60, (_song?.StartSec ?? 0) + (_song?.DurationSec ?? 30) + 30);
 
     protected override async Task OnInitializedAsync() => await ReloadAsync();
 
@@ -187,15 +268,44 @@
     {
         _sounds = (await SoundsQuery.HandleAsync(new GetSounds.Query())).Select(SoundEdit.From).ToList();
         _current = _sounds.FirstOrDefault(s => s.Id == _current?.Id) ?? _sounds.FirstOrDefault();
+        SelectSong(_current?.Tracks.FirstOrDefault());
     }
 
-    private void Select(SoundEdit sound) => _current = sound;
+    private void Select(SoundEdit sound)
+    {
+        _current = sound;
+        SelectSong(sound.Tracks.FirstOrDefault());
+    }
+
+    private void SelectSong(TrackEdit? track)
+    {
+        _song = track;
+        _preview = Preview.None;
+        _hits = [];
+    }
+
+    private void Rewind() => _preview = Preview.None;
+
+    private void Listen(Preview preview) => _preview = preview;
+
+    private string PreviewUrl()
+    {
+        if (_song is null) return "";
+        var url = $"/dj/sound/{_song.Ref.Trim()}";
+        if (_preview != Preview.Section) return url;
+        var start = _song.StartSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        var end = _song.DurationSec is { } length
+            ? "," + (_song.StartSec + length).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)
+            : "";
+        return $"{url}#t={start}{end}";
+    }
 
     private void Add()
     {
         var sound = SoundEdit.From(SoundCommand.Create("Neuer Befehl"));
+        sound.Tracks.Add(new TrackEdit());
         _sounds.Add(sound);
-        _current = sound;
+        Select(sound);
     }
 
     private void Remove()
@@ -203,9 +313,24 @@
         if (_current is null) return;
         _sounds.Remove(_current);
         _current = _sounds.FirstOrDefault();
+        SelectSong(_current?.Tracks.FirstOrDefault());
     }
 
-    private void AddTrack() => _current?.Tracks.Add(new TrackEdit());
+    private void AddTrack()
+    {
+        if (_current is null) return;
+        var track = new TrackEdit();
+        _current.Tracks.Add(track);
+        SelectSong(track);
+    }
+
+    private void RemoveTrack(int index)
+    {
+        if (_current is null || index < 0 || index >= _current.Tracks.Count) return;
+        var removed = _current.Tracks[index];
+        _current.Tracks.RemoveAt(index);
+        if (_song == removed) SelectSong(_current.Tracks.ElementAtOrDefault(Math.Min(index, _current.Tracks.Count - 1)));
+    }
 
     private void Move(int index, int delta)
     {
@@ -215,13 +340,42 @@
         (_current.Tracks[index], _current.Tracks[target]) = (_current.Tracks[target], _current.Tracks[index]);
     }
 
-    private async Task DescribeAsync(TrackEdit track)
+    private void SetSource(SoundSource source)
     {
-        if (track.Source != SoundSource.Spotify || track.Ref.Trim().Length == 0) return;
-        var hits = await Spotify.HandleAsync(new GetSpotifyHits.Query("", track.Ref));
-        if (hits.FirstOrDefault() is not { } hit) return;
-        track.Title = hit.Name;
-        track.Artist = hit.Artist;
+        if (_song is null) return;
+        _song.Source = source;
+        _preview = Preview.None;
+        _hits = [];
+    }
+
+    private static string Name(TrackEdit track) =>
+        track.Title.Length > 0 ? track.Title : track.Ref.Length > 0 ? track.Ref : "(leer)";
+
+    private static string CueText(TrackEdit track) =>
+        track.StartSec <= 0 && track.DurationSec is null
+            ? ""
+            : $"ab {Clock(track.StartSec)}{(track.DurationSec is { } d ? $" · {Clock(d)} lang" : "")}";
+
+    private async Task UploadAsync(InputFileChangeEventArgs e) => await Guarded(async () =>
+    {
+        if (_song is null) return;
+        _uploading = true;
+        try
+        {
+            var file = e.File;
+            await using var stream = file.OpenReadStream(80 * 1024 * 1024);
+            _song.Ref = await Upload.HandleAsync(new UploadDJSound.Command(file.Name, stream, file.ContentType));
+            _song.Source = SoundSource.Blob;
+            if (_song.Title.Length == 0) _song.Title = Path.GetFileNameWithoutExtension(file.Name);
+            _preview = Preview.None;
+            Notify($"{file.Name} hochgeladen.");
+        }
+        finally { _uploading = false; }
+    });
+
+    private async Task SearchOnEnterAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SearchAsync();
     }
 
     private async Task SearchAsync() => await Guarded(async () =>
@@ -230,20 +384,101 @@
         if (_hits.Count == 0) Notify("Keine Treffer; ist Spotify im DJ-Bereich verbunden?");
     });
 
-    private void AddSpotify(SpotifyHit hit)
+    private async Task PasteSpotifyAsync(ChangeEventArgs e) => await Guarded(async () =>
     {
-        _current?.Tracks.Add(new TrackEdit { Source = SoundSource.Spotify, Ref = hit.Uri, Title = hit.Name, Artist = hit.Artist });
+        if (_song is null) return;
+        _song.Ref = e.Value?.ToString()?.Trim() ?? "";
+        _song.Source = SoundSource.Spotify;
+        if (_song.Ref.Length == 0) return;
+        if ((await Spotify.HandleAsync(new GetSpotifyHits.Query("", _song.Ref))).FirstOrDefault() is not { } hit) return;
+        _song.Ref = hit.Uri;
+        _song.Title = hit.Name;
+        _song.Artist = hit.Artist;
+    });
+
+    private void TakeHit(SpotifyHit hit)
+    {
+        if (_song is null) return;
+        _song.Source = SoundSource.Spotify;
+        _song.Ref = hit.Uri;
+        _song.Title = hit.Name;
+        _song.Artist = hit.Artist;
         _hits = [];
     }
 
-    private async Task UploadAsync(InputFileChangeEventArgs e) => await Guarded(async () =>
+    private void SetStart(double seconds)
     {
-        var file = e.File;
-        await using var stream = file.OpenReadStream(80 * 1024 * 1024);
-        var name = await Upload.HandleAsync(new UploadDJSound.Command(file.Name, stream, file.ContentType));
-        _current?.Tracks.Add(new TrackEdit { Source = SoundSource.Blob, Ref = name, Title = file.Name });
-        Notify($"{file.Name} hochgeladen.");
-    });
+        if (_song is null) return;
+        _song.StartSec = Math.Max(0, Math.Round(seconds, 3));
+        _preview = Preview.None;
+    }
+
+    private void NudgeStart(double delta) => SetStart((_song?.StartSec ?? 0) + delta);
+
+    private void NudgeDuration(double delta)
+    {
+        if (_song is null) return;
+        var next = Math.Round((_song.DurationSec ?? 0) + delta, 3);
+        _song.DurationSec = next > 0 ? next : null;
+        _preview = Preview.None;
+    }
+
+    private void ClearLength()
+    {
+        if (_song is null) return;
+        _song.DurationSec = null;
+        _preview = Preview.None;
+    }
+
+    private void SetCue(ChangeEventArgs e) =>
+        SetStart(ParseClock(e.Value?.ToString()) is { } value && value >= 0 ? value : 0);
+
+    private void SetLength(ChangeEventArgs e)
+    {
+        if (_song is null) return;
+        _song.DurationSec = ParseClock(e.Value?.ToString()) is { } value && value > 0 ? value : null;
+        _preview = Preview.None;
+    }
+
+    private void NudgeCue(KeyboardEventArgs e)
+    {
+        if (StepOf(e) is { } step) NudgeStart(step);
+    }
+
+    private void NudgeLength(KeyboardEventArgs e)
+    {
+        if (StepOf(e) is { } step) NudgeDuration(step);
+    }
+
+    private static double? StepOf(KeyboardEventArgs e) => e.Key switch
+    {
+        "ArrowUp" => NudgeStep,
+        "ArrowDown" => -NudgeStep,
+        _ => null,
+    };
+
+    private string Pct(double value) =>
+        Math.Clamp(value / Scale * 100.0, 0, 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Clock(double seconds)
+    {
+        if (seconds < 0) seconds = 0;
+        var total = (int)Math.Round(seconds * 1000);
+        return $"{total / 60000}:{total / 1000 % 60:00}.{total % 1000:000}";
+    }
+
+    private static double? ParseClock(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var text = input.Trim().Replace(',', '.');
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        var style = System.Globalization.NumberStyles.Float;
+        if (!text.Contains(':')) return double.TryParse(text, style, culture, out var plain) ? plain : null;
+        var parts = text.Split(':', 2);
+        return int.TryParse(parts[0], style, culture, out var minutes) && double.TryParse(parts[1], style, culture, out var seconds)
+            ? minutes * 60 + seconds
+            : null;
+    }
 
     private async Task SaveAsync() => await Guarded(async () =>
     {
@@ -259,5 +494,9 @@
         catch (DomainException ex) { _status = ex.Message; _statusIsError = true; }
     }
 
-    private void Notify(string text) { _status = text; _statusIsError = false; }
+    private void Notify(string text)
+    {
+        _status = text;
+        _statusIsError = false;
+    }
 }

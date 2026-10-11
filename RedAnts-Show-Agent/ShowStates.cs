@@ -10,7 +10,28 @@ public sealed class ShowStates(PayloadStore payload, ILogger<ShowStates> log)
     public const string Music = "musik";
     public const string Led = "led";
     public const string Sponsors = "sponsoren";
+    public const string Break = "pause";
     public const string Light = "licht";
+
+    public sealed record ShowState(string Id, IReadOnlyList<string> Values)
+    {
+        public string First => Values.Count > 0 ? Values[0] : "";
+    }
+
+    public static IReadOnlyList<ShowState> Known { get; } =
+    [
+        new(Overlay, ["aus", "an"]),
+        new(ClockVisible, ["aus", "an"]),
+        new(ClockRunning, ["steht", "läuft"]),
+        new(Music, ["aus", "läuft", "fade"]),
+        new(Led, ["aus", "läuft"]),
+        new(Sponsors, ["aus", "an"]),
+        new(Break, ["aus", "an"]),
+        new(Light, ["normal", "tor", "pause"]),
+    ];
+
+    public static ShowState? State(string? id) =>
+        id is { Length: > 0 } ? Known.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null;
 
     private const int MaxChain = 3;
 
@@ -31,12 +52,12 @@ public sealed class ShowStates(PayloadStore payload, ILogger<ShowStates> log)
     {
         lock (_gate)
             if (_values.TryGetValue(stateId, out var value)) return value;
-        return payload.State(stateId)?.First ?? "";
+        return State(stateId)?.First ?? "";
     }
 
     public bool IsOn(string stateId)
     {
-        var state = payload.State(stateId);
+        var state = State(stateId);
         var value = Value(stateId);
         return state is not null && value.Length > 0 && !value.Equals(state.First, StringComparison.OrdinalIgnoreCase);
     }

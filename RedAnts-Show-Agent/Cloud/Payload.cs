@@ -23,6 +23,16 @@ public sealed record HallDevices(
     int ClockPort = 50085,
     string ImageFolder = "");
 
+public sealed record HallCapabilities(
+    bool Sound = true,
+    bool Clock = true,
+    bool Vmix = true,
+    bool Led = true,
+    bool Light = false)
+{
+    public static readonly HallCapabilities Default = new();
+}
+
 public sealed record LedTemplate(string Event, string Command);
 
 public sealed record AutomationRule(string StateId, string Value, string SceneId);
@@ -67,11 +77,6 @@ public sealed record DeckLayout(string Id, string Name, int Columns, int Rows, I
     public DeckKey? KeyAt(int number) => Keys.FirstOrDefault(k => k.Number == number);
 }
 
-public sealed record ShowState(string Id, string Name, IReadOnlyList<string> Values, string Source, string Note = "")
-{
-    public string First => Values.Count > 0 ? Values[0] : "";
-}
-
 public enum SoundSource { Blob, Spotify }
 
 public sealed record SoundTrack(SoundSource Source, string Ref, string Title = "", string Artist = "", double StartSec = 0, double? DurationSec = null);
@@ -100,9 +105,12 @@ public sealed record Hall(
     IReadOnlyList<string> Shortcuts,
     string? ActiveGameId = null,
     IReadOnlyList<AutomationRule>? Automation = null,
-    IReadOnlyList<DeckLayout>? Decks = null)
+    IReadOnlyList<DeckLayout>? Decks = null,
+    HallCapabilities? Offered = null)
 {
     public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], [], []);
+
+    public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
 
     public IReadOnlyList<AutomationRule> Rules => Automation ?? [];
 
@@ -200,5 +208,4 @@ public sealed record AgentPayload(
     IReadOnlyList<Scene> Scenes,
     Game? Game,
     DateTimeOffset SentAt,
-    IReadOnlyList<SoundCommand>? Sounds = null,
-    IReadOnlyList<ShowState>? States = null);
+    IReadOnlyList<SoundCommand>? Sounds = null);

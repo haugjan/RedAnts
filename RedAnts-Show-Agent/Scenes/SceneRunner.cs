@@ -133,8 +133,24 @@ public sealed class SceneRunner(PayloadStore payload, LiveGame live, ShowStates 
         }
     }
 
+    (string Name, bool Enabled)? Capability(string action)
+    {
+        var offers = payload.Hall.Offers;
+        return action switch
+        {
+            SceneActions.SoundPlay or SceneActions.SoundStop or SceneActions.SoundFade => ("Sound", offers.Sound),
+            SceneActions.LedStart or SceneActions.LedStop => ("Die LED-Wand", offers.Led),
+            SceneActions.OverlayShow or SceneActions.OverlayHide => ("vMix", offers.Vmix),
+            SceneActions.LightScene => ("Die Lichtshow", offers.Light),
+            _ => null,
+        };
+    }
+
     async Task StepAsync(SceneStep step, SceneContext ctx, CancellationToken stop)
     {
+        if (Capability(step.Action) is { Enabled: false } missing)
+            throw new InvalidOperationException($"{missing.Name} ist für diese Halle nicht aktiviert");
+
         var game = payload.Game;
         switch (step.Action)
         {

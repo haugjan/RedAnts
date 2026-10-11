@@ -1,14 +1,11 @@
 @inherits HallTab
-@using Microsoft.JSInterop
 @using RedAnts.Show.Features.Agents
 @using RedAnts.Show.Features.Music
 @using RedAnts.Show.Features.Scenes
-@using RedAnts.Show.Features.States
-@implements IAsyncDisposable
+@implements IDisposable
 @inject GetHallStatus.Handler StatusQuery
 @inject GetScenes.Handler ScenesQuery
 @inject GetSounds.Handler SoundsQuery
-@inject GetShowStates.Handler StatesQuery
 @inject RunScene.Handler SceneRun
 @inject PanicHall.Handler Panic
 
@@ -24,14 +21,17 @@
             <span class="sa-lamp @(_status?.Connected == true ? "on" : "off")"></span>
             <span>@(_status?.Connected == true ? $"Agent verbunden, Version {_status.AgentVersion}" : "Kein Agent verbunden")</span>
             <span class="sa-pill">@Score("home") : @Score("away")</span>
-            <span class="sa-pill">@ClockText()</span>
+            @if (Hall.Offers.Clock)
+            {
+                <span class="sa-pill">@ClockText()</span>
+            }
             <span class="sd-spacer"></span>
             <a class="sa-btn small" href="/matchday" target="_blank">Spieltag-Seite öffnen</a>
             <button class="sa-btn danger" @onclick="PanicAsync">🚨 PANIC</button>
         </div>
 
         <div class="sa-states">
-            @foreach (var state in _states)
+            @foreach (var state in _states.Where(s => Offered(s.Id)))
             {
                 var value = StateValue(state);
                 <span class="sa-pill @(state.IsOn(value) ? "on" : "")">@state.Name: @value</span>
@@ -46,19 +46,25 @@
             }
         </div>
 
-        <h3>Musik <small>läuft in diesem Browser</small></h3>
-        <div class="sa-tiles">
-            @foreach (var sound in _sounds)
-            {
-                <button class="sa-tile" style="background:@sound.Color" @onclick="() => PlayAsync(sound)" @key="sound.Id">@sound.Label</button>
-            }
-            <button class="sa-tile stop" @onclick="StopAsync">⏹ Stopp</button>
-        </div>
-        @if (_playing is { } playing)
+        @if (Hall.Offers.Sound)
         {
-            <p class="sa-hint">Läuft: @playing</p>
+            <h3>Musik <small>läuft in diesem Browser</small></h3>
+            <div class="sa-tiles">
+                @foreach (var sound in _sounds)
+                {
+                    <button class="sa-tile" style="background:@sound.Color" @onclick="() => PlayAsync(sound)" @key="sound.Id">@sound.Label</button>
+                }
+                <button class="sa-tile stop" @onclick="StopAsync">⏹ Stopp</button>
+            </div>
+            @if (_playing is { } playing)
+            {
+                <p class="sa-hint">Läuft: @playing</p>
+            }
+            @if (_playingUrl is { Length: > 0 } url)
+            {
+                <audio class="sa-audio" controls autoplay src="@url" @key="url"></audio>
+            }
         }
-        <audio @ref="_player" controls preload="none" class="sa-audio"></audio>
     }
 </section>
 
@@ -66,19 +72,16 @@
     private HallStatus? _status;
     private IReadOnlyList<Scene> _scenes = [];
     private IReadOnlyList<SoundCommand> _sounds = [];
-    private IReadOnlyList<ShowState> _states = [];
-    private ElementReference _player;
+    private readonly IReadOnlyList<ShowState> _states = DefaultStates.All;
     private string? _playing;
+    private string? _playingUrl;
     private string? _lastSoundReport;
     private Timer? _poll;
-
-    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
         _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
         _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
-        _states = await StatesQuery.HandleAsync(new GetShowStates.Query());
         await base.OnInitializedAsync();
         _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
     }
@@ -102,19 +105,30 @@
         if (sound is not null) await PlayAsync(sound);
     }
 
-    private async Task PlayAsync(SoundCommand sound)
+    private Task PlayAsync(SoundCommand sound)
     {
         var track = sound.Tracks.FirstOrDefault();
-        if (track is null) { Notify($"„{sound.Label}“ hat noch keinen Song."); return; }
-        if (track.IsSpotify) { Notify("Spotify spielt die Bedienung noch nicht; Datei-Songs laufen bereits."); return; }
+        if (track is null) { Notify($"„{sound.Label}“ hat noch keinen Song."); return Task.CompletedTask; }
+        if (track.IsSpotify) { Notify("Spotify spielt die Bedienung noch nicht; Datei-Songs laufen bereits."); return Task.CompletedTask; }
         _playing = $"{sound.Label} · {track.Display}";
-        await JS.InvokeVoidAsync("showPlayer.play", _player, $"/dj/sound/{track.Ref}", track.StartSec, track.DurationSec, sound.Volume / 100.0, sound.Loop);
+        _playingUrl = Fragment(track);
+        return Task.CompletedTask;
     }
 
-    private async Task StopAsync()
+    private static string Fragment(SoundTrack track)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        var url = $"/dj/sound/{track.Ref}";
+        if (track.StartSec <= 0 && track.DurationSec is null) return url;
+        var end = track.DurationSec is { } length ? "," + (track.StartSec + length).ToString("0.###", culture) : "";
+        return $"{url}#t={track.StartSec.ToString("0.###", culture)}{end}";
+    }
+
+    private Task StopAsync()
     {
         _playing = null;
-        await JS.InvokeVoidAsync("showPlayer.stop", _player);
+        _playingUrl = null;
+        return Task.CompletedTask;
     }
 
     private async Task RunAsync(string sceneId) => await Guarded(async () =>
@@ -131,6 +145,16 @@
         var sent = await Panic.HandleAsync(new PanicHall.Command(Hall.Id));
         Notify(sent ? "PANIC geschickt." : "Kein Agent verbunden.");
     });
+
+    private bool Offered(string stateId) => Hall is null || stateId switch
+    {
+        DefaultStates.Music => Hall.Offers.Sound,
+        DefaultStates.Led or DefaultStates.Sponsors => Hall.Offers.Led,
+        DefaultStates.Light => Hall.Offers.Light,
+        DefaultStates.Overlay => Hall.Offers.Vmix,
+        DefaultStates.ClockVisible or DefaultStates.ClockRunning => Hall.Offers.Clock && Hall.Offers.Vmix,
+        _ => true,
+    };
 
     private string StateValue(ShowState state)
     {
@@ -172,9 +196,9 @@
         catch (System.Text.Json.JsonException) { return null; }
     }
 
-    public async ValueTask DisposeAsync()
+    public override void Dispose()
     {
-        if (_poll is not null) await _poll.DisposeAsync();
+        _poll?.Dispose();
         base.Dispose();
     }
 }

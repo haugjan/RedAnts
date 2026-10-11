@@ -24,13 +24,8 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
 
     public IReadOnlyList<SoundCommand> Sounds => Current.Sounds ?? [];
 
-    public IReadOnlyList<ShowState> States => Current.States ?? [];
-
     public SoundCommand? Sound(string? id) =>
         id is { Length: > 0 } ? Sounds.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null;
-
-    public ShowState? State(string? id) =>
-        id is { Length: > 0 } ? States.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null;
 
     public bool Synced => Current.Hall.Id.Length > 0;
 

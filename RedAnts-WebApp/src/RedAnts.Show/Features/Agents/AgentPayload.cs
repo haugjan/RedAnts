@@ -7,5 +7,4 @@ public sealed record AgentPayload(
     IReadOnlyList<Scene> Scenes,
     Game? Game,
     DateTimeOffset SentAt,
-    IReadOnlyList<SoundCommand>? Sounds = null,
-    IReadOnlyList<ShowState>? States = null);
+    IReadOnlyList<SoundCommand>? Sounds = null);

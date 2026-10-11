@@ -36,6 +36,11 @@ public sealed class ClockFeed(PayloadStore payload, LiveGame live, ILogger<Clock
                 var devices = payload.Hall.Devices;
                 try
                 {
+                    if (!payload.Hall.Offers.Clock)
+                    {
+                        Fault = null;
+                        await Task.Delay(Timeout.InfiniteTimeSpan, session.Token);
+                    }
                     if (!ICastProtocol.Supports(devices.ClockType))
                     {
                         Fault = $"Uhrtyp {devices.ClockType} wird vom Agenten noch nicht unterstützt";

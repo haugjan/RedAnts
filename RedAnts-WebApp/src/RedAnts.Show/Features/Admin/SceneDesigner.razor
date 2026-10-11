@@ -291,6 +291,8 @@
 
     private IReadOnlyList<OverlayTitle> Titles => Hall?.OverlayTitles ?? [];
 
+    private HallCapabilities? Offers => Hall?.Offers;
+
     protected override void OnParametersSet()
     {
         if (ReferenceEquals(_loadedFrom, Scenes)) return;
@@ -365,6 +367,10 @@
 
     private string? Problem(StepEdit step) => step.Action switch
     {
+        SceneActions.SoundPlay or SceneActions.SoundStop or SceneActions.SoundFade when Offers is { Sound: false } => "Diese Halle bietet keinen Sound an (Tab Hallen).",
+        SceneActions.LedStart or SceneActions.LedStop when Offers is { Led: false } => "Diese Halle bietet keine LED-Wand an (Tab Hallen).",
+        SceneActions.OverlayShow or SceneActions.OverlayHide when Offers is { Vmix: false } => "Diese Halle bietet kein vMix an (Tab Hallen).",
+        SceneActions.LightScene when Offers is { Light: false } => "Diese Halle bietet keine Lichtshow an (Tab Hallen).",
         SceneActions.OverlayShow when !Titles.Any(t => "title:" + t.Kind == step.Target) => "Dieser vMix-Titel ist in der gewählten Halle nicht konfiguriert.",
         SceneActions.LedStart or SceneActions.LedStop when !LedTemplates.Any(t => "led:" + t.Event == step.Target) => "Diese LED-Vorlage ist in der gewählten Halle nicht konfiguriert.",
         SceneActions.SoundPlay when !Sounds.Any(s => s.Target == step.Target) => "Dieser Musik-Befehl fehlt (Tab Musik).",

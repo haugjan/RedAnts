@@ -1,44 +1,29 @@
 @inherits HallTab
 @using RedAnts.Show.Features.Scenes
-@using RedAnts.Show.Features.States
-@inject GetShowStates.Handler StatesQuery
-@inject SaveShowStates.Handler StatesSave
 @inject GetScenes.Handler ScenesQuery
 
 <section class="sa-card">
-    <h2>Zustände <small>für alle Hallen</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    <h2>Zustände <small>fest im Code</small></h2>
     <p class="sa-hint">
-        Ein Zustand hat Werte und eine Quelle. Beobachtete Zustände meldet das Gerät (vMix, Uhr) oder die Bedienung,
+        Zustände sind Teil der Applikation und nicht einstellbar. Beobachtete Zustände meldet das Gerät (vMix, Uhr),
         gesetzte ändern nur Szenen. Deck-Tasten binden sich an einen Zustand, Szenen verändern ihn.
+        Eine Änderung an dieser Liste braucht eine neue Version der Applikation.
     </p>
     <table class="sa-table">
-        <thead><tr><th style="width:190px">Name</th><th style="width:150px">Kennung</th><th style="width:240px">Werte (mit Komma)</th><th style="width:140px">Quelle</th><th>Notiz</th><th style="width:40px"></th></tr></thead>
+        <thead><tr><th style="width:190px">Name</th><th style="width:150px">Kennung</th><th style="width:240px">Werte</th><th style="width:140px">Quelle</th><th>Notiz</th></tr></thead>
         <tbody>
-            @foreach (var state in _states)
+            @foreach (var state in DefaultStates.All)
             {
-                <tr @key="state">
-                    <td><input class="sa-input" @bind="state.Name" /></td>
-                    <td><input class="sa-input" @bind="state.Id" /></td>
-                    <td><input class="sa-input" @bind="state.Values" /></td>
-                    <td>
-                        <select class="sa-input" @bind="state.Source">
-                            @foreach (var source in StateSources.All)
-                            {
-                                <option value="@source">@source</option>
-                            }
-                        </select>
-                    </td>
-                    <td><input class="sa-input wide" @bind="state.Note" /></td>
-                    <td><button class="sa-btn small" @onclick="() => _states.Remove(state)">✕</button></td>
+                <tr @key="state.Id">
+                    <td>@state.Name</td>
+                    <td><code>@state.Id</code></td>
+                    <td>@string.Join(" · ", state.Values)</td>
+                    <td>@state.Source</td>
+                    <td>@state.Note</td>
                 </tr>
             }
         </tbody>
     </table>
-    <div class="sa-actions">
-        <button class="sa-btn small" @onclick="AddState">+ Zustand</button>
-        <button class="sa-btn small" @onclick="DefaultsStates">⟲ Standard</button>
-        <button class="sa-btn primary" @onclick="SaveStatesAsync">💾 Zustände speichern</button>
-    </div>
 
     <h3>Eingebaute Ableitung</h3>
     <p class="sa-hint">
@@ -49,7 +34,7 @@
 </section>
 
 <section class="sa-card">
-    <h2>Automatik <small>@(Hall?.Name ?? "keine Halle")</small></h2>
+    <h2>Automatik <small>@(Hall?.Name ?? "keine Halle")</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
     @if (Hall is null)
     {
         <p class="sa-hint">Keine Halle gewählt.</p>
@@ -65,7 +50,7 @@
                     <tr @key="rule">
                         <td>
                             <select class="sa-input" @bind="rule.StateId" @bind:after="Touch">
-                                @foreach (var state in _states)
+                                @foreach (var state in DefaultStates.All)
                                 {
                                     <option value="@state.Id">@state.Name</option>
                                 }
@@ -100,31 +85,6 @@
 </section>
 
 @code {
-    private sealed class StateEdit
-    {
-        public string Id = "";
-        public string Name = "";
-        public string Values = "";
-        public string Source = StateSources.Logical;
-        public string Note = "";
-
-        public static StateEdit From(ShowState state) => new()
-        {
-            Id = state.Id,
-            Name = state.Name,
-            Values = string.Join(", ", state.Values),
-            Source = state.Source,
-            Note = state.Note,
-        };
-
-        public ShowState ToState() => new(
-            Id.Trim(),
-            Name.Trim(),
-            Values.Split(',').Select(v => v.Trim()).Where(v => v.Length > 0).ToList(),
-            Source,
-            Note.Trim());
-    }
-
     private sealed class RuleEdit
     {
         public string StateId = "";
@@ -132,13 +92,11 @@
         public string SceneId = "";
     }
 
-    private List<StateEdit> _states = [];
     private List<RuleEdit> _rules = [];
     private IReadOnlyList<Scene> _scenes = [];
 
     protected override async Task OnInitializedAsync()
     {
-        _states = (await StatesQuery.HandleAsync(new GetShowStates.Query())).Select(StateEdit.From).ToList();
         _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
         await base.OnInitializedAsync();
     }
@@ -149,32 +107,22 @@
         return Task.CompletedTask;
     }
 
-    private IReadOnlyList<string> ValuesOf(string stateId) =>
-        _states.FirstOrDefault(s => s.Id == stateId)?.ToState().Values ?? [];
-
-    private void AddState() => _states.Add(new StateEdit { Id = "neu", Name = "Neuer Zustand", Values = "aus, an" });
-
-    private void DefaultsStates() => _states = DefaultStates.All.Select(StateEdit.From).ToList();
+    private static IReadOnlyList<string> ValuesOf(string stateId) =>
+        DefaultStates.All.FirstOrDefault(s => s.Id == stateId)?.Values ?? [];
 
     private void AddRule()
     {
-        var state = _states.FirstOrDefault();
+        var state = DefaultStates.All[0];
         _rules.Add(new RuleEdit
         {
-            StateId = state?.Id ?? "",
-            Value = state?.ToState().Values.LastOrDefault() ?? "",
+            StateId = state.Id,
+            Value = state.Values.Count > 1 ? state.Values[^1] : state.First,
             SceneId = _scenes.FirstOrDefault()?.Id ?? "",
         });
         Touch();
     }
 
     private void RemoveRule(RuleEdit rule) { _rules.Remove(rule); Touch(); }
-
-    private async Task SaveStatesAsync() => await Guarded(async () =>
-    {
-        await StatesSave.HandleAsync(new SaveShowStates.Command(_states.Select(s => s.ToState()).ToList()));
-        Notify($"{_states.Count} Zustände gespeichert.");
-    });
 
     private Task SaveRulesAsync() => SaveAsync(hall => hall with
     {

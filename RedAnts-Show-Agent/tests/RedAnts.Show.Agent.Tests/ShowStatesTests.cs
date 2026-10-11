@@ -6,20 +6,11 @@ namespace RedAnts.Show.Agent.Tests;
 
 public class ShowStatesTests
 {
-    private static readonly IReadOnlyList<ShowState> Defaults =
-    [
-        new(ShowStates.Overlay, "Einblender", ["aus", "an"], "beobachtet"),
-        new(ShowStates.Music, "Musik", ["aus", "läuft", "fade"], "beobachtet"),
-        new(ShowStates.Led, "LED", ["aus", "läuft"], "gesetzt"),
-        new(ShowStates.Sponsors, "Sponsoren-Loop", ["aus", "an"], "gesetzt"),
-        new(ShowStates.ClockRunning, "Uhr läuft", ["steht", "läuft"], "beobachtet"),
-    ];
-
     private static (ShowStates States, PayloadStore Store) Build(params AutomationRule[] rules)
     {
         var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
         var hall = Hall.Offline with { Id = "win4", Automation = rules };
-        store.Apply(new AgentPayload(hall, [], null, DateTimeOffset.Now, [], Defaults));
+        store.Apply(new AgentPayload(hall, [], null, DateTimeOffset.Now, []));
         return (new ShowStates(store, NullLogger<ShowStates>.Instance), store);
     }
 

@@ -17,11 +17,6 @@ public class ConfiguredDeckTests
         new("overlay-aus", "Einblender ausschalten", "", [new(SceneActions.StateSet, ShowStates.Overlay, Event: "aus")]),
     ];
 
-    private static readonly IReadOnlyList<ShowState> States =
-    [
-        new(ShowStates.Overlay, "Einblender", ["aus", "an"], "beobachtet"),
-    ];
-
     private static readonly IReadOnlyList<SoundCommand> Sounds =
     [
         new("tor", "Tor-Jingle", "#ff7c80", null, [new SoundTrack(SoundSource.Blob, "tor.mp3")]),
@@ -47,7 +42,7 @@ public class ConfiguredDeckTests
     {
         var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
         var hall = Hall.Offline with { Id = "win4", Decks = [Layout()] };
-        store.Apply(new AgentPayload(hall, Scenes, null, DateTimeOffset.Now, Sounds, States));
+        store.Apply(new AgentPayload(hall, Scenes, null, DateTimeOffset.Now, Sounds));
         var live = new LiveGame();
         var vmix = new VmixLink(store, live, NullLogger<VmixLink>.Instance);
         var led = new SednaLink(store, NullLogger<SednaLink>.Instance);
@@ -134,7 +129,7 @@ public class ConfiguredDeckTests
     public void Without_a_layout_the_built_in_deck_is_used()
     {
         var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
-        store.Apply(new AgentPayload(Hall.Offline with { Id = "win4" }, Scenes, null, DateTimeOffset.Now, Sounds, States));
+        store.Apply(new AgentPayload(Hall.Offline with { Id = "win4" }, Scenes, null, DateTimeOffset.Now, Sounds));
         var live = new LiveGame();
         var vmix = new VmixLink(store, live, NullLogger<VmixLink>.Instance);
         var led = new SednaLink(store, NullLogger<SednaLink>.Instance);

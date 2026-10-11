@@ -8,7 +8,7 @@ public sealed class SednaLink(PayloadStore payload, ILogger<SednaLink> log)
 {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(2);
 
-    public bool Configured => payload.Hall.Devices.SednaHost.Length > 0;
+    public bool Configured => payload.Hall.Offers.Led && payload.Hall.Devices.SednaHost.Length > 0;
 
     public bool Connected { get; private set; }
 
@@ -19,6 +19,7 @@ public sealed class SednaLink(PayloadStore payload, ILogger<SednaLink> log)
     public async Task SendAsync(string command, CancellationToken stop)
     {
         var devices = payload.Hall.Devices;
+        if (!payload.Hall.Offers.Led) throw new InvalidOperationException("Die LED-Wand ist für diese Halle nicht aktiviert");
         if (devices.SednaHost.Length == 0) throw new InvalidOperationException("Keine LED-Wand (sedna) konfiguriert");
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stop);

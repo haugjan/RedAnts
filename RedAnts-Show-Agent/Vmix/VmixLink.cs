@@ -18,7 +18,7 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
     CancellationTokenSource? _session;
     bool _refresh;
 
-    public bool Configured => payload.Hall.Devices.VmixHost.Length > 0;
+    public bool Configured => payload.Hall.Offers.Vmix && payload.Hall.Devices.VmixHost.Length > 0;
 
     public bool Connected => _connection?.Connected ?? false;
 
@@ -44,7 +44,7 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
                 _session = session;
                 var devices = payload.Hall.Devices;
 
-                if (devices.VmixHost.Length == 0)
+                if (!payload.Hall.Offers.Vmix || devices.VmixHost.Length == 0)
                 {
                     Fault = null;
                     try { await Task.Delay(Timeout.InfiniteTimeSpan, session.Token); }

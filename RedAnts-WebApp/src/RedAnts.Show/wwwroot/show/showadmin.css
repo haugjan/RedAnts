@@ -103,3 +103,35 @@ a { color: #8ab4f8; }
 .sd-effects { color: #8fd3ff; font-size: .8rem; margin: 0 0 10px; }
 .sd-effect { font-size: .72rem; color: #8fd3ff; background: #0f1115; border: 1px solid #2b3038; border-radius: 999px; padding: 2px 8px; }
 .sd-step.locked { opacity: .85; }
+
+.sa-music { display: grid; grid-template-columns: 230px minmax(320px, 1fr) minmax(360px, 1.2fr); gap: 16px; align-items: start; }
+.sa-music aside h3:first-child { margin-top: 0; }
+.sa-songeditor { background: #171a1f; border: 1px solid #2b3038; border-radius: 10px; padding: 12px 14px; }
+.sa-songs { display: flex; flex-direction: column; gap: 4px; }
+.sa-song { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+.sa-song:hover { background: #242830; }
+.sa-song.active { background: #242830; border-color: #3a3f47; }
+.sa-song-n { color: #6c757d; font-size: .8rem; text-align: center; }
+.sa-song-name { display: flex; flex-direction: column; }
+.sa-song-name small { color: #9aa4ad; font-size: .72rem; }
+.sa-song-ops { display: flex; gap: 4px; }
+.sa-choice { display: inline-flex; gap: 0; border: 1px solid #3a3f47; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+.sa-choice button { background: #1b1e24; color: #9aa4ad; border: 0; padding: 6px 12px; cursor: pointer; font-size: .85rem; }
+.sa-choice button.active { background: #2b3038; color: #e9edf1; }
+.sa-drop { display: block; border: 1px dashed #3a3f47; border-radius: 10px; padding: 12px; text-align: center; color: #9aa4ad; font-size: .85rem; margin-bottom: 10px; cursor: pointer; }
+.sa-drop input { display: block; margin: 6px auto 0; color: #9aa4ad; font-size: .8rem; }
+.sa-full { display: block; font-size: .8rem; color: #9aa4ad; margin-bottom: 8px; }
+.sa-timeline { margin: 10px 0; }
+.sa-tl-track { position: relative; height: 30px; background: #0f1115; border: 1px solid #3a3f47; border-radius: 8px; overflow: hidden; }
+.sa-tl-sel { position: absolute; top: 0; bottom: 0; background: rgba(46, 158, 79, .25); }
+.sa-tl-mark { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; }
+.sa-tl-mark.start { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, .8); }
+.sa-tl-mark.end { background: #ff5069; box-shadow: 0 0 6px rgba(255, 80, 105, .8); }
+.sa-tl-times { display: flex; justify-content: space-between; font-size: .72rem; color: #9aa4ad; margin-top: 4px; }
+.sa-cue { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 8px; }
+.sa-cue label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: #9aa4ad; }
+.sa-cue .sa-input { width: 160px; margin: 0; }
+.sa-nudge { display: flex; gap: 4px; }
+
+.sa-offer { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0 4px; }
+.sa-offer .sa-check { background: #1b1b22; border: 1px solid #2c2c36; border-radius: 6px; padding: 6px 12px; }

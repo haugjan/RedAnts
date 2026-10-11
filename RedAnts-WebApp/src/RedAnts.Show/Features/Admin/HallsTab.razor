@@ -33,20 +33,56 @@
                     <label>Name <input class="sa-input" @bind="_name" @bind:after="Touch" /></label>
                     <label>Team-ID swissunihockey <input class="sa-input" type="number" @bind="_teamId" @bind:after="Touch" /></label>
                     <label>Saison (Startjahr) <input class="sa-input" type="number" @bind="_season" @bind:after="Touch" /></label>
-                    <label>vMix Host <input class="sa-input" @bind="_vmixHost" @bind:after="Touch" placeholder="192.168.1.20" /></label>
-                    <label>vMix Port <input class="sa-input" type="number" @bind="_vmixPort" @bind:after="Touch" /></label>
-                    <label>sedna Host (LED-Wand) <input class="sa-input" @bind="_sednaHost" @bind:after="Touch" /></label>
-                    <label>sedna Port <input class="sa-input" type="number" @bind="_sednaPort" @bind:after="Touch" /></label>
-                    <label>Uhr
-                        <select class="sa-input" @bind="_clockType" @bind:after="Touch">
-                            <option value="iCast">iCast (UDP)</option>
-                            <option value="Bodet">Bodet ScorePad (TCP)</option>
-                            <option value="None">keine</option>
-                        </select>
-                    </label>
-                    <label>Uhr-Port <input class="sa-input" type="number" @bind="_clockPort" @bind:after="Touch" /></label>
-                    <label>Bilderordner auf dem vMix-Rechner <input class="sa-input" @bind="_imageFolder" @bind:after="Touch" placeholder="C:\Livestream\Bilder" /></label>
                 </div>
+
+                <h3>Angebot dieser Halle</h3>
+                <p class="sa-hint">
+                    Der Agent startet nur, was hier aktiv ist. Deck-Tasten und Szenen, die ein abgewähltes Gerät brauchen,
+                    bleiben leer beziehungsweise melden es bei der Ausführung.
+                </p>
+                <div class="sa-offer">
+                    <label class="sa-check"><input type="checkbox" @bind="_sound" @bind:after="Touch" /> Sound</label>
+                    <label class="sa-check"><input type="checkbox" @bind="_clock" @bind:after="Touch" /> Matchuhr</label>
+                    <label class="sa-check"><input type="checkbox" @bind="_vmix" @bind:after="Touch" /> vMix</label>
+                    <label class="sa-check"><input type="checkbox" @bind="_led" @bind:after="Touch" /> LED-Wand</label>
+                    <label class="sa-check"><input type="checkbox" @bind="_light" @bind:after="Touch" /> Lichtshow</label>
+                </div>
+
+                @if (_clock)
+                {
+                    <h3>Matchuhr</h3>
+                    <div class="sa-form">
+                        <label>Typ
+                            <select class="sa-input" @bind="_clockType" @bind:after="Touch">
+                                <option value="iCast">iCast (UDP)</option>
+                                <option value="Bodet">Bodet ScorePad (TCP)</option>
+                            </select>
+                        </label>
+                        <label>Port <input class="sa-input" type="number" @bind="_clockPort" @bind:after="Touch" /></label>
+                    </div>
+                }
+                @if (_vmix)
+                {
+                    <h3>vMix</h3>
+                    <div class="sa-form">
+                        <label>Host <input class="sa-input" @bind="_vmixHost" @bind:after="Touch" placeholder="192.168.1.20" /></label>
+                        <label>Port <input class="sa-input" type="number" @bind="_vmixPort" @bind:after="Touch" /></label>
+                        <label>Bilderordner auf dem vMix-Rechner <input class="sa-input" @bind="_imageFolder" @bind:after="Touch" placeholder="C:\Livestream\Bilder" /></label>
+                    </div>
+                }
+                @if (_led)
+                {
+                    <h3>LED-Wand</h3>
+                    <div class="sa-form">
+                        <label>sedna Host <input class="sa-input" @bind="_sednaHost" @bind:after="Touch" /></label>
+                        <label>sedna Port <input class="sa-input" type="number" @bind="_sednaPort" @bind:after="Touch" /></label>
+                    </div>
+                }
+                @if (_light)
+                {
+                    <h3>Lichtshow</h3>
+                    <p class="sa-hint">Moving Heads sind erst als Zustand vorbereitet; es gibt noch kein Gerät zu konfigurieren.</p>
+                }
 
                 <h3>Agent</h3>
                 <p class="sa-hint">Hallen-ID <code>@Hall.Id</code>, Schlüssel <code>@Hall.AgentKey</code></p>
@@ -73,6 +109,7 @@
     private string _newId = "", _newName = "";
     private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _imageFolder = "", _shortcuts = "";
     private int _teamId, _season, _vmixPort, _sednaPort, _clockPort;
+    private bool _sound = true, _clock = true, _vmix = true, _led = true, _light;
 
     private string BaseUrl => new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
 
@@ -96,6 +133,11 @@
         _clockPort = Hall.Devices.ClockPort;
         _imageFolder = Hall.Devices.ImageFolder;
         _shortcuts = string.Join("\n", Hall.Shortcuts);
+        _sound = Hall.Offers.Sound;
+        _clock = Hall.Offers.Clock;
+        _vmix = Hall.Offers.Vmix;
+        _led = Hall.Offers.Led;
+        _light = Hall.Offers.Light;
         return Task.CompletedTask;
     }
 
@@ -121,6 +163,7 @@
             ImageFolder = _imageFolder.Trim(),
         },
         Shortcuts = _shortcuts.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),
+        Offered = new HallCapabilities(_sound, _clock, _vmix, _led, _light),
     });
 
     private async Task CreateAsync() => await Guarded(async () =>

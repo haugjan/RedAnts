@@ -221,12 +221,38 @@ public sealed class Deck
             var row = (number - 1) / Columns;
             var col = (number - 1) % Columns;
             var key = layout.KeyAt(number);
-            if (key is null || key.Kind == DeckKeyKinds.Empty) { b.Empty(row, col); continue; }
+            if (key is null || key.Kind == DeckKeyKinds.Empty || !Offered(key)) { b.Empty(row, col); continue; }
             KeyOnMain(b, row, col, key);
         }
         if (layout.KeyAt(BackRow * Columns + BackCol + 1) is null) Back(b);
         if (layout.KeyAt(PanicRow * Columns + PanicCol + 1) is null) Panic(b);
         b.Highlight(_runner.Running, CActive);
+    }
+
+    bool Offered(DeckKey key)
+    {
+        var offers = _payload.Hall.Offers;
+        return key.Kind switch
+        {
+            DeckKeyKinds.Sound => offers.Sound,
+            DeckKeyKinds.State => StateOffered(key.StateId ?? ""),
+            DeckKeyKinds.Live => key.Live != "clock" || offers.Clock,
+            _ => true,
+        };
+    }
+
+    bool StateOffered(string stateId)
+    {
+        var offers = _payload.Hall.Offers;
+        return stateId switch
+        {
+            ShowStates.Music => offers.Sound,
+            ShowStates.Led or ShowStates.Sponsors => offers.Led,
+            ShowStates.Light => offers.Light,
+            ShowStates.Overlay => offers.Vmix,
+            ShowStates.ClockVisible or ShowStates.ClockRunning => offers.Clock && offers.Vmix,
+            _ => true,
+        };
     }
 
     void KeyOnMain(Builder b, int row, int col, DeckKey key)

@@ -10,8 +10,6 @@ using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Music.Infrastructure;
 using RedAnts.Show.Features.Scenes;
 using RedAnts.Show.Features.Scenes.Infrastructure;
-using RedAnts.Show.Features.States;
-using RedAnts.Show.Features.States.Infrastructure;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Infrastructure.Manifest;
 
@@ -30,7 +28,6 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddSingleton<ISwissUnihockeyGames, SwissUnihockeyGames>();
         builder.Services.AddSingleton<IScenes, StoredScenes>();
         builder.Services.AddSingleton<ISounds, StoredSounds>();
-        builder.Services.AddSingleton<IShowStates, StoredShowStates>();
         builder.Services.AddSingleton<IAgentConnections, AgentConnections>();
         builder.Services.AddSingleton<IAgentReports, AgentReports>();
         builder.Services.AddSingleton<IAgentChannel, AgentChannel>();
