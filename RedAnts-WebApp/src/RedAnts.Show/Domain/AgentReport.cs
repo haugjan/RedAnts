@@ -10,4 +10,5 @@ public static class AgentReportKinds
     public const string Overlay = "overlay";
     public const string Deck = "deck";
     public const string Log = "log";
+    public const string Sound = "sound";
 }

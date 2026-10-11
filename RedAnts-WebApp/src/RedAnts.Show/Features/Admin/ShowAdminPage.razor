@@ -1,4 +1,5 @@
 @using System.Text.Json
+@using RedAnts.Show.Features.Scenes
 @inject GetHalls.Handler HallsQuery
 @inject GetHall.Handler HallQuery
 @inject CreateHall.Handler HallCreation
@@ -7,6 +8,8 @@
 @inject DeleteHall.Handler HallDeletion
 @inject GetScenes.Handler ScenesQuery
 @inject SaveScenes.Handler ScenesSave
+@inject GetSoundTiles.Handler TilesQuery
+@inject RunScene.Handler SceneRun
 
 <div class="sa">
     <header class="sa-top">
@@ -57,6 +60,7 @@
                         </label>
                         <label>Uhr-Port <input class="sa-input" type="number" @bind="_hall.ClockPort" @bind:after="Touch" /></label>
                         <label>Bilderordner auf dem vMix-Rechner <input class="sa-input" @bind="_hall.ImageFolder" @bind:after="Touch" placeholder="C:\Livestream\Bilder" /></label>
+                        <label>DJ-Raum (wie im DJ-Board gewählt, leer = alle Boards) <input class="sa-input" @bind="_hall.DjRoom" @bind:after="Touch" placeholder="win4" /></label>
                     </div>
 
                     <h3>Agent</h3>
@@ -92,15 +96,7 @@
                 </section>
             }
 
-            <section class="sa-card">
-                <h2>Szenen (JSON)</h2>
-                <p class="sa-hint">Aktionen: @string.Join(", ", SceneActions.All)</p>
-                <textarea class="sa-input wide mono" rows="18" @bind="_scenesJson"></textarea>
-                <div class="sa-actions">
-                    <button class="sa-btn primary" @onclick="SaveScenesAsync">💾 Szenen speichern</button>
-                    <button class="sa-btn" @onclick="ResetScenes">⟲ Standard einfügen</button>
-                </div>
-            </section>
+            <SceneDesigner Scenes="_scenes" Hall="_hallSnapshot" HallName="@(_hall?.Name ?? "der Halle")" Tiles="_tiles" OnSave="SaveScenesAsync" OnRun="RunSceneAsync" />
         </main>
     </div>
 </div>
@@ -120,6 +116,7 @@
         public string ClockType = "iCast";
         public int ClockPort;
         public string ImageFolder = "";
+        public string DjRoom = "";
         public List<TemplateEdit> LedTemplates = [];
         public string ShortcutText = "";
         public string OverlayJson = "[]";
@@ -139,6 +136,7 @@
             ClockType = hall.Devices.ClockType,
             ClockPort = hall.Devices.ClockPort,
             ImageFolder = hall.Devices.ImageFolder,
+            DjRoom = hall.Devices.DjRoom,
             LedTemplates = hall.LedTemplates.Select(t => new TemplateEdit { Event = t.Event, Command = t.Command }).ToList(),
             ShortcutText = string.Join("\n", hall.Shortcuts),
             OverlayJson = JsonSerializer.Serialize(hall.OverlayTitles, ShowJson.Pretty),
@@ -147,7 +145,7 @@
 
         public Hall ToHall() => new(
             Id, Name, AgentKey, TeamId, Season,
-            new HallDevices(VmixHost.Trim(), VmixPort, SednaHost.Trim(), SednaPort, ClockType, ClockPort, ImageFolder.Trim()),
+            new HallDevices(VmixHost.Trim(), VmixPort, SednaHost.Trim(), SednaPort, ClockType, ClockPort, ImageFolder.Trim(), DjRoom.Trim()),
             LedTemplates.Where(t => t.Event.Trim().Length > 0).Select(t => new LedTemplate(t.Event.Trim(), t.Command.Trim())).ToList(),
             JsonSerializer.Deserialize<List<OverlayTitle>>(OverlayJson, ShowJson.Options) ?? [],
             ShortcutText.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),
@@ -162,10 +160,12 @@
 
     private IReadOnlyList<HallRow> _halls = [];
     private HallEdit? _hall;
+    private Hall? _hallSnapshot;
     private bool _dirty;
     private string _newId = "";
     private string _newName = "";
-    private string _scenesJson = "[]";
+    private IReadOnlyList<Scene> _scenes = [];
+    private IReadOnlyList<SoundTile> _tiles = [];
     private string? _status;
     private bool _statusIsError;
 
@@ -173,7 +173,8 @@
     {
         await ReloadHallsAsync();
         if (_halls.Count > 0) await SelectAsync(_halls[0].Id);
-        _scenesJson = JsonSerializer.Serialize(await ScenesQuery.HandleAsync(new GetScenes.Query()), ShowJson.Pretty);
+        _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
+        _tiles = await TilesQuery.HandleAsync(new GetSoundTiles.Query());
     }
 
     private async Task ReloadHallsAsync() => _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
@@ -181,6 +182,7 @@
     private async Task SelectAsync(string id)
     {
         var hall = await HallQuery.HandleAsync(new GetHall.Query(id));
+        _hallSnapshot = hall;
         _hall = hall is null ? null : HallEdit.From(hall);
         _dirty = false;
     }
@@ -207,6 +209,7 @@
         try { hall = _hall.ToHall(); }
         catch (JsonException ex) { throw new ValidationException("OverlayTitles", "vMix-Titel: ungültiges JSON (" + ex.Message + ")"); }
         var saved = await HallSave.HandleAsync(new SaveHall.Command(hall));
+        _hallSnapshot = saved;
         _hall = HallEdit.From(saved);
         _dirty = false;
         await ReloadHallsAsync();
@@ -226,20 +229,24 @@
         if (_hall is null) return;
         await HallDeletion.HandleAsync(new DeleteHall.Command(_hall.Id));
         _hall = null;
+        _hallSnapshot = null;
         await ReloadHallsAsync();
         Notify("Halle gelöscht.");
     });
 
-    private async Task SaveScenesAsync() => await Guarded(async () =>
+    private async Task SaveScenesAsync(IReadOnlyList<Scene> scenes) => await Guarded(async () =>
     {
-        List<Scene> scenes;
-        try { scenes = JsonSerializer.Deserialize<List<Scene>>(_scenesJson, ShowJson.Options) ?? []; }
-        catch (JsonException ex) { throw new ValidationException("Scenes", "Szenen: ungültiges JSON (" + ex.Message + ")"); }
         await ScenesSave.HandleAsync(new SaveScenes.Command(scenes));
-        Notify($"{scenes.Count} Szenen gespeichert.");
+        _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
+        Notify($"{scenes.Count} Szenen gespeichert; verbundene Agenten haben sie bereits.");
     });
 
-    private void ResetScenes() => _scenesJson = JsonSerializer.Serialize(DefaultScenes.All, ShowJson.Pretty);
+    private async Task RunSceneAsync(string sceneId) => await Guarded(async () =>
+    {
+        if (_hall is null) throw new DomainException("Zuerst eine Halle wählen.");
+        var sent = await SceneRun.HandleAsync(new RunScene.Command(_hall.Id, sceneId));
+        Notify(sent ? $"Szene {sceneId} an {_hall.Name} geschickt." : $"Kein Agent für {_hall.Name} verbunden.");
+    });
 
     private async Task Guarded(Func<Task> work)
     {

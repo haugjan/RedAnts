@@ -34,3 +34,30 @@ html, body { margin: 0; min-height: 100%; background: #141418; color: #e9edf1; f
 .sa-hint { color: #9aa4ad; font-size: .85rem; }
 .sa-hint code { background: #0f1115; padding: 2px 6px; border-radius: 4px; }
 a { color: #8ab4f8; }
+
+.sd h2 small { font-weight: normal; color: #9a9aa8; font-size: .8em; margin-left: 6px; }
+.sd-columns { display: grid; grid-template-columns: 260px 1fr; gap: 14px; align-items: start; }
+.sd-list { display: flex; flex-direction: column; gap: 4px; }
+.sd-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+.sd-item:hover { background: #24242e; }
+.sd-item.active { background: #24242e; border-color: #33333f; }
+.sd-item small { margin-left: auto; color: #9a9aa8; font-size: 11px; }
+.sd-side { width: 10px; height: 10px; border-radius: 50%; background: #666; flex: none; }
+.sd-side.home { background: #D02D38; }
+.sd-side.away { background: #2A6EBB; }
+.sd-head { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+.sd-head label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #9a9aa8; }
+.sd-spacer { flex: 1; }
+.sd-steps { display: flex; flex-direction: column; gap: 6px; }
+.sd-step { display: grid; grid-template-columns: 28px 220px 1fr auto; gap: 10px; align-items: center; background: #24242e; border: 1px solid #33333f; border-radius: 10px; padding: 8px 10px; }
+.sd-step.warn { border-color: #e0a400; }
+.sd-n { color: #9a9aa8; text-align: center; font-size: 12px; }
+.sd-args { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sd-args > span { font-size: 11px; color: #9a9aa8; }
+.sd-args em { color: #9a9aa8; font-size: 12px; }
+.sd-args .sa-input { width: auto; max-width: 340px; }
+.sd-args .sa-input.narrow { width: 90px; }
+.sd-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #cfcfe0; }
+.sd-ops { display: flex; gap: 4px; }
+.sd-json { margin-top: 12px; }
+.sd-json summary { cursor: pointer; color: #9a9aa8; font-size: 12px; }

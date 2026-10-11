@@ -1,0 +1,359 @@
+@using RedAnts.Show.Domain
+@using RedAnts.Show.Features.Scenes
+
+<section class="sa-card sd">
+    <h2>Szenen <small>für alle Hallen</small></h2>
+    <div class="sd-columns">
+        <aside class="sd-list">
+            @foreach (var scene in _scenes)
+            {
+                <div class="sd-item @(scene == _current ? "active" : "")" @onclick="() => _current = scene" @key="scene">
+                    <span class="sd-side @scene.Side"></span><span>@scene.Label</span><small>@scene.Id</small>
+                </div>
+            }
+            <div class="sa-actions">
+                <button class="sa-btn small" @onclick="AddScene">+ Neue Szene</button>
+                <button class="sa-btn small" @onclick="ResetDefaults">⟲ Standard</button>
+            </div>
+        </aside>
+        <div class="sd-editor">
+            @if (_current is null)
+            {
+                <p class="sa-hint">Keine Szene gewählt.</p>
+            }
+            else
+            {
+                <div class="sd-head">
+                    <label>Bezeichnung <input class="sa-input" @bind="_current.Label" /></label>
+                    <label>Kennung <input class="sa-input" @bind="_current.Id" /></label>
+                    <label>Seite
+                        <select class="sa-input" @bind="_current.Side">
+                            <option value="home">Heim</option>
+                            <option value="away">Gast</option>
+                            <option value="">neutral</option>
+                        </select>
+                    </label>
+                    <span class="sd-spacer"></span>
+                    <button class="sa-btn small" @onclick="() => OnRun.InvokeAsync(_current.Id)">▶ Jetzt in @HallName auslösen</button>
+                    <button class="sa-btn danger small" @onclick="RemoveCurrent">Löschen</button>
+                </div>
+                <div class="sd-steps">
+                    @for (var i = 0; i < _current.Steps.Count; i++)
+                    {
+                        var index = i;
+                        var step = _current.Steps[i];
+                        var problem = Problem(step);
+                        <div class="sd-step @(problem is not null ? "warn" : "")" title="@problem" @key="step">
+                            <span class="sd-n">@(index + 1)</span>
+                            <select class="sa-input" value="@step.Action" @onchange="e => ChangeAction(step, e.Value?.ToString() ?? SceneActions.Wait)">
+                                @foreach (var action in Actions)
+                                {
+                                    <option value="@action.Id">@action.Label</option>
+                                }
+                            </select>
+                            <div class="sd-args">
+                                @switch (step.Action)
+                                {
+                                    case SceneActions.SoundPlay:
+                                        <span>Kachel</span>
+                                        <select class="sa-input" @bind="step.Target">
+                                            <option value="">(keine Kachel)</option>
+                                            @foreach (var tile in Tiles)
+                                            {
+                                                <option value="@tile.Target">@tile.Display</option>
+                                            }
+                                        </select>
+                                        <em>spielt im DJ-Board</em>
+                                        break;
+                                    case SceneActions.SoundStop:
+                                        <em>stoppt alles im DJ-Board</em>
+                                        break;
+                                    case SceneActions.SoundFade:
+                                        <em>blendet die Musik im DJ-Board aus</em>
+                                        break;
+                                    case SceneActions.LedStart:
+                                    case SceneActions.LedStop:
+                                        <span>Vorlage</span>
+                                        <select class="sa-input" @bind="step.Target">
+                                            @foreach (var template in LedTemplates)
+                                            {
+                                                <option value="led:@template.Event">@template.Event</option>
+                                            }
+                                        </select>
+                                        <label class="sd-check"><input type="checkbox" @bind="step.Overlay" /> als Overlay</label>
+                                        @if (step.Action == SceneActions.LedStart)
+                                        {
+                                            <span>Einblenden s</span>
+                                            <input class="sa-input narrow" type="number" step="0.1" @bind="step.FadeIn" />
+                                        }
+                                        @if (LedCommand(step.Target) is { } command)
+                                        {
+                                            <em>@command</em>
+                                        }
+                                        break;
+                                    case SceneActions.OverlayShow:
+                                        <span>Titel</span>
+                                        <select class="sa-input" @bind="step.Target">
+                                            @foreach (var title in Titles)
+                                            {
+                                                <option value="title:@title.Kind">@title.Kind · @title.Input</option>
+                                            }
+                                        </select>
+                                        <span>Ereignis</span>
+                                        <select class="sa-input" @bind="step.Event">
+                                            <option value="">(aus Szene)</option>
+                                            @foreach (var ev in Events)
+                                            {
+                                                <option value="@ev">@ev</option>
+                                            }
+                                        </select>
+                                        break;
+                                    case SceneActions.OverlayHide:
+                                        <span>Titel</span>
+                                        <select class="sa-input" @bind="step.Target">
+                                            <option value="title:*">alle Einblender</option>
+                                            @foreach (var title in Titles)
+                                            {
+                                                <option value="title:@title.Kind">@title.Kind</option>
+                                            }
+                                        </select>
+                                        break;
+                                    case SceneActions.LightScene:
+                                        <span>Lichtszene</span>
+                                        <input class="sa-input" @bind="step.Target" />
+                                        <em>Moving Heads kommen später, der Agent überspringt den Schritt</em>
+                                        break;
+                                    case SceneActions.DeckContext:
+                                        <span>Seite</span>
+                                        <select class="sa-input" @bind="step.Target">
+                                            @foreach (var context in Contexts)
+                                            {
+                                                <option value="@context.Id">@context.Label</option>
+                                            }
+                                        </select>
+                                        break;
+                                    case SceneActions.PlayerPick:
+                                        <em>wartet, bis auf dem Streamdeck eine Spielerin gedrückt wird</em>
+                                        break;
+                                    case SceneActions.Wait:
+                                        <span>ms</span>
+                                        <input class="sa-input narrow" type="number" @bind="step.Ms" />
+                                        break;
+                                    case SceneActions.WaitScore:
+                                        <span>höchstens ms</span>
+                                        <input class="sa-input narrow" type="number" @bind="step.TimeoutMs" />
+                                        <em>geht nach Ablauf trotzdem weiter</em>
+                                        break;
+                                    case SceneActions.SceneRun:
+                                        <span>Szene</span>
+                                        <select class="sa-input" @bind="step.Target">
+                                            @foreach (var other in _scenes.Where(s => s != _current))
+                                            {
+                                                <option value="@other.Id">@other.Label</option>
+                                            }
+                                        </select>
+                                        break;
+                                }
+                            </div>
+                            <div class="sd-ops">
+                                <button class="sa-btn small" disabled="@(index == 0)" @onclick="() => Move(step, -1)">↑</button>
+                                <button class="sa-btn small" disabled="@(index == _current.Steps.Count - 1)" @onclick="() => Move(step, +1)">↓</button>
+                                <button class="sa-btn small" @onclick="() => _current.Steps.Remove(step)">✕</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="sa-actions">
+                    <button class="sa-btn small" @onclick="AddStep">+ Schritt</button>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="sa-actions">
+        <button class="sa-btn primary" @onclick="SaveAsync">💾 Szenen speichern</button>
+    </div>
+    <details class="sd-json">
+        <summary>Experten: JSON</summary>
+        <textarea class="sa-input wide mono" rows="10" readonly>@Json()</textarea>
+    </details>
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<Scene> Scenes { get; set; } = [];
+    [Parameter] public Hall? Hall { get; set; }
+    [Parameter] public string HallName { get; set; } = "der Halle";
+    [Parameter] public IReadOnlyList<SoundTile> Tiles { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyList<Scene>> OnSave { get; set; }
+    [Parameter] public EventCallback<string> OnRun { get; set; }
+
+    private sealed record ActionChoice(string Id, string Label);
+    private sealed record ContextChoice(string Id, string Label);
+
+    private static readonly ActionChoice[] Actions =
+    [
+        new(SceneActions.SoundPlay, "Sound abspielen"),
+        new(SceneActions.SoundStop, "Sound stoppen"),
+        new(SceneActions.SoundFade, "Sound ausblenden"),
+        new(SceneActions.LedStart, "LED-Playlist starten"),
+        new(SceneActions.LedStop, "LED-Playlist stoppen"),
+        new(SceneActions.OverlayShow, "Einblender zeigen"),
+        new(SceneActions.OverlayHide, "Einblender ausblenden"),
+        new(SceneActions.LightScene, "Lichtszene (später)"),
+        new(SceneActions.DeckContext, "Deck-Seite wechseln"),
+        new(SceneActions.PlayerPick, "Auf Spielerinnenwahl warten"),
+        new(SceneActions.Wait, "Warten"),
+        new(SceneActions.WaitScore, "Auf neuen Stand der Uhr warten"),
+        new(SceneActions.SceneRun, "Andere Szene ausführen"),
+    ];
+
+    private static readonly ContextChoice[] Contexts =
+    [
+        new("Main", "Startseite"), new("GoalHome", "Tor Heim"), new("GoalAway", "Tor Gast"),
+        new("PlayerHome", "Spielerwahl Heim"), new("PlayerAway", "Spielerwahl Gast"),
+        new("PenaltyHome", "Strafe Heim"), new("PenaltyAway", "Strafe Gast"),
+        new("Message", "Mitteilung"), new("ScoreHome", "Stand Heim"), new("ScoreAway", "Stand Gast"),
+    ];
+
+    private static readonly string[] Events =
+        ["goal", "owngoal", "penalty", "name", "bestplayer", "coach", "timeout", "lineup", "starting6", "commentary", "referee", "opener", "result", "message"];
+
+    private sealed class SceneEdit
+    {
+        public string Id = "";
+        public string Label = "";
+        public string Side = "";
+        public List<StepEdit> Steps = [];
+
+        public static SceneEdit From(Scene scene) => new()
+        {
+            Id = scene.Id,
+            Label = scene.Label,
+            Side = scene.Side,
+            Steps = scene.Steps.Select(StepEdit.From).ToList(),
+        };
+
+        public Scene ToScene() => new(Id.Trim(), Label.Trim(), Side, Steps.Select(s => s.ToStep()).ToList());
+    }
+
+    private sealed class StepEdit
+    {
+        public string Action = SceneActions.Wait;
+        public string? Target;
+        public int? Ms;
+        public int? TimeoutMs;
+        public bool Overlay;
+        public double? FadeIn;
+        public string? Event;
+
+        public static StepEdit From(SceneStep step) => new()
+        {
+            Action = step.Action,
+            Target = step.Target,
+            Ms = step.Ms,
+            TimeoutMs = step.TimeoutMs,
+            Overlay = step.Overlay,
+            FadeIn = step.FadeIn,
+            Event = step.Event,
+        };
+
+        public SceneStep ToStep() => new(
+            Action,
+            string.IsNullOrWhiteSpace(Target) ? null : Target.Trim(),
+            Ms,
+            TimeoutMs,
+            Overlay,
+            FadeIn,
+            string.IsNullOrWhiteSpace(Event) ? null : Event);
+    }
+
+    private List<SceneEdit> _scenes = [];
+    private SceneEdit? _current;
+    private IReadOnlyList<Scene>? _loadedFrom;
+
+    private IReadOnlyList<LedTemplate> LedTemplates => Hall?.LedTemplates ?? Domain.Hall.DefaultLedTemplates;
+    private IReadOnlyList<OverlayTitle> Titles => Hall?.OverlayTitles ?? [];
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_loadedFrom, Scenes)) return;
+        _loadedFrom = Scenes;
+        _scenes = Scenes.Select(SceneEdit.From).ToList();
+        _current = _scenes.FirstOrDefault(s => s.Id == _current?.Id) ?? _scenes.FirstOrDefault();
+    }
+
+    private void AddScene()
+    {
+        var scene = new SceneEdit { Id = $"neu-{_scenes.Count + 1}", Label = "Neue Szene" };
+        _scenes.Add(scene);
+        _current = scene;
+    }
+
+    private void RemoveCurrent()
+    {
+        if (_current is null) return;
+        _scenes.Remove(_current);
+        _current = _scenes.FirstOrDefault();
+    }
+
+    private void ResetDefaults()
+    {
+        _scenes = DefaultScenes.All.Select(SceneEdit.From).ToList();
+        _current = _scenes.FirstOrDefault();
+    }
+
+    private void AddStep() => _current?.Steps.Add(Default(SceneActions.Wait));
+
+    private void Move(StepEdit step, int delta)
+    {
+        if (_current is null) return;
+        var index = _current.Steps.IndexOf(step);
+        var target = index + delta;
+        if (index < 0 || target < 0 || target >= _current.Steps.Count) return;
+        _current.Steps.RemoveAt(index);
+        _current.Steps.Insert(target, step);
+    }
+
+    private void ChangeAction(StepEdit step, string action)
+    {
+        var fresh = Default(action);
+        step.Action = fresh.Action;
+        step.Target = fresh.Target;
+        step.Ms = fresh.Ms;
+        step.TimeoutMs = fresh.TimeoutMs;
+        step.Overlay = fresh.Overlay;
+        step.FadeIn = fresh.FadeIn;
+        step.Event = fresh.Event;
+    }
+
+    private StepEdit Default(string action) => action switch
+    {
+        SceneActions.SoundPlay => new() { Action = action, Target = Tiles.FirstOrDefault()?.Target },
+        SceneActions.SoundFade => new() { Action = action, Ms = 2000 },
+        SceneActions.LedStart => new() { Action = action, Target = "led:" + (LedTemplates.FirstOrDefault()?.Event ?? ""), Overlay = true },
+        SceneActions.LedStop => new() { Action = action, Target = "led:stopp" },
+        SceneActions.OverlayShow => new() { Action = action, Target = Titles.FirstOrDefault() is { } title ? "title:" + title.Kind : null },
+        SceneActions.OverlayHide => new() { Action = action, Target = "title:*" },
+        SceneActions.LightScene => new() { Action = action, Target = "light:normal" },
+        SceneActions.DeckContext => new() { Action = action, Target = "Main" },
+        SceneActions.Wait => new() { Action = action, Ms = 1000 },
+        SceneActions.WaitScore => new() { Action = action, TimeoutMs = 3000 },
+        SceneActions.SceneRun => new() { Action = action, Target = _scenes.FirstOrDefault(s => s != _current)?.Id },
+        _ => new() { Action = action },
+    };
+
+    private string? Problem(StepEdit step) => step.Action switch
+    {
+        SceneActions.OverlayShow when !Titles.Any(t => "title:" + t.Kind == step.Target) => "Dieser vMix-Titel ist in der gewählten Halle nicht konfiguriert.",
+        SceneActions.LedStart or SceneActions.LedStop when !LedTemplates.Any(t => "led:" + t.Event == step.Target) => "Diese LED-Vorlage ist in der gewählten Halle nicht konfiguriert.",
+        SceneActions.SoundPlay when string.IsNullOrEmpty(step.Target) => "Keine Kachel gewählt.",
+        _ => null,
+    };
+
+    private string? LedCommand(string? target) =>
+        LedTemplates.FirstOrDefault(t => "led:" + t.Event == target)?.Command;
+
+    private string Json() =>
+        System.Text.Json.JsonSerializer.Serialize(_scenes.Select(s => s.ToScene()).ToList(), ShowJson.Pretty);
+
+    private Task SaveAsync() => OnSave.InvokeAsync(_scenes.Select(s => s.ToScene()).ToList());
+}

@@ -11,7 +11,8 @@ public sealed record HallDevices(
     int SednaPort = 27182,
     string ClockType = "iCast",
     int ClockPort = 50085,
-    string ImageFolder = "");
+    string ImageFolder = "",
+    string DjRoom = "");
 
 public sealed record LedTemplate(string Event, string Command);
 

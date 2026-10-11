@@ -29,6 +29,8 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddSingleton<IAgentReports, AgentReports>();
         builder.Services.AddSingleton<IAgentChannel, AgentChannel>();
         builder.Services.AddScoped<AgentSync>();
+        builder.Services.AddScoped<ISoundPlayer, DJSoundPlayer>();
+        builder.Services.AddScoped<ISoundLibrary, DJSoundLibrary>();
         builder.Services.AddSingleton<IPackageManifestReader, ShowAdminManifestReader>();
         builder.Services.AddShowFeatures();
     }

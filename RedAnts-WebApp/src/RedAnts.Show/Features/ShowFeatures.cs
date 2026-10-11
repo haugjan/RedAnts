@@ -31,6 +31,7 @@ public static class ShowFeatures
         typeof(GetHallStatus.Handler),
         typeof(RunScene.Handler),
         typeof(PanicHall.Handler),
+        typeof(GetSoundTiles.Handler),
     ];
 
     public static IServiceCollection AddShowFeatures(this IServiceCollection services)

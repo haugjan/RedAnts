@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RedAnts.Kernel\RedAnts.Kernel.csproj" />
+    <ProjectReference Include="..\RedAnts.DJ\RedAnts.DJ.csproj" />
   </ItemGroup>
 
   <ItemGroup>
