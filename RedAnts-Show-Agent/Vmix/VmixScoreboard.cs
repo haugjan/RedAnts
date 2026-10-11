@@ -64,8 +64,12 @@ public static class VmixScoreboard
             ["awayName"] = awayName,
         };
 
-    public static string LogoPath(string folder, string team) =>
-        Path.Combine(folder, team.Replace(' ', '_').ToUpperInvariant() + ".png");
+    public static string LogoPath(string folder, string team)
+    {
+        var trimmed = folder.TrimEnd('/', '\\');
+        var separator = trimmed.Contains('/') && !trimmed.Contains('\\') ? "/" : "\\";
+        return trimmed + separator + team.Replace(' ', '_').ToUpperInvariant() + ".png";
+    }
 
     public static IEnumerable<(string Field, string Value)> Expand(string field, string value)
     {
