@@ -16,8 +16,13 @@ Music never runs on the agent: `sound.*` steps are reported to the cloud, the DJ
 ## Setup
 
 1. In the backoffice (`admin.redants.ch`, section Show) create the hall and copy its id and agent key.
-2. On the notebook run `Start-ShowAgent.ps1` (downloads the newest release into `%LOCALAPPDATA%\RedAnts\ShowAgent` and starts it). On the first start the agent asks for the cloud URL, hall id and key and stores them in `data\agent.json`; alternatively start with `--cloud https://show.redants.ch --hall <id> --key <key>`.
-3. `data\payload.json` keeps the last synced configuration, so the agent also starts without the cloud.
+2. Install it once:
+   - Windows: `Install-ShowAgent.ps1 -Cloud https://show.redants.ch -Hall <id> -Key <key> [-Autostart]` writes `data\agent.json`, puts a shortcut on the desktop (and into Autostart) and starts the agent.
+   - Linux: `./install-show-agent.sh --cloud https://show.redants.ch --hall <id> --key <key> [--service]`; `--service` registers a systemd user service (`systemctl --user status redants-show-agent`).
+3. Afterwards `Start-ShowAgent.ps1` (or `start-show-agent.sh`) is enough: it fetches the newest GitHub release into `%LOCALAPPDATA%\RedAnts\ShowAgent` (Linux: `~/.local/share/redants/show-agent`) and starts it. Without any configuration the agent asks for cloud URL, hall id and key on the console; `--cloud`, `--hall`, `--key` and `--deck-port` override them.
+4. `data\payload.json` keeps the last synced configuration, so the agent also starts without the cloud.
+
+Without a hall in reach, `RedAnts-Show-Simulator` stands in for the match clock, vMix and the LED wall.
 
 `http://localhost:5150/status` shows what the agent sees (connections, clock, scene).
 
