@@ -4,7 +4,7 @@ The hall agent is the local half of the Show module: a headless .NET service on 
 
 | Direction | What |
 |---|---|
-| Cloud → agent | `Sync` (hall settings, scenes, active game), `Run` (scene id plus arguments), `Panic` over the SignalR hub `/hubs/halle` |
+| Cloud → agent | `Sync` (hall settings, scenes, active game), `Run` (scene id plus arguments), `Panic`, `Press` (deck and key number) and `View` (the live deck of one layout, answered by the agent) over the SignalR hub `/hubs/halle` |
 | Agent → cloud | `Report(kind, json)`: `status` (lamps for vMix, Uhr, LED plus details), `score`, `clock`, `deck`, `overlay`, `sound`, `log` |
 | Agent → vMix | scoreboard fields from the hall clock, overlay titles for scenes (TCP 8099, `SetText`/`SetColor`/`SetImage`, `OverlayInput<n>In/Out`) |
 | Agent → LED wall | sedna presenter commands (TCP 27182), templates per event from the hall settings |
@@ -25,6 +25,15 @@ Music never runs on the agent: `sound.*` steps are reported to the cloud, the DJ
 Without a hall in reach, `RedAnts-Show-Simulator` stands in for the match clock, vMix and the LED wall.
 
 `http://localhost:5150/status` shows what the agent sees (connections, clock, scene).
+
+## Board and match clock
+
+The agent serves two pages of its own, both reachable from any browser in the hall network:
+
+- `/bord` is the deck as a web page and replaces a Streamdeck: one tab per configured layout, the same keys with the same icons, plus score, time, period and the state pills above them. A press runs exactly what the Streamdeck key would run. The cloud shows the same board at `show.redants.ch/bord`.
+- `/uhr` is a full screen match clock for a TV next to the court: teams, score, running time, period and the current penalties.
+
+A hall only starts what it offers. Sound, match clock (with its type), vMix, LED wall and light show are switched per hall in the backoffice; the agent skips the links it does not offer, refuses scene steps that need them and leaves the matching deck keys empty.
 
 ## Scenes
 
