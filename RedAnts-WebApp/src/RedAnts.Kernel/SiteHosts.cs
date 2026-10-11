@@ -76,7 +76,7 @@ public static class SiteHosts
         if (StartsWithSegment(path, "/scan") || StartsWithSegment(path, "/scanner-test"))
             return SiteSurface.Scan;
 
-        if (StartsWithSegment(path, "/dj") || StartsWithSegment(path, "/show"))
+        if (StartsWithSegment(path, "/dj") || StartsWithSegment(path, "/show") || StartsWithSegment(path, "/matchday"))
             return SiteSurface.DJ;
 
         return HasExtension(path) ? null : SiteSurface.Tickets;
@@ -90,7 +90,7 @@ public static class SiteHosts
 
     private static readonly string[] SharedPrefixes =
     [
-        "/_blazor", "/_framework", "/_content", "/App_Plugins", "/api", "/health", "/warmup",
+        "/_blazor", "/_framework", "/_content", "/App_Plugins", "/api", "/hubs", "/health", "/warmup",
         "/css", "/js", "/img", "/lib", "/media", "/favicons", "/icons", "/__gate",
     ];
 

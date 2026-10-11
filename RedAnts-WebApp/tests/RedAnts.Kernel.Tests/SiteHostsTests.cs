@@ -24,6 +24,7 @@ public class SiteHostsTests
     [InlineData("/dj", SiteSurface.DJ)]
     [InlineData("/dj/sound/x.mp3", SiteSurface.DJ)]
     [InlineData("/show", SiteSurface.DJ)]
+    [InlineData("/matchday", SiteSurface.DJ)]
     [InlineData("/cart", SiteSurface.Tickets)]
     [InlineData("/ticket/abc", SiteSurface.Tickets)]
     public void SurfaceOfPath_maps_surface_paths(string path, SiteSurface expected) =>
@@ -34,6 +35,7 @@ public class SiteHostsTests
     [InlineData("/_blazor/negotiate")]
     [InlineData("/_content/RedAnts.DJ/dj/soundboard.js")]
     [InlineData("/api/dj/state")]
+    [InlineData("/hubs/halle")]
     [InlineData("/health")]
     [InlineData("/media/1/logo.png")]
     [InlineData("/__gate")]
