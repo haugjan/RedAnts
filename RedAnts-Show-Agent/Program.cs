@@ -1,5 +1,6 @@
 using RedAnts.Show.Agent;
 using RedAnts.Show.Agent.Clock;
+using RedAnts.Show.Agent.Components;
 using RedAnts.Show.Agent.Cloud;
 using RedAnts.Show.Agent.Deck;
 using RedAnts.Show.Agent.Led;
@@ -26,7 +27,9 @@ builder.Logging.AddSimpleConsole(o =>
     o.TimestampFormat = "HH:mm:ss ";
 });
 builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+builder.WebHost.UseStaticWebAssets();
 
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddSingleton(config);
 builder.Services.AddSingleton<PayloadStore>();
 builder.Services.AddSingleton<LiveGame>();
@@ -44,6 +47,9 @@ builder.Services.AddSingleton<StatusReporter>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<StatusReporter>());
 
 var app = builder.Build();
+app.UseAntiforgery();
+app.MapStaticAssets();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 var deck = app.Services.GetRequiredService<Deck>();
 var reporter = app.Services.GetRequiredService<StatusReporter>();
 var runner = app.Services.GetRequiredService<SceneRunner>();
@@ -54,8 +60,8 @@ deck.SoundRequested += sound => reporter.ReportSound(sound);
 vmixLink.InputsRead += inputs => reporter.ReportInputs(inputs);
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
-app.MapGet("/", () => Results.Text(
-    $"RedAnts Show-Agent {AgentConfig.Version}\nHalle: {config.HallId}\nCloud: {config.CloudUrl}\nDeck: http://localhost:{config.DeckPort}/deck/view\nStatus: /status\n"));
+app.MapGet("/info", () => Results.Text(
+    $"RedAnts Show-Agent {AgentConfig.Version}\nHalle: {config.HallId}\nCloud: {config.CloudUrl}\nBord: http://localhost:{config.DeckPort}/bord\nMatchuhr: http://localhost:{config.DeckPort}/uhr\nStatus: /status\n"));
 
 app.MapGet("/status", () => Results.Json(reporter.Status(), PayloadJson.Options));
 
@@ -67,12 +73,21 @@ app.MapGet("/deck/view", async (long? since) =>
 
 app.MapGet("/deck/image", (string? key) => Results.Json(new { image = DeckIcons.FromKey(key ?? "") }));
 
+app.MapGet("/deck/icon", (string? key) =>
+{
+    var image = DeckIcons.FromKey(key ?? "");
+    return image is null
+        ? Results.NotFound()
+        : Results.File(Convert.FromBase64String(image), "image/png");
+});
+
 app.MapPost("/deck/press/{number:int}", async (int number) =>
 {
     var note = await deck.PressAsync(number);
     return Results.Json(new { ok = note is null, note });
 });
 
-Console.WriteLine($"RedAnts Show-Agent {AgentConfig.Version}: Halle {config.HallId}, Cloud {config.CloudUrl}, Deck auf http://localhost:{config.DeckPort}");
+Console.WriteLine($"RedAnts Show-Agent {AgentConfig.Version}: Halle {config.HallId}, Cloud {config.CloudUrl}");
+Console.WriteLine($"Bord http://localhost:{config.DeckPort}/bord, Matchuhr http://localhost:{config.DeckPort}/uhr");
 app.Run();
 return 0;

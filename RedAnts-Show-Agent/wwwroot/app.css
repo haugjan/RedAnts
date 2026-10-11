@@ -1,0 +1,41 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #0d0d11; color: #e9edf1; font-family: 'Segoe UI', Roboto, sans-serif; }
+a { color: #8ecaff; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; background: #16161d; border-bottom: 1px solid #272730; }
+.bar .hall { font-weight: 600; }
+.bar .score, .bar .time { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 700; }
+.bar .period { color: #9aa4ae; }
+.bar .spacer { flex: 1; }
+.bar .link { font-size: 13px; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #22222b; border: 1px solid #2f2f3a; color: #b9c2cb; }
+.pill.on { background: #7a1d1d; border-color: #a52a2a; color: #ffe9e9; }
+
+.decks { display: flex; gap: 6px; padding: 10px 14px 0; }
+.tab { background: #1b1b22; color: #cfd6dd; border: 1px solid #2c2c36; border-radius: 6px 6px 0 0; padding: 7px 14px; cursor: pointer; }
+.tab.active { background: #2a2a36; color: #fff; }
+
+main { padding: 12px 14px 24px; }
+main h1 { font-size: 15px; font-weight: 600; color: #9aa4ae; margin: 6px 0 10px; text-transform: none; }
+
+.board { display: grid; gap: 8px; max-width: 1280px; }
+.key { position: relative; aspect-ratio: 1 / 1; border: none; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; overflow: hidden; }
+.key:active { transform: scale(0.97); }
+.key.flat { cursor: default; opacity: 0.85; }
+.key img { width: 100%; height: 100%; object-fit: contain; }
+.key em { position: absolute; top: 3px; left: 5px; font-size: 9px; font-style: normal; opacity: 0.45; }
+.note { color: #ffb4b4; }
+.hint { color: #7d8691; font-size: 12px; margin-top: 16px; }
+
+.tv { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; background: #000; }
+.tv .teams { display: flex; align-items: center; gap: 4vw; font-size: 5vh; font-weight: 700; }
+.tv .team.home { color: #ff5a5a; }
+.tv .team.away { color: #9ec5ff; }
+.tv .result { display: flex; align-items: baseline; gap: 1vw; font-size: 9vh; }
+.tv .colon { opacity: 0.6; }
+.tv .digits { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.tv .big { font-size: 34vh; font-weight: 800; letter-spacing: 0.02em; }
+.tv .clock.dead .big { color: #4a4a52; }
+.tv .period { font-size: 4vh; color: #c9d2db; }
+.tv .penalties { display: flex; flex-wrap: wrap; gap: 2vw; font-size: 3vh; color: #ffd27a; }

@@ -132,15 +132,20 @@ public sealed class Deck
         await Task.WhenAny(wait, Task.Delay(timeout, stop));
     }
 
-    public object View()
+    public IReadOnlyList<DeckSlot> Slots(string deckId) => BuildDeck(deckId);
+
+    public object View() => View(DeckLayout.FieldDeck);
+
+    public object View(string deckId)
     {
         var context = Context;
+        var field = deckId == DeckLayout.FieldDeck;
         return new
         {
             version = Version,
-            context = context.ToString().ToLowerInvariant(),
-            title = Title(context),
-            slots = Build(context).Select(s => new
+            context = field ? context.ToString().ToLowerInvariant() : deckId,
+            title = field ? Title(context) : Layout(deckId)?.Name ?? deckId,
+            slots = BuildDeck(deckId).Select(s => new
             {
                 number = s.Number,
                 label = s.Label,
@@ -152,12 +157,15 @@ public sealed class Deck
         };
     }
 
-    public async Task<string?> PressAsync(int number)
+    public Task<string?> PressAsync(int number) => PressAsync(DeckLayout.FieldDeck, number);
+
+    public async Task<string?> PressAsync(string deckId, int number)
     {
-        if (number < 1 || number > SlotCount) return $"Taste {number} gibt es nicht";
-        var slot = Build(Context).FirstOrDefault(s => s.Number == number);
+        var slots = BuildDeck(deckId);
+        if (number < 1 || number > slots.Count) return $"Taste {number} gibt es nicht";
+        var slot = slots.FirstOrDefault(s => s.Number == number);
         if (slot is null || !slot.Pressable || slot.Press is null) return null;
-        _log.LogInformation("Deck {Context}/{Number}: {Label}", Context, number, slot.Label.Replace('\n', ' '));
+        _log.LogInformation("Deck {Deck}/{Number}: {Label}", deckId == DeckLayout.FieldDeck ? Context.ToString() : deckId, number, slot.Label.Replace('\n', ' '));
         try
         {
             await slot.Press();
@@ -184,6 +192,27 @@ public sealed class Deck
         DeckContext.ScoreAway => "Stand Gast",
         _ => "",
     };
+
+    public IReadOnlyList<string> Decks
+    {
+        get
+        {
+            var extra = (_payload.Hall.Decks ?? [])
+                .Select(d => d.Id)
+                .Where(id => id != DeckLayout.FieldDeck);
+            return new[] { DeckLayout.FieldDeck }.Concat(extra).ToList();
+        }
+    }
+
+    public DeckLayout? Layout(string deckId) => _payload.Hall.Deck(deckId);
+
+    List<DeckSlot> BuildDeck(string deckId)
+    {
+        if (deckId == DeckLayout.FieldDeck || Layout(deckId) is not { Keys.Count: > 0 } layout) return Build(Context);
+        var b = new Builder(layout.Columns, layout.Rows);
+        Configured(b, layout, pages: false);
+        return b.ToSlots();
+    }
 
     List<DeckSlot> Build(DeckContext context)
     {
@@ -214,18 +243,21 @@ public sealed class Deck
         BuiltIn(b);
     }
 
-    void Configured(Builder b, DeckLayout layout)
+    void Configured(Builder b, DeckLayout layout, bool pages = true)
     {
-        for (var number = 1; number <= Math.Min(layout.Count, SlotCount); number++)
+        for (var number = 1; number <= layout.Count; number++)
         {
-            var row = (number - 1) / Columns;
-            var col = (number - 1) % Columns;
+            var row = (number - 1) / layout.Columns;
+            var col = (number - 1) % layout.Columns;
             var key = layout.KeyAt(number);
             if (key is null || key.Kind == DeckKeyKinds.Empty || !Offered(key)) { b.Empty(row, col); continue; }
             KeyOnMain(b, row, col, key);
         }
-        if (layout.KeyAt(BackRow * Columns + BackCol + 1) is null) Back(b);
-        if (layout.KeyAt(PanicRow * Columns + PanicCol + 1) is null) Panic(b);
+        if (pages)
+        {
+            if (layout.KeyAt(BackRow * Columns + BackCol + 1) is null) Back(b);
+            if (layout.KeyAt(PanicRow * Columns + PanicCol + 1) is null) Panic(b);
+        }
         b.Highlight(_runner.Running, CActive);
     }
 
@@ -559,11 +591,13 @@ public sealed class Deck
         return string.Join('\n', lines.Select(l => Trunc(l, 14)));
     }
 
-    sealed class Builder
+    sealed class Builder(int columns = Columns, int rows = Rows)
     {
         readonly Dictionary<int, DeckSlot> _slots = [];
 
-        static int Number(int row, int col) => row * Columns + col + 1;
+        int Count => columns * rows;
+
+        int Number(int row, int col) => row * columns + col + 1;
 
         public void Action(int row, int col, string label, int bg, Func<Task> press, string? icon = null, string? sceneId = null, int? forceText = null)
         {
@@ -585,7 +619,7 @@ public sealed class Deck
 
         public void Fill(int color)
         {
-            for (var n = 1; n <= SlotCount; n++)
+            for (var n = 1; n <= Count; n++)
                 if (!_slots.ContainsKey(n)) _slots[n] = new DeckSlot(n, "", null, color, Fg(color), false, null, null);
         }
 
@@ -610,8 +644,8 @@ public sealed class Deck
 
         public List<DeckSlot> ToSlots()
         {
-            var all = new List<DeckSlot>(SlotCount);
-            for (var n = 1; n <= SlotCount; n++)
+            var all = new List<DeckSlot>(Count);
+            for (var n = 1; n <= Count; n++)
                 all.Add(_slots.TryGetValue(n, out var s) ? s : new DeckSlot(n, "", null, CEmpty, CWhite, false, null, null));
             return all;
         }

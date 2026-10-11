@@ -13,21 +13,21 @@ public sealed class ShowStates(PayloadStore payload, ILogger<ShowStates> log)
     public const string Break = "pause";
     public const string Light = "licht";
 
-    public sealed record ShowState(string Id, IReadOnlyList<string> Values)
+    public sealed record ShowState(string Id, string Name, IReadOnlyList<string> Values)
     {
         public string First => Values.Count > 0 ? Values[0] : "";
     }
 
     public static IReadOnlyList<ShowState> Known { get; } =
     [
-        new(Overlay, ["aus", "an"]),
-        new(ClockVisible, ["aus", "an"]),
-        new(ClockRunning, ["steht", "läuft"]),
-        new(Music, ["aus", "läuft", "fade"]),
-        new(Led, ["aus", "läuft"]),
-        new(Sponsors, ["aus", "an"]),
-        new(Break, ["aus", "an"]),
-        new(Light, ["normal", "tor", "pause"]),
+        new(Overlay, "Einblender", ["aus", "an"]),
+        new(ClockVisible, "Uhr sichtbar", ["aus", "an"]),
+        new(ClockRunning, "Uhr läuft", ["steht", "läuft"]),
+        new(Music, "Musik", ["aus", "läuft", "fade"]),
+        new(Led, "LED", ["aus", "läuft"]),
+        new(Sponsors, "Sponsoren-Loop", ["aus", "an"]),
+        new(Break, "Pause-Modus", ["aus", "an"]),
+        new(Light, "Licht", ["normal", "tor", "pause"]),
     ];
 
     public static ShowState? State(string? id) =>
