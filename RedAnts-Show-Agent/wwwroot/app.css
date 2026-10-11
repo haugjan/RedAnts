@@ -28,14 +28,40 @@ main h1 { font-size: 15px; font-weight: 600; color: #9aa4ae; margin: 6px 0 10px;
 .note { color: #ffb4b4; }
 .hint { color: #7d8691; font-size: 12px; margin-top: 16px; }
 
-.tv { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; background: #000; }
-.tv .teams { display: flex; align-items: center; gap: 4vw; font-size: 5vh; font-weight: 700; }
-.tv .team.home { color: #ff5a5a; }
-.tv .team.away { color: #9ec5ff; }
-.tv .result { display: flex; align-items: baseline; gap: 1vw; font-size: 9vh; }
-.tv .colon { opacity: 0.6; }
-.tv .digits { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.tv .big { font-size: 34vh; font-weight: 800; letter-spacing: 0.02em; }
-.tv .clock.dead .big { color: #4a4a52; }
-.tv .period { font-size: 4vh; color: #c9d2db; }
-.tv .penalties { display: flex; flex-wrap: wrap; gap: 2vw; font-size: 3vh; color: #ffd27a; }
+@font-face { font-family: 'Teko'; font-weight: 600; src: url(fonts/teko-600-latin.woff2) format('woff2'); }
+
+.screen {
+    position: fixed; inset: 0; background: #000; color: #fff; overflow: hidden; cursor: none;
+    font-family: 'Teko', 'Bahnschrift', 'Arial Narrow', sans-serif; font-weight: 600;
+}
+.screen * { box-sizing: border-box; margin: 0; padding: 0; }
+.screen .stage {
+    container-type: inline-size; width: min(100vw, 177.78vh); aspect-ratio: 16 / 9;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.screen .time { display: flex; justify-content: center; font-size: 30cqw; line-height: .8; }
+.screen .digit, .screen .sep { display: inline-block; text-align: center; }
+.screen .digit { width: 1ch; }
+.screen .sep { width: .48ch; }
+.screen .row { display: grid; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; gap: 3cqw; width: 100%; margin-top: 2cqw; font-size: 9cqw; font-variant-numeric: tabular-nums; }
+.screen .row img { height: 9cqw; width: 9cqw; object-fit: contain; }
+.screen .row .abbr { font-size: 5cqw; color: #aaa; width: 9cqw; text-align: center; }
+.screen img.ra { filter: drop-shadow(0 0 .25cqw rgba(255, 255, 255, .55)); }
+.screen .per { font-size: 3.5cqw; color: #888; letter-spacing: .6cqw; margin-top: 1cqw; min-height: 4.5cqw; }
+.screen.pause .time { color: #ffcf3f; }
+.screen .time.last-minute { color: #ff5a5a; }
+.screen .per.extra { color: #ffcf3f; }
+
+.screen .penalties { display: flex; flex-direction: column; gap: .4cqw; font-size: 4.5cqw; line-height: 1; color: #ffcf3f; }
+.screen .penalties.home { justify-self: end; align-items: flex-end; }
+.screen .penalties.guest { justify-self: start; align-items: flex-start; }
+.screen .penalty { display: flex; gap: 1.2cqw; align-items: baseline; }
+.screen .penalty .player { color: #aaa; font-size: 3.2cqw; }
+.screen .penalty .ptime { display: inline-flex; }
+
+.screen .status { position: fixed; right: 12px; bottom: 10px; font: 13px system-ui, sans-serif; color: #555; display: flex; align-items: center; gap: 6px; }
+.screen .status i { width: 8px; height: 8px; border-radius: 50%; background: #2a2; }
+.screen.offline .status { color: #e44; font-size: 16px; }
+.screen.offline .status i { background: #e44; }
+.screen.offline .stage { opacity: .35; }

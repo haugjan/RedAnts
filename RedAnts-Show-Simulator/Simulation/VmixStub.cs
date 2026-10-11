@@ -14,6 +14,7 @@ public sealed class VmixStub(EventLog log, TitleLibrary titles) : BackgroundServ
     private readonly object _gate = new();
     private readonly Dictionary<string, Dictionary<string, string>> _values = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, string> _overlays = new();
+    private readonly HashSet<string> _pinned = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<VmixFunctionCall> _calls = new();
 
     public int Port { get; set; } = 8099;
@@ -34,6 +35,30 @@ public sealed class VmixStub(EventLog log, TitleLibrary titles) : BackgroundServ
 
     public IReadOnlyDictionary<int, string> Overlays { get { lock (_gate) return new Dictionary<int, string>(_overlays); } }
 
+    public IReadOnlyCollection<string> Pinned { get { lock (_gate) return _pinned.ToList(); } }
+
+    public bool IsPinned(string input) { lock (_gate) return _pinned.Contains(input); }
+
+    public void Pin(string input, bool on)
+    {
+        lock (_gate)
+        {
+            if (on) _pinned.Add(input);
+            else _pinned.Remove(input);
+        }
+        Changed?.Invoke();
+    }
+
+    public IReadOnlyList<string> OnStage()
+    {
+        lock (_gate)
+        {
+            var stage = _pinned.Where(p => !_overlays.ContainsValue(p)).ToList();
+            stage.AddRange(_overlays.OrderBy(o => o.Key).Select(o => o.Value));
+            return stage;
+        }
+    }
+
     public IReadOnlyDictionary<string, string> ValuesOf(string input)
     {
         lock (_gate) return _values.TryGetValue(input, out var fields) ? new Dictionary<string, string>(fields) : new Dictionary<string, string>();
@@ -46,7 +71,7 @@ public sealed class VmixStub(EventLog log, TitleLibrary titles) : BackgroundServ
 
     public void ClearValues()
     {
-        lock (_gate) { _values.Clear(); _overlays.Clear(); _calls.Clear(); }
+        lock (_gate) { _values.Clear(); _overlays.Clear(); _calls.Clear(); _pinned.Clear(); }
         Changed?.Invoke();
     }
 
@@ -152,6 +177,7 @@ public sealed class VmixStub(EventLog log, TitleLibrary titles) : BackgroundServ
             {
                 if (!_values.TryGetValue(input, out var fields)) _values[input] = fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 fields[field] = value;
+                if (input.Contains("scoreboard", StringComparison.OrdinalIgnoreCase)) _pinned.Add(input);
             }
             _calls.Add(new VmixFunctionCall(DateTime.Now, function, input, field, value, raw));
             if (_calls.Count > 500) _calls.RemoveRange(0, _calls.Count - 500);

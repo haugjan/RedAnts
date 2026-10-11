@@ -4,15 +4,15 @@
 
 <div class="stage">
     <div class="pitch"></div>
-    @foreach (var channel in Vmix.Overlays.OrderBy(o => o.Key))
+    @foreach (var title in Vmix.OnStage())
     {
-        var layout = Titles.Of(channel.Value);
+        var layout = Titles.Of(title);
         if (layout is null)
         {
-            <div class="unknown" @key="channel.Key">Overlay @channel.Key: @channel.Value</div>
+            <div class="unknown" @key="title">@title</div>
             continue;
         }
-        var values = Vmix.ValuesOf(channel.Value);
+        var values = Vmix.ValuesOf(title);
         foreach (var element in layout.All)
         {
             if (Hidden(layout, values, element)) continue;
@@ -22,24 +22,24 @@
                 case "rect":
                     <div class="el rect"
                          style="@box;background:@(element.Fill ?? "transparent");border-radius:@(Pct(element.R, layout.Width));@Outline(element)"
-                         @key="@($"{channel.Key}-{element.Name}-rect")"></div>
+                         @key="@($"{title}-{element.Name}-rect")"></div>
                     break;
                 case "text":
                     <div class="el text"
                          style="@box;color:@(element.Fill ?? "#fff");font-size:@Cqw(Fitted(element, Value(values, element)), layout.Width);font-weight:@Weight(element.Weight);justify-content:@Align(element.Align);align-items:@Valign(element.Valign)"
-                         @key="@($"{channel.Key}-{element.Name}-text")">@Value(values, element)</div>
+                         @key="@($"{title}-{element.Name}-text")">@Value(values, element)</div>
                     break;
                 case "image":
                     var source = Titles.Image(element.Src, values.GetValueOrDefault(element.Name + ".Source"));
                     if (source is { Length: > 0 })
                     {
-                        <img class="el img" src="@source" alt="" style="@box" @key="@($"{channel.Key}-{element.Name}-img")" />
+                        <img class="el img" src="@source" alt="" style="@box" @key="@($"{title}-{element.Name}-img")" />
                     }
                     break;
             }
         }
     }
-    @if (Vmix.Overlays.Count == 0)
+    @if (Vmix.OnStage().Count == 0)
     {
         <div class="empty">kein Einblender aktiv</div>
     }

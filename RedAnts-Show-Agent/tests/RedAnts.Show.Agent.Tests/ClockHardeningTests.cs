@@ -64,6 +64,21 @@ public class ClockHardeningTests
     }
 
     [Fact]
+    public void The_last_minute_and_a_break_are_marked_for_the_tv_clock()
+    {
+        var running = ICastProtocol.Parse(HallTelegram)!;
+        Assert.False(running.IsBreak);
+        Assert.False(running.IsLastMinute);
+
+        var lastMinute = ICastProtocol.Parse("59.8;3;1;3;;;;;;;RA;GEG;GAME TIME")!;
+        Assert.True(lastMinute.IsLastMinute);
+
+        var pause = ICastProtocol.Parse("02:00;3;1;2;;;;;;;RA;GEG;INTERMISSION")!;
+        Assert.True(pause.IsBreak);
+        Assert.Equal("PAUSE", pause.PeriodLabel);
+    }
+
+    [Fact]
     public void The_scoreboard_also_shows_a_score_kept_by_hand()
     {
         var values = VmixScoreboard.Manual("2", "1", "RA", "GEG");

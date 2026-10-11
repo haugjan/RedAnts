@@ -70,7 +70,13 @@
         {
             var values = Vmix.ValuesOf(input.Title);
             <details class="input" open="@(values.Count > 0 && Vmix.Overlays.Values.Contains(input.Title))">
-                <summary>@input.Title <small>@values.Count Felder gesetzt</small></summary>
+                <summary>
+                    @input.Title <small>@values.Count Felder gesetzt</small>
+                    <label class="check" @onclick:stopPropagation="true">
+                        <input type="checkbox" checked="@Vmix.IsPinned(input.Title)" @onchange="e => Vmix.Pin(input.Title, (bool)(e.Value ?? false))" />
+                        auf der Bühne
+                    </label>
+                </summary>
                 <table>
                     @foreach (var field in input.TextFields.Concat(input.ImageFields))
                     {

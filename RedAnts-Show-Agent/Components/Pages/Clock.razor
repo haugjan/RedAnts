@@ -3,42 +3,49 @@
 @inject LiveGame Live
 @inject PayloadStore Payload
 
-<div class="tv">
-    <div class="teams">
-        <span class="team home">@Home</span>
-        <span class="result"><span class="digits">@Live.HomeScore</span><span class="colon">:</span><span class="digits">@Live.AwayScore</span></span>
-        <span class="team away">@Away</span>
-    </div>
-    <div class="clock @(Live.ClockLive ? "" : "dead")">
-        <span class="digits big">@(Live.ClockLive ? Live.Time : "--:--")</span>
-    </div>
-    <div class="period">@(Live.ClockLive ? Live.PeriodLabel : "keine Daten von der Matchuhr")</div>
-    @if (Penalties.Count > 0)
-    {
-        <div class="penalties">
-            @foreach (var line in Penalties)
-            {
-                <span @key="line">@line</span>
-            }
+<div class="screen @(State.IsBreak ? "pause" : "") @(Offline ? "offline" : "")">
+    <div class="stage">
+        <div class="time @(State.IsLastMinute && State.IsGameTime ? "last-minute" : "")"><ClockDigits Value="@State.Time" /></div>
+        <div class="row">
+            <PenaltyList Penalties="State.HomePenalties" Side="home" />
+            <TeamBadge Name="@HomeName" Logo="@HomeLogo" Class="ra" />
+            <span class="score">@State.HomeScore : @State.GuestScore</span>
+            <TeamBadge Name="@AwayName" Logo="@AwayLogo" />
+            <PenaltyList Penalties="State.GuestPenalties" Side="guest" />
         </div>
-    }
+        <div class="per @(State.Period is ClockState.Overtime or ClockState.Shootout && State.IsGameTime ? "extra" : "")">@State.PeriodLabel</div>
+    </div>
+    <div class="status"><i></i><span>@StatusText</span></div>
 </div>
 
 @code {
-    private Timer? _tick;
+    static readonly TimeSpan OfflineAfter = TimeSpan.FromSeconds(3);
 
-    private string Home => Payload.Game.Home.ShortName is { Length: > 0 } name ? name : "Heim";
+    private Timer? _watchdog;
 
-    private string Away => Payload.Game.Away.ShortName is { Length: > 0 } name ? name : "Gast";
+    private ClockState State => Live.Clock;
 
-    private IReadOnlyList<string> Penalties => Live.ClockLive
-        ? Live.Clock.HomePenalties.Select(p => $"{Home} {p.Player} {p.Time}")
-            .Concat(Live.Clock.GuestPenalties.Select(p => $"{Away} {p.Player} {p.Time}"))
-            .ToList()
-        : [];
+    private TimeSpan Age => DateTime.Now - State.Received;
+
+    private bool Offline => !State.HasData || Age > OfflineAfter;
+
+    private string StatusText => !State.HasData
+        ? "Warte auf Matchuhr …"
+        : Offline ? $"Keine Daten von der Matchuhr seit {Age.TotalSeconds:0} s" : "live";
+
+    private string HomeName => Name(Payload.Game.Home.ShortName, State.Home, "Heim");
+
+    private string AwayName => Name(Payload.Game.Away.ShortName, State.Guest, "Gast");
+
+    private string HomeLogo => Payload.Game.Home.LogoUrl ?? "";
+
+    private string AwayLogo => Payload.Game.Away.LogoUrl ?? "";
+
+    private static string Name(string fromGame, string fromClock, string fallback) =>
+        fromGame.Length > 0 ? fromGame : fromClock.Length > 0 ? fromClock : fallback;
 
     protected override void OnInitialized() =>
-        _tick = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
+        _watchdog = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
 
-    public void Dispose() => _tick?.Dispose();
+    public void Dispose() => _watchdog?.Dispose();
 }

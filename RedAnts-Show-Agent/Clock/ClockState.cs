@@ -28,6 +28,10 @@ public sealed record ClockState(
 
     public bool IsGameTime => Mode.Length == 0 || Mode.Equals(GameTime, StringComparison.OrdinalIgnoreCase);
 
+    public bool IsBreak => !IsGameTime;
+
+    public bool IsLastMinute => !Time.Contains(':');
+
     public string PeriodLabel
     {
         get

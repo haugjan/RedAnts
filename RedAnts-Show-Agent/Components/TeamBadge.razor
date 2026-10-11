@@ -1,0 +1,14 @@
+@if (Logo.Length > 0)
+{
+    <img class="@Class" src="@Logo" alt="@Name" />
+}
+else
+{
+    <span class="abbr">@Name</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public string Logo { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+}

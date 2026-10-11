@@ -31,7 +31,7 @@ Without a hall in reach, `RedAnts-Show-Simulator` stands in for the match clock,
 The agent serves two pages of its own, both reachable from any browser in the hall network:
 
 - `/bord` is the deck as a web page and replaces a Streamdeck: one tab per configured layout, the same keys with the same icons, plus score, time, period and the state pills above them. A press runs exactly what the Streamdeck key would run. The cloud shows the same board at `show.redants.ch/bord`.
-- `/uhr` is a full screen match clock for a TV next to the court: teams, score, running time, period and the current penalties.
+- `/uhr` is a full screen match clock for a TV next to the court, in the look of the retired GameClock app: Teko digits in fixed cells, the penalties of both sides with their player numbers, team logos or abbreviations around the score, the period label, amber during a break, red in the last minute and a lamp that says how long the clock has been silent.
 
 A hall only starts what it offers. Sound, match clock (with its type), vMix, LED wall and light show are switched per hall in the backoffice; the agent skips the links it does not offer, refuses scene steps that need them and leaves the matching deck keys empty.
 
