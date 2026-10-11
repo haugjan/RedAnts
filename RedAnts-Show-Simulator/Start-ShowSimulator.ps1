@@ -6,10 +6,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repo = "haugjan/RedAnts"
-$home = Join-Path $env:LOCALAPPDATA "RedAnts\ShowSimulator"
-$exe = Join-Path $home "RedAnts.Show.Simulator.exe"
-$releaseFile = Join-Path $home "release.txt"
-New-Item -ItemType Directory -Force $home | Out-Null
+$installDir = Join-Path $env:LOCALAPPDATA "RedAnts\ShowSimulator"
+$exe = Join-Path $installDir "RedAnts.Show.Simulator.exe"
+$releaseFile = Join-Path $installDir "release.txt"
+New-Item -ItemType Directory -Force $installDir | Out-Null
 
 if (-not $NoUpdate) {
     try {
@@ -23,7 +23,7 @@ if (-not $NoUpdate) {
             $zip = Join-Path $env:TEMP $asset.name
             Invoke-WebRequest $asset.browser_download_url -OutFile $zip -Headers @{ "User-Agent" = "RedAnts-ShowSimulator" }
             Get-Process RedAnts.Show.Simulator -ErrorAction SilentlyContinue | Stop-Process -Force
-            Expand-Archive $zip -DestinationPath $home -Force
+            Expand-Archive $zip -DestinationPath $installDir -Force
             Remove-Item $zip
         }
     }
@@ -33,7 +33,7 @@ if (-not $NoUpdate) {
 }
 
 if (-not (Test-Path $exe)) {
-    Write-Error "Kein Show-Simulator unter $home gefunden und kein Download möglich."
+    Write-Error "Kein Show-Simulator unter $installDir gefunden und kein Download möglich."
 }
 
 $url = "http://localhost:$Port"

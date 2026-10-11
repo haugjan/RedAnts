@@ -7,11 +7,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repo = "haugjan/RedAnts"
-$home = Join-Path $env:LOCALAPPDATA "RedAnts\ShowAgent"
-$exe = Join-Path $home "RedAnts.Show.Agent.exe"
-$releaseFile = Join-Path $home "release.txt"
+$installDir = Join-Path $env:LOCALAPPDATA "RedAnts\ShowAgent"
+$exe = Join-Path $installDir "RedAnts.Show.Agent.exe"
+$releaseFile = Join-Path $installDir "release.txt"
 
-New-Item -ItemType Directory -Force $home | Out-Null
+New-Item -ItemType Directory -Force $installDir | Out-Null
 
 function Get-LatestRelease {
     $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases?per_page=30" -Headers @{ "User-Agent" = "RedAnts-ShowAgent" }
@@ -29,7 +29,7 @@ if (-not $NoUpdate) {
             $zip = Join-Path $env:TEMP $asset.name
             Invoke-WebRequest $asset.browser_download_url -OutFile $zip -Headers @{ "User-Agent" = "RedAnts-ShowAgent" }
             Get-Process RedAnts.Show.Agent -ErrorAction SilentlyContinue | Stop-Process -Force
-            Expand-Archive $zip -DestinationPath $home -Force
+            Expand-Archive $zip -DestinationPath $installDir -Force
             Remove-Item $zip
         }
     }
@@ -39,7 +39,7 @@ if (-not $NoUpdate) {
 }
 
 if (-not (Test-Path $exe)) {
-    Write-Error "Kein Show-Agent unter $home gefunden und kein Download möglich."
+    Write-Error "Kein Show-Agent unter $installDir gefunden und kein Download möglich."
 }
 
 $arguments = @()
