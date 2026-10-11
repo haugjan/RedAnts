@@ -11,6 +11,7 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddSingleton<EventLog>();
 builder.Services.AddSingleton<ClockSender>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ClockSender>());
+builder.Services.AddSingleton<TitleLibrary>();
 builder.Services.AddSingleton<VmixStub>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<VmixStub>());
 builder.Services.AddSingleton<SednaStub>();

@@ -46,3 +46,13 @@ ul.log.tall { max-height: 38vh; overflow: auto; }
 ul.log code { color: #8fd3ff; }
 .src { padding: 0 5px; border-radius: 4px; margin-right: 4px; font-size: 10px; }
 .src.Uhr { background: #3a2a6a; } .src.vMix { background: #1E7B34; } .src.LED { background: #7a2a2a; } .src.Agent { background: #2A6EBB; }
+
+.stage { container-type: inline-size; position: relative; aspect-ratio: 16 / 9; width: 100%; background: #0b0f0c; border: 1px solid #2c2c36; border-radius: 6px; overflow: hidden; font-family: 'Hurme Geometric Sans 2', 'Segoe UI', sans-serif; }
+.stage .pitch { position: absolute; inset: 0; background: linear-gradient(180deg, #1d2a20 0%, #16201a 55%, #0e130f 100%); }
+.stage .el { position: absolute; }
+.stage .text { display: flex; white-space: pre; line-height: 1; overflow: hidden; }
+.stage .img { object-fit: contain; }
+.stage .empty, .stage .unknown { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #6b7a70; font-size: 3cqw; }
+
+@font-face { font-family: 'Hurme Geometric Sans 2'; font-weight: 700; src: url('titles/fonts/HurmeGeometricSans_No2_6_Bold.otf') format('opentype'); }
+@font-face { font-family: 'Hurme Geometric Sans 2'; font-weight: 900; src: url('titles/fonts/HurmeGeometricSans_No2_7_Black.otf') format('opentype'); }

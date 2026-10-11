@@ -9,7 +9,7 @@ public sealed record VmixInputDefinition(string Title, string Type, IReadOnlyLis
 
 public sealed record VmixFunctionCall(DateTime At, string Function, string Input, string Field, string Value, string Raw);
 
-public sealed class VmixStub(EventLog log) : BackgroundService
+public sealed class VmixStub(EventLog log, TitleLibrary titles) : BackgroundService
 {
     private readonly object _gate = new();
     private readonly Dictionary<string, Dictionary<string, string>> _values = new(StringComparer.OrdinalIgnoreCase);
@@ -22,14 +22,13 @@ public sealed class VmixStub(EventLog log) : BackgroundService
     public string? Fault { get; private set; }
     public long Functions { get; private set; }
 
-    public List<VmixInputDefinition> Inputs { get; } =
-    [
-        new("LUPL-SU_scoreboard_clock.gtzip", "GT", ["TxtClockTimeM10.Text", "TxtClockTimeM01.Text", "TxtClockTimeT.Text", "TxtClockTimeS10.Text", "TxtClockTimeS01.Text", "TxtClockPeriod.Text", "TxtHomeScore.Text", "TxtAwayScore.Text", "TxtHomeName.Text", "TxtAwayName.Text", "TxtHomePen1M10.Text", "TxtAwayPen1M10.Text"], ["ImgHomeTeam.Source", "ImgAwayTeam.Source"]),
-        new("GT0.4 Spielerin.gtzip", "GT", ["TxtName.Text", "TxtNumber.Text", "TxtTeam.Text", "TxtEvent.Text"], ["ImgPhoto.Source"]),
-        new("GT0.4 Coach.gtzip", "GT", ["TxtName.Text", "TxtTeam.Text"], []),
-        new("GT0.4 Resultat.gtzip", "GT", ["TxtHome.Text", "TxtAway.Text", "TxtScore.Text"], ["ImgHome.Source", "ImgAway.Source"]),
-        new("GT0.4 Mitteilung.gtzip", "GT", ["TxtMessage.Text"], []),
-    ];
+    public List<VmixInputDefinition> Inputs => titles.Titles
+        .Select(title => new VmixInputDefinition(
+            title,
+            "GT",
+            titles.Of(title)?.TextFields.Distinct().ToList() ?? [],
+            titles.Of(title)?.ImageFields.Distinct().ToList() ?? []))
+        .ToList();
 
     public event Action? Changed;
 

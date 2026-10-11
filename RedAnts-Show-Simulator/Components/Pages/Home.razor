@@ -56,6 +56,7 @@
 
     <section class="q">
         <h2>vMix <small>TCP-API-Stellvertreter auf Port @Vmix.Port · @(Vmix.Listening ? $"{Vmix.Clients} Verbindung(en)" : "nicht aktiv") @(Vmix.Fault is { Length: > 0 } vf ? "· " + vf : "")</small></h2>
+        <TitleStage />
         <h3>Overlays</h3>
         <div class="row">
             @for (var channel = 1; channel <= 4; channel++)
@@ -68,7 +69,7 @@
         @foreach (var input in Vmix.Inputs)
         {
             var values = Vmix.ValuesOf(input.Title);
-            <details class="input" open="@(values.Count > 0)">
+            <details class="input" open="@(values.Count > 0 && Vmix.Overlays.Values.Contains(input.Title))">
                 <summary>@input.Title <small>@values.Count Felder gesetzt</small></summary>
                 <table>
                     @foreach (var field in input.TextFields.Concat(input.ImageFields))
