@@ -84,6 +84,7 @@ public sealed class StatusReporter(
         var score = new { home = live.HomeScore, away = live.AwayScore, live = live.ClockLive };
         await SendIfChangedAsync("score", score, stop);
 
+        states.Set(ShowStates.ClockRunning, live.ClockRunning ? "läuft" : "steht", "Matchuhr");
         var state = live.Clock;
         var clockBody = new { time = live.Time, period = live.Period, periodLabel = live.PeriodLabel, mode = state.Mode, live = live.ClockLive };
         await SendIfChangedAsync("clock", clockBody, stop);
