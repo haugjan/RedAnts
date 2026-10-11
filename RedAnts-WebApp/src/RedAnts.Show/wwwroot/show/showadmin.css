@@ -187,3 +187,11 @@ a { color: var(--sa-accent); }
 .sd-effects { color: #1c5aa3; font-size: 0.8rem; margin: 0 0 0.6rem; }
 .sd-effect { font-size: 0.72rem; color: #1c5aa3; background: #eef6fc; border: 1px solid #d7e8f6; border-radius: 999px; padding: 0.1rem 0.5rem; }
 .sd-step.locked { opacity: 0.9; }
+
+.sa-icons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.6rem; }
+.sa-icon { width: 52px; height: 52px; padding: 4px; border: 1px solid var(--sa-border); border-radius: 3px; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--sa-muted); }
+.sa-icon img { max-width: 100%; max-height: 100%; }
+.sa-icon:hover { border-color: var(--sa-accent); }
+.sa-icon.on { border-color: var(--sa-accent); box-shadow: 0 0 0 2px rgba(93, 173, 226, 0.3); }
+.sa-key { flex-direction: column; gap: 2px; }
+.sa-key-icon { width: 46px; height: 46px; object-fit: contain; }

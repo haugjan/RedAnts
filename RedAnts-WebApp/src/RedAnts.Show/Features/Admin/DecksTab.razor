@@ -42,6 +42,10 @@
                             {
                                 <span class="sa-key-lock" title="@fixedLabel">🔒</span>
                             }
+                            @if (tile.Icon is { Length: > 0 } symbol)
+                            {
+                                <img class="sa-key-icon" src="@DeckIcons.FileOf(symbol)" alt="" />
+                            }
                             <span class="sa-key-lbl">@tile.Label</span>
                         </div>
                     }
@@ -70,7 +74,19 @@
                             </label>
                             <label>Beschriftung <input class="sa-input" @bind="current.Label" @bind:after="Touch" /></label>
                             <label>Farbe <input class="sa-input" type="color" @bind="current.Color" @bind:after="Touch" /></label>
-                            <label>Symbol <input class="sa-input" @bind="current.Icon" @bind:after="Touch" placeholder="ball, strafe, coach …" /></label>
+                        </div>
+
+                        <h3>Symbol</h3>
+                        <div class="sa-icons">
+                            <button type="button" class="sa-icon @(string.IsNullOrWhiteSpace(current.Icon) ? "on" : "")"
+                                    title="kein Symbol" @onclick="() => PickIcon(current, null)">ohne</button>
+                            @foreach (var icon in DeckIcons.All)
+                            {
+                                <button type="button" class="sa-icon @(current.Icon == icon ? "on" : "")"
+                                        title="@icon" @onclick="() => PickIcon(current, icon)" @key="icon">
+                                    <img src="@DeckIcons.FileOf(icon)" alt="@icon" />
+                                </button>
+                            }
                         </div>
 
                         @switch (current.Kind)
@@ -130,7 +146,13 @@
                                     <div class="sa-staterow" @key="row">
                                         <span class="sa-valuepill" style="background:@row.Color;color:@Foreground(row.Color)">@row.Value</span>
                                         <input class="sa-input" @bind="row.Label" @bind:after="Touch" placeholder="Beschriftung" />
-                                        <input class="sa-input" @bind="row.Icon" @bind:after="Touch" placeholder="Symbol" />
+                                        <select class="sa-input" @bind="row.Icon" @bind:after="Touch">
+                                            <option value="">ohne Symbol</option>
+                                            @foreach (var icon in DeckIcons.All)
+                                            {
+                                                <option value="@icon">@icon</option>
+                                            }
+                                        </select>
                                         <input class="sa-input" type="color" @bind="row.Color" @bind:after="Touch" />
                                         <select class="sa-input" @bind="row.Behaviour" @bind:after="Touch">
                                             <option value="@DeckStateRow.RunScene">Szene auslösen</option>
@@ -309,6 +331,12 @@
             Behaviour = DeckStateRow.RunScene,
             SceneId = _scenes.FirstOrDefault()?.Id,
         }).ToList();
+        Touch();
+    }
+
+    private void PickIcon(KeyEdit key, string? icon)
+    {
+        key.Icon = icon;
         Touch();
     }
 
