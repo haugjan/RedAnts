@@ -36,8 +36,9 @@ public class DeckTests
         var live = new LiveGame();
         var vmix = new VmixLink(payload, live, NullLogger<VmixLink>.Instance);
         var led = new SednaLink(payload, NullLogger<SednaLink>.Instance);
-        var runner = new SceneRunner(payload, live, vmix, led, NullLogger<SceneRunner>.Instance);
-        var deck = new Deck.Deck(payload, live, runner, vmix, led, NullLogger<Deck.Deck>.Instance);
+        var states = new ShowStates(payload, NullLogger<ShowStates>.Instance);
+        var runner = new SceneRunner(payload, live, states, vmix, led, NullLogger<SceneRunner>.Instance);
+        var deck = new Deck.Deck(payload, live, states, runner, vmix, led, NullLogger<Deck.Deck>.Instance);
         return (deck, runner, payload);
     }
 

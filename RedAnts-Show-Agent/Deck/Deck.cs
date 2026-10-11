@@ -45,6 +45,8 @@ public sealed class Deck
     const int CStateOn = 0xC0201C;
     const int CEmpty = 0x000000;
 
+    const string ClockOffLabel = "Uhr\n(keine Daten)";
+
     const int BackRow = 2, BackCol = 0;
     const int PanicRow = 3, PanicCol = 0;
     const int HeadRow = 3, HeadCol = 1;
@@ -53,6 +55,7 @@ public sealed class Deck
 
     readonly PayloadStore _payload;
     readonly LiveGame _live;
+    readonly ShowStates _states;
     readonly SceneRunner _runner;
     readonly VmixLink _vmix;
     readonly SednaLink _led;
@@ -61,10 +64,11 @@ public sealed class Deck
     TaskCompletionSource<bool> _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     string _shown = "";
 
-    public Deck(PayloadStore payload, LiveGame live, SceneRunner runner, VmixLink vmix, SednaLink led, ILogger<Deck> log)
+    public Deck(PayloadStore payload, LiveGame live, ShowStates states, SceneRunner runner, VmixLink vmix, SednaLink led, ILogger<Deck> log)
     {
         _payload = payload;
         _live = live;
+        _states = states;
         _runner = runner;
         _vmix = vmix;
         _led = led;
@@ -74,7 +78,10 @@ public sealed class Deck
         runner.ContextRequested += SetContext;
         runner.Reported += (_, _) => Bump();
         live.Changed += OnLiveChanged;
+        states.Changed += Bump;
     }
+
+    public event Action<SoundCommand>? SoundRequested;
 
     public long Version { get; private set; } = 1;
 
@@ -198,6 +205,109 @@ public sealed class Deck
     }
 
     void Main(Builder b)
+    {
+        if (_payload.Hall.Deck(DeckLayout.FieldDeck) is { Keys.Count: > 0 } layout)
+        {
+            Configured(b, layout);
+            return;
+        }
+        BuiltIn(b);
+    }
+
+    void Configured(Builder b, DeckLayout layout)
+    {
+        for (var number = 1; number <= Math.Min(layout.Count, SlotCount); number++)
+        {
+            var row = (number - 1) / Columns;
+            var col = (number - 1) % Columns;
+            var key = layout.KeyAt(number);
+            if (key is null || key.Kind == DeckKeyKinds.Empty) { b.Empty(row, col); continue; }
+            KeyOnMain(b, row, col, key);
+        }
+        if (layout.KeyAt(BackRow * Columns + BackCol + 1) is null) Back(b);
+        if (layout.KeyAt(PanicRow * Columns + PanicCol + 1) is null) Panic(b);
+        b.Highlight(_runner.Running, CActive);
+    }
+
+    void KeyOnMain(Builder b, int row, int col, DeckKey key)
+    {
+        var color = Rgb(key.Color);
+        switch (key.Kind)
+        {
+            case DeckKeyKinds.Back:
+                Back(b);
+                break;
+            case DeckKeyKinds.Scene:
+                if (_payload.Scene(key.SceneId ?? "") is null) b.Label(row, col, key.Label, CNeutral);
+                else b.Action(row, col, key.Label, color, () => Run(key.SceneId!), key.Icon, key.SceneId);
+                break;
+            case DeckKeyKinds.Sound:
+                if (_payload.Sound(key.SoundId) is not { } sound) b.Label(row, col, key.Label, CNeutral);
+                else b.Action(row, col, key.Label.Length > 0 ? key.Label : sound.Label, color, () => PlaySound(sound), key.Icon);
+                break;
+            case DeckKeyKinds.Page:
+                b.Nav(row, col, key.Label, color, () => SetContext(key.Page ?? nameof(DeckContext.Main)), key.Icon);
+                break;
+            case DeckKeyKinds.Live:
+                LiveKey(b, row, col, key, color);
+                break;
+            case DeckKeyKinds.State:
+                StateKey(b, row, col, key);
+                break;
+            default:
+                b.Label(row, col, key.Label, color);
+                break;
+        }
+    }
+
+    void LiveKey(Builder b, int row, int col, DeckKey key, int color)
+    {
+        switch (key.Live)
+        {
+            case "score.home":
+                b.Nav(row, col, _live.HomeScore, color, () => SetContext(nameof(DeckContext.ScoreHome)));
+                break;
+            case "score.away":
+                b.Nav(row, col, _live.AwayScore, color, () => SetContext(nameof(DeckContext.ScoreAway)));
+                break;
+            case "clock":
+                b.Label(row, col, _live.ClockLive ? _live.Time : ClockOffLabel, _live.ClockLive ? CStateOff : CNeutral, forceText: CWhite);
+                break;
+            default:
+                b.Label(row, col, _live.PeriodLabel.Length > 0 ? _live.PeriodLabel : key.Label, color);
+                break;
+        }
+    }
+
+    void StateKey(Builder b, int row, int col, DeckKey key)
+    {
+        var value = _states.Value(key.StateId ?? "");
+        var rows = key.Rows ?? [];
+        var match = rows.FirstOrDefault(r => r.Value.Equals(value, StringComparison.OrdinalIgnoreCase)) ?? rows.FirstOrDefault();
+        if (match is null) { b.Label(row, col, key.Label, CNeutral); return; }
+        var color = Rgb(match.Color);
+        if (match.Behaviour != DeckStateRow.RunScene || match.SceneId is not { Length: > 0 } scene)
+        {
+            b.Label(row, col, match.Label, match.Behaviour == DeckStateRow.Locked ? CNeutral : color, forceText: CWhite);
+            return;
+        }
+        b.Action(row, col, match.Label, color, () => Run(scene), match.Icon, scene, forceText: CWhite);
+    }
+
+    Task PlaySound(SoundCommand sound)
+    {
+        _log.LogInformation("Musik {Label} angefordert", sound.Label);
+        SoundRequested?.Invoke(sound);
+        return Task.CompletedTask;
+    }
+
+    static int Rgb(string? color)
+    {
+        if (color is not { Length: 7 } hex || hex[0] != '#') return CNeutral;
+        return int.TryParse(hex[1..], System.Globalization.NumberStyles.HexNumber, null, out var value) ? value : CNeutral;
+    }
+
+    void BuiltIn(Builder b)
     {
         Scene(b, 0, 0, "Tor", CHeimBg, "tor-heim", DeckIcons.Tor);
         Scene(b, 0, 1, "Coach", CHeimBg, "coach-heim", DeckIcons.Coach);

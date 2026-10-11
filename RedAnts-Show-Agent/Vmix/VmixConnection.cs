@@ -32,6 +32,38 @@ public sealed class VmixConnection : IAsyncDisposable
         await _stream.FlushAsync(stop);
     }
 
+    public async Task<IReadOnlyList<string>> ReadInputsAsync(CancellationToken stop)
+    {
+        await SendAsync(["XML"], stop);
+        while (!stop.IsCancellationRequested)
+        {
+            var header = await ReadLineAsync(stop);
+            var parts = header.Split(' ', 2);
+            if (parts[0] != "XML") continue;
+            if (parts.Length < 2 || !int.TryParse(parts[1], out var length))
+                throw new InvalidOperationException($"vMix antwortet mit '{header}'");
+            var xml = System.Text.Encoding.UTF8.GetString(await ReadExactlyAsync(length, stop));
+            return System.Xml.Linq.XDocument.Parse(xml).Root?.Element("inputs")?.Elements("input")
+                .Select(i => i.Attribute("title")?.Value ?? "")
+                .Where(title => title.Length > 0)
+                .ToList() ?? [];
+        }
+        return [];
+    }
+
+    async Task<byte[]> ReadExactlyAsync(int length, CancellationToken stop)
+    {
+        var buffer = new byte[length];
+        var read = 0;
+        while (read < length)
+        {
+            var chunk = await _stream.ReadAsync(buffer.AsMemory(read), stop);
+            if (chunk == 0) throw new IOException("vMix hat die Verbindung geschlossen");
+            read += chunk;
+        }
+        return buffer;
+    }
+
     public async Task DrainAsync(CancellationToken stop)
     {
         while (!stop.IsCancellationRequested)

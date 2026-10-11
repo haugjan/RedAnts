@@ -9,6 +9,7 @@ public sealed class StatusReporter(
     CloudLink cloud,
     PayloadStore payload,
     LiveGame live,
+    ShowStates states,
     ClockFeed clock,
     VmixLink vmix,
     SednaLink led,
@@ -20,6 +21,12 @@ public sealed class StatusReporter(
 
     readonly Dictionary<string, string> _sent = [];
     DateTimeOffset _statusSentAt = DateTimeOffset.MinValue;
+    IReadOnlyList<string> _inputs = [];
+
+    public void ReportSound(SoundCommand sound) =>
+        _ = cloud.ReportAsync("sound", new { action = SceneActions.SoundPlay, target = SceneActions.SoundPrefix + sound.Id, sound = sound.Id, label = sound.Label, scene = "deck" }, CancellationToken.None);
+
+    public void ReportInputs(IReadOnlyList<string> inputs) => _inputs = inputs;
 
     public Dictionary<string, object?> Status() => new()
     {
@@ -38,6 +45,7 @@ public sealed class StatusReporter(
         ["clockReceived"] = clock.Received,
         ["ledFault"] = led.Fault,
         ["cloudFault"] = cloud.Fault,
+        ["states"] = states.All,
     };
 
     protected override async Task ExecuteAsync(CancellationToken stop)
@@ -72,6 +80,8 @@ public sealed class StatusReporter(
         await SendIfChangedAsync("clock", clockBody, stop);
 
         await SendIfChangedAsync("deck", new { context = deck.Context.ToString(), scene = runner.Running ?? "" }, stop);
+
+        if (_inputs.Count > 0) await SendIfChangedAsync("vmix", new { inputs = _inputs }, stop);
 
         var status = Status();
         var json = System.Text.Json.JsonSerializer.Serialize(status, PayloadJson.Options);

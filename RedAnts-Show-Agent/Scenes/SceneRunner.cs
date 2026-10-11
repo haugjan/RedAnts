@@ -4,7 +4,7 @@ using RedAnts.Show.Agent.Vmix;
 
 namespace RedAnts.Show.Agent.Scenes;
 
-public sealed class SceneRunner(PayloadStore payload, LiveGame live, VmixLink vmix, SednaLink led, ILogger<SceneRunner> log)
+public sealed class SceneRunner(PayloadStore payload, LiveGame live, ShowStates states, VmixLink vmix, SednaLink led, ILogger<SceneRunner> log)
 {
     public const string PanicScene = "panic";
     const string LedPrefix = "led:";
@@ -119,7 +119,11 @@ public sealed class SceneRunner(PayloadStore payload, LiveGame live, VmixLink vm
         foreach (var step in ctx.Scene.Steps)
         {
             stop.ThrowIfCancellationRequested();
-            try { await StepAsync(step, ctx, stop); }
+            try
+            {
+                await StepAsync(step, ctx, stop);
+                states.Apply(step, $"Szene {ctx.Scene.Label}");
+            }
             catch (OperationCanceledException) { throw; }
             catch (Exception e)
             {
@@ -135,9 +139,22 @@ public sealed class SceneRunner(PayloadStore payload, LiveGame live, VmixLink vm
         switch (step.Action)
         {
             case SceneActions.SoundPlay:
+            {
+                var target = step.Target ?? "";
+                var sound = payload.Sound(target.StartsWith(SceneActions.SoundPrefix, StringComparison.OrdinalIgnoreCase)
+                    ? target[SceneActions.SoundPrefix.Length..]
+                    : target);
+                if (sound is null) log.LogWarning("Musik-Befehl {Target} ist nicht konfiguriert", target);
+                Reported?.Invoke("sound", new { action = step.Action, target, sound = sound?.Id ?? "", label = sound?.Label ?? "", scene = ctx.Scene.Id });
+                break;
+            }
+
             case SceneActions.SoundStop:
             case SceneActions.SoundFade:
                 Reported?.Invoke("sound", new { action = step.Action, target = step.Target ?? "", scene = ctx.Scene.Id, ms = step.Ms });
+                break;
+
+            case SceneActions.StateSet:
                 break;
 
             case SceneActions.LedStart:

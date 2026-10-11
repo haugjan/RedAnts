@@ -26,6 +26,10 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
 
     public string? LiveTitle { get; private set; }
 
+    public IReadOnlyList<string> Inputs { get; private set; } = [];
+
+    public event Action<IReadOnlyList<string>>? InputsRead;
+
     public long Commands { get; private set; }
 
     protected override async Task ExecuteAsync(CancellationToken stop)
@@ -84,6 +88,17 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
         _sent.Clear();
         _refresh = true;
         log.LogInformation("vMix {Host}:{Port} verbunden", devices.VmixHost, devices.VmixPort);
+
+        try
+        {
+            Inputs = await connection.ReadInputsAsync(stop);
+            log.LogInformation("vMix meldet {Count} Inputs", Inputs.Count);
+            InputsRead?.Invoke(Inputs);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogWarning("vMix-Inputs nicht lesbar: {Message}", e.Message);
+        }
 
         using var session = CancellationTokenSource.CreateLinkedTokenSource(stop);
         var drain = Task.Run(async () =>

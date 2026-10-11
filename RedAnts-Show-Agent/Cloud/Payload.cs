@@ -25,6 +25,68 @@ public sealed record HallDevices(
 
 public sealed record LedTemplate(string Event, string Command);
 
+public sealed record AutomationRule(string StateId, string Value, string SceneId);
+
+public sealed record DeckStateRow(string Value, string Label, string? Icon, string Color, string Behaviour, string? SceneId)
+{
+    public const string RunScene = "szene";
+    public const string Locked = "gesperrt";
+}
+
+public sealed record DeckKey(
+    int Number,
+    string Kind,
+    string Label = "",
+    string Color = "#2b3038",
+    string? Icon = null,
+    string? SceneId = null,
+    string? SoundId = null,
+    string? Page = null,
+    string? Live = null,
+    string? StateId = null,
+    IReadOnlyList<DeckStateRow>? Rows = null);
+
+public static class DeckKeyKinds
+{
+    public const string Empty = "leer";
+    public const string Scene = "szene";
+    public const string Sound = "musik";
+    public const string Page = "seite";
+    public const string Live = "anzeige";
+    public const string State = "zustand";
+    public const string Back = "zurueck";
+}
+
+public sealed record DeckLayout(string Id, string Name, int Columns, int Rows, IReadOnlyList<DeckKey> Keys)
+{
+    public const string FieldDeck = "xl";
+    public const string MusicDeck = "mk2";
+
+    public int Count => Columns * Rows;
+
+    public DeckKey? KeyAt(int number) => Keys.FirstOrDefault(k => k.Number == number);
+}
+
+public sealed record ShowState(string Id, string Name, IReadOnlyList<string> Values, string Source, string Note = "")
+{
+    public string First => Values.Count > 0 ? Values[0] : "";
+}
+
+public enum SoundSource { Blob, Spotify }
+
+public sealed record SoundTrack(SoundSource Source, string Ref, string Title = "", string Artist = "", double StartSec = 0, double? DurationSec = null);
+
+public sealed record SoundCommand(
+    string Id,
+    string Label,
+    string Color,
+    string? Icon,
+    IReadOnlyList<SoundTrack> Tracks,
+    bool Random = false,
+    bool Loop = false,
+    int Volume = 100,
+    double FadeOutSec = 0);
+
 public sealed record OverlayTitle(string Kind, string Input, int Channel, IReadOnlyDictionary<string, string> Fields);
 
 public sealed record Hall(
@@ -36,9 +98,15 @@ public sealed record Hall(
     IReadOnlyList<LedTemplate> LedTemplates,
     IReadOnlyList<OverlayTitle> OverlayTitles,
     IReadOnlyList<string> Shortcuts,
-    string? ActiveGameId = null)
+    string? ActiveGameId = null,
+    IReadOnlyList<AutomationRule>? Automation = null,
+    IReadOnlyList<DeckLayout>? Decks = null)
 {
     public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], [], []);
+
+    public IReadOnlyList<AutomationRule> Rules => Automation ?? [];
+
+    public DeckLayout? Deck(string id) => Decks?.FirstOrDefault(d => d.Id == id);
 
     public string? LedCommand(string eventName) =>
         LedTemplates.FirstOrDefault(t => t.Event.Equals(eventName, StringComparison.OrdinalIgnoreCase))?.Command;
@@ -62,6 +130,8 @@ public static class SceneActions
     public const string Wait = "wait";
     public const string WaitScore = "wait.score";
     public const string SceneRun = "scene.run";
+    public const string StateSet = "state.set";
+    public const string SoundPrefix = "sound:";
 }
 
 public sealed record SceneStep(
@@ -125,4 +195,10 @@ public sealed record Game(
         side.Equals("away", StringComparison.OrdinalIgnoreCase) ? Away : Home;
 }
 
-public sealed record AgentPayload(Hall Hall, IReadOnlyList<Scene> Scenes, Game? Game, DateTimeOffset SentAt);
+public sealed record AgentPayload(
+    Hall Hall,
+    IReadOnlyList<Scene> Scenes,
+    Game? Game,
+    DateTimeOffset SentAt,
+    IReadOnlyList<SoundCommand>? Sounds = null,
+    IReadOnlyList<ShowState>? States = null);

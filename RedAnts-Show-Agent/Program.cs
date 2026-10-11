@@ -30,6 +30,7 @@ builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
 builder.Services.AddSingleton(config);
 builder.Services.AddSingleton<PayloadStore>();
 builder.Services.AddSingleton<LiveGame>();
+builder.Services.AddSingleton<ShowStates>();
 builder.Services.AddSingleton<SednaLink>();
 builder.Services.AddSingleton<VmixLink>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<VmixLink>());
@@ -45,6 +46,12 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<StatusReporter>())
 var app = builder.Build();
 var deck = app.Services.GetRequiredService<Deck>();
 var reporter = app.Services.GetRequiredService<StatusReporter>();
+var runner = app.Services.GetRequiredService<SceneRunner>();
+var states = app.Services.GetRequiredService<ShowStates>();
+var vmixLink = app.Services.GetRequiredService<VmixLink>();
+states.RuleTriggered += (sceneId, reason) => runner.Start(sceneId, new Dictionary<string, string>());
+deck.SoundRequested += sound => reporter.ReportSound(sound);
+vmixLink.InputsRead += inputs => reporter.ReportInputs(inputs);
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
 app.MapGet("/", () => Results.Text(

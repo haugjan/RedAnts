@@ -22,6 +22,16 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
 
     public IReadOnlyList<Scene> Scenes => Current.Scenes;
 
+    public IReadOnlyList<SoundCommand> Sounds => Current.Sounds ?? [];
+
+    public IReadOnlyList<ShowState> States => Current.States ?? [];
+
+    public SoundCommand? Sound(string? id) =>
+        id is { Length: > 0 } ? Sounds.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null;
+
+    public ShowState? State(string? id) =>
+        id is { Length: > 0 } ? States.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null;
+
     public bool Synced => Current.Hall.Id.Length > 0;
 
     public Scene? Scene(string id) =>
@@ -36,8 +46,8 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
             System.IO.File.WriteAllText(File, JsonSerializer.Serialize(payload, PayloadJson.Pretty));
         }
         catch (IOException e) { log.LogWarning("Konfiguration konnte nicht gesichert werden: {Message}", e.Message); }
-        log.LogInformation("Konfiguration übernommen: Halle {Hall}, {Scenes} Szenen, Spiel {Game}",
-            payload.Hall.Name, payload.Scenes.Count, payload.Game?.Title is { Length: > 0 } title ? title : "keines");
+        log.LogInformation("Konfiguration übernommen: Halle {Hall}, {Scenes} Szenen, {Sounds} Musik-Befehle, Spiel {Game}",
+            payload.Hall.Name, payload.Scenes.Count, payload.Sounds?.Count ?? 0, payload.Game?.Title is { Length: > 0 } title ? title : "keines");
         Changed?.Invoke();
     }
 
