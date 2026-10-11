@@ -11,7 +11,7 @@ public static class GetScenes
         public async Task<IReadOnlyList<Scene>> HandleAsync(Query query)
         {
             var stored = await scenes.GetAllAsync();
-            return stored.Count > 0 ? stored : DefaultScenes.All;
+            return DefaultScenes.WithSystem(stored.Count > 0 ? stored : DefaultScenes.All);
         }
     }
 }

@@ -37,6 +37,7 @@ public static class DJFeatures
         typeof(DeleteDJRoom.Handler),
         typeof(OpenDJSound.Handler),
         typeof(GetDJTiles.Handler),
+        typeof(GetSpotifyHits.Handler),
         typeof(SendDJCommand.Handler)
     ];
 

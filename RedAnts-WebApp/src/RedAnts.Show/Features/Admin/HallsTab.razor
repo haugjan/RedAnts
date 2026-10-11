@@ -1,0 +1,152 @@
+@inherits HallTab
+@inject GetHalls.Handler HallsQuery
+@inject CreateHall.Handler HallCreation
+@inject RenewAgentKey.Handler KeyRenewal
+@inject DeleteHall.Handler HallDeletion
+
+<section class="sa-card">
+    <h2>Hallen <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    <div class="sa-columns">
+        <aside>
+            <ul class="sa-list">
+                @foreach (var row in _halls)
+                {
+                    <li class="@(row.Id == Hall?.Id ? "active" : "")" @onclick="() => State.SelectedHallId = row.Id">
+                        <span class="sa-lamp @(row.AgentConnected ? "on" : "off")"></span>@row.Name <small>@row.Id</small>
+                    </li>
+                }
+            </ul>
+            <h3>Neue Halle</h3>
+            <input class="sa-input" placeholder="Kennung, z.B. win4" @bind="_newId" />
+            <input class="sa-input" placeholder="Name" @bind="_newName" />
+            <button class="sa-btn" @onclick="CreateAsync">Anlegen</button>
+        </aside>
+
+        <div>
+            @if (Hall is null)
+            {
+                <p class="sa-hint">Keine Halle gewählt. Links eine anlegen.</p>
+            }
+            else
+            {
+                <div class="sa-form">
+                    <label>Name <input class="sa-input" @bind="_name" @bind:after="Touch" /></label>
+                    <label>Team-ID swissunihockey <input class="sa-input" type="number" @bind="_teamId" @bind:after="Touch" /></label>
+                    <label>Saison (Startjahr) <input class="sa-input" type="number" @bind="_season" @bind:after="Touch" /></label>
+                    <label>vMix Host <input class="sa-input" @bind="_vmixHost" @bind:after="Touch" placeholder="192.168.1.20" /></label>
+                    <label>vMix Port <input class="sa-input" type="number" @bind="_vmixPort" @bind:after="Touch" /></label>
+                    <label>sedna Host (LED-Wand) <input class="sa-input" @bind="_sednaHost" @bind:after="Touch" /></label>
+                    <label>sedna Port <input class="sa-input" type="number" @bind="_sednaPort" @bind:after="Touch" /></label>
+                    <label>Uhr
+                        <select class="sa-input" @bind="_clockType" @bind:after="Touch">
+                            <option value="iCast">iCast (UDP)</option>
+                            <option value="Bodet">Bodet ScorePad (TCP)</option>
+                            <option value="None">keine</option>
+                        </select>
+                    </label>
+                    <label>Uhr-Port <input class="sa-input" type="number" @bind="_clockPort" @bind:after="Touch" /></label>
+                    <label>Bilderordner auf dem vMix-Rechner <input class="sa-input" @bind="_imageFolder" @bind:after="Touch" placeholder="C:\Livestream\Bilder" /></label>
+                </div>
+
+                <h3>Agent</h3>
+                <p class="sa-hint">Hallen-ID <code>@Hall.Id</code>, Schlüssel <code>@Hall.AgentKey</code></p>
+                <p class="sa-hint">Installation: <code>Install-ShowAgent.ps1 -Cloud @BaseUrl -Hall @Hall.Id -Key @Hall.AgentKey</code></p>
+                <button class="sa-btn" @onclick="RenewKeyAsync">Schlüssel erneuern</button>
+
+                <h3>Shortcut-Texte für Mitteilungen (eine Zeile je Text)</h3>
+                <textarea class="sa-input wide" rows="5" @bind="_shortcuts" @bind:after="Touch"></textarea>
+
+                <div class="sa-actions">
+                    <button class="sa-btn primary" @onclick="SaveFormAsync" disabled="@(!Dirty)">💾 Halle speichern</button>
+                    <button class="sa-btn danger" @onclick="DeleteAsync">Halle löschen</button>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public EventCallback OnHallsChanged { get; set; }
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private IReadOnlyList<HallRow> _halls = [];
+    private string _newId = "", _newName = "";
+    private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _imageFolder = "", _shortcuts = "";
+    private int _teamId, _season, _vmixPort, _sednaPort, _clockPort;
+
+    private string BaseUrl => new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await ReloadListAsync();
+    }
+
+    protected override Task OnHallLoadedAsync()
+    {
+        if (Hall is null) return Task.CompletedTask;
+        _name = Hall.Name;
+        _teamId = Hall.TeamId;
+        _season = Hall.Season;
+        _vmixHost = Hall.Devices.VmixHost;
+        _vmixPort = Hall.Devices.VmixPort;
+        _sednaHost = Hall.Devices.SednaHost;
+        _sednaPort = Hall.Devices.SednaPort;
+        _clockType = Hall.Devices.ClockType;
+        _clockPort = Hall.Devices.ClockPort;
+        _imageFolder = Hall.Devices.ImageFolder;
+        _shortcuts = string.Join("\n", Hall.Shortcuts);
+        return Task.CompletedTask;
+    }
+
+    private async Task ReloadListAsync()
+    {
+        _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
+        await OnHallsChanged.InvokeAsync();
+    }
+
+    private Task SaveFormAsync() => SaveAsync(hall => hall with
+    {
+        Name = _name,
+        TeamId = _teamId,
+        Season = _season,
+        Devices = hall.Devices with
+        {
+            VmixHost = _vmixHost.Trim(),
+            VmixPort = _vmixPort,
+            SednaHost = _sednaHost.Trim(),
+            SednaPort = _sednaPort,
+            ClockType = _clockType,
+            ClockPort = _clockPort,
+            ImageFolder = _imageFolder.Trim(),
+        },
+        Shortcuts = _shortcuts.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),
+    });
+
+    private async Task CreateAsync() => await Guarded(async () =>
+    {
+        var created = await HallCreation.HandleAsync(new CreateHall.Command(_newId, _newName));
+        _newId = ""; _newName = "";
+        await ReloadListAsync();
+        if (State.SelectedHallId == created.Id) await LoadAsync();
+        else State.SelectedHallId = created.Id;
+        Notify($"Halle {created.Name} angelegt.");
+    });
+
+    private async Task RenewKeyAsync() => await Guarded(async () =>
+    {
+        if (Hall is null) return;
+        await KeyRenewal.HandleAsync(new RenewAgentKey.Command(Hall.Id));
+        await LoadAsync();
+        Notify("Neuer Schlüssel erzeugt; den Agenten mit dem neuen Schlüssel starten.");
+    });
+
+    private async Task DeleteAsync() => await Guarded(async () =>
+    {
+        if (Hall is null) return;
+        await HallDeletion.HandleAsync(new DeleteHall.Command(Hall.Id));
+        State.SelectedHallId = null;
+        await ReloadListAsync();
+        Notify("Halle gelöscht.");
+    });
+}

@@ -1,0 +1,180 @@
+@inherits HallTab
+@using Microsoft.JSInterop
+@using RedAnts.Show.Features.Agents
+@using RedAnts.Show.Features.Music
+@using RedAnts.Show.Features.Scenes
+@using RedAnts.Show.Features.States
+@implements IAsyncDisposable
+@inject GetHallStatus.Handler StatusQuery
+@inject GetScenes.Handler ScenesQuery
+@inject GetSounds.Handler SoundsQuery
+@inject GetShowStates.Handler StatesQuery
+@inject RunScene.Handler SceneRun
+@inject PanicHall.Handler Panic
+
+<section class="sa-card">
+    <h2>Bedienung <small>@(Hall?.Name ?? "keine Halle")</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    @if (Hall is null)
+    {
+        <p class="sa-hint">Keine Halle gewählt.</p>
+    }
+    else
+    {
+        <div class="sa-actions">
+            <span class="sa-lamp @(_status?.Connected == true ? "on" : "off")"></span>
+            <span>@(_status?.Connected == true ? $"Agent verbunden, Version {_status.AgentVersion}" : "Kein Agent verbunden")</span>
+            <span class="sa-pill">@Score("home") : @Score("away")</span>
+            <span class="sa-pill">@ClockText()</span>
+            <span class="sd-spacer"></span>
+            <a class="sa-btn small" href="/matchday" target="_blank">Spieltag-Seite öffnen</a>
+            <button class="sa-btn danger" @onclick="PanicAsync">🚨 PANIC</button>
+        </div>
+
+        <div class="sa-states">
+            @foreach (var state in _states)
+            {
+                var value = StateValue(state);
+                <span class="sa-pill @(state.IsOn(value) ? "on" : "")">@state.Name: @value</span>
+            }
+        </div>
+
+        <h3>Szenen</h3>
+        <div class="sa-tiles">
+            @foreach (var scene in _scenes.Where(s => !s.System))
+            {
+                <button class="sa-tile @scene.Side" @onclick="() => RunAsync(scene.Id)" @key="scene.Id">@scene.Label</button>
+            }
+        </div>
+
+        <h3>Musik <small>läuft in diesem Browser</small></h3>
+        <div class="sa-tiles">
+            @foreach (var sound in _sounds)
+            {
+                <button class="sa-tile" style="background:@sound.Color" @onclick="() => PlayAsync(sound)" @key="sound.Id">@sound.Label</button>
+            }
+            <button class="sa-tile stop" @onclick="StopAsync">⏹ Stopp</button>
+        </div>
+        @if (_playing is { } playing)
+        {
+            <p class="sa-hint">Läuft: @playing</p>
+        }
+        <audio @ref="_player" controls preload="none" class="sa-audio"></audio>
+    }
+</section>
+
+@code {
+    private HallStatus? _status;
+    private IReadOnlyList<Scene> _scenes = [];
+    private IReadOnlyList<SoundCommand> _sounds = [];
+    private IReadOnlyList<ShowState> _states = [];
+    private ElementReference _player;
+    private string? _playing;
+    private string? _lastSoundReport;
+    private Timer? _poll;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
+        _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
+        _states = await StatesQuery.HandleAsync(new GetShowStates.Query());
+        await base.OnInitializedAsync();
+        _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (Hall is null) return;
+        _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(Hall.Id));
+        await FollowSoundReportAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task FollowSoundReportAsync()
+    {
+        var json = _status?.Report(AgentReportKinds.Sound)?.Json;
+        if (json is null || json == _lastSoundReport) return;
+        _lastSoundReport = json;
+        if (SoundRequest.Parse(json) is not { } request) return;
+        if (!request.IsPlay) { await StopAsync(); return; }
+        var sound = _sounds.FirstOrDefault(s => s.Id == request.SoundId);
+        if (sound is not null) await PlayAsync(sound);
+    }
+
+    private async Task PlayAsync(SoundCommand sound)
+    {
+        var track = sound.Tracks.FirstOrDefault();
+        if (track is null) { Notify($"„{sound.Label}“ hat noch keinen Song."); return; }
+        if (track.IsSpotify) { Notify("Spotify spielt die Bedienung noch nicht; Datei-Songs laufen bereits."); return; }
+        _playing = $"{sound.Label} · {track.Display}";
+        await JS.InvokeVoidAsync("showPlayer.play", _player, $"/dj/sound/{track.Ref}", track.StartSec, track.DurationSec, sound.Volume / 100.0, sound.Loop);
+    }
+
+    private async Task StopAsync()
+    {
+        _playing = null;
+        await JS.InvokeVoidAsync("showPlayer.stop", _player);
+    }
+
+    private async Task RunAsync(string sceneId) => await Guarded(async () =>
+    {
+        if (Hall is null) return;
+        var sent = await SceneRun.HandleAsync(new RunScene.Command(Hall.Id, sceneId));
+        Notify(sent ? $"Szene {sceneId} geschickt." : "Kein Agent verbunden.");
+    });
+
+    private async Task PanicAsync() => await Guarded(async () =>
+    {
+        if (Hall is null) return;
+        await StopAsync();
+        var sent = await Panic.HandleAsync(new PanicHall.Command(Hall.Id));
+        Notify(sent ? "PANIC geschickt." : "Kein Agent verbunden.");
+    });
+
+    private string StateValue(ShowState state)
+    {
+        var live = state.Id switch
+        {
+            DefaultStates.Overlay => ReportValue(AgentReportKinds.Overlay, "title") is { Length: > 0 } ? state.Values.Last() : state.First,
+            DefaultStates.Music => _playing is null ? state.First : state.Values[1],
+            DefaultStates.ClockRunning => ReportValue(AgentReportKinds.Clock, "live") == "True" ? state.Values.Last() : state.First,
+            _ => null,
+        };
+        return live ?? state.First;
+    }
+
+    private string Score(string side)
+    {
+        var value = ReportValue(AgentReportKinds.Score, side);
+        return value is { Length: > 0 } ? value : "–";
+    }
+
+    private string ClockText()
+    {
+        var time = ReportValue(AgentReportKinds.Clock, "time");
+        var period = ReportValue(AgentReportKinds.Clock, "periodLabel");
+        return time is { Length: > 0 } ? $"{time} · {period}" : "Uhr: keine Daten";
+    }
+
+    private string? ReportValue(string kind, string property)
+    {
+        var json = _status?.Report(kind)?.Json;
+        if (json is null) return null;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            return document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                   && document.RootElement.TryGetProperty(property, out var value)
+                ? value.ToString()
+                : null;
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_poll is not null) await _poll.DisposeAsync();
+        base.Dispose();
+    }
+}

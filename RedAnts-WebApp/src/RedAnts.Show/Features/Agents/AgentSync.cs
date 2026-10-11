@@ -1,11 +1,20 @@
 using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Games;
 using RedAnts.Show.Features.Halls;
+using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Scenes;
+using RedAnts.Show.Features.States;
 
 namespace RedAnts.Show.Features.Agents;
 
-public sealed class AgentSync(IHallRepository halls, IScenes scenes, IGameRepository games, IAgentChannel channel, IAgentConnections connections)
+public sealed class AgentSync(
+    IHallRepository halls,
+    IScenes scenes,
+    IGameRepository games,
+    ISounds sounds,
+    IShowStates states,
+    IAgentChannel channel,
+    IAgentConnections connections)
 {
     public async Task<AgentPayload?> PayloadAsync(string hallId)
     {
@@ -13,7 +22,14 @@ public sealed class AgentSync(IHallRepository halls, IScenes scenes, IGameReposi
         if (hall is null) return null;
         var stored = await scenes.GetAllAsync();
         var game = hall.ActiveGameId is { } id ? await games.GetByIdAsync(id) : null;
-        return new AgentPayload(hall with { AgentKey = "" }, stored.Count > 0 ? stored : DefaultScenes.All, game, SwissTime.Timestamp);
+        var storedStates = await states.GetAllAsync();
+        return new AgentPayload(
+            hall with { AgentKey = "" },
+            DefaultScenes.WithSystem(stored.Count > 0 ? stored : DefaultScenes.All),
+            game,
+            SwissTime.Timestamp,
+            await sounds.GetAllAsync(),
+            storedStates.Count > 0 ? storedStates : DefaultStates.All);
     }
 
     public async Task PushAsync(string hallId)

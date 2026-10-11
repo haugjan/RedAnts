@@ -28,8 +28,14 @@ public sealed partial record Hall(
     IReadOnlyList<LedTemplate> LedTemplates,
     IReadOnlyList<OverlayTitle> OverlayTitles,
     IReadOnlyList<string> Shortcuts,
-    string? ActiveGameId = null)
+    string? ActiveGameId = null,
+    IReadOnlyList<AutomationRule>? Automation = null,
+    IReadOnlyList<DeckLayout>? Decks = null)
 {
+    public IReadOnlyList<AutomationRule> Rules => Automation ?? [];
+
+    public IReadOnlyList<DeckLayout> DeckLayouts => Decks is { Count: > 0 } decks ? decks : DefaultDecks.All;
+
     public const int RedAntsWomen = 428665;
 
     public static Hall Create(string id, string name)

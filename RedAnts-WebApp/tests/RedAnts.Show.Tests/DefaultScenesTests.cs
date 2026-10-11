@@ -36,9 +36,37 @@ public class DefaultScenesTests
     }
 
     [Fact]
+    public void System_scenes_are_fixed_and_come_on_top_of_the_stored_ones()
+    {
+        var all = DefaultScenes.WithSystem(DefaultScenes.All);
+
+        Assert.All(DefaultScenes.System, s => Assert.True(s.System));
+        Assert.DoesNotContain(DefaultScenes.All, s => s.System);
+        Assert.Equal(DefaultScenes.All.Count + DefaultScenes.System.Count, all.Count);
+        Assert.Equal(DefaultScenes.System.Select(s => s.Id), all.Where(s => s.System).Select(s => s.Id));
+    }
+
+    [Fact]
+    public void Scene_effects_follow_from_its_steps()
+    {
+        var goal = DefaultScenes.All.Single(s => s.Id == "tor-heim").Effects;
+
+        Assert.Equal("läuft", goal[DefaultStates.Music]);
+        Assert.Equal("läuft", goal[DefaultStates.Led]);
+        Assert.Equal("aus", goal[DefaultStates.Overlay]);
+
+        var sponsors = DefaultScenes.All.Single(s => s.Id == "sponsoren").Effects;
+        Assert.Equal("an", sponsors[DefaultStates.Sponsors]);
+
+        var clockOff = DefaultScenes.System.Single(s => s.Id == "sys-uhr-aus").Effects;
+        Assert.Equal("aus", clockOff[DefaultStates.ClockVisible]);
+        Assert.False(clockOff.ContainsKey(DefaultStates.Overlay));
+    }
+
+    [Fact]
     public void Panic_hides_everything_and_returns_to_main()
     {
-        var panic = DefaultScenes.All.Single(s => s.Id == "panic");
+        var panic = DefaultScenes.System.Single(s => s.Id == "panic");
         Assert.Contains(panic.Steps, s => s.Action == SceneActions.OverlayHide && s.Target == "title:*");
         Assert.Contains(panic.Steps, s => s.Action == SceneActions.SoundStop);
         Assert.Equal("Main", panic.Steps.Last().Target);

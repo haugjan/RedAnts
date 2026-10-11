@@ -1,7 +1,9 @@
 using RedAnts.Show.Features.Agents;
 using RedAnts.Show.Features.Games;
 using RedAnts.Show.Features.Halls;
+using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Scenes;
+using RedAnts.Show.Features.States;
 
 namespace RedAnts.Show.Features;
 
@@ -31,7 +33,10 @@ public static class ShowFeatures
         typeof(GetHallStatus.Handler),
         typeof(RunScene.Handler),
         typeof(PanicHall.Handler),
-        typeof(GetSoundTiles.Handler),
+        typeof(GetSounds.Handler),
+        typeof(SaveSounds.Handler),
+        typeof(GetShowStates.Handler),
+        typeof(SaveShowStates.Handler),
     ];
 
     public static IServiceCollection AddShowFeatures(this IServiceCollection services)

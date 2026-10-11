@@ -1,0 +1,64 @@
+@inherits HallTab
+
+<section class="sa-card">
+    <h2>LED-Vorlagen <small>sedna presenter</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    @if (Hall is null)
+    {
+        <p class="sa-hint">Keine Halle gewählt.</p>
+    }
+    else
+    {
+        <p class="sa-hint">Ein Szenenschritt «LED-Playlist starten» wählt ein Ereignis aus dieser Liste. Platzhalter wie <code>{team.short}</code> und <code>{player.number}</code> setzt der Agent ein.</p>
+        <table class="sa-table">
+            <thead><tr><th style="width:220px">Ereignis</th><th>Befehl</th><th style="width:40px"></th></tr></thead>
+            <tbody>
+                @foreach (var row in _rows)
+                {
+                    <tr @key="row">
+                        <td><input class="sa-input" @bind="row.Event" @bind:after="Touch" /></td>
+                        <td><input class="sa-input wide" @bind="row.Command" @bind:after="Touch" /></td>
+                        <td><button class="sa-btn small" @onclick="() => Remove(row)">✕</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="sa-actions">
+            <button class="sa-btn small" @onclick="Add">+ Vorlage</button>
+            <button class="sa-btn small" @onclick="Defaults">⟲ Standard</button>
+            <button class="sa-btn primary" @onclick="SaveRowsAsync" disabled="@(!Dirty)">💾 Speichern</button>
+        </div>
+    }
+</section>
+
+@code {
+    private sealed class Row
+    {
+        public string Event = "";
+        public string Command = "";
+    }
+
+    private List<Row> _rows = [];
+
+    protected override Task OnHallLoadedAsync()
+    {
+        _rows = Hall?.LedTemplates.Select(t => new Row { Event = t.Event, Command = t.Command }).ToList() ?? [];
+        return Task.CompletedTask;
+    }
+
+    private void Add() { _rows.Add(new Row()); Touch(); }
+
+    private void Remove(Row row) { _rows.Remove(row); Touch(); }
+
+    private void Defaults()
+    {
+        _rows = Domain.Hall.DefaultLedTemplates.Select(t => new Row { Event = t.Event, Command = t.Command }).ToList();
+        Touch();
+    }
+
+    private Task SaveRowsAsync() => SaveAsync(hall => hall with
+    {
+        LedTemplates = _rows.Where(r => r.Event.Trim().Length > 0)
+            .Select(r => new LedTemplate(r.Event.Trim(), r.Command.Trim()))
+            .ToList(),
+    });
+}

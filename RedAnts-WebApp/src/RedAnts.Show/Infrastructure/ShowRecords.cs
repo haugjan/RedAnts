@@ -43,3 +43,25 @@ public class AgentReportRecord
     [Column("Json")] public string Json { get; set; } = "";
     [Column("At")] public DateTimeOffset At { get; set; }
 }
+
+[TableName("show.Sounds")]
+[PrimaryKey("Id", AutoIncrement = false)]
+[ExplicitColumns]
+public class SoundRecord
+{
+    [Column("Id")] public string Id { get; set; } = "";
+    [Column("SortOrder")] public int SortOrder { get; set; }
+    [Column("Json")] public string Json { get; set; } = "";
+    [Column("UpdatedAt")] public DateTime UpdatedAt { get; set; }
+}
+
+[TableName("show.States")]
+[PrimaryKey("Id", AutoIncrement = false)]
+[ExplicitColumns]
+public class StateRecord
+{
+    [Column("Id")] public string Id { get; set; } = "";
+    [Column("SortOrder")] public int SortOrder { get; set; }
+    [Column("Json")] public string Json { get; set; } = "";
+    [Column("UpdatedAt")] public DateTime UpdatedAt { get; set; }
+}

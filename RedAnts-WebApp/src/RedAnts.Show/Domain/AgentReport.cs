@@ -11,4 +11,5 @@ public static class AgentReportKinds
     public const string Deck = "deck";
     public const string Log = "log";
     public const string Sound = "sound";
+    public const string Vmix = "vmix";
 }

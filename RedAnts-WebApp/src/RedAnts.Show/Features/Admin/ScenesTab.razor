@@ -1,0 +1,47 @@
+@inherits HallTab
+@using RedAnts.Show.Features.Music
+@using RedAnts.Show.Features.Scenes
+@inject GetScenes.Handler ScenesQuery
+@inject SaveScenes.Handler ScenesSave
+@inject GetSounds.Handler SoundsQuery
+@inject RunScene.Handler SceneRun
+
+<SceneDesigner Scenes="_scenes"
+               Hall="Hall"
+               HallName="@(Hall?.Name ?? "der Halle")"
+               Sounds="_sounds"
+               Status="@Status"
+               StatusIsError="@StatusIsError"
+               OnSave="SaveScenesAsync"
+               OnRun="RunSceneAsync" />
+
+@code {
+    private IReadOnlyList<Scene> _scenes = [];
+    private IReadOnlyList<SoundCommand> _sounds = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
+        _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
+    }
+
+    private async Task SaveScenesAsync(IReadOnlyList<Scene> scenes) => await Guarded(async () =>
+    {
+        await ScenesSave.HandleAsync(new SaveScenes.Command(scenes));
+        await ReloadAsync();
+        Notify($"{scenes.Count(s => !s.System)} Szenen gespeichert; verbundene Agenten haben sie bereits.");
+    });
+
+    private async Task RunSceneAsync(string sceneId) => await Guarded(async () =>
+    {
+        if (Hall is null) throw new DomainException("Zuerst oben eine Halle wählen.");
+        var sent = await SceneRun.HandleAsync(new RunScene.Command(Hall.Id, sceneId));
+        Notify(sent ? $"Szene {sceneId} an {Hall.Name} geschickt." : $"Kein Agent für {Hall.Name} verbunden.");
+    });
+}

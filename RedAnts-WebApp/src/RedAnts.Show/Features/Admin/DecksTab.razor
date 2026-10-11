@@ -1,0 +1,358 @@
+@inherits HallTab
+@using RedAnts.Show.Features.Music
+@using RedAnts.Show.Features.Scenes
+@using RedAnts.Show.Features.States
+@inject GetScenes.Handler ScenesQuery
+@inject GetSounds.Handler SoundsQuery
+@inject GetShowStates.Handler StatesQuery
+
+<section class="sa-card">
+    <h2>Decks <small>@(Hall?.Name ?? "keine Halle")</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    @if (Hall is null)
+    {
+        <p class="sa-hint">Keine Halle gewählt.</p>
+    }
+    else
+    {
+        <div class="sa-actions">
+            <label class="sa-inline">Gerät
+                <select class="sa-input" value="@_deckId" @onchange="OnDeckChanged">
+                    @foreach (var deck in _decks)
+                    {
+                        <option value="@deck.Id">@deck.Name</option>
+                    }
+                </select>
+            </label>
+            <span class="sa-hint">@Deck?.Columns × @Deck?.Rows Tasten · Zurück und PANIC liegen fest</span>
+            <span class="sd-spacer"></span>
+            <button class="sa-btn small" @onclick="Defaults">⟲ Standard-Layout</button>
+            <button class="sa-btn primary" @onclick="SaveDecksAsync" disabled="@(!Dirty)">💾 Speichern</button>
+        </div>
+
+        @if (Deck is { } board)
+        {
+            <div class="sa-deckgrid">
+                <div class="sa-deck" style="grid-template-columns:repeat(@board.Columns, 92px)">
+                    @for (var n = 1; n <= board.Count; n++)
+                    {
+                        var number = n;
+                        var tile = _keys[number];
+                        <div class="sa-key @(number == _selected ? "selected" : "")" style="background:@tile.Color;color:@Foreground(tile.Color)"
+                             @onclick="() => _selected = number">
+                            <span class="sa-key-n">@number</span>
+                            @if (Fixed(number) is { } fixedLabel)
+                            {
+                                <span class="sa-key-lock" title="@fixedLabel">🔒</span>
+                            }
+                            <span class="sa-key-lbl">@tile.Label</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="sa-keyeditor">
+                    @{
+                        var current = _keys[_selected];
+                        var locked = Fixed(_selected) is not null;
+                    }
+                    <h3>Taste @_selected @(locked ? "· fest" : "")</h3>
+                    @if (locked)
+                    {
+                        <p class="sa-hint">Diese Taste ist auf jeder Seite gleich, damit die Zuordnung in Companion nie geändert werden muss.</p>
+                    }
+                    else
+                    {
+                        <div class="sa-form">
+                            <label>Art
+                                <select class="sa-input" value="@current.Kind" @onchange="e => ChangeKind(current, e.Value?.ToString())">
+                                    @foreach (var kind in DeckKeyKinds.All)
+                                    {
+                                        <option value="@kind">@KindLabel(kind)</option>
+                                    }
+                                </select>
+                            </label>
+                            <label>Beschriftung <input class="sa-input" @bind="current.Label" @bind:after="Touch" /></label>
+                            <label>Farbe <input class="sa-input" type="color" @bind="current.Color" @bind:after="Touch" /></label>
+                            <label>Symbol <input class="sa-input" @bind="current.Icon" @bind:after="Touch" placeholder="ball, strafe, coach …" /></label>
+                        </div>
+
+                        @switch (current.Kind)
+                        {
+                            case DeckKeyKinds.Scene:
+                                <label class="sa-inline">Szene
+                                    <select class="sa-input" @bind="current.SceneId" @bind:after="Touch">
+                                        @foreach (var scene in _scenes)
+                                        {
+                                            <option value="@scene.Id">@(scene.System ? "🔒 " : "")@scene.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                break;
+                            case DeckKeyKinds.Sound:
+                                <label class="sa-inline">Musik-Befehl
+                                    <select class="sa-input" @bind="current.SoundId" @bind:after="Touch">
+                                        @foreach (var sound in _sounds)
+                                        {
+                                            <option value="@sound.Id">@sound.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                break;
+                            case DeckKeyKinds.Page:
+                                <label class="sa-inline">Seite
+                                    <select class="sa-input" @bind="current.Page" @bind:after="Touch">
+                                        @foreach (var context in DeckContexts.All.Where(c => c.Key != DeckContexts.Main))
+                                        {
+                                            <option value="@context.Key">@context.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                break;
+                            case DeckKeyKinds.Live:
+                                <label class="sa-inline">Anzeige
+                                    <select class="sa-input" @bind="current.Live" @bind:after="Touch">
+                                        <option value="period">Drittel</option>
+                                        <option value="score.home">Stand Heim (öffnet Korrektur)</option>
+                                        <option value="score.away">Stand Gast (öffnet Korrektur)</option>
+                                        <option value="clock">Spieluhr</option>
+                                    </select>
+                                </label>
+                                break;
+                            case DeckKeyKinds.State:
+                                <label class="sa-inline">Zustand
+                                    <select class="sa-input" value="@current.StateId" @onchange="e => ChangeState(current, e.Value?.ToString())">
+                                        @foreach (var state in _states)
+                                        {
+                                            <option value="@state.Id">@state.Name (@string.Join("/", state.Values))</option>
+                                        }
+                                    </select>
+                                </label>
+                                <p class="sa-hint">Pro Wert: Aussehen und was ein Druck tut. Wohin der Druck führt, ergibt sich aus der Wirkung der Szene.</p>
+                                @foreach (var row in current.Rows)
+                                {
+                                    <div class="sa-staterow" @key="row">
+                                        <span class="sa-valuepill" style="background:@row.Color;color:@Foreground(row.Color)">@row.Value</span>
+                                        <input class="sa-input" @bind="row.Label" @bind:after="Touch" placeholder="Beschriftung" />
+                                        <input class="sa-input" @bind="row.Icon" @bind:after="Touch" placeholder="Symbol" />
+                                        <input class="sa-input" type="color" @bind="row.Color" @bind:after="Touch" />
+                                        <select class="sa-input" @bind="row.Behaviour" @bind:after="Touch">
+                                            <option value="@DeckStateRow.RunScene">Szene auslösen</option>
+                                            <option value="@DeckStateRow.Locked">gesperrt</option>
+                                            <option value="@DeckStateRow.Nothing">nichts</option>
+                                        </select>
+                                        @if (row.Behaviour == DeckStateRow.RunScene)
+                                        {
+                                            <select class="sa-input" @bind="row.SceneId" @bind:after="Touch">
+                                                @foreach (var scene in _scenes)
+                                                {
+                                                    <option value="@scene.Id">@(scene.System ? "🔒 " : "")@scene.Label</option>
+                                                }
+                                            </select>
+                                            <span class="sd-effect">@Transition(current.StateId, row)</span>
+                                        }
+                                    </div>
+                                }
+                                break;
+                        }
+                        <div class="sa-actions">
+                            <button class="sa-btn small danger" @onclick="() => ClearKey(current)">Taste leeren</button>
+                        </div>
+                    }
+                </div>
+            </div>
+            <p class="sa-hint">
+                Die Unterseiten (Spielerwahl, Strafe, Stand, Mitteilung) erzeugt der Agent aus Kader, Spielstand und Shortcuts.
+                Das Layout gilt für die Startseite und wird beim Speichern an den Agenten geschickt.
+            </p>
+        }
+    }
+</section>
+
+@code {
+    private sealed class KeyEdit
+    {
+        public int Number;
+        public string Kind = DeckKeyKinds.Empty;
+        public string Label = "";
+        public string Color = "#2b3038";
+        public string? Icon;
+        public string? SceneId;
+        public string? SoundId;
+        public string? Page;
+        public string? Live;
+        public string? StateId;
+        public List<RowEdit> Rows = [];
+
+        public static KeyEdit From(DeckKey key) => new()
+        {
+            Number = key.Number,
+            Kind = key.Kind,
+            Label = key.Label,
+            Color = key.Color,
+            Icon = key.Icon,
+            SceneId = key.SceneId,
+            SoundId = key.SoundId,
+            Page = key.Page,
+            Live = key.Live,
+            StateId = key.StateId,
+            Rows = (key.Rows ?? []).Select(RowEdit.From).ToList(),
+        };
+
+        public DeckKey ToKey() => new(
+            Number, Kind, Label.Trim(), Color, string.IsNullOrWhiteSpace(Icon) ? null : Icon.Trim(),
+            SceneId, SoundId, Page, Live, StateId,
+            Rows.Count == 0 ? null : Rows.Select(r => r.ToRow()).ToList());
+    }
+
+    private sealed class RowEdit
+    {
+        public string Value = "";
+        public string Label = "";
+        public string? Icon;
+        public string Color = "#1e7b34";
+        public string Behaviour = DeckStateRow.RunScene;
+        public string? SceneId;
+
+        public static RowEdit From(DeckStateRow row) => new()
+        {
+            Value = row.Value,
+            Label = row.Label,
+            Icon = row.Icon,
+            Color = row.Color,
+            Behaviour = row.Behaviour,
+            SceneId = row.SceneId,
+        };
+
+        public DeckStateRow ToRow() => new(Value, Label.Trim(), string.IsNullOrWhiteSpace(Icon) ? null : Icon.Trim(), Color, Behaviour, SceneId);
+    }
+
+    private List<DeckLayout> _decks = [];
+    private Dictionary<int, KeyEdit> _keys = [];
+    private IReadOnlyList<Scene> _scenes = [];
+    private IReadOnlyList<SoundCommand> _sounds = [];
+    private IReadOnlyList<ShowState> _states = [];
+    private string _deckId = DeckLayout.FieldDeck;
+    private int _selected = 1;
+
+    private DeckLayout? Deck => _decks.FirstOrDefault(d => d.Id == _deckId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
+        _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
+        _states = await StatesQuery.HandleAsync(new GetShowStates.Query());
+        await base.OnInitializedAsync();
+    }
+
+    protected override Task OnHallLoadedAsync()
+    {
+        _decks = Hall?.DeckLayouts.ToList() ?? [];
+        if (!_decks.Any(d => d.Id == _deckId)) _deckId = _decks.FirstOrDefault()?.Id ?? DeckLayout.FieldDeck;
+        LoadKeys();
+        return Task.CompletedTask;
+    }
+
+    private void LoadKeys()
+    {
+        _keys = [];
+        if (Deck is not { } deck) return;
+        for (var n = 1; n <= deck.Count; n++) _keys[n] = KeyEdit.From(deck.KeyAt(n));
+        if (_selected > deck.Count) _selected = 1;
+    }
+
+    private void OnDeckChanged(ChangeEventArgs e)
+    {
+        StoreKeys();
+        _deckId = e.Value?.ToString() ?? DeckLayout.FieldDeck;
+        _selected = 1;
+        LoadKeys();
+    }
+
+    private void StoreKeys()
+    {
+        if (Deck is not { } deck) return;
+        var updated = deck with { Keys = _keys.Values.Where(k => k.Kind != DeckKeyKinds.Empty).Select(k => k.ToKey()).OrderBy(k => k.Number).ToList() };
+        _decks = _decks.Select(d => d.Id == updated.Id ? updated : d).ToList();
+    }
+
+    private void Defaults()
+    {
+        var fresh = DefaultDecks.All.FirstOrDefault(d => d.Id == _deckId);
+        if (fresh is null) return;
+        _decks = _decks.Select(d => d.Id == fresh.Id ? fresh : d).ToList();
+        LoadKeys();
+        Touch();
+    }
+
+    private string? Fixed(int number) =>
+        _deckId != DeckLayout.FieldDeck ? null
+        : number == DefaultDecks.BackKey ? "Zurück"
+        : number == DefaultDecks.PanicKey ? "PANIC"
+        : null;
+
+    private void ChangeKind(KeyEdit key, string? kind)
+    {
+        key.Kind = kind ?? DeckKeyKinds.Empty;
+        if (key.Kind == DeckKeyKinds.State && key.Rows.Count == 0) ChangeState(key, _states.FirstOrDefault()?.Id);
+        if (key.Kind == DeckKeyKinds.Scene) key.SceneId ??= _scenes.FirstOrDefault()?.Id;
+        if (key.Kind == DeckKeyKinds.Sound) key.SoundId ??= _sounds.FirstOrDefault()?.Id;
+        if (key.Kind == DeckKeyKinds.Page) key.Page ??= "Message";
+        if (key.Kind == DeckKeyKinds.Live) key.Live ??= "period";
+        Touch();
+    }
+
+    private void ChangeState(KeyEdit key, string? stateId)
+    {
+        key.StateId = stateId;
+        var state = _states.FirstOrDefault(s => s.Id == stateId);
+        key.Rows = (state?.Values ?? ["aus", "an"]).Select((value, index) => new RowEdit
+        {
+            Value = value,
+            Label = key.Label,
+            Color = index == 0 ? "#1e7b34" : "#c0201c",
+            Behaviour = DeckStateRow.RunScene,
+            SceneId = _scenes.FirstOrDefault()?.Id,
+        }).ToList();
+        Touch();
+    }
+
+    private void ClearKey(KeyEdit key)
+    {
+        _keys[key.Number] = new KeyEdit { Number = key.Number };
+        Touch();
+    }
+
+    private string Transition(string? stateId, RowEdit row)
+    {
+        var scene = _scenes.FirstOrDefault(s => s.Id == row.SceneId);
+        if (scene is null || stateId is null) return "";
+        return scene.Effects.TryGetValue(stateId, out var value)
+            ? $"→ führt zu „{value}“"
+            : $"⚠ Szene ändert diesen Zustand nicht";
+    }
+
+    private static string KindLabel(string kind) => kind switch
+    {
+        DeckKeyKinds.Scene => "Szene auslösen",
+        DeckKeyKinds.Sound => "Musik abspielen",
+        DeckKeyKinds.Page => "Seite öffnen",
+        DeckKeyKinds.Live => "Anzeige (Stand, Uhr)",
+        DeckKeyKinds.State => "Zustandstaste",
+        DeckKeyKinds.Back => "Zurück",
+        _ => "leer",
+    };
+
+    private static string Foreground(string color)
+    {
+        if (color.Length != 7 || !color.StartsWith('#')) return "#fff";
+        var r = Convert.ToInt32(color[1..3], 16);
+        var g = Convert.ToInt32(color[3..5], 16);
+        var b = Convert.ToInt32(color[5..7], 16);
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? "#1a1a1a" : "#ffffff";
+    }
+
+    private Task SaveDecksAsync()
+    {
+        StoreKeys();
+        return SaveAsync(hall => hall with { Decks = _decks.Select(d => d.Validated()).ToList() });
+    }
+}

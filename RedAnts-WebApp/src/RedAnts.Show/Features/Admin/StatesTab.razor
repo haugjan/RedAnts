@@ -1,0 +1,186 @@
+@inherits HallTab
+@using RedAnts.Show.Features.Scenes
+@using RedAnts.Show.Features.States
+@inject GetShowStates.Handler StatesQuery
+@inject SaveShowStates.Handler StatesSave
+@inject GetScenes.Handler ScenesQuery
+
+<section class="sa-card">
+    <h2>Zustände <small>für alle Hallen</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    <p class="sa-hint">
+        Ein Zustand hat Werte und eine Quelle. Beobachtete Zustände meldet das Gerät (vMix, Uhr) oder die Bedienung,
+        gesetzte ändern nur Szenen. Deck-Tasten binden sich an einen Zustand, Szenen verändern ihn.
+    </p>
+    <table class="sa-table">
+        <thead><tr><th style="width:190px">Name</th><th style="width:150px">Kennung</th><th style="width:240px">Werte (mit Komma)</th><th style="width:140px">Quelle</th><th>Notiz</th><th style="width:40px"></th></tr></thead>
+        <tbody>
+            @foreach (var state in _states)
+            {
+                <tr @key="state">
+                    <td><input class="sa-input" @bind="state.Name" /></td>
+                    <td><input class="sa-input" @bind="state.Id" /></td>
+                    <td><input class="sa-input" @bind="state.Values" /></td>
+                    <td>
+                        <select class="sa-input" @bind="state.Source">
+                            @foreach (var source in StateSources.All)
+                            {
+                                <option value="@source">@source</option>
+                            }
+                        </select>
+                    </td>
+                    <td><input class="sa-input wide" @bind="state.Note" /></td>
+                    <td><button class="sa-btn small" @onclick="() => _states.Remove(state)">✕</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="sa-actions">
+        <button class="sa-btn small" @onclick="AddState">+ Zustand</button>
+        <button class="sa-btn small" @onclick="DefaultsStates">⟲ Standard</button>
+        <button class="sa-btn primary" @onclick="SaveStatesAsync">💾 Zustände speichern</button>
+    </div>
+
+    <h3>Eingebaute Ableitung</h3>
+    <p class="sa-hint">
+        Einblender zeigen → Einblender an · Einblender ausblenden (alle) → aus · Scoreboard zeigen oder ausblenden → Uhr sichtbar ·
+        Musik abspielen → Musik läuft · Musik stoppen → aus · Musik ausblenden → fade · LED starten → LED läuft
+        (Sponsoren-Playlist zusätzlich Sponsoren-Loop an) · LED stoppen → LED aus · Lichtszene → Licht · Zustand setzen → wie angegeben.
+    </p>
+</section>
+
+<section class="sa-card">
+    <h2>Automatik <small>@(Hall?.Name ?? "keine Halle")</small></h2>
+    @if (Hall is null)
+    {
+        <p class="sa-hint">Keine Halle gewählt.</p>
+    }
+    else
+    {
+        <p class="sa-hint">Wenn ein Zustand auf einen Wert wechselt, läuft eine Szene. Ketten brechen nach drei Stufen ab.</p>
+        <table class="sa-table">
+            <thead><tr><th style="width:220px">Wenn Zustand</th><th style="width:160px">wird</th><th>dann Szene</th><th style="width:40px"></th></tr></thead>
+            <tbody>
+                @foreach (var rule in _rules)
+                {
+                    <tr @key="rule">
+                        <td>
+                            <select class="sa-input" @bind="rule.StateId" @bind:after="Touch">
+                                @foreach (var state in _states)
+                                {
+                                    <option value="@state.Id">@state.Name</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <select class="sa-input" @bind="rule.Value" @bind:after="Touch">
+                                @foreach (var value in ValuesOf(rule.StateId))
+                                {
+                                    <option value="@value">@value</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <select class="sa-input" @bind="rule.SceneId" @bind:after="Touch">
+                                @foreach (var scene in _scenes)
+                                {
+                                    <option value="@scene.Id">@(scene.System ? "🔒 " : "")@scene.Label</option>
+                                }
+                            </select>
+                        </td>
+                        <td><button class="sa-btn small" @onclick="() => RemoveRule(rule)">✕</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="sa-actions">
+            <button class="sa-btn small" @onclick="AddRule">+ Regel</button>
+            <button class="sa-btn primary" @onclick="SaveRulesAsync" disabled="@(!Dirty)">💾 Automatik speichern</button>
+        </div>
+    }
+</section>
+
+@code {
+    private sealed class StateEdit
+    {
+        public string Id = "";
+        public string Name = "";
+        public string Values = "";
+        public string Source = StateSources.Logical;
+        public string Note = "";
+
+        public static StateEdit From(ShowState state) => new()
+        {
+            Id = state.Id,
+            Name = state.Name,
+            Values = string.Join(", ", state.Values),
+            Source = state.Source,
+            Note = state.Note,
+        };
+
+        public ShowState ToState() => new(
+            Id.Trim(),
+            Name.Trim(),
+            Values.Split(',').Select(v => v.Trim()).Where(v => v.Length > 0).ToList(),
+            Source,
+            Note.Trim());
+    }
+
+    private sealed class RuleEdit
+    {
+        public string StateId = "";
+        public string Value = "";
+        public string SceneId = "";
+    }
+
+    private List<StateEdit> _states = [];
+    private List<RuleEdit> _rules = [];
+    private IReadOnlyList<Scene> _scenes = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _states = (await StatesQuery.HandleAsync(new GetShowStates.Query())).Select(StateEdit.From).ToList();
+        _scenes = await ScenesQuery.HandleAsync(new GetScenes.Query());
+        await base.OnInitializedAsync();
+    }
+
+    protected override Task OnHallLoadedAsync()
+    {
+        _rules = Hall?.Rules.Select(r => new RuleEdit { StateId = r.StateId, Value = r.Value, SceneId = r.SceneId }).ToList() ?? [];
+        return Task.CompletedTask;
+    }
+
+    private IReadOnlyList<string> ValuesOf(string stateId) =>
+        _states.FirstOrDefault(s => s.Id == stateId)?.ToState().Values ?? [];
+
+    private void AddState() => _states.Add(new StateEdit { Id = "neu", Name = "Neuer Zustand", Values = "aus, an" });
+
+    private void DefaultsStates() => _states = DefaultStates.All.Select(StateEdit.From).ToList();
+
+    private void AddRule()
+    {
+        var state = _states.FirstOrDefault();
+        _rules.Add(new RuleEdit
+        {
+            StateId = state?.Id ?? "",
+            Value = state?.ToState().Values.LastOrDefault() ?? "",
+            SceneId = _scenes.FirstOrDefault()?.Id ?? "",
+        });
+        Touch();
+    }
+
+    private void RemoveRule(RuleEdit rule) { _rules.Remove(rule); Touch(); }
+
+    private async Task SaveStatesAsync() => await Guarded(async () =>
+    {
+        await StatesSave.HandleAsync(new SaveShowStates.Command(_states.Select(s => s.ToState()).ToList()));
+        Notify($"{_states.Count} Zustände gespeichert.");
+    });
+
+    private Task SaveRulesAsync() => SaveAsync(hall => hall with
+    {
+        Automation = _rules
+            .Where(r => r.StateId.Length > 0 && r.SceneId.Length > 0)
+            .Select(r => new AutomationRule(r.StateId, r.Value, r.SceneId))
+            .ToList(),
+    });
+}

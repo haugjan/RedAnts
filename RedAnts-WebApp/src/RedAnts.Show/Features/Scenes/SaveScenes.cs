@@ -12,7 +12,7 @@ public static class SaveScenes
     {
         public async Task HandleAsync(Command command)
         {
-            var validated = command.Scenes.Select(s => s.Validated()).ToList();
+            var validated = command.Scenes.Where(s => !s.System).Select(s => s.Validated()).ToList();
             var duplicate = validated.GroupBy(s => s.Id).FirstOrDefault(g => g.Count() > 1);
             if (duplicate is not null) throw new ValidationException("Id", $"Szene „{duplicate.Key}“ ist doppelt.");
             await scenes.SaveAllAsync(validated);
