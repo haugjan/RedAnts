@@ -65,3 +65,8 @@ main h1 { font-size: 15px; font-weight: 600; color: #9aa4ae; margin: 6px 0 10px;
 .screen.offline .status { color: #e44; font-size: 16px; }
 .screen.offline .status i { background: #e44; }
 .screen.offline .stage { opacity: .35; }
+
+#components-reconnect-modal { display: none; position: fixed; left: 12px; bottom: 10px; z-index: 9999; font: 16px system-ui, sans-serif; color: #e44; }
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-rejected { display: block; }

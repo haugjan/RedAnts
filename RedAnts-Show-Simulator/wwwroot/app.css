@@ -58,3 +58,8 @@ ul.log code { color: #8fd3ff; }
 @font-face { font-family: 'Hurme Geometric Sans 2'; font-weight: 900; src: url('titles/fonts/HurmeGeometricSans_No2_7_Black.otf') format('opentype'); }
 
 .warn { color: #ffcf3f; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+#components-reconnect-modal { display: none; position: fixed; left: 12px; bottom: 10px; z-index: 9999; font: 16px system-ui, sans-serif; color: #e44; }
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-rejected { display: block; }

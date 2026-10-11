@@ -13,7 +13,22 @@ public sealed class ClockSender(EventLog log) : BackgroundService
     private DateTime _lastSecond = DateTime.MinValue;
 
     public string TargetHost { get; set; } = "127.0.0.1";
-    public int TargetPort { get; set; } = 50085;
+    private int _targetPort = 50085;
+
+    public bool PortChosen { get; private set; }
+
+    public int TargetPort
+    {
+        get => _targetPort;
+        set { _targetPort = value; PortChosen = true; }
+    }
+
+    public void AdoptPort(int port)
+    {
+        if (PortChosen || port <= 0 || port == _targetPort) return;
+        _targetPort = port;
+        log.Add("Matchuhr", $"Sendeport auf {port} gesetzt, der Agent hört dort");
+    }
     public bool Sending { get; set; } = true;
     public bool Running { get; private set; }
     public bool CountsDown { get; set; }

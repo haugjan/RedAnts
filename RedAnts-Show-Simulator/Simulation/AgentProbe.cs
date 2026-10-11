@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace RedAnts.Show.Simulator.Simulation;
 
-public sealed class AgentProbe(EventLog log) : BackgroundService
+public sealed class AgentProbe(EventLog log, ClockSender clock) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(2);
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
@@ -51,6 +51,9 @@ public sealed class AgentProbe(EventLog log) : BackgroundService
             foreach (var property in document.RootElement.EnumerateObject())
                 status[property.Name] = property.Value.ValueKind == JsonValueKind.Null ? "" : property.Value.ToString();
             Status = status;
+            if (status.TryGetValue("clockListening", out var listening)
+                && int.TryParse(new string(listening.Where(char.IsDigit).ToArray()), out var port))
+                clock.AdoptPort(port);
             DeckContext = status.GetValueOrDefault("deck");
             Scene = status.GetValueOrDefault("scene");
             if (!Reachable) log.Add("Agent", $"Agent unter {AgentUrl} erreichbar");

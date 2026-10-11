@@ -10,6 +10,8 @@
 </head>
 <body>
     <Routes @rendermode="InteractiveServer" />
-    <script src="_framework/blazor.web.js"></script>
+    <div id="components-reconnect-modal">Verbindung zum Server unterbrochen …</div>
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script src="reconnect.js"></script>
 </body>
 </html>
