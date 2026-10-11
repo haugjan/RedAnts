@@ -52,6 +52,13 @@
         </div>
         <p class="mono">@Clock.LastTelegram</p>
         <p class="muted">@Clock.Sent Telegramme gesendet @(Clock.Fault is { Length: > 0 } fault ? "· Fehler: " + fault : "")</p>
+        @if (AgentPort is { } listening && listening != Clock.TargetPort)
+        {
+            <p class="warn">
+                Der Agent hört auf Port @listening, gesendet wird auf @Clock.TargetPort.
+                <button class="small" @onclick="() => Clock.TargetPort = listening">auf @listening umstellen</button>
+            </p>
+        }
     </section>
 
     <section class="q">
@@ -150,6 +157,13 @@
 @code {
     private int _key = 1;
     private DateTime _lastRender = DateTime.MinValue;
+
+    private int? AgentPort =>
+        Agent.Status.TryGetValue("clockListening", out var listening)
+        && int.TryParse(new string(listening.Where(char.IsDigit).ToArray()), out var port)
+        && port > 0
+            ? port
+            : null;
 
     protected override void OnInitialized()
     {

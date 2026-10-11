@@ -56,3 +56,5 @@ ul.log code { color: #8fd3ff; }
 
 @font-face { font-family: 'Hurme Geometric Sans 2'; font-weight: 700; src: url('titles/fonts/HurmeGeometricSans_No2_6_Bold.otf') format('opentype'); }
 @font-face { font-family: 'Hurme Geometric Sans 2'; font-weight: 900; src: url('titles/fonts/HurmeGeometricSans_No2_7_Black.otf') format('opentype'); }
+
+.warn { color: #ffcf3f; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
