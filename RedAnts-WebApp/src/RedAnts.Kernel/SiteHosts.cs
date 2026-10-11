@@ -76,7 +76,8 @@ public static class SiteHosts
         if (StartsWithSegment(path, "/scan") || StartsWithSegment(path, "/scanner-test"))
             return SiteSurface.Scan;
 
-        if (StartsWithSegment(path, "/dj") || StartsWithSegment(path, "/show") || StartsWithSegment(path, "/matchday"))
+        if (StartsWithSegment(path, "/dj") || StartsWithSegment(path, "/show") || StartsWithSegment(path, "/matchday")
+            || StartsWithSegment(path, "/bord"))
             return SiteSurface.DJ;
 
         return HasExtension(path) ? null : SiteSurface.Tickets;

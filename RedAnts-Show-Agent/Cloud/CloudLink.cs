@@ -4,7 +4,7 @@ using RedAnts.Show.Agent.Scenes;
 
 namespace RedAnts.Show.Agent.Cloud;
 
-public sealed class CloudLink(AgentConfig config, PayloadStore payload, SceneRunner runner, ILogger<CloudLink> log) : BackgroundService
+public sealed class CloudLink(AgentConfig config, PayloadStore payload, SceneRunner runner, Deck.Deck deck, ILogger<CloudLink> log) : BackgroundService
 {
     static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
 
@@ -25,6 +25,8 @@ public sealed class CloudLink(AgentConfig config, PayloadStore payload, SceneRun
         hub.On<AgentPayload>("Sync", payload.Apply);
         hub.On<string, Dictionary<string, string>>("Run", (sceneId, args) => runner.Start(sceneId, args));
         hub.On("Panic", () => runner.Start(SceneRunner.PanicScene, new Dictionary<string, string>()));
+        hub.On<string, int>("Press", async (deckId, number) => await deck.PressAsync(deckId, number));
+        hub.On<string, object>("View", deckId => deck.View(deckId));
         hub.Reconnecting += e =>
         {
             Fault = e?.Message ?? "Verbindung unterbrochen";
