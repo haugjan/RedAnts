@@ -89,9 +89,21 @@ public static class Templates
             ["commentator1"] = game.Commentator1,
             ["commentator2"] = game.Commentator2,
         };
+        AddRoster(values, "starting6", team.Starting6Players.ToList());
+        AddRoster(values, "lineup", team.Players.ToList());
         var result = template;
         foreach (var (key, value) in values)
             result = result.Replace("{" + key + "}", value, StringComparison.OrdinalIgnoreCase);
         return result;
+    }
+
+    static void AddRoster(Dictionary<string, string> values, string prefix, IReadOnlyList<Player> players)
+    {
+        for (var position = 1; position <= players.Count; position++)
+        {
+            var player = players[position - 1];
+            values[$"{prefix}.{position}.number"] = player.Display;
+            values[$"{prefix}.{position}.name"] = player.Name;
+        }
     }
 }

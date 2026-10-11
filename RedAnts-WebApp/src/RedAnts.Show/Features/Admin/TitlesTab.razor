@@ -42,7 +42,7 @@
                     </label>
                     <label>Overlay-Kanal
                         <select class="sa-input" @bind="title.Channel" @bind:after="Touch">
-                            <option value="0">kein (Scoreboard)</option>
+                            <option value="0">kein Overlay (immer sichtbar)</option>
                             <option value="1">Overlay 1</option>
                             <option value="2">Overlay 2</option>
                             <option value="3">Overlay 3</option>
@@ -63,7 +63,22 @@
                         @foreach (var field in title.Fields)
                         {
                             <tr @key="field">
-                                <td><input class="sa-input" @bind="field.Name" @bind:after="Touch" /></td>
+                                <td>
+                                    @if (!title.IsScoreboard && FieldsOf(title.Input) is { Count: > 0 } names)
+                                    {
+                                        <input class="sa-input" list="@("fields-" + title.Input)" @bind="field.Name" @bind:after="Touch" />
+                                        <datalist id="@("fields-" + title.Input)">
+                                            @foreach (var name in names)
+                                            {
+                                                <option value="@name"></option>
+                                            }
+                                        </datalist>
+                                    }
+                                    else
+                                    {
+                                        <input class="sa-input" @bind="field.Name" @bind:after="Touch" />
+                                    }
+                                </td>
                                 <td><input class="sa-input wide" @bind="field.Template" @bind:after="Touch" @onfocus="() => _focus = field" /></td>
                                 <td><button class="sa-btn small" @onclick="() => RemoveField(title, field)">✕</button></td>
                             </tr>
@@ -95,7 +110,7 @@
 
         <div class="sa-actions">
             <button class="sa-btn small" @onclick="Add">+ Titel</button>
-            <button class="sa-btn small" @onclick="AddScoreboard">+ Scoreboard (Standard)</button>
+            <button class="sa-btn small" @onclick="LoadDefaults">⟲ Standard L-UPL</button>
             <button class="sa-btn primary" @onclick="SaveTitlesAsync" disabled="@(!Dirty)">💾 Speichern</button>
         </div>
         <p class="sa-hint">@(_inputs.Count > 0 ? $"{_inputs.Count} Inputs von vMix gemeldet." : "Kein Agent verbunden; Input-Namen von Hand eintragen.")</p>
@@ -104,13 +119,16 @@
 
 @code {
     private static readonly string[] Kinds =
-        ["player_event", "coach", "timeout", "lineup", "starting6", "commentary", "referee", "opener", "result", "message", "scoreboard"];
+        ["scoreboard", "player_event", "penalty", "name", "bestplayer", "coach", "timeout", "message", "commentary", "referee", "result", "opener", "starting6", "lineup_home", "lineup_away"];
 
     private static readonly string[] Placeholders =
     [
         "{player.number}", "{player.name}", "{player.position}", "{player.sponsor}", "{player.photo}",
-        "{team.short}", "{team.long}", "{team.coach}", "{team.starting6}",
-        "{home.long}", "{away.long}", "{score}", "{clock}", "{period.label}", "{penalty}", "{text}", "{event}",
+        "{team.short}", "{team.long}", "{team.coach}", "{team.logo}", "{team.starting6}",
+        "{starting6.1.number}", "{starting6.1.name}", "{lineup.1.number}", "{lineup.1.name}",
+        "{home.short}", "{home.long}", "{away.short}", "{away.long}",
+        "{score}", "{score.home}", "{score.away}", "{clock}", "{period}", "{period.label}", "{penalty}", "{text}", "{event}",
+        "{game.title}", "{game.league}", "{game.location}",
         "{referee1}", "{referee2}", "{commentator1}", "{commentator2}",
     ];
 
@@ -131,7 +149,11 @@
 
     private List<TitleEdit> _titles = [];
     private IReadOnlyList<string> _inputs = [];
+    private IReadOnlyDictionary<string, IReadOnlyList<string>> _fields = new Dictionary<string, IReadOnlyList<string>>();
     private FieldEdit? _focus;
+
+    private IReadOnlyList<string> FieldsOf(string input) =>
+        _fields.TryGetValue(input, out var names) ? names : [];
 
     protected override async Task OnHallLoadedAsync()
     {
@@ -142,22 +164,40 @@
             Channel = t.Channel,
             Fields = t.Fields.Select(f => new FieldEdit { Name = f.Key, Template = f.Value }).ToList(),
         }).ToList() ?? [];
-        _inputs = Hall is null ? [] : await VmixInputsAsync(Hall.Id);
+        if (Hall is not null) await ReadVmixAsync(Hall.Id);
     }
 
-    private async Task<IReadOnlyList<string>> VmixInputsAsync(string hallId)
+    private async Task ReadVmixAsync(string hallId)
     {
+        _inputs = [];
+        _fields = new Dictionary<string, IReadOnlyList<string>>();
         var status = await StatusQuery.HandleAsync(new GetHallStatus.Query(hallId));
         var json = status.Report(AgentReportKinds.Vmix)?.Json;
-        if (json is null) return [];
+        if (json is null) return;
         try
         {
             using var document = System.Text.Json.JsonDocument.Parse(json);
-            return document.RootElement.TryGetProperty("inputs", out var inputs) && inputs.ValueKind == System.Text.Json.JsonValueKind.Array
-                ? inputs.EnumerateArray().Select(i => i.GetString() ?? "").Where(i => i.Length > 0).ToList()
-                : [];
+            if (!document.RootElement.TryGetProperty("inputs", out var inputs) || inputs.ValueKind != System.Text.Json.JsonValueKind.Array) return;
+            var titles = new List<string>();
+            var fields = new Dictionary<string, IReadOnlyList<string>>();
+            foreach (var input in inputs.EnumerateArray())
+            {
+                var title = input.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? input.GetString() ?? ""
+                    : input.TryGetProperty("title", out var name) ? name.GetString() ?? "" : "";
+                if (title.Length == 0) continue;
+                titles.Add(title);
+                if (input.ValueKind == System.Text.Json.JsonValueKind.Object
+                    && input.TryGetProperty("fields", out var list)
+                    && list.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    fields[title] = list.EnumerateArray().Select(f => f.GetString() ?? "").Where(f => f.Length > 0).ToList();
+                }
+            }
+            _inputs = titles;
+            _fields = fields;
         }
-        catch (System.Text.Json.JsonException) { return []; }
+        catch (System.Text.Json.JsonException) { }
     }
 
     private void Add()
@@ -166,23 +206,15 @@
         Touch();
     }
 
-    private void AddScoreboard()
+    private void LoadDefaults()
     {
-        _titles.Add(new TitleEdit
+        _titles = Domain.Hall.DefaultOverlayTitles.Select(t => new TitleEdit
         {
-            Kind = "scoreboard",
-            Input = _inputs.FirstOrDefault(i => i.Contains("scoreboard", StringComparison.OrdinalIgnoreCase)) ?? "LUPL-SU_scoreboard_clock.gtzip",
-            Channel = 0,
-            Fields =
-            [
-                new FieldEdit { Name = "time", Template = "TxtClockTime{0}.Text" },
-                new FieldEdit { Name = "period", Template = "TxtClockPeriod.Text" },
-                new FieldEdit { Name = "homeScore", Template = "TxtHomeScore.Text" },
-                new FieldEdit { Name = "awayScore", Template = "TxtAwayScore.Text" },
-                new FieldEdit { Name = "homeName", Template = "TxtHomeName.Text" },
-                new FieldEdit { Name = "awayName", Template = "TxtAwayName.Text" },
-            ],
-        });
+            Kind = t.Kind,
+            Input = t.Input,
+            Channel = t.Channel,
+            Fields = t.Fields.Select(f => new FieldEdit { Name = f.Key, Template = f.Value }).ToList(),
+        }).ToList();
         Touch();
     }
 

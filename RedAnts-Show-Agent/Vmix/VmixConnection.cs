@@ -4,6 +4,8 @@ using System.Text;
 
 namespace RedAnts.Show.Agent.Vmix;
 
+public sealed record VmixInput(string Title, IReadOnlyList<string> Fields);
+
 public sealed class VmixConnection : IAsyncDisposable
 {
     readonly TcpClient _client;
@@ -32,7 +34,7 @@ public sealed class VmixConnection : IAsyncDisposable
         await _stream.FlushAsync(stop);
     }
 
-    public async Task<IReadOnlyList<string>> ReadInputsAsync(CancellationToken stop)
+    public async Task<IReadOnlyList<VmixInput>> ReadInputsAsync(CancellationToken stop)
     {
         await SendAsync(["XML"], stop);
         while (!stop.IsCancellationRequested)
@@ -44,8 +46,14 @@ public sealed class VmixConnection : IAsyncDisposable
                 throw new InvalidOperationException($"vMix antwortet mit '{header}'");
             var xml = System.Text.Encoding.UTF8.GetString(await ReadExactlyAsync(length, stop));
             return System.Xml.Linq.XDocument.Parse(xml).Root?.Element("inputs")?.Elements("input")
-                .Select(i => i.Attribute("title")?.Value ?? "")
-                .Where(title => title.Length > 0)
+                .Select(i => new VmixInput(
+                    i.Attribute("title")?.Value ?? "",
+                    i.Elements("text").Concat(i.Elements("image"))
+                        .Select(f => f.Attribute("name")?.Value ?? "")
+                        .Where(name => name.Length > 0)
+                        .Distinct()
+                        .ToList()))
+                .Where(input => input.Title.Length > 0)
                 .ToList() ?? [];
         }
         return [];
@@ -64,10 +72,10 @@ public sealed class VmixConnection : IAsyncDisposable
         return buffer;
     }
 
-    public async Task DrainAsync(CancellationToken stop)
+    public async Task DrainAsync(Action<string> onLine, CancellationToken stop)
     {
         while (!stop.IsCancellationRequested)
-            await ReadLineAsync(stop);
+            onLine(await ReadLineAsync(stop));
     }
 
     async Task<string> ReadLineAsync(CancellationToken stop)
@@ -84,7 +92,7 @@ public sealed class VmixConnection : IAsyncDisposable
     }
 
     public static string Function(string name, params (string Key, string Value)[] args) =>
-        $"FUNCTION {name}" + (args.Length == 0 ? "" : " " + string.Join('&', args.Select(a => $"{a.Key}={WebUtility.UrlEncode(a.Value)}")));
+        $"FUNCTION {name}" + (args.Length == 0 ? "" : " " + string.Join('&', args.Select(a => $"{a.Key}={Uri.EscapeDataString(a.Value)}")));
 
     public async ValueTask DisposeAsync()
     {

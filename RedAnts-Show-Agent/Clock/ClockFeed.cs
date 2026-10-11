@@ -20,6 +20,8 @@ public sealed class ClockFeed(PayloadStore payload, LiveGame live, ILogger<Clock
 
     public long Rejected { get; private set; }
 
+    public long Foreign { get; private set; }
+
     public string LastRaw { get; private set; } = "";
 
     public bool Active => Listening.Length > 0 && Fault is null;
@@ -41,13 +43,19 @@ public sealed class ClockFeed(PayloadStore payload, LiveGame live, ILogger<Clock
                         Fault = null;
                         await Task.Delay(Timeout.InfiniteTimeSpan, session.Token);
                     }
+                    if (devices.ClockPort <= 0)
+                    {
+                        Fault = "Kein Port für die Matchuhr konfiguriert";
+                        log.LogWarning("{Fault}", Fault);
+                        await Task.Delay(Timeout.InfiniteTimeSpan, session.Token);
+                    }
                     if (!ICastProtocol.Supports(devices.ClockType))
                     {
                         Fault = $"Uhrtyp {devices.ClockType} wird vom Agenten noch nicht unterstützt";
                         log.LogWarning("{Fault}", Fault);
                         await Task.Delay(Timeout.InfiniteTimeSpan, session.Token);
                     }
-                    await ListenAsync(devices.ClockPort, session.Token);
+                    await ListenAsync(devices.ClockPort, devices.ClockSource, session.Token);
                 }
                 catch (OperationCanceledException) when (!stop.IsCancellationRequested) { }
                 catch (OperationCanceledException) { break; }
@@ -66,7 +74,9 @@ public sealed class ClockFeed(PayloadStore payload, LiveGame live, ILogger<Clock
 
     void Restart() => _session?.Cancel();
 
-    async Task ListenAsync(int port, CancellationToken stop)
+    static string Shorten(string raw) => raw.Length <= 120 ? raw : raw[..120] + "…";
+
+    async Task ListenAsync(int port, string source, CancellationToken stop)
     {
         using var udp = new UdpClient();
         udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -75,7 +85,7 @@ public sealed class ClockFeed(PayloadStore payload, LiveGame live, ILogger<Clock
         _lastRaw = "";
         _lastPublish = DateTime.MinValue;
         Fault = null;
-        Listening = $"iCast auf UDP {port}";
+        Listening = source.Length > 0 ? $"iCast auf UDP {port} von {source}" : $"iCast auf UDP {port}";
         log.LogInformation("Höre auf die Matchuhr: {Listening}", Listening);
 
         while (!stop.IsCancellationRequested)
@@ -83,6 +93,11 @@ public sealed class ClockFeed(PayloadStore payload, LiveGame live, ILogger<Clock
             UdpReceiveResult result;
             try { result = await udp.ReceiveAsync(stop); }
             catch (SocketException) { continue; }
+            if (source.Length > 0 && result.RemoteEndPoint.Address.ToString() != source)
+            {
+                Foreign++;
+                continue;
+            }
             Handle(result.Buffer);
         }
     }
@@ -97,6 +112,7 @@ public sealed class ClockFeed(PayloadStore payload, LiveGame live, ILogger<Clock
         if (ICastProtocol.Parse(raw) is not { } state)
         {
             Rejected++;
+            if (Rejected % 50 == 1) log.LogWarning("Telegramm nicht lesbar: {Raw}", Shorten(raw));
             return;
         }
 

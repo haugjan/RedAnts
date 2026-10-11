@@ -36,9 +36,7 @@ public static class DJFeatures
         typeof(RecordDJRoom.Handler),
         typeof(DeleteDJRoom.Handler),
         typeof(OpenDJSound.Handler),
-        typeof(GetDJTiles.Handler),
-        typeof(GetSpotifyHits.Handler),
-        typeof(SendDJCommand.Handler)
+        typeof(GetSpotifyHits.Handler)
     ];
 
     public static IServiceCollection AddDJFeatures(this IServiceCollection services)

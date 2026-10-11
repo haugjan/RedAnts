@@ -21,6 +21,7 @@ public sealed record HallDevices(
     int SednaPort = 27182,
     string ClockType = "iCast",
     int ClockPort = 50085,
+    string ClockSource = "",
     string ImageFolder = "");
 
 public sealed record HallCapabilities(

@@ -1,4 +1,5 @@
 using RedAnts.Show.Features.Agents;
+using RedAnts.Show.Features.Board;
 using RedAnts.Show.Features.Games;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
@@ -36,6 +37,8 @@ public static class ShowFeatures
         typeof(GetDeckView.Handler),
         typeof(GetSounds.Handler),
         typeof(SaveSounds.Handler),
+        typeof(UploadSound.Handler),
+        typeof(SearchSounds.Handler),
     ];
 
     public static IServiceCollection AddShowFeatures(this IServiceCollection services)

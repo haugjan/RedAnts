@@ -1,0 +1,16 @@
+using RedAnts.Show.Domain;
+
+namespace RedAnts.Show.Features.Board;
+
+public sealed record DeckKeyRow(int Number, string Label, string? Icon, string Color, string TextColor, bool Pressable, string? SoundId);
+
+public sealed record DeckView(string DeckId, string Title, int Columns, IReadOnlyList<DeckKeyRow> Keys, bool FromAgent);
+
+public interface IDeckMirror
+{
+    bool IsConnected(string hallId);
+
+    Task<DeckView?> LiveAsync(string hallId, DeckLayout layout);
+
+    Task<bool> PressAsync(string hallId, string deckId, int number);
+}

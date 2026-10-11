@@ -5,9 +5,12 @@ namespace RedAnts.Show.Agent;
 public sealed class LiveGame
 {
     static readonly TimeSpan ClockTimeout = TimeSpan.FromSeconds(5);
+    static readonly TimeSpan ClockStill = TimeSpan.FromSeconds(2);
 
     readonly object _gate = new();
     ClockState _clock = ClockState.Empty;
+    string _lastTime = "";
+    DateTime _timeMovedAt = DateTime.MinValue;
     int _manualHome, _manualAway;
     TaskCompletionSource<bool> _scoreChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -24,6 +27,14 @@ public sealed class LiveGame
         {
             var clock = Clock;
             return clock.HasData && DateTime.Now - clock.Received < ClockTimeout;
+        }
+    }
+
+    public bool ClockRunning
+    {
+        get
+        {
+            lock (_gate) return ClockLive && DateTime.Now - _timeMovedAt < ClockStill;
         }
     }
 
@@ -47,6 +58,11 @@ public sealed class LiveGame
         lock (_gate)
         {
             scoreChanged = state.HomeScore != _clock.HomeScore || state.GuestScore != _clock.GuestScore;
+            if (state.Time != _lastTime)
+            {
+                _lastTime = state.Time;
+                _timeMovedAt = DateTime.Now;
+            }
             _clock = state;
             if (int.TryParse(state.HomeScore, out var home)) _manualHome = home;
             if (int.TryParse(state.GuestScore, out var away)) _manualAway = away;

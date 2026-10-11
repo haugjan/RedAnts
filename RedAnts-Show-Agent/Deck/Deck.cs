@@ -100,7 +100,7 @@ public sealed class Deck
 
     void OnLiveChanged()
     {
-        var shown = $"{_live.HomeScore}|{_live.AwayScore}|{_live.PeriodLabel}|{_live.ClockLive}";
+        var shown = $"{_live.HomeScore}|{_live.AwayScore}|{_live.PeriodLabel}|{_live.ClockLive}|{_live.Time}";
         lock (_gate)
         {
             if (shown == _shown) return;

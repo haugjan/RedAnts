@@ -26,9 +26,9 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
 
     public string? LiveTitle { get; private set; }
 
-    public IReadOnlyList<string> Inputs { get; private set; } = [];
+    public IReadOnlyList<VmixInput> Inputs { get; private set; } = [];
 
-    public event Action<IReadOnlyList<string>>? InputsRead;
+    public event Action<IReadOnlyList<VmixInput>>? InputsRead;
 
     public long Commands { get; private set; }
 
@@ -103,7 +103,7 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
         using var session = CancellationTokenSource.CreateLinkedTokenSource(stop);
         var drain = Task.Run(async () =>
         {
-            try { await connection.DrainAsync(session.Token); }
+            try { await connection.DrainAsync(Answer, session.Token); }
             catch (Exception e) when (e is not OperationCanceledException) { Fault = e.Message; }
             finally { session.Cancel(); }
         }, stop);
@@ -128,16 +128,33 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
         }
     }
 
+    void Answer(string line)
+    {
+        if (!line.StartsWith("ER", StringComparison.OrdinalIgnoreCase)) return;
+        Fault = line;
+        log.LogWarning("vMix weist einen Befehl zurueck: {Answer}", line);
+    }
+
     async Task PublishScoreboardAsync(ClockState state, CancellationToken stop)
     {
-        if (!state.HasData) return;
         var title = payload.Hall.Title(VmixScoreboard.Kind);
         var input = title?.Input is { Length: > 0 } configured ? configured : VmixScoreboard.LuplInput;
         var fields = title?.Fields is { Count: > 0 } mapped ? mapped : VmixScoreboard.LuplFields;
         var game = payload.Game;
-        var values = VmixScoreboard.Values(state,
-            game.Home.LongName.Length > 0 ? game.Home.LongName : state.Home,
-            game.Away.LongName.Length > 0 ? game.Away.LongName : state.Guest);
+        var folder = payload.Hall.Devices.ImageFolder;
+        var home = Name(game.Home, state.Home);
+        var away = Name(game.Away, state.Guest);
+        var values = state.HasData
+            ? VmixScoreboard.Values(state, home, away)
+            : VmixScoreboard.Manual(live.HomeScore, live.AwayScore, home, away);
+        if (folder.Length > 0)
+        {
+            values = new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase)
+            {
+                ["homeLogo"] = VmixScoreboard.LogoPath(folder, home),
+                ["awayLogo"] = VmixScoreboard.LogoPath(folder, away),
+            };
+        }
 
         var commands = new List<string>();
         foreach (var (slot, value) in values)
@@ -164,19 +181,30 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
 
     public async Task ShowTitleAsync(OverlayTitle title, IReadOnlyDictionary<string, string> values, CancellationToken stop)
     {
-        var commands = values
-            .Select(kv => VmixConnection.Function(VmixScoreboard.FunctionFor(kv.Key), ("Input", title.Input), ("SelectedName", kv.Key), ("Value", kv.Value)))
-            .ToList();
-        commands.Add(VmixConnection.Function($"OverlayInput{title.Channel}In", ("Input", title.Input)));
+        var scoreboard = title.Kind.Equals(VmixScoreboard.Kind, StringComparison.OrdinalIgnoreCase);
+        var commands = scoreboard
+            ? new List<string>()
+            : values
+                .Select(kv => VmixConnection.Function(VmixScoreboard.FunctionFor(kv.Key), ("Input", title.Input), ("SelectedName", kv.Key), ("Value", kv.Value)))
+                .ToList();
+        if (Overlay(title) is { } channel) commands.Add(VmixConnection.Function($"OverlayInput{channel}In", ("Input", title.Input)));
+        else if (scoreboard) throw new InvalidOperationException("Die Uhr hat keinen Overlay-Kanal (vMix-Titel, Kanal 1 bis 4)");
         await SendAsync(commands, stop);
         LiveTitle = title.Kind;
     }
 
     public async Task HideTitleAsync(OverlayTitle title, CancellationToken stop)
     {
-        await SendAsync([VmixConnection.Function($"OverlayInput{title.Channel}Out")], stop);
+        if (Overlay(title) is not { } channel)
+            throw new InvalidOperationException("Die Uhr hat keinen Overlay-Kanal (vMix-Titel, Kanal 1 bis 4)");
+        await SendAsync([VmixConnection.Function($"OverlayInput{channel}Out")], stop);
         if (LiveTitle == title.Kind) LiveTitle = null;
     }
+
+    static int? Overlay(OverlayTitle title) => title.Channel is >= 1 and <= OverlayChannels ? title.Channel : null;
+
+    static string Name(GameTeam team, string fallback) =>
+        team.ShortName is { Length: > 0 } name ? name : fallback;
 
     public async Task HideAllAsync(CancellationToken stop)
     {

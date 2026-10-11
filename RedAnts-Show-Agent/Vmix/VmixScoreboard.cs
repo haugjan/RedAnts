@@ -28,6 +28,8 @@ public static class VmixScoreboard
         ["homePen2Fill"] = "RectHomePen2.Fill.Color",
         ["awayPen1Fill"] = "RectAwayPen1.Fill.Color",
         ["awayPen2Fill"] = "RectAwayPen2.Fill.Color",
+        ["homeLogo"] = "ImgHomeTeam.Source",
+        ["awayLogo"] = "ImgAwayTeam.Source",
     };
 
     public static IReadOnlyDictionary<string, string> Values(ClockState state, string homeName, string awayName)
@@ -52,6 +54,18 @@ public static class VmixScoreboard
             ["awayPen2Fill"] = Fill(away[1]),
         };
     }
+
+    public static IReadOnlyDictionary<string, string> Manual(string homeScore, string awayScore, string homeName, string awayName) =>
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["homeScore"] = homeScore,
+            ["awayScore"] = awayScore,
+            ["homeName"] = homeName,
+            ["awayName"] = awayName,
+        };
+
+    public static string LogoPath(string folder, string team) =>
+        Path.Combine(folder, team.Replace(' ', '_').ToUpperInvariant() + ".png");
 
     public static IEnumerable<(string Field, string Value)> Expand(string field, string value)
     {

@@ -94,8 +94,8 @@ public static class DefaultScenes
         Fixed("coach-gast", "Coach Gast", "away", "coach"),
         Fixed("timeout-heim", "Timeout Heim", "home", "timeout", "led:timeout"),
         Fixed("timeout-gast", "Timeout Gast", "away", "timeout", "led:timeout"),
-        Fixed("aufstellung-heim", "Aufstellung Heim", "home", "lineup"),
-        Fixed("aufstellung-gast", "Aufstellung Gast", "away", "lineup"),
+        Fixed("aufstellung-heim", "Aufstellung Heim", "home", "lineup_home"),
+        Fixed("aufstellung-gast", "Aufstellung Gast", "away", "lineup_away"),
         Fixed("starting6-heim", "Starting 6 Heim", "home", "starting6"),
         Fixed("starting6-gast", "Starting 6 Gast", "away", "starting6"),
         Fixed("kommentatoren", "Kommentatoren", None, "commentary"),
@@ -153,9 +153,9 @@ public static class DefaultScenes
     [
         new(SceneActions.DeckContext, context),
         new(SceneActions.PlayerPick),
-        new(SceneActions.OverlayShow, "title:player_event", Event: kind),
+        new(SceneActions.OverlayShow, "title:" + kind, Event: kind),
         new(SceneActions.Wait, Ms: 8000),
-        new(SceneActions.OverlayHide, "title:player_event"),
+        new(SceneActions.OverlayHide, "title:" + kind),
         new(SceneActions.DeckContext, "Main"),
     ]);
 

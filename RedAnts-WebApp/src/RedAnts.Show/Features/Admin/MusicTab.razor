@@ -1,10 +1,8 @@
-@using RedAnts.DJ.Features.Admin
-@using RedAnts.DJ.Features.Sounds
 @using RedAnts.Show.Features.Music
 @inject GetSounds.Handler SoundsQuery
 @inject SaveSounds.Handler SoundsSave
-@inject UploadDJSound.Handler Upload
-@inject GetSpotifyHits.Handler Spotify
+@inject UploadSound.Handler Upload
+@inject SearchSounds.Handler Spotify
 
 <section class="sa-card">
     <h2>Musik <small>Befehle für alle Hallen</small> <StatusLine Text="@_status" IsError="@_statusIsError" /></h2>
@@ -253,7 +251,7 @@
     private List<SoundEdit> _sounds = [];
     private SoundEdit? _current;
     private TrackEdit? _song;
-    private IReadOnlyList<SpotifyHit> _hits = [];
+    private IReadOnlyList<SoundHit> _hits = [];
     private Preview _preview = Preview.None;
     private string _term = "";
     private string? _status;
@@ -291,13 +289,9 @@
     private string PreviewUrl()
     {
         if (_song is null) return "";
-        var url = $"/dj/sound/{_song.Ref.Trim()}";
-        if (_preview != Preview.Section) return url;
-        var start = _song.StartSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-        var end = _song.DurationSec is { } length
-            ? "," + (_song.StartSec + length).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)
-            : "";
-        return $"{url}#t={start}{end}";
+        return _preview == Preview.Section
+            ? SoundMedia.Url(_song.Ref, _song.StartSec, _song.DurationSec)
+            : SoundMedia.File(_song.Ref);
     }
 
     private void Add()
@@ -364,7 +358,7 @@
         {
             var file = e.File;
             await using var stream = file.OpenReadStream(80 * 1024 * 1024);
-            _song.Ref = await Upload.HandleAsync(new UploadDJSound.Command(file.Name, stream, file.ContentType));
+            _song.Ref = await Upload.HandleAsync(new UploadSound.Command(file.Name, stream, file.ContentType));
             _song.Source = SoundSource.Blob;
             if (_song.Title.Length == 0) _song.Title = Path.GetFileNameWithoutExtension(file.Name);
             _preview = Preview.None;
@@ -380,7 +374,7 @@
 
     private async Task SearchAsync() => await Guarded(async () =>
     {
-        _hits = await Spotify.HandleAsync(new GetSpotifyHits.Query(_term));
+        _hits = await Spotify.HandleAsync(new SearchSounds.Query(_term));
         if (_hits.Count == 0) Notify("Keine Treffer; ist Spotify im DJ-Bereich verbunden?");
     });
 
@@ -390,13 +384,13 @@
         _song.Ref = e.Value?.ToString()?.Trim() ?? "";
         _song.Source = SoundSource.Spotify;
         if (_song.Ref.Length == 0) return;
-        if ((await Spotify.HandleAsync(new GetSpotifyHits.Query("", _song.Ref))).FirstOrDefault() is not { } hit) return;
+        if ((await Spotify.HandleAsync(new SearchSounds.Query("", _song.Ref))).FirstOrDefault() is not { } hit) return;
         _song.Ref = hit.Uri;
         _song.Title = hit.Name;
         _song.Artist = hit.Artist;
     });
 
-    private void TakeHit(SpotifyHit hit)
+    private void TakeHit(SoundHit hit)
     {
         if (_song is null) return;
         _song.Source = SoundSource.Spotify;
