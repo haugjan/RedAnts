@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 if (!args.Any(a => a.StartsWith("--urls", StringComparison.OrdinalIgnoreCase)))
     builder.WebHost.UseUrls("http://localhost:5090");
 builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+builder.WebHost.UseStaticWebAssets();
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddSingleton<EventLog>();
@@ -18,8 +19,8 @@ builder.Services.AddSingleton<AgentProbe>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentProbe>());
 
 var app = builder.Build();
-app.UseStaticFiles();
 app.UseAntiforgery();
+app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 var urls = app.Configuration["urls"] ?? "http://localhost:5090";
