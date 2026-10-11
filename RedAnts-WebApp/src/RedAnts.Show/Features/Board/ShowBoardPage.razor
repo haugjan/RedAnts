@@ -13,6 +13,7 @@
 @inject PanicHall.Handler Panic
 @inject NavigationManager Navigation
 
+<div class="sb">
 <header class="bar">
     @if (_halls.Count > 1)
     {
@@ -101,6 +102,7 @@ else
         </p>
     </main>
 }
+</div>
 
 @code {
     private const char NewLine = '\n';
