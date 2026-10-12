@@ -31,6 +31,7 @@ public static class ShowFeatures
         typeof(RecordAgentReport.Handler),
         typeof(GetAgentPayload.Handler),
         typeof(GetHallStatus.Handler),
+        typeof(GetAgentPresence.Handler),
         typeof(RunScene.Handler),
         typeof(PanicHall.Handler),
         typeof(PressDeckKey.Handler),

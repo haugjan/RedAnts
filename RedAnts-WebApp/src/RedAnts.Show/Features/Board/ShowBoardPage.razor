@@ -5,7 +5,7 @@
 @implements IDisposable
 @inject GetHalls.Handler HallsQuery
 @inject GetHall.Handler HallQuery
-@inject GetHallStatus.Handler StatusQuery
+@inject GetAgentPresence.Handler Presence
 @inject GetDeckView.Handler DeckQuery
 @inject GetSounds.Handler SoundsQuery
 @inject PressDeckKey.Handler KeyPress
@@ -114,7 +114,7 @@ else
 
     private IReadOnlyList<HallRow> _halls = [];
     private Hall? _hall;
-    private HallStatus? _status;
+    private AgentPresence _agent = new(false, null, null);
     private DeckView? _view;
     private IReadOnlyList<SoundCommand> _sounds = [];
     private string _deck = DeckLayout.FieldDeck;
@@ -124,7 +124,7 @@ else
     private long _soundOrder = -1;
     private Timer? _poll;
 
-    private bool Connected => _status?.Connected == true;
+    private bool Connected => _agent.Connected;
 
     private int Columns => _view?.Columns ?? 8;
 
@@ -191,7 +191,7 @@ else
     private async Task RefreshAsync()
     {
         if (_hallId is not { Length: > 0 } id) return;
-        _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(id));
+        _agent = await Presence.HandleAsync(new GetAgentPresence.Query(id));
         await ReadDeckAsync();
         await InvokeAsync(StateHasChanged);
     }
@@ -256,47 +256,18 @@ else
 
     private string Score(bool home)
     {
-        if (_view?.Live is { } live) return home ? live.HomeScore : live.AwayScore;
-        return Report(AgentReportKinds.Score, home ? "home" : "away", "–");
+        if (_view?.Live is not { } live) return "–";
+        return (home ? live.HomeScore : live.AwayScore) is { Length: > 0 } score ? score : "–";
     }
 
-    private string Time() => _view?.Live?.Time is { Length: > 0 } time ? time : Report(AgentReportKinds.Clock, "time", "--:--");
+    private string Time() => _view?.Live?.Time is { Length: > 0 } time ? time : "--:--";
 
-    private string Period() => _view?.Live?.PeriodLabel is { Length: > 0 } period ? period : Report(AgentReportKinds.Clock, "periodLabel", "");
+    private string Period() => _view?.Live?.PeriodLabel ?? "";
 
-    private string StateValue(ShowState state)
-    {
-        if (_view?.States is { } live && live.TryGetValue(state.Id, out var current) && current.Length > 0) return current;
-        var json = _status?.Report(AgentReportKinds.Status)?.Json;
-        if (json is null) return state.First;
-        try
-        {
-            using var document = System.Text.Json.JsonDocument.Parse(json);
-            return document.RootElement.TryGetProperty("states", out var states)
-                   && states.ValueKind == System.Text.Json.JsonValueKind.Object
-                   && states.TryGetProperty(state.Id, out var value)
-                   && value.GetString() is { Length: > 0 } text
-                ? text
-                : state.First;
-        }
-        catch (System.Text.Json.JsonException) { return state.First; }
-    }
-
-    private string Report(string kind, string property, string fallback)
-    {
-        var json = _status?.Report(kind)?.Json;
-        if (json is null) return fallback;
-        try
-        {
-            using var document = System.Text.Json.JsonDocument.Parse(json);
-            return document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
-                   && document.RootElement.TryGetProperty(property, out var value)
-                   && value.ToString() is { Length: > 0 } text
-                ? text
-                : fallback;
-        }
-        catch (System.Text.Json.JsonException) { return fallback; }
-    }
+    private string StateValue(ShowState state) =>
+        _view?.States is { } live && live.TryGetValue(state.Id, out var current) && current.Length > 0
+            ? current
+            : state.First;
 
     private string? Query(string name)
     {
