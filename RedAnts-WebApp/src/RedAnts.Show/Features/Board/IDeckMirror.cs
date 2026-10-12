@@ -19,7 +19,15 @@ public interface IDeckMirror
 {
     bool IsConnected(string hallId);
 
+    DeckView? Known(string hallId, string deckId);
+
     Task<DeckView?> LiveAsync(string hallId, DeckLayout layout);
 
     Task<bool> PressAsync(string hallId, string deckId, int number);
+
+    void Apply(string hallId, string deckId, string json, DeckLayout layout);
+
+    void ApplyLive(string hallId, string json);
+
+    void Drop(string hallId);
 }

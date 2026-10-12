@@ -155,6 +155,8 @@ public sealed class Deck
         Bump();
     }
 
+    public object LivePayload() => new { live = Live(), states = _states.All };
+
     object Live() => new
     {
         sound = _sound,

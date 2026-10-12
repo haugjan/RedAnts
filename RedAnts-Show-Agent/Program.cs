@@ -43,6 +43,8 @@ builder.Services.AddSingleton<SceneRunner>();
 builder.Services.AddSingleton<Deck>();
 builder.Services.AddSingleton<CloudLink>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CloudLink>());
+builder.Services.AddSingleton<DeckPublisher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<DeckPublisher>());
 builder.Services.AddSingleton<StatusReporter>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<StatusReporter>());
 

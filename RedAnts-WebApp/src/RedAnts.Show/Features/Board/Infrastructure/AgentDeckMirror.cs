@@ -6,7 +6,7 @@ using RedAnts.Show.Features.Agents;
 
 namespace RedAnts.Show.Features.Board.Infrastructure;
 
-public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections connections, ILogger<AgentDeckMirror> log) : IDeckMirror
+public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections connections, ShowBoardFeed feed, ILogger<AgentDeckMirror> log) : IDeckMirror
 {
     private const char IconSeparator = '|';
 
@@ -15,6 +15,30 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
     private readonly ConcurrentDictionary<string, (long Version, DeckView View)> _known = new();
 
     public bool IsConnected(string hallId) => connections.IsConnected(hallId);
+
+    public DeckView? Known(string hallId, string deckId) => feed.Of(hallId, deckId);
+
+    public void Apply(string hallId, string deckId, string json, DeckLayout layout)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (Read(document.RootElement, layout, feed.Of(hallId, deckId)) is { } view) feed.Apply(hallId, deckId, view);
+        }
+        catch (JsonException e) { log.LogDebug("Deck {Deck} von Halle {Hall} nicht lesbar: {Message}", deckId, hallId, e.Message); }
+    }
+
+    public void ApplyLive(string hallId, string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            feed.ApplyLive(hallId, LiveOf(document.RootElement), StatesOf(document.RootElement));
+        }
+        catch (JsonException e) { log.LogDebug("Werte von Halle {Hall} nicht lesbar: {Message}", hallId, e.Message); }
+    }
+
+    public void Drop(string hallId) => feed.Drop(hallId);
 
     public async Task<DeckView?> LiveAsync(string hallId, DeckLayout layout)
     {
@@ -27,7 +51,11 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
             var answer = await hub.Clients.Client(agent.ConnectionId)
                 .InvokeAsync<JsonElement>("ViewSince", layout.Id, known.Version, timeout.Token);
             var view = Read(answer, layout, known.View);
-            if (view is not null) _known[cacheKey] = (Version(answer), view);
+            if (view is not null)
+            {
+                _known[cacheKey] = (Version(answer), view);
+                feed.Apply(hallId, layout.Id, view);
+            }
             return view;
         }
         catch (Exception e) when (e is not OperationCanceledException || timeout.IsCancellationRequested)
@@ -69,7 +97,8 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
 
     private static DeckLive? LiveOf(JsonElement view)
     {
-        if (!view.TryGetProperty("live", out var live) || live.ValueKind != JsonValueKind.Object) return null;
+        var live = view.TryGetProperty("live", out var block) && block.ValueKind == JsonValueKind.Object ? block : view;
+        if (live.ValueKind != JsonValueKind.Object || !live.TryGetProperty("time", out _)) return null;
         string Text(string name) => live.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
         return new DeckLive(
             Text("time"),

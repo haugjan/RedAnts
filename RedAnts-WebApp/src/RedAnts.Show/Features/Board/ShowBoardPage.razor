@@ -11,6 +11,7 @@
 @inject PressDeckKey.Handler KeyPress
 @inject PanicHall.Handler Panic
 @inject NavigationManager Navigation
+@inject ShowBoardFeed Feed
 
 <div class="sb">
 <header class="bar">
@@ -121,7 +122,6 @@ else
     private string? _playing;
     private string? _playingUrl;
     private long _soundOrder = -1;
-    private DateTime _statusAt = DateTime.MinValue;
     private Timer? _poll;
 
     private bool Connected => _status?.Connected == true;
@@ -139,7 +139,8 @@ else
         if (Query("deck") is { Length: > 0 } deck) _deck = deck;
         _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
         await LoadHallAsync();
-        _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+        Feed.Changed += OnFeed;
+        _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -170,16 +171,28 @@ else
         await RefreshAsync();
     }
 
-    private async Task RefreshAsync()
+    private void OnFeed(string hallId)
+    {
+        if (!string.Equals(hallId, _hallId, StringComparison.OrdinalIgnoreCase)) return;
+        _ = InvokeAsync(async () =>
+        {
+            await ReadDeckAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task ReadDeckAsync()
     {
         if (_hallId is not { Length: > 0 } id) return;
         _view = await DeckQuery.HandleAsync(new GetDeckView.Query(id, _deck));
         FollowSound();
-        if (DateTime.UtcNow - _statusAt > TimeSpan.FromSeconds(5))
-        {
-            _statusAt = DateTime.UtcNow;
-            _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(id));
-        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_hallId is not { Length: > 0 } id) return;
+        _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(id));
+        await ReadDeckAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -292,5 +305,9 @@ else
         return query.TryGetValue(name, out var value) ? value.ToString() : null;
     }
 
-    public void Dispose() => _poll?.Dispose();
+    public void Dispose()
+    {
+        Feed.Changed -= OnFeed;
+        _poll?.Dispose();
+    }
 }

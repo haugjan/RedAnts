@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using RedAnts.Show.Features.Board;
 
 namespace RedAnts.Show.Features.Agents;
 
@@ -6,7 +7,8 @@ public sealed class AgentHub(
     RegisterAgent.Handler register,
     UnregisterAgent.Handler unregister,
     RecordAgentReport.Handler report,
-    GetAgentPayload.Handler payload) : Hub
+    GetAgentPayload.Handler payload,
+    RecordDeckView.Handler deck) : Hub
 {
     public const string Route = "/hubs/halle";
     private const string HallItem = "hall";
@@ -31,8 +33,19 @@ public sealed class AgentHub(
         await base.OnConnectedAsync();
     }
 
+    public Task Deck(string deckId, string json) =>
+        Context.Items[HallItem] is string hall
+            ? deck.HandleAsync(new RecordDeckView.Command(hall, deckId, json))
+            : Task.CompletedTask;
+
+    public Task Live(string json) =>
+        Context.Items[HallItem] is string hall
+            ? deck.HandleAsync(new RecordDeckView.Command(hall, "", json))
+            : Task.CompletedTask;
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        if (Context.Items[HallItem] is string hall) await deck.HandleAsync(new RecordDeckView.Command(hall, "", ""));
         await unregister.HandleAsync(new UnregisterAgent.Command(Context.ConnectionId));
         await base.OnDisconnectedAsync(exception);
     }

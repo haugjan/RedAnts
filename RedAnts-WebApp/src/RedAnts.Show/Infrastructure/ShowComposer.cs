@@ -35,6 +35,7 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddSingleton<IAgentConnections, AgentConnections>();
         builder.Services.AddSingleton<IAgentReports, AgentReports>();
         builder.Services.AddSingleton<IAgentChannel, AgentChannel>();
+        builder.Services.AddSingleton<ShowBoardFeed>();
         builder.Services.AddSingleton<IDeckMirror, AgentDeckMirror>();
         builder.Services.AddScoped<AgentSync>();
         builder.Services.AddSingleton<IPackageManifestReader, ShowAdminManifestReader>();

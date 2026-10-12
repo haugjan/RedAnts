@@ -15,7 +15,11 @@ public static class GetDeckView
             var hall = await halls.GetByIdAsync(query.HallId);
             if (hall is null) return null;
             var layout = hall.DeckLayouts.FirstOrDefault(d => d.Id == query.DeckId) ?? hall.DeckLayouts[0];
-            if (mirror.IsConnected(query.HallId) && await mirror.LiveAsync(query.HallId, layout) is { } live) return live;
+            if (mirror.IsConnected(query.HallId))
+            {
+                if (mirror.Known(query.HallId, layout.Id) is { } known) return known;
+                if (await mirror.LiveAsync(query.HallId, layout) is { } live) return live;
+            }
             return Local(layout, await sounds.GetAllAsync());
         }
 

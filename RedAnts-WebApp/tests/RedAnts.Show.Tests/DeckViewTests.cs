@@ -14,6 +14,14 @@ public class DeckViewTests
 
         public bool IsConnected(string hallId) => connected;
 
+        public DeckView? Known(string hallId, string deckId) => null;
+
+        public void Apply(string hallId, string deckId, string json, DeckLayout layout) { }
+
+        public void ApplyLive(string hallId, string json) { }
+
+        public void Drop(string hallId) { }
+
         public Task<DeckView?> LiveAsync(string hallId, DeckLayout layout) => Task.FromResult(live);
 
         public Task<bool> PressAsync(string hallId, string deckId, int number)
