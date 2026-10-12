@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using RedAnts.Show.Domain;
@@ -7,18 +8,27 @@ namespace RedAnts.Show.Features.Board.Infrastructure;
 
 public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections connections, ILogger<AgentDeckMirror> log) : IDeckMirror
 {
+    private const char IconSeparator = '|';
+
     private static readonly TimeSpan ViewTimeout = TimeSpan.FromSeconds(4);
+
+    private readonly ConcurrentDictionary<string, (long Version, DeckView View)> _known = new();
 
     public bool IsConnected(string hallId) => connections.IsConnected(hallId);
 
     public async Task<DeckView?> LiveAsync(string hallId, DeckLayout layout)
     {
         if (connections.Of(hallId) is not { } agent) return null;
+        var cacheKey = $"{agent.ConnectionId}|{layout.Id}";
+        var known = _known.TryGetValue(cacheKey, out var cached) ? cached : default;
         using var timeout = new CancellationTokenSource(ViewTimeout);
         try
         {
-            var view = await hub.Clients.Client(agent.ConnectionId).InvokeAsync<JsonElement>("View", layout.Id, timeout.Token);
-            return Read(view, layout);
+            var answer = await hub.Clients.Client(agent.ConnectionId)
+                .InvokeAsync<JsonElement>("ViewSince", layout.Id, known.Version, timeout.Token);
+            var view = Read(answer, layout, known.View);
+            if (view is not null) _known[cacheKey] = (Version(answer), view);
+            return view;
         }
         catch (Exception e) when (e is not OperationCanceledException || timeout.IsCancellationRequested)
         {
@@ -34,10 +44,17 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
         return true;
     }
 
-    private static DeckView? Read(JsonElement view, DeckLayout layout)
+    private static long Version(JsonElement view) =>
+        view.TryGetProperty("version", out var value) && value.TryGetInt64(out var version) ? version : 0;
+
+    private static DeckView? Read(JsonElement view, DeckLayout layout, DeckView? known)
     {
         if (view.ValueKind != JsonValueKind.Object) return null;
-        if (!view.TryGetProperty("slots", out var slots) || slots.ValueKind != JsonValueKind.Array) return null;
+        var live = LiveOf(view);
+        var states = StatesOf(view);
+        if (!view.TryGetProperty("slots", out var slots) || slots.ValueKind != JsonValueKind.Array)
+            return known is null ? null : known with { Live = live, States = states };
+
         var keys = slots.EnumerateArray().Select(slot => new DeckKeyRow(
             slot.GetProperty("number").GetInt32(),
             slot.TryGetProperty("label", out var label) ? label.GetString() ?? "" : "",
@@ -47,7 +64,7 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
             slot.TryGetProperty("pressable", out var pressable) && pressable.GetBoolean(),
             null)).ToList();
         var title = view.TryGetProperty("title", out var text) ? text.GetString() ?? layout.Name : layout.Name;
-        return new DeckView(layout.Id, title, layout.Columns, keys, true, LiveOf(view), StatesOf(view));
+        return new DeckView(layout.Id, title, layout.Columns, keys, true, live, states);
     }
 
     private static DeckLive? LiveOf(JsonElement view)
@@ -74,8 +91,6 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
         var parts = imageKey.Split(IconSeparator);
         return parts.Length == 3 && parts[0].Length > 0 ? parts[0] : null;
     }
-
-    private const char IconSeparator = '|';
 
     private static string Hex(JsonElement slot, string property) =>
         slot.TryGetProperty(property, out var value) && value.TryGetInt32(out var color)

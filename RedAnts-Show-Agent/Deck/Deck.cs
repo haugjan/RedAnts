@@ -136,6 +136,24 @@ public sealed class Deck
 
     public object View() => View(DeckLayout.FieldDeck);
 
+    public object View(string deckId, long since)
+    {
+        if (since > 0 && since == Version)
+            return new { version = Version, live = Live(), states = _states.All };
+        return View(deckId);
+    }
+
+    object Live() => new
+    {
+        time = _live.Time,
+        period = _live.Period,
+        periodLabel = _live.PeriodLabel,
+        home = _live.HomeScore,
+        away = _live.AwayScore,
+        running = _live.ClockRunning,
+        clock = _live.ClockLive,
+    };
+
     public object View(string deckId)
     {
         var context = Context;
@@ -154,16 +172,7 @@ public sealed class Deck
                 bgcolor = s.Color,
                 pressable = s.Pressable,
             }).ToArray(),
-            live = new
-            {
-                time = _live.Time,
-                period = _live.Period,
-                periodLabel = _live.PeriodLabel,
-                home = _live.HomeScore,
-                away = _live.AwayScore,
-                running = _live.ClockRunning,
-                clock = _live.ClockLive,
-            },
+            live = Live(),
             states = _states.All,
         };
     }

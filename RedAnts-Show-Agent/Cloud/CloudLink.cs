@@ -27,6 +27,7 @@ public sealed class CloudLink(AgentConfig config, PayloadStore payload, SceneRun
         hub.On("Panic", () => runner.Start(SceneRunner.PanicScene, new Dictionary<string, string>()));
         hub.On<string, int>("Press", async (deckId, number) => await deck.PressAsync(deckId, number));
         hub.On<string, object>("View", deckId => deck.View(deckId));
+        hub.On<string, long, object>("ViewSince", (deckId, since) => deck.View(deckId, since));
         hub.Reconnecting += e =>
         {
             Fault = e?.Message ?? "Verbindung unterbrochen";
