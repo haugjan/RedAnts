@@ -98,6 +98,30 @@ if (migrateOnly)
 
 app.UseForwardedHeaders();
 
+var errorPage = Path.Combine(app.Environment.WebRootPath, "500.html");
+var errorHtml = File.Exists(errorPage) ? await File.ReadAllTextAsync(errorPage) : "<h1>500</h1>";
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler(errors => errors.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        var path = context.Request.Path;
+        if (path.StartsWithSegments("/api") || path.StartsWithSegments("/payrexx") || path.StartsWithSegments("/hubs"))
+        {
+            context.Response.ContentType = "application/problem+json";
+            await context.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "Unerwarteter Fehler",
+            });
+            return;
+        }
+        context.Response.ContentType = "text/html; charset=utf-8";
+        await context.Response.WriteAsync(errorHtml);
+    }));
+}
+
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/health")
