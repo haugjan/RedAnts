@@ -120,7 +120,7 @@ else
     private string? _note;
     private string? _playing;
     private string? _playingUrl;
-    private string? _lastSoundReport;
+    private long _soundOrder = -1;
     private DateTime _statusAt = DateTime.MinValue;
     private Timer? _poll;
 
@@ -174,11 +174,11 @@ else
     {
         if (_hallId is not { Length: > 0 } id) return;
         _view = await DeckQuery.HandleAsync(new GetDeckView.Query(id, _deck));
-        if (DateTime.UtcNow - _statusAt > TimeSpan.FromSeconds(2))
+        FollowSound();
+        if (DateTime.UtcNow - _statusAt > TimeSpan.FromSeconds(5))
         {
             _statusAt = DateTime.UtcNow;
             _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(id));
-            FollowSoundReport();
         }
         await InvokeAsync(StateHasChanged);
     }
@@ -203,14 +203,12 @@ else
             _note = "Kein Agent verbunden.";
     }
 
-    private void FollowSoundReport()
+    private void FollowSound()
     {
-        var json = _status?.Report(AgentReportKinds.Sound)?.Json;
-        if (json is null || json == _lastSoundReport) return;
-        _lastSoundReport = json;
-        if (SoundRequest.Parse(json) is not { } request) return;
-        if (!request.IsPlay) { Stop(); return; }
-        Play(_sounds.FirstOrDefault(s => s.Id == request.SoundId));
+        if (_view?.Live is not { } live || live.SoundOrder == _soundOrder) return;
+        _soundOrder = live.SoundOrder;
+        if (live.SoundId.Length == 0) { Stop(); return; }
+        Play(_sounds.FirstOrDefault(s => s.Id == live.SoundId));
     }
 
     private void Play(SoundCommand? sound)

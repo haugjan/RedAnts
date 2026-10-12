@@ -4,7 +4,7 @@ namespace RedAnts.Show.Features.Board;
 
 public sealed record DeckKeyRow(int Number, string Label, string? Icon, string Color, string TextColor, bool Pressable, string? SoundId);
 
-public sealed record DeckLive(string Time, string PeriodLabel, string HomeScore, string AwayScore, bool ClockLive);
+public sealed record DeckLive(string Time, string PeriodLabel, string HomeScore, string AwayScore, bool ClockLive, string SoundId, long SoundOrder);
 
 public sealed record DeckView(
     string DeckId,

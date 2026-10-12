@@ -59,6 +59,7 @@ var live = app.Services.GetRequiredService<LiveGame>();
 states.RuleTriggered += (sceneId, reason) => runner.Start(sceneId, new Dictionary<string, string>());
 live.Changed += () => states.Set(ShowStates.ClockRunning, live.ClockRunning ? "läuft" : "steht", "Matchuhr");
 deck.SoundRequested += sound => reporter.ReportSound(sound);
+runner.SoundRequested += deck.NoteSound;
 vmixLink.InputsRead += inputs => reporter.ReportInputs(inputs);
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 

@@ -19,7 +19,7 @@ public sealed class StatusReporter(
     static readonly TimeSpan Tick = TimeSpan.FromSeconds(1);
     static readonly TimeSpan StatusRepeat = TimeSpan.FromSeconds(15);
 
-    static readonly TimeSpan ClockPush = TimeSpan.FromMilliseconds(200);
+    static readonly TimeSpan ClockPush = TimeSpan.FromMilliseconds(500);
 
     readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _sent = new();
     readonly object _clockGate = new();

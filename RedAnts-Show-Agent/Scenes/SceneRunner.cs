@@ -30,6 +30,8 @@ public sealed class SceneRunner(PayloadStore payload, LiveGame live, ShowStates 
 
     public event Action<string, object>? Reported;
 
+    public event Action<SoundCommand?>? SoundRequested;
+
     public Task Start(string sceneId, IReadOnlyDictionary<string, string> args)
     {
         var scene = payload.Scene(sceneId);
@@ -161,12 +163,14 @@ public sealed class SceneRunner(PayloadStore payload, LiveGame live, ShowStates 
                     ? target[SceneActions.SoundPrefix.Length..]
                     : target);
                 if (sound is null) log.LogWarning("Musik-Befehl {Target} ist nicht konfiguriert", target);
+                else SoundRequested?.Invoke(sound);
                 Reported?.Invoke("sound", new { action = step.Action, target, sound = sound?.Id ?? "", label = sound?.Label ?? "", scene = ctx.Scene.Id });
                 break;
             }
 
             case SceneActions.SoundStop:
             case SceneActions.SoundFade:
+                SoundRequested?.Invoke(null);
                 Reported?.Invoke("sound", new { action = step.Action, target = step.Target ?? "", scene = ctx.Scene.Id, ms = step.Ms });
                 break;
 

@@ -63,6 +63,8 @@ public sealed class Deck
     readonly object _gate = new();
     TaskCompletionSource<bool> _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     string _shown = "";
+    string _sound = "";
+    long _soundOrder;
 
     public Deck(PayloadStore payload, LiveGame live, ShowStates states, SceneRunner runner, VmixLink vmix, SednaLink led, ILogger<Deck> log)
     {
@@ -143,8 +145,20 @@ public sealed class Deck
         return View(deckId);
     }
 
+    public void NoteSound(SoundCommand? sound)
+    {
+        lock (_gate)
+        {
+            _sound = sound?.Id ?? "";
+            _soundOrder++;
+        }
+        Bump();
+    }
+
     object Live() => new
     {
+        sound = _sound,
+        soundOrder = _soundOrder,
         time = _live.Time,
         period = _live.Period,
         periodLabel = _live.PeriodLabel,
@@ -375,6 +389,7 @@ public sealed class Deck
     Task PlaySound(SoundCommand sound)
     {
         _log.LogInformation("Musik {Label} angefordert", sound.Label);
+        NoteSound(sound);
         SoundRequested?.Invoke(sound);
         return Task.CompletedTask;
     }
