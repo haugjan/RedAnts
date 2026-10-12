@@ -47,7 +47,25 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
             slot.TryGetProperty("pressable", out var pressable) && pressable.GetBoolean(),
             null)).ToList();
         var title = view.TryGetProperty("title", out var text) ? text.GetString() ?? layout.Name : layout.Name;
-        return new DeckView(layout.Id, title, layout.Columns, keys, true);
+        return new DeckView(layout.Id, title, layout.Columns, keys, true, LiveOf(view), StatesOf(view));
+    }
+
+    private static DeckLive? LiveOf(JsonElement view)
+    {
+        if (!view.TryGetProperty("live", out var live) || live.ValueKind != JsonValueKind.Object) return null;
+        string Text(string name) => live.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
+        return new DeckLive(
+            Text("time"),
+            Text("periodLabel"),
+            Text("home"),
+            Text("away"),
+            live.TryGetProperty("clock", out var running) && running.ValueKind == JsonValueKind.True);
+    }
+
+    private static IReadOnlyDictionary<string, string>? StatesOf(JsonElement view)
+    {
+        if (!view.TryGetProperty("states", out var states) || states.ValueKind != JsonValueKind.Object) return null;
+        return states.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString() ?? "", StringComparer.OrdinalIgnoreCase);
     }
 
     private static string? IconOf(string? imageKey)

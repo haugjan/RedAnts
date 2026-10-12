@@ -4,7 +4,16 @@ namespace RedAnts.Show.Features.Board;
 
 public sealed record DeckKeyRow(int Number, string Label, string? Icon, string Color, string TextColor, bool Pressable, string? SoundId);
 
-public sealed record DeckView(string DeckId, string Title, int Columns, IReadOnlyList<DeckKeyRow> Keys, bool FromAgent);
+public sealed record DeckLive(string Time, string PeriodLabel, string HomeScore, string AwayScore, bool ClockLive);
+
+public sealed record DeckView(
+    string DeckId,
+    string Title,
+    int Columns,
+    IReadOnlyList<DeckKeyRow> Keys,
+    bool FromAgent,
+    DeckLive? Live = null,
+    IReadOnlyDictionary<string, string>? States = null);
 
 public interface IDeckMirror
 {

@@ -19,7 +19,11 @@ public sealed class StatusReporter(
     static readonly TimeSpan Tick = TimeSpan.FromSeconds(1);
     static readonly TimeSpan StatusRepeat = TimeSpan.FromSeconds(15);
 
-    readonly Dictionary<string, string> _sent = [];
+    static readonly TimeSpan ClockPush = TimeSpan.FromMilliseconds(200);
+
+    readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _sent = new();
+    readonly object _clockGate = new();
+    DateTime _clockPushedAt = DateTime.MinValue;
     DateTimeOffset _statusSentAt = DateTimeOffset.MinValue;
     IReadOnlyList<VmixInput> _inputs = [];
 
@@ -60,6 +64,7 @@ public sealed class StatusReporter(
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
         runner.Reported += Forward;
+        live.Changed += PushClock;
         try
         {
             while (!stop.IsCancellationRequested)
@@ -69,7 +74,11 @@ public sealed class StatusReporter(
                 catch (OperationCanceledException) { break; }
             }
         }
-        finally { runner.Reported -= Forward; }
+        finally
+        {
+            runner.Reported -= Forward;
+            live.Changed -= PushClock;
+        }
     }
 
     void Forward(string kind, object body)
@@ -85,9 +94,7 @@ public sealed class StatusReporter(
         await SendIfChangedAsync("score", score, stop);
 
         states.Set(ShowStates.ClockRunning, live.ClockRunning ? "läuft" : "steht", "Matchuhr");
-        var state = live.Clock;
-        var clockBody = new { time = live.Time, period = live.Period, periodLabel = live.PeriodLabel, mode = state.Mode, live = live.ClockLive };
-        await SendIfChangedAsync("clock", clockBody, stop);
+        await SendIfChangedAsync("clock", ClockBody(), stop);
 
         await SendIfChangedAsync("deck", new { context = deck.Context.ToString(), scene = runner.Running ?? "" }, stop);
 
@@ -104,6 +111,26 @@ public sealed class StatusReporter(
             await cloud.ReportAsync("status", status, stop);
         }
     }
+
+    void PushClock()
+    {
+        var now = DateTime.UtcNow;
+        lock (_clockGate)
+        {
+            if (now - _clockPushedAt < ClockPush) return;
+            _clockPushedAt = now;
+        }
+        _ = SendIfChangedAsync("clock", ClockBody(), CancellationToken.None);
+    }
+
+    object ClockBody() => new
+    {
+        time = live.Time,
+        period = live.Period,
+        periodLabel = live.PeriodLabel,
+        mode = live.Clock.Mode,
+        live = live.ClockLive,
+    };
 
     async Task SendIfChangedAsync(string kind, object body, CancellationToken stop)
     {

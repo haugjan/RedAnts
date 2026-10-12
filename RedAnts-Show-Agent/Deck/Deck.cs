@@ -154,6 +154,17 @@ public sealed class Deck
                 bgcolor = s.Color,
                 pressable = s.Pressable,
             }).ToArray(),
+            live = new
+            {
+                time = _live.Time,
+                period = _live.Period,
+                periodLabel = _live.PeriodLabel,
+                home = _live.HomeScore,
+                away = _live.AwayScore,
+                running = _live.ClockRunning,
+                clock = _live.ClockLive,
+            },
+            states = _states.All,
         };
     }
 

@@ -28,11 +28,11 @@
         <span class="hall">@(_hall?.Name ?? "keine Halle")</span>
     }
     <span class="lamp @(Connected ? "on" : "off")"></span>
-    <span class="score">@Report(AgentReportKinds.Score, "home", "–") : @Report(AgentReportKinds.Score, "away", "–")</span>
+    <span class="score">@Score(true) : @Score(false)</span>
     @if (_hall?.Offers.Clock == true)
     {
-        <span class="time">@Report(AgentReportKinds.Clock, "time", "--:--")</span>
-        <span class="period">@Report(AgentReportKinds.Clock, "periodLabel", "")</span>
+        <span class="time">@Time()</span>
+        <span class="period">@Period()</span>
     }
     <span class="spacer"></span>
     @foreach (var state in DefaultStates.All.Where(s => Offered(s.Id)))
@@ -121,6 +121,7 @@ else
     private string? _playing;
     private string? _playingUrl;
     private string? _lastSoundReport;
+    private DateTime _statusAt = DateTime.MinValue;
     private Timer? _poll;
 
     private bool Connected => _status?.Connected == true;
@@ -138,7 +139,7 @@ else
         if (Query("deck") is { Length: > 0 } deck) _deck = deck;
         _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
         await LoadHallAsync();
-        _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(900));
+        _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -172,9 +173,13 @@ else
     private async Task RefreshAsync()
     {
         if (_hallId is not { Length: > 0 } id) return;
-        _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(id));
         _view = await DeckQuery.HandleAsync(new GetDeckView.Query(id, _deck));
-        FollowSoundReport();
+        if (DateTime.UtcNow - _statusAt > TimeSpan.FromSeconds(2))
+        {
+            _statusAt = DateTime.UtcNow;
+            _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(id));
+            FollowSoundReport();
+        }
         await InvokeAsync(StateHasChanged);
     }
 
@@ -238,8 +243,19 @@ else
         };
     }
 
+    private string Score(bool home)
+    {
+        if (_view?.Live is { } live) return home ? live.HomeScore : live.AwayScore;
+        return Report(AgentReportKinds.Score, home ? "home" : "away", "–");
+    }
+
+    private string Time() => _view?.Live?.Time is { Length: > 0 } time ? time : Report(AgentReportKinds.Clock, "time", "--:--");
+
+    private string Period() => _view?.Live?.PeriodLabel is { Length: > 0 } period ? period : Report(AgentReportKinds.Clock, "periodLabel", "");
+
     private string StateValue(ShowState state)
     {
+        if (_view?.States is { } live && live.TryGetValue(state.Id, out var current) && current.Length > 0) return current;
         var json = _status?.Report(AgentReportKinds.Status)?.Json;
         if (json is null) return state.First;
         try
