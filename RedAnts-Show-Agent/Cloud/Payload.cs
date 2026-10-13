@@ -107,7 +107,8 @@ public sealed record Hall(
     string? ActiveGameId = null,
     IReadOnlyList<AutomationRule>? Automation = null,
     IReadOnlyList<DeckLayout>? Decks = null,
-    HallCapabilities? Offered = null)
+    HallCapabilities? Offered = null,
+    string BreakSound = "")
 {
     public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], [], []);
 

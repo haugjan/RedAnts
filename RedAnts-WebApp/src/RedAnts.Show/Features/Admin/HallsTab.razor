@@ -1,4 +1,6 @@
 @inherits HallTab
+@using RedAnts.Show.Features.Music
+@inject GetSounds.Handler SoundsQuery
 @inject GetHalls.Handler HallsQuery
 @inject CreateHall.Handler HallCreation
 @inject RenewAgentKey.Handler KeyRenewal
@@ -48,6 +50,22 @@
                     <label class="sa-check"><input type="checkbox" @bind="_light" @bind:after="Touch" /> Lichtshow</label>
                 </div>
 
+                @if (_sound)
+                {
+                    <h3>Sound</h3>
+                    <div class="sa-form">
+                        <label>Musik bei Spielunterbruch
+                            <select class="sa-input" @bind="_breakSound" @bind:after="Touch">
+                                <option value="">keine</option>
+                                @foreach (var sound in _sounds)
+                                {
+                                    <option value="@sound.Id">@sound.Label</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+                    <p class="sa-hint">Die Taste "Auto-Pausenmusik" auf dem Deck spielt diesen Befehl, sobald die Uhr mitten im Drittel steht, und stoppt ihn, sobald sie wieder läuft.</p>
+                }
                 @if (_clock)
                 {
                     <h3>Matchuhr</h3>
@@ -111,11 +129,14 @@
     private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _clockSource = "", _imageFolder = "", _shortcuts = "";
     private int _teamId, _season, _vmixPort, _sednaPort, _clockPort;
     private bool _sound = true, _clock = true, _vmix = true, _led = true, _light;
+    private string _breakSound = "";
+    private IReadOnlyList<SoundCommand> _sounds = [];
 
     private string BaseUrl => new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
 
     protected override async Task OnInitializedAsync()
     {
+        _sounds = await SoundsQuery.HandleAsync(new GetSounds.Query());
         await base.OnInitializedAsync();
         await ReloadListAsync();
     }
@@ -140,6 +161,7 @@
         _vmix = Hall.Offers.Vmix;
         _led = Hall.Offers.Led;
         _light = Hall.Offers.Light;
+        _breakSound = Hall.BreakSound;
         return Task.CompletedTask;
     }
 
@@ -167,6 +189,7 @@
         },
         Shortcuts = _shortcuts.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),
         Offered = new HallCapabilities(_sound, _clock, _vmix, _led, _light),
+        BreakSound = _breakSound,
     });
 
     private async Task CreateAsync() => await Guarded(async () =>

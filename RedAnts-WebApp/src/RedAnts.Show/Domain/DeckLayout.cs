@@ -91,6 +91,11 @@ public static class DefaultDecks
     public static DeckLayout Music() => new(DeckLayout.MusicDeck, "Streamdeck Mk2 (DJ-Pult)", 5, 3,
     [
         new(11, DeckKeyKinds.Scene, "Stopp", "#ff0000", SceneId: "sys-musik-stopp"),
+        new(13, DeckKeyKinds.State, "Auto-Pausenmusik", "#1e7b34", StateId: DefaultStates.AutoBreakMusic, Rows:
+        [
+            new("aus", "Auto aus", null, "#3a3f47", DeckStateRow.RunScene, "sys-automusik-ein"),
+            new("an", "Auto an", null, "#1e7b34", DeckStateRow.RunScene, "sys-automusik-aus"),
+        ]),
         new(12, DeckKeyKinds.State, "Fade out", "#ff6600", StateId: DefaultStates.Music, Rows:
         [
             new("aus", "Fade out", null, "#3a3f47", DeckStateRow.Locked, null),

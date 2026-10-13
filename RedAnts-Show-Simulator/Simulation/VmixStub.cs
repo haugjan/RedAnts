@@ -177,7 +177,6 @@ public sealed class VmixStub(EventLog log, TitleLibrary titles) : BackgroundServ
             {
                 if (!_values.TryGetValue(input, out var fields)) _values[input] = fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 fields[field] = value;
-                if (input.Contains("scoreboard", StringComparison.OrdinalIgnoreCase)) _pinned.Add(input);
             }
             _calls.Add(new VmixFunctionCall(DateTime.Now, function, input, field, value, raw));
             if (_calls.Count > 500) _calls.RemoveRange(0, _calls.Count - 500);

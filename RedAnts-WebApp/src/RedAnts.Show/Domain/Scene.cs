@@ -124,6 +124,8 @@ public static class DefaultScenes
         Sys("sys-einblenden", "Letzten Einblender zeigen", [new(SceneActions.OverlayShow, "title:result", Event: "result")]),
         Sys("sys-uhr-ein", "Uhr einblenden", [new(SceneActions.OverlayShow, "title:scoreboard")]),
         Sys("sys-uhr-aus", "Uhr ausblenden", [new(SceneActions.OverlayHide, "title:scoreboard")]),
+        Sys("sys-automusik-ein", "Automatik Pausenmusik ein", [new(SceneActions.StateSet, DefaultStates.AutoBreakMusic, Event: "an")]),
+        Sys("sys-automusik-aus", "Automatik Pausenmusik aus", [new(SceneActions.StateSet, DefaultStates.AutoBreakMusic, Event: "aus")]),
         Sys("sys-musik-stopp", "Musik Stopp", [new(SceneActions.SoundStop)]),
         Sys("sys-musik-fade", "Musik Fade out", [new(SceneActions.SoundFade, Ms: 2000)]),
         Sys("sys-led-stopp", "LED Stopp", [new(SceneActions.LedStop, "led:stopp")]),

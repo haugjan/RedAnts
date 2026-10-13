@@ -388,6 +388,8 @@ public sealed class Deck
         b.Action(row, col, match.Label, color, () => Run(scene), match.Icon, scene, forceText: CWhite);
     }
 
+    public Task Play(SoundCommand sound) => PlaySound(sound);
+
     Task PlaySound(SoundCommand sound)
     {
         _log.LogInformation("Musik {Label} angefordert", sound.Label);

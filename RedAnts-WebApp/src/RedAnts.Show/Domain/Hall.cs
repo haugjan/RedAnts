@@ -42,7 +42,8 @@ public sealed partial record Hall(
     string? ActiveGameId = null,
     IReadOnlyList<AutomationRule>? Automation = null,
     IReadOnlyList<DeckLayout>? Decks = null,
-    HallCapabilities? Offered = null)
+    HallCapabilities? Offered = null,
+    string BreakSound = "")
 {
     public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
 
