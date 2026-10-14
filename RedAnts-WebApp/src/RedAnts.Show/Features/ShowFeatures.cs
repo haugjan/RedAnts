@@ -20,7 +20,7 @@ public static class ShowFeatures
         typeof(SetActiveGame.Handler),
         typeof(GetGames.Handler),
         typeof(GetGame.Handler),
-        typeof(GetUpcomingGames.Handler),
+        typeof(GetGameSchedule.Handler),
         typeof(LoadGameFromSwissUnihockey.Handler),
         typeof(ImportGameConfig.Handler),
         typeof(SaveGame.Handler),

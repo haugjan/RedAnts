@@ -3,7 +3,7 @@
 @inject GetHall.Handler HallQuery
 @inject GetHallStatus.Handler StatusQuery
 @inject GetGame.Handler GameQuery
-@inject GetUpcomingGames.Handler UpcomingQuery
+@inject GetGameSchedule.Handler ScheduleQuery
 @inject LoadGameFromSwissUnihockey.Handler GameLoader
 @inject ImportGameConfig.Handler GameImport
 @inject SetActiveGame.Handler ActiveGame
@@ -93,23 +93,40 @@
             <div class="sp-card">
                 <h2>Spiel laden</h2>
                 <div class="sp-actions">
-                    <button class="sp-btn" @onclick="LoadUpcomingAsync" disabled="@_busy">swissunihockey: nächste Spiele</button>
+                    <button class="sp-btn" @onclick="LoadScheduleAsync" disabled="@_busy">swissunihockey: Spiele holen</button>
                 </div>
-                @if (_upcoming is { Count: > 0 })
+                @if (_schedule is { } schedule)
                 {
-                    <ul class="sp-list">
-                        @foreach (var game in _upcoming.Take(8))
-                        {
-                            <li>
-                                <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away</span>
-                                <button class="sp-btn small" @onclick="() => LoadGameAsync(game.Id)" disabled="@_busy">Laden</button>
-                            </li>
-                        }
-                    </ul>
-                }
-                else if (_upcoming is { Count: 0 })
-                {
-                    <p class="sp-hint">Keine kommenden Spiele gefunden.</p>
+                    @if (schedule.Next.Count > 0)
+                    {
+                        <h3>Nächste Spiele</h3>
+                        <ul class="sp-list">
+                            @foreach (var game in schedule.Next.Take(8))
+                            {
+                                <li @key="game.Id">
+                                    <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away</span>
+                                    <button class="sp-btn small" @onclick="() => LoadGameAsync(game.Id)" disabled="@_busy">Laden</button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (schedule.Played.Count > 0)
+                    {
+                        <h3>Gespielt, letzte sechs Wochen</h3>
+                        <ul class="sp-list">
+                            @foreach (var game in schedule.Played.Take(10))
+                            {
+                                <li @key="game.Id">
+                                    <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away @(game.Result is { Length: > 0 } result ? "· " + result : "")</span>
+                                    <button class="sp-btn small" @onclick="() => LoadGameAsync(game.Id)" disabled="@_busy">Laden</button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (schedule.Next.Count == 0 && schedule.Played.Count == 0)
+                    {
+                        <p class="sp-hint">Keine Spiele gefunden.</p>
+                    }
                 }
                 <details>
                     <summary>Game-Config-Datei einfügen (TCunihockey-Format)</summary>
@@ -145,7 +162,7 @@
     private Hall? _hall;
     private HallStatus? _status;
     private Game? _game;
-    private IReadOnlyList<UpcomingGame>? _upcoming;
+    private GameSchedule? _schedule;
     private string _configText = "";
     private string _messageText = "";
     private string? _message;
@@ -186,7 +203,7 @@
     private async Task OnHallChanged(ChangeEventArgs e)
     {
         _hallId = e.Value?.ToString();
-        _upcoming = null;
+        _schedule = null;
         await RefreshAsync();
     }
 
@@ -198,9 +215,9 @@
         _game = _hall?.ActiveGameId is { } id ? await GameQuery.HandleAsync(new GetGame.Query(id)) : null;
     }
 
-    private async Task LoadUpcomingAsync() => await Guarded(async () =>
+    private async Task LoadScheduleAsync() => await Guarded(async () =>
     {
-        _upcoming = await UpcomingQuery.HandleAsync(new GetUpcomingGames.Query(_hallId!));
+        _schedule = await ScheduleQuery.HandleAsync(new GetGameSchedule.Query(_hallId!));
     });
 
     private async Task LoadGameAsync(string gameId) => await Guarded(async () =>
