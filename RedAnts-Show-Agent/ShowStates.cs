@@ -22,8 +22,8 @@ public sealed class ShowStates(PayloadStore payload, ILogger<ShowStates> log)
     public static IReadOnlyList<ShowState> Known { get; } =
     [
         new(Overlay, "Einblender", ["aus", "an"]),
-        new(ClockVisible, "Uhr sichtbar", ["aus", "an"]),
-        new(ClockRunning, "Uhr läuft", ["steht", "läuft"]),
+        new(ClockVisible, "Scoreboard", ["aus", "an"]),
+        new(ClockRunning, "Uhr", ["steht", "läuft"]),
         new(Music, "Musik", ["aus", "läuft", "fade"]),
         new(Led, "LED", ["aus", "läuft"]),
         new(Sponsors, "Sponsoren-Loop", ["aus", "an"]),

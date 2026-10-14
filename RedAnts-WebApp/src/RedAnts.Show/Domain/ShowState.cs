@@ -44,8 +44,8 @@ public static class DefaultStates
     public static IReadOnlyList<ShowState> All { get; } =
     [
         new(Overlay, "Einblender", ["aus", "an"], StateSources.Observed, "aktive Overlays in vMix"),
-        new(ClockVisible, "Uhr sichtbar", ["aus", "an"], StateSources.Observed, "Scoreboard-Overlay in vMix"),
-        new(ClockRunning, "Uhr läuft", ["steht", "läuft"], StateSources.Observed, "Zeit im Telegramm bewegt sich"),
+        new(ClockVisible, "Scoreboard", ["aus", "an"], StateSources.Observed, "Scoreboard-Overlay in vMix"),
+        new(ClockRunning, "Uhr", ["steht", "läuft"], StateSources.Observed, "Zeit im Telegramm bewegt sich"),
         new(Music, "Musik", ["aus", "läuft", "fade"], StateSources.Observed, "Bedienung im Browser"),
         new(Led, "LED", ["aus", "läuft"], StateSources.Set, "sedna meldet nichts zurück"),
         new(Sponsors, "Sponsoren-Loop", ["aus", "an"], StateSources.Set),

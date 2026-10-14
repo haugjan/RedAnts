@@ -56,7 +56,7 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
             if (stored is not null) log.LogInformation("Gesicherte Konfiguration vom {SentAt:dd.MM.yyyy HH:mm} geladen", stored.SentAt);
             return stored ?? empty;
         }
-        catch (JsonException e)
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
         {
             log.LogWarning("Gesicherte Konfiguration unlesbar: {Message}", e.Message);
             return empty;
