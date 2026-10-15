@@ -31,9 +31,9 @@ public sealed class ClockSender(EventLog log) : BackgroundService
     }
     public bool Sending { get; set; } = true;
     public bool Running { get; private set; }
-    public bool CountsDown { get; set; }
+    public bool CountsDown { get; set; } = true;
     public int PeriodSeconds { get; set; } = 20 * 60;
-    public int Seconds { get; private set; }
+    public int Seconds { get; private set; } = 20 * 60;
     public int HomeScore { get; set; }
     public int AwayScore { get; set; }
     public string Period { get; set; } = "1";
@@ -56,7 +56,13 @@ public sealed class ClockSender(EventLog log) : BackgroundService
 
     public void Start()
     {
-        lock (_gate) { Running = true; _lastSecond = DateTime.UtcNow; }
+        lock (_gate)
+        {
+            if (CountsDown && Seconds == 0) Seconds = PeriodSeconds;
+            if (!CountsDown && Seconds >= PeriodSeconds) Seconds = 0;
+            Running = true;
+            _lastSecond = DateTime.UtcNow;
+        }
         log.Add("Uhr", "Uhr gestartet");
         Changed?.Invoke();
     }
