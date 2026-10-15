@@ -37,3 +37,19 @@ body.sb-page .sb { min-height: 100vh; }
 .sb .note { color: #ffb4b4; }
 .sb .hint { color: #7d8691; font-size: 12px; }
 .sb .player { width: 100%; max-width: 420px; margin-top: 8px; }
+
+.sb .crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.sb .crumb { background: #1b1b22; color: #cfd6dd; border: 1px solid #2c2c36; border-radius: 3px; padding: 5px 10px; font: inherit; cursor: pointer; }
+.sb .crumb:hover { background: #24242e; }
+.sb .crumbs .sep { color: #5d6670; }
+.sb .tiles { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); max-width: 1280px; }
+.sb .tile {
+    display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 86px;
+    background: #2b3038; color: #fff; border: none; border-radius: 6px; padding: 10px 12px;
+    font: inherit; font-size: 13px; font-weight: 700; text-align: left; cursor: pointer;
+}
+.sb .tile:active { transform: scale(0.98); }
+.sb .tile.folder { background: #1f242b; border: 1px solid #333a44; }
+.sb .tile.folder .name::before { content: "📁 "; }
+.sb .tile.active { outline: 3px solid #4ade80; }
+.sb .tile .count { font-size: 11px; font-weight: 400; opacity: 0.75; }

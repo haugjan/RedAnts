@@ -78,6 +78,7 @@
                         </label>
                         <label>Port <input class="sa-input" type="number" @bind="_clockPort" @bind:after="Touch" /></label>
                         <label>Absender-IP (leer = jede) <input class="sa-input" @bind="_clockSource" @bind:after="Touch" placeholder="192.168.1.30" /></label>
+                        <label>Drittelsdauer (Minuten) <input class="sa-input" type="number" @bind="_periodMinutes" @bind:after="Touch" /></label>
                     </div>
                 }
                 @if (_vmix)
@@ -127,7 +128,7 @@
     private IReadOnlyList<HallRow> _halls = [];
     private string _newId = "", _newName = "";
     private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _clockSource = "", _imageFolder = "", _shortcuts = "";
-    private int _teamId, _season, _vmixPort, _sednaPort, _clockPort;
+    private int _teamId, _season, _vmixPort, _sednaPort, _clockPort, _periodMinutes;
     private bool _sound = true, _clock = true, _vmix = true, _led = true, _light;
     private string _breakSound = "";
     private IReadOnlyList<SoundCommand> _sounds = [];
@@ -154,6 +155,7 @@
         _clockType = Hall.Devices.ClockType;
         _clockPort = Hall.Devices.ClockPort;
         _clockSource = Hall.Devices.ClockSource;
+        _periodMinutes = Hall.Devices.PeriodMinutes;
         _imageFolder = Hall.Devices.ImageFolder;
         _shortcuts = string.Join("\n", Hall.Shortcuts);
         _sound = Hall.Offers.Sound;
@@ -185,6 +187,7 @@
             ClockType = _clockType,
             ClockPort = _clockPort,
             ClockSource = _clockSource.Trim(),
+            PeriodMinutes = _periodMinutes,
             ImageFolder = _imageFolder.Trim(),
         },
         Shortcuts = _shortcuts.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),

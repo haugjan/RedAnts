@@ -35,6 +35,7 @@ public static class ShowFeatures
         typeof(RunScene.Handler),
         typeof(PanicHall.Handler),
         typeof(PressDeckKey.Handler),
+        typeof(PlayHallSound.Handler),
         typeof(GetDeckView.Handler),
         typeof(RecordDeckView.Handler),
         typeof(GetSounds.Handler),

@@ -31,9 +31,9 @@ public sealed class ClockSender(EventLog log) : BackgroundService
     }
     public bool Sending { get; set; } = true;
     public bool Running { get; private set; }
-    public bool CountsDown { get; set; } = true;
+    public bool CountsDown { get; set; }
     public int PeriodSeconds { get; set; } = 20 * 60;
-    public int Seconds { get; private set; } = 20 * 60;
+    public int Seconds { get; private set; }
     public int HomeScore { get; set; }
     public int AwayScore { get; set; }
     public string Period { get; set; } = "1";

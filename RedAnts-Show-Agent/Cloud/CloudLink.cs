@@ -26,6 +26,7 @@ public sealed class CloudLink(AgentConfig config, PayloadStore payload, SceneRun
         hub.On<string, Dictionary<string, string>>("Run", (sceneId, args) => runner.Start(sceneId, args));
         hub.On("Panic", () => runner.Start(SceneRunner.PanicScene, new Dictionary<string, string>()));
         hub.On<string, int>("Press", async (deckId, number) => await deck.PressAsync(deckId, number));
+        hub.On<string>("Sound", async soundId => await deck.ToggleAsync(soundId));
         hub.On<string, object>("View", deckId => deck.View(deckId));
         hub.On<string, long, object>("ViewSince", (deckId, since) => deck.View(deckId, since));
         hub.Reconnecting += e =>

@@ -13,7 +13,8 @@ public sealed record HallDevices(
     int ClockPort = 50085,
     string ClockSource = "",
     string ImageFolder = "",
-    string DjRoom = "");
+    string DjRoom = "",
+    int PeriodMinutes = 20);
 
 public sealed record HallCapabilities(
     bool Sound = true,

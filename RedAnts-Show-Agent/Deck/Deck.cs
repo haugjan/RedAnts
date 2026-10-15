@@ -84,6 +84,7 @@ public sealed class Deck
     }
 
     public event Action<SoundCommand>? SoundRequested;
+    public event Action? SoundStopped;
 
     public long Version { get; private set; } = 1;
 
@@ -337,7 +338,7 @@ public sealed class Deck
                 break;
             case DeckKeyKinds.Sound:
                 if (_payload.Sound(key.SoundId) is not { } sound) b.Label(row, col, key.Label, CNeutral);
-                else b.Action(row, col, key.Label.Length > 0 ? key.Label : sound.Label, color, () => PlaySound(sound), key.Icon);
+                else b.Action(row, col, key.Label.Length > 0 ? key.Label : sound.Label, color, () => ToggleSound(sound), key.Icon);
                 break;
             case DeckKeyKinds.Page:
                 b.Nav(row, col, key.Label, color, () => SetContext(key.Page ?? nameof(DeckContext.Main)), key.Icon);
@@ -389,6 +390,18 @@ public sealed class Deck
     }
 
     public Task Play(SoundCommand sound) => PlaySound(sound);
+
+    public Task ToggleAsync(string soundId) =>
+        _payload.Sound(soundId) is { } sound ? ToggleSound(sound) : Task.CompletedTask;
+
+    Task ToggleSound(SoundCommand sound)
+    {
+        if (_sound != sound.Id) return PlaySound(sound);
+        _log.LogInformation("Musik {Label} gestoppt", sound.Label);
+        NoteSound(null);
+        SoundStopped?.Invoke();
+        return Task.CompletedTask;
+    }
 
     Task PlaySound(SoundCommand sound)
     {

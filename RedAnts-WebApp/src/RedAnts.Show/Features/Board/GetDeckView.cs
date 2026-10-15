@@ -41,7 +41,7 @@ public static class GetDeckView
                     key.Icon,
                     key.Color.Length > 0 ? key.Color : "#333333",
                     "#ffffff",
-                    sound is not null,
+                    key.Kind != DeckKeyKinds.Sound || sound is not null,
                     sound?.Id));
             }
             return new DeckView(layout.Id, layout.Name, layout.Columns, keys, false);

@@ -11,13 +11,13 @@ public class BreakMusicTests
     [Fact]
     public void A_standing_clock_in_the_middle_of_a_period_asks_for_music()
     {
-        Assert.True(BreakMusic.Qualifies(Clock("12:34"), clockLive: true, clockRunning: false));
+        Assert.True(BreakMusic.Qualifies(Clock("12:34"), clockLive: true, clockRunning: false, periodMinutes: 20));
     }
 
     [Fact]
     public void A_running_clock_never_asks_for_music()
     {
-        Assert.False(BreakMusic.Qualifies(Clock("12:34"), clockLive: true, clockRunning: true));
+        Assert.False(BreakMusic.Qualifies(Clock("12:34"), clockLive: true, clockRunning: true, periodMinutes: 20));
     }
 
     [Theory]
@@ -27,7 +27,16 @@ public class BreakMusicTests
     [InlineData("0.0", ClockState.GameTime, "3")]
     public void The_end_of_a_period_of_overtime_and_of_the_shootout_stays_quiet(string time, string mode, string period)
     {
-        Assert.False(BreakMusic.Qualifies(Clock(time, mode, period), clockLive: true, clockRunning: false));
+        Assert.False(BreakMusic.Qualifies(Clock(time, mode, period), clockLive: true, clockRunning: false, periodMinutes: 20));
+    }
+
+    [Theory]
+    [InlineData("20:00")]
+    [InlineData("00:00")]
+    public void A_clock_resting_at_either_end_of_a_period_stays_quiet(string time)
+    {
+        Assert.False(BreakMusic.Qualifies(Clock(time), clockLive: true, clockRunning: false, periodMinutes: 20));
+        Assert.True(BreakMusic.Qualifies(Clock("19:59"), clockLive: true, clockRunning: false, periodMinutes: 20));
     }
 
     [Theory]
@@ -36,12 +45,12 @@ public class BreakMusicTests
     [InlineData("WARM UP")]
     public void A_break_between_the_periods_stays_quiet(string mode)
     {
-        Assert.False(BreakMusic.Qualifies(Clock("02:00", mode), clockLive: true, clockRunning: false));
+        Assert.False(BreakMusic.Qualifies(Clock("02:00", mode), clockLive: true, clockRunning: false, periodMinutes: 20));
     }
 
     [Fact]
     public void Without_telegrams_nothing_plays()
     {
-        Assert.False(BreakMusic.Qualifies(Clock("12:34"), clockLive: false, clockRunning: false));
+        Assert.False(BreakMusic.Qualifies(Clock("12:34"), clockLive: false, clockRunning: false, periodMinutes: 20));
     }
 }

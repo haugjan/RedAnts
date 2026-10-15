@@ -72,6 +72,13 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
         return true;
     }
 
+    public async Task<bool> SoundAsync(string hallId, string soundId)
+    {
+        if (!connections.IsConnected(hallId)) return false;
+        await hub.Clients.Group(AgentHub.GroupOf(hallId)).SendAsync("Sound", soundId);
+        return true;
+    }
+
     private static long Version(JsonElement view) =>
         view.TryGetProperty("version", out var value) && value.TryGetInt64(out var version) ? version : 0;
 

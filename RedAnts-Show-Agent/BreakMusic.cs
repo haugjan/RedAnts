@@ -9,15 +9,18 @@ public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates s
 
     bool _playing;
 
-    public static bool Qualifies(ClockState clock, bool clockLive, bool clockRunning)
+    public static bool Qualifies(ClockState clock, bool clockLive, bool clockRunning, int periodMinutes)
     {
         if (!clockLive || clockRunning) return false;
         if (!clock.IsGameTime) return false;
         if (clock.Period.Length == 0) return false;
-        return !AtZero(clock.Time);
+        return !AtZero(clock.Time) && !AtPeriodEnd(clock.Time, periodMinutes);
     }
 
     static bool AtZero(string time) => !time.Any(c => c is > '0' and <= '9');
+
+    static bool AtPeriodEnd(string time, int periodMinutes) =>
+        periodMinutes > 0 && time == $"{periodMinutes:00}:00";
 
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
@@ -34,7 +37,7 @@ public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates s
     {
         var wanted = states.Value(ShowStates.AutoBreakMusic) == "an"
                      && payload.Hall.Offers.Sound
-                     && Qualifies(live.Clock, live.ClockLive, live.ClockRunning);
+                     && Qualifies(live.Clock, live.ClockLive, live.ClockRunning, payload.Hall.Devices.PeriodMinutes);
         if (wanted == _playing) return;
         _playing = wanted;
 

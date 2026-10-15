@@ -22,7 +22,8 @@ public sealed record HallDevices(
     string ClockType = "iCast",
     int ClockPort = 50085,
     string ClockSource = "",
-    string ImageFolder = "");
+    string ImageFolder = "",
+    int PeriodMinutes = 20);
 
 public sealed record HallCapabilities(
     bool Sound = true,

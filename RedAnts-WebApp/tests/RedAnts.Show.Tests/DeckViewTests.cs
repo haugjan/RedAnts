@@ -24,6 +24,14 @@ public class DeckViewTests
 
         public Task<DeckView?> LiveAsync(string hallId, DeckLayout layout) => Task.FromResult(live);
 
+        public string? Played { get; private set; }
+
+        public Task<bool> SoundAsync(string hallId, string soundId)
+        {
+            Played = soundId;
+            return Task.FromResult(connected);
+        }
+
         public Task<bool> PressAsync(string hallId, string deckId, int number)
         {
             Pressed = $"{deckId}/{number}";

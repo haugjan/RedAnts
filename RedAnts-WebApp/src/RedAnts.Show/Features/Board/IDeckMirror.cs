@@ -25,6 +25,8 @@ public interface IDeckMirror
 
     Task<bool> PressAsync(string hallId, string deckId, int number);
 
+    Task<bool> SoundAsync(string hallId, string soundId);
+
     void Apply(string hallId, string deckId, string json, DeckLayout layout);
 
     void ApplyLive(string hallId, string json);
