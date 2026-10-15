@@ -40,7 +40,8 @@ public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates s
 
         if (!wanted)
         {
-            log.LogInformation("Automatik: Pausenmusik aus, die Uhr läuft wieder");
+            log.LogInformation("Automatik: Pausenmusik aus, {Reason}",
+                live.ClockRunning ? "die Uhr läuft wieder" : "die Automatik ist ausgeschaltet");
             deck.NoteSound(null);
             return;
         }
