@@ -118,6 +118,7 @@ public static class DefaultScenes
             new(SceneActions.LedStop, "led:stopp"),
             new(SceneActions.SoundStop),
             new(SceneActions.StateSet, DefaultStates.Break, Event: "aus"),
+            new(SceneActions.StateSet, DefaultStates.AutoBreakMusic, Event: "aus"),
             new(SceneActions.DeckContext, "Main"),
         ]),
         Sys("sys-ausblenden", "Ausblenden (alle Einblender)", [new(SceneActions.OverlayHide, "title:*")]),
