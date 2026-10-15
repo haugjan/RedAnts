@@ -52,7 +52,11 @@ Auf dem Bord, nicht im Admin:
 
 1. Spiel von der **swissunihockey-API** laden.
 2. Oder eine **Spielkonfigurationsdatei** einlesen.
-3. Danach ist alles **überschreibbar**, insbesondere Kommentatoren, Schiedsrichter, Teamnamen, Kader und Aufstellung.
+3. Danach ist alles **überschreibbar**, insbesondere Kommentatoren, Schiedsrichter, Teamnamen, **Teamkürzel**, **Teamfarbe für Heim und Gast**, Kader, Aufstellung und Topscorer.
+
+Teamkürzel und Teamfarbe gehen an vMix und an die LED-Wand, sie bestimmen also, wie Scoreboard und Einblender aussehen. Beide sind je Spiel einstellbar, die Halle gibt nur den Vorschlag für die Heimmannschaft vor.
+
+Der Eintrag `00=` aus der Spielkonfigurationsdatei ist der **Topscorer** der Mannschaft: die Nummer 00 wird nicht vergeben, und der Name steht im selben Abschnitt bereits mit der echten Nummer. Er erscheint deshalb nicht als Rückennummer im Kader, sondern als eigene Taste in der Spielerliste. Steht `00` in einer Aufstellung oder Linie, wird daraus die Spielerin oder der Spieler mit der echten Nummer.
 
 ## Matchuhr
 
@@ -88,7 +92,7 @@ Verhalten fest, Position frei wählbar.
 
 | Taste | Verhalten |
 |---|---|
-| **Tor Heim** | Spielt Musik (Song konfigurierbar), blendet auf der LED-Wand ein (konfigurierbar), öffnet die Spielerliste der Heimmannschaft inklusive **Eigentor** und **Topscorer**. Nach der Wahl geht die Spielerin an vMix und an die LED-Wand. Unten zeigt ein toter Knopf mit schwarzem Hintergrund an, dass gerade ein Tor gewählt wird. |
+| **Tor Heim** | Spielt Musik (Song konfigurierbar), blendet auf der LED-Wand ein (konfigurierbar), öffnet die Spielerliste der Heimmannschaft inklusive **Eigentor** und **Topscorer**. Nach der Wahl geht die Spielerin an vMix und an die LED-Wand, in der Farbe und mit dem Kürzel der Mannschaft. Unten zeigt ein toter Knopf mit schwarzem Hintergrund an, dass gerade ein Tor gewählt wird. |
 | **Tor Gast** | Wie Tor Heim, mit der Gästemannschaft. |
 | **Strafe Heim** | Wie Tor Heim, aber zwischen Taste und Spielerwahl kommt die Strafenseite: 2', 2'+2', 10', Spieldauer. |
 | **Strafe Gast** | Wie Strafe Heim, mit der Gästemannschaft. |
@@ -111,7 +115,7 @@ Als frei platzierbare Tasten verfügbar, weil sie heute im Einsatz sind:
 
 ### In vMix
 
-Alles, was heute mit TCConsole und TCunihockey möglich war: die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard inklusive Strafboxen, Teamlogos und die Overlay-Kanäle.
+Alles, was heute mit TCConsole und TCunihockey möglich war: die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard inklusive Strafboxen, Teamlogos und die Overlay-Kanäle. Dazu **Teamkürzel und Teamfarbe je Mannschaft** aus der Spielkonfiguration.
 
 ## Was entfällt
 
@@ -154,4 +158,4 @@ Ein **universelles Modul** für alles: Hallensteuerung und Musik, Halle mit und 
 
 ## Offene Punkte
 
-1. **Topscorer**: In der echten Spielkonfig (`game-config-v6-Example`, UHC Uster gegen Chur, 23.06.2023) steht in beiden Mannschaften ein Eintrag `00=`, und zwar mit dem Namen einer Spielerin oder eines Spielers, die oder der weiter oben schon mit der eigenen Nummer steht: Heim `70=Simon Suter` und `00=Simon Suter`, Gast `61=Joel Hirschi` und `00=Joel Hirschi`. `00` taucht zusätzlich in `Starting6=46,6,00,10,12,14` und in `Line2=17,-,00,9,22` auf. Offen bleibt, was TCunihockey damit anzeigt und was die Taste bei uns tun soll.
+Keine. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) steht oben bei der Spielkonfiguration und wird beim ersten echten Spiel überprüft.
