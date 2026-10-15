@@ -4,7 +4,8 @@ using RedAnts.Show.Agent.Components;
 using RedAnts.Show.Agent.Cloud;
 using RedAnts.Show.Agent.Deck;
 using RedAnts.Show.Agent.Led;
-using RedAnts.Show.Agent.Scenes;
+using RedAnts.Show.Agent.Music;
+using RedAnts.Show.Agent.Keys;
 using RedAnts.Show.Agent.Vmix;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -39,10 +40,12 @@ builder.Services.AddSingleton<VmixLink>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<VmixLink>());
 builder.Services.AddSingleton<ClockFeed>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ClockFeed>());
-builder.Services.AddSingleton<SceneRunner>();
+builder.Services.AddSingleton<KeyRunner>();
 builder.Services.AddSingleton<Deck>();
 builder.Services.AddSingleton<CloudLink>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CloudLink>());
+builder.Services.AddSingleton<MusicCache>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MusicCache>());
 builder.Services.AddHostedService<BreakMusic>();
 builder.Services.AddSingleton<DeckPublisher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<DeckPublisher>());
@@ -55,14 +58,12 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 var deck = app.Services.GetRequiredService<Deck>();
 var reporter = app.Services.GetRequiredService<StatusReporter>();
-var runner = app.Services.GetRequiredService<SceneRunner>();
+var runner = app.Services.GetRequiredService<KeyRunner>();
 var states = app.Services.GetRequiredService<ShowStates>();
 var vmixLink = app.Services.GetRequiredService<VmixLink>();
 var live = app.Services.GetRequiredService<LiveGame>();
-states.RuleTriggered += (sceneId, reason) => runner.Start(sceneId, new Dictionary<string, string>());
 live.Changed += () => states.Set(ShowStates.ClockRunning, live.ClockRunning ? "läuft" : "steht", "Matchuhr");
-deck.SoundRequested += sound => reporter.ReportSound(sound);
-runner.SoundRequested += deck.NoteSound;
+runner.MusicRequested += music => reporter.ReportMusic(music);
 vmixLink.InputsRead += inputs => reporter.ReportInputs(inputs);
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
@@ -71,11 +72,22 @@ app.MapGet("/info", () => Results.Text(
 
 app.MapGet("/status", () => Results.Json(reporter.Status(), PayloadJson.Options));
 
-app.MapGet("/deck/view", async (long? since) =>
+var music = app.Services.GetRequiredService<MusicCache>();
+
+app.MapGet("/dj/sound/{**reference}", async (string reference, CancellationToken stop) =>
 {
-    await deck.WaitAsync(since ?? 0, TimeSpan.FromSeconds(25), lifetime.ApplicationStopping);
-    return Results.Json(deck.View());
+    var file = await music.EnsureAsync(reference, stop);
+    return file is null ? Results.NotFound() : Results.File(file, MusicTypes.Of(file), enableRangeProcessing: true);
 });
+
+app.MapGet("/deck/view", async (string? deckId, long? since) =>
+{
+    var id = deckId is { Length: > 0 } ? deckId : deck.Decks.FirstOrDefault() ?? "";
+    await deck.WaitAsync(since ?? 0, TimeSpan.FromSeconds(25), lifetime.ApplicationStopping);
+    return Results.Json(deck.View(id), PayloadJson.Options);
+});
+
+app.MapGet("/deck/list", () => Results.Json(deck.Decks.Select(id => new { id, name = deck.Layout(id)?.Name ?? id }), PayloadJson.Options));
 
 app.MapGet("/deck/image", (string? key) => Results.Json(new { image = DeckIcons.FromKey(key ?? "") }));
 
@@ -87,9 +99,10 @@ app.MapGet("/deck/icon", (string? key) =>
         : Results.File(Convert.FromBase64String(image), "image/png");
 });
 
-app.MapPost("/deck/press/{number:int}", async (int number) =>
+app.MapPost("/deck/press/{number:int}", async (int number, string? deckId) =>
 {
-    var note = await deck.PressAsync(number);
+    var id = deckId is { Length: > 0 } ? deckId : deck.Decks.FirstOrDefault() ?? "";
+    var note = await deck.PressAsync(id, number);
     return Results.Json(new { ok = note is null, note });
 });
 

@@ -20,17 +20,12 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
 
     public Game Game => Current.Game ?? Game.None;
 
-    public IReadOnlyList<Scene> Scenes => Current.Scenes;
+    public IReadOnlyList<MusicItem> Music => Current.Music ?? [];
 
-    public IReadOnlyList<SoundCommand> Sounds => Current.Sounds ?? [];
-
-    public SoundCommand? Sound(string? id) =>
-        id is { Length: > 0 } ? Sounds.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null;
+    public MusicItem? MusicOf(string? id) =>
+        id is { Length: > 0 } ? Music.FirstOrDefault(m => m.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null;
 
     public bool Synced => Current.Hall.Id.Length > 0;
-
-    public Scene? Scene(string id) =>
-        Scenes.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
 
     public void Apply(AgentPayload payload)
     {
@@ -41,14 +36,14 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
             System.IO.File.WriteAllText(File, JsonSerializer.Serialize(payload, PayloadJson.Pretty));
         }
         catch (IOException e) { log.LogWarning("Konfiguration konnte nicht gesichert werden: {Message}", e.Message); }
-        log.LogInformation("Konfiguration übernommen: Halle {Hall}, {Scenes} Szenen, {Sounds} Musik-Befehle, Spiel {Game}",
-            payload.Hall.Name, payload.Scenes.Count, payload.Sounds?.Count ?? 0, payload.Game?.Title is { Length: > 0 } title ? title : "keines");
+        log.LogInformation("Konfiguration übernommen: Halle {Hall}, {Decks} Decks, {Music} Musik-Befehle, Spiel {Game}",
+            payload.Hall.Name, payload.Hall.Decks?.Count ?? 0, payload.Music?.Count ?? 0, payload.Game?.Title is { Length: > 0 } title ? title : "keines");
         Changed?.Invoke();
     }
 
     static AgentPayload Load(ILogger log)
     {
-        var empty = new AgentPayload(Hall.Offline, [], null, DateTimeOffset.MinValue);
+        var empty = new AgentPayload(Hall.Offline, null, DateTimeOffset.MinValue);
         if (!System.IO.File.Exists(File)) return empty;
         try
         {

@@ -1,10 +1,10 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.Client;
-using RedAnts.Show.Agent.Scenes;
+using RedAnts.Show.Agent.Keys;
 
 namespace RedAnts.Show.Agent.Cloud;
 
-public sealed class CloudLink(AgentConfig config, PayloadStore payload, SceneRunner runner, Deck.Deck deck, ILogger<CloudLink> log) : BackgroundService
+public sealed class CloudLink(AgentConfig config, PayloadStore payload, Deck.Deck deck, ILogger<CloudLink> log) : BackgroundService
 {
     static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
 
@@ -23,10 +23,9 @@ public sealed class CloudLink(AgentConfig config, PayloadStore payload, SceneRun
             .WithAutomaticReconnect(new EndlessRetry())
             .Build();
         hub.On<AgentPayload>("Sync", payload.Apply);
-        hub.On<string, Dictionary<string, string>>("Run", (sceneId, args) => runner.Start(sceneId, args));
-        hub.On("Panic", () => runner.Start(SceneRunner.PanicScene, new Dictionary<string, string>()));
+        hub.On("Panic", async () => await deck.PanicAsync(CancellationToken.None));
         hub.On<string, int>("Press", async (deckId, number) => await deck.PressAsync(deckId, number));
-        hub.On<string>("Sound", async soundId => await deck.ToggleAsync(soundId));
+        hub.On<string>("Musik", async musicId => await deck.ToggleMusicAsync(musicId));
         hub.On<string, object>("View", deckId => deck.View(deckId));
         hub.On<string, long, object>("ViewSince", (deckId, since) => deck.View(deckId, since));
         hub.Reconnecting += e =>

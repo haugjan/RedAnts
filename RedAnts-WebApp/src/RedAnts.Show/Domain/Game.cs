@@ -14,7 +14,8 @@ public sealed record GameTeam(
     IReadOnlyList<Player> Players,
     IReadOnlyList<int> Starting6,
     IReadOnlyList<IReadOnlyList<int>> Lines,
-    IReadOnlyList<int> Goalies)
+    IReadOnlyList<int> Goalies,
+    int? TopScorer = null)
 {
     public const string HomeColor = "#D02D38";
     public const string AwayColor = "#2A6EBB";
@@ -22,6 +23,8 @@ public sealed record GameTeam(
     public static GameTeam Empty(string color) => new(null, "", "", color, null, "", [], [], [], []);
 
     public Player? Find(int number) => Players.FirstOrDefault(p => p.Number == number);
+
+    public Player? TopScorerPlayer => TopScorer is { } number ? Find(number) : null;
 
     public bool HasStarting6 => Starting6.Count == 6 && Starting6.All(n => Find(n) is not null);
 

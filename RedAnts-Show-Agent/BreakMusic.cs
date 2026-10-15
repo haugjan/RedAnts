@@ -3,7 +3,7 @@ using RedAnts.Show.Agent.Cloud;
 
 namespace RedAnts.Show.Agent;
 
-public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates states, Deck.Deck deck, ILogger<BreakMusic> log) : BackgroundService
+public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates states, Deck.Deck deck, Keys.KeyRunner runner, ILogger<BreakMusic> log) : BackgroundService
 {
     static readonly TimeSpan Look = TimeSpan.FromMilliseconds(400);
 
@@ -45,17 +45,17 @@ public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates s
         {
             log.LogInformation("Automatik: Pausenmusik aus, {Reason}",
                 live.ClockRunning ? "die Uhr läuft wieder" : "die Automatik ist ausgeschaltet");
-            deck.NoteSound(null);
+            deck.NoteMusic(null);
             return;
         }
 
-        if (payload.Sound(payload.Hall.BreakSound) is not { } sound)
+        if (payload.MusicOf(payload.Hall.BreakMusicId) is not { } music)
         {
             log.LogWarning("Automatik: kein Musik-Befehl für den Spielunterbruch eingestellt");
             _playing = false;
             return;
         }
-        log.LogInformation("Automatik: Pausenmusik {Label} bei {Time}", sound.Label, live.Time);
-        _ = deck.Play(sound);
+        log.LogInformation("Automatik: Pausenmusik {Label} bei {Time}", music.Display, live.Time);
+        runner.PlayMusic(music.Id);
     }
 }

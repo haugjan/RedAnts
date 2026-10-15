@@ -39,11 +39,58 @@ public sealed record LedTemplate(string Event, string Command);
 
 public sealed record AutomationRule(string StateId, string Value, string SceneId);
 
-public sealed record DeckStateRow(string Value, string Label, string? Icon, string Color, string Behaviour, string? SceneId)
+public static class KeyKinds
 {
-    public const string RunScene = "szene";
-    public const string Locked = "gesperrt";
+    public const string Empty = "leer";
+    public const string Music = "musik";
+    public const string Steps = "befehle";
+    public const string Special = "spezial";
+    public const string Page = "seite";
+    public const string Live = "anzeige";
 }
+
+public static class KeyActions
+{
+    public const string MusicPlay = "musik.start";
+    public const string MusicStop = "musik.stopp";
+    public const string MusicFade = "musik.fade";
+    public const string VmixShow = "vmix.ein";
+    public const string VmixHide = "vmix.aus";
+    public const string LedStart = "led.start";
+    public const string LedStop = "led.stopp";
+    public const string Wait = "warten";
+}
+
+public static class SpecialKeys
+{
+    public const string GoalHome = "tor-heim";
+    public const string GoalAway = "tor-gast";
+    public const string PenaltyHome = "strafe-heim";
+    public const string PenaltyAway = "strafe-gast";
+    public const string BestPlayerHome = "bestplayer-heim";
+    public const string BestPlayerAway = "bestplayer-gast";
+    public const string PlayerHome = "spieler-heim";
+    public const string PlayerAway = "spieler-gast";
+    public const string Starting6Home = "starting6-heim";
+    public const string Starting6Away = "starting6-gast";
+    public const string OverlayToggle = "einblender";
+    public const string ClockToggle = "uhr";
+    public const string MusicToggle = "musik-an-aus";
+    public const string AutoBreakMusic = "auto-pausenmusik";
+    public const string MusicStop = "musik-stopp";
+    public const string MusicFade = "musik-fade";
+    public const string MusicNext = "musik-vor";
+    public const string MusicPrevious = "musik-zurueck";
+    public const string MusicPause = "musik-pause";
+    public const string Spectators = "zuschauer";
+
+    public static string Side(string special) =>
+        special.EndsWith("-heim", StringComparison.Ordinal) ? "home"
+        : special.EndsWith("-gast", StringComparison.Ordinal) ? "away"
+        : "";
+}
+
+public sealed record KeyStep(string Action, string? Target = null, int? Ms = null, string? Event = null);
 
 public sealed record DeckKey(
     int Number,
@@ -51,48 +98,53 @@ public sealed record DeckKey(
     string Label = "",
     string Color = "#2b3038",
     string? Icon = null,
-    string? SceneId = null,
-    string? SoundId = null,
-    string? Page = null,
+    string? MusicId = null,
+    string? Special = null,
+    string? PageId = null,
     string? Live = null,
-    string? StateId = null,
-    IReadOnlyList<DeckStateRow>? Rows = null);
-
-public static class DeckKeyKinds
+    IReadOnlyList<KeyStep>? Steps = null,
+    bool HomeAfter = false)
 {
-    public const string Empty = "leer";
-    public const string Scene = "szene";
-    public const string Sound = "musik";
-    public const string Page = "seite";
-    public const string Live = "anzeige";
-    public const string State = "zustand";
-    public const string Back = "zurueck";
+    public IReadOnlyList<KeyStep> Sequence => Steps ?? [];
+
+    public bool IsEmpty => Kind == KeyKinds.Empty;
 }
 
-public sealed record DeckLayout(string Id, string Name, int Columns, int Rows, IReadOnlyList<DeckKey> Keys)
+public sealed record DeckPage(string Id, string Name, string? ParentId, IReadOnlyList<DeckKey> Keys)
 {
-    public const string FieldDeck = "xl";
-    public const string MusicDeck = "mk2";
+    public const string HomeId = "start";
 
+    public bool IsHome => Id == HomeId;
+
+    public DeckKey KeyAt(int number) => Keys.FirstOrDefault(k => k.Number == number) ?? new DeckKey(number, KeyKinds.Empty);
+}
+
+public sealed record DeckLayout(
+    string Id,
+    string Name,
+    int Columns,
+    int Rows,
+    IReadOnlyList<DeckPage> Pages,
+    int PanicKey = 0,
+    int BackKey = 0)
+{
     public int Count => Columns * Rows;
 
-    public DeckKey? KeyAt(int number) => Keys.FirstOrDefault(k => k.Number == number);
+    public int Panic => PanicKey > 0 ? PanicKey : Count;
+
+    public int Back => BackKey > 0 ? BackKey : Count - Columns + 1;
+
+    public DeckPage Home => Pages.FirstOrDefault(p => p.IsHome) ?? Pages.FirstOrDefault() ?? new DeckPage(DeckPage.HomeId, "Startseite", null, []);
+
+    public DeckPage? Page(string? id) => id is null ? null : Pages.FirstOrDefault(p => p.Id == id);
+
+    public bool Reserved(int number) => number == Panic || number == Back;
 }
 
-public enum SoundSource { Blob, Spotify }
-
-public sealed record SoundTrack(SoundSource Source, string Ref, string Title = "", string Artist = "", double StartSec = 0, double? DurationSec = null);
-
-public sealed record SoundCommand(
-    string Id,
-    string Label,
-    string Color,
-    string? Icon,
-    IReadOnlyList<SoundTrack> Tracks,
-    bool Random = false,
-    bool Loop = false,
-    int Volume = 100,
-    double FadeOutSec = 0);
+public sealed record MusicItem(string Id, string Name, string Folder, int Songs, bool Random, string SongsJson = "[]")
+{
+    public string Display => Folder.Length > 0 ? $"{Folder} · {Name}" : Name;
+}
 
 public sealed record OverlayTitle(string Kind, string Input, int Channel, IReadOnlyDictionary<string, string> Fields);
 
@@ -106,18 +158,15 @@ public sealed record Hall(
     IReadOnlyList<OverlayTitle> OverlayTitles,
     IReadOnlyList<string> Shortcuts,
     string? ActiveGameId = null,
-    IReadOnlyList<AutomationRule>? Automation = null,
     IReadOnlyList<DeckLayout>? Decks = null,
     HallCapabilities? Offered = null,
-    string BreakSound = "")
+    string BreakMusicId = "")
 {
     public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], [], []);
 
     public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
 
-    public IReadOnlyList<AutomationRule> Rules => Automation ?? [];
-
-    public DeckLayout? Deck(string id) => Decks?.FirstOrDefault(d => d.Id == id);
+    public DeckLayout? DeckOf(string id) => Decks?.FirstOrDefault(d => d.Id == id);
 
     public string? LedCommand(string eventName) =>
         LedTemplates.FirstOrDefault(t => t.Event.Equals(eventName, StringComparison.OrdinalIgnoreCase))?.Command;
@@ -126,37 +175,7 @@ public sealed record Hall(
         OverlayTitles.FirstOrDefault(t => t.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase));
 }
 
-public static class SceneActions
-{
-    public const string SoundPlay = "sound.play";
-    public const string SoundStop = "sound.stop";
-    public const string SoundFade = "sound.fade";
-    public const string LedStart = "led.start";
-    public const string LedStop = "led.stop";
-    public const string OverlayShow = "overlay.show";
-    public const string OverlayHide = "overlay.hide";
-    public const string LightScene = "light.scene";
-    public const string DeckContext = "deck.context";
-    public const string PlayerPick = "player.pick";
-    public const string Wait = "wait";
-    public const string WaitScore = "wait.score";
-    public const string SceneRun = "scene.run";
-    public const string StateSet = "state.set";
-    public const string SoundPrefix = "sound:";
-}
-
-public sealed record SceneStep(
-    string Action,
-    string? Target = null,
-    int? Ms = null,
-    int? TimeoutMs = null,
-    bool Overlay = false,
-    double? FadeIn = null,
-    string? Event = null);
-
-public sealed record Scene(string Id, string Label, string Side, IReadOnlyList<SceneStep> Steps);
-
-public enum GameSource { SwissUnihockey, File, Manual }
+public enum GameSource { Manual, SwissUnihockey, File }
 
 public sealed record Player(int Number, string Name, string Position = "", string? Photo = null, string? Sponsor = null)
 {
@@ -173,9 +192,12 @@ public sealed record GameTeam(
     IReadOnlyList<Player> Players,
     IReadOnlyList<int> Starting6,
     IReadOnlyList<IReadOnlyList<int>> Lines,
-    IReadOnlyList<int> Goalies)
+    IReadOnlyList<int> Goalies,
+    int? TopScorer = null)
 {
     public static readonly GameTeam Empty = new(null, "", "", "", null, "", [], [], [], []);
+
+    public Player? TopScorerPlayer => TopScorer is { } number ? Find(number) : null;
 
     public Player? Find(int number) => Players.FirstOrDefault(p => p.Number == number);
 
@@ -208,7 +230,6 @@ public sealed record Game(
 
 public sealed record AgentPayload(
     Hall Hall,
-    IReadOnlyList<Scene> Scenes,
     Game? Game,
     DateTimeOffset SentAt,
-    IReadOnlyList<SoundCommand>? Sounds = null);
+    IReadOnlyList<MusicItem>? Music = null);

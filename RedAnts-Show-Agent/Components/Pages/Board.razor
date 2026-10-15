@@ -1,124 +1,182 @@
 @page "/bord"
-@implements IDisposable
-@inject RedAnts.Show.Agent.Deck.Deck Keys
+@using RedAnts.Show.Agent.Cloud
+@using RedAnts.Show.Agent.Deck
+@using RedAnts.Show.Agent.Music
+@rendermode InteractiveServer
+@implements IAsyncDisposable
 @inject PayloadStore Payload
+@inject Deck Deck
 @inject LiveGame Live
 @inject ShowStates States
-@inject VmixLink Vmix
-@inject SednaLink Led
-@inject ClockFeed Clock
+@inject IJSRuntime JS
 
+<PageTitle>@Payload.Hall.Name</PageTitle>
+
+<div class="hb">
 <header class="bar">
-    <span class="hall">@(Payload.Hall.Name.Length > 0 ? Payload.Hall.Name : "keine Halle")</span>
-    <span class="score">@Live.HomeScore : @Live.AwayScore</span>
-    <span class="time">@Live.Time</span>
-    <span class="period">@Live.PeriodLabel</span>
-    <span class="spacer"></span>
-    @foreach (var pill in Pills())
+    <span class="hall">@Payload.Hall.Name</span>
+    <span class="lamp on"></span>
+    @if (Payload.Hall.Offers.Clock)
     {
-        <span class="pill @(pill.On ? "on" : "")" @key="pill.Name">@pill.Name: @pill.Value</span>
+        <span class="score">@Live.HomeScore : @Live.AwayScore</span>
+        <span class="time">@Live.Time</span>
+        <span class="period">@Live.PeriodLabel</span>
     }
-    <a class="link" href="/uhr" target="_blank">Matchuhr</a>
+    <span class="spacer"></span>
+    @foreach (var state in ShowStates.Known)
+    {
+        var value = States.Value(state.Id);
+        <span class="pill @(value != state.First ? "on" : "")" @key="state.Id">@state.Name: @value</span>
+    }
+    <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>
 
-@if (Decks.Count > 1)
+@if (Decks.Count == 0)
 {
-    <nav class="decks">
-        @foreach (var id in Decks)
-        {
-            <button class="tab @(id == _deck ? "active" : "")" @onclick="() => _deck = id" @key="id">@DeckName(id)</button>
-        }
-    </nav>
+    <main><p class="hint">Diese Halle hat noch kein Deck eingerichtet.</p></main>
 }
-
-<main>
-    <h1>@Title</h1>
-    <div class="board" style="grid-template-columns: repeat(@Columns, minmax(0, 1fr))">
-        @foreach (var slot in Slots)
-        {
-            <button class="key @(slot.Pressable ? "" : "flat")"
-                    style="background:#@Hex(slot.Color);color:#@Hex(slot.TextColor)"
-                    disabled="@(!slot.Pressable)"
-                    @onclick="() => PressAsync(slot.Number)"
-                    @key="slot.Number">
-                @if (slot.ImageKey is { Length: > 0 } icon)
-                {
-                    <img src="@IconUrl(icon)" alt="@slot.Label" />
-                }
-                else
-                {
-                    @foreach (var line in slot.Label.Split('\n'))
-                    {
-                        <span>@line</span>
-                    }
-                }
-                <em>@slot.Number</em>
-            </button>
-        }
-    </div>
-    @if (_note is { Length: > 0 } note)
+else
+{
+    @if (Decks.Count > 1)
     {
-        <p class="note">@note</p>
+        <nav class="decks">
+            @foreach (var id in Decks)
+            {
+                var deckId = id;
+                <button class="tab @(deckId == _deck ? "active" : "")" @onclick="() => Select(deckId)" @key="deckId">@(Deck.Layout(deckId)?.Name ?? deckId)</button>
+            }
+        </nav>
     }
-    <p class="hint">
-        @(Vmix.Configured ? Vmix.Connected ? "vMix verbunden" : "vMix nicht erreichbar" : "vMix nicht angeboten") ·
-        @(Payload.Hall.Offers.Clock ? Clock.Active ? "Matchuhr empfängt" : "Matchuhr ohne Daten" : "Matchuhr nicht angeboten") ·
-        @(Led.Configured ? Led.Connected ? "LED verbunden" : "LED noch nicht angesprochen" : "LED nicht angeboten") ·
-        Spotify läuft nur in der Cloud-Bedienung, nicht auf dem Agenten
-    </p>
-</main>
+
+    <main>
+        <h1>@Deck.Title(_deck)</h1>
+        <div class="grid" style="--cols:@Columns; --rows:@Rows">
+            @foreach (var slot in Deck.Slots(_deck))
+            {
+                var music = Payload.MusicOf(slot.MusicId);
+                <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "active" : "")"
+                        style="background:@Hex(slot.Color); color:@Hex(slot.TextColor)"
+                        disabled="@(!slot.Pressable)"
+                        data-id="@($"{_deck}:{slot.Number}")"
+                        data-play="@(music is null ? null : "songs")"
+                        data-songs="@music?.SongsJson"
+                        data-random="@(music is { Random: true } ? "1" : "0")"
+                        data-label="@slot.Label"
+                        @onclick="() => PressAsync(slot)"
+                        @key="slot.Number">
+                    <span class="label">
+                        @foreach (var line in slot.Label.Split('\n'))
+                        {
+                            <span>@line</span>
+                        }
+                    </span>
+                    <em>@slot.Number</em>
+                </button>
+            }
+        </div>
+        <p class="hint">Musik spielt auf diesem Rechner, Tasten laufen in der Halle.</p>
+    </main>
+
+    <footer class="now">
+        <span class="np">@(_playing is { Length: > 0 } playing ? playing : "keine Musik")</span>
+        <button class="ctl" @onclick="@(() => Control("pause"))">Pause</button>
+        <button class="ctl" @onclick="@(() => Control("previous"))">◀◀</button>
+        <button class="ctl" @onclick="@(() => Control("next"))">▶▶</button>
+        <button class="ctl" @onclick="@(() => Control("fade"))">Fade</button>
+        <button class="ctl stop" @onclick="@(() => Control("stop"))">Stopp</button>
+    </footer>
+}
+</div>
 
 @code {
-    private string _deck = RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck;
-    private string? _note;
-    private Timer? _tick;
+    private string _deck = "";
+    private string? _playing;
+    private long _version;
+    private CancellationTokenSource? _watch;
+    private DotNetObjectReference<Board>? _self;
+    private bool _ready;
 
-    private IReadOnlyList<string> Decks => Keys.Decks;
+    private IReadOnlyList<string> Decks => Deck.Decks;
 
-    private IReadOnlyList<RedAnts.Show.Agent.Deck.DeckSlot> Slots => Keys.Slots(_deck);
+    private int Columns => Deck.Layout(_deck)?.Columns ?? 8;
 
-    private int Columns => Keys.Layout(_deck) is { } layout && _deck != RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck
-        ? layout.Columns
-        : RedAnts.Show.Agent.Deck.Deck.Columns;
+    private int Rows => Deck.Layout(_deck)?.Rows ?? 4;
 
-    private string Title => _deck == RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck
-        ? Keys.Context.ToString()
-        : DeckName(_deck);
-
-    private string DeckName(string id) => Keys.Layout(id)?.Name ?? (id == RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck ? "Feld" : id);
-
-    protected override void OnInitialized() =>
-        _tick = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(300));
-
-    private async Task PressAsync(int number)
+    protected override void OnInitialized()
     {
-        _note = await Keys.PressAsync(_deck, number);
+        _deck = Decks.FirstOrDefault() ?? "";
+        _watch = new CancellationTokenSource();
+        _ = WatchAsync(_watch.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (!first) return;
+        _self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("hallBoard.start", _self);
+        _ready = true;
+    }
+
+    [JSInvokable]
+    public Task Playing(string label)
+    {
+        _playing = label.Length > 0 ? label : null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void Select(string deckId)
+    {
+        _deck = deckId;
         StateHasChanged();
     }
 
-    private IReadOnlyList<(string Name, string Value, bool On)> Pills() =>
-        ShowStates.Known
-            .Where(s => Offered(s.Id))
-            .Select(s => (s.Name, States.Value(s.Id) is { Length: > 0 } v ? v : s.First, States.IsOn(s.Id)))
-            .ToList();
-
-    private bool Offered(string stateId)
+    private async Task PressAsync(DeckSlot slot)
     {
-        var offers = Payload.Hall.Offers;
-        return stateId switch
-        {
-            ShowStates.Music => offers.Sound,
-            ShowStates.Led or ShowStates.Sponsors => offers.Led,
-            ShowStates.Light => offers.Light,
-            ShowStates.Overlay => offers.Vmix,
-            ShowStates.ClockVisible or ShowStates.ClockRunning => offers.Clock && offers.Vmix,
-            _ => true,
-        };
+        if (slot.MusicId is { Length: > 0 }) return;
+        await Deck.PressAsync(_deck, slot.Number);
     }
 
-    private static string Hex(int color) => color.ToString("X6");
+    private Task PanicAsync() => Deck.PanicAsync(CancellationToken.None);
 
-    private static string IconUrl(string key) => "/deck/icon?key=" + Uri.EscapeDataString(key);
+    private Task Control(string what) => JS.InvokeVoidAsync("hallBoard." + what).AsTask();
 
-    public void Dispose() => _tick?.Dispose();
+    private async Task WatchAsync(CancellationToken stop)
+    {
+        while (!stop.IsCancellationRequested)
+        {
+            await Deck.WaitAsync(_version, TimeSpan.FromSeconds(20), stop);
+            _version = Deck.Version;
+            if (_ready) await FollowMusicAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string _music = "";
+
+    private async Task FollowMusicAsync()
+    {
+        var slot = Deck.Slots(_deck).FirstOrDefault(s => s.Active && s.MusicId is { Length: > 0 });
+        var wanted = slot?.MusicId ?? "";
+        if (wanted == _music) return;
+        _music = wanted;
+        if (wanted.Length == 0)
+        {
+            await JS.InvokeVoidAsync("hallBoard.stop");
+            return;
+        }
+        if (Payload.MusicOf(wanted) is not { } music) return;
+        await JS.InvokeVoidAsync("hallBoard.play", music.Id, music.SongsJson, music.Random, music.Display);
+    }
+
+    private static string Hex(int color) => "#" + color.ToString("X6");
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_watch is not null)
+        {
+            await _watch.CancelAsync();
+            _watch.Dispose();
+        }
+        _self?.Dispose();
+    }
 }

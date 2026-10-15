@@ -1,54 +1,20 @@
 using RedAnts.Show.Agent.Cloud;
 
-namespace RedAnts.Show.Agent.Scenes;
+namespace RedAnts.Show.Agent.Keys;
 
-public sealed class SceneContext
+public sealed record KeyContext(
+    string Side = "",
+    Player? Player = null,
+    string Penalty = "",
+    string Text = "",
+    string Event = "")
 {
-    public required Scene Scene { get; init; }
-    public required string Side { get; init; }
-    public Player? Player { get; set; }
-    public string Penalty { get; init; } = "";
-    public string Text { get; init; } = "";
-    public string Event { get; set; } = "";
-    public required string ScoreHomeAtStart { get; init; }
-    public required string ScoreAwayAtStart { get; init; }
-
-    public static SceneContext From(Scene scene, IReadOnlyDictionary<string, string> args, Game game, LiveGame live)
-    {
-        var side = Arg(args, "side") is { Length: > 0 } given ? given.ToLowerInvariant() : scene.Side;
-        var player = int.TryParse(Arg(args, "player"), out var number) ? game.Side(side).Find(number) : null;
-        return new SceneContext
-        {
-            Scene = scene,
-            Side = side,
-            Player = player,
-            Penalty = Arg(args, "penalty"),
-            Text = Arg(args, "text"),
-            Event = Arg(args, "event"),
-            ScoreHomeAtStart = live.HomeScore,
-            ScoreAwayAtStart = live.AwayScore,
-        };
-    }
-
-    public SceneContext Nested(Scene scene) => new()
-    {
-        Scene = scene,
-        Side = scene.Side.Length > 0 ? scene.Side : Side,
-        Player = Player,
-        Penalty = Penalty,
-        Text = Text,
-        Event = Event,
-        ScoreHomeAtStart = ScoreHomeAtStart,
-        ScoreAwayAtStart = ScoreAwayAtStart,
-    };
-
-    static string Arg(IReadOnlyDictionary<string, string> args, string key) =>
-        args.TryGetValue(key, out var value) ? value.Trim() : "";
+    public static readonly KeyContext None = new();
 }
 
 public static class Templates
 {
-    public static string Expand(string template, SceneContext ctx, Game game, LiveGame live)
+    public static string Expand(string template, KeyContext ctx, Game game, LiveGame live)
     {
         if (!template.Contains('{')) return template;
         var team = game.Side(ctx.Side);
@@ -64,13 +30,16 @@ public static class Templates
             ["team.long"] = team.LongName,
             ["team.coach"] = team.Coach,
             ["team.logo"] = team.LogoUrl ?? "",
+            ["team.color"] = team.Color,
             ["team.starting6"] = string.Join(", ", team.Starting6Players.Select(p => $"{p.Display} {p.Name}")),
             ["home.short"] = game.Home.ShortName,
             ["home.long"] = game.Home.LongName,
             ["home.coach"] = game.Home.Coach,
+            ["home.color"] = game.Home.Color,
             ["away.short"] = game.Away.ShortName,
             ["away.long"] = game.Away.LongName,
             ["away.coach"] = game.Away.Coach,
+            ["away.color"] = game.Away.Color,
             ["score"] = $"{live.HomeScore}:{live.AwayScore}",
             ["score.home"] = live.HomeScore,
             ["score.away"] = live.AwayScore,
@@ -88,6 +57,8 @@ public static class Templates
             ["referee2"] = game.Referee2,
             ["commentator1"] = game.Commentator1,
             ["commentator2"] = game.Commentator2,
+            ["topscorer.number"] = team.TopScorerPlayer?.Display ?? "",
+            ["topscorer.name"] = team.TopScorerPlayer?.Name ?? "",
         };
         AddRoster(values, "starting6", team.Starting6Players.ToList());
         AddRoster(values, "lineup", team.Players.ToList());
@@ -97,7 +68,7 @@ public static class Templates
         return result;
     }
 
-    static void AddRoster(Dictionary<string, string> values, string prefix, IReadOnlyList<Player> players)
+    private static void AddRoster(Dictionary<string, string> values, string prefix, IReadOnlyList<Player> players)
     {
         for (var position = 1; position <= players.Count; position++)
         {

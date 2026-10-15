@@ -1,100 +1,66 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using RedAnts.Show.Agent;
 using RedAnts.Show.Agent.Cloud;
 
 namespace RedAnts.Show.Agent.Tests;
 
 public class ShowStatesTests
 {
-    private static (ShowStates States, PayloadStore Store) Build(params AutomationRule[] rules)
+    private static ShowStates Build()
     {
         var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
-        var hall = Hall.Offline with { Id = "win4", Automation = rules };
-        store.Apply(new AgentPayload(hall, [], null, DateTimeOffset.Now, []));
-        return (new ShowStates(store, NullLogger<ShowStates>.Instance), store);
-    }
-
-    [Theory]
-    [InlineData(SceneActions.OverlayShow, "title:player_event", ShowStates.Overlay, "an")]
-    [InlineData(SceneActions.OverlayHide, "title:*", ShowStates.Overlay, "aus")]
-    [InlineData(SceneActions.OverlayShow, "title:scoreboard", ShowStates.ClockVisible, "an")]
-    [InlineData(SceneActions.SoundPlay, "sound:tor", ShowStates.Music, "läuft")]
-    [InlineData(SceneActions.SoundFade, null, ShowStates.Music, "fade")]
-    [InlineData(SceneActions.LedStart, "led:pause", ShowStates.Led, "läuft")]
-    public void A_step_moves_the_state_it_touches(string action, string? target, string state, string value)
-    {
-        var effects = ShowStates.Effects(new SceneStep(action, target));
-
-        Assert.Equal(value, effects[state]);
+        store.Apply(new AgentPayload(Hall.Offline with { Id = "win4" }, null, DateTimeOffset.Now, []));
+        return new ShowStates(store, NullLogger<ShowStates>.Instance);
     }
 
     [Fact]
-    public void The_sponsor_playlist_also_lights_the_sponsor_state()
+    public void Every_state_starts_on_its_first_value()
     {
-        var effects = ShowStates.Effects(new SceneStep(SceneActions.LedStart, "led:sponsoren"));
+        var states = Build();
 
-        Assert.Equal("läuft", effects[ShowStates.Led]);
-        Assert.Equal("an", effects[ShowStates.Sponsors]);
-
-        var stopped = ShowStates.Effects(new SceneStep(SceneActions.LedStop, "led:stopp"));
-        Assert.Equal("aus", stopped[ShowStates.Led]);
-        Assert.Equal("aus", stopped[ShowStates.Sponsors]);
+        foreach (var state in ShowStates.Known)
+            Assert.Equal(state.First, states.Value(state.Id));
     }
 
     [Fact]
-    public void An_unset_state_reads_its_first_value()
+    public void A_state_keeps_what_was_set_and_tells_what_it_started_from()
     {
-        var (states, _) = Build();
+        var states = Build();
 
-        Assert.Equal("aus", states.Value(ShowStates.Overlay));
-        Assert.False(states.IsOn(ShowStates.Overlay));
+        states.Set(ShowStates.Music, "läuft", "Test");
 
-        states.Set(ShowStates.Overlay, "an", "Test");
-
-        Assert.Equal("an", states.Value(ShowStates.Overlay));
-        Assert.True(states.IsOn(ShowStates.Overlay));
+        Assert.Equal("läuft", states.Value(ShowStates.Music));
+        Assert.Equal("aus", states.FirstValue(ShowStates.Music));
     }
 
     [Fact]
-    public void A_rule_fires_once_when_its_state_reaches_the_value()
+    public void Setting_the_same_value_twice_announces_a_change_only_once()
     {
-        var (states, _) = Build(new AutomationRule(ShowStates.ClockRunning, "läuft", "sys-led-stopp"));
-        var fired = new List<string>();
-        states.RuleTriggered += (scene, _) => fired.Add(scene);
+        var states = Build();
+        var changes = 0;
+        states.Changed += () => changes++;
 
-        states.Set(ShowStates.ClockRunning, "läuft", "Uhr");
-        states.Set(ShowStates.ClockRunning, "läuft", "Uhr");
-        states.Set(ShowStates.ClockRunning, "steht", "Uhr");
+        states.Set(ShowStates.Led, "läuft", "Test");
+        states.Set(ShowStates.Led, "läuft", "Test");
 
-        Assert.Equal(["sys-led-stopp"], fired);
+        Assert.Equal(1, changes);
     }
 
     [Fact]
-    public void A_rule_chain_stops_after_three_steps()
+    public void An_unknown_state_has_no_value_and_no_first_value()
     {
-        var (states, _) = Build(
-            new AutomationRule(ShowStates.Overlay, "an", "endlos"),
-            new AutomationRule(ShowStates.Led, "läuft", "endlos"));
-        var fired = 0;
-        states.RuleTriggered += (_, _) =>
-        {
-            fired++;
-            states.Set(ShowStates.Led, fired % 2 == 0 ? "aus" : "läuft", "Kette");
-        };
+        var states = Build();
 
-        states.Set(ShowStates.Overlay, "an", "Test");
-
-        Assert.InRange(fired, 1, 4);
+        Assert.Equal("", states.Value("gibt-es-nicht"));
+        Assert.Equal("", states.FirstValue("gibt-es-nicht"));
     }
 
     [Fact]
-    public void Applying_a_step_sets_every_state_it_names()
+    public void The_states_the_board_shows_are_the_ones_the_hall_control_knows()
     {
-        var (states, _) = Build();
-
-        states.Apply(new SceneStep(SceneActions.LedStart, "led:sponsoren"), "Szene");
-
-        Assert.Equal("läuft", states.Value(ShowStates.Led));
-        Assert.Equal("an", states.Value(ShowStates.Sponsors));
+        Assert.Contains(ShowStates.Known, s => s.Id == ShowStates.Overlay);
+        Assert.Contains(ShowStates.Known, s => s.Id == ShowStates.ClockVisible);
+        Assert.Contains(ShowStates.Known, s => s.Id == ShowStates.ClockRunning);
+        Assert.Contains(ShowStates.Known, s => s.Id == ShowStates.Music);
+        Assert.Contains(ShowStates.Known, s => s.Id == ShowStates.AutoBreakMusic);
     }
 }

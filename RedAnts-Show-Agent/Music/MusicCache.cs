@@ -1,0 +1,98 @@
+using RedAnts.Show.Agent.Cloud;
+
+namespace RedAnts.Show.Agent.Music;
+
+public sealed class MusicCache(AgentConfig config, PayloadStore payload, ILogger<MusicCache> log) : BackgroundService
+{
+    static readonly TimeSpan Idle = TimeSpan.FromMinutes(5);
+
+    readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(2) };
+    readonly SemaphoreSlim _one = new(1, 1);
+
+    public static string Folder => Path.Combine(AgentConfig.DataDir, "musik");
+
+    public int Cached { get; private set; }
+
+    public string? Fault { get; private set; }
+
+    public string? Local(string reference)
+    {
+        var file = PathOf(reference);
+        return file is not null && File.Exists(file) ? file : null;
+    }
+
+    public async Task<string?> EnsureAsync(string reference, CancellationToken stop)
+    {
+        if (Local(reference) is { } ready) return ready;
+        var file = PathOf(reference);
+        if (file is null) return null;
+        await _one.WaitAsync(stop);
+        try
+        {
+            if (File.Exists(file)) return file;
+            var url = $"{config.CloudUrl.TrimEnd('/')}/dj/sound/{Uri.EscapeDataString(reference)}";
+            using var answer = await _http.GetAsync(url, stop);
+            if (!answer.IsSuccessStatusCode)
+            {
+                Fault = $"{reference}: {(int)answer.StatusCode}";
+                return null;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            var temp = file + ".teil";
+            await using (var target = File.Create(temp))
+                await answer.Content.CopyToAsync(target, stop);
+            File.Move(temp, file, overwrite: true);
+            Fault = null;
+            return file;
+        }
+        catch (Exception e) when (e is HttpRequestException or IOException or TaskCanceledException)
+        {
+            Fault = $"{reference}: {e.Message}";
+            return null;
+        }
+        finally { _one.Release(); }
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stop)
+    {
+        while (!stop.IsCancellationRequested)
+        {
+            try { await FillAsync(stop); }
+            catch (OperationCanceledException) { break; }
+            catch (Exception e) { log.LogDebug("Musik-Zwischenspeicher: {Message}", e.Message); }
+            try { await Task.Delay(Idle, stop); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    async Task FillAsync(CancellationToken stop)
+    {
+        var wanted = References().ToList();
+        var missing = wanted.Where(r => Local(r) is null).ToList();
+        if (missing.Count > 0)
+            log.LogInformation("Musik-Zwischenspeicher: {Missing} von {Total} Stücken fehlen noch", missing.Count, wanted.Count);
+        foreach (var reference in missing)
+        {
+            if (stop.IsCancellationRequested) return;
+            await EnsureAsync(reference, stop);
+        }
+        Cached = wanted.Count(r => Local(r) is not null);
+        if (missing.Count > 0)
+            log.LogInformation("Musik-Zwischenspeicher: {Cached} von {Total} Stücken liegen lokal", Cached, wanted.Count);
+    }
+
+    IEnumerable<string> References()
+    {
+        foreach (var item in payload.Music)
+            foreach (var reference in MusicSongs.References(item.SongsJson))
+                yield return reference;
+    }
+
+    static string? PathOf(string reference)
+    {
+        if (reference.Length == 0 || reference.Contains("..", StringComparison.Ordinal)) return null;
+        var clean = reference.Replace('\\', '/').TrimStart('/');
+        if (Path.IsPathRooted(clean)) return null;
+        return Path.Combine(Folder, clean.Replace('/', Path.DirectorySeparatorChar));
+    }
+}

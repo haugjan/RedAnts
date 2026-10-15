@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="show/board.css" />
     <title>RedAnts Show</title>
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
     <Routes @rendermode="InteractiveServer" />
     <div id="components-reconnect-modal">Verbindung zum Server unterbrochen …</div>
+    <script src="dj/soundboard.js"></script>
+    <script src="show/hallboard.js"></script>
     <script src="_framework/blazor.web.js" autostart="false"></script>
     <script src="reconnect.js"></script>
 </body>

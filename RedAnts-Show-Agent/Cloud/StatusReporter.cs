@@ -1,6 +1,6 @@
 using RedAnts.Show.Agent.Clock;
 using RedAnts.Show.Agent.Led;
-using RedAnts.Show.Agent.Scenes;
+using RedAnts.Show.Agent.Keys;
 using RedAnts.Show.Agent.Vmix;
 
 namespace RedAnts.Show.Agent.Cloud;
@@ -13,7 +13,6 @@ public sealed class StatusReporter(
     ClockFeed clock,
     VmixLink vmix,
     SednaLink led,
-    SceneRunner runner,
     Deck.Deck deck) : BackgroundService
 {
     static readonly TimeSpan Tick = TimeSpan.FromSeconds(1);
@@ -27,8 +26,8 @@ public sealed class StatusReporter(
     DateTimeOffset _statusSentAt = DateTimeOffset.MinValue;
     IReadOnlyList<VmixInput> _inputs = [];
 
-    public void ReportSound(SoundCommand sound) =>
-        _ = cloud.ReportAsync("sound", new { action = SceneActions.SoundPlay, target = SceneActions.SoundPrefix + sound.Id, sound = sound.Id, label = sound.Label, scene = "deck" }, CancellationToken.None);
+    public void ReportMusic(MusicItem music) =>
+        _ = cloud.ReportAsync("musik", new { musik = music.Id, label = music.Display }, CancellationToken.None);
 
     public void ReportInputs(IReadOnlyList<VmixInput> inputs) => _inputs = inputs;
 
@@ -51,8 +50,7 @@ public sealed class StatusReporter(
         ["hall"] = payload.Hall.Id,
         ["syncedAt"] = payload.Synced ? payload.Current.SentAt : null,
         ["game"] = payload.Game.Title,
-        ["deck"] = deck.Context.ToString(),
-        ["scene"] = runner.Running,
+        ["decks"] = string.Join(", ", deck.Decks),
         ["vmixFault"] = vmix.Fault,
         ["clockListening"] = clock.Listening,
         ["clockFault"] = clock.Fault,
@@ -63,7 +61,6 @@ public sealed class StatusReporter(
 
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
-        runner.Reported += Forward;
         live.Changed += PushClock;
         try
         {
@@ -76,7 +73,6 @@ public sealed class StatusReporter(
         }
         finally
         {
-            runner.Reported -= Forward;
             live.Changed -= PushClock;
         }
     }
@@ -96,7 +92,7 @@ public sealed class StatusReporter(
         states.Set(ShowStates.ClockRunning, live.ClockRunning ? "läuft" : "steht", "Matchuhr");
         await SendIfChangedAsync("clock", ClockBody(), stop);
 
-        await SendIfChangedAsync("deck", new { context = deck.Context.ToString(), scene = runner.Running ?? "" }, stop);
+        await SendIfChangedAsync("deck", new { decks = deck.Decks }, stop);
 
         if (_inputs.Count > 0)
             await SendIfChangedAsync("vmix", new { inputs = _inputs.Select(i => new { title = i.Title, fields = i.Fields }) }, stop);
