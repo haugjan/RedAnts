@@ -1,105 +1,149 @@
-# Hallensteuerung, Neustart vom 15.10.2026
+# Hallensteuerung
 
 Dieses Dokument legt fest, was gebaut wird, bevor gebaut wird. Es ist die Abnahmegrundlage.
-Der erste Anlauf liegt als Archiv auf dem Tag `show-archiv-2026-10-15` (Branch `feature/s6-show-module`, 50 Commits, nie auf `main`, nie auf Prod).
+Der erste Anlauf liegt als Archiv auf dem Tag `show-archiv-2026-10-15` (Branch `feature/s6-show-module`, nie auf `main`, nie auf Prod).
 
 ## Warum neu
 
-Der erste Anlauf hat die Musikbedienung im neuen Deck-Bord nachgebaut, statt das bestehende Soundboard zu verwenden. Daraus folgten die Fehler, die im Betrieb aufgefallen sind: eine erfundene dritte Registerkarte, Musik, die Sekunden nach dem Klick startet (Umweg Browser, Cloud, Agent, zurück, dann erst Download), und ein sichtbarer Audio-Player, den das Soundboard nie hatte. Ursache waren zwei Festlegungen, die nie hinterfragt wurden: kein JavaScript im neuen Modul, und das Bord bildet alles ab, auch die Musik.
+Der erste Anlauf hat die Musikbedienung im neuen Bord nachgebaut, statt das bestehende Soundboard zu verwenden. Daraus folgten die Fehler im Betrieb: eine erfundene dritte Registerkarte, Musik, die Sekunden nach dem Klick startet, und ein sichtbarer Audio-Player, den das Soundboard nie hatte. Ursache waren zwei Festlegungen, die nie hinterfragt wurden: kein JavaScript im neuen Modul, und das Bord bildet alles ab, auch die Musik.
 
-## Schnitt
+## Der Agent
 
-| Bereich | Wer | Status |
-|---|---|---|
-| Musik | das bestehende Soundboard (`/dj`) | bleibt, wird nicht angefasst |
-| Matchuhr, vMix-Einblender, LED, Streamdeck, Szenen | neue Hallensteuerung | wird gebaut |
-| Konfiguration (Hallen, Geräte, Einblender, Decks) | Backoffice in der Cloud | wird gebaut |
+Ein lokal laufendes Programm auf dem Rechner in der Halle. Er ist die Zentrale und läuft vollständig ohne Internet weiter.
 
-Die Hallensteuerung baut keine Musikoberfläche. Wenn sie Musik auslösen soll (Torjingle), geschieht das über das Soundboard, nicht daneben.
+- Sendet Befehle an die **LED-Wand** (sedna, TCP 27182) und an **vMix** (TCP-API).
+- Empfängt das Signal der **Matchuhr**: iCast über UDP und Bodet ScorePad über TCP, dazu der Suchlauf, der Sender, Port, Transport und Codierung selbst erkennt.
+- Nimmt Befehle eines **lokalen Companion-Moduls** entgegen und meldet ihm laufend Farben, Symbole und Beschriftungen der Tasten.
+- Hostet die **Matchuhr als Webseite** für einen TV-Screen, Gestaltung wie die heutige GameClock.
+- Hostet das **Bord**.
+- **Zwischenspeicher**: die Musikstücke aus dem Blob Storage liegen lokal, damit sie ohne Netz und ohne Wartezeit starten.
+- **Ohne Internet**: zuletzt geholte Hallenkonfiguration, Spielkonfiguration und Musik bleiben nutzbar, Bord, Uhr, vMix, LED und Streamdecks laufen weiter. Sobald die Verbindung zurück ist, gleicht er ab.
 
-## Zwei Hallentypen
+## Hallenkonfiguration
 
-**Nur Musik, Beispiel Oberseen.** Bedient wird am iPad über die Cloud, also das heutige Soundboard mit einem eigenen Profil. Kein Agent, kein Rechner in der Halle, keine Uhr, kein vMix. Hier ist nichts Neues nötig ausser der Profilpflege.
+Es gibt n Hallen. Jede Halle legt fest:
 
-**Volle Halle, Beispiel Stratos.** Auf dem Hallen-PC läuft ein Agent: er hört die Matchuhr, steuert vMix und die LED-Wand und bedient das Streamdeck. Die Cloud hält die Konfiguration und bietet eine Fernbedienung für dieselben Funktionen, ohne Musik. Die Musik läuft daneben wie heute im Soundboard.
+- **Schnittstellen**: Musik (immer vorhanden), LED-Wand, vMix, Matchuhr inklusive Typ (iCast, Bodet ScorePad). Oberseen ist Bodet.
+- **Streamdecks**: welche vorhanden sind und in welcher Grösse. Jedes Deck hat seine **eigene Seitenhierarchie**, zwei Decks zeigen also nicht zwangsläufig dasselbe.
+- **Tasten** je Deck und Seite.
+- **Seiten**, hierarchisch verschachtelt.
 
-## Soll-Verhalten
+Regeln für jede Seite:
 
-Alles hier ist aus dem Bestehenden abgeschrieben, nicht neu erfunden. Abweichungen sind einzeln markiert.
+- **PANIC** liegt fix auf jeder Seite und beendet alles.
+- Jede Unterseite hat einen **Zurück**-Knopf eine Ebene höher.
+- Eine Aktion kann so definiert sein, dass sie nach dem Ausführen **automatisch auf die Hauptseite** zurückspringt.
 
-### Soundboard, unverändert (heutiges Verhalten, dient als Abnahme)
+Gepflegt wird das im **Umbraco-Backoffice unter dem Reiter „Show“**, mit einer Unterseite für die Musik.
 
-1. Ein Klick auf eine Kachel startet den Song sofort in der Klick-Geste, ohne Netzrunde.
-2. Ein zweiter Klick auf die laufende Kachel stoppt alles.
-3. Ordner öffnen sich als Unterseite, zurück über die Ordnerspur.
-4. Eine Kachel mit mehreren Songs spielt zufällig (🔀) oder der Reihe nach (🔁) und läuft weiter, bis gestoppt wird.
-5. Langer Druck auf eine Mehrsong-Kachel öffnet die Einzelauswahl.
-6. Kein sichtbarer Player. Die laufende Kachel zeigt den Equalizer, unten steht Titel und Interpret.
-7. PANIC stoppt alles.
-8. Spotify wie heute.
+## Das Bord
 
-### Matchuhr (aus der GameClock übernommen)
+Das Bord bildet die Matchuhr ab und darunter alle Streamdecks, die für diese Halle konfiguriert sind, Taste für Taste, mit denselben Farben, Symbolen und Beschriftungen. Alles ist auch auf dem Bord bedienbar.
 
-1. Protokolle: iCast über UDP, Bodet ScorePad über TCP 4001, dazu das einstellbare Trennzeichen-Format.
-2. Die Uhr zählt aufwärts, 00:00 bis zur eingestellten Drittelsdauer.
-3. Suchlauf erkennt Sender, Port, Transport und Codierung selbst.
-4. Vollbildanzeige für einen TV-Screen in der Halle.
-5. Teamnamen und Logos aus der swissunihockey-API.
+- **Lokal beim Agenten**: die volle Halle.
+- **In der Cloud**: dasselbe Bord, dort aber nur für Hallenkonfigurationen, die ausschliesslich Musik abspielen (Beispiel Oberseen, bedient am iPad).
+- **Zugang mit Passwort**, lokal wie in der Cloud.
+- Eine Halle ohne physisches Streamdeck bekommt trotzdem ein Deck mit einer Grösse konfiguriert, damit das Bord weiss, wie viele Tasten es zeigt.
 
-### Hallensteuerung am Streamdeck (aus TCConsole übernommen)
+### Spielkonfiguration auf dem Bord
 
-1. Festes 32er-Deck, 4 mal 8, Nummern unverändert, Kontexte statt Companion-Seiten.
-2. Zurück auf Taste 17 und PANIC auf Taste 25 an jedem Ort.
-3. Torablauf: erst Spielerin wählen, dann Stand erhöhen, Einblender erst, wenn der neue Stand steht.
-4. Starting 6 nur, wenn sechs Einträge vorhanden sind, und nie über die Liste hinaus.
-5. Standkorrektur nur abwärts, gesperrt solange die Uhr läuft.
-6. Keine Maus, keine Tastatur, kein Fokuswechsel.
+Auf dem Bord, nicht im Admin:
 
-### Fernbedienung in der Cloud
+1. Spiel von der **swissunihockey-API** laden.
+2. Oder eine **Spielkonfigurationsdatei** einlesen.
+3. Danach ist alles **überschreibbar**, insbesondere Kommentatoren, Schiedsrichter, Teamnamen, Kader und Aufstellung.
 
-1. Zeigt dasselbe wie das Streamdeck, Taste für Taste, plus Uhr und Zustände.
-2. Keine Musikfunktionen.
-3. Ohne angemeldeten Agenten: die Seite sagt das und sperrt die Tasten nicht lautlos.
+## Matchuhr
+
+Die Matchuhr ist die Quelle der Wahrheit für **Zeit, Spielstand, Drittel und laufende Strafen**. Der Spielstand kommt also nicht mehr von Hand, sondern aus dem Telegramm.
+
+- Die Uhr **zählt immer aufwärts**.
+- Verlängerung und Penaltyschiessen verhalten sich wie in TCunihockey (Abschnitt `4` und `5` im Telegramm, Beschriftung „Verlängerung“ und „Penaltyschiessen“).
+- Den **Scoreboard-Einblender in vMix schreibt künftig der Agent**, so wie es heute die GameClock tut. Die GameClock wird damit abgelöst, sobald die Uhr hier läuft.
+- Die Uhr-Webseite zeigt Zeit, Stand, Drittel, Teams und Logos, Gestaltung wie die GameClock.
+
+## Musik
+
+Technisch **eins zu eins wie das heutige DJ-Bord**: der Song startet in der Klick-Geste, vorgeladen, ohne Netzrunde, ohne sichtbaren Player.
+
+- **Einzelstücke oder Playlists**, sequenziell oder zufällig.
+- Jedes Stück mit **Cue-Start und Cue-Ende**.
+- Verwaltet im heutigen **DJ-Admin**, das Setzen von Anfang und Ende bleibt gleich komfortabel. Die Musikbefehle bekommen **Namen** und werden auf einer Unterseite im Admin definiert.
+- **Steuerung**: Stopp, Fade-out, nächstes Stück, vorheriges Stück, Pause und Weiter.
+- **Laufanzeige** mit Titel, Interpret und Restzeit, die laufende Kachel ist erkennbar.
+- **Langer Druck** auf eine Playlist öffnet die Einzelauswahl der Songs.
+- **Spotify** nur im Cloud-Bord, lokal beim Agenten nicht.
+- Die Musik läuft auf dem Gerät, das das Bord anzeigt, beziehungsweise auf dem Agenten.
+
+## Tasten
+
+### Frei definierbare Tasten
+
+Eine Taste führt eine **Abfolge vordefinierter Befehle** aus, zum Beispiel Musik auslösen, dann etwas in vMix einblenden, dann auf der LED-Wand.
+
+### Feste Spezialtasten
+
+Verhalten fest, Position frei wählbar.
+
+| Taste | Verhalten |
+|---|---|
+| **Tor Heim** | Spielt Musik (Song konfigurierbar), blendet auf der LED-Wand ein (konfigurierbar), öffnet die Spielerliste der Heimmannschaft inklusive **Eigentor** und **Topscorer**. Nach der Wahl geht die Spielerin an vMix und an die LED-Wand. Unten zeigt ein toter Knopf mit schwarzem Hintergrund an, dass gerade ein Tor gewählt wird. |
+| **Tor Gast** | Wie Tor Heim, mit der Gästemannschaft. |
+| **Strafe Heim** | Wie Tor Heim, aber zwischen Taste und Spielerwahl kommt die Strafenseite: 2', 2'+2', 10', Spieldauer. |
+| **Strafe Gast** | Wie Strafe Heim, mit der Gästemannschaft. |
+| **Best Player Heim / Gast** | Wie Tor, ohne Musik und ohne Eigentor. |
+| **Einblender an/aus** | Zeigt rot, wenn etwas eingeblendet ist, sonst grün, und schaltet auf Knopfdruck um. |
+| **Uhr an/aus** | Zeigt, ob die Uhr eingeblendet ist, und schaltet um. |
+| **Musik an/aus** | Zeigt, ob Musik läuft, und schaltet sie aus. |
+| **Automodus Pausenmusik** | Zeigt, ob der Automodus an ist, und legt die Playlist fest. Automodus heisst: solange die Uhr zwischen 00:00 und der Drittelsdauer steht, läuft bei einem Spielunterbruch automatisch Musik. Vor dem Spiel und nach Ablauf des Drittels nicht. |
+| **Starting 6** | Öffnet eine Unterseite mit den sechs Spielerinnen. Ein Weiter-Knopf oder ein Klick auf eine Spielerin blendet sie in vMix als Starting Six ein, wahlweise auch auf der LED-Wand, dort nur für die Heimmannschaft. Die gerade gezeigte Spielerin leuchtet. |
+| **Musiksteuerung** | Je eine Taste für Stopp, Fade-out, nächstes Stück, vorheriges Stück und Pause. |
+
+### Weitere Einblender, aus TCConsole übernommen
+
+Als frei platzierbare Tasten verfügbar, weil sie heute im Einsatz sind:
+
+- **Coach**, **Timeout**, **Aufstellung** und **Spieler** (nur Name) je Mannschaft.
+- **Kommentatoren**, **Schiedsrichter**, **Opener**, **Resultat**, **Highlight**.
+- **Meldungen**: Störung Technik, Video, Audio, dazu die vordefinierten Kommentartexte.
+- **Zuschauerzähler**: +100, +10, +1, −1, −10, −100 und „Anzeigen“.
+
+### In vMix
+
+Alles, was heute mit TCConsole und TCunihockey möglich war: die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard inklusive Strafboxen, Teamlogos und die Overlay-Kanäle.
+
+## Was entfällt
+
+- **Uhrsteuerung vom Deck** (−1 s, +1 s, Start/Stop): die Hallenuhr ist die Quelle, sie wird am Zeitnehmertisch bedient.
+- **Standkorrektur auf dem Deck**: der Stand kommt aus dem Telegramm, korrigiert wird an der Uhr.
+- **Drittel setzen und Penaltys zurücksetzen**: beides steht im Telegramm.
 
 ## Abnahmekriterien
 
 | Kriterium | Messung |
 |---|---|
-| Musik startet ohne spürbare Verzögerung | Soundboard unverändert, Start in der Klick-Geste |
-| Keine neue Musikoberfläche | Die Hallensteuerung hat keine Musikseite |
-| Uhr | Zeit auf der Fernbedienung höchstens eine Sekunde hinter der Hallenuhr |
+| Musik startet ohne spürbare Verzögerung | Start in der Klick-Geste, vorgeladen, auch ohne Internet |
+| Keine fremde Oberfläche | Das Bord zeigt die Decks eins zu eins, keine zusätzlichen Reiter |
+| Uhr | Zeit auf dem Bord höchstens eine Sekunde hinter der Hallenuhr |
 | Einblender | Die echten L-UPL-Vorlagen, Felder stimmen mit vMix überein |
-| Deck | Gleiche Tastenbelegung und gleiche Abläufe wie TCConsole heute |
+| Deck | Gleiche Abläufe wie TCConsole heute, inklusive Torablauf und Starting 6 |
+| Netzausfall | Agent, Bord, Uhr, vMix, LED und Musik laufen weiter |
 | Nichts geht verloren | Soundboard und Ticketing in Prod bleiben unberührt |
 
 ## Etappen
 
-Jede Etappe wird lokal vorgeführt, von dir abgenommen, erst dann folgt die nächste. Keine Etappe geht auf Prod, bevor die davor abgenommen ist.
+Jede Etappe wird lokal vorgeführt, von dir abgenommen, erst dann folgt die nächste.
 
-1. **Gerüst**: Agent auf dem Hallen-PC, Anmeldung an der Cloud, Hallenkonfiguration im Backoffice (welche Halle bietet was).
-2. **Matchuhr**: Empfang, Suchlauf, Vollbildanzeige.
-3. **vMix**: Verbindung, die echten Einblender, Scoreboard.
-4. **Deck**: die TCConsole-Abläufe am Streamdeck.
-5. **LED**: sedna-Anbindung.
-6. **Fernbedienung** in der Cloud, ohne Musik.
+1. **Gerüst**: Agent auf dem Hallen-PC, Hallenkonfiguration im Backoffice, Konfiguration lokal zwischengespeichert.
+2. **Matchuhr**: iCast und Bodet, Suchlauf, Uhr-Webseite, Scoreboard in vMix.
+3. **Bord und Decks**: Seiten, Tasten, Spiegelung, Companion-Modul, Spielkonfiguration laden und bearbeiten.
+4. **Spezialtasten**: Tor, Strafe, Best Player, Starting 6, Zustandstasten.
+5. **Musik**: Technik des DJ-Bords, lokaler Zwischenspeicher, Automodus.
+6. **LED**: sedna-Anbindung und Vorlagen.
+7. **Cloud-Bord** für Hallen, die nur Musik spielen.
 
-## Aus dem Archiv übernehmbar
+## Offene Punkte
 
-Geprüft und brauchbar, wird etappenweise herausgepickt, nicht am Stück übernommen:
-
-- iCast- und Bodet-Empfang samt Plausibilitätsprüfungen
-- vMix-Anbindung, Scoreboard-Feldzuordnung, die aus `Einblender.zip` abgeleiteten L-UPL-Vorlagen
-- LED-Anbindung (sedna)
-- Simulator mit echten Einblendern, Uhr und vMix-Stellvertreter
-- Agent-Grundgerüst mit Hub-Anbindung und Streamdeck-Bildern
-- Backoffice-Konfiguration für Hallen, Szenen, Einblender, Decks
-- Importskripte für die Prod-Musik, falls die Musik später doch umziehen soll
-
-Nicht übernommen: Musikreiter, Musikwiedergabe im Bord, Musiktasten auf dem Mk2-Deck.
-
-## Offene Fragen
-
-1. **Oberseen**: reicht das heutige Soundboard mit einem eigenen Profil, oder soll dort zusätzlich etwas zu sehen sein, zum Beispiel die Matchuhr als Anzeige ohne Steuerung?
-2. **Torjingle**: soll die Hallensteuerung Musik im Soundboard auslösen dürfen, und wenn ja, läuft das Soundboard dann auf demselben Rechner?
-3. **GameClock**: ablösen, sobald die Uhr in der Hallensteuerung läuft, oder parallel weiterbetreiben?
-4. **Streamdecks**: welche Halle hat welche Decks, und bleibt es beim XL in der Halle und dem Mk2 am Pult?
+1. **Topscorer**: TCConsole kennt dazu nur den Rohwert `00=` aus der Spielkonfig, die Bedeutung war nie bestätigt. Was soll die Taste anzeigen und einblenden?
+2. **Companion**: ein Modul für Hallensteuerung und Soundboard, oder bleibt das bestehende DJ-Modul daneben bestehen?
+3. **Kachelgrössen**: das Streamdeck ist ein starres Raster, das DJ-Bord kannte breite, hohe und grosse Kacheln. Für reine Musikhallen am iPad: starres Raster oder freie Grössen?
