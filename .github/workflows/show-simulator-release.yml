@@ -1,0 +1,66 @@
+name: Show-Simulator — Matchuhr, vMix und LED-Wand
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'RedAnts-Show-Simulator/**'
+      - '.github/workflows/show-simulator-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: RedAnts-Show-Simulator
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Stamp version
+        id: version
+        run: |
+          BASE=$(grep -oP '(?<=<Version>)[^<]+' RedAnts.Show.Simulator.csproj)
+          VERSION="$(echo "$BASE" | cut -d. -f1-2).$GITHUB_RUN_NUMBER"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          PACKAGE="$RUNNER_TEMP/package"
+          for RID in win-x64 linux-x64 linux-arm64; do
+            dotnet publish RedAnts.Show.Simulator.csproj -c Release -r "$RID" --self-contained true \
+              -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none \
+              -p:Version="$VERSION" -o "$PACKAGE/$RID"
+            echo "$VERSION" > "$PACKAGE/$RID/release.txt"
+          done
+          cp Start-ShowSimulator.ps1 Start-ShowSimulator.cmd "$PACKAGE/win-x64/"
+          cp start-show-simulator.sh "$PACKAGE/linux-x64/"
+          cp start-show-simulator.sh "$PACKAGE/linux-arm64/"
+          chmod +x "$PACKAGE"/linux-*/RedAnts.Show.Simulator "$PACKAGE"/linux-*/*.sh
+
+      - name: Assemble packages
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          PACKAGE="$RUNNER_TEMP/package"
+          mkdir -p dist
+          (cd "$PACKAGE/win-x64" && zip -qr "$GITHUB_WORKSPACE/RedAnts-Show-Simulator/dist/show-simulator-$VERSION-win-x64.zip" .)
+          tar -czf "dist/show-simulator-$VERSION-linux-x64.tar.gz" -C "$PACKAGE/linux-x64" .
+          tar -czf "dist/show-simulator-$VERSION-linux-arm64.tar.gz" -C "$PACKAGE/linux-arm64" .
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: show-simulator-v${{ steps.version.outputs.version }}
+          name: Show-Simulator ${{ steps.version.outputs.version }}
+          files: RedAnts-Show-Simulator/dist/*
+          generate_release_notes: true

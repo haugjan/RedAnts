@@ -1,0 +1,9 @@
+@if (Text is { Length: > 0 })
+{
+    <span class="sa-status @(IsError ? "error" : "")">@Text</span>
+}
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public bool IsError { get; set; }
+}

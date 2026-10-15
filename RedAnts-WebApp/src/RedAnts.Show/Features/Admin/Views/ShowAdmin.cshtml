@@ -1,0 +1,24 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="/" />
+    <title>Show Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet" />
+    <style>
+        html, body { height: 100%; margin: 0; background: #f4f4f4; font-family: 'Lato', 'Segoe UI', Roboto, sans-serif; }
+    </style>
+    <link rel="stylesheet" href="/_content/RedAnts.Show/show/board.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/_content/RedAnts.Show/show/showadmin.css" asp-append-version="true" />
+</head>
+<body>
+    <component type="typeof(RedAnts.Show.Features.Admin.ShowAdminPage)" render-mode="Server" />
+    <script src="/_framework/blazor.server.js"></script>
+</body>
+</html>

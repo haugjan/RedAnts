@@ -1,0 +1,377 @@
+@inherits HallTab
+@using RedAnts.Show.Features.Music
+@inject GetMusic.Handler MusicQuery
+
+<section class="sa-card">
+    <h2>Decks <small>@(Hall?.Name ?? "keine Halle")</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    @if (Hall is null)
+    {
+        <p class="sa-hint">Keine Halle gewählt.</p>
+    }
+    else
+    {
+        <div class="sa-actions">
+            <label class="sa-inline">Gerät
+                <select class="sa-input" value="@_deckId" @onchange="OnDeckChanged">
+                    @foreach (var row in _decks)
+                    {
+                        <option value="@row.Id">@row.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="sa-inline">Seite
+                <select class="sa-input" value="@_pageId" @onchange="OnPageChanged">
+                    @foreach (var entry in Pages)
+                    {
+                        <option value="@entry.Id">@Indent(entry)@entry.Name</option>
+                    }
+                </select>
+            </label>
+            <button class="sa-btn small" @onclick="AddPage">+ Seite</button>
+            <button class="sa-btn small danger" @onclick="RemovePage" disabled="@(Page?.IsHome ?? true)">Seite löschen</button>
+            <span class="sd-spacer"></span>
+            <button class="sa-btn small" @onclick="Defaults">⟲ Standard</button>
+            <button class="sa-btn primary" @onclick="SaveDecksAsync" disabled="@(!Dirty)">💾 Speichern</button>
+        </div>
+
+        @if (Deck is { } deck && Page is { } sheet)
+        {
+            <div class="sa-actions">
+                <label class="sa-inline">Name der Seite <input class="sa-input" value="@sheet.Name" @onchange="RenamePage" /></label>
+                <span class="sa-hint">@deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back · PANIC auf @deck.Panic</span>
+            </div>
+
+            <div class="sa-deckgrid">
+                <div class="sa-deck" style="grid-template-columns:repeat(@deck.Columns, 92px)">
+                    @for (var n = 1; n <= deck.Count; n++)
+                    {
+                        var number = n;
+                        var tile = sheet.KeyAt(number);
+                        var locked = Locked(deck, number);
+                        <div class="sa-key @(number == _selected ? "selected" : "")"
+                             style="background:@(locked is not null ? "#3a3f47" : tile.Color);color:#fff"
+                             @onclick="() => _selected = number">
+                            <span class="sa-key-n">@number</span>
+                            @if (locked is { } lockedLabel)
+                            {
+                                <span class="sa-key-lbl">@lockedLabel</span>
+                            }
+                            else
+                            {
+                                @if (tile.Icon is { Length: > 0 } symbol)
+                                {
+                                    <img class="sa-key-icon" src="@DeckIcons.FileOf(symbol)" alt="" />
+                                }
+                                <span class="sa-key-lbl">@Caption(tile)</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="sa-keyeditor">
+                    @{
+                        var current = sheet.KeyAt(_selected);
+                        var fixedLabel = Locked(deck, _selected);
+                    }
+                    <h3>Taste @_selected</h3>
+                    @if (fixedLabel is not null)
+                    {
+                        <p class="sa-hint">Dieser Platz gehört fest zu @fixedLabel und liegt auf jeder Seite gleich.</p>
+                    }
+                    else
+                    {
+                        <label>Art
+                            <select class="sa-input" value="@current.Kind" @onchange="e => SetKind(e.Value?.ToString())">
+                                @foreach (var kind in KeyKinds.All)
+                                {
+                                    <option value="@kind">@KeyKinds.Label(kind)</option>
+                                }
+                            </select>
+                        </label>
+
+                        @if (current.Kind != KeyKinds.Empty)
+                        {
+                            <label>Beschriftung <input class="sa-input" value="@current.Label" @onchange="@(e => SetLabel(e))" /></label>
+                            <label>Farbe <input class="sa-input" type="color" value="@current.Color" @onchange="@(e => SetColor(e))" /></label>
+
+                            <div class="sa-icons">
+                                <button class="sa-icon @(current.Icon is null ? "on" : "")" @onclick="() => Set(k => k with { Icon = null })" title="ohne Symbol">∅</button>
+                                @foreach (var icon in DeckIcons.All)
+                                {
+                                    var name = icon;
+                                    <button class="sa-icon @(current.Icon == name ? "on" : "")" @onclick="() => Set(k => k with { Icon = name })">
+                                        <img src="@DeckIcons.FileOf(name)" alt="@name" />
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        @if (current.Kind == KeyKinds.Music)
+                        {
+                            <label>Musik-Befehl
+                                <select class="sa-input" value="@current.MusicId" @onchange="e => Set(k => k with { MusicId = e.Value?.ToString() })">
+                                    <option value="">bitte wählen</option>
+                                    @foreach (var item in _music)
+                                    {
+                                        <option value="@item.Id">@item.Display</option>
+                                    }
+                                </select>
+                            </label>
+                            <p class="sa-hint">Die Stücke werden im DJ-Admin verwaltet.</p>
+                        }
+
+                        @if (current.Kind == KeyKinds.Special)
+                        {
+                            <label>Funktion
+                                <select class="sa-input" value="@current.Special" @onchange="e => Set(k => k with { Special = e.Value?.ToString() })">
+                                    <option value="">bitte wählen</option>
+                                    @foreach (var group in SpecialKey.All.GroupBy(s => s.Group))
+                                    {
+                                        <optgroup label="@group.Key">
+                                            @foreach (var special in group)
+                                            {
+                                                <option value="@special.Id">@special.Label</option>
+                                            }
+                                        </optgroup>
+                                    }
+                                </select>
+                            </label>
+                        }
+
+                        @if (current.Kind == KeyKinds.Page)
+                        {
+                            <label>Seite
+                                <select class="sa-input" value="@current.PageId" @onchange="e => Set(k => k with { PageId = e.Value?.ToString() })">
+                                    <option value="">bitte wählen</option>
+                                    @foreach (var target in Pages.Where(p => !p.IsHome))
+                                    {
+                                        <option value="@target.Id">@target.Name</option>
+                                    }
+                                </select>
+                            </label>
+                        }
+
+                        @if (current.Kind == KeyKinds.Live)
+                        {
+                            <label>Anzeige
+                                <select class="sa-input" value="@current.Live" @onchange="e => Set(k => k with { Live = e.Value?.ToString() })">
+                                    @foreach (var value in LiveValues.All)
+                                    {
+                                        <option value="@value">@LiveValues.Label(value)</option>
+                                    }
+                                </select>
+                            </label>
+                        }
+
+                        @if (current.Kind == KeyKinds.Steps)
+                        {
+                            <h4>Befehle</h4>
+                            @for (var i = 0; i < current.Sequence.Count; i++)
+                            {
+                                var index = i;
+                                var step = current.Sequence[index];
+                                <div class="sa-step">
+                                    <select class="sa-input" value="@step.Action" @onchange="e => SetStep(index, s => s with { Action = e.Value?.ToString() ?? KeyActions.Wait })">
+                                        @foreach (var action in KeyActions.All)
+                                        {
+                                            <option value="@action">@KeyActions.Label(action)</option>
+                                        }
+                                    </select>
+                                    @if (step.Action == KeyActions.Wait)
+                                    {
+                                        <input class="sa-input" type="number" value="@step.Ms" @onchange="e => SetStep(index, s => s with { Ms = Number(e.Value) })" placeholder="Millisekunden" />
+                                    }
+                                    else if (step.Action == KeyActions.MusicPlay)
+                                    {
+                                        <select class="sa-input" value="@step.Target" @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })">
+                                            <option value="">bitte wählen</option>
+                                            @foreach (var item in _music)
+                                            {
+                                                <option value="@item.Id">@item.Display</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <input class="sa-input" value="@step.Target" @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })" placeholder="@Placeholder(step.Action)" />
+                                    }
+                                    <button class="sa-btn small danger" @onclick="() => RemoveStep(index)">✕</button>
+                                </div>
+                            }
+                            <button class="sa-btn small" @onclick="AddStep">+ Befehl</button>
+                        }
+
+                        @if (current.Kind != KeyKinds.Empty && current.Kind != KeyKinds.Live)
+                        {
+                            <label class="sa-check">
+                                <input type="checkbox" checked="@current.HomeAfter" @onchange="e => Set(k => k with { HomeAfter = e.Value is true })" />
+                                danach zurück auf die Startseite
+                            </label>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private IReadOnlyList<MusicItem> _music = [];
+    private List<Deck> _decks = [];
+    private string _deckId = "";
+    private string _pageId = DeckPage.HomeId;
+    private int _selected = 1;
+
+    private Deck? Deck => _decks.FirstOrDefault(d => d.Id == _deckId);
+
+    private DeckPage? Page => Deck?.Page(_pageId) ?? Deck?.Home;
+
+    private IReadOnlyList<DeckPage> Pages => Deck?.Pages ?? [];
+
+    protected override async Task OnHallLoadedAsync()
+    {
+        _music = await MusicQuery.HandleAsync(new GetMusic.Query());
+        Load();
+    }
+
+    private void Load()
+    {
+        _decks = (Hall?.DeckLayouts ?? DefaultDecks.All).Select(Copy).ToList();
+        _deckId = _decks.FirstOrDefault()?.Id ?? "";
+        _pageId = DeckPage.HomeId;
+        _selected = 1;
+    }
+
+    private static Deck Copy(Deck deck) => deck with
+    {
+        Pages = deck.Pages.Select(p => p with { Keys = p.Keys.ToList() }).ToList(),
+    };
+
+    private void OnDeckChanged(ChangeEventArgs e)
+    {
+        _deckId = e.Value?.ToString() ?? "";
+        _pageId = DeckPage.HomeId;
+        _selected = 1;
+    }
+
+    private void OnPageChanged(ChangeEventArgs e)
+    {
+        _pageId = e.Value?.ToString() ?? DeckPage.HomeId;
+        _selected = 1;
+    }
+
+    private string Indent(DeckPage page) => page.ParentId is null ? "" : "— ";
+
+    private static string Caption(DeckKey key) =>
+        key.Label.Length > 0 ? key.Label : key.Kind == KeyKinds.Empty ? "" : KeyKinds.Label(key.Kind);
+
+    private static string? Locked(Deck deck, int number) =>
+        number == deck.Panic ? "PANIC" : number == deck.Back ? "Zurück" : null;
+
+    private static int? Number(object? value) =>
+        int.TryParse(value?.ToString(), out var number) ? number : null;
+
+    private static string Placeholder(string action) => action switch
+    {
+        KeyActions.VmixShow or KeyActions.VmixHide => "title:coach_home",
+        KeyActions.LedStart => "led:tor-heim",
+        _ => "",
+    };
+
+    private void SetLabel(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? "";
+        Set(k => k with { Label = text });
+    }
+
+    private void SetColor(ChangeEventArgs e)
+    {
+        var color = e.Value?.ToString() ?? DeckKey.DefaultColor;
+        Set(k => k with { Color = color });
+    }
+
+    private void Set(Func<DeckKey, DeckKey> change)
+    {
+        if (Deck is not { } deck || Page is not { } page) return;
+        var key = change(page.KeyAt(_selected));
+        Replace(deck, page.With(key));
+        Touch();
+    }
+
+    private void SetKind(string? kind)
+    {
+        if (kind is null) return;
+        Set(k => new DeckKey(k.Number, kind, k.Label, k.Color, k.Icon,
+            Steps: kind == KeyKinds.Steps ? k.Sequence : null,
+            Live: kind == KeyKinds.Live ? k.Live ?? LiveValues.Time : null,
+            HomeAfter: k.HomeAfter));
+    }
+
+    private void SetStep(int index, Func<KeyStep, KeyStep> change) =>
+        Set(k =>
+        {
+            var steps = k.Sequence.ToList();
+            if (index < 0 || index >= steps.Count) return k;
+            steps[index] = change(steps[index]);
+            return k with { Steps = steps };
+        });
+
+    private void AddStep() =>
+        Set(k => k with { Steps = k.Sequence.Append(new KeyStep(KeyActions.VmixShow)).ToList() });
+
+    private void RemoveStep(int index) =>
+        Set(k =>
+        {
+            var steps = k.Sequence.ToList();
+            if (index < 0 || index >= steps.Count) return k;
+            steps.RemoveAt(index);
+            return k with { Steps = steps };
+        });
+
+    private void Replace(Deck deck, DeckPage page)
+    {
+        var pages = deck.Pages.Select(p => p.Id == page.Id ? page : p).ToList();
+        _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+    }
+
+    private void AddPage()
+    {
+        if (Deck is not { } deck) return;
+        var id = $"seite-{deck.Pages.Count}";
+        while (deck.Pages.Any(p => p.Id == id)) id += "x";
+        var pages = deck.Pages.Append(new DeckPage(id, "Neue Seite", DeckPage.HomeId, [])).ToList();
+        _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+        _pageId = id;
+        Touch();
+    }
+
+    private void RemovePage()
+    {
+        if (Deck is not { } deck || Page is not { } page || page.IsHome) return;
+        var pages = deck.Pages.Where(p => p.Id != page.Id).ToList();
+        _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+        _pageId = DeckPage.HomeId;
+        Touch();
+    }
+
+    private void RenamePage(ChangeEventArgs e)
+    {
+        if (Deck is not { } deck || Page is not { } page) return;
+        Replace(deck, page with { Name = e.Value?.ToString() ?? page.Name });
+        Touch();
+    }
+
+    private void Defaults()
+    {
+        _decks = DefaultDecks.All.Select(Copy).ToList();
+        _deckId = _decks[0].Id;
+        _pageId = DeckPage.HomeId;
+        Touch();
+    }
+
+    private async Task SaveDecksAsync()
+    {
+        var decks = _decks.Select(d => d.Validated()).ToList();
+        await SaveAsync(hall => hall with { Decks = decks });
+    }
+}

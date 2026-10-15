@@ -1,0 +1,36 @@
+@inherits HallTab
+
+<section class="sa-card">
+    <h2>Zustände <small>fest im Code</small></h2>
+    <p class="sa-hint">
+        Zustände sind Teil der Applikation und nicht einstellbar. Beobachtete Zustände meldet das Gerät (vMix, Uhr),
+        gesetzte setzt die Hallensteuerung selbst. Feste Tasten binden sich an einen Zustand und schalten ihn um.
+        Eine Änderung an dieser Liste braucht eine neue Version der Applikation.
+    </p>
+    <table class="sa-table">
+        <thead><tr><th style="width:190px">Name</th><th style="width:150px">Kennung</th><th style="width:240px">Werte</th><th style="width:140px">Quelle</th><th>Notiz</th></tr></thead>
+        <tbody>
+            @foreach (var state in DefaultStates.All)
+            {
+                <tr @key="state.Id">
+                    <td>@state.Name</td>
+                    <td><code>@state.Id</code></td>
+                    <td>@string.Join(" · ", state.Values)</td>
+                    <td>@state.Source</td>
+                    <td>@state.Note</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h3>Eingebaute Ableitung</h3>
+    <p class="sa-hint">
+        Einblender zeigen → Einblender an · Einblender ausblenden (alle) → aus · Scoreboard zeigen oder ausblenden → Uhr sichtbar ·
+        Musik abspielen → Musik läuft · Musik stoppen → aus · Musik ausblenden → fade · LED starten → LED läuft
+        (Sponsoren-Playlist zusätzlich Sponsoren-Loop an) · LED stoppen → LED aus · Lichtszene → Licht · Zustand setzen → wie angegeben.
+    </p>
+</section>
+
+@code {
+    protected override Task OnHallLoadedAsync() => Task.CompletedTask;
+}

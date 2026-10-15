@@ -1,0 +1,115 @@
+@using System.Globalization
+@implements IDisposable
+@inject TitleLibrary Titles
+@inject VmixStub Vmix
+
+<div class="stage">
+    <div class="pitch"></div>
+    @foreach (var title in Vmix.OnStage())
+    {
+        var layout = Titles.Of(title);
+        if (layout is null)
+        {
+            <div class="unknown" @key="title">@title</div>
+            continue;
+        }
+        var values = Vmix.ValuesOf(title);
+        foreach (var element in layout.All)
+        {
+            if (Hidden(layout, values, element)) continue;
+            var box = $"left:{Pct(element.X, layout.Width)};top:{Pct(element.Y, layout.Height)};width:{Pct(element.W, layout.Width)};height:{Pct(element.H, layout.Height)}";
+            switch (element.Kind)
+            {
+                case "rect":
+                    <div class="el rect"
+                         style="@box;background:@(element.Fill ?? "transparent");border-radius:@(Pct(element.R, layout.Width));@Outline(element)"
+                         @key="@($"{title}-{element.Name}-rect")"></div>
+                    break;
+                case "text":
+                    <div class="el text"
+                         style="@box;color:@(element.Fill ?? "#fff");font-size:@Cqw(Fitted(element, Value(values, element)), layout.Width);font-weight:@Weight(element.Weight);justify-content:@Align(element.Align);align-items:@Valign(element.Valign)"
+                         @key="@($"{title}-{element.Name}-text")">@Value(values, element)</div>
+                    break;
+                case "image":
+                    var source = Titles.Image(element.Src, values.GetValueOrDefault(element.Name + ".Source"));
+                    if (source is { Length: > 0 })
+                    {
+                        <img class="el img" src="@source" alt="" style="@box" @key="@($"{title}-{element.Name}-img")" />
+                    }
+                    break;
+            }
+        }
+    }
+    @if (Vmix.OnStage().Count == 0)
+    {
+        <div class="empty">kein Einblender aktiv</div>
+    }
+</div>
+
+@code {
+    private DateTime _lastRender = DateTime.MinValue;
+
+    protected override void OnInitialized() => Vmix.Changed += Refresh;
+
+    private void Refresh()
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastRender < TimeSpan.FromMilliseconds(80)) return;
+        _lastRender = now;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => Vmix.Changed -= Refresh;
+
+    private static string Pct(double value, double total) =>
+        (value / total * 100).ToString("0.###", CultureInfo.InvariantCulture) + "%";
+
+    private static string Cqw(double value, double total) =>
+        (value / total * 100).ToString("0.###", CultureInfo.InvariantCulture) + "cqw";
+
+    private static string Outline(TitleElement element) =>
+        element.Stroke is { Length: > 0 } stroke && stroke != element.Fill
+            ? $"box-shadow:inset 0 0 0 2px {stroke}"
+            : "";
+
+    private static string Weight(string? weight) => weight switch
+    {
+        "Black" => "900",
+        "Bold" => "700",
+        _ => "500",
+    };
+
+    private static string Align(string? align) => align switch
+    {
+        "Center" => "center",
+        "Right" => "flex-end",
+        _ => "flex-start",
+    };
+
+    private static string Valign(string? valign) => valign switch
+    {
+        "Center" => "center",
+        "Bottom" => "flex-end",
+        _ => "flex-start",
+    };
+
+    private static string Value(IReadOnlyDictionary<string, string> values, TitleElement element) =>
+        values.TryGetValue(element.Name + ".Text", out var live) ? live : element.Text ?? "";
+
+    private static double Fitted(TitleElement element, string text)
+    {
+        if (text.Length == 0 || element.W <= 0) return element.Size;
+        var factor = element.Weight == "Black" ? 0.66 : 0.6;
+        var needed = element.W / (factor * text.Length);
+        return Math.Min(element.Size, Math.Max(needed, element.Size * 0.35));
+    }
+
+    private static bool Hidden(TitleLayout layout, IReadOnlyDictionary<string, string> values, TitleElement element)
+    {
+        if (element.Kind == "text") return values.TryGetValue(element.Name + ".Text", out var text) && text.Length == 0;
+        if (element.Name.Length <= 4 || !element.Name.StartsWith("Rect", StringComparison.Ordinal)) return false;
+        var group = "Txt" + element.Name[4..];
+        var members = layout.All.Where(e => e.Kind == "text" && e.Name.StartsWith(group, StringComparison.Ordinal)).ToList();
+        return members.Count > 0 && members.All(e => values.TryGetValue(e.Name + ".Text", out var text) && text.Length == 0);
+    }
+}

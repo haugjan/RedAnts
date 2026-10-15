@@ -1,0 +1,124 @@
+@page "/bord"
+@implements IDisposable
+@inject RedAnts.Show.Agent.Deck.Deck Keys
+@inject PayloadStore Payload
+@inject LiveGame Live
+@inject ShowStates States
+@inject VmixLink Vmix
+@inject SednaLink Led
+@inject ClockFeed Clock
+
+<header class="bar">
+    <span class="hall">@(Payload.Hall.Name.Length > 0 ? Payload.Hall.Name : "keine Halle")</span>
+    <span class="score">@Live.HomeScore : @Live.AwayScore</span>
+    <span class="time">@Live.Time</span>
+    <span class="period">@Live.PeriodLabel</span>
+    <span class="spacer"></span>
+    @foreach (var pill in Pills())
+    {
+        <span class="pill @(pill.On ? "on" : "")" @key="pill.Name">@pill.Name: @pill.Value</span>
+    }
+    <a class="link" href="/uhr" target="_blank">Matchuhr</a>
+</header>
+
+@if (Decks.Count > 1)
+{
+    <nav class="decks">
+        @foreach (var id in Decks)
+        {
+            <button class="tab @(id == _deck ? "active" : "")" @onclick="() => _deck = id" @key="id">@DeckName(id)</button>
+        }
+    </nav>
+}
+
+<main>
+    <h1>@Title</h1>
+    <div class="board" style="grid-template-columns: repeat(@Columns, minmax(0, 1fr))">
+        @foreach (var slot in Slots)
+        {
+            <button class="key @(slot.Pressable ? "" : "flat")"
+                    style="background:#@Hex(slot.Color);color:#@Hex(slot.TextColor)"
+                    disabled="@(!slot.Pressable)"
+                    @onclick="() => PressAsync(slot.Number)"
+                    @key="slot.Number">
+                @if (slot.ImageKey is { Length: > 0 } icon)
+                {
+                    <img src="@IconUrl(icon)" alt="@slot.Label" />
+                }
+                else
+                {
+                    @foreach (var line in slot.Label.Split('\n'))
+                    {
+                        <span>@line</span>
+                    }
+                }
+                <em>@slot.Number</em>
+            </button>
+        }
+    </div>
+    @if (_note is { Length: > 0 } note)
+    {
+        <p class="note">@note</p>
+    }
+    <p class="hint">
+        @(Vmix.Configured ? Vmix.Connected ? "vMix verbunden" : "vMix nicht erreichbar" : "vMix nicht angeboten") ·
+        @(Payload.Hall.Offers.Clock ? Clock.Active ? "Matchuhr empfängt" : "Matchuhr ohne Daten" : "Matchuhr nicht angeboten") ·
+        @(Led.Configured ? Led.Connected ? "LED verbunden" : "LED noch nicht angesprochen" : "LED nicht angeboten") ·
+        Spotify läuft nur in der Cloud-Bedienung, nicht auf dem Agenten
+    </p>
+</main>
+
+@code {
+    private string _deck = RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck;
+    private string? _note;
+    private Timer? _tick;
+
+    private IReadOnlyList<string> Decks => Keys.Decks;
+
+    private IReadOnlyList<RedAnts.Show.Agent.Deck.DeckSlot> Slots => Keys.Slots(_deck);
+
+    private int Columns => Keys.Layout(_deck) is { } layout && _deck != RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck
+        ? layout.Columns
+        : RedAnts.Show.Agent.Deck.Deck.Columns;
+
+    private string Title => _deck == RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck
+        ? Keys.Context.ToString()
+        : DeckName(_deck);
+
+    private string DeckName(string id) => Keys.Layout(id)?.Name ?? (id == RedAnts.Show.Agent.Cloud.DeckLayout.FieldDeck ? "Feld" : id);
+
+    protected override void OnInitialized() =>
+        _tick = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(300));
+
+    private async Task PressAsync(int number)
+    {
+        _note = await Keys.PressAsync(_deck, number);
+        StateHasChanged();
+    }
+
+    private IReadOnlyList<(string Name, string Value, bool On)> Pills() =>
+        ShowStates.Known
+            .Where(s => Offered(s.Id))
+            .Select(s => (s.Name, States.Value(s.Id) is { Length: > 0 } v ? v : s.First, States.IsOn(s.Id)))
+            .ToList();
+
+    private bool Offered(string stateId)
+    {
+        var offers = Payload.Hall.Offers;
+        return stateId switch
+        {
+            ShowStates.Music => offers.Sound,
+            ShowStates.Led or ShowStates.Sponsors => offers.Led,
+            ShowStates.Light => offers.Light,
+            ShowStates.Overlay => offers.Vmix,
+            ShowStates.ClockVisible or ShowStates.ClockRunning => offers.Clock && offers.Vmix,
+            _ => true,
+        };
+    }
+
+    private static string Hex(int color) => color.ToString("X6");
+
+    private static string IconUrl(string key) => "/deck/icon?key=" + Uri.EscapeDataString(key);
+
+    public void Dispose() => _tick?.Dispose();
+}

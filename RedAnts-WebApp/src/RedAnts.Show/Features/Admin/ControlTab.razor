@@ -1,0 +1,23 @@
+@inherits HallTab
+@using RedAnts.Show.Features.Board
+
+<section class="sa-card">
+    <h2>Bedienung <small>@(Hall?.Name ?? "keine Halle")</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    @if (Hall is null)
+    {
+        <p class="sa-hint">Keine Halle gewählt.</p>
+    }
+    else
+    {
+        <p class="sa-hint">
+            Das Bord ersetzt die Streamdecks: dieselben Tasten, dazu Uhr und Zustände.
+            Für den Spielbetrieb gibt es es auch als eigene Seite unter <a href="/bord?halle=@Hall.Id" target="_blank">/bord</a>,
+            auf dem Hallen-Notebook zusätzlich lokal beim Agenten.
+        </p>
+    }
+</section>
+
+@if (Hall is not null)
+{
+    <ShowBoardPage HallId="@Hall.Id" @key="Hall.Id" />
+}

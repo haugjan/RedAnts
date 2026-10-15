@@ -1,0 +1,112 @@
+@using Microsoft.AspNetCore.WebUtilities
+@implements IDisposable
+@inject GetHalls.Handler HallsQuery
+@inject ShowAdminState State
+@inject NavigationManager Navigation
+
+<div class="sa">
+    <nav class="sa-subnav">
+        @foreach (var tab in Tabs)
+        {
+            <button type="button" class="sa-subnav-btn @(_tab == tab.Key ? "active" : "")" @onclick="() => SelectTab(tab.Key)">@tab.Label</button>
+        }
+        <span class="sa-subnav-spacer"></span>
+        @if (_halls.Count > 0)
+        {
+            <label class="sa-subnav-hall">
+                Halle
+                <select class="sa-input" value="@State.SelectedHallId" @onchange="OnHallChanged">
+                    @foreach (var hall in _halls)
+                    {
+                        <option value="@hall.Id">@hall.Name</option>
+                    }
+                </select>
+            </label>
+            <span class="sa-lamp @(_halls.FirstOrDefault(h => h.Id == State.SelectedHallId)?.AgentConnected == true ? "on" : "off")"
+                  title="Agent der gewählten Halle"></span>
+        }
+    </nav>
+
+    <main class="sa-content">
+        @switch (_tab)
+        {
+            case "szenen": <ScenesTab /> break;
+            case "musik": <MusicTab /> break;
+            case "zustaende": <StatesTab /> break;
+            case "vmix": <TitlesTab /> break;
+            case "led": <LedTab /> break;
+            case "decks": <DecksTab /> break;
+            case "bedienung": <ControlTab /> break;
+            default: <HallsTab OnHallsChanged="ReloadHallsAsync" /> break;
+        }
+    </main>
+</div>
+
+@code {
+    private static readonly (string Key, string Label)[] Tabs =
+    [
+        ("hallen", "Hallen"),
+        ("szenen", "Szenen"),
+        ("musik", "Musik"),
+        ("zustaende", "Zustände"),
+        ("vmix", "vMix-Titel"),
+        ("led", "LED-Vorlagen"),
+        ("decks", "Decks"),
+        ("bedienung", "Bedienung"),
+    ];
+
+    private IReadOnlyList<HallRow> _halls = [];
+    private string _tab = "hallen";
+    private bool _ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var query = QueryHelpers.ParseQuery(new Uri(Navigation.Uri).Query);
+        if (query.TryGetValue("tab", out var tab) && Tabs.Any(t => t.Key == tab)) _tab = tab!;
+        if (query.TryGetValue("halle", out var hall)) State.SelectedHallId = hall!;
+        State.Changed += OnStateChanged;
+        await ReloadHallsAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+        _ready = true;
+        WriteUrl();
+    }
+
+    private async Task ReloadHallsAsync()
+    {
+        _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
+        if (_halls.Count > 0 && !_halls.Any(h => h.Id == State.SelectedHallId))
+            State.SelectedHallId = _halls[0].Id;
+    }
+
+    private void OnHallChanged(ChangeEventArgs e) => State.SelectedHallId = e.Value?.ToString();
+
+    private void SelectTab(string key)
+    {
+        if (_tab == key) return;
+        _tab = key;
+        WriteUrl();
+    }
+
+    private void OnStateChanged()
+    {
+        if (_ready) WriteUrl();
+        StateHasChanged();
+    }
+
+    private void WriteUrl()
+    {
+        if (!_ready) return;
+        var url = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["tab"] = _tab,
+            ["halle"] = State.SelectedHallId,
+        });
+        Navigation.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+}

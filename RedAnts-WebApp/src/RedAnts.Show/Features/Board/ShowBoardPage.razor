@@ -1,0 +1,319 @@
+@using RedAnts.Show.Domain
+@using RedAnts.Show.Features.Agents
+@using RedAnts.Show.Features.Halls
+@using RedAnts.Show.Features.Music
+@implements IAsyncDisposable
+@inject GetHalls.Handler HallsQuery
+@inject GetHall.Handler HallQuery
+@inject GetAgentPresence.Handler Presence
+@inject GetDeckView.Handler DeckQuery
+@inject GetMusic.Handler MusicQuery
+@inject PressDeckKey.Handler KeyPress
+@inject PlayHallMusic.Handler MusicPlay
+@inject PanicHall.Handler Panic
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ShowBoardFeed Feed
+
+<div class="hb">
+<header class="bar">
+    @if (_halls.Count > 1)
+    {
+        <select class="pick" @bind="_hallId" @bind:after="SwitchAsync">
+            @foreach (var row in _halls)
+            {
+                <option value="@row.Id">@row.Name</option>
+            }
+        </select>
+    }
+    else
+    {
+        <span class="hall">@(_hall?.Name ?? "keine Halle")</span>
+    }
+    <span class="lamp @(Connected ? "on" : "off")" title="@(Connected ? "Agent verbunden" : "kein Agent")"></span>
+    @if (_hall?.Offers.Clock == true)
+    {
+        <span class="score">@Score(true) : @Score(false)</span>
+        <span class="time">@Time()</span>
+        <span class="period">@Period()</span>
+    }
+    <span class="spacer"></span>
+    @foreach (var state in DefaultStates.All.Where(s => Offered(s.Id)))
+    {
+        var value = StateValue(state);
+        <span class="pill @(state.IsOn(value) ? "on" : "")" @key="state.Id">@state.Name: @value</span>
+    }
+    <button class="panic" @onclick="PanicAsync">PANIC</button>
+</header>
+
+@if (_hall is null)
+{
+    <main><p class="hint">Keine Halle eingerichtet.</p></main>
+}
+else
+{
+    @if (_hall.DeckLayouts.Count > 1)
+    {
+        <nav class="decks">
+            @foreach (var tab in _hall.DeckLayouts)
+            {
+                <button class="tab @(tab.Id == _deck ? "active" : "")" @onclick="() => SelectDeckAsync(tab.Id)" @key="tab.Id">@tab.Name</button>
+            }
+        </nav>
+    }
+
+    <main>
+        <h1>@(_view?.Title ?? "Bord")</h1>
+        <div class="grid" style="--cols:@Columns; --rows:@Rows">
+            @foreach (var key in Keys)
+            {
+                var music = MusicOf(key);
+                <button class="key @(key.Pressable ? "" : "flat") @(key.Active ? "active" : "")"
+                        style="background:@key.Color; color:@key.TextColor"
+                        disabled="@(!key.Pressable)"
+                        data-id="@($"{_deck}:{key.Number}")"
+                        data-play="@(music is null ? null : "songs")"
+                        data-songs="@music?.SongsJson"
+                        data-random="@(music is { Random: true } ? "1" : "0")"
+                        data-multi="@(music is { IsPlaylist: true } ? "1" : null)"
+                        data-label="@key.Label"
+                        @onclick="() => PressAsync(key)"
+                        @key="key.Number">
+                    @if (key.Icon is { Length: > 0 } icon)
+                    {
+                        <img src="/_content/RedAnts.Show/show/icons/@(icon).png" alt="" />
+                    }
+                    <span class="label">
+                        @foreach (var line in key.Label.Split(NewLine))
+                        {
+                            <span>@line</span>
+                        }
+                    </span>
+                    @if (music is { IsPlaylist: true })
+                    {
+                        <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                    }
+                    <em>@key.Number</em>
+                </button>
+            }
+        </div>
+
+        @if (_note is { Length: > 0 } note)
+        {
+            <p class="note">@note</p>
+        }
+        <p class="hint">
+            @(Connected
+                ? "Agent verbunden: Tasten laufen in der Halle, Musik spielt in diesem Browser."
+                : "Kein Agent verbunden: nur Musik spielt in diesem Browser, Uhr, vMix und LED bleiben still.")
+        </p>
+    </main>
+
+    <footer class="now">
+        <span class="np">@(_playing is { Length: > 0 } playing ? playing : "keine Musik")</span>
+        <button class="ctl" @onclick="PauseAsync">Pause</button>
+        <button class="ctl" @onclick="PreviousAsync">◀◀</button>
+        <button class="ctl" @onclick="NextAsync">▶▶</button>
+        <button class="ctl" @onclick="FadeAsync">Fade</button>
+        <button class="ctl stop" @onclick="StopAsync">Stopp</button>
+    </footer>
+}
+</div>
+
+@code {
+    private const char NewLine = '\n';
+
+    [Parameter] public string? HallId { get; set; }
+
+    private string? _hallId;
+    private string? _given;
+
+    private IReadOnlyList<HallRow> _halls = [];
+    private Hall? _hall;
+    private AgentPresence _agent = new(false, null, null);
+    private DeckView? _view;
+    private IReadOnlyList<MusicItem> _music = [];
+    private string _deck = "";
+    private string? _note;
+    private string? _playing;
+    private long _musicOrder = -1;
+    private DotNetObjectReference<ShowBoardPage>? _self;
+    private bool _ready;
+    private Timer? _poll;
+
+    private bool Connected => _agent.Connected;
+
+    private int Columns => _view?.Columns ?? 8;
+
+    private int Rows => _view?.Rows ?? 4;
+
+    private IReadOnlyList<DeckKeyRow> Keys => _view?.Keys ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
+        _given = HallId;
+        var wanted = HallId ?? Query("halle");
+        _hallId = _halls.FirstOrDefault(h => h.Id == wanted)?.Id ?? _halls.FirstOrDefault()?.Id;
+        if (Query("deck") is { Length: > 0 } deck) _deck = deck;
+        _music = await MusicQuery.HandleAsync(new GetMusic.Query());
+        await LoadHallAsync();
+        Feed.Changed += OnFeed;
+        _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (!first) return;
+        _self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("hallBoard.start", _self);
+        _ready = true;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (HallId == _given) return;
+        _given = HallId;
+        if (HallId is not { Length: > 0 }) return;
+        _hallId = HallId;
+        await SwitchAsync();
+    }
+
+    [JSInvokable]
+    public Task Playing(string label)
+    {
+        _playing = label.Length > 0 ? label : null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private MusicItem? MusicOf(DeckKeyRow key) =>
+        key.MusicId is { Length: > 0 } id ? _music.FirstOrDefault(m => m.Id == id) : null;
+
+    private async Task LoadHallAsync()
+    {
+        if (_hallId is not { Length: > 0 } id) return;
+        _hall = await HallQuery.HandleAsync(new GetHall.Query(id));
+        if (_hall is not null && _hall.DeckLayouts.All(d => d.Id != _deck)) _deck = _hall.DeckLayouts[0].Id;
+    }
+
+    private async Task SwitchAsync()
+    {
+        await LoadHallAsync();
+        await RefreshAsync();
+    }
+
+    private async Task SelectDeckAsync(string deckId)
+    {
+        _deck = deckId;
+        await RefreshAsync();
+    }
+
+    private void OnFeed(string hallId)
+    {
+        if (!string.Equals(hallId, _hallId, StringComparison.OrdinalIgnoreCase)) return;
+        _ = InvokeAsync(async () =>
+        {
+            await ReadDeckAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task ReadDeckAsync()
+    {
+        if (_hallId is not { Length: > 0 } id) return;
+        _view = await DeckQuery.HandleAsync(new GetDeckView.Query(id, _deck));
+        await FollowMusicAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_hallId is not { Length: > 0 } id) return;
+        _agent = await Presence.HandleAsync(new GetAgentPresence.Query(id));
+        await ReadDeckAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task FollowMusicAsync()
+    {
+        if (!_ready || _view?.Live is not { } live || live.MusicOrder == _musicOrder) return;
+        _musicOrder = live.MusicOrder;
+        if (live.MusicId.Length == 0)
+        {
+            await JS.InvokeVoidAsync("hallBoard.stop");
+            return;
+        }
+        if (_music.FirstOrDefault(m => m.Id == live.MusicId) is not { } item) return;
+        await JS.InvokeVoidAsync("hallBoard.play", item.Id, item.SongsJson, item.Random, item.Display);
+    }
+
+    private async Task PressAsync(DeckKeyRow key)
+    {
+        _note = null;
+        if (MusicOf(key) is { } music)
+        {
+            if (Connected && _hallId is { Length: > 0 } hall)
+                await MusicPlay.HandleAsync(new PlayHallMusic.Command(hall, music.Id));
+            return;
+        }
+        if (_hallId is not { Length: > 0 } id || !await KeyPress.HandleAsync(new PressDeckKey.Command(id, _deck, key.Number)))
+            _note = "Kein Agent verbunden.";
+        await RefreshAsync();
+    }
+
+    private async Task PanicAsync()
+    {
+        await JS.InvokeVoidAsync("hallBoard.stop");
+        if (_hallId is { Length: > 0 } id && !await Panic.HandleAsync(new PanicHall.Command(id)))
+            _note = "Kein Agent verbunden.";
+    }
+
+    private Task StopAsync() => JS.InvokeVoidAsync("hallBoard.stop").AsTask();
+
+    private Task FadeAsync() => JS.InvokeVoidAsync("hallBoard.fade").AsTask();
+
+    private Task NextAsync() => JS.InvokeVoidAsync("hallBoard.next").AsTask();
+
+    private Task PreviousAsync() => JS.InvokeVoidAsync("hallBoard.previous").AsTask();
+
+    private Task PauseAsync() => JS.InvokeVoidAsync("hallBoard.pause").AsTask();
+
+    private bool Offered(string stateId)
+    {
+        if (_hall is null) return false;
+        return stateId switch
+        {
+            DefaultStates.Music => _hall.Offers.Sound,
+            DefaultStates.AutoBreakMusic => _hall.Offers.Sound && _hall.Offers.Clock,
+            DefaultStates.Led or DefaultStates.Sponsors => _hall.Offers.Led,
+            DefaultStates.Overlay or DefaultStates.ClockVisible => _hall.Offers.Vmix,
+            DefaultStates.ClockRunning => _hall.Offers.Clock,
+            _ => true,
+        };
+    }
+
+    private string StateValue(ShowState state) =>
+        _view?.States is { } live && live.TryGetValue(state.Id, out var current) && current.Length > 0
+            ? current
+            : state.First;
+
+    private string Score(bool home) =>
+        (home ? _view?.Live?.HomeScore : _view?.Live?.AwayScore) is { Length: > 0 } value ? value : "–";
+
+    private string Time() => _view?.Live?.Time is { Length: > 0 } time ? time : "--:--";
+
+    private string Period() => _view?.Live?.PeriodLabel ?? "";
+
+    private string? Query(string name)
+    {
+        var uri = new Uri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        return query.TryGetValue(name, out var value) ? value.ToString() : null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Feed.Changed -= OnFeed;
+        if (_poll is not null) await _poll.DisposeAsync();
+        _self?.Dispose();
+    }
+}

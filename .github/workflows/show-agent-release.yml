@@ -1,0 +1,69 @@
+name: Show-Agent — Hallen-Agent
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'RedAnts-Show-Agent/**'
+      - '.github/workflows/show-agent-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: RedAnts-Show-Agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Stamp version
+        id: version
+        run: |
+          BASE=$(grep -oP '(?<=<Version>)[^<]+' RedAnts.Show.Agent.csproj)
+          VERSION="$(echo "$BASE" | cut -d. -f1-2).$GITHUB_RUN_NUMBER"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test tests/RedAnts.Show.Agent.Tests/RedAnts.Show.Agent.Tests.csproj --nologo
+
+      - name: Publish
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          PACKAGE="$RUNNER_TEMP/package"
+          for RID in win-x64 linux-x64 linux-arm64; do
+            dotnet publish RedAnts.Show.Agent.csproj -c Release -r "$RID" --self-contained true \
+              -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none \
+              -p:Version="$VERSION" -o "$PACKAGE/$RID"
+            echo "$VERSION" > "$PACKAGE/$RID/release.txt"
+          done
+          cp Start-ShowAgent.ps1 Start-ShowAgent.cmd Install-ShowAgent.ps1 "$PACKAGE/win-x64/"
+          cp start-show-agent.sh install-show-agent.sh "$PACKAGE/linux-x64/"
+          cp start-show-agent.sh install-show-agent.sh "$PACKAGE/linux-arm64/"
+          chmod +x "$PACKAGE"/linux-*/RedAnts.Show.Agent "$PACKAGE"/linux-*/*.sh
+
+      - name: Assemble packages
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          PACKAGE="$RUNNER_TEMP/package"
+          mkdir -p dist
+          (cd "$PACKAGE/win-x64" && zip -qr "$GITHUB_WORKSPACE/RedAnts-Show-Agent/dist/show-agent-$VERSION-win-x64.zip" .)
+          tar -czf "dist/show-agent-$VERSION-linux-x64.tar.gz" -C "$PACKAGE/linux-x64" .
+          tar -czf "dist/show-agent-$VERSION-linux-arm64.tar.gz" -C "$PACKAGE/linux-arm64" .
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: show-agent-v${{ steps.version.outputs.version }}
+          name: Show-Agent ${{ steps.version.outputs.version }}
+          files: RedAnts-Show-Agent/dist/*
+          generate_release_notes: true

@@ -1,0 +1,64 @@
+html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf1; font-family: Lato, "Segoe UI", sans-serif; }
+
+.hb { display: flex; flex-direction: column; min-height: 100vh; }
+
+.hb .bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 10px 14px; background: #16161d; border-bottom: 1px solid #272730;
+}
+.hb .bar .hall { font-weight: 900; letter-spacing: .02em; }
+.hb .bar .pick { background: #1b1b22; color: #e9edf1; border: 1px solid #2c2c36; border-radius: 3px; padding: 5px 8px; font: inherit; }
+.hb .lamp { width: 10px; height: 10px; border-radius: 50%; background: #c0201c; }
+.hb .lamp.on { background: #2ecc71; }
+.hb .score { font-size: 22px; font-weight: 900; letter-spacing: .05em; }
+.hb .time { font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.hb .period { color: #9aa4ae; font-weight: 700; }
+.hb .spacer { flex: 1 1 auto; }
+.hb .pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #22222b; border: 1px solid #2f2f3a; color: #b9c2cb; }
+.hb .pill.on { background: #7a1d1d; border-color: #a32a2a; color: #ffd9d9; }
+.hb .panic { background: #d01212; color: #fff; border: none; border-radius: 3px; padding: 7px 14px; font-weight: 900; cursor: pointer; }
+
+.hb .decks { display: flex; gap: 6px; padding: 10px 14px 0; flex-wrap: wrap; }
+.hb .tab { background: #1b1b22; color: #cfd6dd; border: 1px solid #2c2c36; border-radius: 3px 3px 0 0; padding: 7px 14px; cursor: pointer; font: inherit; }
+.hb .tab.active { background: #262631; color: #fff; border-bottom-color: #262631; }
+
+.hb main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 10px 14px; }
+.hb h1 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #9aa4ae; margin: 0 0 8px; }
+
+.hb .grid {
+    flex: 1 1 auto; display: grid; gap: 8px; min-height: 0;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    grid-template-rows: repeat(var(--rows), 1fr);
+}
+
+.hb .key {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    border: none; border-radius: 8px; cursor: pointer; overflow: hidden;
+    padding: 5px; font: inherit; font-weight: 700; line-height: 1.1; text-align: center;
+    min-width: 0; min-height: 0;
+}
+.hb .key:active { transform: scale(0.97); }
+.hb .key.flat { cursor: default; opacity: 0.85; }
+.hb .key.active { outline: 3px solid #4ade80; outline-offset: -3px; }
+.hb .key img { width: 42%; max-height: 46%; object-fit: contain; }
+.hb .key .label { display: flex; flex-direction: column; max-width: 100%; overflow: hidden; }
+.hb .key .label span { display: block; }
+.hb .key .badge { position: absolute; right: 4px; bottom: 3px; font-size: 10px; font-weight: 400; opacity: .8; }
+.hb .key em { position: absolute; top: 3px; left: 5px; font-size: 10px; font-style: normal; opacity: 0.45; }
+
+.hb .note { margin: 8px 0 0; color: #ffb4b4; font-weight: 700; }
+.hb .hint { margin: 6px 0 0; color: #7c858f; font-size: 12px; }
+
+.hb .now {
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    background: #16161d; border-top: 1px solid #272730;
+}
+.hb .now .np { flex: 1 1 auto; font-weight: 700; color: #cfd6dd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb .ctl { background: #262631; color: #e9edf1; border: 1px solid #343442; border-radius: 4px; padding: 7px 12px; font: inherit; cursor: pointer; }
+.hb .ctl.stop { background: #7a1d1d; border-color: #a32a2a; color: #fff; }
+
+@media (max-width: 700px) {
+    .hb .bar { gap: 6px; padding: 8px 10px; }
+    .hb .pill { display: none; }
+    .hb main { padding: 8px 10px; }
+}

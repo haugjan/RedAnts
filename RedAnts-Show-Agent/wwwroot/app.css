@@ -1,0 +1,72 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #0d0d11; color: #e9edf1; font-family: 'Segoe UI', Roboto, sans-serif; }
+a { color: #8ecaff; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; background: #16161d; border-bottom: 1px solid #272730; }
+.bar .hall { font-weight: 600; }
+.bar .score, .bar .time { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 700; }
+.bar .period { color: #9aa4ae; }
+.bar .spacer { flex: 1; }
+.bar .link { font-size: 13px; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #22222b; border: 1px solid #2f2f3a; color: #b9c2cb; }
+.pill.on { background: #7a1d1d; border-color: #a52a2a; color: #ffe9e9; }
+
+.decks { display: flex; gap: 6px; padding: 10px 14px 0; }
+.tab { background: #1b1b22; color: #cfd6dd; border: 1px solid #2c2c36; border-radius: 6px 6px 0 0; padding: 7px 14px; cursor: pointer; }
+.tab.active { background: #2a2a36; color: #fff; }
+
+main { padding: 12px 14px 24px; }
+main h1 { font-size: 15px; font-weight: 600; color: #9aa4ae; margin: 6px 0 10px; text-transform: none; }
+
+.board { display: grid; gap: 8px; max-width: 1280px; }
+.key { position: relative; aspect-ratio: 1 / 1; border: none; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; overflow: hidden; }
+.key:active { transform: scale(0.97); }
+.key.flat { cursor: default; opacity: 0.85; }
+.key img { width: 100%; height: 100%; object-fit: contain; }
+.key em { position: absolute; top: 3px; left: 5px; font-size: 9px; font-style: normal; opacity: 0.45; }
+.note { color: #ffb4b4; }
+.hint { color: #7d8691; font-size: 12px; margin-top: 16px; }
+
+@font-face { font-family: 'Teko'; font-weight: 600; src: url(fonts/teko-600-latin.woff2) format('woff2'); }
+
+.screen {
+    position: fixed; inset: 0; background: #000; color: #fff; overflow: hidden; cursor: none;
+    font-family: 'Teko', 'Bahnschrift', 'Arial Narrow', sans-serif; font-weight: 600;
+}
+.screen * { box-sizing: border-box; margin: 0; padding: 0; }
+.screen .stage {
+    container-type: inline-size; width: min(100vw, 177.78vh); aspect-ratio: 16 / 9;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.screen .time { display: flex; justify-content: center; font-size: 30cqw; line-height: .8; }
+.screen .digit, .screen .sep { display: inline-block; text-align: center; }
+.screen .digit { width: 1ch; }
+.screen .sep { width: .48ch; }
+.screen .row { display: grid; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; gap: 3cqw; width: 100%; margin-top: 2cqw; font-size: 9cqw; font-variant-numeric: tabular-nums; }
+.screen .row img { height: 9cqw; width: 9cqw; object-fit: contain; }
+.screen .row .abbr { font-size: 5cqw; color: #aaa; width: 9cqw; text-align: center; }
+.screen img.ra { filter: drop-shadow(0 0 .25cqw rgba(255, 255, 255, .55)); }
+.screen .per { font-size: 3.5cqw; color: #888; letter-spacing: .6cqw; margin-top: 1cqw; min-height: 4.5cqw; }
+.screen.pause .time { color: #ffcf3f; }
+.screen .time.last-minute { color: #ff5a5a; }
+.screen .per.extra { color: #ffcf3f; }
+
+.screen .penalties { display: flex; flex-direction: column; gap: .4cqw; font-size: 4.5cqw; line-height: 1; color: #ffcf3f; }
+.screen .penalties.home { justify-self: end; align-items: flex-end; }
+.screen .penalties.guest { justify-self: start; align-items: flex-start; }
+.screen .penalty { display: flex; gap: 1.2cqw; align-items: baseline; }
+.screen .penalty .player { color: #aaa; font-size: 3.2cqw; }
+.screen .penalty .ptime { display: inline-flex; }
+
+.screen .status { position: fixed; right: 12px; bottom: 10px; font: 13px system-ui, sans-serif; color: #555; display: flex; align-items: center; gap: 6px; }
+.screen .status i { width: 8px; height: 8px; border-radius: 50%; background: #2a2; }
+.screen.offline .status { color: #e44; font-size: 16px; }
+.screen.offline .status i { background: #e44; }
+.screen.offline .stage { opacity: .35; }
+
+#components-reconnect-modal { display: none; position: fixed; left: 12px; bottom: 10px; z-index: 9999; font: 16px system-ui, sans-serif; color: #e44; }
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-rejected { display: block; }

@@ -1,0 +1,195 @@
+@page "/"
+@inject ClockSender Clock
+@inject VmixStub Vmix
+@inject SednaStub Sedna
+@inject AgentProbe Agent
+@inject EventLog Log
+@implements IDisposable
+
+<PageTitle>Show-Simulator</PageTitle>
+
+<div class="grid">
+    <section class="q">
+        <h2>Matchuhr <small>iCast-Sender, UDP @Clock.TargetHost:@Clock.TargetPort</small></h2>
+        <div class="clockline">
+            <span class="big">@Clock.Time</span>
+            <span class="score"><b class="heim">@Clock.HomeScore</b> : <b class="gast">@Clock.AwayScore</b></span>
+            <span class="muted">@PeriodLabel() · @Clock.Mode</span>
+        </div>
+        <div class="row">
+            <button class="@(Clock.Running ? "danger" : "primary")" @onclick="Clock.Toggle">@(Clock.Running ? "⏸ Uhr stoppen" : "▶ Uhr starten")</button>
+            <button @onclick="() => Clock.SetSeconds(Clock.Seconds + 60)">+1 min</button>
+            <button @onclick="() => Clock.SetSeconds(Clock.Seconds - 60)">−1 min</button>
+            <button @onclick="() => Clock.SetSeconds(Clock.Seconds + 10)">+10 s</button>
+            <button @onclick="Clock.NextPeriod">Drittel +</button>
+            <button @onclick="Clock.Reset">Reset</button>
+        </div>
+        <div class="row">
+            <button class="heim" @onclick="() => Clock.Goal(true)">Tor Heim</button>
+            <button class="heim ghost" @onclick="() => Clock.Correct(true, -1)">−1</button>
+            <button class="gast" @onclick="() => Clock.Goal(false)">Tor Gast</button>
+            <button class="gast ghost" @onclick="() => Clock.Correct(false, -1)">−1</button>
+        </div>
+        <div class="form">
+            <label>Modus
+                <select @bind="Clock.Mode">
+                    @foreach (var mode in ClockSender.Modes)
+                    {
+                        <option value="@mode">@mode</option>
+                    }
+                </select>
+            </label>
+            <label>Heim <input @bind="Clock.HomeName" /></label>
+            <label>Gast <input @bind="Clock.AwayName" /></label>
+            <label>Strafe Heim 1 <input @bind="Clock.HomePenalty1" placeholder="7 02:00" /></label>
+            <label>Strafe Heim 2 <input @bind="Clock.HomePenalty2" /></label>
+            <label>Strafe Gast 1 <input @bind="Clock.AwayPenalty1" /></label>
+            <label>Strafe Gast 2 <input @bind="Clock.AwayPenalty2" /></label>
+            <label>Ziel-Host <input @bind="Clock.TargetHost" /></label>
+            <label>Ziel-Port <input type="number" @bind="Clock.TargetPort" /></label>
+            <label class="check"><input type="checkbox" @bind="Clock.Sending" /> senden (10 Telegramme/s)</label>
+            <label class="check"><input type="checkbox" @bind="Clock.CountsDown" /> Uhr zählt abwärts</label>
+        </div>
+        <p class="mono">@Clock.LastTelegram</p>
+        <p class="muted">@Clock.Sent Telegramme gesendet @(Clock.Fault is { Length: > 0 } fault ? "· Fehler: " + fault : "")</p>
+        @if (AgentPort is { } listening && listening != Clock.TargetPort)
+        {
+            <p class="warn">
+                Der Agent hört auf Port @listening, gesendet wird auf @Clock.TargetPort.
+                <button class="small" @onclick="() => Clock.TargetPort = listening">auf @listening umstellen</button>
+            </p>
+        }
+    </section>
+
+    <section class="q">
+        <h2>vMix <small>TCP-API-Stellvertreter auf Port @Vmix.Port · @(Vmix.Listening ? $"{Vmix.Clients} Verbindung(en)" : "nicht aktiv") @(Vmix.Fault is { Length: > 0 } vf ? "· " + vf : "")</small></h2>
+        <TitleStage />
+        <h3>Overlays</h3>
+        <div class="row">
+            @for (var channel = 1; channel <= 4; channel++)
+            {
+                var input = Vmix.Overlays.GetValueOrDefault(channel);
+                <span class="lamp @(input is null ? "off" : "on")">Overlay @channel: @(input ?? "aus")</span>
+            }
+        </div>
+        <h3>Inputs</h3>
+        @foreach (var input in Vmix.Inputs)
+        {
+            var values = Vmix.ValuesOf(input.Title);
+            <details class="input" open="@(values.Count > 0 && Vmix.Overlays.Values.Contains(input.Title))">
+                <summary>
+                    @input.Title <small>@values.Count Felder gesetzt</small>
+                    <label class="check" @onclick:stopPropagation="true">
+                        <input type="checkbox" checked="@Vmix.IsPinned(input.Title)" @onchange="e => Vmix.Pin(input.Title, (bool)(e.Value ?? false))" />
+                        auf der Bühne
+                    </label>
+                </summary>
+                <table>
+                    @foreach (var field in input.TextFields.Concat(input.ImageFields))
+                    {
+                        <tr><td class="muted">@field</td><td>@values.GetValueOrDefault(field)</td></tr>
+                    }
+                </table>
+            </details>
+        }
+        <h3>Letzte Befehle <button class="small" @onclick="Vmix.ClearValues">leeren</button></h3>
+        <ul class="log">
+            @foreach (var call in Vmix.LatestCalls(12))
+            {
+                <li><span class="muted">@call.At.ToString("HH:mm:ss")</span> @call.Function @call.Input @call.Field @(call.Value.Length > 0 ? "= " + call.Value : "")</li>
+            }
+        </ul>
+    </section>
+
+    <section class="q">
+        <h2>LED-Wand <small>sedna-presenter-Stellvertreter auf Port @Sedna.Port · @(Sedna.Listening ? "bereit" : "nicht aktiv") @(Sedna.Fault is { Length: > 0 } sf ? "· " + sf : "")</small></h2>
+        <div class="ledwall">
+            <div class="ledmain @(Sedna.MainPlaylist is null ? "idle" : "")">@(Sedna.MainPlaylist ?? "schwarz")</div>
+            @if (Sedna.OverlayPlaylist is { } overlay)
+            {
+                <div class="ledoverlay">@overlay</div>
+            }
+        </div>
+        <p class="muted">Hauptfläche: @(Sedna.MainPlaylist ?? "keine Playlist") · Overlay: @(Sedna.OverlayPlaylist ?? "keines")</p>
+        <h3>Empfangene Befehle</h3>
+        <ul class="log">
+            @foreach (var command in Sedna.LatestCommands(14))
+            {
+                <li><span class="muted">@command.At.ToString("HH:mm:ss")</span> <code>@command.Raw</code></li>
+            }
+        </ul>
+    </section>
+
+    <section class="q">
+        <h2>Agent <small><input class="inline" @bind="Agent.AgentUrl" /> · <span class="lamp @(Agent.Reachable ? "on" : "off")">@(Agent.Reachable ? "erreichbar" : "nicht erreichbar")</span></small></h2>
+        <div class="row">
+            @foreach (var lamp in Agent.Status.Where(kv => kv.Value is "True" or "False"))
+            {
+                <span class="lamp @(lamp.Value == "True" ? "on" : "off")">@lamp.Key</span>
+            }
+            @if (Agent.DeckContext is { Length: > 0 } context)
+            {
+                <span class="pill">Deck: @context</span>
+            }
+            @if (Agent.Scene is { Length: > 0 } scene)
+            {
+                <span class="pill">Szene: @scene</span>
+            }
+        </div>
+        <div class="row">
+            <span class="muted">Deck-Taste drücken:</span>
+            @foreach (var key in new[] { 1, 8, 9, 16, 17, 18, 25, 31, 32 })
+            {
+                <button class="small" @onclick="() => Agent.PressAsync(key)">@key</button>
+            }
+            <input class="narrow" type="number" @bind="_key" /><button class="small" @onclick="() => Agent.PressAsync(_key)">drücken</button>
+        </div>
+        <h3>Protokoll <button class="small" @onclick="Log.Clear">leeren</button></h3>
+        <ul class="log tall">
+            @foreach (var entry in Log.Latest(40))
+            {
+                <li><span class="muted">@entry.At.ToString("HH:mm:ss.fff")</span> <b class="src @entry.Source">@entry.Source</b> @entry.Text</li>
+            }
+        </ul>
+    </section>
+</div>
+
+@code {
+    private int _key = 1;
+    private DateTime _lastRender = DateTime.MinValue;
+
+    private int? AgentPort =>
+        Agent.Status.TryGetValue("clockListening", out var listening)
+        && int.TryParse(new string(listening.Where(char.IsDigit).ToArray()), out var port)
+        && port > 0
+            ? port
+            : null;
+
+    protected override void OnInitialized()
+    {
+        Clock.Changed += Refresh;
+        Vmix.Changed += Refresh;
+        Sedna.Changed += Refresh;
+        Agent.Changed += Refresh;
+        Log.Changed += Refresh;
+    }
+
+    private void Refresh()
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastRender < TimeSpan.FromMilliseconds(80)) return;
+        _lastRender = now;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string PeriodLabel() => Clock.Period switch { "4" => "Verlängerung", "5" => "Penaltyschiessen", var p => p + ". Drittel" };
+
+    public void Dispose()
+    {
+        Clock.Changed -= Refresh;
+        Vmix.Changed -= Refresh;
+        Sedna.Changed -= Refresh;
+        Agent.Changed -= Refresh;
+        Log.Changed -= Refresh;
+    }
+}
