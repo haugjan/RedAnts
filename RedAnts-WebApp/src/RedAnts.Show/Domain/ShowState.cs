@@ -50,7 +50,7 @@ public static class DefaultStates
         new(Led, "LED", ["aus", "läuft"], StateSources.Set, "sedna meldet nichts zurück"),
         new(Sponsors, "Sponsoren-Loop", ["aus", "an"], StateSources.Set),
         new(Break, "Pause-Modus", ["aus", "an"], StateSources.Logical),
-        new(AutoBreakMusic, "Automatik Pausenmusik", ["aus", "an"], StateSources.Set, "spielt die Pausenmusik, sobald die Uhr mitten im Drittel steht"),
+        new(AutoBreakMusic, "Auto-Pausenmusik", ["aus", "an"], StateSources.Set, "spielt die Pausenmusik, sobald die Uhr mitten im Drittel steht"),
         new(Light, "Licht", ["normal", "tor", "pause"], StateSources.Set, "Moving Heads kommen später"),
     ];
 

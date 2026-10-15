@@ -21,7 +21,7 @@ body.sb-page .sb { min-height: 100vh; }
 .sb .tab { background: #1b1b22; color: #cfd6dd; border: 1px solid #2c2c36; border-radius: 3px 3px 0 0; padding: 7px 14px; cursor: pointer; font: inherit; }
 .sb .tab.active { background: #2a2a36; color: #fff; }
 
-.sb main { padding: 12px 14px 20px; }
+.sb main { padding: 12px 14px 56px; }
 .sb main h1 { font-size: 15px; font-weight: 700; color: #9aa4ae; margin: 6px 0 10px; }
 
 .sb .board { display: grid; gap: 8px; max-width: 1280px; }

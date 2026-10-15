@@ -62,7 +62,7 @@ else
 
     <main>
         <h1>@(_view?.Title ?? "Bord")</h1>
-        <div class="board" style="grid-template-columns: repeat(@Columns, minmax(0, 1fr))">
+        <div class="board" style="grid-template-columns: repeat(@Columns, minmax(0, 160px))">
             @foreach (var key in Keys)
             {
                 <button class="key @(key.Pressable ? "" : "flat")"
