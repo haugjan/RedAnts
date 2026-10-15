@@ -44,6 +44,7 @@ Das Bord bildet die Matchuhr ab und darunter alle Streamdecks, die für diese Ha
 - **In der Cloud**: dasselbe Bord, dort aber nur für Hallenkonfigurationen, die ausschliesslich Musik abspielen (Beispiel Oberseen, bedient am iPad).
 - **Zugang mit Passwort**, lokal wie in der Cloud.
 - Eine Halle ohne physisches Streamdeck bekommt trotzdem ein Deck mit einer Grösse konfiguriert, damit das Bord weiss, wie viele Tasten es zeigt.
+- **Kacheln passen sich der Bildschirmgrösse an**: das Raster behält Zeilen und Spalten des Decks, die Kacheln wachsen mit dem Fenster. Die Beschriftung wird so gross wie möglich gesetzt und nie abgeschnitten, sie verkleinert sich erst, wenn sie sonst nicht mehr in die Kachel passt. Auf dem Streamdeck selbst rechnet der Agent dasselbe beim Erzeugen des Tastenbildes.
 
 ### Spielkonfiguration auf dem Bord
 
@@ -142,8 +143,15 @@ Jede Etappe wird lokal vorgeführt, von dir abgenommen, erst dann folgt die näc
 6. **LED**: sedna-Anbindung und Vorlagen.
 7. **Cloud-Bord** für Hallen, die nur Musik spielen.
 
+## Companion
+
+Ein **universelles Modul** für alles: Hallensteuerung und Musik, Halle mit und ohne Agent. Das bisherige DJ-Modul wird davon abgelöst.
+
+- Companion führt mehrere Streamdecks als eigene Oberflächen. Weil jedes Deck seine eigene Seitenhierarchie hat, wird **je Deck eine Modulinstanz** eingerichtet, die auf dieses Deck zeigt.
+- Je Taste gibt es die Aktion „Taste drücken“ mit der Tastennummer und die Rückmeldung mit derselben Nummer, dazu ein fertiges Preset je Nummer. Die Zuordnung wird einmal gemacht und nie mehr angefasst.
+- Was die Taste zeigt und was sie tut, entscheidet allein die Hallenkonfiguration. Das Modul kennt nur Nummern.
+- Zusätzlich enthält das Modul die Musiksteuerung (Stopp, Fade-out, nächstes und vorheriges Stück, Pause) und die Seitennavigation.
+
 ## Offene Punkte
 
-1. **Topscorer**: TCConsole kennt dazu nur den Rohwert `00=` aus der Spielkonfig, die Bedeutung war nie bestätigt. Was soll die Taste anzeigen und einblenden?
-2. **Companion**: ein Modul für Hallensteuerung und Soundboard, oder bleibt das bestehende DJ-Modul daneben bestehen?
-3. **Kachelgrössen**: das Streamdeck ist ein starres Raster, das DJ-Bord kannte breite, hohe und grosse Kacheln. Für reine Musikhallen am iPad: starres Raster oder freie Grössen?
+1. **Topscorer**: In der echten Spielkonfig (`game-config-v6-Example`, UHC Uster gegen Chur, 23.06.2023) steht in beiden Mannschaften ein Eintrag `00=`, und zwar mit dem Namen einer Spielerin oder eines Spielers, die oder der weiter oben schon mit der eigenen Nummer steht: Heim `70=Simon Suter` und `00=Simon Suter`, Gast `61=Joel Hirschi` und `00=Joel Hirschi`. `00` taucht zusätzlich in `Starting6=46,6,00,10,12,14` und in `Line2=17,-,00,9,22` auf. Offen bleibt, was TCunihockey damit anzeigt und was die Taste bei uns tun soll.
