@@ -279,7 +279,7 @@ public sealed class Deck
                     symbol: Symbol(key.Icon), subtitle: music.Subtitle);
                 return;
             case KeyKinds.Steps:
-                builder.Action(key.Number, key.Label, color, () => StepsAsync(deckId, key), key.Icon);
+                builder.Action(key.Number, key.Label, color, () => StepsAsync(deckId, key), Picture(key.Icon), symbol: Symbol(key.Icon));
                 return;
             case KeyKinds.Special:
                 SpecialKeyOn(builder, deck, deckId, key);
@@ -330,7 +330,7 @@ public sealed class Deck
             }
         }
 
-        builder.Action(key.Number, label, color, () => SpecialAsync(deckId, key, special), key.Icon);
+        builder.Action(key.Number, label, color, () => SpecialAsync(deckId, key, special), Picture(key.Icon), symbol: Symbol(key.Icon));
     }
 
     static string? DefaultStateOf(string special) => special switch

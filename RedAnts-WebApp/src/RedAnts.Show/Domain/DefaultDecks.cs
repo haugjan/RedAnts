@@ -63,12 +63,12 @@ public static class DefaultDecks
     [
         new DeckPage(DeckPage.HomeId, "Startseite", null,
         [
-            Special(10, SpecialKey.MusicNext, "Nächstes Stück", Music1),
+            Special(11, SpecialKey.MusicNext, "Nächstes Stück", Music1),
             Special(12, SpecialKey.MusicStop, "Stopp", Stop),
             Special(13, SpecialKey.MusicFade, "Fade-out", Fade),
             Special(14, SpecialKey.AutoBreakMusic, "Automodus", StateOff),
         ]),
-    ], PanicKey: 15, BackKey: 11);
+    ], PanicKey: 15, BackKey: 10);
 
     private const string Home = "#e23b3b";
     private const string Away = "#3b82e2";
