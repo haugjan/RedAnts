@@ -77,7 +77,7 @@ else
                             <button class="key @(key.Pressable ? "" : "flat") @(key.Active ? "active" : "")"
                                     style="background:@key.Color; color:@key.TextColor"
                                     disabled="@(!key.Pressable)"
-                                    data-id="@($"{deck.Id}:{key.Number}")"
+                                    data-id="@(key.MusicId is { Length: > 0 } tile ? tile : $"{deck.Id}:{key.Number}")"
                                     data-play="@(music is null ? null : "songs")"
                                     data-songs="@music?.SongsJson"
                                     data-random="@(music is { Random: true } ? "1" : "0")"

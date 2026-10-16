@@ -20,6 +20,14 @@
 .gs-team { flex: 1 1 320px; background: #16161d; border: 1px solid #272730; border-radius: 6px; padding: 10px; }
 .gs-team h4 { margin: 0 0 8px; font-size: 13px; }
 
+.gs-roster { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+.gs-roster th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #9aa4ae; font-weight: 600; padding: 0 4px 4px; }
+.gs-roster td { padding: 2px 4px 2px 0; }
+.gs-roster input[type=text], .gs-roster input:not([type]) { width: 100%; min-width: 0; padding: 4px 6px; }
+.gs-roster .gs-nr { width: 62px; min-width: 62px; padding: 4px 6px; }
+.gs-roster input[type=checkbox] { width: 18px; height: 18px; min-width: 0; }
+.gs-btn.small { padding: 3px 8px; font-size: 12px; }
+
 .gs-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .gs-btn { background: #262631; color: #e9edf1; border: 1px solid #343442; border-radius: 4px; padding: 7px 12px; font: inherit; cursor: pointer; }
 .gs-btn.primary { background: #2f6f3f; border-color: #3c8a50; color: #fff; font-weight: 700; }

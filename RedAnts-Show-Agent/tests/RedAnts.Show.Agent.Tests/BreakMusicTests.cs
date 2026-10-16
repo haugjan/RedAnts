@@ -49,6 +49,18 @@ public class BreakMusicTests
     }
 
     [Fact]
+    public void Music_from_a_key_keeps_the_automatic_quiet()
+    {
+        var grace = TimeSpan.FromSeconds(12);
+
+        Assert.False(BreakMusic.HeldBack("", "unterbruch", DateTime.MinValue, grace));
+        Assert.True(BreakMusic.HeldBack("tor", "unterbruch", DateTime.MinValue, grace));
+        Assert.False(BreakMusic.HeldBack("unterbruch", "unterbruch", DateTime.MinValue, grace));
+        Assert.True(BreakMusic.HeldBack("", "unterbruch", DateTime.Now, grace));
+        Assert.False(BreakMusic.HeldBack("", "unterbruch", DateTime.Now.AddSeconds(-20), grace));
+    }
+
+    [Fact]
     public void Without_telegrams_nothing_plays()
     {
         Assert.False(BreakMusic.Qualifies(Clock("12:34"), clockLive: false, clockRunning: false, periodMinutes: 20));

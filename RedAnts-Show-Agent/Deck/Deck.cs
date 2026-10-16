@@ -383,7 +383,11 @@ public sealed class Deck
 
     async Task StepsAsync(string deckId, DeckKey key)
     {
-        await _runner.RunAsync(key.Sequence, new KeyContext(SideOf(key)), CancellationToken.None);
+        var ctx = new KeyContext(SideOf(key));
+        if (key.Sequence.Any(step => step.Action == KeyActions.Wait))
+            _ = Safe(() => _runner.RunAsync(key.Sequence, ctx, CancellationToken.None));
+        else
+            await _runner.RunAsync(key.Sequence, ctx, CancellationToken.None);
         if (key.HomeAfter) Go(deckId, DeckPage.HomeId);
     }
 

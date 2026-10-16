@@ -56,7 +56,7 @@ else
                             <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "active" : "")"
                                     style="background:@Hex(slot.Color); color:@Hex(slot.TextColor)"
                                     disabled="@(!slot.Pressable)"
-                                    data-id="@($"{deckId}:{slot.Number}")"
+                                    data-id="@(slot.MusicId is { Length: > 0 } tile ? tile : $"{deckId}:{slot.Number}")"
                                     data-play="@(music is null ? null : "songs")"
                                     data-songs="@music?.SongsJson"
                                     data-random="@(music is { Random: true } ? "1" : "0")"

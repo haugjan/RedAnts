@@ -41,8 +41,9 @@
             {
                 var team = _game.Side(side.Key);
                 <div class="gs-team" @key="side.Key">
-                    <h4>@side.Label: @(team.LongName.Length > 0 ? team.LongName : "ohne Namen")</h4>
+                    <h4>@side.Label</h4>
                     <div class="gs-form">
+                        <label>Name <input @bind="side.Long.Value" /></label>
                         <label>Kürzel <input maxlength="6" @bind="side.Short.Value" /></label>
                         <label>Farbe
                             <span class="gs-colour">
@@ -50,17 +51,39 @@
                                 <input class="gs-hex" maxlength="7" @bind="side.Colour.Value" />
                             </span>
                         </label>
+                        <label>Coach <input @bind="side.Coach.Value" /></label>
                         <label>Topscorer
                             <select @bind="side.Scorer.Value">
                                 <option value="">keine</option>
-                                @foreach (var player in team.Players)
+                                @foreach (var player in side.Roster)
                                 {
                                     <option value="@player.Number">@player.Number @player.Name</option>
                                 }
                             </select>
                         </label>
                     </div>
-                    <p class="gs-hint">@team.Players.Count Spielerinnen@(team.HasStarting6 ? ", Starting 6 gesetzt" : ", Starting 6 fehlt")</p>
+
+                    <table class="gs-roster">
+                        <thead>
+                            <tr><th>Nr</th><th>Name</th><th>Position</th><th title="Starting 6">S6</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var player in side.Roster)
+                            {
+                                <tr @key="player.Key">
+                                    <td><input class="gs-nr" type="number" @bind="player.Number" /></td>
+                                    <td><input @bind="player.Name" /></td>
+                                    <td><input @bind="player.Position" /></td>
+                                    <td><input type="checkbox" checked="@player.Six" @onchange="e => player.Six = e.Value is true" /></td>
+                                    <td><button class="gs-btn small" @onclick="() => side.Roster.Remove(player)">✕</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <div class="gs-actions">
+                        <button class="gs-btn small" @onclick="() => side.Roster.Add(new Rower())">+ Spielerin</button>
+                        <span class="gs-hint">@side.Roster.Count Spielerinnen, @side.Roster.Count(p => p.Six) in der Starting 6</span>
+                    </div>
                 </div>
             }
         </div>
@@ -134,12 +157,28 @@
         public string Value { get; set; } = "";
     }
 
-    private sealed record SideEdit(string Key, string Label, Field Short, Field Colour, Field Scorer);
+    private sealed class Rower
+    {
+        public string Key { get; } = Guid.NewGuid().ToString("N");
+
+        public int Number { get; set; }
+
+        public string Name { get; set; } = "";
+
+        public string Position { get; set; } = "";
+
+        public bool Six { get; set; }
+    }
+
+    private sealed record SideEdit(string Key, string Label, Field Long, Field Short, Field Colour, Field Coach, Field Scorer)
+    {
+        public List<Rower> Roster { get; } = [];
+    }
 
     private readonly SideEdit[] Sides =
     [
-        new("home", "Heim", new Field(), new Field(), new Field()),
-        new("away", "Gast", new Field(), new Field(), new Field()),
+        new("home", "Heim", new Field(), new Field(), new Field(), new Field(), new Field()),
+        new("away", "Gast", new Field(), new Field(), new Field(), new Field(), new Field()),
     ];
 
     private Game? _game;
@@ -185,9 +224,20 @@
         foreach (var side in Sides)
         {
             var team = _game.Side(side.Key);
+            side.Long.Value = team.LongName;
             side.Short.Value = team.ShortName;
             side.Colour.Value = team.Color;
+            side.Coach.Value = team.Coach;
             side.Scorer.Value = team.TopScorer?.ToString() ?? "";
+            side.Roster.Clear();
+            foreach (var player in team.Players)
+                side.Roster.Add(new Rower
+                {
+                    Number = player.Number,
+                    Name = player.Name,
+                    Position = player.Position,
+                    Six = team.Starting6.Contains(player.Number),
+                });
         }
     }
 
@@ -205,10 +255,18 @@
         foreach (var side in Sides)
         {
             var team = game.Side(side.Key);
+            var roster = side.Roster
+                .Where(p => p.Name.Trim().Length > 0 || p.Number > 0)
+                .OrderBy(p => p.Number)
+                .ToList();
             game = game.WithSide(side.Key, team with
             {
+                LongName = side.Long.Value.Trim(),
                 ShortName = side.Short.Value.Trim(),
                 Color = Colour(side.Colour.Value, team.Color),
+                Coach = side.Coach.Value.Trim(),
+                Players = roster.Select(p => Keep(team, p)).ToList(),
+                Starting6 = roster.Where(p => p.Six).Select(p => p.Number).ToList(),
                 TopScorer = int.TryParse(side.Scorer.Value, out var number) ? number : null,
             });
         }
@@ -217,6 +275,12 @@
         Say("Spiel gespeichert.");
         await Changed.InvokeAsync();
     });
+
+    private static Player Keep(GameTeam team, Rower row)
+    {
+        var known = team.Find(row.Number);
+        return new Player(row.Number, row.Name.Trim(), row.Position.Trim(), known?.Photo, known?.Sponsor);
+    }
 
     private static string Colour(string value, string fallback)
     {

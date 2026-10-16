@@ -3,9 +3,10 @@ using RedAnts.Show.Agent.Cloud;
 
 namespace RedAnts.Show.Agent;
 
-public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates states, Keys.KeyRunner runner, ILogger<BreakMusic> log) : BackgroundService
+public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates states, Deck.Deck deck, Keys.KeyRunner runner, ILogger<BreakMusic> log) : BackgroundService
 {
     static readonly TimeSpan Look = TimeSpan.FromMilliseconds(150);
+    static readonly TimeSpan AfterAKey = TimeSpan.FromSeconds(12);
 
     bool _playing;
 
@@ -33,16 +34,29 @@ public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates s
         }
     }
 
+    public static bool HeldBack(string playing, string breakMusicId, DateTime keyMusicAt, TimeSpan grace) =>
+        playing.Length > 0 && !playing.Equals(breakMusicId, StringComparison.OrdinalIgnoreCase)
+        || DateTime.Now - keyMusicAt < grace;
+
+    bool Busy => HeldBack(deck.MusicId, payload.Hall.BreakMusicId, runner.KeyMusicAt, AfterAKey);
+
     void Look1()
     {
+        var busy = Busy;
         var wanted = states.Value(ShowStates.AutoBreakMusic) == "an"
                      && payload.Hall.Offers.Sound
+                     && !busy
                      && Qualifies(live.Clock, live.ClockLive, live.ClockRunning, payload.Hall.Devices.PeriodMinutes);
         if (wanted == _playing) return;
         _playing = wanted;
 
         if (!wanted)
         {
+            if (busy)
+            {
+                log.LogInformation("Automatik: hält sich zurück, es läuft Musik von einer Taste");
+                return;
+            }
             log.LogInformation("Automatik: Pausenmusik blendet aus, {Reason}",
                 live.ClockRunning ? "die Uhr läuft wieder" : "die Automatik ist ausgeschaltet");
             runner.Control("fade");
@@ -56,6 +70,6 @@ public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates s
             return;
         }
         log.LogInformation("Automatik: Pausenmusik {Label} bei {Time}", music.Display, live.Time);
-        runner.PlayMusic(music.Id);
+        runner.PlayMusic(music.Id, automatic: true);
     }
 }

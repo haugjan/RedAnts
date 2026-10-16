@@ -22,14 +22,18 @@ public sealed class KeyRunner(
 
     public string Shown { get; private set; } = "";
 
+    long _tokens;
+    long _shown;
+
     public string OnAir { get; private set; } = "";
 
     public async Task RunAsync(IReadOnlyList<KeyStep> steps, KeyContext ctx, CancellationToken stop)
     {
+        var shown = 0L;
         foreach (var step in steps)
         {
             if (stop.IsCancellationRequested) return;
-            try { await StepAsync(step, ctx, stop); }
+            try { shown = await StepAsync(step, ctx, shown, stop); }
             catch (OperationCanceledException) { return; }
             catch (Exception e)
             {
@@ -48,14 +52,14 @@ public sealed class KeyRunner(
         Changed?.Invoke();
     }
 
-    public async Task ShowTitleAsync(string kind, KeyContext ctx, CancellationToken stop)
+    public async Task<long> ShowTitleAsync(string kind, KeyContext ctx, CancellationToken stop)
     {
         if (payload.Hall.Title(kind) is not { } title)
         {
             log.LogWarning("Kein Einblender für {Kind} eingestellt", kind);
-            return;
+            return 0;
         }
-        if (!Offers(title)) return;
+        if (!Offers(title)) return 0;
         var values = title.Fields.ToDictionary(
             field => field.Key,
             field => Templates.Expand(field.Value, ctx, payload.Game, live),
@@ -63,13 +67,18 @@ public sealed class KeyRunner(
         await vmix.ShowTitleAsync(title, values, stop);
         Shown = kind;
         OnAir = OnAirText(kind, ctx);
+        _shown = Interlocked.Increment(ref _tokens);
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "an", kind);
         Changed?.Invoke();
+        return _shown;
     }
 
-    public async Task HideTitleAsync(string kind, CancellationToken stop)
+    public Task HideTitleAsync(string kind, CancellationToken stop) => HideTitleAsync(kind, 0, stop);
+
+    public async Task HideTitleAsync(string kind, long shown, CancellationToken stop)
     {
         if (payload.Hall.Title(kind) is not { } title || !Offers(title)) return;
+        if (shown != 0 && shown != _shown) return;
         await vmix.HideTitleAsync(title, stop);
         if (Shown == kind) { Shown = ""; OnAir = ""; }
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "aus", kind);
@@ -109,7 +118,11 @@ public sealed class KeyRunner(
         catch (Exception e) { log.LogWarning("Spielerin ging nicht an die LED-Wand: {Message}", e.Message); }
     }
 
-    public void PlayMusic(string? musicId)
+    public DateTime KeyMusicAt { get; private set; } = DateTime.MinValue;
+
+    public void PlayMusic(string? musicId) => PlayMusic(musicId, false);
+
+    public void PlayMusic(string? musicId, bool automatic)
     {
         if (!payload.Hall.Offers.Sound) return;
         if (payload.MusicOf(musicId) is not { } music)
@@ -118,6 +131,7 @@ public sealed class KeyRunner(
             return;
         }
         states.Set(ShowStates.Music, "läuft", music.Name);
+        if (!automatic) KeyMusicAt = DateTime.Now;
         MusicRequested?.Invoke(music);
     }
 
@@ -146,7 +160,7 @@ public sealed class KeyRunner(
 
     private static bool Scoreboard(string kind) => kind.Equals("scoreboard", StringComparison.OrdinalIgnoreCase);
 
-    private async Task StepAsync(KeyStep step, KeyContext ctx, CancellationToken stop)
+    private async Task<long> StepAsync(KeyStep step, KeyContext ctx, long shown, CancellationToken stop)
     {
         switch (step.Action)
         {
@@ -160,7 +174,7 @@ public sealed class KeyRunner(
                 Control("fade");
                 break;
             case KeyActions.VmixShow:
-                await ShowTitleAsync(KindOf(step.Target), ctx with
+                shown = await ShowTitleAsync(KindOf(step.Target), ctx with
                 {
                     Side = step.Side.Length > 0 ? step.Side : ctx.Side,
                     Event = step.Event ?? ctx.Event,
@@ -169,7 +183,7 @@ public sealed class KeyRunner(
                 break;
             case KeyActions.VmixHide:
                 if (step.Target is null or "" or TitlePrefix + "*") await HideAllAsync(stop);
-                else await HideTitleAsync(KindOf(step.Target), stop);
+                else await HideTitleAsync(KindOf(step.Target), shown, stop);
                 break;
             case KeyActions.LedStart:
                 await LedAsync(step.Target ?? "", ctx, stop);
@@ -184,6 +198,7 @@ public sealed class KeyRunner(
                 log.LogWarning("Unbekannter Befehl {Action}", step.Action);
                 break;
         }
+        return shown;
     }
 
     private static string OnAirText(string kind, KeyContext ctx)

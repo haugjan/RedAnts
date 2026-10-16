@@ -5,12 +5,14 @@ namespace RedAnts.Show.Agent;
 public sealed class LiveGame
 {
     static readonly TimeSpan ClockTimeout = TimeSpan.FromSeconds(5);
-    static readonly TimeSpan ClockStill = TimeSpan.FromMilliseconds(1300);
+    static readonly TimeSpan ShortestStill = TimeSpan.FromMilliseconds(250);
+    static readonly TimeSpan LongestStill = TimeSpan.FromMilliseconds(1400);
 
     readonly object _gate = new();
     ClockState _clock = ClockState.Empty;
     string _lastTime = "";
     DateTime _timeMovedAt = DateTime.MinValue;
+    TimeSpan _tick = TimeSpan.FromSeconds(1);
     int _manualHome, _manualAway;
     TaskCompletionSource<bool> _scoreChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -34,7 +36,16 @@ public sealed class LiveGame
     {
         get
         {
-            lock (_gate) return ClockLive && DateTime.Now - _timeMovedAt < ClockStill;
+            lock (_gate) return ClockLive && DateTime.Now - _timeMovedAt < Still;
+        }
+    }
+
+    TimeSpan Still
+    {
+        get
+        {
+            var window = _tick * 1.3;
+            return window < ShortestStill ? ShortestStill : window > LongestStill ? LongestStill : window;
         }
     }
 
@@ -60,8 +71,11 @@ public sealed class LiveGame
             scoreChanged = state.HomeScore != _clock.HomeScore || state.GuestScore != _clock.GuestScore;
             if (state.Time != _lastTime)
             {
+                var moved = DateTime.Now;
+                var gap = moved - _timeMovedAt;
+                if (_timeMovedAt != DateTime.MinValue && gap > TimeSpan.Zero && gap < LongestStill * 2) _tick = gap;
                 _lastTime = state.Time;
-                _timeMovedAt = DateTime.Now;
+                _timeMovedAt = moved;
             }
             _clock = state;
             if (int.TryParse(state.HomeScore, out var home)) _manualHome = home;
