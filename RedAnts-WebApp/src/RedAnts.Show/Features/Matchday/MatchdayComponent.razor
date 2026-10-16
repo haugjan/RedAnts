@@ -22,7 +22,7 @@
                 <span class="sp-hint">Noch keine Halle eingerichtet (Backoffice, Section Show).</span>
             }
         </div>
-        <button class="sp-panic" @onclick="PanicAsync" disabled="@(_status is not { Connected: true })">PANIC</button>
+        <button class="sp-panic" @onclick="PanicAsync" disabled="@(_busy || _status is not { Connected: true })">PANIC</button>
     </header>
 
     @if (_message is { Length: > 0 })
@@ -59,6 +59,10 @@
                 @if (ReportValue(AgentReportKinds.Deck, "context") is { Length: > 0 } context)
                 {
                     <p class="sp-hint">Deck: @context</p>
+                }
+                @if (ReportValue(AgentReportKinds.Sound, "label") is { Length: > 0 } sound)
+                {
+                    <p class="sp-hint">Musik: @sound</p>
                 }
             </div>
 

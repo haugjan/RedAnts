@@ -15,7 +15,7 @@ const variableValues = (view) => ({
 	drittel: view?.live?.periodLabel ?? '',
 	stand_heim: view?.live?.home ?? '',
 	stand_gast: view?.live?.away ?? '',
-	musik: view?.live?.musik ?? '',
+	musik: view?.live?.music ?? '',
 })
 
 module.exports = { variableDefinitions, variableValues }

@@ -97,8 +97,8 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
             Hex(slot, "bgcolor"),
             Hex(slot, "color"),
             slot.TryGetProperty("pressable", out var pressable) && pressable.GetBoolean(),
-            slot.TryGetProperty("musik", out var musicId) ? musicId.GetString() : null,
-            slot.TryGetProperty("aktiv", out var active) && active.ValueKind == JsonValueKind.True)).ToList();
+            slot.TryGetProperty("music", out var musicId) ? musicId.GetString() : null,
+            slot.TryGetProperty("active", out var active) && active.ValueKind == JsonValueKind.True)).ToList();
         var title = view.TryGetProperty("title", out var text) ? text.GetString() ?? deck.Home.Name : deck.Home.Name;
         return new DeckView(deck.Id, title, deck.Columns, deck.Rows, keys, true, live, states);
     }
@@ -114,10 +114,10 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
             Text("home"),
             Text("away"),
             live.TryGetProperty("clock", out var running) && running.ValueKind == JsonValueKind.True,
-            Text("musik"),
-            live.TryGetProperty("musikOrder", out var order) && order.TryGetInt64(out var number) ? number : 0,
-            Text("steuerung"),
-            live.TryGetProperty("steuerungOrder", out var control) && control.TryGetInt64(out var step) ? step : 0);
+            Text("music"),
+            live.TryGetProperty("musicOrder", out var order) && order.TryGetInt64(out var number) ? number : 0,
+            Text("control"),
+            live.TryGetProperty("controlOrder", out var control) && control.TryGetInt64(out var step) ? step : 0);
     }
 
     private static IReadOnlyDictionary<string, string>? StatesOf(JsonElement view)

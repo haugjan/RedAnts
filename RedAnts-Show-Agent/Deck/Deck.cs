@@ -134,10 +134,10 @@ public sealed class Deck
                 color = s.TextColor,
                 bgcolor = s.Color,
                 pressable = s.Pressable,
-                aktiv = s.Active,
-                musik = s.MusicId,
+                active = s.Active,
+                music = s.MusicId,
                 symbol = s.Symbol,
-                untertitel = s.Subtitle,
+                subtitle = s.Subtitle,
             }).ToArray(),
             live = Live(),
             states = _states.All,
@@ -153,10 +153,10 @@ public sealed class Deck
 
     object Live() => new
     {
-        musik = _music,
-        musikOrder = _musicOrder,
-        steuerung = _control,
-        steuerungOrder = _controlOrder,
+        music = _music,
+        musicOrder = _musicOrder,
+        control = _control,
+        controlOrder = _controlOrder,
         time = _live.Time,
         period = _live.Period,
         periodLabel = _live.PeriodLabel,

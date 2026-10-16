@@ -27,7 +27,7 @@ public sealed class StatusReporter(
     IReadOnlyList<VmixInput> _inputs = [];
 
     public void ReportMusic(MusicItem music) =>
-        _ = cloud.ReportAsync("musik", new { musik = music.Id, label = music.Display }, CancellationToken.None);
+        _ = cloud.ReportAsync("sound", new { music = music.Id, label = music.Display }, CancellationToken.None);
 
     public void ReportInputs(IReadOnlyList<VmixInput> inputs) => _inputs = inputs;
 
