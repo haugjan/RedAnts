@@ -14,7 +14,7 @@ public class ClockTests
     {
         var bytes = new UTF32Encoding(bigEndian: true, byteOrderMark: false).GetBytes(Telegram);
 
-        var state = ICastProtocol.Parse(bytes);
+        var state = new ICastReader().Read(bytes);
 
         Assert.NotNull(state);
         Assert.Equal("12:34", state.Time);
