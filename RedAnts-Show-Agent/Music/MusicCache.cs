@@ -9,6 +9,8 @@ public sealed class MusicCache(AgentConfig config, PayloadStore payload, ILogger
     readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(2) };
     readonly SemaphoreSlim _one = new(1, 1);
 
+    TaskCompletionSource _wake = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     public static string Folder => Path.Combine(AgentConfig.DataDir, "musik");
 
     public int Cached { get; private set; }
@@ -55,15 +57,24 @@ public sealed class MusicCache(AgentConfig config, PayloadStore payload, ILogger
 
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
-        while (!stop.IsCancellationRequested)
+        payload.Changed += Wake;
+        try
         {
-            try { await FillAsync(stop); }
-            catch (OperationCanceledException) { break; }
-            catch (Exception e) { log.LogDebug("Musik-Zwischenspeicher: {Message}", e.Message); }
-            try { await Task.Delay(Idle, stop); }
-            catch (OperationCanceledException) { break; }
+            while (!stop.IsCancellationRequested)
+            {
+                try { await FillAsync(stop); }
+                catch (OperationCanceledException) { break; }
+                catch (Exception e) { log.LogDebug("Musik-Zwischenspeicher: {Message}", e.Message); }
+                try { await _wake.Task.WaitAsync(Idle, stop); }
+                catch (TimeoutException) { }
+                catch (OperationCanceledException) { break; }
+                _wake = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
         }
+        finally { payload.Changed -= Wake; }
     }
+
+    void Wake() => _wake.TrySetResult();
 
     async Task FillAsync(CancellationToken stop)
     {
