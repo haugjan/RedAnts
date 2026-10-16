@@ -24,7 +24,8 @@ html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf
 .hb main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 10px 14px; }
 .hb h1 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #9aa4ae; margin: 0 0 8px; }
 
-.hb .decklist { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.hb .decklist { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 18px; min-height: 0; }
+.hb .deck { min-width: 0; }
 .hb .deck h2 .page { color: #6e7682; font-weight: 400; }
 .hb .deck h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #9aa4ae; margin: 0 0 6px; }
 .hb .grid {

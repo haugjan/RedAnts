@@ -21,11 +21,16 @@ public sealed class ShowExampleSeeder(
         try
         {
             var library = await music.TreeAsync();
-            if (await halls.GetByIdAsync(HallId) is null)
+            if (await halls.GetByIdAsync(HallId) is not { } known)
             {
                 var hall = Example(library);
                 await halls.SaveAsync(hall);
                 log.LogInformation("Beispielhalle {Hall} angelegt: {Decks} Decks", hall.Name, hall.DeckLayouts.Count);
+            }
+            else if (WithNewMusicDeck(known, library) is { } updated)
+            {
+                await halls.SaveAsync(updated);
+                log.LogInformation("Musikdeck der Halle {Hall} auf die neuen Seiten umgestellt", updated.Name);
             }
             if (await halls.GetByIdAsync(MusicHallId) is null)
             {
@@ -40,6 +45,14 @@ public sealed class ShowExampleSeeder(
         }
     }
 
+    public static Hall? WithNewMusicDeck(Hall hall, IReadOnlyList<MusicNode> library)
+    {
+        var old = hall.DeckLayouts.FirstOrDefault(d => d.Id == DefaultDecks.MusicDeck);
+        if (old is null || old.Page(MusicDeck.BeforeAndAfter) is not null) return null;
+        var fresh = MusicDeck.Build(DefaultDecks.Music() with { Name = old.Name }, library);
+        return hall with { Decks = hall.DeckLayouts.Select(d => d.Id == fresh.Id ? fresh : d).ToList() };
+    }
+
     public static Hall Example(IReadOnlyList<MusicNode> library)
     {
         var hall = Hall.Create(HallId, HallName) with
@@ -48,7 +61,7 @@ public sealed class ShowExampleSeeder(
             Offered = new HallCapabilities(Sound: true, Clock: true, Vmix: true, Led: true),
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
         };
-        return hall with { Decks = [Field(library), Music(library, DefaultDecks.Music())] };
+        return hall with { Decks = [Field(library), MusicDeck.Build(DefaultDecks.Music(), library)] };
     }
 
     public static Hall MusicHall(IReadOnlyList<MusicNode> library)

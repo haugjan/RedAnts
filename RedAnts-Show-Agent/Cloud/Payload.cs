@@ -138,7 +138,7 @@ public sealed record DeckLayout(
 
     public DeckPage? Page(string? id) => id is null ? null : Pages.FirstOrDefault(p => p.Id == id);
 
-    public bool Reserved(int number) => number == Panic || number == Back;
+    public bool Reserved(int number, bool home = false) => number == Panic || (!home && number == Back);
 }
 
 public sealed record MusicItem(string Id, string Name, string Folder, int Songs, bool Random, string SongsJson = "[]", string Icon = "", string Color = "", string Subtitle = "")

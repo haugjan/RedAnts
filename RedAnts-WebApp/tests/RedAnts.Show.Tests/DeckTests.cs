@@ -128,8 +128,13 @@ public class DeckTests
         Assert.Equal(SpecialKey.GoalHome, field.Home.KeyAt(1).Special);
         Assert.Equal(SpecialKey.GoalAway, field.Home.KeyAt(8).Special);
         Assert.Equal(15, music.Count);
-        Assert.Equal(15, music.Panic);
-        Assert.Equal(SpecialKey.AutoBreakMusic, music.Home.KeyAt(14).Special);
+        Assert.Equal(11, music.Panic);
+        Assert.Equal(1, music.Back);
+        Assert.Equal(SpecialKey.AutoBreakMusic, music.Home.KeyAt(10).Special);
+        Assert.Equal(SpecialKey.MusicStop, music.Home.KeyAt(12).Special);
+        Assert.Equal(SpecialKey.MusicPause, music.Home.KeyAt(13).Special);
+        Assert.Equal(SpecialKey.MusicNext, music.Home.KeyAt(14).Special);
+        Assert.Equal(SpecialKey.MusicFade, music.Home.KeyAt(15).Special);
     }
 
     [Fact]
@@ -138,7 +143,7 @@ public class DeckTests
         foreach (var deck in DefaultDecks.All)
             foreach (var page in deck.Pages)
                 foreach (var key in page.Keys)
-                    Assert.False(deck.Reserved(key.Number), $"{deck.Id}/{page.Id}: Taste {key.Number} liegt auf Zurück oder PANIC");
+                    Assert.False(deck.Reserved(key.Number, page.IsHome), $"{deck.Id}/{page.Id}: Taste {key.Number} liegt auf Zurück oder PANIC");
     }
 
     [Fact]

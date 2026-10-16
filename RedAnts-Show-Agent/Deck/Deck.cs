@@ -273,7 +273,7 @@ public sealed class Deck
         if (page is null) return;
         foreach (var key in page.Keys)
         {
-            if (deck.Reserved(key.Number) || key.IsEmpty) continue;
+            if (deck.Reserved(key.Number, page.IsHome) || key.IsEmpty) continue;
             Key(builder, deck, deckId, key);
         }
     }
@@ -562,7 +562,7 @@ public sealed class Deck
         var page = CurrentPage(deckId);
         var deep = flow.Kind != FlowKind.None || (page is not null && !page.IsHome);
         if (deep) builder.Action(deck.Back, "◀ Zurück", CBack, () => { Back(deckId); return Task.CompletedTask; });
-        else builder.Empty(deck.Back);
+        else if (page is null || page.KeyAt(deck.Back).IsEmpty) builder.Empty(deck.Back);
         builder.Action(deck.Panic, "🚨 PANIC", CPanic, () => PanicAsync(CancellationToken.None), forceText: CWhite);
     }
 

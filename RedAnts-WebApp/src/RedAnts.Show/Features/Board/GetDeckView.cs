@@ -34,13 +34,13 @@ public static class GetDeckView
                     keys.Add(new DeckKeyRow(number, "PANIC", null, "#d01212", "#ffffff", true));
                     continue;
                 }
-                if (number == deck.Back)
+                var key = page.KeyAt(number);
+                if (number == deck.Back && (!page.IsHome || key.IsEmpty))
                 {
                     var deep = !page.IsHome;
                     keys.Add(new DeckKeyRow(number, deep ? "◀ Zurück" : "", null, deep ? "#8ed973" : "#000000", "#111111", deep));
                     continue;
                 }
-                var key = page.KeyAt(number);
                 var item = key.Kind == KeyKinds.Music ? music.FirstOrDefault(m => m.Id == key.MusicId) : null;
                 var label = key.Label.Length > 0 ? key.Label : item?.Name ?? "";
                 keys.Add(new DeckKeyRow(
@@ -49,7 +49,12 @@ public static class GetDeckView
                     Picture(key.Icon),
                     key.IsEmpty ? "#000000" : key.Color,
                     "#ffffff",
-                    key.Kind == KeyKinds.Music ? item is not null : !key.IsEmpty,
+                    key.Kind switch
+                    {
+                        KeyKinds.Music => item is not null,
+                        KeyKinds.Live or KeyKinds.Empty => false,
+                        _ => true,
+                    },
                     item?.Id,
                     false,
                     Symbol(key.Icon),

@@ -196,7 +196,7 @@ public sealed record Deck(
 
     public DeckPage? Page(string? id) => id is null ? null : Pages.FirstOrDefault(p => p.Id == id);
 
-    public bool Reserved(int number) => number == Panic || number == Back;
+    public bool Reserved(int number, bool home = false) => number == Panic || (!home && number == Back);
 
     public static DeckPage Empty(string id, string name, string? parent = null) => new(id, name, parent, []);
 

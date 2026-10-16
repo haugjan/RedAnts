@@ -92,7 +92,7 @@
     return Math.max(1, Math.ceil(keys / colsOf(grid)));
   }
 
-  function cellSize(grids) {
+  function byHeight(grids) {
     const root = document.querySelector('.hb');
     const main = root && root.querySelector('main');
     if (!main) return maxCell;
@@ -100,20 +100,30 @@
     const now = root.querySelector('.now');
     const hint = main.querySelector('.hint');
     const note = main.querySelector('.note');
+    const panel = main.querySelector('.panel');
     const style = getComputedStyle(main);
     let taken = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + 4;
-    [bar, now, hint, note].forEach(function (part) { if (part) taken += part.offsetHeight + 6; });
+    [bar, now, hint, note, panel].forEach(function (part) { if (part) taken += part.offsetHeight + 6; });
     let rows = 0;
+    let head = 0;
     grids.forEach(function (grid) {
-      const own = rowsOf(grid);
-      rows += own;
-      taken += (own - 1) * gap + 14;
-      const head = grid.parentElement && grid.parentElement.querySelector('h2');
-      if (head) taken += head.offsetHeight + 6;
+      rows = Math.max(rows, rowsOf(grid));
+      const title = grid.parentElement && grid.parentElement.querySelector('h2');
+      if (title) head = Math.max(head, title.offsetHeight + 6);
     });
     if (rows === 0) return maxCell;
-    const room = (window.innerHeight - taken) / rows;
+    const room = (window.innerHeight - taken - head - (rows - 1) * gap) / rows;
     return Math.max(minCell, Math.min(maxCell, Math.floor(room)));
+  }
+
+  function byWidth(grids) {
+    const list = document.querySelector('.hb .decklist');
+    if (!list) return maxCell;
+    let columns = 0;
+    grids.forEach(function (grid) { columns += colsOf(grid); });
+    if (columns === 0) return maxCell;
+    const between = 18 * (grids.length - 1) + gap * (columns - grids.length);
+    return Math.max(minCell, Math.min(maxCell, Math.floor((list.clientWidth - between) / columns)));
   }
 
   function overflows(key) {
@@ -167,14 +177,11 @@
       const mark = signature(grids);
       if (mark === laid) return;
       laid = mark;
-      const room = cellSize(grids);
+      const cell = Math.max(minCell, Math.min(byHeight(grids), byWidth(grids), maxCell));
       grids.forEach(function (grid) {
         const cols = colsOf(grid);
-        const wide = grid.parentElement ? grid.parentElement.clientWidth : grid.clientWidth;
-        const byWidth = Math.floor((wide - (cols - 1) * gap) / cols);
-        const cell = Math.max(minCell, Math.min(room, byWidth, maxCell));
         grid.style.setProperty('--cell', cell + 'px');
-        grid.style.maxWidth = (cell * cols + (cols - 1) * gap) + 'px';
+        grid.style.width = (cell * cols + (cols - 1) * gap) + 'px';
       });
       grids.forEach(fitGrid);
     }, 120);
