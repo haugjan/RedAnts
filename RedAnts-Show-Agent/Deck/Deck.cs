@@ -572,7 +572,16 @@ public sealed class Deck
             if (!deck.Reserved(number)) yield return number;
     }
 
-    static string Short(string name) => name.Length <= 10 ? name : name[..10];
+    static string Short(string name)
+    {
+        if (name.Length <= 12) return name;
+        var space = name.IndexOf(' ');
+        if (space < 1) return name[..12];
+        var first = name[..space];
+        var family = name[(space + 1)..].TrimStart();
+        var shortened = family.Length > 0 ? $"{first} {family[0]}." : first;
+        return shortened.Length <= 12 ? shortened : first[..Math.Min(first.Length, 12)];
+    }
 
     void Open(string deckId, Flow flow)
     {

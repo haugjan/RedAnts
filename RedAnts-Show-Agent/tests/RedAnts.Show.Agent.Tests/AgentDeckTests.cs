@@ -9,6 +9,7 @@ namespace RedAnts.Show.Agent.Tests;
 public class AgentDeckTests
 {
     const string DeckId = "mk2";
+    const string NewLine = "\n";
 
     static readonly MusicItem Goal = new("tor", "Tor Red Ants", "L-UPL", 1, false, "[{\"t\":\"local\",\"r\":\"/dj/sound/tor.m4a\"}]");
     static readonly MusicItem Break = new("unterbruch", "Spielunterbruch", "L-UPL", 91, true, "[]");
@@ -30,6 +31,27 @@ public class AgentDeckTests
         var led = new SednaLink(store, NullLogger<SednaLink>.Instance);
         var runner = new KeyRunner(store, live, states, vmix, led, NullLogger<KeyRunner>.Instance);
         return new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
+    }
+
+    [Fact]
+    public async Task The_player_list_shortens_long_names_to_the_first_name_and_an_initial()
+    {
+        var layout = new DeckLayout(DeckId, "Mk2", 4, 4,
+            [new DeckPage(DeckPage.HomeId, "Startseite", null, [new DeckKey(1, KeyKinds.Special, "Tor", Special: SpecialKeys.GoalHome)])]);
+        var deck = Build(out var store, out _, layout);
+        var team = GameTeam.Empty with
+        {
+            ShortName = "RA",
+            Players = [new Player(7, "Anna Habersaat"), new Player(9, "Ida Sundberg"), new Player(11, "Mirjamvonnebenan")],
+        };
+        store.Apply(new AgentPayload(store.Hall, Game.None with { Id = "1", Home = team }, DateTimeOffset.Now, []));
+
+        await deck.PressAsync(DeckId, 1);
+        var labels = deck.Slots(DeckId).Select(s => s.Label).ToList();
+
+        Assert.Contains("7" + NewLine + "Anna H.", labels);
+        Assert.Contains("9" + NewLine + "Ida Sundberg", labels);
+        Assert.Contains("11" + NewLine + "Mirjamvonneb", labels);
     }
 
     [Fact]
