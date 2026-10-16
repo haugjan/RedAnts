@@ -183,8 +183,8 @@ const string publicCsp =
 const string djCsp =
     "default-src 'self'; base-uri 'self'; object-src 'none'; " +
     "img-src 'self' data: https:; " +
-    "font-src 'self' data:; " +
-    "style-src 'self' 'unsafe-inline'; " +
+    "font-src 'self' data: https://fonts.gstatic.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "script-src 'self' 'unsafe-inline' https://sdk.scdn.co; " +
     "connect-src 'self' https://api.spotify.com https://accounts.spotify.com https://*.spotify.com wss://*.spotify.com https://*.scdn.co; " +
     "media-src 'self' data: blob: https://*.scdn.co; " +
@@ -393,6 +393,12 @@ app.UseDJ();
 
         app.Use(async (context, next) =>
         {
+            if (context.Request.Path.Equals("/dj", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.Redirect("/bord");
+                return;
+            }
+
             if (!context.Request.Path.StartsWithSegments("/dj")
                 && !context.Request.Path.StartsWithSegments("/bord"))
             {

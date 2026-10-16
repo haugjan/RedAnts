@@ -48,7 +48,7 @@
 
 @if (_hall is null)
 {
-    <main><p class="hint">Keine Halle eingerichtet.</p></main>
+    <main><p class="hint">@(Online ? "Im Netz lassen sich nur Hallen bedienen, die ausschliesslich Musik spielen. Die anderen laufen auf dem Rechner in der Halle." : "Keine Halle eingerichtet.")</p></main>
 }
 else
 {
@@ -81,7 +81,11 @@ else
                         @key="key.Number">
                     @if (key.Icon is { Length: > 0 } icon)
                     {
-                        <img src="/_content/RedAnts.Show/show/icons/@(icon).png" alt="" />
+                        <img src="@DeckIcons.FileOf(icon)" alt="" />
+                    }
+                    else if (key.Symbol is { Length: > 0 } symbol)
+                    {
+                        <span class="symbol">@symbol</span>
                     }
                     <span class="label">
                         @foreach (var line in key.Label.Split(NewLine))
@@ -89,6 +93,10 @@ else
                             <span>@line</span>
                         }
                     </span>
+                    @if (key.Subtitle is { Length: > 0 } subtitle)
+                    {
+                        <span class="sub">@subtitle</span>
+                    }
                     @if (music is { IsPlaylist: true })
                     {
                         <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
@@ -125,6 +133,8 @@ else
 
     [Parameter] public string? HallId { get; set; }
 
+    [Parameter] public bool Online { get; set; }
+
     private string? _hallId;
     private string? _given;
 
@@ -152,7 +162,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
+        _halls = (await HallsQuery.HandleAsync(new GetHalls.Query())).Where(h => h.MusicOnly || !Online).ToList();
         _given = HallId;
         var wanted = HallId ?? Query("halle");
         _hallId = _halls.FirstOrDefault(h => h.Id == wanted)?.Id ?? _halls.FirstOrDefault()?.Id;

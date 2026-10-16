@@ -43,6 +43,8 @@ html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf
 .hb .key img { width: 42%; max-height: 46%; object-fit: contain; }
 .hb .key .label { display: flex; flex-direction: column; max-width: 100%; overflow: hidden; }
 .hb .key .label span { display: block; }
+.hb .key .symbol { font-size: 150%; line-height: 1; }
+.hb .key .sub { font-size: 11px; font-weight: 400; opacity: .85; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hb .key .badge { position: absolute; right: 4px; bottom: 3px; font-size: 10px; font-weight: 400; opacity: .8; }
 .hb .key em { position: absolute; top: 3px; left: 5px; font-size: 10px; font-style: normal; opacity: 0.45; }
 

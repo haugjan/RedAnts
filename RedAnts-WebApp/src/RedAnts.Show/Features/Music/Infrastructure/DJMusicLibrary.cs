@@ -16,6 +16,31 @@ public sealed class DJMusicLibrary(GetDJProfiles.Handler profiles) : IMusicLibra
         return found;
     }
 
+    public async Task<IReadOnlyList<MusicNode>> TreeAsync()
+    {
+        var roots = new List<MusicNode>();
+        foreach (var profile in await profiles.HandleAsync(new GetDJProfiles.Query()))
+            foreach (var button in profile.Root)
+                if (Node(button) is { } node) roots.Add(node);
+        return roots;
+    }
+
+    private static MusicNode? Node(DJButton button)
+    {
+        if (button.Panic || button.IsControl) return null;
+        if (button.IsFolder)
+        {
+            var children = button.Children!.Select(Node).OfType<MusicNode>().ToList();
+            return children.Count == 0 ? null : Of(button, 0, "[]", children);
+        }
+        var songs = button.EffectiveSongs.Where(s => s.Ref.Length > 0).ToList();
+        return songs.Count == 0 ? null : Of(button, songs.Count, Json(songs), []);
+    }
+
+    private static MusicNode Of(DJButton button, int songs, string json, IReadOnlyList<MusicNode> children) =>
+        new(button.Id, button.Label, button.Icon ?? "", button.Color ?? "", button.Subtitle ?? "",
+            songs, button.SongsRandom, json, children);
+
     private static void Walk(DJButton button, string folder, List<MusicItem> found)
     {
         if (button.IsFolder)
@@ -27,7 +52,8 @@ public sealed class DJMusicLibrary(GetDJProfiles.Handler profiles) : IMusicLibra
         if (button.Panic || button.IsControl) return;
         var songs = button.EffectiveSongs.Where(s => s.Ref.Length > 0).ToList();
         if (songs.Count == 0) return;
-        found.Add(new MusicItem(button.Id, button.Label, folder, songs.Count, button.SongsRandom, Json(songs)));
+        found.Add(new MusicItem(button.Id, button.Label, folder, songs.Count, button.SongsRandom, Json(songs),
+            button.Icon ?? "", button.Color ?? "", button.Subtitle ?? ""));
     }
 
     private static string Json(IEnumerable<DJSound> songs) =>

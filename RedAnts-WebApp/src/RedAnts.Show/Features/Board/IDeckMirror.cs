@@ -10,7 +10,9 @@ public sealed record DeckKeyRow(
     string TextColor,
     bool Pressable,
     string? MusicId = null,
-    bool Active = false);
+    bool Active = false,
+    string Symbol = "",
+    string Subtitle = "");
 
 public sealed record DeckLive(
     string Time,

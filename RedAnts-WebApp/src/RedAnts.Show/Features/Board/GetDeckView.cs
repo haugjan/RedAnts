@@ -45,13 +45,22 @@ public static class GetDeckView
                 keys.Add(new DeckKeyRow(
                     number,
                     label,
-                    key.Icon,
+                    Picture(key.Icon),
                     key.IsEmpty ? "#000000" : key.Color,
                     "#ffffff",
                     key.Kind == KeyKinds.Music ? item is not null : !key.IsEmpty,
-                    item?.Id));
+                    item?.Id,
+                    false,
+                    Symbol(key.Icon),
+                    item?.Subtitle ?? ""));
             }
             return new DeckView(deck.Id, page.Name, deck.Columns, deck.Rows, keys, false);
         }
+
+        private static string? Picture(string? icon) =>
+            icon is { Length: > 0 } && DeckIcons.All.Contains(icon) ? icon : null;
+
+        private static string Symbol(string? icon) =>
+            icon is { Length: > 0 } && !DeckIcons.All.Contains(icon) ? icon : "";
     }
 }

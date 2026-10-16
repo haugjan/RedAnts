@@ -2,7 +2,7 @@ using RedAnts.Show.Features.Agents;
 
 namespace RedAnts.Show.Features.Halls;
 
-public sealed record HallRow(string Id, string Name, string? ActiveGameId, bool AgentConnected);
+public sealed record HallRow(string Id, string Name, string? ActiveGameId, bool AgentConnected, bool MusicOnly = false);
 
 public static class GetHalls
 {

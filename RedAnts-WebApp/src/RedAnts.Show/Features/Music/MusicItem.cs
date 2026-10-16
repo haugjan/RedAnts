@@ -6,9 +6,26 @@ public sealed record MusicItem(
     string Folder,
     int Songs,
     bool Random,
-    string SongsJson = "[]")
+    string SongsJson = "[]",
+    string Icon = "",
+    string Color = "",
+    string Subtitle = "")
 {
     public string Display => Folder.Length > 0 ? $"{Folder} · {Name}" : Name;
 
     public bool IsPlaylist => Songs > 1;
+}
+
+public sealed record MusicNode(
+    string Id,
+    string Name,
+    string Icon,
+    string Color,
+    string Subtitle,
+    int Songs,
+    bool Random,
+    string SongsJson,
+    IReadOnlyList<MusicNode> Children)
+{
+    public bool IsFolder => Children.Count > 0;
 }
