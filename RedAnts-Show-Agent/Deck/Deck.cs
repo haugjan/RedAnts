@@ -72,7 +72,7 @@ public sealed class Deck
     public void NoteFromBoard(string? musicId)
     {
         if (_payload.MusicOf(musicId) is not { } music) return;
-        if (string.Equals(_music, music.Id, StringComparison.OrdinalIgnoreCase)) NoteMusic(null);
+        if (string.Equals(_music, music.Id, StringComparison.OrdinalIgnoreCase)) _runner.Control("fade");
         else
         {
             NoteMusic(music);
@@ -86,6 +86,7 @@ public sealed class Deck
         {
             _control = what;
             _controlOrder++;
+            if (what is "fade" or "stop") _music = "";
         }
         Bump();
     }
@@ -254,7 +255,7 @@ public sealed class Deck
     public Task ToggleMusicAsync(string? musicId)
     {
         if (_payload.MusicOf(musicId) is not { } music) return Task.CompletedTask;
-        if (string.Equals(_music, music.Id, StringComparison.OrdinalIgnoreCase)) _runner.StopMusic();
+        if (string.Equals(_music, music.Id, StringComparison.OrdinalIgnoreCase)) _runner.Control("fade");
         else _runner.PlayMusic(music.Id);
         return Task.CompletedTask;
     }

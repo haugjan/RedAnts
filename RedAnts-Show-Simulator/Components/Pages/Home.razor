@@ -156,7 +156,11 @@
 
 @code {
     private int _key = 1;
+    private static readonly TimeSpan Window = TimeSpan.FromMilliseconds(80);
+
+    private readonly object _render = new();
     private DateTime _lastRender = DateTime.MinValue;
+    private bool _pending;
 
     private int? AgentPort =>
         Agent.Status.TryGetValue("clockListening", out var listening)
@@ -176,10 +180,30 @@
 
     private void Refresh()
     {
-        var now = DateTime.UtcNow;
-        if (now - _lastRender < TimeSpan.FromMilliseconds(80)) return;
-        _lastRender = now;
+        lock (_render)
+        {
+            if (_pending) return;
+            var wait = Window - (DateTime.UtcNow - _lastRender);
+            if (wait > TimeSpan.Zero)
+            {
+                _pending = true;
+                _ = LaterAsync(wait);
+                return;
+            }
+            _lastRender = DateTime.UtcNow;
+        }
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LaterAsync(TimeSpan wait)
+    {
+        await Task.Delay(wait);
+        lock (_render)
+        {
+            _pending = false;
+            _lastRender = DateTime.UtcNow;
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     private string PeriodLabel() => Clock.Period switch { "4" => "Verlängerung", "5" => "Penaltyschiessen", var p => p + ". Drittel" };

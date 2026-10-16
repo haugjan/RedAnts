@@ -16,6 +16,8 @@ public sealed class ShowExampleSeeder(
     public const string MusicHallId = "oberseen";
     public const string MusicHallName = "Oberseen";
 
+    private static readonly int[] TimeoutKeys = [3, 6];
+
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken stop)
     {
         try
@@ -27,10 +29,10 @@ public sealed class ShowExampleSeeder(
                 await halls.SaveAsync(hall);
                 log.LogInformation("Beispielhalle {Hall} angelegt: {Decks} Decks", hall.Name, hall.DeckLayouts.Count);
             }
-            else if (WithNewMusicDeck(known, library) is { } updated)
+            else if (Refreshed(known, library) is { } updated)
             {
                 await halls.SaveAsync(updated);
-                log.LogInformation("Musikdeck der Halle {Hall} auf die neuen Seiten umgestellt", updated.Name);
+                log.LogInformation("Decks der Halle {Hall} nachgeführt", updated.Name);
             }
             if (await halls.GetByIdAsync(MusicHallId) is null)
             {
@@ -45,12 +47,32 @@ public sealed class ShowExampleSeeder(
         }
     }
 
-    public static Hall? WithNewMusicDeck(Hall hall, IReadOnlyList<MusicNode> library)
+    public static Hall? Refreshed(Hall hall, IReadOnlyList<MusicNode> library)
     {
-        var old = hall.DeckLayouts.FirstOrDefault(d => d.Id == DefaultDecks.MusicDeck);
-        if (old is null || old.Page(MusicDeck.BeforeAndAfter) is not null) return null;
-        var fresh = MusicDeck.Build(DefaultDecks.Music() with { Name = old.Name }, library);
-        return hall with { Decks = hall.DeckLayouts.Select(d => d.Id == fresh.Id ? fresh : d).ToList() };
+        var decks = hall.DeckLayouts.ToList();
+        var changed = false;
+
+        if (decks.FirstOrDefault(d => d.Id == DefaultDecks.MusicDeck) is { } music && music.Page(MusicDeck.BeforeAndAfter) is null)
+        {
+            decks[decks.IndexOf(music)] = MusicDeck.Build(DefaultDecks.Music() with { Name = music.Name }, library);
+            changed = true;
+        }
+
+        if (decks.FirstOrDefault(d => d.Id == DefaultDecks.FieldDeck) is { } field && Find(library, "Time Out") is { } timeout)
+        {
+            var home = field.Home;
+            var fresh = home;
+            foreach (var number in TimeoutKeys)
+                if (!fresh.KeyAt(number).Sequence.Any(step => step.Action == KeyActions.MusicPlay))
+                    fresh = WithMusic(fresh, number, timeout);
+            if (fresh != home)
+            {
+                decks[decks.IndexOf(field)] = field with { Pages = field.Pages.Select(p => p.IsHome ? fresh : p).ToList() };
+                changed = true;
+            }
+        }
+
+        return changed ? hall with { Decks = decks } : null;
     }
 
     public static Hall Example(IReadOnlyList<MusicNode> library)
@@ -82,6 +104,7 @@ public sealed class ShowExampleSeeder(
         home = WithMusic(home, 8, Find(library, "Tor Gegner"));
         home = WithMusic(home, 9, Find(library, "Strafe Red Ants"));
         home = WithMusic(home, 16, Find(library, "Strafe Gegner"));
+        foreach (var number in TimeoutKeys) home = WithMusic(home, number, Find(library, "Time Out"));
         return deck with { Pages = deck.Pages.Select(p => p.IsHome ? home : p).ToList() };
     }
 

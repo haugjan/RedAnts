@@ -5,7 +5,7 @@ namespace RedAnts.Show.Agent;
 public sealed class LiveGame
 {
     static readonly TimeSpan ClockTimeout = TimeSpan.FromSeconds(5);
-    static readonly TimeSpan ClockStill = TimeSpan.FromSeconds(2);
+    static readonly TimeSpan ClockStill = TimeSpan.FromMilliseconds(1300);
 
     readonly object _gate = new();
     ClockState _clock = ClockState.Empty;

@@ -64,6 +64,18 @@ public class ClockHardeningTests
     }
 
     [Fact]
+    public async Task A_clock_that_stopped_is_noticed_in_well_under_two_seconds()
+    {
+        var live = new LiveGame();
+        live.Update(ICastProtocol.Parse(HallTelegram)!);
+
+        await Task.Delay(1500);
+        live.Update(ICastProtocol.Parse(HallTelegram)!);
+
+        Assert.False(live.ClockRunning);
+    }
+
+    [Fact]
     public void The_last_minute_and_a_break_are_marked_for_the_tv_clock()
     {
         var running = ICastProtocol.Parse(HallTelegram)!;

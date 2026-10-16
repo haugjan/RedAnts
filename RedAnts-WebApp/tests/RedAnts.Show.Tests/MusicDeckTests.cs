@@ -161,14 +161,33 @@ public class MusicDeckTests
     {
         var hall = Hall.Create("win4", "WIN4 Stratos") with { Decks = [DefaultDecks.Field(), DefaultDecks.Music()] };
 
-        var updated = ShowExampleSeeder.WithNewMusicDeck(hall, Library);
+        var updated = ShowExampleSeeder.Refreshed(hall, Library);
 
         Assert.NotNull(updated);
         Assert.Equal(2, updated!.DeckLayouts.Count);
         var music = updated.DeckLayouts.First(d => d.Id == DefaultDecks.MusicDeck);
         Assert.NotNull(music.Page(MusicDeck.BeforeAndAfter));
         Assert.Equal(11, music.Panic);
-        Assert.Null(ShowExampleSeeder.WithNewMusicDeck(updated, Library));
+        Assert.Null(ShowExampleSeeder.Refreshed(updated, Library));
+    }
+
+    [Fact]
+    public void The_timeout_keys_of_an_existing_field_deck_learn_their_music()
+    {
+        var library = new List<MusicNode>(Library) { Piece("timeout", "Time Out") };
+        var hall = Hall.Create("win4", "WIN4 Stratos") with { Decks = [DefaultDecks.Field(), DefaultDecks.Music()] };
+
+        var updated = ShowExampleSeeder.Refreshed(hall, library);
+
+        Assert.NotNull(updated);
+        var field = updated!.DeckLayouts.First(d => d.Id == DefaultDecks.FieldDeck).Home;
+        foreach (var number in new[] { 3, 6 })
+        {
+            Assert.Equal(KeyActions.MusicPlay, field.KeyAt(number).Sequence[0].Action);
+            Assert.Equal("timeout", field.KeyAt(number).Sequence[0].Target);
+            Assert.Equal(KeyActions.VmixShow, field.KeyAt(number).Sequence[1].Action);
+        }
+        Assert.Null(ShowExampleSeeder.Refreshed(updated, library));
     }
 
     [Fact]
@@ -176,7 +195,7 @@ public class MusicDeckTests
     {
         var hall = Hall.Create("oberseen", "Oberseen") with { Decks = [DefaultDecks.Field()] };
 
-        Assert.Null(ShowExampleSeeder.WithNewMusicDeck(hall, Library));
+        Assert.Null(ShowExampleSeeder.Refreshed(hall, Library));
     }
 
     [Fact]

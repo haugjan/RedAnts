@@ -17,6 +17,7 @@
   let audioCtx = null;
   let gainNode = null;
   let activeId = null;
+  let fading = false;
   let activeTimer = null;
   let mediaUnlocked = false;
 
@@ -357,7 +358,7 @@
     try { songs = JSON.parse(tile.getAttribute('data-songs') || '[]'); } catch (x) {}
     if (!songs.length) return;
     if (!force && (activeId === id || spotifyId === id)) {
-      board.stopAll();
+      if (fading) board.stopAll(); else void board.fadeOut();
       if (dotnet) dotnet.invokeMethodAsync('OnSpotifyStopped');
       return;
     }
@@ -739,16 +740,20 @@
   };
 
   board.fadeOut = async function () {
-    if (mediaEl && activeId) {
-      const steps = 12;
-      for (let i = steps - 1; i >= 0; i--) {
-        setLocalLevel(volume * (i / steps));
-        await new Promise(function (r) { setTimeout(r, 90); });
+    if (fading) return;
+    fading = true;
+    try {
+      if (mediaEl && activeId) {
+        const steps = 12;
+        for (let i = steps - 1; i >= 0; i--) {
+          setLocalLevel(volume * (i / steps));
+          await new Promise(function (r) { setTimeout(r, 90); });
+        }
+        board.stopLocal();
+        setLocalLevel(volume);
       }
-      board.stopLocal();
-      setLocalLevel(volume);
-    }
-    if (player) { await board.stopSpotify(true); }
+      if (player) { await board.stopSpotify(true); }
+    } finally { fading = false; }
   };
 
   board.getState = async function () {

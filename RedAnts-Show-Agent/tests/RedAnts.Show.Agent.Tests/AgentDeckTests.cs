@@ -55,6 +55,21 @@ public class AgentDeckTests
     }
 
     [Fact]
+    public async Task A_second_press_on_a_running_piece_fades_it_out_instead_of_cutting_it()
+    {
+        var deck = Keys(out _, out var states, new DeckKey(1, KeyKinds.Music, "", MusicId: Goal.Id));
+
+        await deck.PressAsync(DeckId, 1);
+        Assert.Equal(Goal.Id, deck.MusicId);
+
+        await deck.PressAsync(DeckId, 1);
+
+        Assert.Equal("fade", deck.ControlWanted);
+        Assert.Equal("", deck.MusicId);
+        Assert.Equal("aus", states.Value(ShowStates.Music));
+    }
+
+    [Fact]
     public void Panic_sits_on_its_place_and_the_rest_of_the_grid_is_filled()
     {
         var deck = Keys(out _, out _);

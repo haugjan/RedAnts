@@ -3,9 +3,9 @@ using RedAnts.Show.Agent.Cloud;
 
 namespace RedAnts.Show.Agent;
 
-public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates states, Deck.Deck deck, Keys.KeyRunner runner, ILogger<BreakMusic> log) : BackgroundService
+public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates states, Keys.KeyRunner runner, ILogger<BreakMusic> log) : BackgroundService
 {
-    static readonly TimeSpan Look = TimeSpan.FromMilliseconds(400);
+    static readonly TimeSpan Look = TimeSpan.FromMilliseconds(150);
 
     bool _playing;
 
@@ -43,9 +43,9 @@ public sealed class BreakMusic(PayloadStore payload, LiveGame live, ShowStates s
 
         if (!wanted)
         {
-            log.LogInformation("Automatik: Pausenmusik aus, {Reason}",
+            log.LogInformation("Automatik: Pausenmusik blendet aus, {Reason}",
                 live.ClockRunning ? "die Uhr läuft wieder" : "die Automatik ist ausgeschaltet");
-            deck.NoteMusic(null);
+            runner.Control("fade");
             return;
         }
 

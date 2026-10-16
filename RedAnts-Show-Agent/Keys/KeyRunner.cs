@@ -131,6 +131,7 @@ public sealed class KeyRunner(
     public void Control(string what)
     {
         MusicControl?.Invoke(what);
+        if (what == "fade") states.Set(ShowStates.Music, "aus", "ausgeblendet");
         Changed?.Invoke();
     }
 

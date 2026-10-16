@@ -367,7 +367,8 @@ else
         {
             if (_hallId is { Length: > 0 } hall)
             {
-                Playback.Play(hall, _board, music.Id);
+                if (Playback.Of(hall).MusicId == music.Id) Playback.Command(hall, _board, "fade");
+                else Playback.Play(hall, _board, music.Id);
                 if (Connected) await MusicPlay.HandleAsync(new PlayHallMusic.Command(hall, music.Id));
             }
             return;
