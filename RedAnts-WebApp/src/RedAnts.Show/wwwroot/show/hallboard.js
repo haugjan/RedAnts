@@ -146,7 +146,7 @@
     const most = Math.max(minFont, Math.min(Math.round(sample.clientWidth / 5), Math.round(sample.clientHeight / 4)));
     const best = keys.map(function (key) { return largest(key, most); });
     const sorted = best.slice().sort(function (a, b) { return a - b; });
-    const uniform = sorted[Math.floor(sorted.length / 4)];
+    const uniform = sorted[Math.floor(sorted.length / 2)];
     keys.forEach(function (key, index) {
       key.querySelector('.label').style.fontSize = Math.min(uniform, best[index]) + 'px';
     });
