@@ -90,7 +90,7 @@ public static class SpecialKeys
         : "";
 }
 
-public sealed record KeyStep(string Action, string? Target = null, int? Ms = null, string? Event = null);
+public sealed record KeyStep(string Action, string? Target = null, int? Ms = null, string? Event = null, string Side = "", string Text = "");
 
 public sealed record DeckKey(
     int Number,

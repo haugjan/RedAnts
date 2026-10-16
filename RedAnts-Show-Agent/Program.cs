@@ -87,8 +87,6 @@ app.MapGet("/deck/view", async (string? deckId, long? since) =>
     return Results.Json(deck.View(id), PayloadJson.Options);
 });
 
-app.MapGet("/deck/list", () => Results.Json(deck.Decks.Select(id => new { id, name = deck.Layout(id)?.Name ?? id }), PayloadJson.Options));
-
 app.MapPost("/deck/music/{what}", async (string what) =>
 {
     await deck.MusicControlAsync(what);
@@ -103,14 +101,6 @@ app.MapPost("/deck/home", (string? deckId) =>
 });
 
 app.MapGet("/deck/image", (string? key) => Results.Json(new { image = DeckIcons.FromKey(key ?? "") }));
-
-app.MapGet("/deck/icon", (string? key) =>
-{
-    var image = DeckIcons.FromKey(key ?? "");
-    return image is null
-        ? Results.NotFound()
-        : Results.File(Convert.FromBase64String(image), "image/png");
-});
 
 app.MapPost("/deck/press/{number:int}", async (int number, string? deckId) =>
 {

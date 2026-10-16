@@ -19,7 +19,9 @@ public sealed record DeckLive(
     string AwayScore,
     bool ClockLive,
     string MusicId = "",
-    long MusicOrder = 0);
+    long MusicOrder = 0,
+    string Control = "",
+    long ControlOrder = 0);
 
 public sealed record DeckView(
     string DeckId,

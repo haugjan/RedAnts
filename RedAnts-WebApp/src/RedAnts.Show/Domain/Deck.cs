@@ -108,7 +108,7 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
         or MusicFade or MusicNext or MusicPrevious or MusicPause;
 }
 
-public sealed record KeyStep(string Action, string? Target = null, int? Ms = null, string? Event = null)
+public sealed record KeyStep(string Action, string? Target = null, int? Ms = null, string? Event = null, string Side = "", string Text = "")
 {
     public KeyStep Validated()
     {

@@ -137,6 +137,7 @@ else
     private string? _note;
     private string? _playing;
     private long _musicOrder = -1;
+    private long _controlOrder = -1;
     private DotNetObjectReference<ShowBoardPage>? _self;
     private bool _ready;
     private Timer? _poll;
@@ -235,7 +236,13 @@ else
 
     private async Task FollowMusicAsync()
     {
-        if (!_ready || _view?.Live is not { } live || live.MusicOrder == _musicOrder) return;
+        if (!_ready || _view?.Live is not { } live) return;
+        if (live.ControlOrder != _controlOrder)
+        {
+            _controlOrder = live.ControlOrder;
+            if (live.Control.Length > 0) await JS.InvokeVoidAsync("hallBoard.control", live.Control);
+        }
+        if (live.MusicOrder == _musicOrder) return;
         _musicOrder = live.MusicOrder;
         if (live.MusicId.Length == 0)
         {

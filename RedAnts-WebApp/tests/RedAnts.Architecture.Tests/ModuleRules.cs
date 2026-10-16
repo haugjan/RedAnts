@@ -82,6 +82,6 @@ public class ModuleRules
     [Fact]
     public void Ticketing_does_not_use_show_or_website() =>
         Types().That().ResideInAssembly(RedAntsArchitecture.Ticketing)
-            .Should().NotDependOnAny(DJ).AndShould().NotDependOnAny(WebsiteInternals)
+            .Should().NotDependOnAny(DJ).AndShould().NotDependOnAny(Show).AndShould().NotDependOnAny(WebsiteInternals)
             .Check(RedAntsArchitecture.Loaded);
 }

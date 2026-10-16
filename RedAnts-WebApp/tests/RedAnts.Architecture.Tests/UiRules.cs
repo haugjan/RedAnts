@@ -10,7 +10,7 @@ namespace RedAnts.Architecture.Tests;
 public class UiRules
 {
     private static readonly Regex PortNamespace =
-        new(@"^RedAnts\.(Ticketing|DJ)\.Features\.(?!Shared\b)[A-Za-z]+(\.(?!Admin\b|Infrastructure\b|Views\b|Shared\b)[A-Za-z]+)?$");
+        new(@"^RedAnts\.(Ticketing|DJ|Show)\.Features\.(?!Shared\b)[A-Za-z]+(\.(?!Admin\b|Infrastructure\b|Views\b|Shared\b)[A-Za-z]+)?$");
 
     private static readonly Dictionary<string, string> Exceptions = RedAntsArchitecture.ReadBaseline("ui-port-exceptions.txt");
 

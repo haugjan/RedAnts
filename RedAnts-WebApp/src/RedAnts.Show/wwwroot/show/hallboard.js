@@ -31,6 +31,7 @@
   board.play = function (id, songsJson, random, label) {
     const dj = player();
     if (!dj) return;
+    if (dj.currentLocalId && dj.currentLocalId() === id) { announce(label || ''); return; }
     let songs = [];
     try { songs = JSON.parse(songsJson || '[]'); } catch (e) { return; }
     if (!songs.length) return;
@@ -59,6 +60,14 @@
   board.previous = function () {
     const dj = player();
     if (dj && dj.previous) dj.previous();
+  };
+
+  board.control = function (what) {
+    if (what === 'stop') board.stop();
+    else if (what === 'fade') board.fade();
+    else if (what === 'next') board.next();
+    else if (what === 'previous') board.previous();
+    else if (what === 'pause') board.pause();
   };
 
   board.pause = function () {

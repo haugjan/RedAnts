@@ -29,6 +29,8 @@ public sealed class Deck
     TaskCompletionSource<bool> _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     string _music = "";
     long _musicOrder;
+    string _control = "";
+    long _controlOrder;
     int _spectators;
 
     public Deck(PayloadStore payload, LiveGame live, ShowStates states, KeyRunner runner, ILogger<Deck> log)
@@ -43,6 +45,7 @@ public sealed class Deck
         runner.Changed += Bump;
         runner.MusicRequested += NoteMusic;
         runner.MusicStopped += () => NoteMusic(null);
+        runner.MusicControl += NoteControl;
         live.Changed += Bump;
     }
 
@@ -52,6 +55,27 @@ public sealed class Deck
         _payload.Hall.Decks is { Count: > 0 } decks ? decks.Select(d => d.Id).ToList() : [];
 
     public DeckLayout? Layout(string deckId) => _payload.Hall.DeckOf(deckId);
+
+    public void NoteFromBoard(string? musicId)
+    {
+        if (_payload.MusicOf(musicId) is not { } music) return;
+        if (string.Equals(_music, music.Id, StringComparison.OrdinalIgnoreCase)) NoteMusic(null);
+        else
+        {
+            NoteMusic(music);
+            _states.Set(ShowStates.Music, "läuft", "Bord");
+        }
+    }
+
+    public void NoteControl(string what)
+    {
+        lock (_gate)
+        {
+            _control = what;
+            _controlOrder++;
+        }
+        Bump();
+    }
 
     public void NoteMusic(MusicItem? music)
     {
@@ -116,6 +140,8 @@ public sealed class Deck
     {
         musik = _music,
         musikOrder = _musicOrder,
+        steuerung = _control,
+        steuerungOrder = _controlOrder,
         time = _live.Time,
         period = _live.Period,
         periodLabel = _live.PeriodLabel,
@@ -142,6 +168,7 @@ public sealed class Deck
         if (flow.Kind == FlowKind.Players) Players(builder, deck, deckId, flow);
         else if (flow.Kind == FlowKind.Penalty) Penalty(builder, deck, deckId, flow);
         else if (flow.Kind == FlowKind.Starting6) Starting6(builder, deck, deckId, flow);
+        else if (flow.Kind == FlowKind.Spectators) Spectators(builder, deck, deckId);
         else Configured(builder, deck, deckId);
 
         Fixed(builder, deck, deckId, flow);
@@ -182,10 +209,16 @@ public sealed class Deck
             _flow.Clear();
         }
         _runner.StopMusic();
-        await _runner.LedStopAsync(stop);
-        await _runner.HideAllAsync(stop);
+        await Safe(() => _runner.LedStopAsync(stop));
+        await Safe(() => _runner.HideAllAsync(stop));
         _states.Set(ShowStates.AutoBreakMusic, "aus", "PANIC");
         Bump();
+    }
+
+    async Task Safe(Func<Task> work)
+    {
+        try { await work(); }
+        catch (Exception e) { _log.LogWarning("PANIC: {Message}", e.Message); }
     }
 
     public Task MusicControlAsync(string what)
@@ -331,8 +364,19 @@ public sealed class Deck
 
     async Task StepsAsync(string deckId, DeckKey key)
     {
-        await _runner.RunAsync(key.Sequence, KeyContext.None, CancellationToken.None);
+        await _runner.RunAsync(key.Sequence, new KeyContext(SideOf(key)), CancellationToken.None);
         if (key.HomeAfter) Go(deckId, DeckPage.HomeId);
+    }
+
+    static string SideOf(DeckKey key)
+    {
+        foreach (var step in key.Sequence)
+        {
+            var target = step.Target ?? "";
+            if (target.EndsWith("_away", StringComparison.OrdinalIgnoreCase) || target.EndsWith("-gast", StringComparison.OrdinalIgnoreCase)) return "away";
+            if (target.EndsWith("_home", StringComparison.OrdinalIgnoreCase) || target.EndsWith("-heim", StringComparison.OrdinalIgnoreCase)) return "home";
+        }
+        return "";
     }
 
     async Task SpecialAsync(string deckId, DeckKey key, string special)
@@ -347,6 +391,7 @@ public sealed class Deck
                 break;
             case SpecialKeys.PenaltyHome:
             case SpecialKeys.PenaltyAway:
+                await _runner.RunAsync(key.Sequence, new KeyContext(side), CancellationToken.None);
                 Open(deckId, new Flow(FlowKind.Penalty, side, "penalty", $"Strafe {Team(side)}", key));
                 break;
             case SpecialKeys.BestPlayerHome:
@@ -394,13 +439,15 @@ public sealed class Deck
         var color = flow.Side == "away" ? CAway : CHome;
         var places = Places(deck).ToList();
         var index = 0;
+        var room = places.Count - (flow.Event == "goal" ? 3 : 2);
         foreach (var player in team.Players)
         {
-            if (index >= places.Count - 2) break;
+            if (index >= room) break;
             var number = places[index++];
             var chosen = player;
             builder.Action(number, $"{chosen.Display}\n{Short(chosen.Name)}", color, () => PickAsync(deckId, flow, chosen));
         }
+        if (places.Count > 0) builder.Label(places[^1], flow.Title, CHead);
         if (flow.Event == "goal" && index < places.Count)
             builder.Action(places[index++], "Eigentor", color, () => PickAsync(deckId, flow, null, own: true));
         if (team.TopScorerPlayer is { } top && index < places.Count)
@@ -440,7 +487,7 @@ public sealed class Deck
             builder.Action(places[^1], "▶▶ Weiter", CBack, () => ShowSixAsync(deckId, flow, flow.Position + 1));
     }
 
-    void Spectators(Builder builder, DeckLayout deck, string deckId, Flow flow)
+    void Spectators(Builder builder, DeckLayout deck, string deckId)
     {
         var places = Places(deck).ToList();
         var steps = new[] { ("+100", 100), ("+10", 10), ("+1", 1), ("-1", -1), ("-10", -10), ("-100", -100) };
@@ -470,7 +517,7 @@ public sealed class Deck
             "goal" => own ? "player_event" : "player_event",
             "penalty" => "penalty",
             "bestplayer" => "bestplayer",
-            _ => "player_name",
+            _ => "name",
         };
         Home(deckId);
         await _runner.ShowTitleAsync(kind, ctx, CancellationToken.None);

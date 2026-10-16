@@ -9,7 +9,7 @@ namespace RedAnts.Architecture.Tests;
 public class LayerRules
 {
     private static readonly IObjectProvider<IType> Domain =
-        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|(Ticketing|DJ)\.Domain)(\..*)?$").As("Domain");
+        Types().That().ResideInNamespaceMatching(@"^RedAnts\.(Domain|(Ticketing|DJ|Show)\.Domain)(\..*)?$").As("Domain");
 
     private static readonly IObjectProvider<IType> TicketingAndWebsiteFeatures =
         Types().That().ResideInNamespaceMatching(@"^RedAnts\.Ticketing\.Features(\.(?!Infrastructure\b)\w+)*$|^RedAnts\.Features\.Website(\..*)?$").As("Features");
@@ -47,7 +47,7 @@ public class LayerRules
             .Check(RedAntsArchitecture.Loaded);
 
     [Theory]
-    [InlineData(@"^RedAnts\.((Ticketing|DJ)\.(Domain|Features|Infrastructure)|(Features|Infrastructure)\.(Website|Shared))(\..*)?$")]
+    [InlineData(@"^RedAnts\.((Ticketing|DJ|Show)\.(Domain|Features|Infrastructure)|(Features|Infrastructure)\.(Website|Shared))(\..*)?$")]
     [InlineData(@"^(Umbraco|NPoco|Microsoft\.AspNetCore|Microsoft\.Extensions)(\..*)?$")]
     public void Kernel_depends_only_on_the_base_class_library(string namespacePattern) =>
         Types().That().ResideInAssembly(RedAntsArchitecture.Kernel)

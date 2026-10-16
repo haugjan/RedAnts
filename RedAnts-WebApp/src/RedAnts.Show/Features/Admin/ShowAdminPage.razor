@@ -30,8 +30,6 @@
     <main class="sa-content">
         @switch (_tab)
         {
-            case "szenen": <ScenesTab /> break;
-            case "musik": <MusicTab /> break;
             case "zustaende": <StatesTab /> break;
             case "vmix": <TitlesTab /> break;
             case "led": <LedTab /> break;
@@ -46,8 +44,6 @@
     private static readonly (string Key, string Label)[] Tabs =
     [
         ("hallen", "Hallen"),
-        ("szenen", "Szenen"),
-        ("musik", "Musik"),
         ("zustaende", "Zustände"),
         ("vmix", "vMix-Titel"),
         ("led", "LED-Vorlagen"),

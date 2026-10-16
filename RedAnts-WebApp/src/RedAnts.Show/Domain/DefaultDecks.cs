@@ -14,12 +14,12 @@ public static class DefaultDecks
         new DeckPage(DeckPage.HomeId, "Startseite", null,
         [
             Special(1, SpecialKey.GoalHome, "Tor", Home),
-            Title(2, "Coach", "coach_home", Home, "coach"),
-            Title(3, "Timeout", "timeout_home", Home, "timeout"),
-            Title(4, "Aufstellung", "lineup_home", Home, "aufstellung"),
-            Title(5, "Aufstellung", "lineup_away", Away, "aufstellung"),
-            Title(6, "Timeout", "timeout_away", Away, "timeout"),
-            Title(7, "Coach", "coach_away", Away, "coach"),
+            Title(2, "Coach", "coach", Home, "coach", side: "home"),
+            Title(3, "Timeout", "timeout", Home, "timeout", side: "home"),
+            Title(4, "Aufstellung", "lineup_home", Home, "aufstellung", side: "home"),
+            Title(5, "Aufstellung", "lineup_away", Away, "aufstellung", side: "away"),
+            Title(6, "Timeout", "timeout", Away, "timeout", side: "away"),
+            Title(7, "Coach", "coach", Away, "coach", side: "away"),
             Special(8, SpecialKey.GoalAway, "Tor", Away),
 
             Special(9, SpecialKey.PenaltyHome, "Strafe", Home),
@@ -31,7 +31,7 @@ public static class DefaultDecks
             Special(15, SpecialKey.PlayerAway, "Spieler", Away),
             Special(16, SpecialKey.PenaltyAway, "Strafe", Away),
 
-            new DeckKey(18, KeyKinds.Page, "Meldung", Message, "meldungen", PageId: MessagePage),
+            new DeckKey(18, KeyKinds.Page, "Meldung", MessageColor, "meldungen", PageId: MessagePage),
             new DeckKey(19, KeyKinds.Live, "Drittel", Neutral, Live: LiveValues.Period),
             new DeckKey(20, KeyKinds.Live, "Stand Heim", Home, Live: LiveValues.HomeScore),
             new DeckKey(21, KeyKinds.Live, "Stand Gast", Away, Live: LiveValues.AwayScore),
@@ -49,12 +49,12 @@ public static class DefaultDecks
         ]),
         new DeckPage(MessagePage, "Meldung", DeckPage.HomeId,
         [
-            Title(1, "Technik", "message_technik", Message, "meldungen", home: true),
-            Title(2, "Video", "message_video", Message, "meldungen", home: true),
-            Title(3, "Audio", "message_audio", Message, "meldungen", home: true),
-            Title(9, "Highlights", "message_highlights", Info, home: true),
-            Title(10, "Ohne Kommentar", "message_nocomment", Info, home: true),
-            Title(11, "Live aus der Halle", "message_live", Info, home: true),
+            Note(1, "Technik", "Technische Störung, wir sind gleich zurück"),
+            Note(2, "Video", "Bildstörung, wir arbeiten daran"),
+            Note(3, "Audio", "Tonstörung, wir arbeiten daran"),
+            Note(9, "Highlights", "Die Highlights gibt es nach dem Spiel"),
+            Note(10, "Ohne Kommentar", "Leider heute ohne Kommentar"),
+            Note(11, "Live aus der Halle", "Live aus der Halle"),
             Special(8, SpecialKey.Spectators, "Zuschauer", Info),
         ]),
     ], PanicKey: 25, BackKey: 17);
@@ -72,7 +72,7 @@ public static class DefaultDecks
 
     private const string Home = "#e23b3b";
     private const string Away = "#3b82e2";
-    private const string Message = "#8e44ad";
+    private const string MessageColor = "#8e44ad";
     private const string Info = "#4a5568";
     private const string Neutral = "#2b3038";
     private const string Highlight = "#00bcd4";
@@ -86,13 +86,21 @@ public static class DefaultDecks
     private static DeckKey Special(int number, string special, string label, string color) =>
         new(number, KeyKinds.Special, label, color, SpecialKey.Of(special)?.Icon is { Length: > 0 } icon ? icon : null, Special: special);
 
-    private static DeckKey Title(int number, string label, string kind, string color, string? icon = null, bool home = false) =>
+    private static DeckKey Title(int number, string label, string kind, string color, string? icon = null, bool home = false, string side = "") =>
         new(number, KeyKinds.Steps, label, color, icon, Steps:
         [
-            new KeyStep(KeyActions.VmixShow, "title:" + kind, Event: kind),
+            new KeyStep(KeyActions.VmixShow, "title:" + kind, Event: kind, Side: side),
             new KeyStep(KeyActions.Wait, Ms: 8000),
             new KeyStep(KeyActions.VmixHide, "title:" + kind),
         ], HomeAfter: home);
+
+    private static DeckKey Note(int number, string label, string text) =>
+        new(number, KeyKinds.Steps, label, "#4a5568", "meldungen", Steps:
+        [
+            new KeyStep(KeyActions.VmixShow, "title:message", Text: text),
+            new KeyStep(KeyActions.Wait, Ms: 8000),
+            new KeyStep(KeyActions.VmixHide, "title:message"),
+        ], HomeAfter: true);
 
     private static DeckKey Led(int number, string label, string playlist, string? icon = null) =>
         new(number, KeyKinds.Steps, label, StateOff, icon, Steps: [new KeyStep(KeyActions.LedStart, playlist)]);

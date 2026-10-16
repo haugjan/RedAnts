@@ -104,6 +104,7 @@ public sealed class KeyRunner(
             log.LogWarning("Musik-Befehl {Id} ist nicht eingestellt", musicId);
             return;
         }
+        states.Set(ShowStates.Music, "läuft", music.Name);
         MusicRequested?.Invoke(music);
     }
 
@@ -145,7 +146,12 @@ public sealed class KeyRunner(
                 Control("fade");
                 break;
             case KeyActions.VmixShow:
-                await ShowTitleAsync(KindOf(step.Target), ctx with { Event = step.Event ?? ctx.Event }, stop);
+                await ShowTitleAsync(KindOf(step.Target), ctx with
+                {
+                    Side = step.Side.Length > 0 ? step.Side : ctx.Side,
+                    Event = step.Event ?? ctx.Event,
+                    Text = step.Text.Length > 0 ? step.Text : ctx.Text,
+                }, stop);
                 break;
             case KeyActions.VmixHide:
                 if (step.Target is null or "" or TitlePrefix + "*") await HideAllAsync(stop);

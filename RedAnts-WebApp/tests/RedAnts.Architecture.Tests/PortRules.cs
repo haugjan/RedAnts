@@ -7,8 +7,8 @@ namespace RedAnts.Architecture.Tests;
 
 public class PortRules
 {
-    private static readonly Regex ModuleNamespace = new(@"^RedAnts\.(Ticketing|DJ)\.");
-    private static readonly Regex CapabilityNamespace = new(@"^RedAnts\.(Ticketing|DJ)\.Features\.[A-Za-z]+$");
+    private static readonly Regex ModuleNamespace = new(@"^RedAnts\.(Ticketing|DJ|Show)\.");
+    private static readonly Regex CapabilityNamespace = new(@"^RedAnts\.(Ticketing|DJ|Show)\.Features\.[A-Za-z]+$");
     private static readonly Regex InfrastructureNamespace = new(@"\.Infrastructure(\.|$)");
     private static readonly Regex RepositoryName = new(@"^I[A-Z][A-Za-z]*Repository$");
     private static readonly string[] AllowedToUseInfrastructure = ["Composer", "Extensions", "Features"];

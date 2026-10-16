@@ -115,7 +115,9 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
             Text("away"),
             live.TryGetProperty("clock", out var running) && running.ValueKind == JsonValueKind.True,
             Text("musik"),
-            live.TryGetProperty("musikOrder", out var order) && order.TryGetInt64(out var number) ? number : 0);
+            live.TryGetProperty("musikOrder", out var order) && order.TryGetInt64(out var number) ? number : 0,
+            Text("steuerung"),
+            live.TryGetProperty("steuerungOrder", out var control) && control.TryGetInt64(out var step) ? step : 0);
     }
 
     private static IReadOnlyDictionary<string, string>? StatesOf(JsonElement view)

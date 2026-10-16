@@ -5,7 +5,6 @@ public static class StateSources
     public const string Observed = "beobachtet";
     public const string Set = "gesetzt";
 
-    public static readonly IReadOnlyList<string> All = [Observed, Set];
 }
 
 public sealed record ShowState(string Id, string Name, IReadOnlyList<string> Values, string Source, string Note = "")
@@ -37,34 +36,5 @@ public static class DefaultStates
         new(AutoBreakMusic, "Auto-Pausenmusik", ["aus", "an"], StateSources.Set, "spielt die Pausenmusik, sobald die Uhr mitten im Drittel steht"),
     ];
 
-    public static ShowState? Of(string id) => All.FirstOrDefault(s => s.Id == id);
 
-    public static string? StateOf(string special) => special switch
-    {
-        SpecialKey.OverlayToggle => Overlay,
-        SpecialKey.ClockToggle => ClockVisible,
-        SpecialKey.MusicToggle => Music,
-        SpecialKey.AutoBreakMusic => AutoBreakMusic,
-        _ => null,
-    };
-
-    public static IReadOnlyDictionary<string, string> Effects(KeyStep step)
-    {
-        var target = step.Target ?? "";
-        var scoreboard = target.Equals("title:scoreboard", StringComparison.OrdinalIgnoreCase);
-        return step.Action switch
-        {
-            KeyActions.VmixShow => One(scoreboard ? ClockVisible : Overlay, "an"),
-            KeyActions.VmixHide => One(scoreboard ? ClockVisible : Overlay, "aus"),
-            KeyActions.MusicPlay => One(Music, "läuft"),
-            KeyActions.MusicStop => One(Music, "aus"),
-            KeyActions.LedStart => target.EndsWith(":sponsoren", StringComparison.OrdinalIgnoreCase)
-                ? new Dictionary<string, string> { [Led] = "läuft", [Sponsors] = "an" }
-                : One(Led, "läuft"),
-            KeyActions.LedStop => new Dictionary<string, string> { [Led] = "aus", [Sponsors] = "aus" },
-            _ => new Dictionary<string, string>(),
-        };
-    }
-
-    private static Dictionary<string, string> One(string state, string value) => new() { [state] = value };
 }

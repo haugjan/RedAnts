@@ -11,5 +11,4 @@ public static class ShowJson
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public static readonly JsonSerializerOptions Pretty = new(Options) { WriteIndented = true };
 }
