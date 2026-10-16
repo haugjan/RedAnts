@@ -76,8 +76,8 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
 
     public static IReadOnlyList<SpecialKey> All { get; } =
     [
-        new(GoalHome, "Tor Heim", "Spiel", "tor"),
-        new(GoalAway, "Tor Gast", "Spiel", "tor"),
+        new(GoalHome, "Tor Heim", "Spiel", "ball"),
+        new(GoalAway, "Tor Gast", "Spiel", "ball"),
         new(PenaltyHome, "Strafe Heim", "Spiel", "strafe"),
         new(PenaltyAway, "Strafe Gast", "Spiel", "strafe"),
         new(BestPlayerHome, "Best Player Heim", "Spiel", "bestplayer"),

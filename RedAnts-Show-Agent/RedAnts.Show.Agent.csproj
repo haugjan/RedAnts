@@ -22,17 +22,12 @@
     <EmbeddedResource Remove="tests/**" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="../RedAnts-WebApp/src/RedAnts.DJ/wwwroot/dj/soundboard.js" Link="wwwroot/dj/soundboard.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="../RedAnts-WebApp/src/RedAnts.Show/wwwroot/show/hallboard.js" Link="wwwroot/show/hallboard.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="../RedAnts-WebApp/src/RedAnts.Show/wwwroot/show/board.css" Link="wwwroot/show/board.css">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+  <Target Name="CopyBoardAssets" BeforeTargets="BeforeBuild">
+    <Copy SourceFiles="../RedAnts-WebApp/src/RedAnts.DJ/wwwroot/dj/soundboard.js" DestinationFolder="wwwroot/dj" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="../RedAnts-WebApp/src/RedAnts.Show/wwwroot/show/hallboard.js" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="../RedAnts-WebApp/src/RedAnts.Show/wwwroot/show/board.css" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
+  </Target>
+
 
   <ItemGroup>
     <Content Include="Icons/*.png">

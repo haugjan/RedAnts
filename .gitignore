@@ -488,3 +488,7 @@ RedAnts-WebApp/src/RedAnts.Host/wwwroot/_framework/
 
 # Never commit audio; sounds live in Azure Blob (container "show")
 *.mp3
+
+RedAnts-Show-Agent/wwwroot/dj/soundboard.js
+RedAnts-Show-Agent/wwwroot/show/hallboard.js
+RedAnts-Show-Agent/wwwroot/show/board.css
