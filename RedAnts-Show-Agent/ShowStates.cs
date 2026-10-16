@@ -10,9 +10,7 @@ public sealed class ShowStates(PayloadStore payload, ILogger<ShowStates> log)
     public const string Music = "musik";
     public const string Led = "led";
     public const string Sponsors = "sponsoren";
-    public const string Break = "pause";
     public const string AutoBreakMusic = "auto-musik";
-    public const string Light = "licht";
 
     public sealed record ShowState(string Id, string Name, IReadOnlyList<string> Values)
     {
@@ -24,12 +22,10 @@ public sealed class ShowStates(PayloadStore payload, ILogger<ShowStates> log)
         new(Overlay, "Einblender", ["aus", "an"]),
         new(ClockVisible, "Scoreboard", ["aus", "an"]),
         new(ClockRunning, "Uhr", ["steht", "läuft"]),
-        new(Music, "Musik", ["aus", "läuft", "fade"]),
+        new(Music, "Musik", ["aus", "läuft", "pause"]),
         new(Led, "LED", ["aus", "läuft"]),
         new(Sponsors, "Sponsoren-Loop", ["aus", "an"]),
-        new(Break, "Pause-Modus", ["aus", "an"]),
-        new(AutoBreakMusic, "Automatik Pausenmusik", ["aus", "an"]),
-        new(Light, "Licht", ["normal", "tor", "pause"]),
+        new(AutoBreakMusic, "Auto-Pausenmusik", ["aus", "an"]),
     ];
 
     public static ShowState? State(string? id) =>

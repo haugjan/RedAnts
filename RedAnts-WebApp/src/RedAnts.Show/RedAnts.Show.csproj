@@ -36,8 +36,4 @@
   <ItemGroup>
     <PackageReference Include="Umbraco.Cms" />
   </ItemGroup>
-  <Target Name="CopyPlayer" BeforeTargets="BeforeBuild">
-    <Copy SourceFiles="../RedAnts.DJ/wwwroot/dj/soundboard.js" DestinationFiles="wwwroot/show/soundboard.js" SkipUnchangedFiles="true" />
-  </Target>
-
 </Project>
