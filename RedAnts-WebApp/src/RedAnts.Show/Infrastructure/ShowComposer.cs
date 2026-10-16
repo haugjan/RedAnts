@@ -11,6 +11,7 @@ using RedAnts.Show.Features.Halls.Infrastructure;
 using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Music.Infrastructure;
 using Umbraco.Cms.Core.Composing;
+using Umbraco.Cms.Core.Notifications;
 using Umbraco.Cms.Infrastructure.Manifest;
 
 namespace RedAnts.Show.Infrastructure;
@@ -20,6 +21,7 @@ public sealed class ShowComposer : IComposer
     public void Compose(IUmbracoBuilder builder)
     {
         builder.AddComponent<ShowMigrationComponent>();
+        builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, Content.ShowExampleSeeder>();
         builder.Services.AddSingleton<ShowDatabase>();
         builder.Services.AddSingleton<IHallRepository, HallRepository>();
         builder.Services.AddSingleton<IHallReader, HallReader>();
