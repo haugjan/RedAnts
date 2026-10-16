@@ -72,7 +72,9 @@ public sealed class KeyRunner(
         Changed?.Invoke();
     }
 
-    public async Task LedAsync(string playlist, CancellationToken stop)
+    public const string PlayerPlaylist = "spielerin";
+
+    public async Task LedAsync(string playlist, KeyContext ctx, CancellationToken stop)
     {
         if (!payload.Hall.Offers.Led) return;
         var name = playlist.StartsWith(LedPrefix, StringComparison.OrdinalIgnoreCase) ? playlist[LedPrefix.Length..] : playlist;
@@ -81,7 +83,7 @@ public sealed class KeyRunner(
             log.LogWarning("Keine LED-Vorlage für {Event}", name);
             return;
         }
-        await led.SendAsync(command, stop);
+        await led.SendAsync(Templates.Expand(command, ctx, payload.Game, live), stop);
         states.Set(ShowStates.Led, "läuft", name);
         if (name.Equals("sponsoren", StringComparison.OrdinalIgnoreCase)) states.Set(ShowStates.Sponsors, "an", name);
         Changed?.Invoke();
@@ -94,6 +96,13 @@ public sealed class KeyRunner(
         states.Set(ShowStates.Led, "aus", "gestoppt");
         states.Set(ShowStates.Sponsors, "aus", "gestoppt");
         Changed?.Invoke();
+    }
+
+    public async Task ShowPlayerOnLedAsync(KeyContext ctx, CancellationToken stop)
+    {
+        if (!payload.Hall.Offers.Led || ctx.Player is null) return;
+        try { await LedAsync(PlayerPlaylist, ctx, stop); }
+        catch (Exception e) { log.LogWarning("Spielerin ging nicht an die LED-Wand: {Message}", e.Message); }
     }
 
     public void PlayMusic(string? musicId)
@@ -158,7 +167,7 @@ public sealed class KeyRunner(
                 else await HideTitleAsync(KindOf(step.Target), stop);
                 break;
             case KeyActions.LedStart:
-                await LedAsync(step.Target ?? "", stop);
+                await LedAsync(step.Target ?? "", ctx, stop);
                 break;
             case KeyActions.LedStop:
                 await LedStopAsync(stop);

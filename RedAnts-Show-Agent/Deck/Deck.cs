@@ -538,6 +538,7 @@ public sealed class Deck
         };
         Home(deckId);
         await _runner.ShowTitleAsync(kind, ctx, CancellationToken.None);
+        await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
     }
 
     async Task ShowSixAsync(string deckId, Flow flow, int position)
