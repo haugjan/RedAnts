@@ -116,7 +116,7 @@ app.Use(async (context, next) =>
 });
 
 const string devBadge =
-    "<div style=\"position:fixed;left:0;right:0;bottom:0;z-index:2147483647;" +
+    "<div class=\"ra-dev-badge\" style=\"position:fixed;left:0;right:0;bottom:0;z-index:2147483647;" +
     "background:rgba(200,16,46,0.55);color:#ffffff;text-align:center;" +
     "font:600 12px/26px Verdana,Geneva,Tahoma,sans-serif;letter-spacing:1.5px;" +
     "text-transform:uppercase;pointer-events:none;box-shadow:0 -1px 8px rgba(0,0,0,.2);\">" +

@@ -57,6 +57,7 @@ html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf
     display: flex; align-items: center; gap: 8px; padding: 8px 14px;
     background: #16161d; border-top: 1px solid #272730;
 }
+body:has(.ra-dev-badge) .hb .now { padding-bottom: 32px; }
 .hb .now .np { flex: 1 1 auto; font-weight: 700; color: #cfd6dd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hb .ctl { background: #262631; color: #e9edf1; border: 1px solid #343442; border-radius: 4px; padding: 7px 12px; font: inherit; cursor: pointer; }
 .hb .ctl.stop { background: #7a1d1d; border-color: #a32a2a; color: #fff; }
