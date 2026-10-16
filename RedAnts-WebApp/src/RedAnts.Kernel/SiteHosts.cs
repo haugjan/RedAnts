@@ -56,7 +56,7 @@ public static class SiteHosts
     {
         SiteSurface.Admin => "/umbraco",
         SiteSurface.Scan => "/scan",
-        SiteSurface.DJ => "/dj",
+        SiteSurface.DJ => "/bord",
         _ => "/ticketing/",
     };
 

@@ -84,7 +84,7 @@ public class SiteHostsTests
     {
         Assert.Equal("/umbraco", SiteHosts.RootPathFor(SiteSurface.Admin));
         Assert.Equal("/scan", SiteHosts.RootPathFor(SiteSurface.Scan));
-        Assert.Equal("/dj", SiteHosts.RootPathFor(SiteSurface.DJ));
+        Assert.Equal("/bord", SiteHosts.RootPathFor(SiteSurface.DJ));
         Assert.Equal("/ticketing/", SiteHosts.RootPathFor(SiteSurface.Tickets));
     }
 }
