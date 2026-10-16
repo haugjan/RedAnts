@@ -87,6 +87,8 @@ public sealed class Deck
             title = Title(deckId),
             columns = deck?.Columns ?? 0,
             rows = deck?.Rows ?? 0,
+            panic = deck?.Panic ?? 0,
+            back = deck?.Back ?? 0,
             slots = Slots(deckId).Select(s => new
             {
                 number = s.Number,
@@ -185,6 +187,21 @@ public sealed class Deck
         _states.Set(ShowStates.AutoBreakMusic, "aus", "PANIC");
         Bump();
     }
+
+    public Task MusicControlAsync(string what)
+    {
+        switch (what)
+        {
+            case "stop": _runner.StopMusic(); break;
+            case "fade": _runner.Control("fade"); break;
+            case "next": _runner.Control("next"); break;
+            case "previous": _runner.Control("previous"); break;
+            case "pause": _runner.Control("pause"); break;
+        }
+        return Task.CompletedTask;
+    }
+
+    public void GoHome(string deckId) => Home(deckId);
 
     public Task ToggleMusicAsync(string? musicId)
     {
