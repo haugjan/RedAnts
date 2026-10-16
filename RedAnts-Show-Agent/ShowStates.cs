@@ -1,8 +1,6 @@
-using RedAnts.Show.Agent.Cloud;
-
 namespace RedAnts.Show.Agent;
 
-public sealed class ShowStates(PayloadStore payload, ILogger<ShowStates> log)
+public sealed class ShowStates(ILogger<ShowStates> log)
 {
     public const string Overlay = "einblender";
     public const string ClockVisible = "uhr-sichtbar";

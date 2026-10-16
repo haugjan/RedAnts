@@ -9,7 +9,7 @@ public class ShowStatesTests
     {
         var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
         store.Apply(new AgentPayload(Hall.Offline with { Id = "win4" }, null, DateTimeOffset.Now, []));
-        return new ShowStates(store, NullLogger<ShowStates>.Instance);
+        return new ShowStates(NullLogger<ShowStates>.Instance);
     }
 
     [Fact]

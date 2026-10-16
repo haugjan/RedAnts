@@ -24,7 +24,7 @@ public class AgentDeckTests
         store = new PayloadStore(NullLogger<PayloadStore>.Instance);
         var hall = Hall.Offline with { Id = "win4", Name = "Win4", Decks = decks, BreakMusicId = Break.Id };
         store.Apply(new AgentPayload(hall, Game.None, DateTimeOffset.Now, [Goal, Break]));
-        states = new ShowStates(store, NullLogger<ShowStates>.Instance);
+        states = new ShowStates(NullLogger<ShowStates>.Instance);
         var live = new LiveGame();
         var vmix = new VmixLink(store, live, NullLogger<VmixLink>.Instance);
         var led = new SednaLink(store, NullLogger<SednaLink>.Instance);

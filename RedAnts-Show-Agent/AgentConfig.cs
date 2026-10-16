@@ -4,7 +4,7 @@ using RedAnts.Show.Agent.Cloud;
 
 namespace RedAnts.Show.Agent;
 
-public sealed record AgentConfig(string CloudUrl = "", string HallId = "", string Key = "", int DeckPort = 5150)
+public sealed record AgentConfig(string CloudUrl = "", string HallId = "", string Key = "", int DeckPort = 5150, string Bind = "localhost", string BoardPassword = "")
 {
     public static string DataDir => Path.Combine(AppContext.BaseDirectory, "data");
 
@@ -18,6 +18,16 @@ public sealed record AgentConfig(string CloudUrl = "", string HallId = "", strin
     public bool IsComplete => CloudUrl.Length > 0 && HallId.Length > 0 && Key.Length > 0;
 
     public string HubUrl => CloudUrl.TrimEnd('/') + "/hubs/halle";
+
+    public string Host => Bind.Length > 0 ? Bind : "localhost";
+
+    public bool OnNetwork => Host is not ("localhost" or "127.0.0.1");
+
+    public string? Warning => OnNetwork && BoardPassword.Length == 0
+        ? "Der Agent hört im Netz, aber das Bord hat kein Passwort (agent.json: boardPassword)."
+        : null;
+
+    public string BoardUrl => $"http://{(OnNetwork ? Environment.MachineName.ToLowerInvariant() : "localhost")}:{DeckPort}";
 
     public static AgentConfig Load()
     {
@@ -46,6 +56,8 @@ public sealed record AgentConfig(string CloudUrl = "", string HallId = "", strin
                 case "--hall": config = config with { HallId = args[++i].Trim().ToLowerInvariant() }; break;
                 case "--key": config = config with { Key = args[++i].Trim() }; break;
                 case "--deck-port": config = config with { DeckPort = int.Parse(args[++i]) }; break;
+                case "--bind": config = config with { Bind = args[++i].Trim() }; break;
+                case "--board-password": config = config with { BoardPassword = args[++i].Trim() }; break;
             }
         }
         return config;

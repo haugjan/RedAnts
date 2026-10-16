@@ -44,6 +44,10 @@
         var value = StateValue(state);
         <span class="pill @(state.IsOn(value) ? "on" : "")" @key="state.Id">@state.Name: @value</span>
     }
+    @if (_hall is not null && (_hall.Offers.Vmix || _hall.Offers.Clock))
+    {
+        <button class="setup @(_setup ? "on" : "")" @onclick="() => _setup = !_setup" title="Spielkonfiguration">⚙ Spiel</button>
+    }
     <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>
 
@@ -54,6 +58,12 @@
 else
 {
     <main>
+        @if (_setup && _hallId is { Length: > 0 } setupHall)
+        {
+            <section class="panel">
+                <GameSetup HallId="@setupHall" Changed="RefreshAsync" />
+            </section>
+        }
         <div class="decklist">
             @foreach (var deck in _hall.DeckLayouts)
             {
@@ -146,6 +156,7 @@ else
     private readonly string _board = Guid.NewGuid().ToString("N");
     private string? _note;
     private string? _playing;
+    private bool _setup;
     private long _musicOrder = -1;
     private long _controlOrder = -1;
     private long _boardMusicOrder = -1;

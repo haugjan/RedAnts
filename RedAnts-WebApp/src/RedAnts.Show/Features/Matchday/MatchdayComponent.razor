@@ -3,10 +3,6 @@
 @inject GetHall.Handler HallQuery
 @inject GetHallStatus.Handler StatusQuery
 @inject GetGame.Handler GameQuery
-@inject GetGameSchedule.Handler ScheduleQuery
-@inject LoadGameFromSwissUnihockey.Handler GameLoader
-@inject ImportGameConfig.Handler GameImport
-@inject SetActiveGame.Handler ActiveGame
 @inject PanicHall.Handler Panic
 @inject NavigationManager Nav
 @implements IDisposable
@@ -79,59 +75,12 @@
                     <p>@_game.Home.LongName: @_game.Home.Players.Count Spielerinnen@(_game.Home.HasStarting6 ? ", Starting 6 gesetzt" : ", Starting 6 fehlt")</p>
                     <p>@_game.Away.LongName: @_game.Away.Players.Count Spielerinnen@(_game.Away.HasStarting6 ? ", Starting 6 gesetzt" : ", Starting 6 fehlt")</p>
                     <p class="sp-hint">Schiedsrichter: @(_game.Referee1.Length > 0 ? _game.Referee1 : "?"), @(_game.Referee2.Length > 0 ? _game.Referee2 : "?")</p>
-                    <div class="sp-actions">
-                        @if (_game.Source == GameSource.SwissUnihockey)
-                        {
-                            <button class="sp-btn" @onclick="() => LoadGameAsync(_game.Id)" disabled="@_busy">↺ Neu laden</button>
-                        }
-                        <button class="sp-btn" @onclick="UnloadGameAsync" disabled="@_busy">Spiel entladen</button>
-                    </div>
                 }
             </div>
 
-            <div class="sp-card">
-                <h2>Spiel laden</h2>
-                <div class="sp-actions">
-                    <button class="sp-btn" @onclick="LoadScheduleAsync" disabled="@_busy">swissunihockey: Spiele holen</button>
-                </div>
-                @if (_schedule is { } schedule)
-                {
-                    @if (schedule.Next.Count > 0)
-                    {
-                        <h3>Nächste Spiele</h3>
-                        <ul class="sp-list">
-                            @foreach (var game in schedule.Next.Take(8))
-                            {
-                                <li @key="game.Id">
-                                    <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away</span>
-                                    <button class="sp-btn small" @onclick="() => LoadGameAsync(game.Id)" disabled="@_busy">Laden</button>
-                                </li>
-                            }
-                        </ul>
-                    }
-                    @if (schedule.Played.Count > 0)
-                    {
-                        <h3>Gespielt, letzte sechs Wochen</h3>
-                        <ul class="sp-list">
-                            @foreach (var game in schedule.Played.Take(10))
-                            {
-                                <li @key="game.Id">
-                                    <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away @(game.Result is { Length: > 0 } result ? "· " + result : "")</span>
-                                    <button class="sp-btn small" @onclick="() => LoadGameAsync(game.Id)" disabled="@_busy">Laden</button>
-                                </li>
-                            }
-                        </ul>
-                    }
-                    @if (schedule.Next.Count == 0 && schedule.Played.Count == 0)
-                    {
-                        <p class="sp-hint">Keine Spiele gefunden.</p>
-                    }
-                }
-                <details>
-                    <summary>Game-Config-Datei einfügen (TCunihockey-Format)</summary>
-                    <textarea class="sp-textarea" @bind="_configText" rows="8" placeholder="[Game]&#10;GameNr=…"></textarea>
-                    <button class="sp-btn" @onclick="ImportConfigAsync" disabled="@_busy">Importieren</button>
-                </details>
+            <div class="sp-card wide">
+                <h2>Spielkonfiguration</h2>
+                <GameSetup HallId="@(_hallId ?? "")" Changed="RefreshAsync" />
             </div>
 
         </section>
@@ -144,8 +93,6 @@
     private Hall? _hall;
     private HallStatus? _status;
     private Game? _game;
-    private GameSchedule? _schedule;
-    private string _configText = "";
     private string? _message;
     private bool _messageIsError;
     private bool _busy;
@@ -184,7 +131,6 @@
     private async Task OnHallChanged(ChangeEventArgs e)
     {
         _hallId = e.Value?.ToString();
-        _schedule = null;
         await RefreshAsync();
     }
 
@@ -195,32 +141,6 @@
         _status = await StatusQuery.HandleAsync(new GetHallStatus.Query(_hallId));
         _game = _hall?.ActiveGameId is { } id ? await GameQuery.HandleAsync(new GetGame.Query(id)) : null;
     }
-
-    private async Task LoadScheduleAsync() => await Guarded(async () =>
-    {
-        _schedule = await ScheduleQuery.HandleAsync(new GetGameSchedule.Query(_hallId!));
-    });
-
-    private async Task LoadGameAsync(string gameId) => await Guarded(async () =>
-    {
-        var game = await GameLoader.HandleAsync(new LoadGameFromSwissUnihockey.Command(_hallId!, gameId));
-        await RefreshAsync();
-        Notify($"Spiel {game.Title} geladen: {game.Home.Players.Count} + {game.Away.Players.Count} Spielerinnen.");
-    });
-
-    private async Task ImportConfigAsync() => await Guarded(async () =>
-    {
-        var game = await GameImport.HandleAsync(new ImportGameConfig.Command(_hallId!, _configText));
-        _configText = "";
-        await RefreshAsync();
-        Notify($"Spiel {game.Id} aus der Datei übernommen.");
-    });
-
-    private async Task UnloadGameAsync() => await Guarded(async () =>
-    {
-        await ActiveGame.HandleAsync(new SetActiveGame.Command(_hallId!, null));
-        await RefreshAsync();
-    });
 
     private async Task PanicAsync() => await Guarded(async () =>
     {

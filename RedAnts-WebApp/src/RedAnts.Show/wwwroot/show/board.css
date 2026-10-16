@@ -17,15 +17,15 @@ html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf
 .hb .pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #22222b; border: 1px solid #2f2f3a; color: #b9c2cb; }
 .hb .pill.on { background: #7a1d1d; border-color: #a32a2a; color: #ffd9d9; }
 .hb .panic { background: #d01212; color: #fff; border: none; border-radius: 3px; padding: 7px 14px; font-weight: 900; cursor: pointer; }
-
-.hb .decks { display: flex; gap: 6px; padding: 10px 14px 0; flex-wrap: wrap; }
-.hb .tab { background: #1b1b22; color: #cfd6dd; border: 1px solid #2c2c36; border-radius: 3px 3px 0 0; padding: 7px 14px; cursor: pointer; font: inherit; }
-.hb .tab.active { background: #262631; color: #fff; border-bottom-color: #262631; }
+.hb .setup { background: #262631; color: #e9edf1; border: 1px solid #343442; border-radius: 3px; padding: 7px 12px; font: inherit; cursor: pointer; }
+.hb .setup.on { background: #3a3a4a; color: #fff; }
+.hb .panel { background: #16161d; border: 1px solid #272730; border-radius: 6px; padding: 12px; margin: 0 0 12px; }
 
 .hb main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 10px 14px; }
 .hb h1 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #9aa4ae; margin: 0 0 8px; }
 
 .hb .decklist { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.hb .deck h2 .page { color: #6e7682; font-weight: 400; }
 .hb .deck h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #9aa4ae; margin: 0 0 6px; }
 .hb .grid {
     display: grid; gap: 8px; min-height: 0;

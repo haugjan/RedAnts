@@ -1,0 +1,284 @@
+@inject GetHall.Handler HallQuery
+@inject GetGame.Handler GameQuery
+@inject GetGameSchedule.Handler ScheduleQuery
+@inject LoadGameFromSwissUnihockey.Handler GameLoader
+@inject ImportGameConfig.Handler GameImport
+@inject SaveGame.Handler GameSave
+@inject SetActiveGame.Handler ActiveGame
+
+<div class="gs">
+    @if (_message is { Length: > 0 } message)
+    {
+        <p class="gs-message @(_failed ? "bad" : "")">@message</p>
+    }
+
+    @if (_game is null)
+    {
+        <p class="gs-hint">Kein Spiel geladen.</p>
+    }
+    else
+    {
+        <div class="gs-head">
+            <strong>@_game.Title</strong>
+            <span>@_game.Id · @Source(_game.Source)</span>
+            <button class="gs-btn" @onclick="UnloadAsync" disabled="@_busy">Entladen</button>
+            @if (_game.Source == GameSource.SwissUnihockey)
+            {
+                <button class="gs-btn" @onclick="() => LoadAsync(_game.Id)" disabled="@_busy">Neu laden</button>
+            }
+        </div>
+
+        <div class="gs-form">
+            <label>Titel <input @bind="_title" /></label>
+            <label>Schiedsrichter 1 <input @bind="_referee1" /></label>
+            <label>Schiedsrichter 2 <input @bind="_referee2" /></label>
+            <label>Kommentator 1 <input @bind="_commentator1" /></label>
+            <label>Kommentator 2 <input @bind="_commentator2" /></label>
+        </div>
+
+        <div class="gs-teams">
+            @foreach (var side in Sides)
+            {
+                var team = _game.Side(side.Key);
+                <div class="gs-team" @key="side.Key">
+                    <h4>@side.Label: @(team.LongName.Length > 0 ? team.LongName : "ohne Namen")</h4>
+                    <div class="gs-form">
+                        <label>Kürzel <input maxlength="6" @bind="side.Short.Value" /></label>
+                        <label>Farbe
+                            <span class="gs-colour">
+                                <input type="color" @bind="side.Colour.Value" />
+                                <input class="gs-hex" maxlength="7" @bind="side.Colour.Value" />
+                            </span>
+                        </label>
+                        <label>Topscorer
+                            <select @bind="side.Scorer.Value">
+                                <option value="">keine</option>
+                                @foreach (var player in team.Players)
+                                {
+                                    <option value="@player.Number">@player.Number @player.Name</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+                    <p class="gs-hint">@team.Players.Count Spielerinnen@(team.HasStarting6 ? ", Starting 6 gesetzt" : ", Starting 6 fehlt")</p>
+                </div>
+            }
+        </div>
+
+        <div class="gs-actions">
+            <button class="gs-btn primary" @onclick="SaveAsync" disabled="@_busy">Speichern</button>
+        </div>
+    }
+
+    <details class="gs-more">
+        <summary>Spiel laden</summary>
+        <div class="gs-actions">
+            <button class="gs-btn" @onclick="ScheduleAsync" disabled="@_busy">Spiele von swissunihockey holen</button>
+        </div>
+        @if (_schedule is { } schedule)
+        {
+            @if (schedule.Next.Count > 0)
+            {
+                <h4>Nächste Spiele</h4>
+                <ul class="gs-list">
+                    @foreach (var game in schedule.Next.Take(8))
+                    {
+                        <li @key="game.Id">
+                            <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away</span>
+                            <button class="gs-btn" @onclick="() => LoadAsync(game.Id)" disabled="@_busy">Laden</button>
+                        </li>
+                    }
+                </ul>
+            }
+            @if (schedule.Played.Count > 0)
+            {
+                <h4>Gespielt</h4>
+                <ul class="gs-list">
+                    @foreach (var game in schedule.Played.Take(10))
+                    {
+                        <li @key="game.Id">
+                            <span>@(game.Date?.ToString("dd.MM. HH:mm") ?? "?") · @game.Home – @game.Away @(game.Result is { Length: > 0 } result ? "· " + result : "")</span>
+                            <button class="gs-btn" @onclick="() => LoadAsync(game.Id)" disabled="@_busy">Laden</button>
+                        </li>
+                    }
+                </ul>
+            }
+            @if (schedule.Next.Count == 0 && schedule.Played.Count == 0)
+            {
+                <p class="gs-hint">Keine Spiele gefunden.</p>
+            }
+        }
+        <h4>Game-Config-Datei einfügen</h4>
+        <textarea rows="6" @bind="_configText" placeholder="[Game]&#10;GameNr=…"></textarea>
+        <div class="gs-actions">
+            <button class="gs-btn" @onclick="ImportAsync" disabled="@_busy">Datei übernehmen</button>
+        </div>
+        <h4>Von Hand anlegen</h4>
+        <div class="gs-form">
+            <label>Spielnummer <input @bind="_manualId" /></label>
+            <label>Titel <input @bind="_manualTitle" /></label>
+        </div>
+        <div class="gs-actions">
+            <button class="gs-btn" @onclick="CreateAsync" disabled="@_busy">Spiel anlegen</button>
+        </div>
+    </details>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string HallId { get; set; } = "";
+
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private sealed class Field
+    {
+        public string Value { get; set; } = "";
+    }
+
+    private sealed record SideEdit(string Key, string Label, Field Short, Field Colour, Field Scorer);
+
+    private readonly SideEdit[] Sides =
+    [
+        new("home", "Heim", new Field(), new Field(), new Field()),
+        new("away", "Gast", new Field(), new Field(), new Field()),
+    ];
+
+    private Game? _game;
+    private GameSchedule? _schedule;
+    private string _title = "", _referee1 = "", _referee2 = "", _commentator1 = "", _commentator2 = "";
+    private string _configText = "", _manualId = "", _manualTitle = "";
+    private string? _message;
+    private bool _failed;
+    private bool _busy;
+    private string _loaded = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (HallId == _loaded) return;
+        _loaded = HallId;
+        await ReadAsync();
+    }
+
+    private static string Source(GameSource source) => source switch
+    {
+        GameSource.SwissUnihockey => "swissunihockey",
+        GameSource.File => "Datei",
+        _ => "von Hand",
+    };
+
+    private async Task ReadAsync()
+    {
+        _game = null;
+        if (HallId.Length == 0) return;
+        if (await HallQuery.HandleAsync(new GetHall.Query(HallId)) is not { ActiveGameId: { Length: > 0 } id }) return;
+        _game = await GameQuery.HandleAsync(new GetGame.Query(id));
+        Fill();
+    }
+
+    private void Fill()
+    {
+        if (_game is null) return;
+        _title = _game.Title;
+        _referee1 = _game.Referee1;
+        _referee2 = _game.Referee2;
+        _commentator1 = _game.Commentator1;
+        _commentator2 = _game.Commentator2;
+        foreach (var side in Sides)
+        {
+            var team = _game.Side(side.Key);
+            side.Short.Value = team.ShortName;
+            side.Colour.Value = team.Color;
+            side.Scorer.Value = team.TopScorer?.ToString() ?? "";
+        }
+    }
+
+    private async Task SaveAsync() => await Guarded(async () =>
+    {
+        if (_game is null) return;
+        var game = _game with
+        {
+            Title = _title.Trim(),
+            Referee1 = _referee1.Trim(),
+            Referee2 = _referee2.Trim(),
+            Commentator1 = _commentator1.Trim(),
+            Commentator2 = _commentator2.Trim(),
+        };
+        foreach (var side in Sides)
+        {
+            var team = game.Side(side.Key);
+            game = game.WithSide(side.Key, team with
+            {
+                ShortName = side.Short.Value.Trim(),
+                Color = Colour(side.Colour.Value, team.Color),
+                TopScorer = int.TryParse(side.Scorer.Value, out var number) ? number : null,
+            });
+        }
+        _game = await GameSave.HandleAsync(new SaveGame.Command(game));
+        Fill();
+        Say("Spiel gespeichert.");
+        await Changed.InvokeAsync();
+    });
+
+    private static string Colour(string value, string fallback)
+    {
+        var text = value.Trim();
+        if (text.Length == 0) return fallback;
+        if (!text.StartsWith('#')) text = "#" + text;
+        return text.Length == 7 && text[1..].All(Uri.IsHexDigit) ? text.ToUpperInvariant() : fallback;
+    }
+
+    private async Task ScheduleAsync() => await Guarded(async () =>
+    {
+        _schedule = await ScheduleQuery.HandleAsync(new GetGameSchedule.Query(HallId));
+    });
+
+    private async Task LoadAsync(string gameId) => await Guarded(async () =>
+    {
+        var game = await GameLoader.HandleAsync(new LoadGameFromSwissUnihockey.Command(HallId, gameId));
+        await ReadAsync();
+        Say($"Spiel {game.Title} geladen: {game.Home.Players.Count} + {game.Away.Players.Count} Spielerinnen.");
+        await Changed.InvokeAsync();
+    });
+
+    private async Task ImportAsync() => await Guarded(async () =>
+    {
+        var game = await GameImport.HandleAsync(new ImportGameConfig.Command(HallId, _configText));
+        _configText = "";
+        await ReadAsync();
+        Say($"Spiel {game.Id} aus der Datei übernommen.");
+        await Changed.InvokeAsync();
+    });
+
+    private async Task CreateAsync() => await Guarded(async () =>
+    {
+        var game = await GameSave.HandleAsync(new SaveGame.Command(Game.Manual(_manualId, _manualTitle)));
+        await ActiveGame.HandleAsync(new SetActiveGame.Command(HallId, game.Id));
+        _manualId = "";
+        _manualTitle = "";
+        await ReadAsync();
+        Say($"Spiel {game.Id} angelegt.");
+        await Changed.InvokeAsync();
+    });
+
+    private async Task UnloadAsync() => await Guarded(async () =>
+    {
+        await ActiveGame.HandleAsync(new SetActiveGame.Command(HallId, null));
+        await ReadAsync();
+        await Changed.InvokeAsync();
+    });
+
+    private async Task Guarded(Func<Task> work)
+    {
+        if (HallId.Length == 0) return;
+        _busy = true;
+        _message = null;
+        try { await work(); }
+        catch (ValidationException e) { Fail(e.Message); }
+        catch (DomainException e) { Fail(e.Message); }
+        catch (HttpRequestException e) { Fail("swissunihockey nicht erreichbar: " + e.Message); }
+        finally { _busy = false; }
+    }
+
+    private void Say(string text) { _message = text; _failed = false; }
+
+    private void Fail(string text) { _message = text; _failed = true; }
+}

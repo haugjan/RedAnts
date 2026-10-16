@@ -7,6 +7,7 @@ using RedAnts.Show.Agent.Led;
 using RedAnts.Show.Agent.Music;
 using RedAnts.Show.Agent.Keys;
 using RedAnts.Show.Agent.Vmix;
+using RedAnts.Show.Agent.Web;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 var stored = AgentConfig.Load();
@@ -20,7 +21,7 @@ if (!config.IsComplete)
 }
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls($"http://localhost:{config.DeckPort}");
+builder.WebHost.UseUrls($"http://{config.Host}:{config.DeckPort}");
 builder.Logging.ClearProviders();
 builder.Logging.AddSimpleConsole(o =>
 {
@@ -54,6 +55,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<StatusReporter>())
 
 var app = builder.Build();
 app.UseAntiforgery();
+app.UseBoardGate(config.BoardPassword, $"Halle {config.HallId}");
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 var deck = app.Services.GetRequiredService<Deck>();
@@ -110,6 +112,7 @@ app.MapPost("/deck/press/{number:int}", async (int number, string? deckId) =>
 });
 
 Console.WriteLine($"RedAnts Show-Agent {AgentConfig.Version}: Halle {config.HallId}, Cloud {config.CloudUrl}");
-Console.WriteLine($"Bord http://localhost:{config.DeckPort}/bord, Matchuhr http://localhost:{config.DeckPort}/uhr");
+if (config.Warning is { } warning) Console.WriteLine(warning);
+Console.WriteLine($"Bord {config.BoardUrl}/bord, Matchuhr {config.BoardUrl}/uhr{(config.BoardPassword.Length > 0 ? " (Bord mit Passwort)" : "")}");
 app.Run();
 return 0;
