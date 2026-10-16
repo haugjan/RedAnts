@@ -14,6 +14,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject ShowBoardFeed Feed
+@inject ShowBoardMusic Playback
 
 <div class="hb">
 <header class="bar">
@@ -52,57 +53,55 @@
 }
 else
 {
-    @if (_hall.DeckLayouts.Count > 1)
-    {
-        <nav class="decks">
-            @foreach (var tab in _hall.DeckLayouts)
-            {
-                <button class="tab @(tab.Id == _deck ? "active" : "")" @onclick="() => SelectDeckAsync(tab.Id)" @key="tab.Id">@tab.Name</button>
-            }
-        </nav>
-    }
-
     <main>
-        <h1>@(_view?.Title ?? "Bord")</h1>
-        <div class="grid" style="--cols:@Columns; --rows:@Rows">
-            @foreach (var key in Keys)
+        <div class="decklist">
+            @foreach (var deck in _hall.DeckLayouts)
             {
-                var music = MusicOf(key);
-                <button class="key @(key.Pressable ? "" : "flat") @(key.Active ? "active" : "")"
-                        style="background:@key.Color; color:@key.TextColor"
-                        disabled="@(!key.Pressable)"
-                        data-id="@($"{_deck}:{key.Number}")"
-                        data-play="@(music is null ? null : "songs")"
-                        data-songs="@music?.SongsJson"
-                        data-random="@(music is { Random: true } ? "1" : "0")"
-                        data-multi="@(music is { IsPlaylist: true } ? "1" : null)"
-                        data-label="@key.Label"
-                        @onclick="() => PressAsync(key)"
-                        @key="key.Number">
-                    @if (key.Icon is { Length: > 0 } icon)
-                    {
-                        <img src="@DeckIcons.FileOf(icon)" alt="" />
-                    }
-                    else if (key.Symbol is { Length: > 0 } symbol)
-                    {
-                        <span class="symbol">@symbol</span>
-                    }
-                    <span class="label">
-                        @foreach (var line in key.Label.Split(NewLine))
+                var view = View(deck.Id);
+                <section class="deck" @key="deck.Id">
+                    <h2>@deck.Name<span class="page"> · @(view?.Title ?? "")</span></h2>
+                    <div class="grid" style="--cols:@(view?.Columns ?? deck.Columns)">
+                        @foreach (var key in view?.Keys ?? [])
                         {
-                            <span>@line</span>
+                            var music = MusicOf(key);
+                            <button class="key @(key.Pressable ? "" : "flat") @(key.Active ? "active" : "")"
+                                    style="background:@key.Color; color:@key.TextColor"
+                                    disabled="@(!key.Pressable)"
+                                    data-id="@($"{deck.Id}:{key.Number}")"
+                                    data-play="@(music is null ? null : "songs")"
+                                    data-songs="@music?.SongsJson"
+                                    data-random="@(music is { Random: true } ? "1" : "0")"
+                                    data-multi="@(music is { IsPlaylist: true } ? "1" : null)"
+                                    data-label="@key.Label"
+                                    @onclick="() => PressAsync(deck.Id, key)"
+                                    @key="key.Number">
+                                @if (key.Icon is { Length: > 0 } icon)
+                                {
+                                    <img src="@DeckIcons.FileOf(icon)" alt="" />
+                                }
+                                else if (key.Symbol is { Length: > 0 } symbol)
+                                {
+                                    <span class="symbol">@symbol</span>
+                                }
+                                <span class="label">
+                                    @foreach (var line in key.Label.Split(NewLine))
+                                    {
+                                        <span>@line</span>
+                                    }
+                                </span>
+                                @if (key.Subtitle is { Length: > 0 } subtitle)
+                                {
+                                    <span class="sub">@subtitle</span>
+                                }
+                                @if (music is { IsPlaylist: true })
+                                {
+                                    <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                                }
+                                <em>@key.Number</em>
+                            </button>
                         }
-                    </span>
-                    @if (key.Subtitle is { Length: > 0 } subtitle)
-                    {
-                        <span class="sub">@subtitle</span>
-                    }
-                    @if (music is { IsPlaylist: true })
-                    {
-                        <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
-                    }
-                    <em>@key.Number</em>
-                </button>
+                    </div>
+                </section>
             }
         </div>
 
@@ -141,25 +140,25 @@ else
     private IReadOnlyList<HallRow> _halls = [];
     private Hall? _hall;
     private AgentPresence _agent = new(false, null, null);
-    private DeckView? _view;
+    private readonly Dictionary<string, DeckView> _views = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _pages = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<MusicItem> _music = [];
-    private string _deck = "";
-    private string _page = "";
+    private readonly string _board = Guid.NewGuid().ToString("N");
     private string? _note;
     private string? _playing;
     private long _musicOrder = -1;
     private long _controlOrder = -1;
+    private long _boardMusicOrder = -1;
+    private long _boardControlOrder = -1;
     private DotNetObjectReference<ShowBoardPage>? _self;
     private bool _ready;
     private Timer? _poll;
 
     private bool Connected => _agent.Connected;
 
-    private int Columns => _view?.Columns ?? 8;
+    private DeckView? View(string deckId) => _views.TryGetValue(deckId, out var view) ? view : null;
 
-    private int Rows => _view?.Rows ?? 4;
-
-    private IReadOnlyList<DeckKeyRow> Keys => _view?.Keys ?? [];
+    private DeckView? First => _hall?.DeckLayouts.Count > 0 ? View(_hall.DeckLayouts[0].Id) : null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -167,10 +166,10 @@ else
         _given = HallId;
         var wanted = HallId ?? Query("halle");
         _hallId = _halls.FirstOrDefault(h => h.Id == wanted)?.Id ?? _halls.FirstOrDefault()?.Id;
-        if (Query("deck") is { Length: > 0 } deck) _deck = deck;
         _music = await MusicQuery.HandleAsync(new GetMusic.Query());
         await LoadHallAsync();
         Feed.Changed += OnFeed;
+        Playback.Changed += OnPlayback;
         _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
     }
 
@@ -179,6 +178,13 @@ else
         if (!first) return;
         _self = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("hallBoard.start", _self);
+        if (_hallId is { Length: > 0 } id)
+        {
+            Playback.Claim(id, _board);
+            var state = Playback.Of(id);
+            _boardMusicOrder = state.MusicOrder;
+            _boardControlOrder = state.ControlOrder;
+        }
         _ready = true;
     }
 
@@ -205,7 +211,6 @@ else
     {
         if (_hallId is not { Length: > 0 } id) return;
         _hall = await HallQuery.HandleAsync(new GetHall.Query(id));
-        if (_hall is not null && _hall.DeckLayouts.All(d => d.Id != _deck)) _deck = _hall.DeckLayouts[0].Id;
     }
 
     private async Task SwitchAsync()
@@ -214,37 +219,44 @@ else
         await RefreshAsync();
     }
 
-    private async Task SelectDeckAsync(string deckId)
-    {
-        _deck = deckId;
-        _page = "";
-        await RefreshAsync();
-    }
-
-    private DeckKey? KeyOf(DeckKeyRow row) =>
-        _hall?.DeckLayouts.FirstOrDefault(d => d.Id == _deck) is { } deck
-            ? (deck.Page(_view?.PageId) ?? deck.Home).KeyAt(row.Number)
+    private DeckKey? KeyOf(string deckId, DeckKeyRow row) =>
+        _hall?.DeckLayouts.FirstOrDefault(d => d.Id == deckId) is { } deck
+            ? (deck.Page(View(deckId)?.PageId) ?? deck.Home).KeyAt(row.Number)
             : null;
 
-    private Deck? Layout => _hall?.DeckLayouts.FirstOrDefault(d => d.Id == _deck);
-
-    private async Task<bool> NavigateAsync(DeckKeyRow key)
+    private async Task<bool> NavigateAsync(string deckId, DeckKeyRow key)
     {
-        if (Layout is not { } deck) return false;
+        if (_hall?.DeckLayouts.FirstOrDefault(d => d.Id == deckId) is not { } deck) return false;
         if (key.Number == deck.Back)
         {
-            var current = deck.Page(_view?.PageId);
-            _page = current?.ParentId ?? DeckPage.HomeId;
+            _pages[deckId] = deck.Page(View(deckId)?.PageId)?.ParentId ?? DeckPage.HomeId;
             await RefreshAsync();
             return true;
         }
-        if (KeyOf(key) is { Kind: KeyKinds.Page, PageId: { Length: > 0 } target })
+        if (KeyOf(deckId, key) is { Kind: KeyKinds.Page, PageId: { Length: > 0 } target })
         {
-            _page = target;
+            _pages[deckId] = target;
             await RefreshAsync();
             return true;
         }
         return false;
+    }
+
+    private async Task<bool> ControlAsync(string deckId, DeckKeyRow key)
+    {
+        if (KeyOf(deckId, key) is not { Kind: KeyKinds.Special, Special: { Length: > 0 } special }) return false;
+        var what = special switch
+        {
+            SpecialKey.MusicStop or SpecialKey.MusicToggle => "stop",
+            SpecialKey.MusicFade => "fade",
+            SpecialKey.MusicNext => "next",
+            SpecialKey.MusicPrevious => "previous",
+            SpecialKey.MusicPause => "pause",
+            _ => "",
+        };
+        if (what.Length == 0 || _hallId is not { Length: > 0 } id) return false;
+        Playback.Command(id, _board, what);
+        return true;
     }
 
     private void OnFeed(string hallId)
@@ -257,10 +269,25 @@ else
         });
     }
 
+    private void OnPlayback(string hallId)
+    {
+        if (!string.Equals(hallId, _hallId, StringComparison.OrdinalIgnoreCase)) return;
+        _ = InvokeAsync(async () =>
+        {
+            await FollowMusicAsync();
+            StateHasChanged();
+        });
+    }
+
     private async Task ReadDeckAsync()
     {
-        if (_hallId is not { Length: > 0 } id) return;
-        _view = await DeckQuery.HandleAsync(new GetDeckView.Query(id, _deck, _page));
+        if (_hallId is not { Length: > 0 } id || _hall is null) return;
+        foreach (var deck in _hall.DeckLayouts)
+        {
+            var page = _pages.TryGetValue(deck.Id, out var stored) ? stored : "";
+            if (await DeckQuery.HandleAsync(new GetDeckView.Query(id, deck.Id, page)) is { } view)
+                _views[deck.Id] = view;
+        }
         await FollowMusicAsync();
     }
 
@@ -274,7 +301,21 @@ else
 
     private async Task FollowMusicAsync()
     {
-        if (!_ready || _view?.Live is not { } live) return;
+        if (!_ready || _hallId is not { Length: > 0 } id) return;
+        var state = Playback.Of(id);
+        var mine = state.PlayedBy(_board);
+        if (state.ControlOrder != _boardControlOrder)
+        {
+            _boardControlOrder = state.ControlOrder;
+            if (state.Control.Length > 0) await JS.InvokeVoidAsync("hallBoard.control", state.Control);
+        }
+        if (state.MusicOrder != _boardMusicOrder)
+        {
+            _boardMusicOrder = state.MusicOrder;
+            if (state.MusicId.Length == 0 || !mine) await JS.InvokeVoidAsync("hallBoard.stop");
+            else await PlayAsync(state.MusicId);
+        }
+        if (First?.Live is not { } live) return;
         if (live.ControlOrder != _controlOrder)
         {
             _controlOrder = live.ControlOrder;
@@ -282,46 +323,65 @@ else
         }
         if (live.MusicOrder == _musicOrder) return;
         _musicOrder = live.MusicOrder;
-        if (live.MusicId.Length == 0)
+        if (live.MusicId.Length == 0 || !mine)
         {
             await JS.InvokeVoidAsync("hallBoard.stop");
             return;
         }
-        if (_music.FirstOrDefault(m => m.Id == live.MusicId) is not { } item) return;
+        await PlayAsync(live.MusicId);
+    }
+
+    private async Task PlayAsync(string musicId)
+    {
+        if (_music.FirstOrDefault(m => m.Id == musicId) is not { } item) return;
         await JS.InvokeVoidAsync("hallBoard.play", item.Id, item.SongsJson, item.Random, item.Display);
     }
 
-    private async Task PressAsync(DeckKeyRow key)
+    private async Task PressAsync(string deckId, DeckKeyRow key)
     {
         _note = null;
-        if (!Connected && await NavigateAsync(key)) return;
+        if (_hallId is { Length: > 0 } mine) Playback.Claim(mine, _board);
+        if (!Connected)
+        {
+            if (await NavigateAsync(deckId, key)) return;
+            if (await ControlAsync(deckId, key)) return;
+        }
         if (MusicOf(key) is { } music)
         {
-            if (Connected && _hallId is { Length: > 0 } hall)
-                await MusicPlay.HandleAsync(new PlayHallMusic.Command(hall, music.Id));
+            if (_hallId is { Length: > 0 } hall)
+            {
+                Playback.Play(hall, _board, music.Id);
+                if (Connected) await MusicPlay.HandleAsync(new PlayHallMusic.Command(hall, music.Id));
+            }
             return;
         }
-        if (_hallId is not { Length: > 0 } id || !await KeyPress.HandleAsync(new PressDeckKey.Command(id, _deck, key.Number)))
+        if (_hallId is not { Length: > 0 } id || !await KeyPress.HandleAsync(new PressDeckKey.Command(id, deckId, key.Number)))
             _note = "Kein Agent verbunden.";
         await RefreshAsync();
     }
 
     private async Task PanicAsync()
     {
-        await JS.InvokeVoidAsync("hallBoard.stop");
+        await CommandAsync("stop");
         if (_hallId is { Length: > 0 } id && !await Panic.HandleAsync(new PanicHall.Command(id)))
             _note = "Kein Agent verbunden.";
     }
 
-    private Task StopAsync() => JS.InvokeVoidAsync("hallBoard.stop").AsTask();
+    private async Task CommandAsync(string what)
+    {
+        if (_hallId is { Length: > 0 } id) Playback.Command(id, _board, what);
+        else await JS.InvokeVoidAsync("hallBoard.control", what);
+    }
 
-    private Task FadeAsync() => JS.InvokeVoidAsync("hallBoard.fade").AsTask();
+    private Task StopAsync() => CommandAsync("stop");
 
-    private Task NextAsync() => JS.InvokeVoidAsync("hallBoard.next").AsTask();
+    private Task FadeAsync() => CommandAsync("fade");
 
-    private Task PreviousAsync() => JS.InvokeVoidAsync("hallBoard.previous").AsTask();
+    private Task NextAsync() => CommandAsync("next");
 
-    private Task PauseAsync() => JS.InvokeVoidAsync("hallBoard.pause").AsTask();
+    private Task PreviousAsync() => CommandAsync("previous");
+
+    private Task PauseAsync() => CommandAsync("pause");
 
     private bool Offered(string stateId)
     {
@@ -338,16 +398,16 @@ else
     }
 
     private string StateValue(ShowState state) =>
-        _view?.States is { } live && live.TryGetValue(state.Id, out var current) && current.Length > 0
+        First?.States is { } live && live.TryGetValue(state.Id, out var current) && current.Length > 0
             ? current
             : state.First;
 
     private string Score(bool home) =>
-        (home ? _view?.Live?.HomeScore : _view?.Live?.AwayScore) is { Length: > 0 } value ? value : "–";
+        (home ? First?.Live?.HomeScore : First?.Live?.AwayScore) is { Length: > 0 } value ? value : "–";
 
-    private string Time() => _view?.Live?.Time is { Length: > 0 } time ? time : "--:--";
+    private string Time() => First?.Live?.Time is { Length: > 0 } time ? time : "--:--";
 
-    private string Period() => _view?.Live?.PeriodLabel ?? "";
+    private string Period() => First?.Live?.PeriodLabel ?? "";
 
     private string? Query(string name)
     {
@@ -359,6 +419,7 @@ else
     public async ValueTask DisposeAsync()
     {
         Feed.Changed -= OnFeed;
+        Playback.Changed -= OnPlayback;
         if (_poll is not null) await _poll.DisposeAsync();
         _self?.Dispose();
     }

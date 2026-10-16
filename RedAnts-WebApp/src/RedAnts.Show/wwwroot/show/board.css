@@ -25,26 +25,28 @@ html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf
 .hb main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 10px 14px; }
 .hb h1 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #9aa4ae; margin: 0 0 8px; }
 
+.hb .decklist { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.hb .deck h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #9aa4ae; margin: 0 0 6px; }
 .hb .grid {
-    flex: 1 1 auto; display: grid; gap: 8px; min-height: 0;
-    grid-template-columns: repeat(var(--cols), 1fr);
-    grid-template-rows: repeat(var(--rows), 1fr);
+    display: grid; gap: 8px; min-height: 0;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    grid-auto-rows: minmax(0, var(--cell, 96px));
 }
 
 .hb .key {
-    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     border: none; border-radius: 8px; cursor: pointer; overflow: hidden;
-    padding: 5px; font: inherit; font-weight: 700; line-height: 1.1; text-align: center;
-    min-width: 0; min-height: 0;
+    padding: 5px; font: inherit; font-weight: 700; line-height: 1.15; text-align: center;
+    min-width: 0; min-height: 0; container-type: size;
 }
 .hb .key:active { transform: scale(0.97); }
 .hb .key.flat { cursor: default; opacity: 0.85; }
 .hb .key.active { outline: 3px solid #4ade80; outline-offset: -3px; }
 .hb .key img { width: 42%; max-height: 46%; object-fit: contain; }
-.hb .key .label { display: flex; flex-direction: column; max-width: 100%; overflow: hidden; }
+.hb .key .label { display: flex; flex-direction: column; max-width: 100%; overflow: hidden; font-size: clamp(11px, 15cqh, 19px); }
 .hb .key .label span { display: block; }
-.hb .key .symbol { font-size: 150%; line-height: 1; }
-.hb .key .sub { font-size: 11px; font-weight: 400; opacity: .85; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb .key .symbol { font-size: clamp(14px, 20cqh, 26px); line-height: 1; }
+.hb .key .sub { font-size: clamp(9px, 10cqh, 12px); font-weight: 400; opacity: .85; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hb .key .badge { position: absolute; right: 4px; bottom: 3px; font-size: 10px; font-weight: 400; opacity: .8; }
 .hb .key em { position: absolute; top: 3px; left: 5px; font-size: 10px; font-style: normal; opacity: 0.45; }
 

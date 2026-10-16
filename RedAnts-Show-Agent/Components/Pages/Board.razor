@@ -37,53 +37,51 @@
 }
 else
 {
-    @if (Decks.Count > 1)
-    {
-        <nav class="decks">
+    <main>
+        <div class="decklist">
             @foreach (var id in Decks)
             {
                 var deckId = id;
-                <button class="tab @(deckId == _deck ? "active" : "")" @onclick="() => Select(deckId)" @key="deckId">@(Deck.Layout(deckId)?.Name ?? deckId)</button>
-            }
-        </nav>
-    }
-
-    <main>
-        <h1>@Deck.Title(_deck)</h1>
-        <div class="grid" style="--cols:@Columns; --rows:@Rows">
-            @foreach (var slot in Deck.Slots(_deck))
-            {
-                var music = Payload.MusicOf(slot.MusicId);
-                <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "active" : "")"
-                        style="background:@Hex(slot.Color); color:@Hex(slot.TextColor)"
-                        disabled="@(!slot.Pressable)"
-                        data-id="@($"{_deck}:{slot.Number}")"
-                        data-play="@(music is null ? null : "songs")"
-                        data-songs="@music?.SongsJson"
-                        data-random="@(music is { Random: true } ? "1" : "0")"
-                        data-label="@slot.Label"
-                        @onclick="() => PressAsync(slot)"
-                        @key="slot.Number">
-                    @if (slot.Symbol is { Length: > 0 } symbol)
-                    {
-                        <span class="symbol">@symbol</span>
-                    }
-                    <span class="label">
-                        @foreach (var line in slot.Label.Split('\n'))
+                <section class="deck" @key="deckId">
+                    <h2>@(Deck.Layout(deckId)?.Name ?? deckId)<span class="page"> · @Deck.Title(deckId)</span></h2>
+                    <div class="grid" style="--cols:@(Deck.Layout(deckId)?.Columns ?? 8)">
+                        @foreach (var slot in Deck.Slots(deckId))
                         {
-                            <span>@line</span>
+                            var music = Payload.MusicOf(slot.MusicId);
+                            <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "active" : "")"
+                                    style="background:@Hex(slot.Color); color:@Hex(slot.TextColor)"
+                                    disabled="@(!slot.Pressable)"
+                                    data-id="@($"{deckId}:{slot.Number}")"
+                                    data-play="@(music is null ? null : "songs")"
+                                    data-songs="@music?.SongsJson"
+                                    data-random="@(music is { Random: true } ? "1" : "0")"
+                                    data-multi="@(music is { Songs: > 1 } ? "1" : null)"
+                                    data-label="@slot.Label"
+                                    @onclick="() => PressAsync(deckId, slot)"
+                                    @key="slot.Number">
+                                @if (slot.Symbol is { Length: > 0 } symbol)
+                                {
+                                    <span class="symbol">@symbol</span>
+                                }
+                                <span class="label">
+                                    @foreach (var line in slot.Label.Split(NewLine))
+                                    {
+                                        <span>@line</span>
+                                    }
+                                </span>
+                                @if (slot.Subtitle is { Length: > 0 } subtitle)
+                                {
+                                    <span class="sub">@subtitle</span>
+                                }
+                                @if (music is { Songs: > 1 })
+                                {
+                                    <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                                }
+                                <em>@slot.Number</em>
+                            </button>
                         }
-                    </span>
-                    @if (slot.Subtitle is { Length: > 0 } subtitle)
-                    {
-                        <span class="sub">@subtitle</span>
-                    }
-                    @if (music is { Songs: > 1 })
-                    {
-                        <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
-                    }
-                    <em>@slot.Number</em>
-                </button>
+                    </div>
+                </section>
             }
         </div>
         <p class="hint">Musik spielt auf diesem Rechner, Tasten laufen in der Halle.</p>
@@ -101,22 +99,21 @@ else
 </div>
 
 @code {
-    private string _deck = "";
+    private const char NewLine = '\n';
+
+    private readonly string _board = Guid.NewGuid().ToString("N");
     private string? _playing;
     private long _version;
+    private long _musicOrder = -1;
+    private long _controlOrder = -1;
     private CancellationTokenSource? _watch;
     private DotNetObjectReference<Board>? _self;
     private bool _ready;
 
     private IReadOnlyList<string> Decks => Deck.Decks;
 
-    private int Columns => Deck.Layout(_deck)?.Columns ?? 8;
-
-    private int Rows => Deck.Layout(_deck)?.Rows ?? 4;
-
     protected override void OnInitialized()
     {
-        _deck = Decks.FirstOrDefault() ?? "";
         _watch = new CancellationTokenSource();
         _ = WatchAsync(_watch.Token);
     }
@@ -126,6 +123,9 @@ else
         if (!first) return;
         _self = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("hallBoard.start", _self);
+        Deck.Claim(_board);
+        _musicOrder = Deck.MusicOrder;
+        _controlOrder = Deck.ControlOrder;
         _ready = true;
     }
 
@@ -136,21 +136,28 @@ else
         return InvokeAsync(StateHasChanged);
     }
 
-    private void Select(string deckId)
+    private async Task PressAsync(string deckId, DeckSlot slot)
     {
-        _deck = deckId;
-        StateHasChanged();
+        Deck.Claim(_board);
+        if (slot.MusicId is { Length: > 0 })
+        {
+            Deck.NoteFromBoard(slot.MusicId);
+            return;
+        }
+        await Deck.PressAsync(deckId, slot.Number);
     }
 
-    private async Task PressAsync(DeckSlot slot)
+    private Task PanicAsync()
     {
-        if (slot.MusicId is { Length: > 0 }) return;
-        await Deck.PressAsync(_deck, slot.Number);
+        Deck.Claim(_board);
+        return Deck.PanicAsync(CancellationToken.None);
     }
 
-    private Task PanicAsync() => Deck.PanicAsync(CancellationToken.None);
-
-    private Task Control(string what) => JS.InvokeVoidAsync("hallBoard." + what).AsTask();
+    private Task Control(string what)
+    {
+        Deck.Claim(_board);
+        return Deck.MusicControlAsync(what);
+    }
 
     private async Task WatchAsync(CancellationToken stop)
     {
@@ -163,20 +170,21 @@ else
         }
     }
 
-    private string _music = "";
-
     private async Task FollowMusicAsync()
     {
-        var slot = Deck.Slots(_deck).FirstOrDefault(s => s.Active && s.MusicId is { Length: > 0 });
-        var wanted = slot?.MusicId ?? "";
-        if (wanted == _music) return;
-        _music = wanted;
-        if (wanted.Length == 0)
+        if (Deck.ControlOrder != _controlOrder)
+        {
+            _controlOrder = Deck.ControlOrder;
+            if (Deck.ControlWanted is { Length: > 0 } what) await JS.InvokeVoidAsync("hallBoard.control", what);
+        }
+        if (Deck.MusicOrder == _musicOrder) return;
+        _musicOrder = Deck.MusicOrder;
+        if (Deck.MusicId.Length == 0 || !Deck.PlayedBy(_board))
         {
             await JS.InvokeVoidAsync("hallBoard.stop");
             return;
         }
-        if (Payload.MusicOf(wanted) is not { } music) return;
+        if (Payload.MusicOf(Deck.MusicId) is not { } music) return;
         await JS.InvokeVoidAsync("hallBoard.play", music.Id, music.SongsJson, music.Random, music.Display);
     }
 

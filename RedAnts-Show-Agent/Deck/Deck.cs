@@ -31,6 +31,7 @@ public sealed class Deck
     long _musicOrder;
     string _control = "";
     long _controlOrder;
+    string _player = "";
     int _spectators;
 
     public Deck(PayloadStore payload, LiveGame live, ShowStates states, KeyRunner runner, ILogger<Deck> log)
@@ -55,6 +56,18 @@ public sealed class Deck
         _payload.Hall.Decks is { Count: > 0 } decks ? decks.Select(d => d.Id).ToList() : [];
 
     public DeckLayout? Layout(string deckId) => _payload.Hall.DeckOf(deckId);
+
+    public string MusicId => _music;
+
+    public long MusicOrder => _musicOrder;
+
+    public string ControlWanted => _control;
+
+    public long ControlOrder => _controlOrder;
+
+    public bool PlayedBy(string board) => _player.Length == 0 || _player == board;
+
+    public void Claim(string board) => _player = board;
 
     public void NoteFromBoard(string? musicId)
     {
