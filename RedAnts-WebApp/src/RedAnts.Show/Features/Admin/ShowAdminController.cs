@@ -4,7 +4,7 @@ using Umbraco.Cms.Core;
 
 namespace RedAnts.Show.Features.Admin;
 
-[Route("admin/show")]
+[Route("admin/halle")]
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 public sealed class ShowAdminController : Controller
 {

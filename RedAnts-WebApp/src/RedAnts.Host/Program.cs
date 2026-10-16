@@ -490,6 +490,8 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
         || path.StartsWithSegments("/dj")
         || path.StartsWithSegments("/api/dj")
         || path.StartsWithSegments("/admin/show")
+        || path.StartsWithSegments("/admin/halle")
+        || path.StartsWithSegments("/matchday")
         || path.StartsWithSegments("/bord")
         || path.StartsWithSegments("/hubs/halle")
         || path.StartsWithSegments("/payrexx/webhook")
