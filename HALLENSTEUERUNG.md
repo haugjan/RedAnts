@@ -166,14 +166,19 @@ Gebaut und geprüft (Tests grün, im Browser nachgesehen):
 - **Musik**: bleibt im Soundboard. Die Hallensteuerung liest die Befehle über einen Port, das Bord spielt sie mit dem Player des Soundboards, ohne sichtbaren Player und ohne Netzrunde.
 - **Scoreboard**: der Agent schreibt Zeit, Stand, Drittel und die Strafboxen aus dem Uhrtelegramm direkt nach vMix.
 - **Agent**: meldet sich an der Cloud an, hält die Konfiguration lokal, lädt die Musikstücke in einen Zwischenspeicher und bedient sie offline unter `/dj/sound/...`, serviert Bord und Matchuhr, spricht vMix und die LED-Wand.
-- **Bord**: identisch lokal und in der Cloud, spiegelt jedes Deck Taste für Taste, Kacheln wachsen mit dem Fenster, Beschriftung schrumpft erst, wenn sie sonst abgeschnitten würde.
+- **Bord**: identisch lokal und in der Cloud, zeigt alle Decks der Halle untereinander auf einer Seite, spiegelt jedes Deck Taste für Taste. Die Kacheln sind quadratisch und wachsen mit dem Fenster; je Deck haben alle Tasten dieselbe Schriftgrösse, nur die langen Beschriftungen werden kleiner, damit nichts abgeschnitten wird.
+- **Nur ein Bord spielt**: die Halle merkt sich, welches Bord zuletzt bedient wurde. Startet ein zweites Bord ein Stück, verstummt das erste; Stopp, Fade, Pause und Vor wirken in jedem offenen Bord derselben Halle. Ohne Agenten übernimmt das Cloud-Bord die Steuerung selbst, mit Agent kommt sie von ihm.
+- **Spielkonfiguration auf dem Bord**: die Taste „⚙ Spiel“ öffnet Laden (swissunihockey, Datei, von Hand) und das Bearbeiten von Titel, Schiedsrichtern, Kommentatoren sowie je Team Kürzel, Farbe und Topscorer. Dieselbe Maske steckt auch im Spieltag (`/matchday`).
+- **Matchuhr**: iCast über UDP und Bodet ScorePad über TCP (der Agent hört auf dem Port, die Uhr verbindet sich); Rahmen mit SOH/STX/ETX und LRC, Zeit, Stand, Drittel, beide Strafboxen und die Nummern der bestraften Spielerinnen.
+- **Spielerin an die LED-Wand**: die Auswahl im Tor-, Strafen-, Best-Player- und Spielerin-Ablauf geht nach vMix und mit der Vorlage „spielerin“ auch an sedna; LED-Vorlagen kennen dieselben Platzhalter wie die Einblender.
 - **Companion**: ein universelles Modul, je Deck eine Instanz, Presets je Tastennummer, Musiksteuerung und PANIC.
 - **Beispielhalle Win4 Stratos**: wird beim Start angelegt, XL-Deck wie die bisherige TCConsole, Mk2 mit den Stücken des Clubs, Pausenmusik gesetzt.
 
 ## Offene Punkte
 
-1. **Bodet ScorePad** ist im Agenten noch nicht eingebaut, nur iCast über UDP. Die Vorlage liegt in `RedAnts-GameClock/Clocks/BodetScorepadProtocol.cs`, der Agent braucht dafür zusätzlich einen TCP-Empfang und den Suchlauf.
-2. **Spielkonfiguration auf dem Bord**: das Laden von swissunihockey und aus einer Datei liegt bereit (`Features/Games`), die Bedienung dafür sitzt noch unter `/matchday` statt auf dem Bord, und Teamfarbe, Kürzel und Topscorer sind dort noch nicht von Hand änderbar.
-3. **GameClock ablösen**: der Agent schreibt das Scoreboard bereits aus dem Uhrtelegramm nach vMix (`Vmix/VmixLink.PublishScoreboardAsync`). Die GameClock läuft daneben weiter, bis Bodet im Agenten steht und du die Ablösung freigibst.
-4. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
-5. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
+1. **Bodet in der Halle messen**: das Protokoll ist nach dem Handbuch gebaut und mit den dokumentierten Rahmen getestet, aber noch an keiner echten ScorePad in Oberseen gehört. Beim ersten Spiel dort den Rohlog (`/status`) ansehen.
+2. **GameClock ablösen**: der Agent schreibt das Scoreboard aus dem Uhrtelegramm nach vMix und liest jetzt beide Uhrtypen. Die GameClock läuft daneben weiter, bis du die Ablösung freigibst.
+3. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
+4. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
+5. **Passwörter**: das Cloud-Bord hängt am Passwort `Show:BoardPassword`, das heute im Klartext in `appsettings.json` steht (aus der Soundboard-Zeit). Für die Hallensteuerung gehört es in die App-Service-Einstellungen. Das lokale Bord des Agenten hört nur auf `localhost`; soll es im Hallennetz erreichbar sein, braucht `agent.json` `bind` (z. B. `0.0.0.0`) und `boardPassword`, sonst warnt der Agent beim Start.
+6. **Musik und LED fester Tasten im Backoffice**: Tor, Strafe und Best Player nehmen ihre Musik und LED-Vorlage heute aus der Tastenfolge der Halle, es gibt dafür aber noch keine eigene Maske im Backoffice.
