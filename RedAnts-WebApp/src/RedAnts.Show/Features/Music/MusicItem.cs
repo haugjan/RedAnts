@@ -25,7 +25,10 @@ public sealed record MusicNode(
     int Songs,
     bool Random,
     string SongsJson,
-    IReadOnlyList<MusicNode> Children)
+    IReadOnlyList<MusicNode> Children,
+    int X = -1,
+    int Y = -1,
+    string Control = "")
 {
     public bool IsFolder => Children.Count > 0;
 }

@@ -6,7 +6,7 @@ namespace RedAnts.Show.Features.Board;
 
 public static class GetDeckView
 {
-    public sealed record Query(string HallId, string DeckId);
+    public sealed record Query(string HallId, string DeckId, string PageId = "");
 
     public sealed class Handler(IDeckMirror mirror, IHallRepository halls, IMusicLibrary music)
     {
@@ -20,12 +20,12 @@ public static class GetDeckView
                 if (mirror.Known(query.HallId, deck.Id) is { } known) return known;
                 if (await mirror.LiveAsync(query.HallId, deck) is { } live) return live;
             }
-            return Local(deck, await music.AllAsync());
+            return Local(deck, await music.AllAsync(), query.PageId);
         }
 
-        public static DeckView Local(Deck deck, IReadOnlyList<MusicItem> music)
+        public static DeckView Local(Deck deck, IReadOnlyList<MusicItem> music, string pageId = "")
         {
-            var page = deck.Home;
+            var page = deck.Page(pageId) ?? deck.Home;
             var keys = new List<DeckKeyRow>();
             for (var number = 1; number <= deck.Count; number++)
             {
@@ -36,7 +36,8 @@ public static class GetDeckView
                 }
                 if (number == deck.Back)
                 {
-                    keys.Add(new DeckKeyRow(number, "", null, "#000000", "#ffffff", false));
+                    var deep = !page.IsHome;
+                    keys.Add(new DeckKeyRow(number, deep ? "◀ Zurück" : "", null, deep ? "#8ed973" : "#000000", "#111111", deep));
                     continue;
                 }
                 var key = page.KeyAt(number);
@@ -54,7 +55,7 @@ public static class GetDeckView
                     Symbol(key.Icon),
                     item?.Subtitle ?? ""));
             }
-            return new DeckView(deck.Id, page.Name, deck.Columns, deck.Rows, keys, false);
+            return new DeckView(deck.Id, page.Name, deck.Columns, deck.Rows, keys, false, null, null, page.Id);
         }
 
         private static string? Picture(string? icon) =>

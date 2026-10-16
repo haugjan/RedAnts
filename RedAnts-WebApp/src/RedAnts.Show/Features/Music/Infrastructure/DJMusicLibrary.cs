@@ -27,7 +27,9 @@ public sealed class DJMusicLibrary(GetDJProfiles.Handler profiles) : IMusicLibra
 
     private static MusicNode? Node(DJButton button)
     {
-        if (button.Panic || button.IsControl) return null;
+        if (button.Panic) return null;
+        if (button.IsControl)
+            return Of(button, 0, "[]", []) with { Control = button.Control!.Value.ToString().ToLowerInvariant() };
         if (button.IsFolder)
         {
             var children = button.Children!.Select(Node).OfType<MusicNode>().ToList();
@@ -39,7 +41,7 @@ public sealed class DJMusicLibrary(GetDJProfiles.Handler profiles) : IMusicLibra
 
     private static MusicNode Of(DJButton button, int songs, string json, IReadOnlyList<MusicNode> children) =>
         new(button.Id, button.Label, button.Icon ?? "", button.Color ?? "", button.Subtitle ?? "",
-            songs, button.SongsRandom, json, children);
+            songs, button.SongsRandom, json, children, button.X, button.Y);
 
     private static void Walk(DJButton button, string folder, List<MusicItem> found)
     {

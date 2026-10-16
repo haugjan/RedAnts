@@ -144,6 +144,7 @@ else
     private DeckView? _view;
     private IReadOnlyList<MusicItem> _music = [];
     private string _deck = "";
+    private string _page = "";
     private string? _note;
     private string? _playing;
     private long _musicOrder = -1;
@@ -216,7 +217,34 @@ else
     private async Task SelectDeckAsync(string deckId)
     {
         _deck = deckId;
+        _page = "";
         await RefreshAsync();
+    }
+
+    private DeckKey? KeyOf(DeckKeyRow row) =>
+        _hall?.DeckLayouts.FirstOrDefault(d => d.Id == _deck) is { } deck
+            ? (deck.Page(_view?.PageId) ?? deck.Home).KeyAt(row.Number)
+            : null;
+
+    private Deck? Layout => _hall?.DeckLayouts.FirstOrDefault(d => d.Id == _deck);
+
+    private async Task<bool> NavigateAsync(DeckKeyRow key)
+    {
+        if (Layout is not { } deck) return false;
+        if (key.Number == deck.Back)
+        {
+            var current = deck.Page(_view?.PageId);
+            _page = current?.ParentId ?? DeckPage.HomeId;
+            await RefreshAsync();
+            return true;
+        }
+        if (KeyOf(key) is { Kind: KeyKinds.Page, PageId: { Length: > 0 } target })
+        {
+            _page = target;
+            await RefreshAsync();
+            return true;
+        }
+        return false;
     }
 
     private void OnFeed(string hallId)
@@ -232,7 +260,7 @@ else
     private async Task ReadDeckAsync()
     {
         if (_hallId is not { Length: > 0 } id) return;
-        _view = await DeckQuery.HandleAsync(new GetDeckView.Query(id, _deck));
+        _view = await DeckQuery.HandleAsync(new GetDeckView.Query(id, _deck, _page));
         await FollowMusicAsync();
     }
 
@@ -266,6 +294,7 @@ else
     private async Task PressAsync(DeckKeyRow key)
     {
         _note = null;
+        if (!Connected && await NavigateAsync(key)) return;
         if (MusicOf(key) is { } music)
         {
             if (Connected && _hallId is { Length: > 0 } hall)

@@ -74,12 +74,14 @@ public sealed class ShowExampleSeeder(
 
     private static Deck Music(IReadOnlyList<MusicNode> library, Deck deck)
     {
-        var transport = deck.Home.Keys.Where(k => !deck.Reserved(k.Number)).ToList();
+        var controls = library.Any(n => n.Control.Length > 0);
+        var extra = controls
+            ? deck.Home.Keys.Where(k => k.Special is SpecialKey.AutoBreakMusic or SpecialKey.MusicStop).ToList()
+            : deck.Home.Keys.Where(k => !deck.Reserved(k.Number)).ToList();
         var pages = new List<DeckPage>();
         var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var free = Free(deck, transport.Select(k => k.Number)).ToList();
 
-        pages.Add(Page(DeckPage.HomeId, "Startseite", null, library, free, deck, pages, taken, transport));
+        pages.Insert(0, Page(DeckPage.HomeId, "Startseite", null, library, deck, pages, taken, extra));
         return deck with { Pages = pages };
     }
 
@@ -88,30 +90,86 @@ public sealed class ShowExampleSeeder(
         string name,
         string? parent,
         IReadOnlyList<MusicNode> nodes,
-        IReadOnlyList<int> free,
         Deck deck,
         List<DeckPage> pages,
         HashSet<string> taken,
-        IReadOnlyList<DeckKey> transport)
+        IReadOnlyList<DeckKey> extra)
     {
-        var keys = new List<DeckKey>(id == DeckPage.HomeId ? transport : []);
+        var keys = new List<DeckKey>();
+        var used = new HashSet<int>();
+
+        foreach (var node in nodes)
+            if (Placed(node, deck, used) is { } number)
+            {
+                used.Add(number);
+                keys.Add(KeyFor(node, number, id, deck, pages, taken, extra));
+            }
+
+        var free = Free(deck, used).ToList();
         var at = 0;
         foreach (var node in nodes)
         {
+            if (Placed(node, deck, used) is not null || PlacedAt(node, deck) is not null) continue;
             if (at >= free.Count) break;
             var number = free[at++];
-            if (node.IsFolder)
-            {
-                var pageId = PageId(node, taken);
-                keys.Add(new DeckKey(number, KeyKinds.Page, node.Name, Colour(node), Symbol(node), PageId: pageId));
-                var below = Free(deck, []).ToList();
-                pages.Add(Page(pageId, node.Name, id, node.Children, below, deck, pages, taken, transport));
-                continue;
-            }
-            keys.Add(new DeckKey(number, KeyKinds.Music, node.Name, Colour(node), Symbol(node), MusicId: node.Id));
+            used.Add(number);
+            keys.Add(KeyFor(node, number, id, deck, pages, taken, extra));
         }
+
+        if (id == DeckPage.HomeId)
+            foreach (var key in extra)
+            {
+                while (at < free.Count && used.Contains(free[at])) at++;
+                if (at >= free.Count) break;
+                var number = free[at++];
+                used.Add(number);
+                keys.Add(key with { Number = number });
+            }
+
         return new DeckPage(id, name, parent, keys.OrderBy(k => k.Number).ToList());
     }
+
+    private static DeckKey KeyFor(
+        MusicNode node,
+        int number,
+        string pageId,
+        Deck deck,
+        List<DeckPage> pages,
+        HashSet<string> taken,
+        IReadOnlyList<DeckKey> extra)
+    {
+        if (node.Control is { Length: > 0 } control && SpecialOf(control) is { } special)
+            return new DeckKey(number, KeyKinds.Special, node.Name, Colour(node),
+                SpecialKey.Of(special)?.Icon is { Length: > 0 } icon ? icon : Symbol(node), Special: special);
+
+        if (node.IsFolder)
+        {
+            var id = PageId(node, taken);
+            pages.Add(Page(id, node.Name, pageId, node.Children, deck, pages, taken, extra));
+            return new DeckKey(number, KeyKinds.Page, node.Name, Colour(node), Symbol(node), PageId: id);
+        }
+
+        return new DeckKey(number, KeyKinds.Music, node.Name, Colour(node), Symbol(node), MusicId: node.Id);
+    }
+
+    private static int? PlacedAt(MusicNode node, Deck deck)
+    {
+        if (node.X < 0 || node.Y < 0 || node.X >= deck.Columns) return null;
+        var number = node.Y * deck.Columns + node.X + 1;
+        return number >= 1 && number <= deck.Count && !deck.Reserved(number) ? number : null;
+    }
+
+    private static string? SpecialOf(string control) => control switch
+    {
+        "pause" => SpecialKey.MusicPause,
+        "fade" => SpecialKey.MusicFade,
+        "previous" => SpecialKey.MusicPrevious,
+        "next" => SpecialKey.MusicNext,
+        _ => null,
+    };
+
+    private static int? Placed(MusicNode node, Deck deck, HashSet<int> used) =>
+        PlacedAt(node, deck) is { } number && !used.Contains(number) ? number : null;
 
     private static IEnumerable<int> Free(Deck deck, IEnumerable<int> used)
     {

@@ -60,8 +60,7 @@ public class ShowExampleTests
         var deck = hall.DeckLayouts.First(d => d.Id == DefaultDecks.MusicDeck);
         var home = deck.Home;
 
-        var folder = home.KeyAt(1);
-        Assert.Equal(KeyKinds.Page, folder.Kind);
+        var folder = home.Keys.First(k => k.Kind == KeyKinds.Page);
         Assert.Equal("Vor/Nach Spiel / Pause", folder.Label);
         Assert.Equal("📁", folder.Icon);
 
@@ -70,7 +69,7 @@ public class ShowExampleTests
         Assert.Equal("#f5b50a", piece.Color);
         Assert.Equal("🎵", piece.Icon);
 
-        Assert.Equal(SpecialKey.AutoBreakMusic, home.KeyAt(14).Special);
+        Assert.Contains(home.Keys, k => k.Special == SpecialKey.AutoBreakMusic);
         Assert.Contains(deck.Pages, p => p.Name == "Vor/Nach Spiel / Pause");
         Assert.Contains(deck.Pages.First(p => p.Name == "Vor/Nach Spiel / Pause").Keys, k => k.MusicId == "m6");
     }

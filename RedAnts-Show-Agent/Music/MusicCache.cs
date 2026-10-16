@@ -32,11 +32,22 @@ public sealed class MusicCache(AgentConfig config, PayloadStore payload, ILogger
         try
         {
             if (File.Exists(file)) return file;
-            var url = $"{config.CloudUrl.TrimEnd('/')}/dj/sound/{Uri.EscapeDataString(reference)}";
+            var path = string.Join('/', reference.Split('/').Select(Uri.EscapeDataString));
+            var url = $"{config.CloudUrl.TrimEnd('/')}/dj/sound/{path}";
             using var answer = await _http.GetAsync(url, stop);
             if (!answer.IsSuccessStatusCode)
             {
                 Fault = $"{reference}: {(int)answer.StatusCode}";
+                log.LogWarning("Musik-Zwischenspeicher: {Reference} antwortet mit {Status}", reference, (int)answer.StatusCode);
+                return null;
+            }
+            var kind = answer.Content.Headers.ContentType?.MediaType ?? "";
+            if (!kind.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
+                && !kind.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                && !kind.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
+            {
+                Fault = $"{reference}: Antwort ist {kind}, kein Ton";
+                log.LogWarning("Musik-Zwischenspeicher: {Reference} kam als {Kind} zurück, nicht als Ton", reference, kind);
                 return null;
             }
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
@@ -50,6 +61,7 @@ public sealed class MusicCache(AgentConfig config, PayloadStore payload, ILogger
         catch (Exception e) when (e is HttpRequestException or IOException or TaskCanceledException)
         {
             Fault = $"{reference}: {e.Message}";
+            log.LogWarning("Musik-Zwischenspeicher: {Reference} gescheitert: {Message}", reference, e.Message);
             return null;
         }
         finally { _one.Release(); }

@@ -33,7 +33,8 @@ public sealed record DeckView(
     IReadOnlyList<DeckKeyRow> Keys,
     bool FromAgent,
     DeckLive? Live = null,
-    IReadOnlyDictionary<string, string>? States = null);
+    IReadOnlyDictionary<string, string>? States = null,
+    string PageId = "");
 
 public interface IDeckMirror
 {

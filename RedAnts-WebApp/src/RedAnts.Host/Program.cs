@@ -393,6 +393,12 @@ app.UseDJ();
 
         app.Use(async (context, next) =>
         {
+            if (context.Request.Path.StartsWithSegments("/dj/sound"))
+            {
+                await next();
+                return;
+            }
+
             if (context.Request.Path.Equals("/dj", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.Redirect("/bord");
