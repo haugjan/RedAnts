@@ -22,6 +22,8 @@ public sealed class KeyRunner(
 
     public string Shown { get; private set; } = "";
 
+    public string OnAir { get; private set; } = "";
+
     public async Task RunAsync(IReadOnlyList<KeyStep> steps, KeyContext ctx, CancellationToken stop)
     {
         foreach (var step in steps)
@@ -40,6 +42,7 @@ public sealed class KeyRunner(
     {
         if (vmix.Configured) await vmix.HideAllAsync(stop);
         Shown = "";
+        OnAir = "";
         states.Set(ShowStates.Overlay, "aus", "ausgeblendet");
         states.Set(ShowStates.ClockVisible, "aus", "ausgeblendet");
         Changed?.Invoke();
@@ -59,6 +62,7 @@ public sealed class KeyRunner(
             StringComparer.OrdinalIgnoreCase);
         await vmix.ShowTitleAsync(title, values, stop);
         Shown = kind;
+        OnAir = OnAirText(kind, ctx);
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "an", kind);
         Changed?.Invoke();
     }
@@ -67,7 +71,7 @@ public sealed class KeyRunner(
     {
         if (payload.Hall.Title(kind) is not { } title || !Offers(title)) return;
         await vmix.HideTitleAsync(title, stop);
-        if (Shown == kind) Shown = "";
+        if (Shown == kind) { Shown = ""; OnAir = ""; }
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "aus", kind);
         Changed?.Invoke();
     }
@@ -180,6 +184,31 @@ public sealed class KeyRunner(
                 break;
         }
     }
+
+    private static string OnAirText(string kind, KeyContext ctx)
+    {
+        var name = NameOf(kind, ctx.Event);
+        return ctx.Player is { } player ? name + "\n" + player.Display + " " + player.Name : name;
+    }
+
+    private static string NameOf(string kind, string occasion) => kind switch
+    {
+        "player_event" => occasion.Equals("owngoal", StringComparison.OrdinalIgnoreCase) ? "Eigentor" : "Tor",
+        "penalty" => "Strafe",
+        "bestplayer" => "Best Player",
+        "name" => "Spielerin",
+        "starting6" => "Starting 6",
+        "coach" => "Coach",
+        "timeout" => "Timeout",
+        "message" => "Meldung",
+        "commentary" => "Kommentar",
+        "referee" => "Schiedsrichter",
+        "result" => "Resultat",
+        "opener" => "Opener",
+        "scoreboard" => "Scoreboard",
+        "lineup_home" or "lineup_away" => "Aufstellung",
+        _ => kind,
+    };
 
     private static string KindOf(string? target) =>
         target is { Length: > 0 } text && text.StartsWith(TitlePrefix, StringComparison.OrdinalIgnoreCase)

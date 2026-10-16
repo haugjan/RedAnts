@@ -315,6 +315,7 @@ public sealed class Deck
         "drittel" => _live.PeriodLabel.Length > 0 ? _live.PeriodLabel : "Drittel",
         "stand.heim" => _live.HomeScore,
         "stand.gast" => _live.AwayScore,
+        "einblender" => _runner.OnAir.Length > 0 ? _runner.OnAir : key.Label,
         _ => key.Label,
     };
 
@@ -464,7 +465,8 @@ public sealed class Deck
             var chosen = player;
             builder.Action(number, $"{chosen.Display}\n{Short(chosen.Name)}", color, () => PickAsync(deckId, flow, chosen));
         }
-        if (places.Count > 0) builder.Label(places[^1], flow.Title, CHead);
+        if (places.Count > 0)
+            builder.Label(places[^1], _runner.OnAir.Length > 0 ? _runner.OnAir : flow.Title, CHead);
         if (flow.Event == "goal" && index < places.Count)
             builder.Action(places[index++], "Eigentor", color, () => PickAsync(deckId, flow, null, own: true));
         if (team.TopScorerPlayer is { } top && index < places.Count)

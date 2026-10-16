@@ -112,8 +112,9 @@ public static class LiveValues
     public const string Period = "drittel";
     public const string HomeScore = "stand.heim";
     public const string AwayScore = "stand.gast";
+    public const string Overlay = "einblender";
 
-    public static readonly IReadOnlyList<string> All = [Time, Period, HomeScore, AwayScore];
+    public static readonly IReadOnlyList<string> All = [Time, Period, HomeScore, AwayScore, Overlay];
 
     public static string Label(string value) => value switch
     {
@@ -121,6 +122,7 @@ public static class LiveValues
         Period => "Drittel",
         HomeScore => "Stand Heim",
         AwayScore => "Stand Gast",
+        Overlay => "Auf Sendung",
         _ => value,
     };
 }
