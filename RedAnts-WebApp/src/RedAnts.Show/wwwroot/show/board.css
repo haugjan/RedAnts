@@ -17,7 +17,7 @@ html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf
 .hb .pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #22222b; border: 1px solid #2f2f3a; color: #b9c2cb; }
 .hb .pill.on { background: #7a1d1d; border-color: #a32a2a; color: #ffd9d9; }
 .hb .panic { background: #d01212; color: #fff; border: none; border-radius: 3px; padding: 7px 14px; font-weight: 900; cursor: pointer; }
-.hb .setup { background: #262631; color: #e9edf1; border: 1px solid #343442; border-radius: 3px; padding: 7px 12px; font: inherit; cursor: pointer; }
+.hb .setup { background: #262631; color: #e9edf1; border: 1px solid #343442; border-radius: 3px; padding: 7px 12px; font: inherit; cursor: pointer; text-decoration: none; }
 .hb .setup.on { background: #3a3a4a; color: #fff; }
 .hb .panel { background: #16161d; border: 1px solid #272730; border-radius: 6px; padding: 12px; margin: 0 0 12px; }
 

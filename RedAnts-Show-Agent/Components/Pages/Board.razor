@@ -9,6 +9,7 @@
 @inject LiveGame Live
 @inject ShowStates States
 @inject IJSRuntime JS
+@inject AgentConfig Config
 
 <PageTitle>@Payload.Hall.Name</PageTitle>
 
@@ -27,6 +28,10 @@
     {
         var value = States.Value(state.Id);
         <span class="pill @(value != state.First ? "on" : "")" @key="state.Id">@state.Name: @value</span>
+    }
+    @if (Payload.Hall.Offers.Vmix || Payload.Hall.Offers.Clock)
+    {
+        <a class="setup" href="@($"{Config.CloudUrl.TrimEnd('/')}/matchday?halle={Config.HallId}")" target="_blank" title="Spielkonfiguration in der Cloud, braucht Internet">⚙ Spiel</a>
     }
     <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>
