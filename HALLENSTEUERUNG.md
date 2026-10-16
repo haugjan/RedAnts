@@ -164,6 +164,7 @@ Gebaut und geprüft (Tests grün, im Browser nachgesehen):
 - **Deck-Modell**: Seiten statt fester Kontexte, Tastenarten leer, Musik, Befehlsfolge, feste Funktion, Seite, Anzeige; PANIC und Zurück liegen je Deck fest; eine Taste kann nach dem Druck auf die Startseite zurückspringen.
 - **Feste Funktionen**: Tor Heim/Gast, Strafe mit 2', 2'+2', 10' und Spieldauer, Best Player, Spielerin, Starting 6, Zuschauerzähler, die Zustandstasten (Einblender, Uhr, Musik, Automodus) und die Musiksteuerung.
 - **Musik**: bleibt im Soundboard. Die Hallensteuerung liest die Befehle über einen Port, das Bord spielt sie mit dem Player des Soundboards, ohne sichtbaren Player und ohne Netzrunde.
+- **Scoreboard**: der Agent schreibt Zeit, Stand, Drittel und die Strafboxen aus dem Uhrtelegramm direkt nach vMix.
 - **Agent**: meldet sich an der Cloud an, hält die Konfiguration lokal, lädt die Musikstücke in einen Zwischenspeicher und bedient sie offline unter `/dj/sound/...`, serviert Bord und Matchuhr, spricht vMix und die LED-Wand.
 - **Bord**: identisch lokal und in der Cloud, spiegelt jedes Deck Taste für Taste, Kacheln wachsen mit dem Fenster, Beschriftung schrumpft erst, wenn sie sonst abgeschnitten würde.
 - **Companion**: ein universelles Modul, je Deck eine Instanz, Presets je Tastennummer, Musiksteuerung und PANIC.
@@ -173,6 +174,6 @@ Gebaut und geprüft (Tests grün, im Browser nachgesehen):
 
 1. **Bodet ScorePad** ist im Agenten noch nicht eingebaut, nur iCast über UDP. Die Vorlage liegt in `RedAnts-GameClock/Clocks/BodetScorepadProtocol.cs`, der Agent braucht dafür zusätzlich einen TCP-Empfang und den Suchlauf.
 2. **Spielkonfiguration auf dem Bord**: das Laden von swissunihockey und aus einer Datei liegt bereit (`Features/Games`), die Bedienung dafür sitzt noch unter `/matchday` statt auf dem Bord, und Teamfarbe, Kürzel und Topscorer sind dort noch nicht von Hand änderbar.
-3. **Scoreboard in vMix** schreibt der Agent noch nicht selbst; die GameClock bleibt dafür bis dahin stehen.
+3. **GameClock ablösen**: der Agent schreibt das Scoreboard bereits aus dem Uhrtelegramm nach vMix (`Vmix/VmixLink.PublishScoreboardAsync`). Die GameClock läuft daneben weiter, bis Bodet im Agenten steht und du die Ablösung freigibst.
 4. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
 5. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
