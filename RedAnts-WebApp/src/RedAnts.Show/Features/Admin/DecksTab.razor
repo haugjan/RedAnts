@@ -163,9 +163,13 @@
                             </label>
                         }
 
-                        @if (current.Kind == KeyKinds.Steps)
+                        @if (current.Kind is KeyKinds.Steps or KeyKinds.Special)
                         {
                             <h4>Befehle</h4>
+                            @if (current.Kind == KeyKinds.Special)
+                            {
+                                <p class="sa-hint">Laufen beim Druck, bevor die feste Funktion übernimmt: hier stehen Musik und LED-Vorlage von Tor, Strafe und Best Player.</p>
+                            }
                             @for (var i = 0; i < current.Sequence.Count; i++)
                             {
                                 var index = i;
@@ -302,7 +306,7 @@
     {
         if (kind is null) return;
         Set(k => new DeckKey(k.Number, kind, k.Label, k.Color, k.Icon,
-            Steps: kind == KeyKinds.Steps ? k.Sequence : null,
+            Steps: kind is KeyKinds.Steps or KeyKinds.Special ? k.Sequence : null,
             Live: kind == KeyKinds.Live ? k.Live ?? LiveValues.Time : null,
             HomeAfter: k.HomeAfter));
     }

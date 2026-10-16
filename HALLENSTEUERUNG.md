@@ -162,7 +162,8 @@ Gebaut und geprüft (Tests grün, im Browser nachgesehen):
 
 - **Hallenkonfiguration** im Backoffice unter „Show“: Angebot, Geräte, Einblender, LED-Vorlagen, Decks mit Seiten und Tasten.
 - **Deck-Modell**: Seiten statt fester Kontexte, Tastenarten leer, Musik, Befehlsfolge, feste Funktion, Seite, Anzeige; PANIC und Zurück liegen je Deck fest; eine Taste kann nach dem Druck auf die Startseite zurückspringen.
-- **Feste Funktionen**: Tor Heim/Gast, Strafe mit 2', 2'+2', 10' und Spieldauer, Best Player, Spielerin, Starting 6, Zuschauerzähler, die Zustandstasten (Einblender, Uhr, Musik, Automodus) und die Musiksteuerung.
+- **Feste Funktionen**: Tor Heim/Gast, Strafe mit 2', 2'+2', 10' und Spieldauer, Best Player, Spielerin, Starting 6, Zuschauerzähler, die Zustandstasten (Einblender, Uhr, Musik, Automodus) und die Musiksteuerung. Ihre Musik und LED-Vorlage steht als Befehlsfolge auf derselben Taste und ist im Backoffice unter Show > Decks änderbar; sie läuft beim Druck, bevor die feste Funktion übernimmt.
+- **Auf Sendung**: nach der Spielerwahl zeigt eine tote Taste, was gerade eingeblendet ist (z. B. „Tor / 7 Nina Muster"); als Tastenart „Anzeige" lässt sich das auf jedes Deck legen.
 - **Musik**: bleibt im Soundboard. Die Hallensteuerung liest die Befehle über einen Port, das Bord spielt sie mit dem Player des Soundboards, ohne sichtbaren Player und ohne Netzrunde.
 - **Scoreboard**: der Agent schreibt Zeit, Stand, Drittel und die Strafboxen aus dem Uhrtelegramm direkt nach vMix.
 - **Agent**: meldet sich an der Cloud an, hält die Konfiguration lokal, lädt die Musikstücke in einen Zwischenspeicher und bedient sie offline unter `/dj/sound/...`, serviert Bord und Matchuhr, spricht vMix und die LED-Wand.
@@ -182,4 +183,4 @@ Gebaut und geprüft (Tests grün, im Browser nachgesehen):
 4. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
 5. **Passwörter**: das Cloud-Bord hängt am Passwort `Show:BoardPassword`, das heute im Klartext in `appsettings.json` steht (aus der Soundboard-Zeit). Für die Hallensteuerung gehört es in die App-Service-Einstellungen. Das lokale Bord des Agenten hört nur auf `localhost`; soll es im Hallennetz erreichbar sein, braucht `agent.json` `bind` (z. B. `0.0.0.0`) und `boardPassword`, sonst warnt der Agent beim Start.
 6. **Spielkonfiguration offline**: das Bearbeiten läuft über die Cloud, der Agent reicht sie nur weiter. Ohne Internet bleibt das zuletzt geladene Spiel gültig, ändern lässt es sich dann nicht.
-7. **Musik und LED fester Tasten im Backoffice**: Tor, Strafe und Best Player nehmen ihre Musik und LED-Vorlage heute aus der Tastenfolge der Halle, es gibt dafür aber noch keine eigene Maske im Backoffice.
+7. **Zuschauerzähler**: die Seite zählt im Agenten mit und schreibt die Zahl in den Einblender, eine Auswertung über mehrere Spiele gibt es nicht.
