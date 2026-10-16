@@ -1,10 +1,11 @@
 (function () {
   const board = {};
-  const minCell = 44;
+  const minCell = 70;
   const maxCell = 170;
   const minFont = 8;
   let dotnet = null;
   let frame = 0;
+  let laid = '';
   let paused = false;
 
   function player() {
@@ -29,6 +30,7 @@
     }, true);
     layout();
     window.addEventListener('resize', layout);
+    observer.observe(document.body, { childList: true, subtree: true });
   };
 
   board.play = function (id, songsJson, random, label) {
@@ -79,10 +81,15 @@
     else if (what === 'pause') board.pause();
   };
 
+  const gap = 8;
+
+  function colsOf(grid) {
+    return Number(getComputedStyle(grid).getPropertyValue('--cols')) || 1;
+  }
+
   function rowsOf(grid) {
-    const columns = Number(getComputedStyle(grid).getPropertyValue('--cols')) || 1;
     const keys = grid.querySelectorAll('.key').length;
-    return Math.max(1, Math.ceil(keys / columns));
+    return Math.max(1, Math.ceil(keys / colsOf(grid)));
   }
 
   function cellSize(grids) {
@@ -100,7 +107,7 @@
     grids.forEach(function (grid) {
       const own = rowsOf(grid);
       rows += own;
-      taken += (own - 1) * 8 + 14;
+      taken += (own - 1) * gap + 14;
       const head = grid.parentElement && grid.parentElement.querySelector('h2');
       if (head) taken += head.offsetHeight + 6;
     });
@@ -115,47 +122,67 @@
     return label.scrollHeight > label.clientHeight + 1 || label.scrollWidth > label.clientWidth + 1;
   }
 
+  function largest(key, most) {
+    const label = key.querySelector('.label');
+    let low = minFont;
+    let high = most;
+    label.style.fontSize = high + 'px';
+    if (!overflows(key)) return high;
+    while (high - low > 1) {
+      const middle = Math.floor((low + high) / 2);
+      label.style.fontSize = middle + 'px';
+      if (overflows(key)) high = middle; else low = middle;
+    }
+    return low;
+  }
+
   function fitGrid(grid) {
-    const keys = Array.from(grid.querySelectorAll('.key'));
-    const labelled = keys.filter(function (key) {
+    const keys = Array.from(grid.querySelectorAll('.key')).filter(function (key) {
       const label = key.querySelector('.label');
       return label && label.textContent.trim().length > 0;
     });
-    if (!labelled.length) return;
+    if (!keys.length) return;
     const sample = keys[0];
-    let size = Math.max(minFont, Math.min(Math.round(sample.clientWidth / 5), Math.round(sample.clientHeight / 4)));
-    const apply = function (value) {
-      labelled.forEach(function (key) { key.querySelector('.label').style.fontSize = value + 'px'; });
-    };
-    apply(size);
-    let guard = 0;
-    while (size > minFont && guard++ < 48 && labelled.some(overflows)) {
-      size -= 1;
-      apply(size);
-    }
+    const most = Math.max(minFont, Math.min(Math.round(sample.clientWidth / 5), Math.round(sample.clientHeight / 4)));
+    const best = keys.map(function (key) { return largest(key, most); });
+    const sorted = best.slice().sort(function (a, b) { return a - b; });
+    const uniform = sorted[Math.floor(sorted.length / 4)];
+    keys.forEach(function (key, index) {
+      key.querySelector('.label').style.fontSize = Math.min(uniform, best[index]) + 'px';
+    });
+  }
+
+  function signature(grids) {
+    return innerWidth + 'x' + innerHeight + '|' + grids
+      .map(function (grid) { return grid.innerText.replace(/\s+/g, ' '); })
+      .join('#');
   }
 
   function layout() {
-    if (frame) cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(function () {
+    if (frame) clearTimeout(frame);
+    frame = setTimeout(function () {
       frame = 0;
       const grids = Array.from(document.querySelectorAll('.hb .grid'));
       if (!grids.length) return;
-      const cell = cellSize(grids);
-      grids.forEach(function (grid) { grid.style.setProperty('--cell', cell + 'px'); });
+      const mark = signature(grids);
+      if (mark === laid) return;
+      laid = mark;
+      const room = cellSize(grids);
+      grids.forEach(function (grid) {
+        const cols = colsOf(grid);
+        const wide = grid.parentElement ? grid.parentElement.clientWidth : grid.clientWidth;
+        const byWidth = Math.floor((wide - (cols - 1) * gap) / cols);
+        const cell = Math.max(minCell, Math.min(room, byWidth, maxCell));
+        grid.style.setProperty('--cell', cell + 'px');
+        grid.style.maxWidth = (cell * cols + (cols - 1) * gap) + 'px';
+      });
       grids.forEach(fitGrid);
-    });
+    }, 120);
   }
 
   board.fit = layout;
 
   const observer = new MutationObserver(layout);
-  function watch() {
-    const root = document.querySelector('.hb');
-    if (root) observer.observe(root, { childList: true, subtree: true, characterData: true });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch);
-  else watch();
 
   window.hallBoard = board;
 })();

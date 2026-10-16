@@ -45,7 +45,13 @@
         fromGame.Length > 0 ? fromGame : fromClock.Length > 0 ? fromClock : fallback;
 
     protected override void OnInitialized() =>
-        _watchdog = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
+        _watchdog = new Timer(_ => _ = RedrawAsync(), null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
+
+    private async Task RedrawAsync()
+    {
+        try { await InvokeAsync(StateHasChanged); }
+        catch (Exception) { }
+    }
 
     public void Dispose() => _watchdog?.Dispose();
 }

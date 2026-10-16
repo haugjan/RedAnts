@@ -181,7 +181,7 @@ else
         await LoadHallAsync();
         Feed.Changed += OnFeed;
         Playback.Changed += OnPlayback;
-        _poll = new Timer(async _ => await RefreshAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+        _poll = new Timer(_ => _ = PollAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
     }
 
     protected override async Task OnAfterRenderAsync(bool first)
@@ -278,6 +278,12 @@ else
             await ReadDeckAsync();
             StateHasChanged();
         });
+    }
+
+    private async Task PollAsync()
+    {
+        try { await RefreshAsync(); }
+        catch (Exception) { }
     }
 
     private void OnPlayback(string hallId)
