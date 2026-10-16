@@ -156,6 +156,23 @@ Ein **universelles Modul** für alles: Hallensteuerung und Musik, Halle mit und 
 - Was die Taste zeigt und was sie tut, entscheidet allein die Hallenkonfiguration. Das Modul kennt nur Nummern.
 - Zusätzlich enthält das Modul die Musiksteuerung (Stopp, Fade-out, nächstes und vorheriges Stück, Pause) und die Seitennavigation.
 
+## Stand vom 16.10.2026
+
+Gebaut und geprüft (Tests grün, im Browser nachgesehen):
+
+- **Hallenkonfiguration** im Backoffice unter „Show“: Angebot, Geräte, Einblender, LED-Vorlagen, Decks mit Seiten und Tasten.
+- **Deck-Modell**: Seiten statt fester Kontexte, Tastenarten leer, Musik, Befehlsfolge, feste Funktion, Seite, Anzeige; PANIC und Zurück liegen je Deck fest; eine Taste kann nach dem Druck auf die Startseite zurückspringen.
+- **Feste Funktionen**: Tor Heim/Gast, Strafe mit 2', 2'+2', 10' und Spieldauer, Best Player, Spielerin, Starting 6, Zuschauerzähler, die Zustandstasten (Einblender, Uhr, Musik, Automodus) und die Musiksteuerung.
+- **Musik**: bleibt im Soundboard. Die Hallensteuerung liest die Befehle über einen Port, das Bord spielt sie mit dem Player des Soundboards, ohne sichtbaren Player und ohne Netzrunde.
+- **Agent**: meldet sich an der Cloud an, hält die Konfiguration lokal, lädt die Musikstücke in einen Zwischenspeicher und bedient sie offline unter `/dj/sound/...`, serviert Bord und Matchuhr, spricht vMix und die LED-Wand.
+- **Bord**: identisch lokal und in der Cloud, spiegelt jedes Deck Taste für Taste, Kacheln wachsen mit dem Fenster, Beschriftung schrumpft erst, wenn sie sonst abgeschnitten würde.
+- **Companion**: ein universelles Modul, je Deck eine Instanz, Presets je Tastennummer, Musiksteuerung und PANIC.
+- **Beispielhalle Win4 Stratos**: wird beim Start angelegt, XL-Deck wie die bisherige TCConsole, Mk2 mit den Stücken des Clubs, Pausenmusik gesetzt.
+
 ## Offene Punkte
 
-Keine. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) steht oben bei der Spielkonfiguration und wird beim ersten echten Spiel überprüft.
+1. **Bodet ScorePad** ist im Agenten noch nicht eingebaut, nur iCast über UDP. Die Vorlage liegt in `RedAnts-GameClock/Clocks/BodetScorepadProtocol.cs`, der Agent braucht dafür zusätzlich einen TCP-Empfang und den Suchlauf.
+2. **Spielkonfiguration auf dem Bord**: das Laden von swissunihockey und aus einer Datei liegt bereit (`Features/Games`), die Bedienung dafür sitzt noch unter `/matchday` statt auf dem Bord, und Teamfarbe, Kürzel und Topscorer sind dort noch nicht von Hand änderbar.
+3. **Scoreboard in vMix** schreibt der Agent noch nicht selbst; die GameClock bleibt dafür bis dahin stehen.
+4. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
+5. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
