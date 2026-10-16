@@ -141,7 +141,7 @@ public sealed record DeckLayout(
     public bool Reserved(int number) => number == Panic || number == Back;
 }
 
-public sealed record MusicItem(string Id, string Name, string Folder, int Songs, bool Random, string SongsJson = "[]")
+public sealed record MusicItem(string Id, string Name, string Folder, int Songs, bool Random, string SongsJson = "[]", string Icon = "", string Color = "", string Subtitle = "")
 {
     public string Display => Folder.Length > 0 ? $"{Folder} · {Name}" : Name;
 }

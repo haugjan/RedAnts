@@ -64,12 +64,24 @@ else
                         data-label="@slot.Label"
                         @onclick="() => PressAsync(slot)"
                         @key="slot.Number">
+                    @if (slot.Symbol is { Length: > 0 } symbol)
+                    {
+                        <span class="symbol">@symbol</span>
+                    }
                     <span class="label">
                         @foreach (var line in slot.Label.Split('\n'))
                         {
                             <span>@line</span>
                         }
                     </span>
+                    @if (slot.Subtitle is { Length: > 0 } subtitle)
+                    {
+                        <span class="sub">@subtitle</span>
+                    }
+                    @if (music is { Songs: > 1 })
+                    {
+                        <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                    }
                     <em>@slot.Number</em>
                 </button>
             }

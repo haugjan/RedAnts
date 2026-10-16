@@ -3,7 +3,7 @@ using RedAnts.Show.Agent.Keys;
 
 namespace RedAnts.Show.Agent.Deck;
 
-public sealed record DeckSlot(int Number, string Label, string? ImageKey, int Color, int TextColor, bool Pressable, Func<Task>? Press, bool Active = false, string? MusicId = null);
+public sealed record DeckSlot(int Number, string Label, string? ImageKey, int Color, int TextColor, bool Pressable, Func<Task>? Press, bool Active = false, string? MusicId = null, string Symbol = "", string Subtitle = "");
 
 public sealed class Deck
 {
@@ -123,6 +123,8 @@ public sealed class Deck
                 pressable = s.Pressable,
                 aktiv = s.Active,
                 musik = s.MusicId,
+                symbol = s.Symbol,
+                untertitel = s.Subtitle,
             }).ToArray(),
             live = Live(),
             states = _states.All,
@@ -273,7 +275,8 @@ public sealed class Deck
                 if (music is null) { builder.Label(key.Number, key.Label, CNeutral); return; }
                 var playing = string.Equals(_music, music.Id, StringComparison.OrdinalIgnoreCase);
                 builder.Action(key.Number, key.Label.Length > 0 ? key.Label : music.Name, playing ? CActive : color,
-                    () => ToggleMusicAsync(music.Id), key.Icon, playing, music.Id);
+                    () => ToggleMusicAsync(music.Id), Picture(key.Icon), playing, music.Id,
+                    symbol: Symbol(key.Icon), subtitle: music.Subtitle);
                 return;
             case KeyKinds.Steps:
                 builder.Action(key.Number, key.Label, color, () => StepsAsync(deckId, key), key.Icon);
@@ -282,7 +285,8 @@ public sealed class Deck
                 SpecialKeyOn(builder, deck, deckId, key);
                 return;
             case KeyKinds.Page:
-                builder.Action(key.Number, key.Label, color, () => { Go(deckId, key.PageId); return Task.CompletedTask; }, key.Icon);
+                builder.Action(key.Number, key.Label, color, () => { Go(deckId, key.PageId); return Task.CompletedTask; },
+                    Picture(key.Icon), symbol: Symbol(key.Icon));
                 return;
             case KeyKinds.Live:
                 builder.Label(key.Number, LiveText(key), color);
@@ -601,6 +605,12 @@ public sealed class Deck
         waiting.TrySetResult(true);
     }
 
+    static string? Picture(string? icon) =>
+        icon is { Length: > 0 } && DeckIcons.Known(icon) ? icon : null;
+
+    static string Symbol(string? icon) =>
+        icon is { Length: > 0 } && !DeckIcons.Known(icon) ? icon : "";
+
     static int Rgb(string? color)
     {
         if (color is not { Length: 7 } hex || hex[0] != '#') return CNeutral;
@@ -620,11 +630,11 @@ public sealed class Deck
 
         int Count => columns * rows;
 
-        public void Action(int number, string label, int bg, Func<Task> press, string? icon = null, bool active = false, string? musicId = null, int? forceText = null)
+        public void Action(int number, string label, int bg, Func<Task> press, string? icon = null, bool active = false, string? musicId = null, int? forceText = null, string symbol = "", string subtitle = "")
         {
             if (number < 1 || number > Count) return;
             var fg = forceText ?? Fg(bg);
-            _slots[number] = new DeckSlot(number, label, icon is null ? null : DeckIcons.Key(icon, label, fg), bg, fg, true, press, active, musicId);
+            _slots[number] = new DeckSlot(number, label, icon is null ? null : DeckIcons.Key(icon, label, fg), bg, fg, true, press, active, musicId, symbol, subtitle);
         }
 
         public void Label(int number, string label, int bg)

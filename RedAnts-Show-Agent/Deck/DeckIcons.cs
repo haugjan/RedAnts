@@ -32,6 +32,8 @@ public static class DeckIcons
 
     public static string Dir => Path.Combine(AppContext.BaseDirectory, "Icons");
 
+    public static bool Known(string icon) => File.Exists(Path.Combine(Dir, icon + ".png"));
+
     public static string Key(string icon, string label, int textColor) => $"{icon}|{label}|{textColor:X6}";
 
     public static string? FromKey(string key)
