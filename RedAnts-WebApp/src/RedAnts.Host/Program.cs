@@ -187,7 +187,7 @@ const string djCsp =
     "style-src 'self' 'unsafe-inline'; " +
     "script-src 'self' 'unsafe-inline' https://sdk.scdn.co; " +
     "connect-src 'self' https://api.spotify.com https://accounts.spotify.com https://*.spotify.com wss://*.spotify.com https://*.scdn.co; " +
-    "media-src 'self' blob: https://*.scdn.co; " +
+    "media-src 'self' data: blob: https://*.scdn.co; " +
     "frame-src https://sdk.scdn.co https://*.spotify.com; " +
     "frame-ancestors 'self'";
 
@@ -219,7 +219,7 @@ app.Use(async (context, next) =>
             || path.StartsWithSegments("/scanner-test");
         if (!headers.ContainsKey("Content-Security-Policy"))
         {
-            if (path.StartsWithSegments("/dj"))
+            if (path.StartsWithSegments("/dj") || path.StartsWithSegments("/bord"))
                 headers["Content-Security-Policy"] = djCsp;
             else if (!cspExempt)
                 headers["Content-Security-Policy"] = publicCsp;

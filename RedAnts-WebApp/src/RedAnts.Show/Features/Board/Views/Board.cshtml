@@ -15,9 +15,10 @@
 </head>
 <body class="hb-page">
     <component type="typeof(RedAnts.Show.Features.Board.ShowBoardPage)" render-mode="Server" />
-    <script src="/dj/soundboard.js" asp-append-version="true"></script>
+    <div id="components-reconnect-modal" class="hb-reconnect">Verbindung unterbrochen …</div>
+    <script src="/_content/RedAnts.Show/show/soundboard.js" asp-append-version="true"></script>
     <script src="/_content/RedAnts.Show/show/hallboard.js" asp-append-version="true"></script>
-    <script src="/_framework/blazor.server.js"></script>
+    <script src="/_framework/blazor.server.js" autostart="false"></script>
     <script src="/_content/RedAnts.Show/show/reconnect.js"></script>
 </body>
 </html>
