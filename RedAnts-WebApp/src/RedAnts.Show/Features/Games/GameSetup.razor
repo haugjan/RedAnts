@@ -63,9 +63,32 @@
                         </label>
                     </div>
 
+                    <div class="gs-six">
+                        <div class="gs-sixhead">
+                            <strong>Starting 6</strong>
+                            <span class="gs-hint">Reihenfolge wie sie eingeblendet wird: Torhüterin, Verteidigung, Sturm</span>
+                        </div>
+                        <ol class="gs-sixlist">
+                            @for (var spot = 1; spot <= 6; spot++)
+                            {
+                                var place = spot;
+                                <li>
+                                    <span class="gs-place">@place</span>
+                                    <select value="@SixAt(side, place)" @onchange="e => SetSix(side, place, e.Value?.ToString())">
+                                        <option value="0">frei</option>
+                                        @foreach (var player in side.Roster.Where(p => p.Number > 0))
+                                        {
+                                            <option value="@player.Number" selected="@(player.Spot == place)">@player.Number @player.Name</option>
+                                        }
+                                    </select>
+                                </li>
+                            }
+                        </ol>
+                    </div>
+
                     <table class="gs-roster">
                         <thead>
-                            <tr><th>Nr</th><th>Name</th><th>Position</th><th title="Platz in der Starting 6: 1 Torhüterin, dann Verteidigung, dann Sturm">S6</th><th></th></tr>
+                            <tr><th>Nr</th><th>Name</th><th>Position</th><th></th></tr>
                         </thead>
                         <tbody>
                             @foreach (var player in side.Roster)
@@ -74,15 +97,6 @@
                                     <td><input class="gs-nr" type="number" @bind="player.Number" /></td>
                                     <td><input @bind="player.Name" /></td>
                                     <td><input @bind="player.Position" /></td>
-                                    <td>
-                                        <select class="gs-spot" @bind="player.Spot">
-                                            <option value="0">–</option>
-                                            @for (var spot = 1; spot <= 6; spot++)
-                                            {
-                                                <option value="@spot">@spot</option>
-                                            }
-                                        </select>
-                                    </td>
                                     <td><button class="gs-btn small" @onclick="() => side.Roster.Remove(player)">✕</button></td>
                                 </tr>
                             }
@@ -90,7 +104,7 @@
                     </table>
                     <div class="gs-actions">
                         <button class="gs-btn small" @onclick="() => side.Roster.Add(new Rower())">+ Spielerin</button>
-                        <span class="gs-hint">@side.Roster.Count Spielerinnen, Starting 6: @Six(side)</span>
+                        <span class="gs-hint">@side.Roster.Count Spielerinnen, @Lineup(side).Count von 6 in der Starting 6</span>
                     </div>
                 </div>
             }
@@ -293,13 +307,16 @@
             .Distinct()
             .ToList();
 
-    private static string Six(SideEdit side)
+    private static int SixAt(SideEdit side, int spot) =>
+        side.Roster.FirstOrDefault(p => p.Spot == spot)?.Number ?? 0;
+
+    private static void SetSix(SideEdit side, int spot, string? value)
     {
-        var lineup = Lineup(side);
-        if (lineup.Count == 0) return "niemand gesetzt";
-        var names = lineup.Select(number => side.Roster.First(p => p.Number == number))
-            .Select(p => $"{p.Number} {p.Name}".Trim());
-        return $"{string.Join(", ", names)}{(lineup.Count == 6 ? "" : $" ({lineup.Count} von 6)")}";
+        foreach (var player in side.Roster.Where(p => p.Spot == spot).ToList())
+            player.Spot = 0;
+        if (!int.TryParse(value, out var number) || number == 0) return;
+        if (side.Roster.FirstOrDefault(p => p.Number == number) is { } chosen)
+            chosen.Spot = spot;
     }
 
     private static Player Keep(GameTeam team, Rower row)
