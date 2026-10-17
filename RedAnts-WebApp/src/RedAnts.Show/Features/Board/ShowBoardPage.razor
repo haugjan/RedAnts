@@ -44,9 +44,9 @@
         var value = StateValue(state);
         <span class="pill @(state.IsOn(value) ? "on" : "")" @key="state.Id">@state.Name: @value</span>
     }
-    @if (_hall is not null && (_hall.Offers.Vmix || _hall.Offers.Clock))
+    @if (_hall is not null)
     {
-        <button class="setup @(_setup ? "on" : "")" @onclick="() => _setup = !_setup" title="Spielkonfiguration">⚙ Spiel</button>
+        <button class="setup @(_setup ? "on" : "")" @onclick="() => _setup = !_setup" title="Spieltag und Spielkonfiguration">⚙ Spiel</button>
     }
     <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>
@@ -58,12 +58,6 @@
 else
 {
     <main>
-        @if (_setup && _hallId is { Length: > 0 } setupHall)
-        {
-            <section class="panel">
-                <GameSetup HallId="@setupHall" Changed="RefreshAsync" />
-            </section>
-        }
         <div class="decklist">
             @foreach (var deck in _hall.DeckLayouts)
             {
@@ -126,6 +120,21 @@ else
         </p>
     </main>
 
+    @if (_setup && _hallId is { Length: > 0 } setupHall)
+    {
+        <div class="sheet" @onclick="() => _setup = false">
+            <section class="panel" @onclick:stopPropagation="true">
+                <header class="panelbar">
+                    <strong>Spieltag @(_hall?.Name ?? "")</strong>
+                    <span class="lamp @(Connected ? "on" : "off")" title="@(Connected ? "Agent verbunden" : "kein Agent")"></span>
+                    <span class="spacer"></span>
+                    <button class="ctl" @onclick="() => _setup = false">Schliessen</button>
+                </header>
+                <GameSetup HallId="@setupHall" Changed="RefreshAsync" />
+            </section>
+        </div>
+    }
+
     <footer class="now">
         <span class="np">@(_playing is { Length: > 0 } playing ? playing : "keine Musik")</span>
         <button class="ctl" @onclick="PauseAsync">Pause</button>
@@ -173,10 +182,14 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _halls = (await HallsQuery.HandleAsync(new GetHalls.Query())).Where(h => h.MusicOnly || !Online).ToList();
+        var all = await HallsQuery.HandleAsync(new GetHalls.Query());
+        _halls = all.Where(h => h.MusicOnly || !Online).ToList();
         _given = HallId;
         var wanted = HallId ?? Query("halle");
+        if (wanted is { Length: > 0 } named && _halls.All(h => h.Id != named) && all.FirstOrDefault(h => h.Id == named) is { } asked)
+            _halls = _halls.Append(asked).ToList();
         _hallId = _halls.FirstOrDefault(h => h.Id == wanted)?.Id ?? _halls.FirstOrDefault()?.Id;
+        if (Query("spiel") is "1" or "true") _setup = true;
         _music = await MusicQuery.HandleAsync(new GetMusic.Query());
         await LoadHallAsync();
         Feed.Changed += OnFeed;
@@ -188,7 +201,8 @@ else
     {
         if (!first) return;
         _self = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("hallBoard.start", _self);
+        try { await JS.InvokeVoidAsync("hallBoard.start", _self); }
+        catch (JSException) { }
         if (_hallId is { Length: > 0 } id)
         {
             Playback.Claim(id, _board);

@@ -10,6 +10,7 @@
         {
             <button type="button" class="sa-subnav-btn @(_tab == tab.Key ? "active" : "")" @onclick="() => SelectTab(tab.Key)">@tab.Label</button>
         }
+        <a class="sa-subnav-btn" href="/admin/dj" target="_top" title="Stücke hochladen, benennen, in Ordner legen, Cue setzen">🎵 Musik verwalten</a>
         <span class="sa-subnav-spacer"></span>
         @if (_halls.Count > 0)
         {
@@ -27,7 +28,7 @@
         }
     </nav>
 
-    <main class="sa-content">
+    <main class="sa-content" @key="@($"{_tab}|{State.SelectedHallId}")">
         @switch (_tab)
         {
             case "zustaende": <StatesTab /> break;

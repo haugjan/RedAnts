@@ -31,7 +31,7 @@
     }
     @if (Payload.Hall.Offers.Vmix || Payload.Hall.Offers.Clock)
     {
-        <a class="setup" href="@($"{Config.CloudUrl.TrimEnd('/')}/matchday?halle={Config.HallId}")" target="_blank" title="Spielkonfiguration in der Cloud, braucht Internet">⚙ Spiel</a>
+        <a class="setup" href="@($"{Config.CloudUrl.TrimEnd('/')}/bord?halle={Config.HallId}&spiel=1")" target="_blank" title="Spielkonfiguration in der Cloud, braucht Internet">⚙ Spiel</a>
     }
     <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>
@@ -127,7 +127,8 @@ else
     {
         if (!first) return;
         _self = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("hallBoard.start", _self);
+        try { await JS.InvokeVoidAsync("hallBoard.start", _self); }
+        catch (JSException) { }
         Deck.Claim(_board);
         _musicOrder = Deck.MusicOrder;
         _controlOrder = Deck.ControlOrder;

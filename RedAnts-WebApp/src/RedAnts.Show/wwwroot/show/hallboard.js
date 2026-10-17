@@ -178,11 +178,7 @@
       if (mark === laid) return;
       laid = mark;
       const cell = Math.max(minCell, Math.min(byHeight(grids), byWidth(grids), maxCell));
-      grids.forEach(function (grid) {
-        const cols = colsOf(grid);
-        grid.style.setProperty('--cell', cell + 'px');
-        grid.style.width = (cell * cols + (cols - 1) * gap) + 'px';
-      });
+      grids.forEach(function (grid) { grid.style.setProperty('--cell', cell + 'px'); });
       grids.forEach(fitGrid);
     }, 120);
   }

@@ -65,7 +65,7 @@
 
                     <table class="gs-roster">
                         <thead>
-                            <tr><th>Nr</th><th>Name</th><th>Position</th><th title="Starting 6">S6</th><th></th></tr>
+                            <tr><th>Nr</th><th>Name</th><th>Position</th><th title="Platz in der Starting 6: 1 Torhüterin, dann Verteidigung, dann Sturm">S6</th><th></th></tr>
                         </thead>
                         <tbody>
                             @foreach (var player in side.Roster)
@@ -74,7 +74,15 @@
                                     <td><input class="gs-nr" type="number" @bind="player.Number" /></td>
                                     <td><input @bind="player.Name" /></td>
                                     <td><input @bind="player.Position" /></td>
-                                    <td><input type="checkbox" checked="@player.Six" @onchange="e => player.Six = e.Value is true" /></td>
+                                    <td>
+                                        <select class="gs-spot" @bind="player.Spot">
+                                            <option value="0">–</option>
+                                            @for (var spot = 1; spot <= 6; spot++)
+                                            {
+                                                <option value="@spot">@spot</option>
+                                            }
+                                        </select>
+                                    </td>
                                     <td><button class="gs-btn small" @onclick="() => side.Roster.Remove(player)">✕</button></td>
                                 </tr>
                             }
@@ -82,7 +90,7 @@
                     </table>
                     <div class="gs-actions">
                         <button class="gs-btn small" @onclick="() => side.Roster.Add(new Rower())">+ Spielerin</button>
-                        <span class="gs-hint">@side.Roster.Count Spielerinnen, @side.Roster.Count(p => p.Six) in der Starting 6</span>
+                        <span class="gs-hint">@side.Roster.Count Spielerinnen, Starting 6: @Six(side)</span>
                     </div>
                 </div>
             }
@@ -167,7 +175,7 @@
 
         public string Position { get; set; } = "";
 
-        public bool Six { get; set; }
+        public int Spot { get; set; }
     }
 
     private sealed record SideEdit(string Key, string Label, Field Long, Field Short, Field Colour, Field Coach, Field Scorer)
@@ -236,7 +244,7 @@
                     Number = player.Number,
                     Name = player.Name,
                     Position = player.Position,
-                    Six = team.Starting6.Contains(player.Number),
+                    Spot = team.Starting6.ToList().IndexOf(player.Number) + 1,
                 });
         }
     }
@@ -266,7 +274,7 @@
                 Color = Colour(side.Colour.Value, team.Color),
                 Coach = side.Coach.Value.Trim(),
                 Players = roster.Select(p => Keep(team, p)).ToList(),
-                Starting6 = roster.Where(p => p.Six).Select(p => p.Number).ToList(),
+                Starting6 = Lineup(side),
                 TopScorer = int.TryParse(side.Scorer.Value, out var number) ? number : null,
             });
         }
@@ -275,6 +283,24 @@
         Say("Spiel gespeichert.");
         await Changed.InvokeAsync();
     });
+
+    private static IReadOnlyList<int> Lineup(SideEdit side) =>
+        side.Roster
+            .Where(p => p.Spot is > 0 and <= 6 && p.Number > 0)
+            .OrderBy(p => p.Spot)
+            .ThenBy(p => p.Number)
+            .Select(p => p.Number)
+            .Distinct()
+            .ToList();
+
+    private static string Six(SideEdit side)
+    {
+        var lineup = Lineup(side);
+        if (lineup.Count == 0) return "niemand gesetzt";
+        var names = lineup.Select(number => side.Roster.First(p => p.Number == number))
+            .Select(p => $"{p.Number} {p.Name}".Trim());
+        return $"{string.Join(", ", names)}{(lineup.Count == 6 ? "" : $" ({lineup.Count} von 6)")}";
+    }
 
     private static Player Keep(GameTeam team, Rower row)
     {

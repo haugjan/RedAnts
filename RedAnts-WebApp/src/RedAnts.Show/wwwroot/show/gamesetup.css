@@ -25,7 +25,7 @@
 .gs-roster td { padding: 2px 4px 2px 0; }
 .gs-roster input[type=text], .gs-roster input:not([type]) { width: 100%; min-width: 0; padding: 4px 6px; }
 .gs-roster .gs-nr { width: 62px; min-width: 62px; padding: 4px 6px; }
-.gs-roster input[type=checkbox] { width: 18px; height: 18px; min-width: 0; }
+.gs-roster .gs-spot { width: 58px; min-width: 58px; padding: 4px 2px; }
 .gs-btn.small { padding: 3px 8px; font-size: 12px; }
 
 .gs-actions { display: flex; flex-wrap: wrap; gap: 8px; }
