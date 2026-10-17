@@ -1,8 +1,11 @@
+using RedAnts.Show.Features.Admin;
 using RedAnts.Show.Features.Agents;
 using RedAnts.Show.Features.Board;
 using RedAnts.Show.Features.Games;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
+using RedAnts.Show.Features.Remote;
+using RedAnts.Show.Features.Sounds;
 
 namespace RedAnts.Show.Features;
 
@@ -35,6 +38,33 @@ public static class ShowFeatures
         typeof(GetDeckView.Handler),
         typeof(RecordDeckView.Handler),
         typeof(GetMusic.Handler),
+        typeof(GetDJProfiles.Handler),
+        typeof(SaveDJProfiles.Handler),
+        typeof(ExportDJBoards.Handler),
+        typeof(FindUnusedSounds.Handler),
+        typeof(DeleteUnusedSounds.Handler),
+        typeof(SetDJSetting.Handler),
+        typeof(DispatchDJCommand.Handler),
+        typeof(SearchSpotify.Handler),
+        typeof(ImportSpotifyContext.Handler),
+        typeof(UploadDJSound.Handler),
+        typeof(GetSpotifySettings.Handler),
+        typeof(TestSpotifyCredentials.Handler),
+        typeof(LookupSpotifyReference.Handler),
+        typeof(StartSpotifyConnect.Handler),
+        typeof(CompleteSpotifyConnect.Handler),
+        typeof(GetSpotifyAccessToken.Handler),
+        typeof(DisconnectSpotifyAccount.Handler),
+        typeof(DownloadDJSound.Handler),
+        typeof(RestoreDJSound.Handler),
+        typeof(ListenForDJCommands.Handler),
+        typeof(PublishBoardView.Handler),
+        typeof(WithdrawBoardView.Handler),
+        typeof(GetBoardView.Handler),
+        typeof(GetDJRooms.Handler),
+        typeof(RecordDJRoom.Handler),
+        typeof(DeleteDJRoom.Handler),
+        typeof(OpenDJSound.Handler),
     ];
 
     public static IServiceCollection AddShowFeatures(this IServiceCollection services)

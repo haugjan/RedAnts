@@ -32,7 +32,7 @@ public class SiteHostsTests
     [Theory]
     [InlineData("/")]
     [InlineData("/_blazor/negotiate")]
-    [InlineData("/_content/RedAnts.DJ/dj/soundboard.js")]
+    [InlineData("/_content/RedAnts.Show/dj/soundboard.js")]
     [InlineData("/api/dj/state")]
     [InlineData("/health")]
     [InlineData("/media/1/logo.png")]

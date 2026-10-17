@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
 using RedAnts.Domain;
-using RedAnts.DJ.Infrastructure;
 using RedAnts.Show.Infrastructure;
 using RedAnts.Ticketing.Infrastructure;
 using Umbraco.StorageProviders.AzureBlob.IO;
@@ -60,7 +59,6 @@ builder.Services.Configure<StaticFileOptions>(options => options.ContentTypeProv
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options => options.Filters.Add<RedAnts.Infrastructure.Shared.DomainErrorFilter>());
 
 builder.Services.AddTicketing(builder.Configuration);
-builder.Services.AddDJ(builder.Configuration);
 builder.Services.AddShow(builder.Configuration);
 
 var umbracoBuilder = builder.CreateUmbracoBuilder()
@@ -325,7 +323,7 @@ app.UseTicketingAnalytics();
 
 app.UseTicketingScanAuth();
 
-app.UseDJ();
+app.UseShow();
 
 // Always-on password gate for the public soundboard (dev + prod), independent of
 // the site gate. Only protects the board surface (/dj); assets and the backoffice

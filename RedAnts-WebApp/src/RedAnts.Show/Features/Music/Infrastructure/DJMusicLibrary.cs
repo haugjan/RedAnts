@@ -1,7 +1,7 @@
 using System.Text.Json;
-using RedAnts.DJ.Domain;
-using RedAnts.DJ.Features.Board;
-using RedAnts.DJ.Features.Sounds;
+using RedAnts.Show.Domain;
+using RedAnts.Show.Features.Music;
+using RedAnts.Show.Features.Sounds;
 
 namespace RedAnts.Show.Features.Music.Infrastructure;
 
