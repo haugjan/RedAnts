@@ -14,7 +14,7 @@ Ein lokal laufendes Programm auf dem Rechner in der Halle. Er ist die Zentrale u
 - Sendet Befehle an die **LED-Wand** (sedna, TCP 27182) und an **vMix** (TCP-API).
 - Empfängt das Signal der **Matchuhr**: iCast über UDP und Bodet ScorePad über TCP, dazu der Suchlauf, der Sender, Port, Transport und Codierung selbst erkennt.
 - Nimmt Befehle eines **lokalen Companion-Moduls** entgegen und meldet ihm laufend Farben, Symbole und Beschriftungen der Tasten.
-- Hostet die **Matchuhr als Webseite** für einen TV-Screen, Gestaltung wie die heutige GameClock.
+- Hostet die **Matchuhr als Webseite** für einen TV-Screen.
 - Hostet das **Bord**.
 - **Zwischenspeicher**: die Musikstücke aus dem Blob Storage liegen lokal, damit sie ohne Netz und ohne Wartezeit starten.
 - **Ohne Internet**: zuletzt geholte Hallenkonfiguration, Spielkonfiguration und Musik bleiben nutzbar, Bord, Uhr, vMix, LED und Streamdecks laufen weiter. Sobald die Verbindung zurück ist, gleicht er ab.
@@ -63,9 +63,9 @@ Der Eintrag `00=` aus der Spielkonfigurationsdatei ist der **Topscorer** der Man
 Die Matchuhr ist die Quelle der Wahrheit für **Zeit, Spielstand, Drittel und laufende Strafen**. Der Spielstand kommt also nicht mehr von Hand, sondern aus dem Telegramm.
 
 - Die Uhr **zählt immer aufwärts**.
-- Verlängerung und Penaltyschiessen verhalten sich wie in TCunihockey (Abschnitt `4` und `5` im Telegramm, Beschriftung „Verlängerung“ und „Penaltyschiessen“).
-- Den **Scoreboard-Einblender in vMix schreibt künftig der Agent**, so wie es heute die GameClock tut. Die GameClock wird damit abgelöst, sobald die Uhr hier läuft.
-- Die Uhr-Webseite zeigt Zeit, Stand, Drittel, Teams und Logos, Gestaltung wie die GameClock.
+- Verlängerung und Penaltyschiessen sind Abschnitt `4` und `5` im Telegramm, Beschriftung „Verlängerung“ und „Penaltyschiessen“.
+- Den **Scoreboard-Einblender in vMix schreibt der Agent** aus dem Uhrtelegramm.
+- Die Uhr-Webseite zeigt Zeit, Stand, Drittel, Teams und Logos.
 
 ## Musik
 
@@ -104,7 +104,7 @@ Verhalten fest, Position frei wählbar.
 | **Starting 6** | Öffnet eine Unterseite mit den sechs Spielerinnen. Ein Weiter-Knopf oder ein Klick auf eine Spielerin blendet sie in vMix als Starting Six ein, wahlweise auch auf der LED-Wand, dort nur für die Heimmannschaft. Die gerade gezeigte Spielerin leuchtet. |
 | **Musiksteuerung** | Je eine Taste für Stopp, Fade-out, nächstes Stück, vorheriges Stück und Pause. |
 
-### Weitere Einblender, aus TCConsole übernommen
+### Weitere Einblender
 
 Als frei platzierbare Tasten verfügbar, weil sie heute im Einsatz sind:
 
@@ -115,7 +115,7 @@ Als frei platzierbare Tasten verfügbar, weil sie heute im Einsatz sind:
 
 ### In vMix
 
-Alles, was heute mit TCConsole und TCunihockey möglich war: die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard inklusive Strafboxen, Teamlogos und die Overlay-Kanäle. Dazu **Teamkürzel und Teamfarbe je Mannschaft** aus der Spielkonfiguration.
+Die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard inklusive Strafboxen, Teamlogos und die Overlay-Kanäle. Dazu **Teamkürzel und Teamfarbe je Mannschaft** aus der Spielkonfiguration.
 
 ## Was entfällt
 
@@ -131,7 +131,7 @@ Alles, was heute mit TCConsole und TCunihockey möglich war: die echten L-UPL-Ei
 | Keine fremde Oberfläche | Das Bord zeigt die Decks eins zu eins, keine zusätzlichen Reiter |
 | Uhr | Zeit auf dem Bord höchstens eine Sekunde hinter der Hallenuhr |
 | Einblender | Die echten L-UPL-Vorlagen, Felder stimmen mit vMix überein |
-| Deck | Gleiche Abläufe wie TCConsole heute, inklusive Torablauf und Starting 6 |
+| Deck | Vollständiger Torablauf und Starting 6 |
 | Netzausfall | Agent, Bord, Uhr, vMix, LED und Musik laufen weiter |
 | Nichts geht verloren | Soundboard und Ticketing in Prod bleiben unberührt |
 
@@ -184,16 +184,15 @@ Gebaut und geprüft (Tests grün, im Browser nachgesehen):
 - **Matchuhr**: iCast über UDP und Bodet ScorePad über TCP (der Agent hört auf dem Port, die Uhr verbindet sich); Rahmen mit SOH/STX/ETX und LRC, Zeit, Stand, Drittel, beide Strafboxen und die Nummern der bestraften Spielerinnen.
 - **Spielerin an die LED-Wand**: die Auswahl im Tor-, Strafen-, Best-Player- und Spielerin-Ablauf geht nach vMix und mit der Vorlage „spielerin“ auch an sedna; LED-Vorlagen kennen dieselben Platzhalter wie die Einblender.
 - **Companion**: ein universelles Modul, je Deck eine Instanz, Presets je Tastennummer, Musiksteuerung und PANIC.
-- **Beispielhalle Win4 Stratos**: wird beim Start angelegt, XL-Deck wie die bisherige TCConsole, Mk2 mit den Stücken des Clubs, Pausenmusik gesetzt.
+- **Beispielhalle Win4 Stratos**: wird beim Start angelegt, XL-Deck für die Hallensteuerung, Mk2 mit den Stücken des Clubs, Pausenmusik gesetzt.
 
 ## Offene Punkte
 
 1. **Bodet in der Halle messen**: das Protokoll ist nach dem Handbuch gebaut und mit den dokumentierten Rahmen getestet, aber noch an keiner echten ScorePad in Oberseen gehört. Beim ersten Spiel dort den Rohlog (`/status`) ansehen.
 2. **Sofortige Automatik braucht ein Signal, das iCast nicht sendet**: das Handbuch (Scoreboard Handball 2.0) listet alle Felder, ein Flag „Uhr läuft" ist nicht dabei; die beiden letzten Flags melden nur das Ende der Spielzeit und des Timeouts. Die Uhr sendet zwar zehnmal pro Sekunde, die Zeit selbst wechselt aber nur im Sekundentakt. Die Pausenmusik startet deshalb im Mittel nach einer halben Sekunde, in der letzten Minute (Zehntel) nach etwa einer Viertelsekunde. Beim Bodet ScorePad ist noch offen, ob das Attribut-Byte der Nachricht den Stillstand meldet.
-3. **GameClock ablösen**: der Agent schreibt das Scoreboard aus dem Uhrtelegramm nach vMix und liest jetzt beide Uhrtypen. Die GameClock läuft daneben weiter, bis du die Ablösung freigibst.
-4. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
-5. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
-6. **Passwörter**: das Cloud-Bord hängt am Passwort `Show:BoardPassword`, das heute im Klartext in `appsettings.json` steht (aus der Soundboard-Zeit). Für die Hallensteuerung gehört es in die App-Service-Einstellungen. Das lokale Bord des Agenten hört nur auf `localhost`; soll es im Hallennetz erreichbar sein, braucht `agent.json` `bind` (z. B. `0.0.0.0`) und `boardPassword`, sonst warnt der Agent beim Start.
-7. **Spielkonfiguration offline**: das Bearbeiten läuft über die Cloud, der Agent reicht sie nur weiter. Ohne Internet bleibt das zuletzt geladene Spiel gültig, ändern lässt es sich dann nicht.
-8. **Zuschauerzähler**: die Seite zählt im Agenten mit und schreibt die Zahl in den Einblender, eine Auswertung über mehrere Spiele gibt es nicht.
-9. **Musik nach dem Umbau der Mk2-Decks**: die Stücke „Vor dem Spiel 1. Liga“, Time Out und Penalty liegen nach dem Umbau nicht mehr auf dem Mk2, weil der Benutzer die Plätze anders vergeben hat. Sie sind weiterhin im Soundboard vorhanden und können im Backoffice auf freie Tasten gelegt werden.
+3. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
+4. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
+5. **Passwörter**: das Cloud-Bord hängt am Passwort `Show:BoardPassword`, das heute im Klartext in `appsettings.json` steht (aus der Soundboard-Zeit). Für die Hallensteuerung gehört es in die App-Service-Einstellungen. Das lokale Bord des Agenten hört nur auf `localhost`; soll es im Hallennetz erreichbar sein, braucht `agent.json` `bind` (z. B. `0.0.0.0`) und `boardPassword`, sonst warnt der Agent beim Start.
+6. **Spielkonfiguration offline**: das Bearbeiten läuft über die Cloud, der Agent reicht sie nur weiter. Ohne Internet bleibt das zuletzt geladene Spiel gültig, ändern lässt es sich dann nicht.
+7. **Zuschauerzähler**: die Seite zählt im Agenten mit und schreibt die Zahl in den Einblender, eine Auswertung über mehrere Spiele gibt es nicht.
+8. **Musik nach dem Umbau der Mk2-Decks**: die Stücke „Vor dem Spiel 1. Liga“, Time Out und Penalty liegen nach dem Umbau nicht mehr auf dem Mk2, weil der Benutzer die Plätze anders vergeben hat. Sie sind weiterhin im Soundboard vorhanden und können im Backoffice auf freie Tasten gelegt werden.
