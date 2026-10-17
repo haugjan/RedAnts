@@ -11,7 +11,7 @@ Stand-ins for the three hall devices the Show agent talks to, so the agent, the 
 
 ## Run
 
-Windows: `Start-ShowSimulator.ps1` (or `.cmd`) downloads the newest release into `%LOCALAPPDATA%\RedAnts\ShowSimulator`, starts it and opens the browser. Linux: `start-show-simulator.sh [port]`. From the repository: `dotnet run --project RedAnts-Show-Simulator`.
+Windows: `Start-ShowSimulator.ps1` (or `.cmd`) downloads the newest release into `%LOCALAPPDATA%\RedAnts\ShowSimulator`, starts it and opens the browser. Linux: `start-show-simulator.sh [port]`. From the repository: `dotnet run --project RedAnts-WebApp/src/RedAnts.Show.Simulator`.
 
 For an end-to-end test set the hall's vMix host and sedna host to `127.0.0.1` in the Show admin, start the agent for that hall and the simulator on the same machine, then press keys in the Agent panel or run scenes from the match-day page: the clock values appear in the scoreboard input, overlays come and go on the vMix panel, playlists on the LED panel.
 

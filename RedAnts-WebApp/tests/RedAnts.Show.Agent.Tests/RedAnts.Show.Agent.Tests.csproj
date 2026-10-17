@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../RedAnts.Show.Agent.csproj" />
+    <ProjectReference Include="../../src/RedAnts.Show.Agent/RedAnts.Show.Agent.csproj" />
   </ItemGroup>
 
   <ItemGroup>

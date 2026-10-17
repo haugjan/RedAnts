@@ -18,6 +18,9 @@ on:
       - 'feature/**'
     paths:
       - 'RedAnts-WebApp/**'
+      - '!RedAnts-WebApp/src/RedAnts.Show.Agent/**'
+      - '!RedAnts-WebApp/src/RedAnts.Show.Simulator/**'
+      - '!RedAnts-WebApp/tests/RedAnts.Show.Agent.Tests/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 

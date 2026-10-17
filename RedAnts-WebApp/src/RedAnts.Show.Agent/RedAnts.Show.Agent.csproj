@@ -15,17 +15,10 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Condition="'$(RuntimeIdentifier)' == '' or $(RuntimeIdentifier.StartsWith('linux'))" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="tests/**" />
-    <Content Remove="tests/**" />
-    <None Remove="tests/**" />
-    <EmbeddedResource Remove="tests/**" />
-  </ItemGroup>
-
   <Target Name="CopyBoardAssets" BeforeTargets="BeforeBuild">
-    <Copy SourceFiles="../RedAnts-WebApp/src/RedAnts.DJ/wwwroot/dj/soundboard.js" DestinationFolder="wwwroot/dj" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="../RedAnts-WebApp/src/RedAnts.Show/wwwroot/show/hallboard.js" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="../RedAnts-WebApp/src/RedAnts.Show/wwwroot/show/board.css" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="../RedAnts.Show/wwwroot/dj/soundboard.js" DestinationFolder="wwwroot/dj" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="../RedAnts.Show/wwwroot/show/hallboard.js" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="../RedAnts.Show/wwwroot/show/board.css" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
   </Target>
 
 

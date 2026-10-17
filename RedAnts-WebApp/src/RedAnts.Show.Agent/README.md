@@ -22,7 +22,7 @@ Music never runs on the agent: `sound.*` steps are reported to the cloud, the DJ
 3. Afterwards `Start-ShowAgent.ps1` (or `start-show-agent.sh`) is enough: it fetches the newest GitHub release into `%LOCALAPPDATA%\RedAnts\ShowAgent` (Linux: `~/.local/share/redants/show-agent`) and starts it. Without any configuration the agent asks for cloud URL, hall id and key on the console; `--cloud`, `--hall`, `--key` and `--deck-port` override them.
 4. `data\payload.json` keeps the last synced configuration, so the agent also starts without the cloud.
 
-Without a hall in reach, `RedAnts-Show-Simulator` stands in for the match clock, vMix and the LED wall.
+Without a hall in reach, `RedAnts.Show.Simulator` next to it stands in for the match clock, vMix and the LED wall.
 
 `http://localhost:5150/status` shows what the agent sees (connections, clock, scene).
 
@@ -141,4 +141,4 @@ and its LRC `0x2d` recomputes; a test covers both.
 
 ## Release
 
-`.github/workflows/show-agent-release.yml` builds a self-contained `win-x64` single-file package on every change under `RedAnts-Show-Agent/` and publishes it under the tag `show-agent-v<major.minor.run>`; the major and minor come from `<Version>` in the csproj.
+`.github/workflows/show-agent-release.yml` builds a self-contained `win-x64` single-file package on every change under `RedAnts-WebApp/src/RedAnts.Show.Agent/` and publishes it under the tag `show-agent-v<major.minor.run>`; the major and minor come from `<Version>` in the csproj.

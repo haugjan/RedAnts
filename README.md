@@ -67,8 +67,10 @@ The solution `RedAnts-WebApp/RedAnts.slnx` is split per slice (details in `ARCHI
 |------|---------|
 | `RedAnts-WebApp/src/RedAnts.Host/` | Web app (`AssemblyName=RedAnts`): `Program.cs`, Umbraco, `Infrastructure/Shared`, Website slice, Umbraco template views, shared `wwwroot/`, `uSync/`. |
 | `RedAnts-WebApp/src/RedAnts.Ticketing/` | Razor class library: the whole ticketing slice cut into capability folders (`Domain/`, `Features/<Capability>/` with slices, ports, `Admin/`, `Views/` and `Infrastructure/` adapters, top-level `Infrastructure/` for boot and migrations), compiled views, assets under `/_content/RedAnts.Ticketing/`. |
-| `RedAnts-WebApp/src/RedAnts.DJ/` | Razor class library: the soundboard (`/dj`, backoffice section "DJ", SQL schema `show`) with the capabilities `Features/Board`, `Admin`, `Remote` and `Sounds`. |
-| `RedAnts-WebApp/tests/` | One xunit project per slice (`RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.DJ.Tests`) plus `RedAnts.BrowserTests` (Playwright, skipped unless `E2E_BASE_URL` is set). |
+| `RedAnts-WebApp/src/RedAnts.Show/` | Razor class library: hall control and soundboard (`/bord`, `/admin/halle`, the hub `/hubs/halle`, plus `/dj`, `/admin/dj` and `/api/dj`, SQL schema `show`) with the capabilities `Features/Halls`, `Games`, `Agents`, `Board`, `Matchday`, `Music`, `Sounds`, `Remote` and `Admin`. |
+| `RedAnts-WebApp/src/RedAnts.Show.Agent/` | The hall agent: a local .NET service that reads the hall clock, drives vMix and the LED wall and serves the deck, the board and the match clock in the hall. |
+| `RedAnts-WebApp/src/RedAnts.Show.Simulator/` | Local stand-in for match clock, vMix and LED wall. |
+| `RedAnts-WebApp/tests/` | One xunit project per slice (`RedAnts.Kernel.Tests`, `RedAnts.Host.Tests`, `RedAnts.Ticketing.Tests`, `RedAnts.Show.Tests`, `RedAnts.Show.Agent.Tests`) plus `RedAnts.Architecture.Tests` and `RedAnts.BrowserTests` (Playwright, skipped unless `E2E_BASE_URL` is set). |
 
 Each module layers internally as `Domain/` → `Features/<Capability>/` (slices and ports at the root, `Admin/` UI, `Views/`, `Infrastructure/` adapters) → top-level `Infrastructure/` (boot, migrations, content seeding). MVC views are resolved per capability by `FeatureViewLocationExpander`.
 

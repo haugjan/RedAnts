@@ -6,7 +6,7 @@ on:
       - main
       - 'feature/**'
     paths:
-      - 'RedAnts-Show-Simulator/**'
+      - 'RedAnts-WebApp/src/RedAnts.Show.Simulator/**'
       - '.github/workflows/show-simulator-release.yml'
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: RedAnts-Show-Simulator
+        working-directory: RedAnts-WebApp/src/RedAnts.Show.Simulator
     steps:
       - uses: actions/checkout@v4
 
@@ -53,7 +53,7 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           PACKAGE="$RUNNER_TEMP/package"
           mkdir -p dist
-          (cd "$PACKAGE/win-x64" && zip -qr "$GITHUB_WORKSPACE/RedAnts-Show-Simulator/dist/show-simulator-$VERSION-win-x64.zip" .)
+          (cd "$PACKAGE/win-x64" && zip -qr "$GITHUB_WORKSPACE/RedAnts-WebApp/src/RedAnts.Show.Simulator/dist/show-simulator-$VERSION-win-x64.zip" .)
           tar -czf "dist/show-simulator-$VERSION-linux-x64.tar.gz" -C "$PACKAGE/linux-x64" .
           tar -czf "dist/show-simulator-$VERSION-linux-arm64.tar.gz" -C "$PACKAGE/linux-arm64" .
 
@@ -62,5 +62,5 @@ jobs:
         with:
           tag_name: show-simulator-v${{ steps.version.outputs.version }}
           name: Show-Simulator ${{ steps.version.outputs.version }}
-          files: RedAnts-Show-Simulator/dist/*
+          files: RedAnts-WebApp/src/RedAnts.Show.Simulator/dist/*
           generate_release_notes: true

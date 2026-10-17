@@ -6,7 +6,8 @@ on:
       - main
       - 'feature/**'
     paths:
-      - 'RedAnts-Show-Agent/**'
+      - 'RedAnts-WebApp/src/RedAnts.Show.Agent/**'
+      - 'RedAnts-WebApp/tests/RedAnts.Show.Agent.Tests/**'
       - '.github/workflows/show-agent-release.yml'
   workflow_dispatch:
 
@@ -18,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: RedAnts-Show-Agent
+        working-directory: RedAnts-WebApp/src/RedAnts.Show.Agent
     steps:
       - uses: actions/checkout@v4
 
@@ -34,7 +35,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Test
-        run: dotnet test tests/RedAnts.Show.Agent.Tests/RedAnts.Show.Agent.Tests.csproj --nologo
+        run: dotnet test ../../tests/RedAnts.Show.Agent.Tests/RedAnts.Show.Agent.Tests.csproj --nologo
 
       - name: Publish
         run: |
@@ -56,7 +57,7 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           PACKAGE="$RUNNER_TEMP/package"
           mkdir -p dist
-          (cd "$PACKAGE/win-x64" && zip -qr "$GITHUB_WORKSPACE/RedAnts-Show-Agent/dist/show-agent-$VERSION-win-x64.zip" .)
+          (cd "$PACKAGE/win-x64" && zip -qr "$GITHUB_WORKSPACE/RedAnts-WebApp/src/RedAnts.Show.Agent/dist/show-agent-$VERSION-win-x64.zip" .)
           tar -czf "dist/show-agent-$VERSION-linux-x64.tar.gz" -C "$PACKAGE/linux-x64" .
           tar -czf "dist/show-agent-$VERSION-linux-arm64.tar.gz" -C "$PACKAGE/linux-arm64" .
 
@@ -65,5 +66,5 @@ jobs:
         with:
           tag_name: show-agent-v${{ steps.version.outputs.version }}
           name: Show-Agent ${{ steps.version.outputs.version }}
-          files: RedAnts-Show-Agent/dist/*
+          files: RedAnts-WebApp/src/RedAnts.Show.Agent/dist/*
           generate_release_notes: true
