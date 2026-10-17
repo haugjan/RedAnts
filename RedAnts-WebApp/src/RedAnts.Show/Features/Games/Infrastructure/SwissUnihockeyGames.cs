@@ -18,8 +18,8 @@ public sealed class SwissUnihockeyGames(IHttpClientFactory clients) : ISwissUnih
         var client = Client();
         var id = Uri.EscapeDataString(gameId);
         var detail = client.GetStringAsync($"{Base}/games/{id}", cancellation);
-        var home = client.GetStringAsync($"{Base}/games/{id}/teams/1/players", cancellation);
-        var away = client.GetStringAsync($"{Base}/games/{id}/teams/0/players", cancellation);
+        var home = client.GetStringAsync($"{Base}/games/{id}/teams/0/players", cancellation);
+        var away = client.GetStringAsync($"{Base}/games/{id}/teams/1/players", cancellation);
         await Task.WhenAll(detail, home, away);
         return SwissUnihockeyJson.ParseGame(gameId, detail.Result, home.Result, away.Result);
     }

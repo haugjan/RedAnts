@@ -35,7 +35,7 @@ public static class DefaultDecks
             new DeckKey(19, KeyKinds.Live, "Drittel", Neutral, Live: LiveValues.Period),
             new DeckKey(20, KeyKinds.Live, "Stand Heim", Home, Live: LiveValues.HomeScore),
             new DeckKey(21, KeyKinds.Live, "Stand Gast", Away, Live: LiveValues.AwayScore),
-            Title(22, "Highlight", "result", Highlight, "highlights"),
+            Title(22, "Highlight", "highlight", Highlight, "highlights"),
             Title(23, "Resultat", "result", Result, "resultat"),
             Title(24, "Opener", "opener", Opener, "opener"),
 
@@ -96,8 +96,6 @@ public static class DefaultDecks
         new(number, KeyKinds.Steps, label, color, icon, Steps:
         [
             new KeyStep(KeyActions.VmixShow, "title:" + kind, Event: kind, Side: side),
-            new KeyStep(KeyActions.Wait, Ms: 8000),
-            new KeyStep(KeyActions.VmixHide, "title:" + kind),
         ], HomeAfter: home);
 
     private static DeckKey Note(int number, string label, string text) =>

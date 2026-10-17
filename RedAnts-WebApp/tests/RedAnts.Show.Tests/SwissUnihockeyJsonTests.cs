@@ -35,7 +35,7 @@ public class SwissUnihockeyJsonTests
         """;
 
     private const string HomeLineup = """
-        {"data":{"regions":[{"rows":[
+        {"data":{"title":"Aufstellung SV Waldenburg Eagles","regions":[{"rows":[
           {"cells":[{"text":["47"]},{"text":["Verteidigerin"]},{"text":["Melanie Gass"]}]},
           {"cells":[{"text":["1"]},{"text":["Goalie"]},{"text":["Tanja Tor"]}]},
           {"cells":[{"text":["x"]},{"text":[null]},{"text":["Ohne Nummer"]}]}
@@ -43,7 +43,7 @@ public class SwissUnihockeyJsonTests
         """;
 
     private const string AwayLineup = """
-        {"data":{"regions":[{"rows":[
+        {"data":{"title":"Aufstellung Red Ants Winterthur","regions":[{"rows":[
           {"cells":[{"text":["41"]},{"text":["Goalie"]},{"text":["Livia Werz"]}]},
           {"cells":[{"text":["3"]},{"text":["Verteidigerin"]},{"text":["Damaris Hangartner"]}]}
         ]}]}}
@@ -60,6 +60,24 @@ public class SwissUnihockeyJsonTests
         Assert.Equal("Red Ants Winterthur", game.Away);
         Assert.Equal("3-Fachhalle, Oberdorf BL", game.Location);
         Assert.Equal("0:21", game.Result);
+    }
+
+    [Fact]
+    public void Lineups_that_arrive_the_wrong_way_round_are_put_back_on_their_team()
+    {
+        var game = SwissUnihockeyJson.ParseGame("1095929", Detail, AwayLineup, HomeLineup);
+
+        Assert.Contains(game.Home.Players, p => p.Name == "Melanie Gass");
+        Assert.Contains(game.Away.Players, p => p.Name == "Damaris Hangartner");
+    }
+
+    [Fact]
+    public void A_lineup_knows_which_team_it_belongs_to()
+    {
+        Assert.True(SwissUnihockeyJson.Belongs(HomeLineup, "SV Waldenburg Eagles"));
+        Assert.False(SwissUnihockeyJson.Belongs(HomeLineup, "Red Ants Winterthur"));
+        Assert.False(SwissUnihockeyJson.Belongs("{}", "Red Ants Winterthur"));
+        Assert.False(SwissUnihockeyJson.Belongs(HomeLineup, ""));
     }
 
     [Fact]

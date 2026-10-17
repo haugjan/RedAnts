@@ -5,8 +5,9 @@ namespace RedAnts.Show.Agent;
 public sealed class LiveGame
 {
     static readonly TimeSpan ClockTimeout = TimeSpan.FromSeconds(5);
-    static readonly TimeSpan ShortestStill = TimeSpan.FromMilliseconds(250);
+    static readonly TimeSpan ShortestStill = TimeSpan.FromMilliseconds(220);
     static readonly TimeSpan LongestStill = TimeSpan.FromMilliseconds(1400);
+    static readonly TimeSpan Margin = TimeSpan.FromMilliseconds(120);
 
     readonly object _gate = new();
     ClockState _clock = ClockState.Empty;
@@ -14,6 +15,8 @@ public sealed class LiveGame
     DateTime _timeMovedAt = DateTime.MinValue;
     TimeSpan _tick = TimeSpan.FromSeconds(1);
     int _manualHome, _manualAway;
+    DateTime _homeScoredAt = DateTime.MinValue;
+    DateTime _awayScoredAt = DateTime.MinValue;
     TaskCompletionSource<bool> _scoreChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public event Action? Changed;
@@ -44,7 +47,7 @@ public sealed class LiveGame
     {
         get
         {
-            var window = _tick * 1.3;
+            var window = _tick + Margin;
             return window < ShortestStill ? ShortestStill : window > LongestStill ? LongestStill : window;
         }
     }
@@ -69,6 +72,8 @@ public sealed class LiveGame
         lock (_gate)
         {
             scoreChanged = state.HomeScore != _clock.HomeScore || state.GuestScore != _clock.GuestScore;
+            if (_clock.HasData && Rose(_clock.HomeScore, state.HomeScore)) _homeScoredAt = DateTime.Now;
+            if (_clock.HasData && Rose(_clock.GuestScore, state.GuestScore)) _awayScoredAt = DateTime.Now;
             if (state.Time != _lastTime)
             {
                 var moved = DateTime.Now;
@@ -89,8 +94,16 @@ public sealed class LiveGame
     {
         lock (_gate)
         {
-            if (side.Equals("away", StringComparison.OrdinalIgnoreCase)) _manualAway = Math.Max(0, _manualAway + delta);
-            else _manualHome = Math.Max(0, _manualHome + delta);
+            if (side.Equals("away", StringComparison.OrdinalIgnoreCase))
+            {
+                _manualAway = Math.Max(0, _manualAway + delta);
+                if (delta > 0) _awayScoredAt = DateTime.Now;
+            }
+            else
+            {
+                _manualHome = Math.Max(0, _manualHome + delta);
+                if (delta > 0) _homeScoredAt = DateTime.Now;
+            }
         }
         SignalScore();
         Changed?.Invoke();
@@ -114,6 +127,29 @@ public sealed class LiveGame
             if (finished != signal) return HomeScore != home || AwayScore != away;
         }
     }
+
+    public string GoalScore(string side, TimeSpan window)
+    {
+        var away = side.Equals("away", StringComparison.OrdinalIgnoreCase);
+        var home = Number(HomeScore);
+        var guest = Number(AwayScore);
+        if (!Counted(away, window))
+        {
+            if (away) guest++;
+            else home++;
+        }
+        return $"{home}:{guest}";
+    }
+
+    bool Counted(bool away, TimeSpan window)
+    {
+        lock (_gate) return DateTime.Now - (away ? _awayScoredAt : _homeScoredAt) < window;
+    }
+
+    static bool Rose(string before, string after) =>
+        int.TryParse(after, out var now) && (!int.TryParse(before, out var was) || now > was);
+
+    static int Number(string value) => int.TryParse(value, out var parsed) ? parsed : 0;
 
     void SignalScore()
     {

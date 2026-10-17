@@ -7,7 +7,8 @@ public sealed record KeyContext(
     Player? Player = null,
     string Penalty = "",
     string Text = "",
-    string Event = "")
+    string Event = "",
+    string Score = "")
 {
     public static readonly KeyContext None = new();
 }
@@ -19,6 +20,7 @@ public static class Templates
         if (!template.Contains('{')) return template;
         var team = game.Side(ctx.Side);
         var player = ctx.Player;
+        var score = ctx.Score.Length > 0 ? ctx.Score : $"{live.HomeScore}:{live.AwayScore}";
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["player.number"] = player?.Display ?? "",
@@ -40,9 +42,9 @@ public static class Templates
             ["away.long"] = game.Away.LongName,
             ["away.coach"] = game.Away.Coach,
             ["away.color"] = game.Away.Color,
-            ["score"] = $"{live.HomeScore}:{live.AwayScore}",
-            ["score.home"] = live.HomeScore,
-            ["score.away"] = live.AwayScore,
+            ["score"] = score,
+            ["score.home"] = Half(score, 0, live.HomeScore),
+            ["score.away"] = Half(score, 1, live.AwayScore),
             ["clock"] = live.Time,
             ["period"] = live.Period,
             ["period.label"] = live.PeriodLabel,
@@ -55,8 +57,10 @@ public static class Templates
             ["game.location"] = game.Location,
             ["referee1"] = game.Referee1,
             ["referee2"] = game.Referee2,
+            ["referees"] = Both(game.Referee1, game.Referee2),
             ["commentator1"] = game.Commentator1,
             ["commentator2"] = game.Commentator2,
+            ["commentators"] = Both(game.Commentator1, game.Commentator2),
             ["topscorer.number"] = team.TopScorerPlayer?.Display ?? "",
             ["topscorer.name"] = team.TopScorerPlayer?.Name ?? "",
         };
@@ -67,6 +71,15 @@ public static class Templates
             result = result.Replace("{" + key + "}", value, StringComparison.OrdinalIgnoreCase);
         return result;
     }
+
+    private static string Half(string score, int index, string fallback)
+    {
+        var parts = score.Split(':');
+        return parts.Length > index ? parts[index].Trim() : fallback;
+    }
+
+    private static string Both(string first, string second) =>
+        string.Join(" / ", new[] { first, second }.Select(name => name.Trim()).Where(name => name.Length > 0));
 
     private static void AddRoster(Dictionary<string, string> values, string prefix, IReadOnlyList<Player> players)
     {

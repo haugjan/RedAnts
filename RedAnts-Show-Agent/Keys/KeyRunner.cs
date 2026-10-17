@@ -27,6 +27,8 @@ public sealed class KeyRunner(
 
     public string OnAir { get; private set; } = "";
 
+    public string ShownSide { get; private set; } = "";
+
     public async Task RunAsync(IReadOnlyList<KeyStep> steps, KeyContext ctx, CancellationToken stop)
     {
         var shown = 0L;
@@ -42,13 +44,16 @@ public sealed class KeyRunner(
         }
     }
 
-    public async Task HideAllAsync(CancellationToken stop)
+    public Task HideAllAsync(CancellationToken stop) => HideAllAsync(false, stop);
+
+    public async Task HideAllAsync(bool withClock, CancellationToken stop)
     {
-        if (vmix.Configured) await vmix.HideAllAsync(stop);
+        if (vmix.Configured) await vmix.HideAllAsync(withClock, stop);
         Shown = "";
+        ShownSide = "";
         OnAir = "";
         states.Set(ShowStates.Overlay, "aus", "ausgeblendet");
-        states.Set(ShowStates.ClockVisible, "aus", "ausgeblendet");
+        if (withClock) states.Set(ShowStates.ClockVisible, "aus", "ausgeblendet");
         Changed?.Invoke();
     }
 
@@ -66,6 +71,7 @@ public sealed class KeyRunner(
             StringComparer.OrdinalIgnoreCase);
         await vmix.ShowTitleAsync(title, values, stop);
         Shown = kind;
+        ShownSide = ctx.Side;
         OnAir = OnAirText(kind, ctx);
         _shown = Interlocked.Increment(ref _tokens);
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "an", kind);
@@ -80,7 +86,7 @@ public sealed class KeyRunner(
         if (payload.Hall.Title(kind) is not { } title || !Offers(title)) return;
         if (shown != 0 && shown != _shown) return;
         await vmix.HideTitleAsync(title, stop);
-        if (Shown == kind) { Shown = ""; OnAir = ""; }
+        if (Shown == kind) { Shown = ""; ShownSide = ""; OnAir = ""; }
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "aus", kind);
         Changed?.Invoke();
     }

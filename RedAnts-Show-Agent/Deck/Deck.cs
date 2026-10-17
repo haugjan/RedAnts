@@ -7,6 +7,8 @@ public sealed record DeckSlot(int Number, string Label, string? ImageKey, int Co
 
 public sealed class Deck
 {
+    static readonly TimeSpan GoalWindow = TimeSpan.FromSeconds(25);
+
     const int CPanic = 0xFF0000;
     const int CBack = 0x8ED973;
     const int CNeutral = 0x555555;
@@ -226,7 +228,7 @@ public sealed class Deck
         }
         _runner.StopMusic();
         await Safe(() => _runner.LedStopAsync(stop));
-        await Safe(() => _runner.HideAllAsync(stop));
+        await Safe(() => _runner.HideAllAsync(withClock: true, stop));
         _states.Set(ShowStates.AutoBreakMusic, "aus", "PANIC");
         Bump();
     }
@@ -293,7 +295,8 @@ public sealed class Deck
                     symbol: Symbol(key.Icon), subtitle: music.Subtitle);
                 return;
             case KeyKinds.Steps:
-                builder.Action(key.Number, key.Label, color, () => StepsAsync(deckId, key), Picture(key.Icon), symbol: Symbol(key.Icon));
+                builder.Action(key.Number, key.Label, OnAir(key) ? CActive : color, () => StepsAsync(deckId, key),
+                    Picture(key.Icon), OnAir(key), symbol: Symbol(key.Icon));
                 return;
             case KeyKinds.Special:
                 SpecialKeyOn(builder, deck, deckId, key);
@@ -381,8 +384,28 @@ public sealed class Deck
         Bump();
     }
 
+    bool OnAir(DeckKey key)
+    {
+        if (TitleOf(key) is not { } kind || _runner.Shown.Length == 0) return false;
+        if (!_runner.Shown.Equals(kind, StringComparison.OrdinalIgnoreCase)) return false;
+        var side = SideOf(key);
+        return side.Length == 0 || _runner.ShownSide.Equals(side, StringComparison.OrdinalIgnoreCase);
+    }
+
+    static string? TitleOf(DeckKey key) =>
+        key.Sequence.FirstOrDefault(step => step.Action == KeyActions.VmixShow) is { Target: { Length: > 0 } target }
+            ? target.StartsWith(Keys.KeyRunner.TitlePrefix, StringComparison.OrdinalIgnoreCase)
+                ? target[Keys.KeyRunner.TitlePrefix.Length..]
+                : target
+            : null;
+
     async Task StepsAsync(string deckId, DeckKey key)
     {
+        if (OnAir(key) && TitleOf(key) is { } live)
+        {
+            await Safe(() => _runner.HideTitleAsync(live, CancellationToken.None));
+            return;
+        }
         var ctx = new KeyContext(SideOf(key));
         if (key.Sequence.Any(step => step.Action == KeyActions.Wait))
             _ = Safe(() => _runner.RunAsync(key.Sequence, ctx, CancellationToken.None));
@@ -536,6 +559,7 @@ public sealed class Deck
     async Task PickAsync(string deckId, Flow flow, Player? player, bool own = false)
     {
         var ctx = new KeyContext(flow.Side, player, flow.Penalty, Event: own ? "owngoal" : flow.Event);
+        if (flow.Event == "goal") ctx = ctx with { Score = _live.GoalScore(flow.Side, GoalWindow) };
         var kind = flow.Event switch
         {
             "goal" => own ? "player_event" : "player_event",

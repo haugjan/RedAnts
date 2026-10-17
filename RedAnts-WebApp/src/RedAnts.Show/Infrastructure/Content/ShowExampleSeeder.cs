@@ -1,4 +1,5 @@
 using RedAnts.Show.Domain;
+using RedAnts.Show.Features.Agents;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
 using Umbraco.Cms.Core.Events;
@@ -9,6 +10,7 @@ namespace RedAnts.Show.Infrastructure.Content;
 public sealed class ShowExampleSeeder(
     IHallRepository halls,
     IMusicLibrary music,
+    AgentSync sync,
     ILogger<ShowExampleSeeder> log) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
     public const string HallId = "win4";
@@ -17,6 +19,8 @@ public sealed class ShowExampleSeeder(
     public const string MusicHallName = "Oberseen";
 
     private static readonly int[] TimeoutKeys = [3, 6];
+
+    private const int HighlightKey = 22;
 
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken stop)
     {
@@ -32,6 +36,7 @@ public sealed class ShowExampleSeeder(
             else if (Refreshed(known, library) is { } updated)
             {
                 await halls.SaveAsync(updated);
+                await sync.PushAsync(updated.Id);
                 log.LogInformation("Decks der Halle {Hall} nachgeführt", updated.Name);
             }
             if (await halls.GetByIdAsync(MusicHallId) is null)
@@ -58,13 +63,22 @@ public sealed class ShowExampleSeeder(
             changed = true;
         }
 
-        if (decks.FirstOrDefault(d => d.Id == DefaultDecks.FieldDeck) is { } field && Find(library, "Time Out") is { } timeout)
+        if (decks.FirstOrDefault(d => d.Id == DefaultDecks.FieldDeck) is { } field)
         {
             var home = field.Home;
             var fresh = home;
-            foreach (var number in TimeoutKeys)
-                if (!fresh.KeyAt(number).Sequence.Any(step => step.Action == KeyActions.MusicPlay))
-                    fresh = WithMusic(fresh, number, timeout);
+            if (Find(library, "Time Out") is { } timeout)
+                foreach (var number in TimeoutKeys)
+                    if (!fresh.KeyAt(number).Sequence.Any(step => step.Action == KeyActions.MusicPlay))
+                        fresh = WithMusic(fresh, number, timeout);
+
+            var wanted = DefaultDecks.Field().Home.KeyAt(HighlightKey);
+            if (fresh.KeyAt(HighlightKey).Sequence.Any(step => step.Target == "title:result"))
+                fresh = fresh.With(wanted);
+
+            foreach (var key in fresh.Keys.Where(Timed).ToList())
+                fresh = fresh.With(key with { Steps = key.Sequence.Where(Shows).ToList() });
+
             if (fresh != home)
             {
                 decks[decks.IndexOf(field)] = field with { Pages = field.Pages.Select(p => p.IsHome ? fresh : p).ToList() };
@@ -72,7 +86,22 @@ public sealed class ShowExampleSeeder(
             }
         }
 
-        return changed ? hall with { Decks = decks } : null;
+        var titles = hall.OverlayTitles.ToList();
+        foreach (var title in Hall.DefaultOverlayTitles)
+        {
+            var index = titles.FindIndex(t => t.Kind.Equals(title.Kind, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                titles.Add(title);
+                changed = true;
+                continue;
+            }
+            if (!Clipped(titles[index])) continue;
+            titles[index] = title;
+            changed = true;
+        }
+
+        return changed ? hall with { Decks = decks, OverlayTitles = titles } : null;
     }
 
     public static Hall Example(IReadOnlyList<MusicNode> library)
@@ -95,6 +124,18 @@ public sealed class ShowExampleSeeder(
         };
         return hall with { Decks = [Music(library, DefaultDecks.Music() with { Id = "bord", Name = "Bord", Columns = 5, Rows = 4, PanicKey = 20, BackKey = 16 })] };
     }
+
+    private static bool Timed(DeckKey key) =>
+        key.Sequence.Any(step => step.Action == KeyActions.VmixShow)
+        && key.Sequence.Any(step => step.Action == KeyActions.Wait);
+
+    private static bool Shows(KeyStep step) =>
+        step.Action is not (KeyActions.Wait or KeyActions.VmixHide);
+
+    private static bool Clipped(OverlayTitle title) =>
+        title.Fields.TryGetValue("TxtBottom.Text", out var bottom)
+        && (bottom.Contains("referee2", StringComparison.OrdinalIgnoreCase)
+            || bottom.Contains("commentator2", StringComparison.OrdinalIgnoreCase));
 
     private static Deck Field(IReadOnlyList<MusicNode> library)
     {

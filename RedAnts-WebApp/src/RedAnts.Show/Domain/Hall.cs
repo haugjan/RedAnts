@@ -168,15 +168,11 @@ public sealed partial record Hall(
         }),
         new("commentary", TitleInputs.LeagueInfo, 1, new Dictionary<string, string>
         {
-            ["TxtTop.Text"] = "KOMMENTAR",
-            ["TxtInfo.Text"] = "{commentator1}",
-            ["TxtBottom.Text"] = "{commentator2}",
+            ["TxtInfo.Text"] = "Kommentar: {commentators}",
         }),
         new("referee", TitleInputs.LeagueInfo, 1, new Dictionary<string, string>
         {
-            ["TxtTop.Text"] = "SCHIEDSRICHTERINNEN",
-            ["TxtInfo.Text"] = "{referee1}",
-            ["TxtBottom.Text"] = "{referee2}",
+            ["TxtInfo.Text"] = "Schiedsrichterinnen: {referees}",
         }),
         new("result", TitleInputs.Board, 2, new Dictionary<string, string>
         {
@@ -186,10 +182,18 @@ public sealed partial record Hall(
             ["TxtAwayTeam.Text"] = "{away.long}",
             ["TxtBottom.Text"] = "{period.label}",
         }),
+        new("highlight", TitleInputs.Board, 2, new Dictionary<string, string>
+        {
+            ["TxtTop.Text"] = "{game.league}",
+            ["TxtMain.Text"] = "HIGHLIGHTS",
+            ["TxtHomeTeam.Text"] = "{home.long}",
+            ["TxtAwayTeam.Text"] = "{away.long}",
+            ["TxtBottom.Text"] = "{score}",
+        }),
         new("opener", TitleInputs.Board, 2, new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "{game.league}",
-            ["TxtMain.Text"] = "{clock}",
+            ["TxtMain.Text"] = "HEUTE",
             ["TxtHomeTeam.Text"] = "{home.long}",
             ["TxtAwayTeam.Text"] = "{away.long}",
             ["TxtBottom.Text"] = "{game.location}",

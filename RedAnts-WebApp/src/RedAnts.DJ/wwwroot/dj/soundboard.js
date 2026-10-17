@@ -747,7 +747,7 @@
         const steps = 12;
         for (let i = steps - 1; i >= 0; i--) {
           setLocalLevel(volume * (i / steps));
-          await new Promise(function (r) { setTimeout(r, 90); });
+          await new Promise(function (r) { setTimeout(r, 45); });
         }
         board.stopLocal();
         setLocalLevel(volume);

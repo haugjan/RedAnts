@@ -38,8 +38,12 @@ public static class SwissUnihockeyJson
         string? Image(string key) => Cell(key) is { } cell && cell.TryGetProperty("image", out var image) ? image.GetProperty("url").GetString() : null;
         int? TeamId(string key) => Cell(key) is { } cell && cell.TryGetProperty("link", out var link) && link.TryGetProperty("ids", out var ids) && ids.GetArrayLength() > 0 ? ids[0].GetInt32() : null;
 
-        var home = Team(TeamId("home_name"), Text("home_name"), Image("home_logo"), GameTeam.HomeColor, homeLineupJson);
-        var away = Team(TeamId("away_name"), Text("away_name"), Image("away_logo"), GameTeam.AwayColor, awayLineupJson);
+        var homeName = Text("home_name");
+        var awayName = Text("away_name");
+        if (Belongs(awayLineupJson, homeName) && Belongs(homeLineupJson, awayName))
+            (homeLineupJson, awayLineupJson) = (awayLineupJson, homeLineupJson);
+        var home = Team(TeamId("home_name"), homeName, Image("home_logo"), GameTeam.HomeColor, homeLineupJson);
+        var away = Team(TeamId("away_name"), awayName, Image("away_logo"), GameTeam.AwayColor, awayLineupJson);
         var title = data.TryGetProperty("title", out var titleElement) ? titleElement.GetString() ?? "" : "";
         var subtitle = data.TryGetProperty("subtitle", out var subtitleElement) ? subtitleElement.GetString() ?? "" : "";
         return new Game(
@@ -56,6 +60,20 @@ public static class SwissUnihockeyJson
             "",
             "",
             SwissTime.Timestamp);
+    }
+
+    public static bool Belongs(string lineupJson, string teamName)
+    {
+        if (teamName.Length == 0) return false;
+        try
+        {
+            using var lineup = JsonDocument.Parse(lineupJson);
+            var title = lineup.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("title", out var text)
+                ? text.GetString() ?? ""
+                : "";
+            return title.Contains(teamName, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException) { return false; }
     }
 
     private static GameTeam Team(int? id, string longName, string? logo, string color, string lineupJson)
