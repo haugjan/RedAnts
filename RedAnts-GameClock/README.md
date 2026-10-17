@@ -131,10 +131,20 @@ UDP, UTF-32 Big-Endian, alle 100 ms, Felder mit `;` getrennt:
 | 8 / 9 | Strafenlampe Heim / Gast |
 | 10 / 11 | Kürzel Heim / Gast |
 | 12 | Modus: `GAME TIME`, `INTERMISSION` (Pause), `TIME-OUT`; laut iCast ausserdem Warmup, Time to Warmup, Time to Face-Off, Local Time |
-| 13–19 | nicht entschlüsselt; die Hallenuhr sendet mehr Felder als das Handbuch beschreibt, siehe Rohdaten-Log |
+| 13 / 15 | Torschüsse Heim / Gast (im Handball-Modus die Anzahl Timeouts) |
+| 14 / 16 | Paraden Heim / Gast |
+| 17 / 18 | Strafe 3 Heim / Gast: `<Nr> <mm:ss>` |
+| 19 | Flag „Ende der Spielzeit", eine Sekunde lang aktiv |
+| 20 | Flag „Ende des Timeouts", eine Sekunde lang aktiv |
 
-Die Felder 0–12 stehen so im Handbuch von iCast Sweden AB; die Belegung der Strafenfelder stammt zusätzlich aus dem
+Die Felder 0–12 und 13–20 stehen so im Handbuch von iCast Sweden AB (Scoreboard Handball, Version 2.0, im
+Livestream-Ordner unter „11 Scoreboard Synchronisierung"); die Belegung der Strafenlampen 8 / 9 stammt aus dem
 bestehenden Node-RED-Flow für vMix und ist noch nicht an einer echten Strafe überprüft.
+
+**Ein Signal „Uhr läuft" gibt es nicht.** Die Uhr sendet zehnmal pro Sekunde, auch im Stillstand, und kein Feld
+wechselt beim Start oder Stopp. Die beiden Flags melden nur das Ende der Spielzeit und des Timeouts. Ob die Uhr läuft,
+lässt sich darum nur daran erkennen, dass die Zeit weiterzählt: im Spiel im Sekundentakt, in der letzten Minute im
+Zehntelstakt.
 
 Zeigt die Hallenuhr die Tageszeit, sendet sie nichts; die Anzeige blendet dann nach 3 s ab.
 
