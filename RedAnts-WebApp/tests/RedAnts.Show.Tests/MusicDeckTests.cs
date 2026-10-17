@@ -193,7 +193,7 @@ public class MusicDeckTests
     [Fact]
     public void A_hall_without_a_music_deck_is_left_alone()
     {
-        var hall = Hall.Create("oberseen", "Oberseen") with { Decks = [DefaultDecks.Field()] };
+        var hall = Hall.Create("rennweg", "Rennweg") with { Decks = [DefaultDecks.Field()] };
 
         Assert.Null(ShowExampleSeeder.Refreshed(hall, Library));
     }

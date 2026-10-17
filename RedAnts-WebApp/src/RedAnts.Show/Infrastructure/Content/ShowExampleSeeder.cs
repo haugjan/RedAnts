@@ -15,8 +15,12 @@ public sealed class ShowExampleSeeder(
 {
     public const string HallId = "win4";
     public const string HallName = "WIN4 Stratos";
+    public const string SoundHallId = "win4-sound";
+    public const string StreamHallId = "win4-livestream";
     public const string MusicHallId = "oberseen";
-    public const string MusicHallName = "Oberseen";
+    public const string MusicHallName = "Oberseen iPad";
+    public const string NotebookHallId = "oberseen-notebook";
+    public const string RennwegHallId = "rennweg-ipad";
 
     private static readonly int[] TimeoutKeys = [3, 6];
 
@@ -39,11 +43,19 @@ public sealed class ShowExampleSeeder(
                 await sync.PushAsync(updated.Id);
                 log.LogInformation("Decks der Halle {Hall} nachgeführt", updated.Name);
             }
-            if (await halls.GetByIdAsync(MusicHallId) is null)
+            foreach (var (id, build) in Others)
             {
-                var hall = MusicHall(library);
+                if (await halls.GetByIdAsync(id) is { } other)
+                {
+                    if (Refreshed(other, library) is not { } fresh) continue;
+                    await halls.SaveAsync(fresh);
+                    await sync.PushAsync(fresh.Id);
+                    log.LogInformation("Decks der Halle {Hall} nachgeführt", fresh.Name);
+                    continue;
+                }
+                var hall = build(library);
                 await halls.SaveAsync(hall);
-                log.LogInformation("Musikhalle {Hall} angelegt", hall.Name);
+                log.LogInformation("Halle {Hall} angelegt: {Decks} Decks", hall.Name, hall.DeckLayouts.Count);
             }
         }
         catch (Exception e)
@@ -57,9 +69,12 @@ public sealed class ShowExampleSeeder(
         var decks = hall.DeckLayouts.ToList();
         var changed = false;
 
-        if (decks.FirstOrDefault(d => d.Id == DefaultDecks.MusicDeck) is { } music && music.Page(MusicDeck.BeforeAndAfter) is null)
+        var board = decks.FirstOrDefault(d => d.Id == DefaultDecks.MusicDeck)
+            ?? (decks.Count == 1 && !hall.Offers.Vmix ? decks[0] : null);
+        if (board is not null && board.Page(MusicDeck.BeforeAndAfter) is null)
         {
-            decks[decks.IndexOf(music)] = MusicDeck.Build(DefaultDecks.Music() with { Name = music.Name }, library);
+            decks[decks.IndexOf(board)] = MusicDeck.Build(
+                DefaultDecks.Music() with { Id = board.Id, Name = board.Name }, library);
             changed = true;
         }
 
@@ -86,6 +101,9 @@ public sealed class ShowExampleSeeder(
             }
         }
 
+        var name = hall.Id == MusicHallId && hall.Name == "Oberseen" ? MusicHallName : hall.Name;
+        if (name != hall.Name) changed = true;
+
         var titles = hall.OverlayTitles.ToList();
         foreach (var title in Hall.DefaultOverlayTitles)
         {
@@ -101,7 +119,7 @@ public sealed class ShowExampleSeeder(
             changed = true;
         }
 
-        return changed ? hall with { Decks = decks, OverlayTitles = titles } : null;
+        return changed ? hall with { Name = name, Decks = decks, OverlayTitles = titles } : null;
     }
 
     public static Hall Example(IReadOnlyList<MusicNode> library)
@@ -115,14 +133,46 @@ public sealed class ShowExampleSeeder(
         return hall with { Decks = [Field(library), MusicDeck.Build(DefaultDecks.Music(), library)] };
     }
 
-    public static Hall MusicHall(IReadOnlyList<MusicNode> library)
+    private static readonly IReadOnlyList<(string Id, Func<IReadOnlyList<MusicNode>, Hall> Build)> Others =
+    [
+        (SoundHallId, library => SoundOnly(SoundHallId, "WIN4 nur Sound", library)),
+        (StreamHallId, StreamOnly),
+        (MusicHallId, library => SoundOnly(MusicHallId, MusicHallName, library)),
+        (NotebookHallId, Notebook),
+        (RennwegHallId, library => SoundOnly(RennwegHallId, "Rennweg iPad", library)),
+    ];
+
+    public static Hall MusicHall(IReadOnlyList<MusicNode> library) => SoundOnly(MusicHallId, MusicHallName, library);
+
+    public static Hall SoundOnly(string id, string name, IReadOnlyList<MusicNode> library)
     {
-        var hall = Hall.Create(MusicHallId, MusicHallName) with
+        var hall = Hall.Create(id, name) with
         {
             Offered = new HallCapabilities(Sound: true, Clock: false, Vmix: false, Led: false),
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
         };
-        return hall with { Decks = [Music(library, DefaultDecks.Music() with { Id = "bord", Name = "Bord", Columns = 5, Rows = 4, PanicKey = 20, BackKey = 16 })] };
+        return hall with { Decks = [MusicDeck.Build(DefaultDecks.Music() with { Name = "Bord" }, library)] };
+    }
+
+    public static Hall Notebook(IReadOnlyList<MusicNode> library)
+    {
+        var hall = Hall.Create(NotebookHallId, "Oberseen Notebook") with
+        {
+            Devices = new HallDevices(ClockType: "Bodet", ClockPort: 4001),
+            Offered = new HallCapabilities(Sound: true, Clock: true, Vmix: false, Led: false),
+            BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
+        };
+        return hall with { Decks = [MusicDeck.Build(DefaultDecks.Music() with { Name = "Bord" }, library)] };
+    }
+
+    public static Hall StreamOnly(IReadOnlyList<MusicNode> library)
+    {
+        var hall = Hall.Create(StreamHallId, "WIN4 nur Livestream") with
+        {
+            Devices = new HallDevices(VmixHost: "127.0.0.1", ClockType: "iCast", ClockPort: 50086),
+            Offered = new HallCapabilities(Sound: false, Clock: true, Vmix: true, Led: false),
+        };
+        return hall with { Decks = [DefaultDecks.Field()] };
     }
 
     private static bool Timed(DeckKey key) =>

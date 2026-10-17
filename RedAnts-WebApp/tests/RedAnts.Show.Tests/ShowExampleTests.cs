@@ -86,6 +86,34 @@ public class ShowExampleTests
     }
 
     [Fact]
+    public void Every_shipped_hall_offers_what_its_name_promises()
+    {
+        var sound = ShowExampleSeeder.SoundOnly("win4-sound", "WIN4 nur Sound", Library).Validated();
+        Assert.True(sound.Offers is { Sound: true, Clock: false, Vmix: false, Led: false });
+        Assert.Single(sound.DeckLayouts);
+
+        var notebook = ShowExampleSeeder.Notebook(Library).Validated();
+        Assert.True(notebook.Offers is { Sound: true, Clock: true, Vmix: false, Led: false });
+        Assert.Equal("Bodet", notebook.Devices.ClockType);
+        Assert.Equal(4001, notebook.Devices.ClockPort);
+
+        var stream = ShowExampleSeeder.StreamOnly(Library).Validated();
+        Assert.True(stream.Offers is { Sound: false, Clock: true, Vmix: true, Led: false });
+        Assert.Equal("", stream.BreakMusicId);
+        Assert.Equal(DefaultDecks.FieldDeck, Assert.Single(stream.DeckLayouts).Id);
+    }
+
+    [Fact]
+    public void Each_hall_carries_its_own_agent_key()
+    {
+        var one = ShowExampleSeeder.SoundOnly("oberseen", "Oberseen iPad", Library);
+        var other = ShowExampleSeeder.SoundOnly("rennweg-ipad", "Rennweg iPad", Library);
+
+        Assert.NotEqual(one.AgentKey, other.AgentKey);
+        Assert.NotEqual(one.Id, other.Id);
+    }
+
+    [Fact]
     public void Without_a_library_the_example_still_builds_a_valid_hall()
     {
         var hall = ShowExampleSeeder.Example([]);

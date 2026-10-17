@@ -160,7 +160,16 @@ Ein **universelles Modul** für alles: Hallensteuerung und Musik, Halle mit und 
 
 Gebaut und geprüft (Tests grün, im Browser nachgesehen):
 
-- **Hallenkonfiguration** im Backoffice unter „Show“: Angebot, Geräte, Einblender, LED-Vorlagen, Decks mit Seiten und Tasten.
+- **Hallenkonfiguration** im Backoffice unter „Show”: Angebot, Geräte, Einblender, LED-Vorlagen, Decks mit Seiten und Tasten.
+- **Hallenkonfigurationen**: sechs Konfigurationen werden beim Start angelegt, jede mit eigenem Agent-Schlüssel, damit sich zwei Hallen nicht gegenseitig die Musik stoppen.
+  - `win4` WIN4 Stratos: Sound, Matchuhr iCast auf UDP 50086, vMix, LED-Wand; Decks XL und Mk2.
+  - `win4-sound` WIN4 nur Sound: nur Soundboard, auch im Netz unter /bord bedienbar; ein Bord-Deck.
+  - `win4-livestream` WIN4 nur Livestream: vMix und Matchuhr iCast, kein Sound, keine LED, keine automatische Pausenmusik; nur das XL-Deck.
+  - `oberseen` Oberseen iPad: nur Sound, im Netz bedienbar.
+  - `oberseen-notebook` Oberseen Notebook: Sound und Matchuhr Bodet ScorePad über TCP 4001.
+  - `rennweg-ipad` Rennweg iPad: nur Sound, im Netz bedienbar.
+  
+  Im Netz unter /bord erscheinen nur die Hallen, die ausschliesslich Musik anbieten: win4-sound, oberseen und rennweg-ipad.
 - **Deck-Modell**: Seiten statt fester Kontexte, Tastenarten leer, Musik, Befehlsfolge, feste Funktion, Seite, Anzeige; PANIC und Zurück liegen je Deck fest; eine Taste kann nach dem Druck auf die Startseite zurückspringen.
 - **Feste Funktionen**: Tor Heim/Gast, Strafe mit 2', 2'+2', 10' und Spieldauer, Best Player, Spielerin, Starting 6, Zuschauerzähler, die Zustandstasten (Einblender, Uhr, Musik, Automodus) und die Musiksteuerung. Ihre Musik und LED-Vorlage steht als Befehlsfolge auf derselben Taste und ist im Backoffice unter Show > Decks änderbar; sie läuft beim Druck, bevor die feste Funktion übernimmt.
 - **Auf Sendung**: nach der Spielerwahl zeigt eine tote Taste, was gerade eingeblendet ist (z. B. „Tor / 7 Nina Muster"); als Tastenart „Anzeige" lässt sich das auf jedes Deck legen.
