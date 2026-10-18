@@ -38,7 +38,7 @@ public static class ShowExtensions
     private static string? RenamedPath(PathString path)
     {
         if (path.StartsWithSegments("/api/show", out var rest)) return "/api/dj" + rest;
-        if (path.StartsWithSegments("/admin/show", out rest)) return "/admin/dj" + rest;
+        if (path.Equals("/admin/halle", StringComparison.OrdinalIgnoreCase)) return "/admin/show/hallen";
         if (path.StartsWithSegments("/show", out rest)) return "/dj" + rest;
         return null;
     }

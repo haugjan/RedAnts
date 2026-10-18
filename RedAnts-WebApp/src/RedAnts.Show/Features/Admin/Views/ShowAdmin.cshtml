@@ -1,3 +1,4 @@
+@model string
 @{
     Layout = null;
 }
@@ -18,7 +19,7 @@
     <link rel="stylesheet" href="/_content/RedAnts.Show/show/showadmin.css" asp-append-version="true" />
 </head>
 <body>
-    <component type="typeof(RedAnts.Show.Features.Admin.ShowAdminPage)" render-mode="Server" />
+    <component type="typeof(RedAnts.Show.Features.Admin.ShowAdminPage)" param-Page="@Model" render-mode="Server" />
     <script src="/_framework/blazor.server.js"></script>
 </body>
 </html>

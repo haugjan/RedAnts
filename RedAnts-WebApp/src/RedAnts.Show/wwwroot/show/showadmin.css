@@ -195,3 +195,5 @@ a { color: var(--sa-accent); }
 .sa-icon.on { border-color: var(--sa-accent); box-shadow: 0 0 0 2px rgba(93, 173, 226, 0.3); }
 .sa-key { flex-direction: column; gap: 2px; }
 .sa-key-icon { width: 46px; height: 46px; object-fit: contain; }
+
+.sa-subnav-title { font-size: 1.05rem; font-weight: 700; }

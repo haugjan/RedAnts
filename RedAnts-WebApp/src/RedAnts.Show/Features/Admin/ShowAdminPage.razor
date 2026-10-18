@@ -6,13 +6,9 @@
 
 <div class="sa">
     <nav class="sa-subnav">
-        @foreach (var tab in Tabs)
-        {
-            <button type="button" class="sa-subnav-btn @(_tab == tab.Key ? "active" : "")" @onclick="() => SelectTab(tab.Key)">@tab.Label</button>
-        }
-        <a class="sa-subnav-btn" href="/admin/dj" target="_top" title="Stücke hochladen, benennen, in Ordner legen, Cue setzen">🎵 Musik verwalten</a>
+        <strong class="sa-subnav-title">@Title</strong>
         <span class="sa-subnav-spacer"></span>
-        @if (_halls.Count > 0)
+        @if (PerHall && _halls.Count > 0)
         {
             <label class="sa-subnav-hall">
                 Halle
@@ -31,26 +27,33 @@
     <main class="sa-content" @key="@($"{_tab}|{State.SelectedHallId}")">
         @switch (_tab)
         {
-            case "zustaende": <StatesTab /> break;
             case "vmix": <TitlesTab /> break;
             case "led": <LedTab /> break;
             case "decks": <DecksTab /> break;
-            case "bedienung": <ControlTab /> break;
+            case "bedienung": <ControlTab /> <StatesTab /> break;
             default: <HallsTab OnHallsChanged="ReloadHallsAsync" /> break;
         }
     </main>
 </div>
 
 @code {
+    [Parameter] public string? Page { get; set; }
+
     private static readonly (string Key, string Label)[] Tabs =
     [
         ("hallen", "Hallen"),
-        ("zustaende", "Zustände"),
-        ("vmix", "vMix-Titel"),
-        ("led", "LED-Vorlagen"),
+        ("musik", "Musik"),
         ("decks", "Decks"),
         ("bedienung", "Bedienung"),
+        ("vmix", "vMix-Titel"),
+        ("led", "LED-Vorlagen"),
     ];
+
+    private static readonly string[] HallPages = ["hallen", "decks", "bedienung"];
+
+    private string Title => Tabs.FirstOrDefault(t => t.Key == _tab).Label ?? "Show";
+
+    private bool PerHall => HallPages.Contains(_tab);
 
     private IReadOnlyList<HallRow> _halls = [];
     private string _tab = "hallen";
@@ -58,8 +61,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (Page is { Length: > 0 } page && Tabs.Any(t => t.Key == page)) _tab = page;
         var query = QueryHelpers.ParseQuery(new Uri(Navigation.Uri).Query);
-        if (query.TryGetValue("tab", out var tab) && Tabs.Any(t => t.Key == tab)) _tab = tab!;
         if (query.TryGetValue("halle", out var hall)) State.SelectedHallId = hall!;
         State.Changed += OnStateChanged;
         await ReloadHallsAsync();
@@ -81,13 +84,6 @@
 
     private void OnHallChanged(ChangeEventArgs e) => State.SelectedHallId = e.Value?.ToString();
 
-    private void SelectTab(string key)
-    {
-        if (_tab == key) return;
-        _tab = key;
-        WriteUrl();
-    }
-
     private void OnStateChanged()
     {
         if (_ready) WriteUrl();
@@ -99,8 +95,7 @@
         if (!_ready) return;
         var url = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
         {
-            ["tab"] = _tab,
-            ["halle"] = State.SelectedHallId,
+            ["halle"] = PerHall ? State.SelectedHallId : null,
         });
         Navigation.NavigateTo(url, forceLoad: false, replace: true);
     }
