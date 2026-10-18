@@ -19,7 +19,7 @@
             ⬆ Hochladen
             <InputFile OnChange="UploadAsync" multiple accept="audio/*" style="display:none" />
         </label>
-        <button class="sa-btn small" @onclick="AddEmpty">+ Eintrag</button>
+        <button class="sa-btn small" @onclick="AddEntry">+ Eintrag</button>
         <button class="sa-btn small" @onclick="() => _settings = true">🟢 Spotify</button>
         <span class="sa-hint">@_entries.Count Einträge</span>
     </div>
@@ -42,6 +42,7 @@
                         <input type="checkbox" checked="@row.Random" @onchange="e => RandomAsync(row, e.Value is true)" />
                     </td>
                     <td>
+                        <button class="sa-btn small" title="Bearbeiten" @onclick="() => Edit(row)">✎</button>
                         <button class="sa-btn small" title="Vorhören" @onclick="() => PlayAsync(row.Songs.FirstOrDefault())">▶</button>
                         <button class="sa-btn small" @onclick="() => DeleteAsync(row)">✕</button>
                     </td>
@@ -85,6 +86,14 @@
     }
 </section>
 
+@if (_editing is { } editing)
+{
+    <MusicEntryDialog Entry="@editing"
+                      IsNew="@_editingIsNew"
+                      OnSaved="SaveEntryAsync"
+                      OnClosed="() => _editing = null" />
+}
+
 @if (_spotifyFor is { } target)
 {
     <SpotifySearchDialog Term="@target.Name"
@@ -111,6 +120,8 @@
     private string _search = "";
     private string? _open;
     private Row? _spotifyFor;
+    private MusicEntry? _editing;
+    private bool _editingIsNew;
     private bool _settings;
     private string? _status;
     private bool _statusIsError;
@@ -136,12 +147,28 @@
 
     private void Toggle(Row row) => _open = _open == row.Id ? null : row.Id;
 
-    private async Task AddEmpty()
+    private void AddEntry()
     {
-        var row = new Row { Id = Guid.NewGuid().ToString("N")[..12], Name = "Neuer Eintrag" };
-        _entries.Insert(0, row);
-        _open = row.Id;
-        await SaveAsync(row);
+        _editing = new MusicEntry(Guid.NewGuid().ToString("N")[..12], "", [], false);
+        _editingIsNew = true;
+    }
+
+    private void Edit(Row row)
+    {
+        _editing = new MusicEntry(row.Id, row.Name, row.Songs, row.Random);
+        _editingIsNew = false;
+    }
+
+    private async Task SaveEntryAsync(MusicEntry entry)
+    {
+        try
+        {
+            await EntrySave.HandleAsync(new SaveMusicEntry.Command(entry));
+            _editing = null;
+            await LoadAsync();
+            Notify("Gespeichert.");
+        }
+        catch (DomainException ex) { Fail(ex.Message); }
     }
 
     private Task RandomAsync(Row row, bool random)

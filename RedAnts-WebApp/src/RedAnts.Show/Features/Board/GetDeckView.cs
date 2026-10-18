@@ -63,10 +63,9 @@ public static class GetDeckView
             return new DeckView(deck.Id, page.Name, deck.Columns, deck.Rows, keys, false, null, null, page.Id);
         }
 
-        private static string? Picture(string? icon) =>
-            icon is { Length: > 0 } && DeckIcons.All.Contains(icon) ? icon : null;
+        private static string? Picture(string? icon) => DeckIcons.Known(icon) ? icon : null;
 
         private static string Symbol(string? icon) =>
-            icon is { Length: > 0 } && !DeckIcons.All.Contains(icon) ? icon : "";
+            icon is { Length: > 0 } && !DeckIcons.Known(icon) ? icon : "";
     }
 }

@@ -60,7 +60,14 @@
                             {
                                 @if (tile.Icon is { Length: > 0 } symbol)
                                 {
-                                    <img class="sa-key-icon" src="@DeckIcons.FileOf(symbol)" alt="" />
+                                    @if (DeckIcons.Known(symbol))
+                                    {
+                                        <img class="sa-key-icon" src="@DeckIcons.FileOf(symbol)" alt="" />
+                                    }
+                                    else
+                                    {
+                                        <span class="sa-key-symbol">@symbol</span>
+                                    }
                                 }
                                 <span class="sa-key-lbl">@Caption(tile)</span>
                             }
@@ -94,16 +101,32 @@
                             <label>Beschriftung <input class="sa-input" value="@current.Label" @onchange="@(e => SetLabel(e))" /></label>
                             <label>Farbe <input class="sa-input" type="color" value="@current.Color" @onchange="@(e => SetColor(e))" /></label>
 
-                            <div class="sa-icons">
-                                <button class="sa-icon @(current.Icon is null ? "on" : "")" @onclick="() => Set(k => k with { Icon = null })" title="ohne Symbol">∅</button>
-                                @foreach (var icon in DeckIcons.All)
-                                {
-                                    var name = icon;
-                                    <button class="sa-icon @(current.Icon == name ? "on" : "")" @onclick="() => Set(k => k with { Icon = name })">
-                                        <img src="@DeckIcons.FileOf(name)" alt="@name" />
-                                    </button>
-                                }
+                            <div class="sa-iconrow">
+                                <span class="sa-iconrow-lbl">Grafiken</span>
+                                <div class="sa-icons">
+                                    <button class="sa-icon @(current.Icon is null ? "on" : "")" @onclick="() => Set(k => k with { Icon = null })" title="ohne Symbol">∅</button>
+                                    @foreach (var icon in DeckIcons.All)
+                                    {
+                                        var name = icon;
+                                        <button class="sa-icon @(current.Icon == name ? "on" : "")" title="@name" @onclick="() => Set(k => k with { Icon = name })">
+                                            <img src="@DeckIcons.FileOf(name)" alt="@name" />
+                                        </button>
+                                    }
+                                </div>
                             </div>
+                            @foreach (var band in DeckIcons.Symbols.GroupBy(s => s.Group))
+                            {
+                                <div class="sa-iconrow">
+                                    <span class="sa-iconrow-lbl">@band.Key</span>
+                                    <div class="sa-icons">
+                                        @foreach (var entry in band)
+                                        {
+                                            var glyph = entry.Glyph;
+                                            <button class="sa-icon glyph @(current.Icon == glyph ? "on" : "")" title="@entry.Label" @onclick="() => Set(k => k with { Icon = glyph })">@glyph</button>
+                                        }
+                                    </div>
+                                </div>
+                            }
                         }
 
                         @if (current.Kind == KeyKinds.Music)

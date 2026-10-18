@@ -20,18 +20,78 @@
 </head>
 <body>
     <component type="typeof(RedAnts.Show.Features.Admin.ShowAdminPage)" param-Page="@Model" render-mode="Server" />
+    <script src="/_content/RedAnts.Show/dj/soundboard.js" asp-append-version="true"></script>
     <script>
+        if (window.djBoard) djBoard.useServerTokens('/admin/dj/spotify/token');
         window.showAdmin = (function () {
-            var audio = null;
-            return {
-                preview: function (url, startSec) {
-                    window.showAdmin.stop();
+            var audio = null, timer = null, spotifyTimer = null, hook = null;
+
+            function report(pos, dur) {
+                if (hook) { try { hook.invokeMethodAsync('OnCuePosition', pos || 0, dur || 0); } catch (e) { } }
+            }
+            function reportStopped() {
+                if (hook) { try { hook.invokeMethodAsync('OnCueStopped'); } catch (e) { } }
+            }
+            function clearTimers() {
+                if (timer) { clearInterval(timer); timer = null; }
+                if (spotifyTimer) { clearInterval(spotifyTimer); spotifyTimer = null; }
+            }
+            function halt() {
+                clearTimers();
+                try { if (audio) audio.pause(); } catch (e) { }
+                audio = null;
+                if (window.djBoard) { try { djBoard.stopAll(); } catch (e) { } }
+            }
+
+            var api = {
+                bindCue: function (ref) { hook = ref; },
+                unbindCue: function () { hook = null; halt(); },
+                preview: function (url, startSec) { api.play(url, startSec, null); },
+                play: function (url, startSec, durationSec) {
+                    halt();
                     audio = new Audio(url);
-                    var begin = function () { if (startSec > 0) { try { audio.currentTime = startSec; } catch (e) { } } audio.play().catch(function () { }); };
+                    audio.addEventListener('loadedmetadata', function () { report(audio.currentTime, audio.duration || 0); });
+                    audio.addEventListener('ended', function () { api.stop(); });
+                    var begin = function () {
+                        if (startSec > 0) { try { audio.currentTime = startSec; } catch (e) { } }
+                        audio.play().catch(function () { });
+                    };
                     if (audio.readyState >= 1) begin(); else audio.addEventListener('canplay', begin, { once: true });
+                    timer = setInterval(function () {
+                        if (!audio) return;
+                        report(audio.currentTime, audio.duration || 0);
+                        if (durationSec && audio.currentTime >= (startSec || 0) + durationSec) api.stop();
+                    }, 250);
                 },
-                stop: function () { try { if (audio) { audio.pause(); audio = null; } } catch (e) { } }
+                playSpotify: async function (uri, startSec, shuffle) {
+                    if (!uri) { alert('Kein Spotify-Link hinterlegt.'); return; }
+                    if (!window.djBoard) { alert('Spotify-Player nicht geladen.'); return; }
+                    var ready = false;
+                    try { ready = await djBoard.ensureSpotify(); }
+                    catch (e) { alert(e && e.message ? e.message : 'Spotify-Player nicht bereit.'); return; }
+                    if (!ready) { alert('Spotify-Player nicht bereit. Unter \u201eSpotify\u201c ein Konto verbinden (Premium n\u00f6tig).'); return; }
+                    halt();
+                    var status = await djBoard.playSpotify(uri, (startSec || 0) * 1000, !!shuffle);
+                    if (status !== 'ok') { alert('Spotify: ' + status); return; }
+                    spotifyTimer = setInterval(async function () {
+                        var state = await djBoard.getState();
+                        if (state) report((state.position || 0) / 1000, (state.duration || 0) / 1000);
+                    }, 300);
+                },
+                seek: function (frac) {
+                    if (audio && audio.duration) {
+                        try { audio.currentTime = frac * audio.duration; } catch (e) { }
+                        report(audio.currentTime, audio.duration || 0);
+                    }
+                },
+                seekIn: function (id, x) {
+                    var el = document.getElementById(id);
+                    if (!el || !el.clientWidth) return;
+                    api.seek(Math.max(0, Math.min(1, x / el.clientWidth)));
+                },
+                stop: function () { halt(); reportStopped(); }
             };
+            return api;
         })();
     </script>
     <script src="/_framework/blazor.server.js"></script>
