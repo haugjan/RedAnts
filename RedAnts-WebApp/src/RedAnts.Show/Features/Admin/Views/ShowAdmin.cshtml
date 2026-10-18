@@ -99,6 +99,19 @@
                 },
                 stop: function () { halt(); reportStopped(); }
             };
+
+            document.addEventListener('click', function (e) {
+                var button = e.target && e.target.closest ? e.target.closest('[data-preview]') : null;
+                if (!button) return;
+                var source = button.getAttribute('data-preview') || '';
+                if (!source) return;
+                var start = parseFloat(button.getAttribute('data-start') || '0') || 0;
+                var lengthText = button.getAttribute('data-length') || '';
+                var length = lengthText ? parseFloat(lengthText) : null;
+                if (button.getAttribute('data-kind') === 'spotify') api.playSpotify(source, start, false);
+                else api.play(source, start, length);
+            });
+
             return api;
         })();
     </script>

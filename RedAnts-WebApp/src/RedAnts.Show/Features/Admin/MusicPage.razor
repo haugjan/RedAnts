@@ -16,21 +16,21 @@
         Jeder Eintrag ist ein Stück oder eine Liste von Stücken. Welche Taste welchen Eintrag spielt, steht unter Decks.
     </p>
 
-    <div class="sa-actions">
-        <input class="sa-input" placeholder="Suchen" @bind="_search" @bind:event="oninput" />
+    <div class="sa-actions mu-bar">
+        <input class="sa-input mu-search" placeholder="Suchen" @bind="_search" @bind:event="oninput" />
         <label class="sa-btn small">
-            ⬆ Hochladen
+            Hochladen
             <InputFile OnChange="UploadAsync" multiple accept="audio/*" style="display:none" />
         </label>
-        <button class="sa-btn small" @onclick="AddEntry">+ Eintrag</button>
-        <button class="sa-btn small" @onclick="() => _settings = true">🟢 Spotify</button>
-        <button class="sa-btn small @(_cleanupOpen ? "on" : "")" @onclick="ToggleCleanupAsync">🧹 Aufräumen</button>
-        <button class="sa-btn small" @onclick="LoadAsync" title="Liste neu laden">↺</button>
-        <button class="sa-btn small" @onclick="ExportAsync" title="Die Einträge als Datei sichern">⇅ Export</button>
+        <button class="sa-btn small" @onclick="AddEntry">Neuer Eintrag</button>
+        <button class="sa-btn small" @onclick="() => _settings = true">Spotify</button>
+        <button class="sa-btn small" @onclick="ExportAsync" title="Alle Einträge als Datei sichern">Export</button>
         <label class="sa-btn small" title="Einträge aus einer Datei übernehmen">
-            ⇧ Import
+            Import
             <InputFile OnChange="ImportAsync" accept="application/json,.json" style="display:none" />
         </label>
+        <button class="sa-btn small" @onclick="ToggleCleanupAsync">Aufräumen</button>
+        <button class="sa-btn small" @onclick="LoadAsync" title="Liste neu laden">↺</button>
         <span class="sa-hint">@_entries.Count Einträge</span>
     </div>
 
@@ -66,7 +66,7 @@
                     </div>
                     <div class="sa-actions">
                         <button class="sa-btn small danger" disabled="@(_cleanupBusy || Deletable == 0)" @onclick="RunCleanupAsync">
-                            @(_cleanupBusy ? "Löscht …" : $"🗑 {Deletable} Dateien endgültig löschen")
+                            @(_cleanupBusy ? "Löscht …" : $"{Deletable} Dateien endgültig löschen")
                         </button>
                         <span class="sa-hint">Dateien der letzten Stunde bleiben zur Sicherheit liegen.</span>
                     </div>
@@ -77,56 +77,34 @@
 
     <table class="sa-table mu-table">
         <thead>
-            <tr><th>Name</th><th style="width:150px">Stücke</th><th style="width:70px">Zufall</th><th style="width:120px"></th></tr>
+            <tr>
+                <th>Name</th>
+                <th style="width:110px">Stücke</th>
+                <th style="width:130px">Reihenfolge</th>
+                <th style="width:230px"></th>
+            </tr>
         </thead>
         <tbody>
             @foreach (var row in Filtered)
             {
                 <tr @key="row.Id">
-                    <td><input class="sa-input wide" @bind="row.Name" @bind:after="() => SaveAsync(row)" /></td>
+                    <td class="mu-name" @onclick="() => Edit(row)">@row.Name</td>
+                    <td>@(row.Songs.Count == 1 ? "1 Stück" : $"{row.Songs.Count} Stücke")</td>
                     <td>
-                        <button class="sa-btn small" @onclick="() => Toggle(row)">
-                            @(row.Songs.Count == 1 ? "1 Stück" : $"{row.Songs.Count} Stücke") @(_open == row.Id ? "▴" : "▾")
+                        <button class="sa-btn small" title="Umschalten" @onclick="() => RandomAsync(row, !row.Random)">
+                            @(row.Random ? "Zufällig" : "Der Reihe nach")
                         </button>
                     </td>
-                    <td>
-                        <input type="checkbox" checked="@row.Random" @onchange="e => RandomAsync(row, e.Value is true)" />
-                    </td>
-                    <td>
-                        <button class="sa-btn small" title="Bearbeiten" @onclick="() => Edit(row)">✎</button>
-                        <button class="sa-btn small" title="Vorhören" @onclick="() => PlayAsync(row.Songs.FirstOrDefault())">▶</button>
-                        <button class="sa-btn small" @onclick="() => DeleteAsync(row)">✕</button>
+                    <td class="mu-actions">
+                        <button class="sa-btn small" @onclick="() => Edit(row)">Bearbeiten</button>
+                        <button class="sa-btn small" title="Vorhören"
+                                data-preview="@Source(row.Songs.FirstOrDefault())"
+                                data-kind="@(row.Songs.FirstOrDefault()?.Kind == SoundKind.Spotify ? "spotify" : "local")"
+                                data-start="@(row.Songs.FirstOrDefault()?.StartSec ?? 0)">▶</button>
+                        <button class="sa-btn small" title="Wiedergabe stoppen" data-preview-stop="1">■</button>
+                        <button class="sa-btn small danger" title="Löschen" @onclick="() => DeleteAsync(row)">✕</button>
                     </td>
                 </tr>
-                @if (_open == row.Id)
-                {
-                    <tr class="mu-detail" @key="@($"{row.Id}-detail")">
-                        <td colspan="4">
-                            @foreach (var song in row.Songs.ToList())
-                            {
-                                <div class="mu-song">
-                                    <span class="mu-song__kind">@(song.Kind == SoundKind.Spotify ? "Spotify" : "Datei")</span>
-                                    <span class="mu-song__ref" title="@song.Ref">@Short(song)</span>
-                                    <label class="mu-song__start">
-                                        Start
-                                        <input class="sa-input" type="number" step="0.1" min="0" value="@song.StartSec"
-                                               @onchange="e => StartAsync(row, song, e.Value?.ToString())" />
-                                    </label>
-                                    <button class="sa-btn small" @onclick="() => PlayAsync(song)">▶</button>
-                                    <button class="sa-btn small" @onclick="() => RemoveSongAsync(row, song)">✕</button>
-                                </div>
-                            }
-                            <div class="sa-actions">
-                                <label class="sa-btn small">
-                                    + Datei
-                                    <InputFile OnChange="args => AddFilesAsync(row, args)" multiple accept="audio/*" style="display:none" />
-                                </label>
-                                <button class="sa-btn small" @onclick="() => OpenSpotify(row)">+ Spotify</button>
-                                <button class="sa-btn small" @onclick="StopAsync">■ Stopp</button>
-                            </div>
-                        </td>
-                    </tr>
-                }
             }
         </tbody>
     </table>
@@ -145,14 +123,6 @@
                       OnClosed="() => _editing = null" />
 }
 
-@if (_spotifyFor is { } target)
-{
-    <SpotifySearchDialog Term="@target.Name"
-                         OnPicked="track => AddSpotifyAsync(target, track.Uri)"
-                         OnLink="uri => AddSpotifyAsync(target, uri)"
-                         OnClosed="() => _spotifyFor = null" />
-}
-
 @if (_settings)
 {
     <SpotifySettingsDialog OnClosed="() => _settings = false" OnSaved="() => _settings = false" />
@@ -169,8 +139,6 @@
 
     private List<Row> _entries = [];
     private string _search = "";
-    private string? _open;
-    private Row? _spotifyFor;
     private MusicEntry? _editing;
     private bool _editingIsNew;
     private bool _settings;
@@ -199,8 +167,6 @@
         }).ToList();
     }
 
-    private void Toggle(Row row) => _open = _open == row.Id ? null : row.Id;
-
     private void AddEntry()
     {
         _editing = new MusicEntry(Guid.NewGuid().ToString("N")[..12], "", [], false);
@@ -225,42 +191,25 @@
         catch (DomainException ex) { Fail(ex.Message); }
     }
 
-    private Task RandomAsync(Row row, bool random)
+    private async Task RandomAsync(Row row, bool random)
     {
         row.Random = random;
-        return SaveAsync(row);
+        try
+        {
+            await EntrySave.HandleAsync(new SaveMusicEntry.Command(
+                new MusicEntry(row.Id, row.Name, row.Songs, row.Random)));
+            Notify(random ? "Spielt zufällig." : "Spielt der Reihe nach.");
+        }
+        catch (DomainException ex) { Fail(ex.Message); }
     }
 
-    private async Task StartAsync(Row row, DJSound song, string? value)
+    private async Task DeleteAsync(Row row)
     {
-        if (!double.TryParse(value, out var start) || start < 0) start = 0;
-        Replace(row, song, song with { StartSec = start });
-        await SaveAsync(row);
+        if (!await JS.InvokeAsync<bool>("confirm", $"„{row.Name}“ wirklich löschen?")) return;
+        await EntryDelete.HandleAsync(new DeleteMusicEntry.Command(row.Id));
+        _entries.Remove(row);
+        Notify("Gelöscht.");
     }
-
-    private async Task RemoveSongAsync(Row row, DJSound song)
-    {
-        row.Songs.Remove(song);
-        await SaveAsync(row);
-    }
-
-    private async Task AddFilesAsync(Row row, InputFileChangeEventArgs args)
-    {
-        foreach (var file in args.GetMultipleFiles(20))
-            if (await StoreAsync(file) is { } path)
-                row.Songs.Add(new DJSound(SoundKind.Local, path));
-        await SaveAsync(row);
-    }
-
-    private async Task AddSpotifyAsync(Row row, string uri)
-    {
-        _spotifyFor = null;
-        if (uri.Trim().Length == 0) return;
-        row.Songs.Add(new DJSound(SoundKind.Spotify, uri.Trim()));
-        await SaveAsync(row);
-    }
-
-    private void OpenSpotify(Row row) => _spotifyFor = row;
 
     private async Task UploadAsync(InputFileChangeEventArgs args)
     {
@@ -268,15 +217,16 @@
         foreach (var file in args.GetMultipleFiles(50))
         {
             if (await StoreAsync(file) is not { } path) continue;
-            var row = new Row
+            try
             {
-                Id = Guid.NewGuid().ToString("N")[..12],
-                Name = Path.GetFileNameWithoutExtension(file.Name),
-                Songs = [new DJSound(SoundKind.Local, path)],
-            };
-            _entries.Add(row);
-            await SaveAsync(row, quiet: true);
-            added++;
+                await EntrySave.HandleAsync(new SaveMusicEntry.Command(new MusicEntry(
+                    Guid.NewGuid().ToString("N")[..12],
+                    Path.GetFileNameWithoutExtension(file.Name),
+                    [new DJSound(SoundKind.Local, path)],
+                    false)));
+                added++;
+            }
+            catch (DomainException ex) { Fail(ex.Message); }
         }
         await LoadAsync();
         Notify(added == 1 ? "Eine Datei übernommen." : $"{added} Dateien übernommen.");
@@ -291,47 +241,6 @@
         }
         catch (DomainException ex) { Fail(ex.Message); return null; }
         catch (IOException ex) { Fail(ex.Message); return null; }
-    }
-
-    private async Task SaveAsync(Row row, bool quiet = false)
-    {
-        try
-        {
-            await EntrySave.HandleAsync(new SaveMusicEntry.Command(
-                new MusicEntry(row.Id, row.Name, row.Songs, row.Random)));
-            if (!quiet) Notify("Gespeichert.");
-        }
-        catch (DomainException ex) { Fail(ex.Message); }
-    }
-
-    private async Task DeleteAsync(Row row)
-    {
-        if (!await JS.InvokeAsync<bool>("confirm", $"„{row.Name}“ wirklich löschen?")) return;
-        await EntryDelete.HandleAsync(new DeleteMusicEntry.Command(row.Id));
-        _entries.Remove(row);
-        Notify("Gelöscht.");
-    }
-
-    private async Task PlayAsync(DJSound? song)
-    {
-        if (song is null) return;
-        if (song.Kind == SoundKind.Spotify) { Fail("Spotify-Stücke spielen nur auf dem Bord."); return; }
-        await JS.InvokeVoidAsync("showAdmin.preview", "/dj/sound/" + song.Ref, song.StartSec);
-    }
-
-    private async Task StopAsync() => await JS.InvokeVoidAsync("showAdmin.stop");
-
-    private void Replace(Row row, DJSound song, DJSound replacement)
-    {
-        var index = row.Songs.IndexOf(song);
-        if (index >= 0) row.Songs[index] = replacement;
-    }
-
-    private static string Short(DJSound song)
-    {
-        var text = song.Title is { Length: > 0 } title ? title : song.Ref;
-        var cut = text.LastIndexOf('/');
-        return cut >= 0 ? text[(cut + 1)..] : text;
     }
 
     private async Task ExportAsync()
@@ -380,6 +289,12 @@
         }
         finally { _cleanupBusy = false; }
     }
+
+    private static string Source(DJSound? song) =>
+        song is null ? ""
+        : song.Kind == SoundKind.Spotify ? song.Ref
+        : song.Ref.StartsWith("http", StringComparison.OrdinalIgnoreCase) || song.Ref.StartsWith('/') ? song.Ref
+        : "/dj/sound/" + song.Ref;
 
     private static string SoundName(string path)
     {

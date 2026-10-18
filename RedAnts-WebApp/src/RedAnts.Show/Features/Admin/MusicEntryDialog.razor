@@ -124,8 +124,12 @@
                     </div>
 
                     <div class="se-testrow">
-                        <button type="button" class="se-btn primary" @onclick="() => PlayFullAsync(song)">▶ Ganzes Stück</button>
-                        <button type="button" class="se-btn" @onclick="() => PlayCueAsync(song)">▶ Abschnitt</button>
+                        <button type="button" class="se-btn primary"
+                                data-preview="@Source(song)" data-kind="@(song.Kind == SoundKind.Spotify ? "spotify" : "local")"
+                                data-start="0">▶ Ganzes Stück</button>
+                        <button type="button" class="se-btn"
+                                data-preview="@Source(song)" data-kind="@(song.Kind == SoundKind.Spotify ? "spotify" : "local")"
+                                data-start="@song.StartSec" data-length="@(song.DurationSec?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")">▶ Abschnitt</button>
                         <button type="button" class="se-btn" @onclick="StopAsync">⏹ Stopp</button>
                     </div>
                     <div class="se-testrow">
@@ -323,6 +327,9 @@
         catch (IOException ex) { _error = ex.Message; return null; }
         finally { _uploading = false; }
     }
+
+    private string Source(EditSong song) =>
+        song.Kind == SoundKind.Spotify ? song.Ref : UrlOf(song);
 
     private async Task PlayCueAsync(EditSong song)
     {

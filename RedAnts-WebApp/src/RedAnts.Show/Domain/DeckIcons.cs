@@ -6,6 +6,7 @@ public static class DeckIcons
 
     public static IReadOnlyList<string> All { get; } =
     [
+        "audio",
         "aufstellung",
         "aufwaermen",
         "ball",
@@ -17,15 +18,20 @@ public static class DeckIcons
         "einblender-aus",
         "einblender-ein",
         "einlaufmusik",
+        "fade-out",
         "geburtstag",
         "highlights",
         "kommentar",
         "kommentar-b",
         "meldungen",
+        "mute",
         "nach-dem-spiel",
         "opener",
         "ordner",
+        "panic",
+        "pause",
         "penalty",
+        "play",
         "resultat",
         "schiedsrichter",
         "schiedsrichter-b",
@@ -33,6 +39,7 @@ public static class DeckIcons
         "spielunterbruch",
         "starting-six",
         "starting6",
+        "stopp",
         "strafe",
         "strafe-gegner",
         "strafe-heim",
@@ -42,10 +49,12 @@ public static class DeckIcons
         "torbeschwoerung",
         "unihockey",
         "verlaengerung",
+        "vor",
         "warten",
         "werbedurchsage-lidl",
         "werbedurchsage-mobiliar",
         "werbung",
+        "zurueck",
     ];
 
     public static bool Known(string? icon) => icon is { Length: > 0 } value && All.Contains(value);
