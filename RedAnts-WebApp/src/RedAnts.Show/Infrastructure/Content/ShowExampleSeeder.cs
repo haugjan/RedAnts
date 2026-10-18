@@ -2,6 +2,7 @@ using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Agents;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
+using RedAnts.Show.Features.Setup;
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;
 
@@ -10,6 +11,7 @@ namespace RedAnts.Show.Infrastructure.Content;
 public sealed class ShowExampleSeeder(
     IHallRepository halls,
     IMusicLibrary music,
+    IShowSetup setup,
     AgentSync sync,
     ILogger<ShowExampleSeeder> log) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
@@ -30,6 +32,7 @@ public sealed class ShowExampleSeeder(
     {
         try
         {
+            await CarryTitlesOverAsync();
             var library = await music.TreeAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
@@ -104,22 +107,18 @@ public sealed class ShowExampleSeeder(
         var name = hall.Id == MusicHallId && hall.Name == "Oberseen" ? MusicHallName : hall.Name;
         if (name != hall.Name) changed = true;
 
-        var titles = hall.OverlayTitles.ToList();
-        foreach (var title in Hall.DefaultOverlayTitles)
-        {
-            var index = titles.FindIndex(t => t.Kind.Equals(title.Kind, StringComparison.OrdinalIgnoreCase));
-            if (index < 0)
-            {
-                titles.Add(title);
-                changed = true;
-                continue;
-            }
-            if (!Clipped(titles[index])) continue;
-            titles[index] = title;
-            changed = true;
-        }
+        return changed ? hall with { Name = name, Decks = decks } : null;
+    }
 
-        return changed ? hall with { Name = name, Decks = decks, OverlayTitles = titles } : null;
+    private async Task CarryTitlesOverAsync()
+    {
+        if (!(await setup.GetAsync()).IsEmpty) return;
+        var configured = await halls.GetByIdAsync(HallId);
+        var titles = configured?.OverlayTitles is { Count: > 0 } known ? known : ShowSetup.Default.Titles;
+        var led = configured?.LedTemplates is { Count: > 0 } templates ? templates : ShowSetup.Default.Led;
+        await setup.SaveAsync(new ShowSetup(titles, led));
+        log.LogInformation("vMix-Titel und LED-Vorlagen gelten neu für alle Hallen: {Titles} Titel, {Led} Vorlagen",
+            titles.Count, led.Count);
     }
 
     public static Hall Example(IReadOnlyList<MusicNode> library)

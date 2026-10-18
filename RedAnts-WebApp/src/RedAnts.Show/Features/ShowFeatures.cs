@@ -5,6 +5,7 @@ using RedAnts.Show.Features.Games;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Remote;
+using RedAnts.Show.Features.Setup;
 using RedAnts.Show.Features.Sounds;
 
 namespace RedAnts.Show.Features;
@@ -38,6 +39,8 @@ public static class ShowFeatures
         typeof(GetDeckView.Handler),
         typeof(RecordDeckView.Handler),
         typeof(GetMusic.Handler),
+        typeof(GetShowSetup.Handler),
+        typeof(SaveShowSetup.Handler),
         typeof(GetDJProfiles.Handler),
         typeof(SaveDJProfiles.Handler),
         typeof(ExportDJBoards.Handler),

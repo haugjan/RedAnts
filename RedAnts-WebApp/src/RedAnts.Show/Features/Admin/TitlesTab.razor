@@ -1,18 +1,14 @@
-@inherits HallTab
+@inherits SetupTab
 @inject GetHallStatus.Handler StatusQuery
+@inject GetHalls.Handler HallsQuery
 
 <section class="sa-card">
     <h2>vMix-Titel <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
-    @if (Hall is null)
-    {
-        <p class="sa-hint">Keine Halle gewählt.</p>
-    }
-    else
-    {
-        <p class="sa-hint">
-            Jeder Titel ist ein vMix-Input mit Feldern. Beim Einblenden füllt der Agent die Felder mit den Vorlagen.
-            Die Art <code>scoreboard</code> ist die Anzeige der Matchuhr, dort steht links der Wert der Uhr und rechts das Feld in vMix.
-        </p>
+    <p class="sa-hint">
+        Jeder Titel ist ein vMix-Input mit Feldern. Beim Einblenden füllt der Agent die Felder mit den Vorlagen.
+        Die Art <code>scoreboard</code> ist die Anzeige der Matchuhr, dort steht links der Wert der Uhr und rechts das Feld in vMix.
+        Die Titel gelten für alle Hallen.
+    </p>
 
         @foreach (var title in _titles)
         {
@@ -113,8 +109,7 @@
             <button class="sa-btn small" @onclick="LoadDefaults">⟲ Standard L-UPL</button>
             <button class="sa-btn primary" @onclick="SaveTitlesAsync" disabled="@(!Dirty)">💾 Speichern</button>
         </div>
-        <p class="sa-hint">@(_inputs.Count > 0 ? $"{_inputs.Count} Inputs von vMix gemeldet." : "Kein Agent verbunden; Input-Namen von Hand eintragen.")</p>
-    }
+    <p class="sa-hint">@(_inputs.Count > 0 ? $"{_inputs.Count} Inputs von vMix gemeldet." : "Kein Agent verbunden; Input-Namen von Hand eintragen.")</p>
 </section>
 
 @code {
@@ -155,16 +150,25 @@
     private IReadOnlyList<string> FieldsOf(string input) =>
         _fields.TryGetValue(input, out var names) ? names : [];
 
-    protected override async Task OnHallLoadedAsync()
+    protected override async Task OnSetupLoadedAsync()
     {
-        _titles = Hall?.OverlayTitles.Select(t => new TitleEdit
+        _titles = Setup.Titles.Select(t => new TitleEdit
         {
             Kind = t.Kind,
             Input = t.Input,
             Channel = t.Channel,
             Fields = t.Fields.Select(f => new FieldEdit { Name = f.Key, Template = f.Value }).ToList(),
-        }).ToList() ?? [];
-        if (Hall is not null) await ReadVmixAsync(Hall.Id);
+        }).ToList();
+        await ReadVmixAsync();
+    }
+
+    private async Task ReadVmixAsync()
+    {
+        foreach (var hall in await HallsQuery.HandleAsync(new GetHalls.Query()))
+        {
+            await ReadVmixAsync(hall.Id);
+            if (_inputs.Count > 0) return;
+        }
     }
 
     private async Task ReadVmixAsync(string hallId)
@@ -208,7 +212,7 @@
 
     private void LoadDefaults()
     {
-        _titles = Domain.Hall.DefaultOverlayTitles.Select(t => new TitleEdit
+        _titles = ShowSetup.Default.Titles.Select(t => new TitleEdit
         {
             Kind = t.Kind,
             Input = t.Input,
@@ -232,9 +236,9 @@
         Touch();
     }
 
-    private Task SaveTitlesAsync() => SaveAsync(hall => hall with
+    private Task SaveTitlesAsync() => SaveSetupAsync(setup => setup with
     {
-        OverlayTitles = _titles
+        Titles = _titles
             .Where(t => t.Kind.Trim().Length > 0)
             .Select(t => new OverlayTitle(
                 t.Kind.Trim(),

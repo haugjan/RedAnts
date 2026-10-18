@@ -1,6 +1,7 @@
 using RedAnts.Show.Features.Games;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
+using RedAnts.Show.Features.Setup;
 
 namespace RedAnts.Show.Features.Agents;
 
@@ -8,6 +9,7 @@ public sealed class AgentSync(
     IHallRepository halls,
     IGameRepository games,
     IMusicLibrary music,
+    IShowSetup setup,
     IAgentChannel channel,
     IAgentConnections connections)
 {
@@ -16,7 +18,9 @@ public sealed class AgentSync(
         var hall = await halls.GetByIdAsync(hallId);
         if (hall is null) return null;
         var game = hall.ActiveGameId is { } id ? await games.GetByIdAsync(id) : null;
-        return new AgentPayload(hall with { AgentKey = "" }, game, SwissTime.Timestamp, await music.AllAsync());
+        var show = await setup.GetAsync();
+        var configured = hall with { AgentKey = "", OverlayTitles = show.Titles, LedTemplates = show.Led };
+        return new AgentPayload(configured, game, SwissTime.Timestamp, await music.AllAsync());
     }
 
     public async Task PushAsync(string hallId)

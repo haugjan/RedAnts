@@ -13,6 +13,8 @@ using RedAnts.Show.Features.Music.Infrastructure;
 using RedAnts.Show.Features.Remote;
 using RedAnts.Show.Features.Remote.Infrastructure;
 using RedAnts.Show.Features.Sounds;
+using RedAnts.Show.Features.Setup;
+using RedAnts.Show.Features.Setup.Infrastructure;
 using RedAnts.Show.Features.Sounds.Infrastructure;
 using QuestPDF.Infrastructure;
 using Umbraco.Cms.Core.Composing;
@@ -36,6 +38,7 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddSingleton<IGameReader, GameReader>();
         builder.Services.AddSingleton<ISwissUnihockeyGames, SwissUnihockeyGames>();
         builder.Services.AddScoped<IMusicLibrary, DJMusicLibrary>();
+        builder.Services.AddSingleton<IShowSetup, ShowSetupRepository>();
         builder.Services.AddSingleton<IAgentConnections, AgentConnections>();
         builder.Services.AddSingleton<IAgentReports, AgentReports>();
         builder.Services.AddSingleton<IAgentChannel, AgentChannel>();
