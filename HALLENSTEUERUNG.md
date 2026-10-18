@@ -73,9 +73,9 @@ Technisch **eins zu eins wie das heutige DJ-Bord**: der Song startet in der Klic
 
 - **Einzelstücke oder Playlists**, sequenziell oder zufällig.
 - Jedes Stück mit **Cue-Start und Cue-Ende**.
-- Verwaltet im heutigen **DJ-Admin**, das Setzen von Anfang und Ende bleibt gleich komfortabel. Die Musikbefehle bekommen **Namen** und werden auf einer Unterseite im Admin definiert.
+- Verwaltet unter **Show, Musik**: eine Liste mit Name, Stücken und Zufall, dazu Hochladen und Spotify. Welche Taste welchen Eintrag spielt, steht unter **Decks**.
 - **Steuerung**: Stopp, Fade-out, nächstes Stück, vorheriges Stück, Pause und Weiter.
-- **Laufanzeige** mit Titel, Interpret und Restzeit, die laufende Kachel ist erkennbar.
+- **Laufanzeige** mit Titel, Interpret und Restzeit, die laufende Taste ist erkennbar.
 - **Langer Druck** auf eine Playlist öffnet die Einzelauswahl der Songs.
 - **Spotify** nur im Cloud-Bord, lokal beim Agenten nicht.
 - Die Musik läuft auf dem Gerät, das das Bord anzeigt, beziehungsweise auf dem Agenten.
