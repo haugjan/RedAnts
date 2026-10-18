@@ -11,20 +11,9 @@ public sealed class DJAdminController(
     OpenDJSound.Handler sounds,
     StartSpotifyConnect.Handler spotifyConnect,
     CompleteSpotifyConnect.Handler spotifyComplete,
-    GetSpotifyAccessToken.Handler spotifyToken,
-    ExportDJBoards.Handler export) : Controller
+    GetSpotifyAccessToken.Handler spotifyToken) : Controller
 {
     private const string StateCookie = "dj_spotify_state";
-
-    [HttpGet("")]
-    public IActionResult Index() => View("DJAdmin");
-
-    [HttpGet("export.pdf")]
-    public async Task<IActionResult> ExportPdf()
-    {
-        var pdf = await export.HandleAsync(new ExportDJBoards.Query());
-        return File(pdf, "application/pdf", $"dj-konfiguration-{DateTime.Now:yyyy-MM-dd}.pdf");
-    }
 
     [HttpGet("sound/{**path}")]
     public Task<IActionResult> Sound(string? path) => this.StreamDJSoundAsync(sounds, path);

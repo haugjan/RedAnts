@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using RedAnts.Domain;
 using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Admin;
-using RedAnts.Show.Features.Remote;
 using RedAnts.Show.Features.Sounds;
 using Xunit;
 
@@ -112,17 +111,6 @@ public class DJQueryTests
         Assert.Null(await handler.HandleAsync(new OpenDJSound.Query(null)));
     }
 
-    [Fact]
-    public async Task ListenForDJCommands_registers_the_board_for_its_room()
-    {
-        var remote = new RecordingRemote();
-        var handler = new ListenForDJCommands.Handler(remote);
-
-        using var registration = await handler.HandleAsync(new ListenForDJCommands.Command("hall", _ => Task.CompletedTask));
-
-        Assert.Equal("hall", remote.RegisteredRoom);
-    }
-
     private sealed class StubSettings : IDJSettings
     {
         private readonly Dictionary<string, string?> _values = new();
@@ -216,23 +204,4 @@ public class DJQueryTests
         public Task<bool> DeleteAsync(string blobPath) => Task.FromResult(Stored.Remove(blobPath));
     }
 
-    private sealed class RecordingRemote : IDJRemote
-    {
-        public string? RegisteredRoom { get; private set; }
-
-        public IDisposable Register(string? room, Func<DJCommand, Task> handler)
-        {
-            RegisteredRoom = room;
-            return new Registration();
-        }
-
-        public Task<int> DispatchAsync(DJCommand command) => Task.FromResult(0);
-
-        private sealed class Registration : IDisposable
-        {
-            public void Dispose()
-            {
-            }
-        }
-    }
 }

@@ -2,7 +2,6 @@ using RedAnts.Domain;
 using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Admin;
 using RedAnts.Show.Features.Music;
-using RedAnts.Show.Features.Remote;
 using Xunit;
 
 namespace RedAnts.Show.Tests;
@@ -43,26 +42,6 @@ public class DJWorkflowTests
     }
 
     [Fact]
-    public async Task DispatchDJCommand_returns_how_many_boards_were_reached()
-    {
-        var remote = new CountingRemote { Reach = 3 };
-        var handler = new DispatchDJCommand.Handler(remote);
-
-        var reached = await handler.HandleAsync(new DispatchDJCommand.Command(new DJCommand("play", TileId: "goal")));
-
-        Assert.Equal(3, reached);
-        Assert.Equal("play", remote.Last?.Action);
-    }
-
-    [Fact]
-    public async Task DispatchDJCommand_rejects_a_blank_action()
-    {
-        var handler = new DispatchDJCommand.Handler(new CountingRemote());
-
-        await Assert.ThrowsAsync<DomainException>(() => handler.HandleAsync(new DispatchDJCommand.Command(new DJCommand(" "))));
-    }
-
-    [Fact]
     public async Task SetDJSetting_trims_the_key_and_rejects_blank_keys()
     {
         var settings = new RecordingSettings();
@@ -85,27 +64,6 @@ public class DJWorkflowTests
         {
             Saved = profiles;
             return Task.CompletedTask;
-        }
-    }
-
-    private sealed class CountingRemote : IDJRemote
-    {
-        public int Reach { get; set; }
-        public DJCommand? Last { get; private set; }
-
-        public IDisposable Register(string? room, Func<DJCommand, Task> handler) => new Registration();
-
-        public Task<int> DispatchAsync(DJCommand command)
-        {
-            Last = command;
-            return Task.FromResult(Reach);
-        }
-
-        private sealed class Registration : IDisposable
-        {
-            public void Dispose()
-            {
-            }
         }
     }
 

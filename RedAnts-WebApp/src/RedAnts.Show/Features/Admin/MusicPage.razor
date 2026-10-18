@@ -1,0 +1,267 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using RedAnts.Show.Features.Music
+@using RedAnts.Show.Features.Sounds
+@inject GetMusicLibrary.Handler LibraryQuery
+@inject SaveMusicEntry.Handler EntrySave
+@inject DeleteMusicEntry.Handler EntryDelete
+@inject UploadDJSound.Handler SoundUpload
+@inject IJSRuntime JS
+
+<section class="sa-card">
+    <h2>Musik <StatusLine Text="@_status" IsError="@_statusIsError" /></h2>
+    <p class="sa-hint">
+        Jeder Eintrag ist ein Stück oder eine Liste von Stücken. Welche Taste welchen Eintrag spielt, steht unter Decks.
+    </p>
+
+    <div class="sa-actions">
+        <input class="sa-input" placeholder="Suchen" @bind="_search" @bind:event="oninput" />
+        <label class="sa-btn small">
+            ⬆ Hochladen
+            <InputFile OnChange="UploadAsync" multiple accept="audio/*" style="display:none" />
+        </label>
+        <button class="sa-btn small" @onclick="AddEmpty">+ Eintrag</button>
+        <button class="sa-btn small" @onclick="() => _settings = true">🟢 Spotify</button>
+        <span class="sa-hint">@_entries.Count Einträge</span>
+    </div>
+
+    <table class="sa-table mu-table">
+        <thead>
+            <tr><th>Name</th><th style="width:150px">Stücke</th><th style="width:70px">Zufall</th><th style="width:120px"></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Filtered)
+            {
+                <tr @key="row.Id">
+                    <td><input class="sa-input wide" @bind="row.Name" @bind:after="() => SaveAsync(row)" /></td>
+                    <td>
+                        <button class="sa-btn small" @onclick="() => Toggle(row)">
+                            @(row.Songs.Count == 1 ? "1 Stück" : $"{row.Songs.Count} Stücke") @(_open == row.Id ? "▴" : "▾")
+                        </button>
+                    </td>
+                    <td>
+                        <input type="checkbox" checked="@row.Random" @onchange="e => RandomAsync(row, e.Value is true)" />
+                    </td>
+                    <td>
+                        <button class="sa-btn small" title="Vorhören" @onclick="() => PlayAsync(row.Songs.FirstOrDefault())">▶</button>
+                        <button class="sa-btn small" @onclick="() => DeleteAsync(row)">✕</button>
+                    </td>
+                </tr>
+                @if (_open == row.Id)
+                {
+                    <tr class="mu-detail" @key="@($"{row.Id}-detail")">
+                        <td colspan="4">
+                            @foreach (var song in row.Songs.ToList())
+                            {
+                                <div class="mu-song">
+                                    <span class="mu-song__kind">@(song.Kind == SoundKind.Spotify ? "Spotify" : "Datei")</span>
+                                    <span class="mu-song__ref" title="@song.Ref">@Short(song)</span>
+                                    <label class="mu-song__start">
+                                        Start
+                                        <input class="sa-input" type="number" step="0.1" min="0" value="@song.StartSec"
+                                               @onchange="e => StartAsync(row, song, e.Value?.ToString())" />
+                                    </label>
+                                    <button class="sa-btn small" @onclick="() => PlayAsync(song)">▶</button>
+                                    <button class="sa-btn small" @onclick="() => RemoveSongAsync(row, song)">✕</button>
+                                </div>
+                            }
+                            <div class="sa-actions">
+                                <label class="sa-btn small">
+                                    + Datei
+                                    <InputFile OnChange="args => AddFilesAsync(row, args)" multiple accept="audio/*" style="display:none" />
+                                </label>
+                                <button class="sa-btn small" @onclick="() => OpenSpotify(row)">+ Spotify</button>
+                                <button class="sa-btn small" @onclick="StopAsync">■ Stopp</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    @if (_entries.Count == 0)
+    {
+        <p class="sa-hint">Noch keine Musik. Lade Dateien hoch oder lege einen Eintrag an.</p>
+    }
+</section>
+
+@if (_spotifyFor is { } target)
+{
+    <SpotifySearchDialog Term="@target.Name"
+                         OnPicked="track => AddSpotifyAsync(target, track.Uri)"
+                         OnLink="uri => AddSpotifyAsync(target, uri)"
+                         OnClosed="() => _spotifyFor = null" />
+}
+
+@if (_settings)
+{
+    <SpotifySettingsDialog OnClosed="() => _settings = false" OnSaved="() => _settings = false" />
+}
+
+@code {
+    private sealed class Row
+    {
+        public string Id = "";
+        public string Name = "";
+        public List<DJSound> Songs = [];
+        public bool Random;
+    }
+
+    private List<Row> _entries = [];
+    private string _search = "";
+    private string? _open;
+    private Row? _spotifyFor;
+    private bool _settings;
+    private string? _status;
+    private bool _statusIsError;
+
+    private IEnumerable<Row> Filtered =>
+        _search.Trim() is { Length: > 0 } term
+            ? _entries.Where(e => e.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase))
+            : _entries;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var entries = await LibraryQuery.HandleAsync(new GetMusicLibrary.Query());
+        _entries = entries.Select(e => new Row
+        {
+            Id = e.Id,
+            Name = e.Name,
+            Songs = e.Songs.ToList(),
+            Random = e.Random,
+        }).ToList();
+    }
+
+    private void Toggle(Row row) => _open = _open == row.Id ? null : row.Id;
+
+    private async Task AddEmpty()
+    {
+        var row = new Row { Id = Guid.NewGuid().ToString("N")[..12], Name = "Neuer Eintrag" };
+        _entries.Insert(0, row);
+        _open = row.Id;
+        await SaveAsync(row);
+    }
+
+    private Task RandomAsync(Row row, bool random)
+    {
+        row.Random = random;
+        return SaveAsync(row);
+    }
+
+    private async Task StartAsync(Row row, DJSound song, string? value)
+    {
+        if (!double.TryParse(value, out var start) || start < 0) start = 0;
+        Replace(row, song, song with { StartSec = start });
+        await SaveAsync(row);
+    }
+
+    private async Task RemoveSongAsync(Row row, DJSound song)
+    {
+        row.Songs.Remove(song);
+        await SaveAsync(row);
+    }
+
+    private async Task AddFilesAsync(Row row, InputFileChangeEventArgs args)
+    {
+        foreach (var file in args.GetMultipleFiles(20))
+            if (await StoreAsync(file) is { } path)
+                row.Songs.Add(new DJSound(SoundKind.Local, path));
+        await SaveAsync(row);
+    }
+
+    private async Task AddSpotifyAsync(Row row, string uri)
+    {
+        _spotifyFor = null;
+        if (uri.Trim().Length == 0) return;
+        row.Songs.Add(new DJSound(SoundKind.Spotify, uri.Trim()));
+        await SaveAsync(row);
+    }
+
+    private void OpenSpotify(Row row) => _spotifyFor = row;
+
+    private async Task UploadAsync(InputFileChangeEventArgs args)
+    {
+        var added = 0;
+        foreach (var file in args.GetMultipleFiles(50))
+        {
+            if (await StoreAsync(file) is not { } path) continue;
+            var row = new Row
+            {
+                Id = Guid.NewGuid().ToString("N")[..12],
+                Name = Path.GetFileNameWithoutExtension(file.Name),
+                Songs = [new DJSound(SoundKind.Local, path)],
+            };
+            _entries.Add(row);
+            await SaveAsync(row, quiet: true);
+            added++;
+        }
+        await LoadAsync();
+        Notify(added == 1 ? "Eine Datei übernommen." : $"{added} Dateien übernommen.");
+    }
+
+    private async Task<string?> StoreAsync(IBrowserFile file)
+    {
+        try
+        {
+            await using var stream = file.OpenReadStream(200L * 1024 * 1024);
+            return await SoundUpload.HandleAsync(new UploadDJSound.Command(file.Name, stream, file.ContentType));
+        }
+        catch (DomainException ex) { Fail(ex.Message); return null; }
+        catch (IOException ex) { Fail(ex.Message); return null; }
+    }
+
+    private async Task SaveAsync(Row row, bool quiet = false)
+    {
+        try
+        {
+            await EntrySave.HandleAsync(new SaveMusicEntry.Command(
+                new MusicEntry(row.Id, row.Name, row.Songs, row.Random)));
+            if (!quiet) Notify("Gespeichert.");
+        }
+        catch (DomainException ex) { Fail(ex.Message); }
+    }
+
+    private async Task DeleteAsync(Row row)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"„{row.Name}“ wirklich löschen?")) return;
+        await EntryDelete.HandleAsync(new DeleteMusicEntry.Command(row.Id));
+        _entries.Remove(row);
+        Notify("Gelöscht.");
+    }
+
+    private async Task PlayAsync(DJSound? song)
+    {
+        if (song is null) return;
+        if (song.Kind == SoundKind.Spotify) { Fail("Spotify-Stücke spielen nur auf dem Bord."); return; }
+        await JS.InvokeVoidAsync("showAdmin.preview", "/dj/sound/" + song.Ref, song.StartSec);
+    }
+
+    private async Task StopAsync() => await JS.InvokeVoidAsync("showAdmin.stop");
+
+    private void Replace(Row row, DJSound song, DJSound replacement)
+    {
+        var index = row.Songs.IndexOf(song);
+        if (index >= 0) row.Songs[index] = replacement;
+    }
+
+    private static string Short(DJSound song)
+    {
+        var text = song.Title is { Length: > 0 } title ? title : song.Ref;
+        var cut = text.LastIndexOf('/');
+        return cut >= 0 ? text[(cut + 1)..] : text;
+    }
+
+    private void Notify(string text)
+    {
+        _status = text;
+        _statusIsError = false;
+    }
+
+    private void Fail(string text)
+    {
+        _status = text;
+        _statusIsError = true;
+    }
+}

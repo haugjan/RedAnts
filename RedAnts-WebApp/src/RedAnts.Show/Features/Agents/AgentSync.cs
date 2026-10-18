@@ -7,6 +7,7 @@ namespace RedAnts.Show.Features.Agents;
 
 public sealed class AgentSync(
     IHallRepository halls,
+    IHallReader hallList,
     IGameRepository games,
     IMusicLibrary music,
     IShowSetup setup,
@@ -21,6 +22,12 @@ public sealed class AgentSync(
         var show = await setup.GetAsync();
         var configured = hall with { AgentKey = "", OverlayTitles = show.Titles, LedTemplates = show.Led };
         return new AgentPayload(configured, game, SwissTime.Timestamp, await music.AllAsync());
+    }
+
+    public async Task PushAllAsync()
+    {
+        foreach (var hall in await hallList.ListAsync())
+            await PushAsync(hall.Id);
     }
 
     public async Task PushAsync(string hallId)

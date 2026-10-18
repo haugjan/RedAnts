@@ -20,6 +20,20 @@
 </head>
 <body>
     <component type="typeof(RedAnts.Show.Features.Admin.ShowAdminPage)" param-Page="@Model" render-mode="Server" />
+    <script>
+        window.showAdmin = (function () {
+            var audio = null;
+            return {
+                preview: function (url, startSec) {
+                    window.showAdmin.stop();
+                    audio = new Audio(url);
+                    var begin = function () { if (startSec > 0) { try { audio.currentTime = startSec; } catch (e) { } } audio.play().catch(function () { }); };
+                    if (audio.readyState >= 1) begin(); else audio.addEventListener('canplay', begin, { once: true });
+                },
+                stop: function () { try { if (audio) { audio.pause(); audio = null; } } catch (e) { } }
+            };
+        })();
+    </script>
     <script src="/_framework/blazor.server.js"></script>
 </body>
 </html>

@@ -197,3 +197,11 @@ a { color: var(--sa-accent); }
 .sa-key-icon { width: 46px; height: 46px; object-fit: contain; }
 
 .sa-subnav-title { font-size: 1.05rem; font-weight: 700; }
+
+.mu-table td { vertical-align: middle; }
+.mu-detail > td { background: #0f0f14; }
+.mu-song { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.mu-song__kind { min-width: 60px; color: #8a8a98; font-size: .85rem; }
+.mu-song__ref { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mu-song__start { display: flex; align-items: center; gap: 4px; font-size: .85rem; color: #8a8a98; }
+.mu-song__start input { width: 80px; }

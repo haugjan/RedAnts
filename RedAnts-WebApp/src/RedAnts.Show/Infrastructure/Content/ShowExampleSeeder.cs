@@ -11,6 +11,7 @@ namespace RedAnts.Show.Infrastructure.Content;
 public sealed class ShowExampleSeeder(
     IHallRepository halls,
     IMusicLibrary music,
+    IDJProfiles profiles,
     IShowSetup setup,
     AgentSync sync,
     ILogger<ShowExampleSeeder> log) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
@@ -33,7 +34,8 @@ public sealed class ShowExampleSeeder(
         try
         {
             await CarryTitlesOverAsync();
-            var library = await music.TreeAsync();
+            await FlattenLibraryAsync();
+            var library = await music.AllAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
                 var hall = Example(library);
@@ -67,19 +69,10 @@ public sealed class ShowExampleSeeder(
         }
     }
 
-    public static Hall? Refreshed(Hall hall, IReadOnlyList<MusicNode> library)
+    public static Hall? Refreshed(Hall hall, IReadOnlyList<MusicItem> library)
     {
         var decks = hall.DeckLayouts.ToList();
         var changed = false;
-
-        var board = decks.FirstOrDefault(d => d.Id == DefaultDecks.MusicDeck)
-            ?? (decks.Count == 1 && !hall.Offers.Vmix ? decks[0] : null);
-        if (board is not null && board.Page(MusicDeck.BeforeAndAfter) is null)
-        {
-            decks[decks.IndexOf(board)] = MusicDeck.Build(
-                DefaultDecks.Music() with { Id = board.Id, Name = board.Name }, library);
-            changed = true;
-        }
 
         if (decks.FirstOrDefault(d => d.Id == DefaultDecks.FieldDeck) is { } field)
         {
@@ -110,6 +103,17 @@ public sealed class ShowExampleSeeder(
         return changed ? hall with { Name = name, Decks = decks } : null;
     }
 
+    private async Task FlattenLibraryAsync()
+    {
+        var stored = await profiles.GetAllAsync();
+        if (stored.Count == 1 && stored[0].Id == GetMusicLibrary.LibraryId
+            && stored[0].Root.All(button => !button.IsFolder && !button.IsControl && !button.Panic))
+            return;
+        var flat = GetMusicLibrary.Flatten(stored);
+        await profiles.SaveAllAsync([MusicLibraryWriter.Library(flat)]);
+        log.LogInformation("Musik ist neu eine Liste: {Count} Einträge", flat.Count);
+    }
+
     private async Task CarryTitlesOverAsync()
     {
         if (!(await setup.GetAsync()).IsEmpty) return;
@@ -121,7 +125,7 @@ public sealed class ShowExampleSeeder(
             titles.Count, led.Count);
     }
 
-    public static Hall Example(IReadOnlyList<MusicNode> library)
+    public static Hall Example(IReadOnlyList<MusicItem> library)
     {
         var hall = Hall.Create(HallId, HallName) with
         {
@@ -129,10 +133,10 @@ public sealed class ShowExampleSeeder(
             Offered = new HallCapabilities(Sound: true, Clock: true, Vmix: true, Led: true),
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
         };
-        return hall with { Decks = [Field(library), MusicDeck.Build(DefaultDecks.Music(), library)] };
+        return hall with { Decks = [Field(library), DefaultDecks.Music()] };
     }
 
-    private static readonly IReadOnlyList<(string Id, Func<IReadOnlyList<MusicNode>, Hall> Build)> Others =
+    private static readonly IReadOnlyList<(string Id, Func<IReadOnlyList<MusicItem>, Hall> Build)> Others =
     [
         (SoundHallId, library => SoundOnly(SoundHallId, "WIN4 nur Sound", library)),
         (StreamHallId, StreamOnly),
@@ -141,19 +145,19 @@ public sealed class ShowExampleSeeder(
         (RennwegHallId, library => SoundOnly(RennwegHallId, "Rennweg iPad", library)),
     ];
 
-    public static Hall MusicHall(IReadOnlyList<MusicNode> library) => SoundOnly(MusicHallId, MusicHallName, library);
+    public static Hall MusicHall(IReadOnlyList<MusicItem> library) => SoundOnly(MusicHallId, MusicHallName, library);
 
-    public static Hall SoundOnly(string id, string name, IReadOnlyList<MusicNode> library)
+    public static Hall SoundOnly(string id, string name, IReadOnlyList<MusicItem> library)
     {
         var hall = Hall.Create(id, name) with
         {
             Offered = new HallCapabilities(Sound: true, Clock: false, Vmix: false, Led: false),
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
         };
-        return hall with { Decks = [MusicDeck.Build(DefaultDecks.Music() with { Name = "Bord" }, library)] };
+        return hall with { Decks = [DefaultDecks.Music() with { Name = "Bord" }] };
     }
 
-    public static Hall Notebook(IReadOnlyList<MusicNode> library)
+    public static Hall Notebook(IReadOnlyList<MusicItem> library)
     {
         var hall = Hall.Create(NotebookHallId, "Oberseen Notebook") with
         {
@@ -161,10 +165,10 @@ public sealed class ShowExampleSeeder(
             Offered = new HallCapabilities(Sound: true, Clock: true, Vmix: false, Led: false),
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
         };
-        return hall with { Decks = [MusicDeck.Build(DefaultDecks.Music() with { Name = "Bord" }, library)] };
+        return hall with { Decks = [DefaultDecks.Music() with { Name = "Bord" }] };
     }
 
-    public static Hall StreamOnly(IReadOnlyList<MusicNode> library)
+    public static Hall StreamOnly(IReadOnlyList<MusicItem> library)
     {
         var hall = Hall.Create(StreamHallId, "WIN4 nur Livestream") with
         {
@@ -186,7 +190,7 @@ public sealed class ShowExampleSeeder(
         && (bottom.Contains("referee2", StringComparison.OrdinalIgnoreCase)
             || bottom.Contains("commentator2", StringComparison.OrdinalIgnoreCase));
 
-    private static Deck Field(IReadOnlyList<MusicNode> library)
+    private static Deck Field(IReadOnlyList<MusicItem> library)
     {
         var deck = DefaultDecks.Field();
         var home = deck.Home;
@@ -198,132 +202,7 @@ public sealed class ShowExampleSeeder(
         return deck with { Pages = deck.Pages.Select(p => p.IsHome ? home : p).ToList() };
     }
 
-    private static Deck Music(IReadOnlyList<MusicNode> library, Deck deck)
-    {
-        var controls = library.Any(n => n.Control.Length > 0);
-        var extra = controls
-            ? deck.Home.Keys.Where(k => k.Special is SpecialKey.AutoBreakMusic or SpecialKey.MusicStop).ToList()
-            : deck.Home.Keys.Where(k => !deck.Reserved(k.Number)).ToList();
-        var pages = new List<DeckPage>();
-        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        pages.Insert(0, Page(DeckPage.HomeId, "Startseite", null, library, deck, pages, taken, extra));
-        return deck with { Pages = pages };
-    }
-
-    private static DeckPage Page(
-        string id,
-        string name,
-        string? parent,
-        IReadOnlyList<MusicNode> nodes,
-        Deck deck,
-        List<DeckPage> pages,
-        HashSet<string> taken,
-        IReadOnlyList<DeckKey> extra)
-    {
-        var keys = new List<DeckKey>();
-        var used = new HashSet<int>();
-
-        foreach (var node in nodes)
-            if (Placed(node, deck, used) is { } number)
-            {
-                used.Add(number);
-                keys.Add(KeyFor(node, number, id, deck, pages, taken, extra));
-            }
-
-        var free = Free(deck, used).ToList();
-        var at = 0;
-        foreach (var node in nodes)
-        {
-            if (Placed(node, deck, used) is not null || PlacedAt(node, deck) is not null) continue;
-            if (at >= free.Count) break;
-            var number = free[at++];
-            used.Add(number);
-            keys.Add(KeyFor(node, number, id, deck, pages, taken, extra));
-        }
-
-        if (id == DeckPage.HomeId)
-            foreach (var key in extra)
-            {
-                while (at < free.Count && used.Contains(free[at])) at++;
-                if (at >= free.Count) break;
-                var number = free[at++];
-                used.Add(number);
-                keys.Add(key with { Number = number });
-            }
-
-        return new DeckPage(id, name, parent, keys.OrderBy(k => k.Number).ToList());
-    }
-
-    private static DeckKey KeyFor(
-        MusicNode node,
-        int number,
-        string pageId,
-        Deck deck,
-        List<DeckPage> pages,
-        HashSet<string> taken,
-        IReadOnlyList<DeckKey> extra)
-    {
-        if (node.Control is { Length: > 0 } control && SpecialOf(control) is { } special)
-            return new DeckKey(number, KeyKinds.Special, node.Name, Colour(node),
-                SpecialKey.Of(special)?.Icon is { Length: > 0 } icon ? icon : Symbol(node), Special: special);
-
-        if (node.IsFolder)
-        {
-            var id = PageId(node, taken);
-            pages.Add(Page(id, node.Name, pageId, node.Children, deck, pages, taken, extra));
-            return new DeckKey(number, KeyKinds.Page, node.Name, Colour(node), Symbol(node), PageId: id);
-        }
-
-        return new DeckKey(number, KeyKinds.Music, node.Name, Colour(node), Symbol(node), MusicId: node.Id);
-    }
-
-    private static int? PlacedAt(MusicNode node, Deck deck)
-    {
-        if (node.X < 0 || node.Y < 0 || node.X >= deck.Columns) return null;
-        var number = node.Y * deck.Columns + node.X + 1;
-        return number >= 1 && number <= deck.Count && !deck.Reserved(number) ? number : null;
-    }
-
-    private static string? SpecialOf(string control) => control switch
-    {
-        "pause" => SpecialKey.MusicPause,
-        "fade" => SpecialKey.MusicFade,
-        "previous" => SpecialKey.MusicPrevious,
-        "next" => SpecialKey.MusicNext,
-        _ => null,
-    };
-
-    private static int? Placed(MusicNode node, Deck deck, HashSet<int> used) =>
-        PlacedAt(node, deck) is { } number && !used.Contains(number) ? number : null;
-
-    private static IEnumerable<int> Free(Deck deck, IEnumerable<int> used)
-    {
-        var blocked = used.ToHashSet();
-        for (var number = 1; number <= deck.Count; number++)
-        {
-            if (deck.Reserved(number) || blocked.Contains(number)) continue;
-            yield return number;
-        }
-    }
-
-    private static string PageId(MusicNode node, HashSet<string> taken)
-    {
-        var id = Key(node.Name);
-        while (!taken.Add(id)) id += "-2";
-        return id;
-    }
-
-    private static string Key(string name)
-    {
-        var slug = new string(name.Trim().ToLowerInvariant()
-            .Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray())
-            .Trim('-');
-        while (slug.Contains("--", StringComparison.Ordinal)) slug = slug.Replace("--", "-");
-        return slug.Length > 0 ? slug[..Math.Min(30, slug.Length)] : "seite";
-    }
-
-    private static DeckPage WithMusic(DeckPage page, int number, MusicNode? item)
+    private static DeckPage WithMusic(DeckPage page, int number, MusicItem? item)
     {
         if (item is null) return page;
         var key = page.KeyAt(number);
@@ -332,19 +211,14 @@ public sealed class ShowExampleSeeder(
         return page.With(key with { Steps = steps });
     }
 
-    private static string Colour(MusicNode node) =>
-        node.Color is { Length: > 0 } colour ? colour : DeckKey.DefaultColor;
+    private static MusicItem? Find(IReadOnlyList<MusicItem> library, string label) =>
+        library.FirstOrDefault(item => item.Name.Equals(label, StringComparison.OrdinalIgnoreCase))
+        ?? library.FirstOrDefault(item => Last(item.Name).Equals(label, StringComparison.OrdinalIgnoreCase))
+        ?? library.FirstOrDefault(item => item.Name.Contains(label, StringComparison.OrdinalIgnoreCase));
 
-    private static string? Symbol(MusicNode node) =>
-        node.Icon is { Length: > 0 } icon ? icon : null;
-
-    private static MusicNode? Find(IReadOnlyList<MusicNode> nodes, string label)
+    private static string Last(string name)
     {
-        foreach (var node in nodes)
-        {
-            if (!node.IsFolder && node.Name.Contains(label, StringComparison.OrdinalIgnoreCase)) return node;
-            if (node.IsFolder && Find(node.Children, label) is { } found) return found;
-        }
-        return null;
+        var cut = name.LastIndexOf('·');
+        return cut >= 0 ? name[(cut + 1)..].Trim() : name;
     }
 }

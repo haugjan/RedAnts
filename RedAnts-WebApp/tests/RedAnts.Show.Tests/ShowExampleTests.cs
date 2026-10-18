@@ -7,25 +7,22 @@ namespace RedAnts.Show.Tests;
 
 public class ShowExampleTests
 {
-    private static MusicNode Piece(string id, string name, string icon = "", string colour = "", string subtitle = "", int songs = 1, bool random = false) =>
-        new(id, name, icon, colour, subtitle, songs, random, "[]", []);
+    private static MusicItem Piece(string id, string name, int songs = 1, bool random = false) =>
+        new(id, name, "", songs, random);
 
-    private static MusicNode Folder(string id, string name, params MusicNode[] children) =>
-        new(id, name, "📁", "#1f242b", "", 0, false, "[]", children);
-
-    private static readonly IReadOnlyList<MusicNode> Library =
+    private static readonly IReadOnlyList<MusicItem> Library =
     [
-        Folder("f1", "Vor/Nach Spiel / Pause",
-            Piece("m6", "Aufwärmmusik vor Spiel", "🔥", "#2f855a", "39 Songs", 39, true),
-            Piece("m7", "2. Wartesong bis Teams bereit"),
-            Piece("m8", "4. Einlaufmusik")),
-        Folder("f2", "Special Situations", Piece("m14", "Happy Birthday")),
-        Piece("m5", "Spielunterbruch", "🎵", "#f5b50a", "Queen", 91, true),
-        Piece("m3", "Strafe Red Ants", "😬", "#d02d38", "Always Look"),
-        Piece("m4", "Strafe Gegner", "😬", "#4a7fa5", "Sitzed Sie"),
-        Piece("m13", "Penalty", "💥", "#f5b50a"),
-        Piece("m1", "Tor Red Ants", "🥅", "#d02d38", "Samba"),
-        Piece("m2", "Tor Gegner", "🥅", "#4a7fa5", "Fight Back"),
+        Piece("m6", "Vor/Nach Spiel / Pause · Aufwärmmusik vor Spiel", 39, true),
+        Piece("m7", "Vor/Nach Spiel / Pause · 2. Wartesong bis Teams bereit"),
+        Piece("m8", "Vor/Nach Spiel / Pause · 4. Einlaufmusik"),
+        Piece("m14", "Special Situations · Happy Birthday"),
+        Piece("m5", "Spielunterbruch", 91, true),
+        Piece("m3", "Strafe Red Ants"),
+        Piece("m4", "Strafe Gegner"),
+        Piece("m13", "Penalty"),
+        Piece("m1", "Tor Red Ants"),
+        Piece("m2", "Tor Gegner"),
+        Piece("m9", "Time Out"),
     ];
 
     [Fact]
@@ -54,34 +51,21 @@ public class ShowExampleTests
     }
 
     [Fact]
-    public void The_music_deck_mirrors_the_soundboard_with_its_names_colours_and_symbols()
+    public void A_name_from_a_former_folder_is_found_by_its_last_part()
     {
         var hall = ShowExampleSeeder.Example(Library);
-        var deck = hall.DeckLayouts.First(d => d.Id == DefaultDecks.MusicDeck);
-        var home = deck.Home;
+        var home = hall.DeckLayouts.First(d => d.Id == DefaultDecks.FieldDeck).Home;
 
-        var folder = home.Keys.First(k => k.Kind == KeyKinds.Page);
-        Assert.Equal("Vor/Nach Spiel / Pause", folder.Label);
-        Assert.Equal("📁", folder.Icon);
-
-        var piece = home.Keys.First(k => k.MusicId == "m5");
-        Assert.Equal("Spielunterbruch", piece.Label);
-        Assert.Equal("#f5b50a", piece.Color);
-        Assert.Equal("🎵", piece.Icon);
-
-        Assert.Contains(home.Keys, k => k.Special == SpecialKey.AutoBreakMusic);
-        Assert.Contains(deck.Pages, p => p.Name == "Vor/Nach Spiel / Pause");
-        Assert.Contains(deck.Pages.First(p => p.Name == "Vor/Nach Spiel / Pause").Keys, k => k.MusicId == "m6");
+        Assert.Equal("m9", home.KeyAt(3).Sequence[0].Target);
     }
 
     [Fact]
-    public void A_sub_page_of_the_music_deck_leads_back_to_the_start()
+    public void The_music_deck_starts_empty_and_is_filled_under_decks()
     {
-        var deck = ShowExampleSeeder.Example(Library).DeckLayouts.First(d => d.Id == DefaultDecks.MusicDeck);
+        var hall = ShowExampleSeeder.Example(Library);
+        var deck = hall.DeckLayouts.First(d => d.Id == DefaultDecks.MusicDeck);
 
-        var folder = deck.Pages.First(p => p.Name == "Special Situations");
-
-        Assert.Equal(DeckPage.HomeId, folder.ParentId);
+        Assert.All(deck.Home.Keys.Where(k => !deck.Reserved(k.Number)), key => Assert.NotEqual(KeyKinds.Music, key.Kind));
         deck.Validated();
     }
 

@@ -17,7 +17,6 @@ public sealed class ShowAdminController : Controller
     public IActionResult Page(string page)
     {
         var wanted = page.ToLowerInvariant();
-        if (wanted == "musik") return Redirect("/admin/dj");
         return View("ShowAdmin", Pages.Contains(wanted) ? wanted : Pages[0]);
     }
 }

@@ -6,7 +6,7 @@ class ShowAdminView extends HTMLElement {
     const last = (location.pathname.split('/').filter(Boolean).pop() || '').toLowerCase();
     const page = showPages.includes(last) ? last : 'hallen';
     const iframe = document.createElement('iframe');
-    iframe.src = page === 'musik' ? '/admin/dj' : '/admin/show/' + page;
+    iframe.src = '/admin/show/' + page;
     iframe.title = 'Show';
     iframe.style.cssText = 'width:100%;height:calc(100vh - 60px);border:none;display:block;';
     this.appendChild(iframe);

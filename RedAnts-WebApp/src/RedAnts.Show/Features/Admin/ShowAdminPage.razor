@@ -27,6 +27,7 @@
     <main class="sa-content" @key="@($"{_tab}|{State.SelectedHallId}")">
         @switch (_tab)
         {
+            case "musik": <MusicPage /> break;
             case "vmix": <TitlesTab /> break;
             case "led": <LedTab /> break;
             case "decks": <DecksTab /> break;

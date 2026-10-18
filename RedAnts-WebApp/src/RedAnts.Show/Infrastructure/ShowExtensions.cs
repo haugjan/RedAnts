@@ -39,6 +39,7 @@ public static class ShowExtensions
     {
         if (path.StartsWithSegments("/api/show", out var rest)) return "/api/dj" + rest;
         if (path.Equals("/admin/halle", StringComparison.OrdinalIgnoreCase)) return "/admin/show/hallen";
+        if (path.Equals("/admin/dj", StringComparison.OrdinalIgnoreCase)) return "/admin/show/musik";
         if (path.StartsWithSegments("/show", out rest)) return "/dj" + rest;
         return null;
     }

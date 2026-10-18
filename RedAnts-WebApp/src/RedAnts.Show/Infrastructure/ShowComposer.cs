@@ -10,13 +10,10 @@ using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Halls.Infrastructure;
 using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Music.Infrastructure;
-using RedAnts.Show.Features.Remote;
-using RedAnts.Show.Features.Remote.Infrastructure;
 using RedAnts.Show.Features.Sounds;
 using RedAnts.Show.Features.Setup;
 using RedAnts.Show.Features.Setup.Infrastructure;
 using RedAnts.Show.Features.Sounds.Infrastructure;
-using QuestPDF.Infrastructure;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.Notifications;
 using Umbraco.Cms.Infrastructure.Manifest;
@@ -27,7 +24,6 @@ public sealed class ShowComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
-        QuestPDF.Settings.License = LicenseType.Community;
         builder.AddComponent<ShowMigrationComponent>();
         builder.AddComponent<DJMigrationComponent>();
         builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, Content.ShowExampleSeeder>();
@@ -49,11 +45,7 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddSingleton<IPackageManifestReader, ShowAdminManifestReader>();
         builder.Services.AddScoped<ShowAdminState>();
         builder.Services.AddSingleton<IDJProfiles, DJProfileRepository>();
-        builder.Services.AddSingleton<IDJBoardPdf, DJBoardPdfRenderer>();
         builder.Services.AddSingleton<IDJSettings, DJSettingsRepository>();
-        builder.Services.AddSingleton<IDJRemote, DJRemote>();
-        builder.Services.AddSingleton<IDJBoardViews, DJBoardViews>();
-        builder.Services.AddSingleton<IDJRooms, DJRooms>();
         builder.Services.AddSingleton<IDJSoundUploader, DJSoundUploader>();
         builder.Services.AddSingleton<DJSpotifyAccount>();
         builder.Services.AddSingleton<IDJSpotifyAccount>(sp => sp.GetRequiredService<DJSpotifyAccount>());
