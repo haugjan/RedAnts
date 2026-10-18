@@ -17,6 +17,78 @@
     try { dotnet.invokeMethodAsync('Playing', label || ''); } catch (e) { }
   }
 
+  let ticker = 0;
+  let lastProgress = '';
+
+  async function tick() {
+    const dj = player();
+    if (!dj || !dotnet) return;
+    const song = dj.nowPlaying ? dj.nowPlaying() : { title: '', artist: '' };
+    let at = 0;
+    let of = 0;
+    if (dj.position) {
+      try {
+        const spot = await dj.position();
+        if (spot) { at = spot.pos || 0; of = spot.dur || 0; }
+      } catch (e) { }
+    }
+    const mark = song.title + '|' + song.artist + '|' + Math.round(at) + '|' + Math.round(of);
+    if (mark === lastProgress) return;
+    lastProgress = mark;
+    try { dotnet.invokeMethodAsync('Progress', song.title || '', song.artist || '', at, of); } catch (e) { }
+  }
+
+  function watch() {
+    if (ticker) return;
+    ticker = setInterval(tick, 500);
+  }
+
+  board.seekTo = function (fraction) {
+    const dj = player();
+    if (dj && dj.seek) dj.seek(Math.max(0, Math.min(1, fraction)));
+  };
+
+  let pressTimer = 0;
+  let longFired = false;
+
+  function startPress(e) {
+    const key = e.target && e.target.closest ? e.target.closest('.key[data-multi="1"]') : null;
+    if (!key || !dotnet) return;
+    clearPress();
+    pressTimer = setTimeout(function () {
+      pressTimer = 0;
+      longFired = true;
+      try {
+        dotnet.invokeMethodAsync('LongPress',
+          key.getAttribute('data-id') || '',
+          key.getAttribute('data-songs') || '[]',
+          key.getAttribute('data-label') || '');
+      } catch (x) { }
+    }, 550);
+  }
+
+  function clearPress() {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = 0; }
+  }
+
+  board.playOne = function (id, songJson, label) {
+    const dj = player();
+    if (!dj) return;
+    let song = null;
+    try { song = JSON.parse(songJson); } catch (e) { return; }
+    if (!song) return;
+    dj.playSongs(id, [song], false);
+    announce(label || '');
+  };
+
+  board.seekAt = function (clientX) {
+    const bar = document.querySelector('.hb .np-bar');
+    if (!bar) return;
+    const box = bar.getBoundingClientRect();
+    if (box.width <= 0) return;
+    board.seekTo((clientX - box.left) / box.width);
+  };
+
   board.start = async function (ref) {
     dotnet = ref;
     const dj = player();
@@ -24,11 +96,17 @@
       try { await dj.init(null, '/dj/sound/', ''); } catch (e) { }
     }
     document.addEventListener('click', function (e) {
+      if (longFired) { longFired = false; e.stopPropagation(); e.preventDefault(); return; }
       const tile = e.target && e.target.closest ? e.target.closest('[data-play="songs"]') : null;
       if (!tile) return;
       announce(tile.getAttribute('data-label') || '');
     }, true);
+    document.addEventListener('pointerdown', startPress, true);
+    document.addEventListener('pointerup', clearPress, true);
+    document.addEventListener('pointercancel', clearPress, true);
+    document.addEventListener('pointerleave', clearPress, true);
     layout();
+    watch();
     window.addEventListener('resize', layout);
     observer.observe(document.body, { childList: true, subtree: true });
   };

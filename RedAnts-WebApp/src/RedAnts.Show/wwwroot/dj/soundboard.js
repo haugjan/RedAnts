@@ -198,6 +198,8 @@
   // ---------- laufender Song für die Fussleiste ----------
   let songInfoOn = false;
   let lastSongInfo = '';
+  let nowTitle = '';
+  let nowSub = '';
 
   function isContextRef(ref) { return /^spotify:(playlist|album|artist):/.test(String(ref || '')); }
 
@@ -212,11 +214,13 @@
   }
 
   function reportSong(title, sub) {
+    nowTitle = title || '';
+    nowSub = sub || '';
     if (!songInfoOn || !dotnet) return;
-    const key = (title || '') + '|' + (sub || '');
+    const key = nowTitle + '|' + nowSub;
     if (key === lastSongInfo) return;
     lastSongInfo = key;
-    try { dotnet.invokeMethodAsync('OnSongInfo', title || '', sub || ''); } catch (e) {}
+    try { dotnet.invokeMethodAsync('OnSongInfo', nowTitle, nowSub); } catch (e) {}
   }
 
   function armSongInfo(on) {
@@ -772,6 +776,10 @@
     for (var i = 0; i < 50 && !deviceId; i++) { await new Promise(function (r) { setTimeout(r, 100); }); }
     return deviceId !== null;
   };
+
+  board.nowPlaying = function () { return { title: nowTitle, artist: nowSub }; };
+
+  board.position = function () { return readPosition(); };
 
   let escBound = false;
   board.init = async function (ref, assetBaseUrl, appBaseUrl) {

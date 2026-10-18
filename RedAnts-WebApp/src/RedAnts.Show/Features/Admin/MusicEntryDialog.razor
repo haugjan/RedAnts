@@ -203,6 +203,7 @@
     private bool _spotifyOpen;
     private bool _downOnBackdrop;
     private string _error = "";
+    private string _asOpened = "";
     private double _playPos;
     private double _playDur;
     private bool _playing;
@@ -216,7 +217,15 @@
         _random = Entry.Random;
         _songs = Entry.Songs.Select(EditSong.From).ToList();
         _current = _songs.FirstOrDefault();
+        _asOpened = Fingerprint();
     }
+
+    private string Fingerprint() =>
+        string.Join("|", _name, _random,
+            string.Join(";", _songs.Select(song =>
+                $"{song.Kind}:{song.Ref}:{song.StartSec}:{song.DurationSec}:{song.Title}:{song.Artist}")));
+
+    private bool Changed => Fingerprint() != _asOpened;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -406,6 +415,7 @@
 
     private async Task CloseAsync()
     {
+        if (Changed && !await JS.InvokeAsync<bool>("confirm", "Änderungen verwerfen?")) return;
         await StopAsync();
         await OnClosed.InvokeAsync();
     }

@@ -5,6 +5,7 @@
 @inject SaveMusicEntry.Handler EntrySave
 @inject DeleteMusicEntry.Handler EntryDelete
 @inject UploadDJSound.Handler SoundUpload
+@inject ImportMusicLibrary.Handler LibraryImport
 @inject FindUnusedSounds.Handler UnusedQuery
 @inject DeleteUnusedSounds.Handler UnusedDeletion
 @inject IJSRuntime JS
@@ -24,6 +25,12 @@
         <button class="sa-btn small" @onclick="AddEntry">+ Eintrag</button>
         <button class="sa-btn small" @onclick="() => _settings = true">🟢 Spotify</button>
         <button class="sa-btn small @(_cleanupOpen ? "on" : "")" @onclick="ToggleCleanupAsync">🧹 Aufräumen</button>
+        <button class="sa-btn small" @onclick="LoadAsync" title="Liste neu laden">↺</button>
+        <button class="sa-btn small" @onclick="ExportAsync" title="Die Einträge als Datei sichern">⇅ Export</button>
+        <label class="sa-btn small" title="Einträge aus einer Datei übernehmen">
+            ⇧ Import
+            <InputFile OnChange="ImportAsync" accept="application/json,.json" style="display:none" />
+        </label>
         <span class="sa-hint">@_entries.Count Einträge</span>
     </div>
 
@@ -325,6 +332,29 @@
         var text = song.Title is { Length: > 0 } title ? title : song.Ref;
         var cut = text.LastIndexOf('/');
         return cut >= 0 ? text[(cut + 1)..] : text;
+    }
+
+    private async Task ExportAsync()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            _entries.Select(e => new MusicEntry(e.Id, e.Name, e.Songs, e.Random)), ShowJson.Pretty);
+        await JS.InvokeVoidAsync("showAdmin.download", $"musik-{SwissTime.Today:yyyy-MM-dd}.json", json);
+        Notify($"{_entries.Count} Einträge gesichert.");
+    }
+
+    private async Task ImportAsync(InputFileChangeEventArgs args)
+    {
+        try
+        {
+            await using var stream = args.File.OpenReadStream(20L * 1024 * 1024);
+            var entries = await System.Text.Json.JsonSerializer.DeserializeAsync<List<MusicEntry>>(stream, ShowJson.Options);
+            if (entries is null) { Fail("Die Datei liess sich nicht lesen."); return; }
+            var done = await LibraryImport.HandleAsync(new ImportMusicLibrary.Command(entries, Replace: false));
+            await LoadAsync();
+            Notify($"{done.Added} neu, {done.Updated} aktualisiert, {done.Total} Einträge insgesamt.");
+        }
+        catch (DomainException ex) { Fail(ex.Message); }
+        catch (System.Text.Json.JsonException) { Fail("Die Datei ist kein gültiges Musikpaket."); }
     }
 
     private int Deletable => _cleanup?.Unused.Count(file => !file.RecentlyUploaded) ?? 0;

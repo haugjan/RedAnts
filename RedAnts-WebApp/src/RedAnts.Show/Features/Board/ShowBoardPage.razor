@@ -135,8 +135,40 @@ else
         </div>
     }
 
+    @if (_pick.Count > 0)
+    {
+        <div class="sheet" @onclick="ClosePick">
+            <section class="panel pick" @onclick:stopPropagation="true">
+                <header class="panelbar">
+                    <strong>@_pickLabel</strong>
+                    <span class="spacer"></span>
+                    <button class="ctl" @onclick="ClosePick">Schliessen</button>
+                </header>
+                <div class="picklist">
+                    @foreach (var entry in _pick)
+                    {
+                        <button class="pickrow" @onclick="() => PlayOneAsync(entry)">@entry.Label</button>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+
     <footer class="now">
-        <span class="np">@(_playing is { Length: > 0 } playing ? playing : "keine Musik")</span>
+        <div class="np">
+            <span class="np-main">@(_playing is { Length: > 0 } playing ? playing : "keine Musik")</span>
+            @if (_songTitle is { Length: > 0 } song)
+            {
+                <span class="np-song">@song@(_songArtist is { Length: > 0 } artist ? " · " + artist : "")</span>
+            }
+        </div>
+        @if (_length > 0)
+        {
+            <div class="np-bar" @onclick="SeekAsync" title="Klicken, um zu springen">
+                <div class="np-bar-fill" style="width:@Share%"></div>
+            </div>
+            <span class="np-time">-@Remaining</span>
+        }
         <button class="ctl" @onclick="PauseAsync">Pause</button>
         <button class="ctl" @onclick="PreviousAsync">◀◀</button>
         <button class="ctl" @onclick="NextAsync">▶▶</button>
@@ -165,6 +197,13 @@ else
     private readonly string _board = Guid.NewGuid().ToString("N");
     private string? _note;
     private string? _playing;
+    private IReadOnlyList<PickSong> _pick = [];
+    private string _pickId = "";
+    private string _pickLabel = "";
+    private string? _songTitle;
+    private string? _songArtist;
+    private double _position;
+    private double _length;
     private bool _setup;
     private long _musicOrder = -1;
     private long _controlOrder = -1;
@@ -226,7 +265,95 @@ else
     public Task Playing(string label)
     {
         _playing = label.Length > 0 ? label : null;
+        if (_playing is null) { _songTitle = null; _songArtist = null; _position = 0; _length = 0; }
         return InvokeAsync(StateHasChanged);
+    }
+
+    private sealed record PickSong(string Label, string Json);
+
+    [JSInvokable]
+    public Task LongPress(string id, string songsJson, string label)
+    {
+        _pickId = id;
+        _pickLabel = label.Replace(NewLine, ' ');
+        _pick = SongsOf(songsJson);
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static IReadOnlyList<PickSong> SongsOf(string json)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array) return [];
+            var songs = new List<PickSong>();
+            foreach (var song in document.RootElement.EnumerateArray())
+            {
+                var title = Text(song, "ti", "title");
+                var artist = Text(song, "ar", "artist");
+                if (title.Length == 0) title = FileName(Text(song, "r", "ref"));
+                if (artist.Length > 0) title = $"{title} · {artist}";
+                songs.Add(new PickSong(title.Length > 0 ? title : $"Stück {songs.Count + 1}", song.GetRawText()));
+            }
+            return songs;
+        }
+        catch (System.Text.Json.JsonException) { return []; }
+    }
+
+    private static string Text(System.Text.Json.JsonElement song, params string[] names)
+    {
+        foreach (var name in names)
+            if (song.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String)
+                return value.GetString() ?? "";
+        return "";
+    }
+
+    private static string FileName(string reference)
+    {
+        var cut = reference.LastIndexOf('/');
+        var name = cut >= 0 ? reference[(cut + 1)..] : reference;
+        var dot = name.LastIndexOf('.');
+        return dot > 0 ? name[..dot] : name;
+    }
+
+    private void ClosePick()
+    {
+        _pick = [];
+        _pickId = "";
+    }
+
+    private async Task PlayOneAsync(PickSong song)
+    {
+        await JS.InvokeVoidAsync("hallBoard.playOne", _pickId, song.Json, _pickLabel);
+        ClosePick();
+    }
+
+    [JSInvokable]
+    public Task Progress(string title, string artist, double position, double length)
+    {
+        _songTitle = title.Length > 0 ? title : null;
+        _songArtist = artist.Length > 0 ? artist : null;
+        _position = position;
+        _length = length;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private string Share => (_length <= 0 ? 0 : Math.Clamp(_position / _length * 100, 0, 100))
+        .ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string Remaining
+    {
+        get
+        {
+            var left = (int)Math.Max(0, Math.Round(_length - _position));
+            return $"{left / 60}:{left % 60:00}";
+        }
+    }
+
+    private async Task SeekAsync(MouseEventArgs e)
+    {
+        if (_length <= 0) return;
+        await JS.InvokeVoidAsync("hallBoard.seekAt", e.ClientX);
     }
 
     private MusicItem? MusicOf(DeckKeyRow key) =>

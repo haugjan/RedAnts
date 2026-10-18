@@ -40,6 +40,7 @@ public static class ShowFeatures
         typeof(GetMusic.Handler),
         typeof(GetMusicLibrary.Handler),
         typeof(SaveMusicEntry.Handler),
+        typeof(ImportMusicLibrary.Handler),
         typeof(DeleteMusicEntry.Handler),
         typeof(GetShowSetup.Handler),
         typeof(SaveShowSetup.Handler),
