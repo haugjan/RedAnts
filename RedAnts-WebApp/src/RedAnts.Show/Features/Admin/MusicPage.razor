@@ -5,6 +5,8 @@
 @inject SaveMusicEntry.Handler EntrySave
 @inject DeleteMusicEntry.Handler EntryDelete
 @inject UploadDJSound.Handler SoundUpload
+@inject FindUnusedSounds.Handler UnusedQuery
+@inject DeleteUnusedSounds.Handler UnusedDeletion
 @inject IJSRuntime JS
 
 <section class="sa-card">
@@ -21,8 +23,50 @@
         </label>
         <button class="sa-btn small" @onclick="AddEntry">+ Eintrag</button>
         <button class="sa-btn small" @onclick="() => _settings = true">🟢 Spotify</button>
+        <button class="sa-btn small @(_cleanupOpen ? "on" : "")" @onclick="ToggleCleanupAsync">🧹 Aufräumen</button>
         <span class="sa-hint">@_entries.Count Einträge</span>
     </div>
+
+    @if (_cleanupOpen)
+    {
+        <div class="mu-clean">
+            <strong>Nicht verwendete Dateien im Speicher</strong>
+            @if (_cleanup is not { } report)
+            {
+                <p class="sa-hint">Wird geprüft …</p>
+            }
+            else
+            {
+                <p class="sa-hint">
+                    @report.TotalBlobs Dateien · @report.ReferencedCount verwendet · @report.Unused.Count nicht verwendet (@Size(report.DeletableBytes) löschbar).
+                </p>
+                @if (report.Unused.Count == 0)
+                {
+                    <p class="sa-hint">Nichts zu tun, jede Datei gehört zu einem Eintrag.</p>
+                }
+                else
+                {
+                    <div class="mu-cleanlist">
+                        @foreach (var file in report.Unused)
+                        {
+                            <div class="mu-cleanrow">
+                                <span class="mu-cleanname">@SoundName(file.Path)</span>
+                                <span class="sa-hint">
+                                    @Size(file.SizeBytes)@(file.LastModified is { } at ? " · " + SwissTime.ToSwiss(at).ToString("dd.MM.yyyy") : "")@(file.RecentlyUploaded ? " · gerade hochgeladen, bleibt" : "")
+                                </span>
+                            </div>
+                        }
+                    </div>
+                    <div class="sa-actions">
+                        <button class="sa-btn small danger" disabled="@(_cleanupBusy || Deletable == 0)" @onclick="RunCleanupAsync">
+                            @(_cleanupBusy ? "Löscht …" : $"🗑 {Deletable} Dateien endgültig löschen")
+                        </button>
+                        <span class="sa-hint">Dateien der letzten Stunde bleiben zur Sicherheit liegen.</span>
+                    </div>
+                }
+            }
+        </div>
+    }
 
     <table class="sa-table mu-table">
         <thead>
@@ -123,6 +167,9 @@
     private MusicEntry? _editing;
     private bool _editingIsNew;
     private bool _settings;
+    private bool _cleanupOpen;
+    private bool _cleanupBusy;
+    private FindUnusedSounds.Result? _cleanup;
     private string? _status;
     private bool _statusIsError;
 
@@ -279,6 +326,41 @@
         var cut = text.LastIndexOf('/');
         return cut >= 0 ? text[(cut + 1)..] : text;
     }
+
+    private int Deletable => _cleanup?.Unused.Count(file => !file.RecentlyUploaded) ?? 0;
+
+    private async Task ToggleCleanupAsync()
+    {
+        _cleanupOpen = !_cleanupOpen;
+        if (!_cleanupOpen) return;
+        _cleanup = null;
+        _cleanup = await UnusedQuery.HandleAsync(new FindUnusedSounds.Query());
+    }
+
+    private async Task RunCleanupAsync()
+    {
+        if (_cleanup is not { } report) return;
+        _cleanupBusy = true;
+        try
+        {
+            var paths = report.Unused.Where(file => !file.RecentlyUploaded).Select(file => file.Path).ToList();
+            var done = await UnusedDeletion.HandleAsync(new DeleteUnusedSounds.Command(paths));
+            _cleanup = await UnusedQuery.HandleAsync(new FindUnusedSounds.Query());
+            Notify($"{done.Deleted} Dateien gelöscht, {Size(done.FreedBytes)} frei.");
+        }
+        finally { _cleanupBusy = false; }
+    }
+
+    private static string SoundName(string path)
+    {
+        var cut = path.LastIndexOf('/');
+        return cut >= 0 ? path[(cut + 1)..] : path;
+    }
+
+    private static string Size(long bytes) =>
+        bytes >= 1024L * 1024 * 1024 ? $"{bytes / 1024d / 1024 / 1024:0.0} GB"
+        : bytes >= 1024 * 1024 ? $"{bytes / 1024d / 1024:0.0} MB"
+        : $"{Math.Max(1, bytes / 1024)} KB";
 
     private void Notify(string text)
     {
