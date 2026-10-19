@@ -116,13 +116,29 @@ public sealed class ShowExampleSeeder(
 
     private async Task CarryTitlesOverAsync()
     {
-        if (!(await setup.GetAsync()).IsEmpty) return;
-        var configured = await halls.GetByIdAsync(HallId);
-        var titles = configured?.OverlayTitles is { Count: > 0 } known ? known : ShowSetup.Default.Titles;
-        var led = configured?.LedTemplates is { Count: > 0 } templates ? templates : ShowSetup.Default.Led;
-        await setup.SaveAsync(new ShowSetup(titles, led));
-        log.LogInformation("vMix-Titel und LED-Vorlagen gelten neu für alle Hallen: {Titles} Titel, {Led} Vorlagen",
-            titles.Count, led.Count);
+        var stored = await setup.GetAsync();
+        if (stored.IsEmpty)
+        {
+            var configured = await halls.GetByIdAsync(HallId);
+            var titles = configured?.OverlayTitles is { Count: > 0 } known ? known : ShowSetup.Default.Titles;
+            var led = configured?.LedTemplates is { Count: > 0 } templates ? templates : ShowSetup.Default.Led;
+            await setup.SaveAsync(new ShowSetup(titles, led));
+            log.LogInformation("vMix-Titel und LED-Vorlagen gelten neu für alle Hallen: {Titles} Titel, {Led} Vorlagen",
+                titles.Count, led.Count);
+            return;
+        }
+
+        var complete = stored.Titles.ToList();
+        var added = 0;
+        foreach (var title in ShowSetup.Default.Titles)
+        {
+            if (complete.Any(known => known.Kind.Equals(title.Kind, StringComparison.OrdinalIgnoreCase))) continue;
+            complete.Add(title);
+            added++;
+        }
+        if (added == 0) return;
+        await setup.SaveAsync(stored with { Titles = complete });
+        log.LogInformation("{Count} fehlende vMix-Titel ergänzt", added);
     }
 
     public static Hall Example(IReadOnlyList<MusicItem> library)

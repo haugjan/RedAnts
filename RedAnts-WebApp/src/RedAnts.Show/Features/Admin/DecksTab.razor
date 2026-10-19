@@ -218,6 +218,13 @@
                                             }
                                         </select>
                                     }
+                                    else if (step.Action == KeyActions.VmixText)
+                                    {
+                                        <input class="sa-input" value="@step.Text" placeholder="Text, z. B. Empty Net"
+                                               @onchange="e => SetStep(index, s => s with { Text = e.Value?.ToString() ?? string.Empty })" />
+                                        <input class="sa-input" value="@step.Target" placeholder="title:message"
+                                               @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })" />
+                                    }
                                     else
                                     {
                                         <input class="sa-input" value="@step.Target" @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })" placeholder="@Placeholder(step.Action)" />
@@ -301,6 +308,7 @@
     private static string Placeholder(string action) => action switch
     {
         KeyActions.VmixShow or KeyActions.VmixHide => "title:coach_home",
+        KeyActions.VmixText => "title:message",
         KeyActions.LedStart => "led:tor-heim",
         _ => "",
     };

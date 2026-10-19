@@ -55,6 +55,7 @@ public static class KeyActions
     public const string MusicStop = "musik.stopp";
     public const string MusicFade = "musik.fade";
     public const string VmixShow = "vmix.ein";
+    public const string VmixText = "vmix.text";
     public const string VmixHide = "vmix.aus";
     public const string LedStart = "led.start";
     public const string LedStop = "led.stopp";

@@ -29,13 +29,14 @@ public static class KeyActions
     public const string MusicStop = "musik.stopp";
     public const string MusicFade = "musik.fade";
     public const string VmixShow = "vmix.ein";
+    public const string VmixText = "vmix.text";
     public const string VmixHide = "vmix.aus";
     public const string LedStart = "led.start";
     public const string LedStop = "led.stopp";
     public const string Wait = "warten";
 
     public static readonly IReadOnlyList<string> All =
-        [MusicPlay, MusicStop, MusicFade, VmixShow, VmixHide, LedStart, LedStop, Wait];
+        [MusicPlay, MusicStop, MusicFade, VmixShow, VmixText, VmixHide, LedStart, LedStop, Wait];
 
     public static string Label(string action) => action switch
     {
@@ -43,6 +44,7 @@ public static class KeyActions
         MusicStop => "Musik stoppen",
         MusicFade => "Musik ausblenden",
         VmixShow => "Einblender zeigen",
+        VmixText => "Text anzeigen",
         VmixHide => "Einblender ausblenden",
         LedStart => "LED-Playlist starten",
         LedStop => "LED-Playlist stoppen",

@@ -179,6 +179,12 @@ public sealed class KeyRunner(
             case KeyActions.MusicFade:
                 Control("fade");
                 break;
+            case KeyActions.VmixText:
+                shown = await ShowTitleAsync(step.Target is { Length: > 0 } named ? KindOf(named) : "message", ctx with
+                {
+                    Text = step.Text.Length > 0 ? step.Text : ctx.Text,
+                }, stop);
+                break;
             case KeyActions.VmixShow:
                 shown = await ShowTitleAsync(KindOf(step.Target), ctx with
                 {

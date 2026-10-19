@@ -166,6 +166,11 @@ public sealed partial record Hall(
         {
             ["TxtInfo.Text"] = "{text}",
         }),
+        new("spectators", TitleInputs.LeagueInfo, 1, new Dictionary<string, string>
+        {
+            ["TxtTop.Text"] = "ZUSCHAUER",
+            ["TxtInfo.Text"] = "{text}",
+        }),
         new("commentary", TitleInputs.LeagueInfo, 1, new Dictionary<string, string>
         {
             ["TxtInfo.Text"] = "Kommentar: {commentators}",

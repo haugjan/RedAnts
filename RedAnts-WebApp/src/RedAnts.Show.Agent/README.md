@@ -45,6 +45,7 @@ A scene is an ordered list of steps. The agent knows these actions:
 | `led.start` | `led:<event>` | looks up the hall's LED template for the event, expands placeholders, appends `-o`/`-fi` from the step and sends it to sedna |
 | `led.stop` | `led:<event>` (default `stopp`) | same, falls back to `stop playlist` |
 | `overlay.show` | `title:<kind>` | fills the fields of the hall's vMix title of that kind with the expanded templates and brings its overlay channel in |
+| `overlay.text` | `title:<kind>`, default `message` | shows that title with the text typed on the key, for a note like "Empty Net" |
 | `overlay.hide` | `title:<kind>` or `title:*` | takes the channel out, or every configured channel |
 | `light.scene` | `light:<id>` | reserved, logs only |
 | `deck.context` | `Main`, `GoalHome`, `PlayerAway`, … | switches the Streamdeck page |
