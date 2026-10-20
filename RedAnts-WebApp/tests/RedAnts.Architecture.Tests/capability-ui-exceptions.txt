@@ -1,0 +1,12 @@
+# Components, dialogs or controllers of one capability that another capability renders.
+# The Admin shell and Features/Shared are open to every capability; everything here is a widget that
+# several capabilities reuse from the folder of the capability that owns it.
+# One line per edge: <from>-><to> <reason>. Goal: this file stays empty.
+RedAnts.Show.Features.Board.ShowBoardPage->RedAnts.Show.Features.Games.GameSetup the game configuration is opened as an overlay on the board, which is where the operator sets it up
+RedAnts.Ticketing.Features.FlexTickets.Admin.AdminFlexTicketsComponent->RedAnts.Ticketing.Features.Admission.Admin.VisitsOverlay the visit log belongs to Admission and is shown for every ticket type; move it to Features/Shared to drop this line
+RedAnts.Ticketing.Features.MemberCards.Admin.AdminMemberCardsComponent->RedAnts.Ticketing.Features.Admission.Admin.VisitsOverlay the visit log belongs to Admission and is shown for every ticket type; move it to Features/Shared to drop this line
+RedAnts.Ticketing.Features.SeasonPasses.Admin.AdminSeasonCardsComponent->RedAnts.Ticketing.Features.Admission.Admin.VisitsOverlay the visit log belongs to Admission and is shown for every ticket type; move it to Features/Shared to drop this line
+RedAnts.Ticketing.Features.Tickets.Admin.AdminTicketsComponent->RedAnts.Ticketing.Features.Admission.Admin.VisitsOverlay the visit log belongs to Admission and is shown for every ticket type; move it to Features/Shared to drop this line
+RedAnts.Ticketing.Features.FlexTickets.Admin.PrintFlexTicketsDialog->RedAnts.Ticketing.Features.Tickets.Admin.TicketPrintDialog one print dialog serves all four ticket types; move it to Features/Shared to drop this line
+RedAnts.Ticketing.Features.MemberCards.Admin.PrintMemberCardsDialog->RedAnts.Ticketing.Features.Tickets.Admin.TicketPrintDialog one print dialog serves all four ticket types; move it to Features/Shared to drop this line
+RedAnts.Ticketing.Features.SeasonPasses.Admin.PrintSeasonPassesDialog->RedAnts.Ticketing.Features.Tickets.Admin.TicketPrintDialog one print dialog serves all four ticket types; move it to Features/Shared to drop this line
