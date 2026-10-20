@@ -1,15 +1,11 @@
-@inherits HallTab
+@inherits SetupTab
 @using RedAnts.Show.Features.Music
 @inject GetMusic.Handler MusicQuery
 
 <section class="sa-card">
-    <h2>Decks <small>@(Hall?.Name ?? "keine Halle")</small> <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
-    @if (Hall is null)
-    {
-        <p class="sa-hint">Keine Halle gewählt.</p>
-    }
-    else
-    {
+    <h2>Decks <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
+    <p class="sa-hint">Die Decks gelten für alle Hallen. Unter Hallen wird gewählt, welche davon eine Halle anbietet.</p>
+
         <div class="sa-actions">
             <label class="sa-inline">Gerät
                 <select class="sa-input" value="@_deckId" @onchange="OnDeckChanged">
@@ -246,7 +242,6 @@
                 </div>
             </div>
         }
-    }
 </section>
 
 @code {
@@ -262,7 +257,7 @@
 
     private IReadOnlyList<DeckPage> Pages => Deck?.Pages ?? [];
 
-    protected override async Task OnHallLoadedAsync()
+    protected override async Task OnSetupLoadedAsync()
     {
         _music = await MusicQuery.HandleAsync(new GetMusic.Query());
         Load();
@@ -270,7 +265,7 @@
 
     private void Load()
     {
-        _decks = (Hall?.DeckLayouts ?? DefaultDecks.All).Select(Copy).ToList();
+        _decks = Setup.DeckLibrary.Select(Copy).ToList();
         _deckId = _decks.FirstOrDefault()?.Id ?? "";
         _pageId = DeckPage.HomeId;
         _selected = 1;
@@ -407,6 +402,6 @@
     private async Task SaveDecksAsync()
     {
         var decks = _decks.Select(d => d.Validated()).ToList();
-        await SaveAsync(hall => hall with { Decks = decks });
+        await SaveSetupAsync(setup => setup with { Decks = decks });
     }
 }

@@ -8,16 +8,19 @@ public sealed class ShowSetupRepository(IDJSettings settings) : IShowSetup
 {
     public const string TitlesKey = "Show:Titles";
     public const string LedKey = "Show:Led";
+    public const string DecksKey = "Show:Decks";
 
     public Task<ShowSetup> GetAsync() =>
         Task.FromResult(new ShowSetup(
             Read<OverlayTitle>(TitlesKey),
-            Read<LedTemplate>(LedKey)));
+            Read<LedTemplate>(LedKey),
+            Read<Deck>(DecksKey)));
 
     public async Task SaveAsync(ShowSetup setup)
     {
         await settings.SetAsync(TitlesKey, JsonSerializer.Serialize(setup.Titles, ShowJson.Options));
         await settings.SetAsync(LedKey, JsonSerializer.Serialize(setup.Led, ShowJson.Options));
+        await settings.SetAsync(DecksKey, JsonSerializer.Serialize(setup.Decks ?? [], ShowJson.Options));
     }
 
     private IReadOnlyList<T> Read<T>(string key)

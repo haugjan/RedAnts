@@ -59,7 +59,22 @@ public static class DeckIcons
 
     public static bool Known(string? icon) => icon is { Length: > 0 } value && All.Contains(value);
 
-    public static string FileOf(string icon) => Folder + icon + ".png";
+    private static readonly string Build = Stamp();
+
+    private static string Stamp()
+    {
+        try
+        {
+            var file = typeof(DeckIcons).Assembly.Location;
+            if (file.Length > 0 && System.IO.File.Exists(file))
+                return System.IO.File.GetLastWriteTimeUtc(file).Ticks.ToString();
+        }
+        catch (System.IO.IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return Environment.TickCount64.ToString();
+    }
+
+    public static string FileOf(string icon) => $"{Folder}{icon}.png?v={Build}";
 
     public static IReadOnlyList<DeckSymbol> Symbols { get; } =
     [

@@ -586,7 +586,14 @@ var gatePassword = app.Configuration["BasicAuth:Password"];
 }
 
 
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        if (context.Context.Request.Path.StartsWithSegments("/_content/RedAnts.Show/show/icons"))
+            context.Context.Response.Headers.CacheControl = "no-cache, must-revalidate";
+    },
+});
 
 app.UseSession();
 

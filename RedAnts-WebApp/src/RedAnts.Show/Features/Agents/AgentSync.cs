@@ -20,7 +20,13 @@ public sealed class AgentSync(
         if (hall is null) return null;
         var game = hall.ActiveGameId is { } id ? await games.GetByIdAsync(id) : null;
         var show = await setup.GetAsync();
-        var configured = hall with { AgentKey = "", OverlayTitles = show.Titles, LedTemplates = show.Led };
+        var configured = hall with
+        {
+            AgentKey = "",
+            OverlayTitles = show.Titles,
+            LedTemplates = show.Led,
+            Decks = show.DecksOf(hall),
+        };
         return new AgentPayload(configured, game, SwissTime.Timestamp, await music.AllAsync());
     }
 

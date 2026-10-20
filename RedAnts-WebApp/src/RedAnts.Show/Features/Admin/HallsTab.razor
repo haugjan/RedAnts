@@ -1,6 +1,8 @@
 @inherits HallTab
 @using RedAnts.Show.Features.Music
+@using RedAnts.Show.Features.Setup
 @inject GetMusic.Handler MusicQuery
+@inject GetShowSetup.Handler SetupQuery
 @inject GetHalls.Handler HallsQuery
 @inject CreateHall.Handler HallCreation
 @inject RenewAgentKey.Handler KeyRenewal
@@ -48,6 +50,18 @@
                     <label class="sa-check"><input type="checkbox" @bind="_vmix" @bind:after="Touch" /> vMix</label>
                     <label class="sa-check"><input type="checkbox" @bind="_led" @bind:after="Touch" /> LED-Wand</label>
                     <label class="sa-check"><input type="checkbox" @bind="_light" @bind:after="Touch" /> Lichtshow</label>
+                </div>
+
+                <h3>Decks dieser Halle</h3>
+                <p class="sa-hint">Die Decks selbst stehen unter Decks und gelten für alle Hallen. Ohne Auswahl bietet die Halle alle an.</p>
+                <div class="sa-offer">
+                    @foreach (var deck in _library)
+                    {
+                        <label class="sa-check">
+                            <input type="checkbox" checked="@_deckIds.Contains(deck.Id)" @onchange="e => ToggleDeck(deck.Id, e.Value is true)" />
+                            @deck.Name
+                        </label>
+                    }
                 </div>
 
                 @if (_sound)
@@ -132,12 +146,15 @@
     private bool _sound = true, _clock = true, _vmix = true, _led = true, _light;
     private string _breakSound = "";
     private IReadOnlyList<MusicItem> _sounds = [];
+    private IReadOnlyList<Deck> _library = [];
+    private HashSet<string> _deckIds = new(StringComparer.OrdinalIgnoreCase);
 
     private string BaseUrl => new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
 
     protected override async Task OnInitializedAsync()
     {
         _sounds = await MusicQuery.HandleAsync(new GetMusic.Query());
+        _library = (await SetupQuery.HandleAsync(new GetShowSetup.Query())).DeckLibrary;
         await base.OnInitializedAsync();
         await ReloadListAsync();
     }
@@ -164,7 +181,17 @@
         _led = Hall.Offers.Led;
         _light = Hall.Offers.Light;
         _breakSound = Hall.BreakMusicId;
+        _deckIds = Hall.DeckIds is { Count: > 0 } chosen
+            ? chosen.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : _library.Select(deck => deck.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         return Task.CompletedTask;
+    }
+
+    private void ToggleDeck(string id, bool wanted)
+    {
+        if (wanted) _deckIds.Add(id);
+        else _deckIds.Remove(id);
+        Touch();
     }
 
     private async Task ReloadListAsync()
@@ -193,6 +220,7 @@
         Shortcuts = _shortcuts.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),
         Offered = new HallCapabilities(_sound, _clock, _vmix, _led, _light),
         BreakMusicId = _breakSound,
+        DeckIds = _library.Select(deck => deck.Id).Where(_deckIds.Contains).ToList(),
     });
 
     private async Task CreateAsync() => await Guarded(async () =>

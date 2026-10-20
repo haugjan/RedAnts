@@ -10,6 +10,7 @@ namespace RedAnts.Show.Infrastructure.Content;
 
 public sealed class ShowExampleSeeder(
     IHallRepository halls,
+    IHallReader hallList,
     IMusicLibrary music,
     IDJProfiles profiles,
     IShowSetup setup,
@@ -35,6 +36,7 @@ public sealed class ShowExampleSeeder(
         {
             await CarryTitlesOverAsync();
             await FlattenLibraryAsync();
+            await CollectDecksAsync();
             var library = await music.AllAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
@@ -113,6 +115,47 @@ public sealed class ShowExampleSeeder(
         await profiles.SaveAllAsync([MusicLibraryWriter.Library(flat)]);
         log.LogInformation("Musik ist neu eine Liste: {Count} Einträge", flat.Count);
     }
+
+    private async Task CollectDecksAsync()
+    {
+        var show = await setup.GetAsync();
+        if (show.Decks is { Count: > 0 }) return;
+
+        var library = new List<Deck>();
+        var chosen = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in await hallList.ListAsync())
+        {
+            if (await halls.GetByIdAsync(row.Id) is not { } hall) continue;
+            var ids = new List<string>();
+            foreach (var deck in hall.DeckLayouts)
+            {
+                if (library.FirstOrDefault(known => known.Id == deck.Id) is { } known)
+                {
+                    if (Same(known, deck)) { ids.Add(known.Id); continue; }
+                    var id = $"{deck.Id}-{hall.Id}";
+                    library.Add(deck with { Id = id, Name = $"{deck.Name} ({hall.Name})" });
+                    ids.Add(id);
+                    continue;
+                }
+                library.Add(deck);
+                ids.Add(deck.Id);
+            }
+            chosen[hall.Id] = ids;
+        }
+
+        if (library.Count == 0) library.AddRange(DefaultDecks.All);
+        await setup.SaveAsync(show with { Decks = library });
+        foreach (var (hallId, ids) in chosen)
+            if (await halls.GetByIdAsync(hallId) is { } hall)
+                await halls.SaveAsync(hall with { DeckIds = ids, Decks = null });
+
+        log.LogInformation("Decks gelten neu für alle Hallen: {Count} Decks, {Halls} Hallen zugeordnet",
+            library.Count, chosen.Count);
+    }
+
+    private static bool Same(Deck one, Deck other) =>
+        System.Text.Json.JsonSerializer.Serialize(one with { Name = "" }, ShowJson.Options)
+        == System.Text.Json.JsonSerializer.Serialize(other with { Name = "" }, ShowJson.Options);
 
     private async Task CarryTitlesOverAsync()
     {

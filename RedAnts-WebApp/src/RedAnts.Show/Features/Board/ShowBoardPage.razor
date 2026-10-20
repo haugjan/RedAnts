@@ -2,9 +2,11 @@
 @using RedAnts.Show.Features.Agents
 @using RedAnts.Show.Features.Halls
 @using RedAnts.Show.Features.Music
+@using RedAnts.Show.Features.Setup
 @implements IAsyncDisposable
 @inject GetHalls.Handler HallsQuery
 @inject GetHall.Handler HallQuery
+@inject GetShowSetup.Handler SetupQuery
 @inject GetAgentPresence.Handler Presence
 @inject GetDeckView.Handler DeckQuery
 @inject GetMusic.Handler MusicQuery
@@ -59,7 +61,7 @@ else
 {
     <main>
         <div class="decklist">
-            @foreach (var deck in _hall.DeckLayouts)
+            @foreach (var deck in _decks)
             {
                 var view = View(deck.Id);
                 <section class="deck" @key="deck.Id">
@@ -194,6 +196,7 @@ else
     private readonly Dictionary<string, DeckView> _views = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _pages = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<MusicItem> _music = [];
+    private IReadOnlyList<Deck> _decks = [];
     private readonly string _board = Guid.NewGuid().ToString("N");
     private string? _note;
     private string? _playing;
@@ -217,7 +220,7 @@ else
 
     private DeckView? View(string deckId) => _views.TryGetValue(deckId, out var view) ? view : null;
 
-    private DeckView? First => _hall?.DeckLayouts.Count > 0 ? View(_hall.DeckLayouts[0].Id) : null;
+    private DeckView? First => _decks.Count > 0 ? View(_decks[0].Id) : null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -363,6 +366,8 @@ else
     {
         if (_hallId is not { Length: > 0 } id) return;
         _hall = await HallQuery.HandleAsync(new GetHall.Query(id));
+        var setup = await SetupQuery.HandleAsync(new GetShowSetup.Query());
+        _decks = _hall is null ? [] : setup.DecksOf(_hall);
     }
 
     private async Task SwitchAsync()
@@ -372,13 +377,13 @@ else
     }
 
     private DeckKey? KeyOf(string deckId, DeckKeyRow row) =>
-        _hall?.DeckLayouts.FirstOrDefault(d => d.Id == deckId) is { } deck
+        _decks.FirstOrDefault(d => d.Id == deckId) is { } deck
             ? (deck.Page(View(deckId)?.PageId) ?? deck.Home).KeyAt(row.Number)
             : null;
 
     private async Task<bool> NavigateAsync(string deckId, DeckKeyRow key)
     {
-        if (_hall?.DeckLayouts.FirstOrDefault(d => d.Id == deckId) is not { } deck) return false;
+        if (_decks.FirstOrDefault(d => d.Id == deckId) is not { } deck) return false;
         if (key.Number == deck.Back)
         {
             _pages[deckId] = deck.Page(View(deckId)?.PageId)?.ParentId ?? DeckPage.HomeId;
@@ -440,7 +445,7 @@ else
     private async Task ReadDeckAsync()
     {
         if (_hallId is not { Length: > 0 } id || _hall is null) return;
-        foreach (var deck in _hall.DeckLayouts)
+        foreach (var deck in _decks)
         {
             var page = _pages.TryGetValue(deck.Id, out var stored) ? stored : "";
             if (await DeckQuery.HandleAsync(new GetDeckView.Query(id, deck.Id, page)) is { } view)
