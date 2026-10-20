@@ -28,8 +28,6 @@ public sealed class ShowExampleSeeder(
 
     private static readonly int[] TimeoutKeys = [3, 6];
 
-    private const int HighlightKey = 22;
-
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken stop)
     {
         try
@@ -73,36 +71,8 @@ public sealed class ShowExampleSeeder(
 
     public static Hall? Refreshed(Hall hall, IReadOnlyList<MusicItem> library)
     {
-        var decks = hall.DeckLayouts.ToList();
-        var changed = false;
-
-        if (decks.FirstOrDefault(d => d.Id == DefaultDecks.FieldDeck) is { } field)
-        {
-            var home = field.Home;
-            var fresh = home;
-            if (Find(library, "Time Out") is { } timeout)
-                foreach (var number in TimeoutKeys)
-                    if (!fresh.KeyAt(number).Sequence.Any(step => step.Action == KeyActions.MusicPlay))
-                        fresh = WithMusic(fresh, number, timeout);
-
-            var wanted = DefaultDecks.Field().Home.KeyAt(HighlightKey);
-            if (fresh.KeyAt(HighlightKey).Sequence.Any(step => step.Target == "title:result"))
-                fresh = fresh.With(wanted);
-
-            foreach (var key in fresh.Keys.Where(Timed).ToList())
-                fresh = fresh.With(key with { Steps = key.Sequence.Where(Shows).ToList() });
-
-            if (fresh != home)
-            {
-                decks[decks.IndexOf(field)] = field with { Pages = field.Pages.Select(p => p.IsHome ? fresh : p).ToList() };
-                changed = true;
-            }
-        }
-
         var name = hall.Id == MusicHallId && hall.Name == "Oberseen" ? MusicHallName : hall.Name;
-        if (name != hall.Name) changed = true;
-
-        return changed ? hall with { Name = name, Decks = decks } : null;
+        return name != hall.Name ? hall with { Name = name } : null;
     }
 
     private async Task FlattenLibraryAsync()
@@ -133,11 +103,11 @@ public sealed class ShowExampleSeeder(
                 {
                     if (Same(known, deck)) { ids.Add(known.Id); continue; }
                     var id = $"{deck.Id}-{hall.Id}";
-                    library.Add(deck with { Id = id, Name = $"{deck.Name} ({hall.Name})" });
+                    library.Add(deck with { Id = id, Name = Unique(library, $"{deck.Name} ({hall.Name})") });
                     ids.Add(id);
                     continue;
                 }
-                library.Add(deck);
+                library.Add(deck with { Name = Unique(library, deck.Name) });
                 ids.Add(deck.Id);
             }
             chosen[hall.Id] = ids;
@@ -151,6 +121,17 @@ public sealed class ShowExampleSeeder(
 
         log.LogInformation("Decks gelten neu für alle Hallen: {Count} Decks, {Halls} Hallen zugeordnet",
             library.Count, chosen.Count);
+    }
+
+    private static string Unique(IReadOnlyList<Deck> library, string name)
+    {
+        if (library.All(deck => !deck.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return name;
+        for (var number = 2; number < 20; number++)
+        {
+            var candidate = $"{name} {number}";
+            if (library.All(deck => !deck.Name.Equals(candidate, StringComparison.OrdinalIgnoreCase))) return candidate;
+        }
+        return name;
     }
 
     private static bool Same(Deck one, Deck other) =>
@@ -236,13 +217,6 @@ public sealed class ShowExampleSeeder(
         };
         return hall with { Decks = [DefaultDecks.Field()] };
     }
-
-    private static bool Timed(DeckKey key) =>
-        key.Sequence.Any(step => step.Action == KeyActions.VmixShow)
-        && key.Sequence.Any(step => step.Action == KeyActions.Wait);
-
-    private static bool Shows(KeyStep step) =>
-        step.Action is not (KeyActions.Wait or KeyActions.VmixHide);
 
     private static bool Clipped(OverlayTitle title) =>
         title.Fields.TryGetValue("TxtBottom.Text", out var bottom)
