@@ -131,6 +131,7 @@ jobs:
           APP_DSN: ${{ vars.APP_DSN }}
           MEDIA_ACCOUNT_URL: ${{ vars.MEDIA_ACCOUNT_URL }}
           SHOW_ACCOUNT_URL: ${{ vars.SHOW_ACCOUNT_URL }}
+          SHOW_BOARD_PASSWORD: ${{ secrets.SHOW_BOARD_PASSWORD }}
         run: |
           SETTINGS=(Umbraco__CMS__Runtime__Mode=BackofficeDevelopment Orders__NumberPrefix=DEV- "Deploy__Marker=${{ github.run_id }}.${{ github.run_attempt }}")
           if [ -n "$PAYREXX_TEST_API_SECRET" ]; then
@@ -151,6 +152,11 @@ jobs:
           fi
           if [ -n "$SHOW_ACCOUNT_URL" ]; then
             SETTINGS+=("Show__Storage__AccountUrl=$SHOW_ACCOUNT_URL")
+          fi
+          if [ -n "$SHOW_BOARD_PASSWORD" ]; then
+            SETTINGS+=("Show__BoardPassword=$SHOW_BOARD_PASSWORD")
+          else
+            echo "Board password not set; the board stays closed until Show__BoardPassword is configured."
           fi
           if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ]; then
             SETTINGS+=("Smtp__User=$SMTP_USER" "Smtp__Password=$SMTP_PASSWORD")
@@ -264,6 +270,7 @@ jobs:
           APP_DSN: ${{ vars.APP_DSN }}
           MEDIA_ACCOUNT_URL: ${{ vars.MEDIA_ACCOUNT_URL }}
           SHOW_ACCOUNT_URL: ${{ vars.SHOW_ACCOUNT_URL }}
+          SHOW_BOARD_PASSWORD: ${{ secrets.SHOW_BOARD_PASSWORD }}
         run: |
           # Prod ships through the staging slot: settings and code land in the slot, the slot is
           # warmed, then swapped into production. Nothing in this job restarts the live worker.
@@ -288,6 +295,11 @@ jobs:
           fi
           if [ -n "$SHOW_ACCOUNT_URL" ]; then
             SETTINGS+=("Show__Storage__AccountUrl=$SHOW_ACCOUNT_URL")
+          fi
+          if [ -n "$SHOW_BOARD_PASSWORD" ]; then
+            SETTINGS+=("Show__BoardPassword=$SHOW_BOARD_PASSWORD")
+          else
+            echo "Board password not set; the board stays closed until Show__BoardPassword is configured."
           fi
           if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ]; then
             SETTINGS+=("Smtp__User=$SMTP_USER" "Smtp__Password=$SMTP_PASSWORD")

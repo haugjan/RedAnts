@@ -19,12 +19,18 @@ public sealed record AgentConfig(string CloudUrl = "", string HallId = "", strin
 
     public string HubUrl => CloudUrl.TrimEnd('/') + "/hubs/halle";
 
-    public string Host => Bind.Length > 0 ? Bind : "localhost";
+    public string Wanted => Bind.Length > 0 ? Bind : "localhost";
+
+    public bool Protected => BoardPassword.Length > 0;
+
+    public bool WantsNetwork => Wanted is not ("localhost" or "127.0.0.1");
+
+    public string Host => WantsNetwork && !Protected ? "localhost" : Wanted;
 
     public bool OnNetwork => Host is not ("localhost" or "127.0.0.1");
 
-    public string? Warning => OnNetwork && BoardPassword.Length == 0
-        ? "Der Agent hört im Netz, aber das Bord hat kein Passwort (agent.json: boardPassword)."
+    public string? Warning => WantsNetwork && !Protected
+        ? $"Das Bord soll im Netz hören ({Wanted}), hat aber kein Passwort (agent.json: boardPassword). Der Agent bleibt deshalb auf localhost."
         : null;
 
     public string BoardUrl => $"http://{(OnNetwork ? Environment.MachineName.ToLowerInvariant() : "localhost")}:{DeckPort}";

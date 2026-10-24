@@ -325,9 +325,6 @@ app.UseTicketingScanAuth();
 
 app.UseShow();
 
-// Always-on password gate for the public soundboard (dev + prod), independent of
-// the site gate. Only protects the board surface (/dj); assets and the backoffice
-// editor stay reachable.
 {
     var djPassword = app.Configuration["Show:BoardPassword"];
     if (!string.IsNullOrEmpty(djPassword))
@@ -444,6 +441,35 @@ app.UseShow();
 
             var target = context.Request.Path + context.Request.QueryString;
             context.Response.Redirect($"{djGatePath}?returnUrl={Uri.EscapeDataString(target)}");
+        });
+    }
+    else if (!app.Environment.IsDevelopment())
+    {
+        const string djMissingHtml =
+            "<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\">" +
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Red Ants Bord</title>" +
+            "<style>" +
+            "body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#141418;color:#fff;font-family:Verdana,sans-serif}" +
+            "div{background:#1d1d24;padding:2rem;border-radius:14px;width:min(90vw,420px);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}" +
+            "h1{font-size:1.15rem;margin:0 0 .8rem}" +
+            "p{color:#c9c9d2;font-size:.92rem;margin:0;line-height:1.5}" +
+            "</style></head><body><div>" +
+            "<h1>Bord ohne Passwort</h1>" +
+            "<p>Die App-Einstellung <code>Show__BoardPassword</code> fehlt, deshalb bleibt das Bord zu.</p>" +
+            "</div></body></html>";
+
+        app.Use(async (context, next) =>
+        {
+            var path = context.Request.Path;
+            if (path.StartsWithSegments("/dj/sound")
+                || (!path.StartsWithSegments("/dj") && !path.StartsWithSegments("/bord")))
+            {
+                await next();
+                return;
+            }
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            context.Response.ContentType = "text/html; charset=utf-8";
+            await context.Response.WriteAsync(djMissingHtml);
         });
     }
 }
