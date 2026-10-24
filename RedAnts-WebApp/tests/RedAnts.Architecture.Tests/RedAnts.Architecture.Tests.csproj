@@ -26,5 +26,7 @@
     <None Include="ui-port-exceptions.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="repository-collection-methods.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="destructive-migrations.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="adapter-placement.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="capability-ui-exceptions.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

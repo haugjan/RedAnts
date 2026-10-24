@@ -1,0 +1,6 @@
+# Adapters that do not sit in the Infrastructure folder of the capability whose port they implement.
+# One line per adapter: <class>-><port> <reason>. Goal: this file stays empty.
+RedAnts.Show.Infrastructure.DJProfileRepository->RedAnts.Show.Features.Music.IDJProfiles soundboard adapter from the merged DJ module; moves to Features/Music/Infrastructure when the soundboard folders are split
+RedAnts.Show.Infrastructure.DJSettingsRepository->RedAnts.Show.Features.Admin.IDJSettings soundboard adapter from the merged DJ module; moves to Features/Admin/Infrastructure when the soundboard folders are split
+RedAnts.Show.Infrastructure.DJSpotifyAccount->RedAnts.Show.Features.Admin.IDJSpotifyAccount soundboard adapter from the merged DJ module; moves to Features/Admin/Infrastructure when the soundboard folders are split
+RedAnts.Show.Infrastructure.DJSpotifySearch->RedAnts.Show.Features.Admin.IDJSpotifySearch soundboard adapter from the merged DJ module; moves to Features/Admin/Infrastructure when the soundboard folders are split

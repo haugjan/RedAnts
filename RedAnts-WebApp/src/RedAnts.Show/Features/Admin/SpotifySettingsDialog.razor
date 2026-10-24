@@ -163,7 +163,7 @@
                 await SettingSave.HandleAsync(new SetDJSetting.Command("Spotify:ClientSecret", _clientSecret.Trim()));
             _clientSecret = "";
             await RefreshAsync();
-            _status = $"Gespeichert um {DateTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
+            _status = $"Gespeichert um {SwissTime.Now:HH:mm:ss}. Gilt jetzt für alle Geräte dieser Umgebung.";
             await OnSaved.InvokeAsync();
         }
         catch (DomainException ex) { _error = ex.Message; }
