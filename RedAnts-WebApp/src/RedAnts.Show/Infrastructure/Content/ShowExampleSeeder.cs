@@ -1,4 +1,5 @@
 using RedAnts.Show.Domain;
+using RedAnts.Show.Features.Admin;
 using RedAnts.Show.Features.Agents;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
@@ -14,6 +15,7 @@ public sealed class ShowExampleSeeder(
     IMusicLibrary music,
     IDJProfiles profiles,
     IShowSetup setup,
+    IDJSettings settings,
     AgentSync sync,
     ILogger<ShowExampleSeeder> log) : INotificationAsyncHandler<UmbracoApplicationStartedNotification>
 {
@@ -36,6 +38,7 @@ public sealed class ShowExampleSeeder(
             await FlattenLibraryAsync();
             await CollectDecksAsync();
             var library = await music.AllAsync();
+            await TopUpMusicAsync(library);
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
                 var hall = Example(library);
@@ -121,6 +124,24 @@ public sealed class ShowExampleSeeder(
 
         log.LogInformation("Decks gelten neu für alle Hallen: {Count} Decks, {Halls} Hallen zugeordnet",
             library.Count, chosen.Count);
+    }
+
+    private async Task TopUpMusicAsync(IReadOnlyList<MusicItem> library)
+    {
+        await settings.LoadAsync();
+        if (settings.Get(MusicTopUp.SettingKey) == MusicTopUp.Version) return;
+
+        var show = await setup.GetAsync();
+        var decks = show.DeckLibrary.ToList();
+        var index = decks.FindIndex(deck => deck.Id == DefaultDecks.MusicDeck);
+        if (index >= 0 && MusicTopUp.Fill(decks[index], library) is { } filled)
+        {
+            decks[index] = filled.Validated();
+            await setup.SaveAsync(show with { Decks = decks });
+            await sync.PushAllAsync();
+            log.LogInformation("Musik auf dem Deck {Deck} ergänzt: {Pages} Seiten", filled.Id, filled.Pages.Count);
+        }
+        await settings.SetAsync(MusicTopUp.SettingKey, MusicTopUp.Version);
     }
 
     private static string Unique(IReadOnlyList<Deck> library, string name)
