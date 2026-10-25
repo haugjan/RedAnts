@@ -34,7 +34,9 @@
             </tbody>
         </table>
         <p class="sa-hint">
-            @_counted Spiele mit Zählung, @_total.ToString("N0") Zuschauer, Schnitt @_average.
+            @(_counted == 0
+                ? "Noch kein Spiel gezählt."
+                : $"{_counted} {(_counted == 1 ? "Spiel" : "Spiele")} gezählt, {_total.ToString("N0")} Zuschauer, Schnitt {_average}.")
             Gezählt wird auf der Taste „Zuschauer“ im Deck, der Agent schreibt die Zahl ins Spiel.
         </p>
     }

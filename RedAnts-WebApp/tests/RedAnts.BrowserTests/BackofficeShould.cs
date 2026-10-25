@@ -29,6 +29,19 @@ public sealed class BackofficeShould(BrowserFixture browser)
         await Assertions.Expect(page.Locator("body")).ToContainTextAsync("Anlässe", new() { Timeout = 30_000 });
     }
 
+    [E2EFact]
+    public async Task OpenTheGamesPageOfTheShowSection()
+    {
+        var page = await LoginAsync();
+        var response = await page.GotoAsync("/admin/show/spiele");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await browser.ShotAsync(page, "admin-show-spiele");
+
+        Assert.NotNull(response);
+        Assert.Equal(200, response!.Status);
+        await Assertions.Expect(page.Locator("body")).ToContainTextAsync("Zuschauer je Spiel", new() { Timeout = 30_000 });
+    }
+
     private async Task<IPage> LoginAsync()
     {
         var page = await browser.NewPageAsync();
