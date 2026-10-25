@@ -108,6 +108,11 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
 
     public static bool NeedsSound(string id) => id is MusicToggle or AutoBreakMusic or MusicStop
         or MusicFade or MusicNext or MusicPrevious or MusicPause;
+
+    public static bool NeedsClock(string id) => id is AutoBreakMusic or ClockToggle;
+
+    public static bool Offered(string id, bool sound, bool clock, bool vmix) =>
+        (!NeedsSound(id) || sound) && (!NeedsClock(id) || clock) && (!NeedsVmix(id) || vmix);
 }
 
 public sealed record KeyStep(string Action, string? Target = null, int? Ms = null, string? Event = null, string Side = "", string Text = "")

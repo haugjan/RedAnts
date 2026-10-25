@@ -22,11 +22,12 @@ public static class GetDeckView
                 if (mirror.Known(query.HallId, deck.Id) is { } known) return known;
                 if (await mirror.LiveAsync(query.HallId, deck) is { } live) return live;
             }
-            return Local(deck, await music.AllAsync(), query.PageId);
+            return Local(deck, await music.AllAsync(), query.PageId, hall.Offers);
         }
 
-        public static DeckView Local(Deck deck, IReadOnlyList<MusicItem> music, string pageId = "")
+        public static DeckView Local(Deck deck, IReadOnlyList<MusicItem> music, string pageId = "", HallCapabilities? offered = null)
         {
+            var offers = offered ?? HallCapabilities.Default;
             var page = deck.Page(pageId) ?? deck.Home;
             var keys = new List<DeckKeyRow>();
             for (var number = 1; number <= deck.Count; number++)
@@ -41,6 +42,11 @@ public static class GetDeckView
                 {
                     var deep = !page.IsHome;
                     keys.Add(new DeckKeyRow(number, deep ? "◀ Zurück" : "", null, deep ? "#8ed973" : "#000000", "#111111", deep));
+                    continue;
+                }
+                if (!Offered(key, offers))
+                {
+                    keys.Add(new DeckKeyRow(number, "", null, "#000000", "#ffffff", false));
                     continue;
                 }
                 var item = key.Kind == KeyKinds.Music ? music.FirstOrDefault(m => m.Id == key.MusicId) : null;
@@ -64,6 +70,28 @@ public static class GetDeckView
             }
             return new DeckView(deck.Id, page.Name, deck.Columns, deck.Rows, keys, false, null, null, page.Id);
         }
+
+        public static bool Offered(DeckKey key, HallCapabilities offers) => key.Kind switch
+        {
+            KeyKinds.Music => offers.Sound,
+            KeyKinds.Special => SpecialKey.Offered(key.Special ?? "", offers.Sound, offers.Clock, offers.Vmix),
+            KeyKinds.Steps => key.Sequence.Count == 0 || key.Sequence.Any(step => Runs(step, offers)),
+            KeyKinds.Live => key.Live switch
+            {
+                LiveValues.Time or LiveValues.Period or LiveValues.HomeScore or LiveValues.AwayScore => offers.Clock,
+                LiveValues.Overlay => offers.Vmix,
+                _ => true,
+            },
+            _ => true,
+        };
+
+        private static bool Runs(KeyStep step, HallCapabilities offers) => step.Action switch
+        {
+            KeyActions.MusicPlay or KeyActions.MusicStop or KeyActions.MusicFade => offers.Sound,
+            KeyActions.VmixShow or KeyActions.VmixText or KeyActions.VmixHide => offers.Vmix,
+            KeyActions.LedStart or KeyActions.LedStop => offers.Led,
+            _ => false,
+        };
 
         private static string? Picture(string? icon) => DeckIcons.Known(icon) ? icon : null;
 

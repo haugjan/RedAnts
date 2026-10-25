@@ -282,6 +282,7 @@ public sealed class Deck
 
     void Key(Builder builder, DeckLayout deck, string deckId, DeckKey key)
     {
+        if (!Offered(key)) return;
         var color = Rgb(key.Color);
         switch (key.Kind)
         {
@@ -311,6 +312,32 @@ public sealed class Deck
                 return;
         }
     }
+
+    bool Offered(DeckKey key)
+    {
+        var offers = _payload.Hall.Offers;
+        return key.Kind switch
+        {
+            KeyKinds.Music => offers.Sound,
+            KeyKinds.Special => SpecialKeys.Offered(key.Special ?? "", offers),
+            KeyKinds.Steps => key.Sequence.Count == 0 || key.Sequence.Any(step => Runs(step, offers)),
+            KeyKinds.Live => key.Live switch
+            {
+                "zeit" or "drittel" or "stand.heim" or "stand.gast" => offers.Clock,
+                "einblender" => offers.Vmix,
+                _ => true,
+            },
+            _ => true,
+        };
+    }
+
+    static bool Runs(KeyStep step, HallCapabilities offers) => step.Action switch
+    {
+        KeyActions.MusicPlay or KeyActions.MusicStop or KeyActions.MusicFade => offers.Sound,
+        KeyActions.VmixShow or KeyActions.VmixText or KeyActions.VmixHide => offers.Vmix,
+        KeyActions.LedStart or KeyActions.LedStop => offers.Led,
+        _ => false,
+    };
 
     string LiveText(DeckKey key) => key.Live switch
     {

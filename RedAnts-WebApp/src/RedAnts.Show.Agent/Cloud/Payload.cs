@@ -85,6 +85,18 @@ public static class SpecialKeys
     public const string MusicPause = "musik-pause";
     public const string Spectators = "zuschauer";
 
+    public static bool NeedsVmix(string special) => special is GoalHome or GoalAway or PenaltyHome or PenaltyAway
+        or BestPlayerHome or BestPlayerAway or PlayerHome or PlayerAway or Starting6Home or Starting6Away
+        or OverlayToggle or ClockToggle or Spectators;
+
+    public static bool NeedsSound(string special) => special is MusicToggle or AutoBreakMusic or MusicStop
+        or MusicFade or MusicNext or MusicPrevious or MusicPause;
+
+    public static bool NeedsClock(string special) => special is AutoBreakMusic or ClockToggle;
+
+    public static bool Offered(string special, HallCapabilities offers) =>
+        (!NeedsSound(special) || offers.Sound) && (!NeedsClock(special) || offers.Clock) && (!NeedsVmix(special) || offers.Vmix);
+
     public static string Side(string special) =>
         special.EndsWith("-heim", StringComparison.Ordinal) ? "home"
         : special.EndsWith("-gast", StringComparison.Ordinal) ? "away"

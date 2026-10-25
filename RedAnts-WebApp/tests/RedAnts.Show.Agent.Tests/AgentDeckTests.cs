@@ -20,10 +20,13 @@ public class AgentDeckTests
         return Build(out store, out states, deck);
     }
 
-    static Deck.Deck Build(out PayloadStore store, out ShowStates states, params DeckLayout[] decks)
+    static Deck.Deck Build(out PayloadStore store, out ShowStates states, params DeckLayout[] decks) =>
+        Build(null, out store, out states, decks);
+
+    static Deck.Deck Build(HallCapabilities? offers, out PayloadStore store, out ShowStates states, params DeckLayout[] decks)
     {
         store = new PayloadStore(NullLogger<PayloadStore>.Instance);
-        var hall = Hall.Offline with { Id = "win4", Name = "Win4", Decks = decks, BreakMusicId = Break.Id };
+        var hall = Hall.Offline with { Id = "win4", Name = "Win4", Decks = decks, BreakMusicId = Break.Id, Offered = offers };
         store.Apply(new AgentPayload(hall, Game.None, DateTimeOffset.Now, [Goal, Break]));
         states = new ShowStates(NullLogger<ShowStates>.Instance);
         var live = new LiveGame();
@@ -31,6 +34,46 @@ public class AgentDeckTests
         var led = new SednaLink(store, NullLogger<SednaLink>.Instance);
         var runner = new KeyRunner(store, live, states, vmix, led, NullLogger<KeyRunner>.Instance);
         return new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
+    }
+
+    [Fact]
+    public void A_hall_with_sound_only_keeps_the_music_keys_and_hides_what_it_cannot_run()
+    {
+        var layout = new DeckLayout(DeckId, "Mk2", 3, 2, [new DeckPage(DeckPage.HomeId, "Startseite", null,
+        [
+            new DeckKey(1, KeyKinds.Music, "Spielunterbruch", MusicId: Break.Id),
+            new DeckKey(2, KeyKinds.Special, "Automodus", Special: SpecialKeys.AutoBreakMusic),
+            new DeckKey(3, KeyKinds.Special, "Stopp", Special: SpecialKeys.MusicStop),
+            new DeckKey(4, KeyKinds.Special, "Tor", Special: SpecialKeys.GoalHome),
+        ])]);
+        var deck = Build(new HallCapabilities(Sound: true, Clock: false, Vmix: false, Led: false), out _, out _, layout);
+
+        var slots = deck.Slots(DeckId).ToDictionary(slot => slot.Number);
+
+        Assert.Equal("Spielunterbruch", slots[1].Label);
+        Assert.False(slots[2].Pressable);
+        Assert.True(slots[3].Pressable);
+        Assert.False(slots[4].Pressable);
+    }
+
+    [Fact]
+    public void A_sequence_runs_the_steps_the_hall_offers_and_stays_on_the_deck()
+    {
+        var layout = new DeckLayout(DeckId, "Mk2", 3, 2, [new DeckPage(DeckPage.HomeId, "Startseite", null,
+        [
+            new DeckKey(1, KeyKinds.Steps, "Tor mit Jingle", Steps:
+            [
+                new KeyStep(KeyActions.MusicPlay, Goal.Id),
+                new KeyStep(KeyActions.VmixShow, "title:goal"),
+            ]),
+            new DeckKey(2, KeyKinds.Steps, "Opener", Steps: [new KeyStep(KeyActions.VmixShow, "title:opener")]),
+        ])]);
+        var deck = Build(new HallCapabilities(Sound: true, Clock: false, Vmix: false, Led: false), out _, out _, layout);
+
+        var slots = deck.Slots(DeckId).ToDictionary(slot => slot.Number);
+
+        Assert.True(slots[1].Pressable);
+        Assert.False(slots[2].Pressable);
     }
 
     [Fact]
