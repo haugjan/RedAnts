@@ -1,0 +1,318 @@
+@page "/spiel"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject PayloadStore Payload
+@inject GameOutbox Outbox
+@inject CloudLink Cloud
+@inject AgentConfig Config
+
+<PageTitle>Spiel @Payload.Hall.Name</PageTitle>
+
+<div class="hb">
+    <header class="bar">
+        <span class="hall">Spiel · @Payload.Hall.Name</span>
+        <span class="spacer"></span>
+        <span class="pill @(Cloud.Connected ? "on" : "")">Cloud: @(Cloud.Connected ? "verbunden" : "offline")</span>
+        @if (Outbox.Pending is not null)
+        {
+            <span class="pill on">wartet auf die Cloud</span>
+        }
+        <a class="setup" href="/bord">◀ Bord</a>
+    </header>
+
+    <main>
+        <div class="gs">
+            @if (_message is { Length: > 0 } message)
+            {
+                <p class="gs-message @(_failed ? "bad" : "")">@message</p>
+            }
+
+            @if (_game is null)
+            {
+                <p class="gs-hint">
+                    Kein Spiel geladen. Laden geht nur in der Cloud:
+                    <a href="@CloudGame" target="_blank">Spielkonfiguration öffnen</a>.
+                </p>
+            }
+            else
+            {
+                <div class="gs-head">
+                    <strong>@_game.Title</strong>
+                    <span>@_game.Id · @Source(_game.Source)</span>
+                    @if (_game.Spectators > 0)
+                    {
+                        <span>👁 @_game.Spectators.ToString("N0") Zuschauer</span>
+                    }
+                    <span>zuletzt geändert @_game.LoadedAt.ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+
+                <p class="gs-hint">
+                    Diese Maske bearbeitet das Spiel auf diesem Rechner und läuft ohne Internet weiter. Sobald die Cloud
+                    wieder erreichbar ist, geht die Änderung dorthin. Ein anderes Spiel laden geht nur in der
+                    <a href="@CloudGame" target="_blank">Cloud</a>.
+                </p>
+
+                <div class="gs-form">
+                    <label>Titel <input @bind="_title" /></label>
+                    <label>Schiedsrichter 1 <input @bind="_referee1" /></label>
+                    <label>Schiedsrichter 2 <input @bind="_referee2" /></label>
+                    <label>Kommentator 1 <input @bind="_commentator1" /></label>
+                    <label>Kommentator 2 <input @bind="_commentator2" /></label>
+                </div>
+
+                <div class="gs-teams">
+                    @foreach (var side in Sides)
+                    {
+                        <div class="gs-team" @key="side.Key">
+                            <h4>@side.Label</h4>
+                            <div class="gs-form">
+                                <label>Name <input @bind="side.Long.Value" /></label>
+                                <label>Kürzel <input maxlength="6" @bind="side.Short.Value" /></label>
+                                <label>Farbe
+                                    <span class="gs-colour">
+                                        <input type="color" @bind="side.Colour.Value" />
+                                        <input class="gs-hex" maxlength="7" @bind="side.Colour.Value" />
+                                    </span>
+                                </label>
+                                <label>Coach <input @bind="side.Coach.Value" /></label>
+                                <label>Topscorer
+                                    <select @bind="side.Scorer.Value">
+                                        <option value="">keine</option>
+                                        @foreach (var player in side.Roster)
+                                        {
+                                            <option value="@player.Number">@player.Number @player.Name</option>
+                                        }
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="gs-six">
+                                <div class="gs-sixhead">
+                                    <strong>Starting 6</strong>
+                                    <span class="gs-hint">Reihenfolge wie sie eingeblendet wird: Torhüterin, Verteidigung, Sturm</span>
+                                </div>
+                                <ol class="gs-sixlist">
+                                    @for (var spot = 1; spot <= 6; spot++)
+                                    {
+                                        var place = spot;
+                                        <li>
+                                            <span class="gs-place">@place</span>
+                                            <select value="@SixAt(side, place)" @onchange="e => SetSix(side, place, e.Value?.ToString())">
+                                                <option value="0">frei</option>
+                                                @foreach (var player in side.Roster.Where(p => p.Number > 0))
+                                                {
+                                                    <option value="@player.Number" selected="@(player.Spot == place)">@player.Number @player.Name</option>
+                                                }
+                                            </select>
+                                        </li>
+                                    }
+                                </ol>
+                            </div>
+
+                            <table class="gs-roster">
+                                <thead>
+                                    <tr><th>Nr</th><th>Name</th><th>Position</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var player in side.Roster)
+                                    {
+                                        <tr @key="player.Key">
+                                            <td><input class="gs-nr" type="number" @bind="player.Number" /></td>
+                                            <td><input @bind="player.Name" /></td>
+                                            <td><input @bind="player.Position" /></td>
+                                            <td><button class="gs-btn small" @onclick="() => side.Roster.Remove(player)">✕</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            <div class="gs-actions">
+                                <button class="gs-btn small" @onclick="() => side.Roster.Add(new Rower())">+ Spielerin</button>
+                                <span class="gs-hint">@side.Roster.Count Spielerinnen, @Lineup(side).Count von 6 in der Starting 6</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="gs-actions">
+                    <button class="gs-btn primary" @onclick="Save">Speichern</button>
+                </div>
+            }
+        </div>
+    </main>
+</div>
+
+@code {
+    private sealed class Field
+    {
+        public string Value { get; set; } = "";
+    }
+
+    private sealed class Rower
+    {
+        public string Key { get; } = Guid.NewGuid().ToString("N");
+
+        public int Number { get; set; }
+
+        public string Name { get; set; } = "";
+
+        public string Position { get; set; } = "";
+
+        public int Spot { get; set; }
+    }
+
+    private sealed record SideEdit(string Key, string Label, Field Long, Field Short, Field Colour, Field Coach, Field Scorer)
+    {
+        public List<Rower> Roster { get; } = [];
+    }
+
+    private readonly SideEdit[] Sides =
+    [
+        new("home", "Heim", new Field(), new Field(), new Field(), new Field(), new Field()),
+        new("away", "Gast", new Field(), new Field(), new Field(), new Field(), new Field()),
+    ];
+
+    private Game? _game;
+    private string _title = "", _referee1 = "", _referee2 = "", _commentator1 = "", _commentator2 = "";
+    private string? _message;
+    private bool _failed;
+
+    private string CloudGame => $"{Config.CloudUrl.TrimEnd('/')}/bord?halle={Config.HallId}&spiel=1";
+
+    protected override void OnInitialized()
+    {
+        Read();
+        Payload.Changed += OnPayloadChanged;
+    }
+
+    private void OnPayloadChanged() => InvokeAsync(() =>
+    {
+        if (_message is null) Read();
+        StateHasChanged();
+    });
+
+    private void Read()
+    {
+        _game = Payload.Game.Id.Length > 0 ? Payload.Game : null;
+        if (_game is null) return;
+        _title = _game.Title;
+        _referee1 = _game.Referee1;
+        _referee2 = _game.Referee2;
+        _commentator1 = _game.Commentator1;
+        _commentator2 = _game.Commentator2;
+        foreach (var side in Sides)
+        {
+            var team = _game.Side(side.Key);
+            side.Long.Value = team.LongName;
+            side.Short.Value = team.ShortName;
+            side.Colour.Value = team.Color;
+            side.Coach.Value = team.Coach;
+            side.Scorer.Value = team.TopScorer?.ToString() ?? "";
+            side.Roster.Clear();
+            foreach (var player in team.Players)
+                side.Roster.Add(new Rower
+                {
+                    Number = player.Number,
+                    Name = player.Name,
+                    Position = player.Position,
+                    Spot = team.Starting6.ToList().IndexOf(player.Number) + 1,
+                });
+        }
+    }
+
+    private void Save()
+    {
+        if (_game is null) return;
+        foreach (var side in Sides)
+        {
+            var twice = side.Roster.Where(p => p.Number > 0).GroupBy(p => p.Number).FirstOrDefault(g => g.Count() > 1);
+            if (twice is null) continue;
+            Fail($"{side.Label}: Nummer {twice.Key} ist im Kader doppelt.");
+            return;
+        }
+
+        var game = _game with
+        {
+            Title = _title.Trim(),
+            Referee1 = _referee1.Trim(),
+            Referee2 = _referee2.Trim(),
+            Commentator1 = _commentator1.Trim(),
+            Commentator2 = _commentator2.Trim(),
+            LoadedAt = DateTimeOffset.Now,
+        };
+        foreach (var side in Sides)
+        {
+            var team = game.Side(side.Key);
+            var roster = side.Roster
+                .Where(p => p.Name.Trim().Length > 0 || p.Number > 0)
+                .OrderBy(p => p.Number)
+                .ToList();
+            var fresh = team with
+            {
+                LongName = side.Long.Value.Trim(),
+                ShortName = side.Short.Value.Trim(),
+                Color = Colour(side.Colour.Value, team.Color),
+                Coach = side.Coach.Value.Trim(),
+                Players = roster.Select(p => Keep(team, p)).ToList(),
+                Starting6 = Lineup(side),
+                TopScorer = int.TryParse(side.Scorer.Value, out var number) ? number : null,
+            };
+            game = side.Key == "away" ? game with { Away = fresh } : game with { Home = fresh };
+        }
+
+        Payload.ApplyGame(game);
+        Outbox.Queue(game);
+        _game = game;
+        Read();
+        Say(Cloud.Connected
+            ? "Spiel gespeichert, geht an die Cloud."
+            : "Spiel lokal gespeichert, geht an die Cloud, sobald sie erreichbar ist.");
+    }
+
+    private static IReadOnlyList<int> Lineup(SideEdit side) =>
+        side.Roster
+            .Where(p => p.Spot is > 0 and <= 6 && p.Number > 0)
+            .OrderBy(p => p.Spot)
+            .ThenBy(p => p.Number)
+            .Select(p => p.Number)
+            .Distinct()
+            .ToList();
+
+    private static int SixAt(SideEdit side, int spot) =>
+        side.Roster.FirstOrDefault(p => p.Spot == spot)?.Number ?? 0;
+
+    private static void SetSix(SideEdit side, int spot, string? value)
+    {
+        foreach (var player in side.Roster.Where(p => p.Spot == spot).ToList())
+            player.Spot = 0;
+        if (!int.TryParse(value, out var number) || number == 0) return;
+        if (side.Roster.FirstOrDefault(p => p.Number == number) is { } chosen)
+            chosen.Spot = spot;
+    }
+
+    private static Player Keep(GameTeam team, Rower row)
+    {
+        var known = team.Find(row.Number);
+        return new Player(row.Number, row.Name.Trim(), row.Position.Trim(), known?.Photo, known?.Sponsor);
+    }
+
+    private static string Colour(string value, string fallback)
+    {
+        var text = value.Trim();
+        if (text.Length == 0) return fallback;
+        if (!text.StartsWith('#')) text = "#" + text;
+        return text.Length == 7 && text[1..].All(Uri.IsHexDigit) ? text.ToUpperInvariant() : fallback;
+    }
+
+    private static string Source(GameSource source) => source switch
+    {
+        GameSource.SwissUnihockey => "swissunihockey",
+        GameSource.File => "Datei",
+        _ => "von Hand",
+    };
+
+    private void Say(string text) { _message = text; _failed = false; }
+
+    private void Fail(string text) { _message = text; _failed = true; }
+
+    public void Dispose() => Payload.Changed -= OnPayloadChanged;
+}

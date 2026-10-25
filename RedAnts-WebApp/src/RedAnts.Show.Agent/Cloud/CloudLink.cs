@@ -74,13 +74,18 @@ public sealed class CloudLink(AgentConfig config, PayloadStore payload, Deck.Dec
         await hub.DisposeAsync();
     }
 
-    public async Task SendAsync(string method, CancellationToken stop, params object?[] args)
+    public async Task<bool> SendAsync(string method, CancellationToken stop, params object?[] args)
     {
-        if (_hub is not { State: HubConnectionState.Connected } hub) return;
-        try { await hub.SendCoreAsync(method, args, stop); }
+        if (_hub is not { State: HubConnectionState.Connected } hub) return false;
+        try
+        {
+            await hub.SendCoreAsync(method, args, stop);
+            return true;
+        }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             log.LogDebug("{Method} nicht zugestellt: {Message}", method, e.Message);
+            return false;
         }
     }
 

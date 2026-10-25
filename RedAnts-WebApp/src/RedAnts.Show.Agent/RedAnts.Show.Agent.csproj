@@ -19,6 +19,7 @@
     <Copy SourceFiles="../RedAnts.Show/wwwroot/dj/soundboard.js" DestinationFolder="wwwroot/dj" SkipUnchangedFiles="true" />
     <Copy SourceFiles="../RedAnts.Show/wwwroot/show/hallboard.js" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
     <Copy SourceFiles="../RedAnts.Show/wwwroot/show/board.css" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="../RedAnts.Show/wwwroot/show/gamesetup.css" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
   </Target>
 
 

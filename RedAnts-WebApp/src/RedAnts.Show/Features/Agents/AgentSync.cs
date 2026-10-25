@@ -36,6 +36,12 @@ public sealed class AgentSync(
             await PushAsync(hall.Id);
     }
 
+    public async Task PushGameAsync(string gameId)
+    {
+        foreach (var hall in await hallList.ListAsync())
+            if (hall.ActiveGameId == gameId) await PushAsync(hall.Id);
+    }
+
     public async Task PushAsync(string hallId)
     {
         if (!connections.IsConnected(hallId)) return;

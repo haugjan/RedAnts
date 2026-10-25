@@ -27,6 +27,7 @@ public static class ShowFeatures
         typeof(ImportGameConfig.Handler),
         typeof(SaveGame.Handler),
         typeof(RecordSpectators.Handler),
+        typeof(SaveGameFromAgent.Handler),
         typeof(RegisterAgent.Handler),
         typeof(UnregisterAgent.Handler),
         typeof(RecordAgentReport.Handler),

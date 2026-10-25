@@ -32,8 +32,9 @@ The agent serves two pages of its own, both reachable from any browser in the ha
 
 - `/bord` is the deck as a web page and replaces a Streamdeck: one tab per configured layout, the same keys with the same icons, plus score, time, period and the state pills above them. A press runs exactly what the Streamdeck key would run. The cloud shows the same board at `show.redants.ch/bord`.
 - `/uhr` is a full screen match clock for a TV next to the court, Teko digits in fixed cells, the penalties of both sides with their player numbers, team logos or abbreviations around the score, the period label, amber during a break, red in the last minute and a lamp that says how long the clock has been silent.
+- `/spiel` edits the game of the hall on the agent itself: title, referees, commentators and per team name, abbreviation, colour, coach, top scorer, starting six and roster. It works without the internet; the change goes to the cloud as soon as it is reachable, and a newer game from the cloud wins. Loading another game (swissunihockey, a game config file, by hand) stays in the cloud.
 
-Both pages listen on `localhost` only. `agent.json` moves them into the hall network with `bind` (for example `0.0.0.0`), but only together with `boardPassword`: without a password the agent says so on the console and stays on `localhost`.
+The three pages listen on `localhost` only. `agent.json` moves them into the hall network with `bind` (for example `0.0.0.0`), but only together with `boardPassword`: without a password the agent says so on the console and stays on `localhost`.
 
 A hall only starts what it offers. Sound, match clock (with its type), vMix, LED wall and light show are switched per hall in the backoffice; the agent skips the links it does not offer, refuses scene steps that need them and leaves the matching deck keys empty.
 

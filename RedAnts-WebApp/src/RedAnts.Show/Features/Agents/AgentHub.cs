@@ -9,6 +9,7 @@ public sealed class AgentHub(
     UnregisterAgent.Handler unregister,
     RecordAgentReport.Handler report,
     RecordSpectators.Handler spectators,
+    SaveGameFromAgent.Handler game,
     GetAgentPayload.Handler payload,
     RecordDeckView.Handler deck) : Hub
 {
@@ -51,6 +52,11 @@ public sealed class AgentHub(
         await unregister.HandleAsync(new UnregisterAgent.Command(Context.ConnectionId));
         await base.OnDisconnectedAsync(exception);
     }
+
+    public Task Game(string json) =>
+        Context.Items[HallItem] is string hall
+            ? game.HandleAsync(new SaveGameFromAgent.Command(hall, json))
+            : Task.CompletedTask;
 
     public Task Spectators(int count) =>
         Context.Items[HallItem] is string hall

@@ -1,0 +1,45 @@
+.gs { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.gs-message { margin: 0; padding: 7px 10px; border-radius: 4px; background: #1d3a24; color: #cdebd3; font-weight: 700; }
+.gs-message.bad { background: #3a1d1d; color: #ffd2d2; }
+.gs-hint { margin: 0; color: #8b949e; font-size: 12px; }
+.gs-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.gs-head span { color: #8b949e; font-size: 12px; }
+
+.gs-form { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.gs label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #9aa4ae; }
+.gs input, .gs select, .gs textarea {
+    background: #1b1b22; color: #e9edf1; border: 1px solid #2f2f3a; border-radius: 4px;
+    padding: 6px 8px; font: inherit; min-width: 140px;
+}
+.gs input[type=color] { padding: 2px; width: 44px; min-width: 44px; height: 32px; }
+.gs-colour { display: flex; gap: 6px; }
+.gs-hex { max-width: 90px; min-width: 90px; text-transform: uppercase; }
+.gs textarea { width: 100%; min-width: 0; font-family: Consolas, monospace; font-size: 12px; }
+
+.gs-teams { display: flex; flex-wrap: wrap; gap: 14px; }
+.gs-team { flex: 1 1 320px; background: #16161d; border: 1px solid #272730; border-radius: 6px; padding: 10px; }
+.gs-team h4 { margin: 0 0 8px; font-size: 13px; }
+
+.gs-roster { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+.gs-roster th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #9aa4ae; font-weight: 600; padding: 0 4px 4px; }
+.gs-roster td { padding: 2px 4px 2px 0; }
+.gs-roster input[type=text], .gs-roster input:not([type]) { width: 100%; min-width: 0; padding: 4px 6px; }
+.gs-roster .gs-nr { width: 62px; min-width: 62px; padding: 4px 6px; }
+.gs-six { margin: 0 0 10px; padding: 8px 10px; border: 1px solid #272730; border-radius: 6px; background: #14141a; }
+.gs-sixhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 6px; }
+.gs-sixlist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px; }
+.gs-sixlist li { display: flex; align-items: center; gap: 6px; }
+.gs-sixlist select { flex: 1; min-width: 0; }
+.gs-place { width: 18px; text-align: right; color: #8a8a98; font-variant-numeric: tabular-nums; }
+.gs-btn.small { padding: 3px 8px; font-size: 12px; }
+
+.gs-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.gs-btn { background: #262631; color: #e9edf1; border: 1px solid #343442; border-radius: 4px; padding: 7px 12px; font: inherit; cursor: pointer; }
+.gs-btn.primary { background: #2f6f3f; border-color: #3c8a50; color: #fff; font-weight: 700; }
+.gs-btn:disabled { opacity: .5; cursor: default; }
+
+.gs-more { background: #16161d; border: 1px solid #272730; border-radius: 6px; padding: 8px 10px; }
+.gs-more summary { cursor: pointer; font-weight: 700; }
+.gs-more h4 { margin: 10px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #9aa4ae; }
+.gs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.gs-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #1b1b22; border-radius: 4px; padding: 5px 8px; }

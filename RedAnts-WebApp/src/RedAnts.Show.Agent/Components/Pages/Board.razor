@@ -31,7 +31,7 @@
     }
     @if (Payload.Hall.Offers.Vmix || Payload.Hall.Offers.Clock)
     {
-        <a class="setup" href="@($"{Config.CloudUrl.TrimEnd('/')}/bord?halle={Config.HallId}&spiel=1")" target="_blank" title="Spielkonfiguration in der Cloud, braucht Internet">⚙ Spiel</a>
+        <a class="setup" href="/spiel" title="Spielkonfiguration auf diesem Rechner, läuft auch ohne Internet">⚙ Spiel</a>
     }
     <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>

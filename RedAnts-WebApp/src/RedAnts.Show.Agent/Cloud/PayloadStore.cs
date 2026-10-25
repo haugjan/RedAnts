@@ -41,6 +41,18 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
         Changed?.Invoke();
     }
 
+    public void ApplyGame(Game game)
+    {
+        AgentPayload next;
+        lock (_gate)
+        {
+            next = _current with { Game = game };
+            _current = next;
+        }
+        Save(next);
+        Changed?.Invoke();
+    }
+
     public void SetSpectators(int count)
     {
         AgentPayload next;
@@ -54,10 +66,13 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
         Changed?.Invoke();
     }
 
-    static AgentPayload Kept(AgentPayload current, AgentPayload fresh) =>
-        current.Game is { } local && fresh.Game is { Id.Length: > 0 } coming && local.Id == coming.Id
-            ? fresh with { Game = coming with { Spectators = local.Spectators } }
-            : fresh;
+    static AgentPayload Kept(AgentPayload current, AgentPayload fresh)
+    {
+        if (current.Game is not { } local || fresh.Game is not { Id.Length: > 0 } coming || local.Id != coming.Id) return fresh;
+        return local.LoadedAt > coming.LoadedAt
+            ? fresh with { Game = local }
+            : fresh with { Game = coming with { Spectators = local.Spectators } };
+    }
 
     void Save(AgentPayload payload)
     {

@@ -31,7 +31,7 @@ public static class BoardGate
         app.Use(async (context, next) =>
         {
             var path = context.Request.Path;
-            if (!path.StartsWithSegments("/bord"))
+            if (!path.StartsWithSegments("/bord") && !path.StartsWithSegments("/spiel"))
             {
                 await next();
                 return;
