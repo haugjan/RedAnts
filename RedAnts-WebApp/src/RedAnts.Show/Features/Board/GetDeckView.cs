@@ -1,6 +1,7 @@
 using RedAnts.Show.Domain;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
+using RedAnts.Show.Features.Setup;
 
 namespace RedAnts.Show.Features.Board;
 
@@ -8,13 +9,14 @@ public static class GetDeckView
 {
     public sealed record Query(string HallId, string DeckId, string PageId = "");
 
-    public sealed class Handler(IDeckMirror mirror, IHallRepository halls, IMusicLibrary music)
+    public sealed class Handler(IDeckMirror mirror, IHallRepository halls, IMusicLibrary music, IShowSetup setup)
     {
         public async Task<DeckView?> HandleAsync(Query query)
         {
             var hall = await halls.GetByIdAsync(query.HallId);
             if (hall is null) return null;
-            var deck = hall.DeckLayouts.FirstOrDefault(d => d.Id == query.DeckId) ?? hall.DeckLayouts[0];
+            var decks = (await setup.GetAsync()).DecksOf(hall);
+            if ((decks.FirstOrDefault(d => d.Id == query.DeckId) ?? decks.FirstOrDefault()) is not { } deck) return null;
             if (mirror.IsConnected(query.HallId))
             {
                 if (mirror.Known(query.HallId, deck.Id) is { } known) return known;
