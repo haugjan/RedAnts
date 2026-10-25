@@ -34,7 +34,7 @@
         {
             <div class="sa-actions">
                 <label class="sa-inline">Name der Seite <input class="sa-input" value="@sheet.Name" @onchange="RenamePage" /></label>
-                <span class="sa-hint">@deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back · PANIC auf @deck.Panic</span>
+                <span class="sa-hint">@deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back (nur auf Unterseiten) · PANIC auf @deck.Panic</span>
             </div>
 
             <div class="sa-deckgrid">
@@ -43,7 +43,7 @@
                     {
                         var number = n;
                         var tile = sheet.KeyAt(number);
-                        var locked = Locked(deck, number);
+                        var locked = Locked(deck, sheet, number);
                         <div class="sa-key @(number == _selected ? "selected" : "")"
                              style="background:@(locked is not null ? "#3a3f47" : tile.Color);color:#fff"
                              @onclick="() => _selected = number">
@@ -74,7 +74,7 @@
                 <div class="sa-keyeditor">
                     @{
                         var current = sheet.KeyAt(_selected);
-                        var fixedLabel = Locked(deck, _selected);
+                        var fixedLabel = Locked(deck, sheet, _selected);
                     }
                     <h3>Taste @_selected</h3>
                     @if (fixedLabel is not null)
@@ -294,8 +294,8 @@
     private static string Caption(DeckKey key) =>
         key.Label.Length > 0 ? key.Label : key.Kind == KeyKinds.Empty ? "" : KeyKinds.Label(key.Kind);
 
-    private static string? Locked(Deck deck, int number) =>
-        number == deck.Panic ? "PANIC" : number == deck.Back ? "Zurück" : null;
+    private static string? Locked(Deck deck, DeckPage page, int number) =>
+        number == deck.Panic ? "PANIC" : number == deck.Back && !page.IsHome ? "Zurück" : null;
 
     private static int? Number(object? value) =>
         int.TryParse(value?.ToString(), out var number) ? number : null;
