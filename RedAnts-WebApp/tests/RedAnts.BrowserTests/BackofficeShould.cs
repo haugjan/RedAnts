@@ -54,6 +54,25 @@ public sealed class BackofficeShould(BrowserFixture browser)
         Assert.DoesNotContain(tiles, tile => tile.Contains("Zurück", StringComparison.Ordinal));
     }
 
+    [E2EFact]
+    public async Task SayWhichKeyIsIncompleteInsteadOfFreezing()
+    {
+        var page = await LoginAsync();
+        await page.GotoAsync("/admin/show/decks");
+        await Assertions.Expect(page.Locator(".sa-deck")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+
+        await page.Locator(".sa-key").Nth(6).ClickAsync();
+        await page.Locator(".sa-keyeditor select").First.SelectOptionAsync("spezial");
+        await page.WaitForTimeoutAsync(500);
+        await page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("Speichern") }).First.ClickAsync();
+        await page.WaitForTimeoutAsync(2000);
+        await browser.ShotAsync(page, "admin-show-decks-save");
+
+        await Assertions.Expect(page.Locator("body")).ToContainTextAsync("feste Funktion", new() { Timeout = 15_000 });
+        await page.Locator(".sa-key").Nth(1).ClickAsync();
+        await Assertions.Expect(page.Locator(".sa-keyeditor")).ToContainTextAsync("Taste 2", new() { Timeout = 10_000 });
+    }
+
     private async Task<IPage> LoginAsync()
     {
         var page = await browser.NewPageAsync();

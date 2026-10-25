@@ -28,6 +28,8 @@
     </nav>
 
     <main class="sa-content" @key="@($"{_tab}|{State.SelectedHallId}")">
+        <ErrorBoundary @ref="_boundary">
+            <ChildContent>
         @switch (_tab)
         {
             case "musik": <MusicPage /> break;
@@ -37,6 +39,15 @@
             case "bedienung": <ControlTab /> <StatesTab /> <GamesTab /> break;
             default: <HallsTab OnHallsChanged="ReloadHallsAsync" /> break;
         }
+            </ChildContent>
+            <ErrorContent>
+                <section class="sa-card">
+                    <h2>Fehler</h2>
+                    <p class="sa-hint">Die Seite ist auf einen Fehler gelaufen und zeigt den letzten Stand nicht mehr. Erneut laden und es nochmals versuchen.</p>
+                    <button class="sa-btn small" @onclick="Again">Seite neu laden</button>
+                </section>
+            </ErrorContent>
+        </ErrorBoundary>
     </main>
 </div>
 
@@ -85,6 +96,14 @@
     }
 
     private void OnHallChanged(ChangeEventArgs e) => State.SelectedHallId = e.Value?.ToString();
+
+    private ErrorBoundary? _boundary;
+
+    private void Again()
+    {
+        _boundary?.Recover();
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
 
     private void Go(string tab)
     {

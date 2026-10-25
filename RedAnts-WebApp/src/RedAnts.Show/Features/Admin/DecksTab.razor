@@ -399,9 +399,32 @@
         Touch();
     }
 
-    private async Task SaveDecksAsync()
+    private async Task SaveDecksAsync() => await Guarded(async () =>
     {
-        var decks = _decks.Select(d => d.Validated()).ToList();
+        var decks = _decks.Select(Checked).ToList();
         await SaveSetupAsync(setup => setup with { Decks = decks });
+    });
+
+    private static Deck Checked(Deck deck)
+    {
+        try
+        {
+            return deck.Validated();
+        }
+        catch (ValidationException e)
+        {
+            throw new ValidationException(e.Field, Spot(deck) is { Length: > 0 } where ? where : $"{deck.Name}: {e.Message}");
+        }
+    }
+
+    private static string Spot(Deck deck)
+    {
+        foreach (var page in deck.Pages)
+            foreach (var key in page.Keys)
+            {
+                try { key.Validated(deck.Count); }
+                catch (ValidationException e) { return $"{deck.Name}, Seite „{page.Name}“, Taste {key.Number}: {e.Message}"; }
+            }
+        return "";
     }
 }
