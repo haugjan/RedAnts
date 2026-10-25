@@ -12,7 +12,8 @@ public sealed record DeckKeyRow(
     string? MusicId = null,
     bool Active = false,
     string Symbol = "",
-    string Subtitle = "");
+    string Subtitle = "",
+    string Top = "");
 
 public sealed record DeckLive(
     string Time,

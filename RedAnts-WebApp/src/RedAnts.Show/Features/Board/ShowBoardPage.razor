@@ -70,7 +70,7 @@ else
                         @foreach (var key in view?.Keys ?? [])
                         {
                             var music = MusicOf(key);
-                            <button class="key @(key.Pressable ? "" : "flat") @(key.Active ? "active" : "")"
+                            <button class="key @(key.Pressable ? "" : "flat") @(key.Active ? "active" : "") @(key.Top.Length > 0 ? "split" : "")"
                                     style="background:@key.Color; color:@key.TextColor"
                                     disabled="@(!key.Pressable)"
                                     data-id="@(key.MusicId is { Length: > 0 } tile ? tile : $"{deck.Id}:{key.Number}")"
@@ -81,27 +81,35 @@ else
                                     data-label="@key.Label"
                                     @onclick="() => PressAsync(deck.Id, key)"
                                     @key="key.Number">
-                                @if (key.Icon is { Length: > 0 } icon)
+                                @if (key.Top is { Length: > 0 } heading)
                                 {
-                                    <img src="@DeckIcons.FileOf(icon)" alt="" />
+                                    <span class="split-top">@heading</span>
+                                    <span class="split-bottom">@key.Label</span>
                                 }
-                                else if (key.Symbol is { Length: > 0 } symbol)
+                                else
                                 {
-                                    <span class="symbol">@symbol</span>
-                                }
-                                <span class="label">
-                                    @foreach (var line in key.Label.Split(NewLine))
+                                    @if (key.Icon is { Length: > 0 } icon)
                                     {
-                                        <span>@line</span>
+                                        <img src="@DeckIcons.FileOf(icon)" alt="" />
                                     }
-                                </span>
-                                @if (key.Subtitle is { Length: > 0 } subtitle)
-                                {
-                                    <span class="sub">@subtitle</span>
-                                }
-                                @if (music is { IsPlaylist: true })
-                                {
-                                    <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                                    else if (key.Symbol is { Length: > 0 } symbol)
+                                    {
+                                        <span class="symbol">@symbol</span>
+                                    }
+                                    <span class="label">
+                                        @foreach (var line in key.Label.Split(NewLine))
+                                        {
+                                            <span>@line</span>
+                                        }
+                                    </span>
+                                    @if (key.Subtitle is { Length: > 0 } subtitle)
+                                    {
+                                        <span class="sub">@subtitle</span>
+                                    }
+                                    @if (music is { IsPlaylist: true })
+                                    {
+                                        <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                                    }
                                 }
                                 <em>@key.Number</em>
                             </button>
@@ -194,7 +202,7 @@ else
     private Hall? _hall;
     private AgentPresence _agent = new(false, null, null);
     private readonly Dictionary<string, DeckView> _views = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, string> _pages = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<(string Id, string Title)>> _trail = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<MusicItem> _music = [];
     private IReadOnlyList<Deck> _decks = [];
     private readonly string _board = Guid.NewGuid().ToString("N");
@@ -381,19 +389,26 @@ else
             ? (deck.Page(View(deckId)?.PageId) ?? deck.Home).KeyAt(row.Number)
             : null;
 
+    private List<(string Id, string Title)> Trail(string deckId)
+    {
+        if (!_trail.TryGetValue(deckId, out var steps)) _trail[deckId] = steps = [];
+        return steps;
+    }
+
     private async Task<bool> NavigateAsync(string deckId, DeckKeyRow key)
     {
         if (_decks.FirstOrDefault(d => d.Id == deckId) is not { } deck) return false;
         var page = deck.Page(View(deckId)?.PageId) ?? deck.Home;
+        var trail = Trail(deckId);
         if (key.Number == deck.Back && !page.IsHome)
         {
-            _pages[deckId] = page.ParentId ?? DeckPage.HomeId;
+            if (trail.Count > 0) trail.RemoveAt(trail.Count - 1);
             await RefreshAsync();
             return true;
         }
-        if (KeyOf(deckId, key) is { Kind: KeyKinds.Page, PageId: { Length: > 0 } target })
+        if (KeyOf(deckId, key) is { Kind: KeyKinds.Page, PageId: { Length: > 0 } target } opener)
         {
-            _pages[deckId] = target;
+            trail.Add((target, opener.Label.Length > 0 ? opener.Label : deck.Page(target)?.Name ?? ""));
             await RefreshAsync();
             return true;
         }
@@ -448,8 +463,8 @@ else
         if (_hallId is not { Length: > 0 } id || _hall is null) return;
         foreach (var deck in _decks)
         {
-            var page = _pages.TryGetValue(deck.Id, out var stored) ? stored : "";
-            if (await DeckQuery.HandleAsync(new GetDeckView.Query(id, deck.Id, page)) is { } view)
+            var step = Trail(deck.Id).LastOrDefault();
+            if (await DeckQuery.HandleAsync(new GetDeckView.Query(id, deck.Id, step.Id ?? "", step.Title ?? "")) is { } view)
                 _views[deck.Id] = view;
         }
         await LearnMusicAsync();

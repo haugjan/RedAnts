@@ -7,7 +7,7 @@ namespace RedAnts.Show.Features.Board;
 
 public static class GetDeckView
 {
-    public sealed record Query(string HallId, string DeckId, string PageId = "");
+    public sealed record Query(string HallId, string DeckId, string PageId = "", string Title = "");
 
     public sealed class Handler(IDeckMirror mirror, IHallRepository halls, IMusicLibrary music, IShowSetup setup)
     {
@@ -22,10 +22,10 @@ public static class GetDeckView
                 if (mirror.Known(query.HallId, deck.Id) is { } known) return known;
                 if (await mirror.LiveAsync(query.HallId, deck) is { } live) return live;
             }
-            return Local(deck, await music.AllAsync(), query.PageId, hall.Offers);
+            return Local(deck, await music.AllAsync(), query.PageId, hall.Offers, query.Title);
         }
 
-        public static DeckView Local(Deck deck, IReadOnlyList<MusicItem> music, string pageId = "", HallCapabilities? offered = null)
+        public static DeckView Local(Deck deck, IReadOnlyList<MusicItem> music, string pageId = "", HallCapabilities? offered = null, string title = "")
         {
             var offers = offered ?? HallCapabilities.Default;
             var page = deck.Page(pageId) ?? deck.Home;
@@ -41,7 +41,9 @@ public static class GetDeckView
                 if (number == deck.Back && (!page.IsHome || key.IsEmpty))
                 {
                     var deep = !page.IsHome;
-                    keys.Add(new DeckKeyRow(number, deep ? "◀ Zurück" : "", null, deep ? "#8ed973" : "#000000", "#111111", deep));
+                    keys.Add(deep
+                        ? new DeckKeyRow(number, "◀ Zurück", null, "#1e7b34", "#ffffff", true, Top: title.Length > 0 ? title : page.Name)
+                        : new DeckKeyRow(number, "", null, "#000000", "#111111", false));
                     continue;
                 }
                 if (!Offered(key, offers))
@@ -68,7 +70,7 @@ public static class GetDeckView
                     Symbol(key.Icon),
                     item?.Subtitle ?? ""));
             }
-            return new DeckView(deck.Id, page.Name, deck.Columns, deck.Rows, keys, false, null, null, page.Id);
+            return new DeckView(deck.Id, title.Length > 0 ? title : page.Name, deck.Columns, deck.Rows, keys, false, null, null, page.Id);
         }
 
         public static bool Offered(DeckKey key, HallCapabilities offers) => key.Kind switch

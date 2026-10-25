@@ -53,7 +53,7 @@ else
                         @foreach (var slot in Deck.Slots(deckId))
                         {
                             var music = Payload.MusicOf(slot.MusicId);
-                            <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "active" : "")"
+                            <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "active" : "") @(slot.Top.Length > 0 ? "split" : "")"
                                     style="background:@Hex(slot.Color); color:@Hex(slot.TextColor)"
                                     disabled="@(!slot.Pressable)"
                                     data-id="@(slot.MusicId is { Length: > 0 } tile ? tile : $"{deckId}:{slot.Number}")"
@@ -64,23 +64,31 @@ else
                                     data-label="@slot.Label"
                                     @onclick="() => PressAsync(deckId, slot)"
                                     @key="slot.Number">
-                                @if (slot.Symbol is { Length: > 0 } symbol)
+                                @if (slot.Top is { Length: > 0 } heading)
                                 {
-                                    <span class="symbol">@symbol</span>
+                                    <span class="split-top">@heading</span>
+                                    <span class="split-bottom">@slot.Label</span>
                                 }
-                                <span class="label">
-                                    @foreach (var line in slot.Label.Split(NewLine))
+                                else
+                                {
+                                    @if (slot.Symbol is { Length: > 0 } symbol)
                                     {
-                                        <span>@line</span>
+                                        <span class="symbol">@symbol</span>
                                     }
-                                </span>
-                                @if (slot.Subtitle is { Length: > 0 } subtitle)
-                                {
-                                    <span class="sub">@subtitle</span>
-                                }
-                                @if (music is { Songs: > 1 })
-                                {
-                                    <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                                    <span class="label">
+                                        @foreach (var line in slot.Label.Split(NewLine))
+                                        {
+                                            <span>@line</span>
+                                        }
+                                    </span>
+                                    @if (slot.Subtitle is { Length: > 0 } subtitle)
+                                    {
+                                        <span class="sub">@subtitle</span>
+                                    }
+                                    @if (music is { Songs: > 1 })
+                                    {
+                                        <span class="badge">@music.Songs @(music.Random ? "🔀" : "🔁")</span>
+                                    }
                                 }
                                 <em>@slot.Number</em>
                             </button>

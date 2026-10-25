@@ -3,14 +3,14 @@ using RedAnts.Show.Agent.Keys;
 
 namespace RedAnts.Show.Agent.Deck;
 
-public sealed record DeckSlot(int Number, string Label, string? ImageKey, int Color, int TextColor, bool Pressable, Func<Task>? Press, bool Active = false, string? MusicId = null, string Symbol = "", string Subtitle = "");
+public sealed record DeckSlot(int Number, string Label, string? ImageKey, int Color, int TextColor, bool Pressable, Func<Task>? Press, bool Active = false, string? MusicId = null, string Symbol = "", string Subtitle = "", string Top = "");
 
 public sealed class Deck
 {
     static readonly TimeSpan GoalWindow = TimeSpan.FromSeconds(25);
 
     const int CPanic = 0xFF0000;
-    const int CBack = 0x8ED973;
+    const int CBack = 0x1E7B34;
     const int CNeutral = 0x555555;
     const int CEmpty = 0x000000;
     const int CWhite = 0xFFFFFF;
@@ -25,7 +25,7 @@ public sealed class Deck
     readonly KeyRunner _runner;
     readonly ILogger<Deck> _log;
     readonly object _gate = new();
-    readonly Dictionary<string, string> _page = new(StringComparer.OrdinalIgnoreCase);
+    readonly Dictionary<string, List<Step>> _trail = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, Flow> _flow = new(StringComparer.OrdinalIgnoreCase);
 
     TaskCompletionSource<bool> _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -140,6 +140,7 @@ public sealed class Deck
                 music = s.MusicId,
                 symbol = s.Symbol,
                 subtitle = s.Subtitle,
+                top = s.Top,
             }).ToArray(),
             live = Live(),
             states = _states.All,
@@ -172,6 +173,7 @@ public sealed class Deck
     public string Title(string deckId)
     {
         if (_flow.TryGetValue(deckId, out var flow) && flow.Kind != FlowKind.None) return flow.Title;
+        if (Trail(deckId).LastOrDefault() is { Title.Length: > 0 } step) return step.Title;
         return CurrentPage(deckId)?.Name ?? Layout(deckId)?.Name ?? deckId;
     }
 
@@ -222,7 +224,7 @@ public sealed class Deck
     {
         lock (_gate)
         {
-            _page.Clear();
+            _trail.Clear();
             _flow.Clear();
         }
         _runner.StopMusic();
@@ -265,8 +267,13 @@ public sealed class Deck
     {
         var deck = Layout(deckId);
         if (deck is null) return null;
-        var id = _page.TryGetValue(deckId, out var stored) ? stored : DeckPage.HomeId;
+        var id = Trail(deckId).LastOrDefault()?.PageId ?? DeckPage.HomeId;
         return deck.Page(id) ?? deck.Home;
+    }
+
+    List<Step> Trail(string deckId)
+    {
+        lock (_gate) return _trail.TryGetValue(deckId, out var steps) ? [.. steps] : [];
     }
 
     void Configured(Builder builder, DeckLayout deck, string deckId)
@@ -302,7 +309,7 @@ public sealed class Deck
                 SpecialKeyOn(builder, deck, deckId, key);
                 return;
             case KeyKinds.Page:
-                builder.Action(key.Number, key.Label, color, () => { Go(deckId, key.PageId); return Task.CompletedTask; },
+                builder.Action(key.Number, key.Label, color, () => { Go(deckId, key.PageId, Heading(deck, key)); return Task.CompletedTask; },
                     Picture(key.Icon), symbol: Symbol(key.Icon));
                 return;
             case KeyKinds.Live:
@@ -615,7 +622,9 @@ public sealed class Deck
     {
         var page = CurrentPage(deckId);
         var deep = flow.Kind != FlowKind.None || (page is not null && !page.IsHome);
-        if (deep) builder.Action(deck.Back, "◀ Zurück", CBack, () => { Back(deckId); return Task.CompletedTask; });
+        if (deep)
+            builder.Action(deck.Back, "◀ Zurück", CBack, () => { Back(deckId); return Task.CompletedTask; },
+                forceText: CWhite, top: Title(deckId));
         else if (page is null || page.KeyAt(deck.Back).IsEmpty) builder.Empty(deck.Back);
         builder.Action(deck.Panic, "🚨 PANIC", CPanic, () => PanicAsync(CancellationToken.None), forceText: CWhite);
     }
@@ -648,12 +657,17 @@ public sealed class Deck
         lock (_gate) _flow[deckId] = flow;
     }
 
-    void Go(string deckId, string? pageId)
+    void Go(string deckId, string? pageId, string title = "")
     {
         lock (_gate)
         {
             _flow.Remove(deckId);
-            if (pageId is { Length: > 0 }) _page[deckId] = pageId;
+            if (pageId is not { Length: > 0 } || pageId == DeckPage.HomeId) _trail.Remove(deckId);
+            else
+            {
+                if (!_trail.TryGetValue(deckId, out var steps)) _trail[deckId] = steps = [];
+                steps.Add(new Step(pageId, title));
+            }
         }
         Bump();
     }
@@ -665,9 +679,7 @@ public sealed class Deck
         lock (_gate)
         {
             if (_flow.Remove(deckId)) { }
-            else if (_page.TryGetValue(deckId, out var current) && Layout(deckId)?.Page(current)?.ParentId is { } parent)
-                _page[deckId] = parent;
-            else _page[deckId] = DeckPage.HomeId;
+            else if (_trail.TryGetValue(deckId, out var steps) && steps.Count > 0) steps.RemoveAt(steps.Count - 1);
         }
         Bump();
     }
@@ -696,6 +708,11 @@ public sealed class Deck
         return int.TryParse(hex[1..], System.Globalization.NumberStyles.HexNumber, null, out var value) ? value : CNeutral;
     }
 
+    static string Heading(DeckLayout deck, DeckKey key) =>
+        key.Label.Length > 0 ? key.Label : deck.Page(key.PageId)?.Name ?? "";
+
+    sealed record Step(string PageId, string Title);
+
     enum FlowKind { None, Players, Penalty, Starting6, Spectators }
 
     sealed record Flow(FlowKind Kind, string Side, string Event, string Title, DeckKey? Key, string Penalty = "", int Position = 0)
@@ -709,11 +726,12 @@ public sealed class Deck
 
         int Count => columns * rows;
 
-        public void Action(int number, string label, int bg, Func<Task> press, string? icon = null, bool active = false, string? musicId = null, int? forceText = null, string symbol = "", string subtitle = "")
+        public void Action(int number, string label, int bg, Func<Task> press, string? icon = null, bool active = false, string? musicId = null, int? forceText = null, string symbol = "", string subtitle = "", string top = "")
         {
             if (number < 1 || number > Count) return;
             var fg = forceText ?? Fg(bg);
-            _slots[number] = new DeckSlot(number, label, icon is null ? null : DeckIcons.Key(icon, label, fg), bg, fg, true, press, active, musicId, symbol, subtitle);
+            var image = top.Length > 0 ? DeckIcons.Key("", label, fg, top) : icon is null ? null : DeckIcons.Key(icon, label, fg);
+            _slots[number] = new DeckSlot(number, label, image, bg, fg, true, press, active, musicId, symbol, subtitle, top);
         }
 
         public void Label(int number, string label, int bg)

@@ -53,6 +53,12 @@ html, body.hb-page { margin: 0; height: 100%; background: #0f0f13; color: #e9edf
 .hb .key .badge { position: absolute; right: 4px; bottom: 3px; font-size: 10px; font-weight: 400; opacity: .8; }
 .hb .key em { position: absolute; top: 3px; left: 5px; font-size: 10px; font-style: normal; opacity: 0.45; }
 
+.hb .key.split { padding: 0; gap: 0; justify-content: stretch; }
+.hb .key.split .split-top,
+.hb .key.split .split-bottom { display: flex; align-items: center; justify-content: center; width: 100%; padding: 2px 5px; box-sizing: border-box; overflow: hidden; }
+.hb .key.split .split-top { flex: 2 1 0; background: #111114; color: #fff; font-size: clamp(10px, 13cqh, 17px); }
+.hb .key.split .split-bottom { flex: 1 1 0; background: #1e7b34; color: #fff; font-size: clamp(10px, 12cqh, 15px); }
+
 .hb .note { margin: 8px 0 0; color: #ffb4b4; font-weight: 700; }
 .hb .hint { margin: 6px 0 0; color: #7c858f; font-size: 12px; }
 

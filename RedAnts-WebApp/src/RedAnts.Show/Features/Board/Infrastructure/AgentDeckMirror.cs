@@ -98,7 +98,10 @@ public sealed class AgentDeckMirror(IHubContext<AgentHub> hub, IAgentConnections
             Hex(slot, "color"),
             slot.TryGetProperty("pressable", out var pressable) && pressable.GetBoolean(),
             slot.TryGetProperty("music", out var musicId) ? musicId.GetString() : null,
-            slot.TryGetProperty("active", out var active) && active.ValueKind == JsonValueKind.True)).ToList();
+            slot.TryGetProperty("active", out var active) && active.ValueKind == JsonValueKind.True,
+            slot.TryGetProperty("symbol", out var symbol) ? symbol.GetString() ?? "" : "",
+            slot.TryGetProperty("subtitle", out var subtitle) ? subtitle.GetString() ?? "" : "",
+            slot.TryGetProperty("top", out var top) ? top.GetString() ?? "" : "")).ToList();
         var title = view.TryGetProperty("title", out var text) ? text.GetString() ?? deck.Home.Name : deck.Home.Name;
         return new DeckView(deck.Id, title, deck.Columns, deck.Rows, keys, true, live, states);
     }

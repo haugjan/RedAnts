@@ -171,18 +171,49 @@ public class AgentDeckTests
     }
 
     [Fact]
-    public async Task A_page_key_opens_the_page_and_back_returns()
+    public async Task A_page_carries_the_name_of_the_key_that_opened_it_and_back_returns()
     {
         var deck = new DeckLayout(DeckId, "Mk2", 3, 2,
         [
-            new DeckPage(DeckPage.HomeId, "Startseite", null, [new DeckKey(1, KeyKinds.Page, "Mehr", PageId: "mehr")]),
+            new DeckPage(DeckPage.HomeId, "Startseite", null,
+            [
+                new DeckKey(1, KeyKinds.Page, "Mehr", PageId: "mehr"),
+                new DeckKey(2, KeyKinds.Page, "Pause L-UPL", PageId: "mehr"),
+            ]),
             new DeckPage("mehr", "Mehr Musik", DeckPage.HomeId, [new DeckKey(1, KeyKinds.Music, "", MusicId: Break.Id)]),
         ]);
         var board = Build(out _, out _, deck);
 
         await board.PressAsync(DeckId, 1);
-        Assert.Equal("Mehr Musik", board.Title(DeckId));
+        Assert.Equal("Mehr", board.Title(DeckId));
+        Assert.Equal("Mehr", board.Slots(DeckId)[3].Top);
         Assert.True(board.Slots(DeckId)[3].Pressable);
+
+        await board.PressAsync(DeckId, 4);
+        Assert.Equal("Startseite", board.Title(DeckId));
+
+        await board.PressAsync(DeckId, 2);
+        Assert.Equal("Pause L-UPL", board.Title(DeckId));
+        Assert.Equal("Pause L-UPL", board.Slots(DeckId)[3].Top);
+    }
+
+    [Fact]
+    public async Task Back_walks_the_way_it_came_through_several_pages()
+    {
+        var deck = new DeckLayout(DeckId, "Mk2", 3, 2,
+        [
+            new DeckPage(DeckPage.HomeId, "Startseite", null, [new DeckKey(1, KeyKinds.Page, "Liga", PageId: "liga")]),
+            new DeckPage("liga", "Liga", DeckPage.HomeId, [new DeckKey(2, KeyKinds.Page, "Vor Spiel", PageId: "vor")]),
+            new DeckPage("vor", "Vor Spiel", "liga", [new DeckKey(1, KeyKinds.Music, "", MusicId: Break.Id)]),
+        ]);
+        var board = Build(out _, out _, deck);
+
+        await board.PressAsync(DeckId, 1);
+        await board.PressAsync(DeckId, 2);
+        Assert.Equal("Vor Spiel", board.Title(DeckId));
+
+        await board.PressAsync(DeckId, 4);
+        Assert.Equal("Liga", board.Title(DeckId));
 
         await board.PressAsync(DeckId, 4);
         Assert.Equal("Startseite", board.Title(DeckId));
