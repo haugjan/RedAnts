@@ -60,9 +60,17 @@
                     audio = new Audio(url);
                     audio.addEventListener('loadedmetadata', function () { report(audio.currentTime, audio.duration || 0); });
                     audio.addEventListener('ended', function () { api.stop(); });
+                    audio.addEventListener('error', function () {
+                        var code = audio && audio.error ? audio.error.code : 0;
+                        console.error('Stück nicht abspielbar', url, audio && audio.error);
+                        alert('Das Stück kann nicht geladen werden (Code ' + code + ').\n' + url);
+                    });
                     var begin = function () {
                         if (startSec > 0) { try { audio.currentTime = startSec; } catch (e) { } }
-                        audio.play().catch(function () { });
+                        audio.play().catch(function (e) {
+                            console.error('Abspielen abgelehnt', url, e);
+                            alert('Abspielen nicht möglich: ' + (e && e.message ? e.message : e));
+                        });
                     };
                     if (audio.readyState >= 1) begin(); else audio.addEventListener('canplay', begin, { once: true });
                     timer = setInterval(function () {
@@ -101,6 +109,7 @@
             };
 
             document.addEventListener('click', function (e) {
+                if (e.target && e.target.closest && e.target.closest('[data-preview-stop]')) { api.stop(); return; }
                 var button = e.target && e.target.closest ? e.target.closest('[data-preview]') : null;
                 if (!button) return;
                 var source = button.getAttribute('data-preview') || '';
