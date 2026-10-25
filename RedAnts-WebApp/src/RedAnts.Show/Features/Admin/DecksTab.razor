@@ -162,7 +162,7 @@
                             <label>Seite
                                 <select class="sa-input" value="@current.PageId" @onchange="e => Set(k => k with { PageId = e.Value?.ToString() })">
                                     <option value="">bitte wählen</option>
-                                    @foreach (var target in Pages.Where(p => !p.IsHome))
+                                    @foreach (var target in Pages.Where(p => !p.IsHome).OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
                                     {
                                         <option value="@target.Id">@target.Name</option>
                                     }
@@ -174,12 +174,14 @@
                         {
                             <label>Anzeige
                                 <select class="sa-input" value="@current.Live" @onchange="e => Set(k => k with { Live = e.Value?.ToString() })">
+                                    <option value="">nur Beschriftung</option>
                                     @foreach (var value in LiveValues.All)
                                     {
                                         <option value="@value">@LiveValues.Label(value)</option>
                                     }
                                 </select>
                             </label>
+                            <p class="sa-hint">Eine Anzeige lässt sich nicht drücken. „Nur Beschriftung“ gibt eine tote Taste, etwa als Titel einer Unterseite.</p>
                         }
 
                         @if (current.Kind is KeyKinds.Steps or KeyKinds.Special)
@@ -333,7 +335,7 @@
         if (kind is null) return;
         Set(k => new DeckKey(k.Number, kind, k.Label, k.Color, k.Icon,
             Steps: kind is KeyKinds.Steps or KeyKinds.Special ? k.Sequence : null,
-            Live: kind == KeyKinds.Live ? k.Live ?? LiveValues.Time : null,
+            Live: kind == KeyKinds.Live ? k.Live ?? "" : null,
             HomeAfter: k.HomeAfter));
     }
 
