@@ -15,8 +15,13 @@ function applyTitle() {
   if (document.title !== PAGE_TITLE) document.title = PAGE_TITLE;
 }
 
+function removeLoginSwitchAccountLink() {
+  document.getElementById('ra-ms-signout')?.remove();
+}
+
 applyFavicon();
 applyTitle();
+removeLoginSwitchAccountLink();
 
 new MutationObserver(applyTitle).observe(document.head, { subtree: true, childList: true, characterData: true });
 
