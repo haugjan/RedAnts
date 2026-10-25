@@ -384,9 +384,10 @@ else
     private async Task<bool> NavigateAsync(string deckId, DeckKeyRow key)
     {
         if (_decks.FirstOrDefault(d => d.Id == deckId) is not { } deck) return false;
-        if (key.Number == deck.Back)
+        var page = deck.Page(View(deckId)?.PageId) ?? deck.Home;
+        if (key.Number == deck.Back && !page.IsHome)
         {
-            _pages[deckId] = deck.Page(View(deckId)?.PageId)?.ParentId ?? DeckPage.HomeId;
+            _pages[deckId] = page.ParentId ?? DeckPage.HomeId;
             await RefreshAsync();
             return true;
         }
