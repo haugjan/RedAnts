@@ -325,6 +325,16 @@ app.UseTicketingScanAuth();
 
 app.UseShow();
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Equals("/dj", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Redirect("/bord");
+        return;
+    }
+    await next();
+});
+
 {
     var djPassword = app.Configuration["Show:BoardPassword"];
     if (!string.IsNullOrEmpty(djPassword))
@@ -391,12 +401,6 @@ app.UseShow();
             if (context.Request.Path.StartsWithSegments("/dj/sound"))
             {
                 await next();
-                return;
-            }
-
-            if (context.Request.Path.Equals("/dj", StringComparison.OrdinalIgnoreCase))
-            {
-                context.Response.Redirect("/bord");
                 return;
             }
 
