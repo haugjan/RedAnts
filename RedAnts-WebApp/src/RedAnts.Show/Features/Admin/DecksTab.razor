@@ -261,7 +261,9 @@
 
     protected override async Task OnSetupLoadedAsync()
     {
-        _music = await MusicQuery.HandleAsync(new GetMusic.Query());
+        _music = (await MusicQuery.HandleAsync(new GetMusic.Query()))
+            .OrderBy(item => item.Display, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
         Load();
     }
 
