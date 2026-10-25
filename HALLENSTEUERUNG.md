@@ -191,8 +191,7 @@ Alle sieben Etappen sind gebaut, die Tests sind grün, und seit dem 20.10.2026 l
 
 ## Offene Punkte
 
-1. **Secret setzen**: `SHOW_BOARD_PASSWORD` muss in GitHub hinterlegt sein, bevor der nächste Deploy auf prod geht, sonst antwortet das Bord dort mit 503.
-2. **Bodet in der Halle messen**: das Protokoll ist nach dem Handbuch gebaut und mit den dokumentierten Rahmen getestet, aber noch an keiner echten ScorePad in Oberseen gehört. Beim ersten Spiel dort den Rohlog (`/status`) ansehen.
-3. **Sofortige Automatik braucht ein Signal, das iCast nicht sendet**: das Handbuch (Scoreboard Handball 2.0) listet alle Felder, ein Flag „Uhr läuft" ist nicht dabei; die beiden letzten Flags melden nur das Ende der Spielzeit und des Timeouts. Die Uhr sendet zwar zehnmal pro Sekunde, die Zeit selbst wechselt aber nur im Sekundentakt. Die Pausenmusik startet deshalb im Mittel nach einer halben Sekunde, in der letzten Minute (Zehntel) nach etwa einer Viertelsekunde. Beim Bodet ScorePad ist noch offen, ob das Attribut-Byte der Nachricht den Stillstand meldet.
-4. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
-5. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
+1. **Bodet in der Halle messen**: das Protokoll ist nach dem Handbuch gebaut und mit den dokumentierten Rahmen getestet, aber noch an keiner echten ScorePad in Oberseen gehört. Beim ersten Spiel dort den Rohlog (`/status`) ansehen.
+2. **Sofortige Automatik braucht ein Signal, das iCast nicht sendet**: das Handbuch (Scoreboard Handball 2.0) listet alle Felder, ein Flag „Uhr läuft" ist nicht dabei; die beiden letzten Flags melden nur das Ende der Spielzeit und des Timeouts. Die Uhr sendet zwar zehnmal pro Sekunde, die Zeit selbst wechselt aber nur im Sekundentakt. Die Pausenmusik startet deshalb im Mittel nach einer halben Sekunde, in der letzten Minute (Zehntel) nach etwa einer Viertelsekunde. Beim Bodet ScorePad ist noch offen, ob das Attribut-Byte der Nachricht den Stillstand meldet.
+3. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
+4. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
