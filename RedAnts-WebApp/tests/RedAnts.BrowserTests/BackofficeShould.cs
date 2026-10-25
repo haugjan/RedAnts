@@ -30,12 +30,12 @@ public sealed class BackofficeShould(BrowserFixture browser)
     }
 
     [E2EFact]
-    public async Task OpenTheGamesPageOfTheShowSection()
+    public async Task ShowTheSpectatorsOfEveryGame()
     {
         var page = await LoginAsync();
-        var response = await page.GotoAsync("/admin/show/spiele");
+        var response = await page.GotoAsync("/admin/show/bedienung");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await browser.ShotAsync(page, "admin-show-spiele");
+        await browser.ShotAsync(page, "admin-show-bedienung");
 
         Assert.NotNull(response);
         Assert.Equal(200, response!.Status);

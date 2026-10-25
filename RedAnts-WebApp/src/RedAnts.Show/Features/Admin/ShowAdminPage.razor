@@ -6,7 +6,10 @@
 
 <div class="sa">
     <nav class="sa-subnav">
-        <strong class="sa-subnav-title">@Title</strong>
+        @foreach (var tab in Tabs)
+        {
+            <button class="sa-subnav-btn @(_tab == tab.Key ? "active" : "")" @onclick="() => Go(tab.Key)" @key="tab.Key">@tab.Label</button>
+        }
         <span class="sa-subnav-spacer"></span>
         @if (PerHall && _halls.Count > 0)
         {
@@ -31,8 +34,7 @@
             case "vmix": <TitlesTab /> break;
             case "led": <LedTab /> break;
             case "decks": <DecksTab /> break;
-            case "spiele": <GamesTab /> break;
-            case "bedienung": <ControlTab /> <StatesTab /> break;
+            case "bedienung": <ControlTab /> <StatesTab /> <GamesTab /> break;
             default: <HallsTab OnHallsChanged="ReloadHallsAsync" /> break;
         }
     </main>
@@ -46,15 +48,12 @@
         ("hallen", "Hallen"),
         ("musik", "Musik"),
         ("decks", "Decks"),
-        ("spiele", "Spiele"),
         ("bedienung", "Bedienung"),
         ("vmix", "vMix-Titel"),
         ("led", "LED-Vorlagen"),
     ];
 
     private static readonly string[] HallPages = ["hallen", "bedienung"];
-
-    private string Title => Tabs.FirstOrDefault(t => t.Key == _tab).Label ?? "Show";
 
     private bool PerHall => HallPages.Contains(_tab);
 
@@ -86,6 +85,15 @@
     }
 
     private void OnHallChanged(ChangeEventArgs e) => State.SelectedHallId = e.Value?.ToString();
+
+    private void Go(string tab)
+    {
+        if (_tab == tab) return;
+        var hall = HallPages.Contains(tab) && State.SelectedHallId is { Length: > 0 } id
+            ? "?halle=" + Uri.EscapeDataString(id)
+            : "";
+        Navigation.NavigateTo($"/admin/show/{tab}{hall}", forceLoad: true);
+    }
 
     private void OnStateChanged()
     {

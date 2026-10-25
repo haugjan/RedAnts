@@ -26,96 +26,12 @@ public sealed class ShowAdminManifestReader : IPackageManifestReader
                 new
                 {
                     type = "dashboard",
-                    alias = "redAnts.halle.hallen",
-                    name = "Hallen",
+                    alias = "redAnts.halle.show",
+                    name = "Show",
                     element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
                     elementName = "show-admin-view",
                     weight = 1000,
-                    meta = new { label = "Hallen", pathname = "hallen" },
-                    conditions = new object[]
-                    {
-                        new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
-                    }
-                },
-                new
-                {
-                    type = "dashboard",
-                    alias = "redAnts.halle.musik",
-                    name = "Musik",
-                    element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
-                    elementName = "show-admin-view",
-                    weight = 900,
-                    meta = new { label = "Musik", pathname = "musik" },
-                    conditions = new object[]
-                    {
-                        new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
-                    }
-                },
-                new
-                {
-                    type = "dashboard",
-                    alias = "redAnts.halle.decks",
-                    name = "Decks",
-                    element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
-                    elementName = "show-admin-view",
-                    weight = 800,
-                    meta = new { label = "Decks", pathname = "decks" },
-                    conditions = new object[]
-                    {
-                        new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
-                    }
-                },
-                new
-                {
-                    type = "dashboard",
-                    alias = "redAnts.halle.spiele",
-                    name = "Spiele",
-                    element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
-                    elementName = "show-admin-view",
-                    weight = 750,
-                    meta = new { label = "Spiele", pathname = "spiele" },
-                    conditions = new object[]
-                    {
-                        new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
-                    }
-                },
-                new
-                {
-                    type = "dashboard",
-                    alias = "redAnts.halle.bedienung",
-                    name = "Bedienung",
-                    element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
-                    elementName = "show-admin-view",
-                    weight = 700,
-                    meta = new { label = "Bedienung", pathname = "bedienung" },
-                    conditions = new object[]
-                    {
-                        new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
-                    }
-                },
-                new
-                {
-                    type = "dashboard",
-                    alias = "redAnts.halle.vmix",
-                    name = "vMix-Titel",
-                    element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
-                    elementName = "show-admin-view",
-                    weight = 600,
-                    meta = new { label = "vMix-Titel", pathname = "vmix" },
-                    conditions = new object[]
-                    {
-                        new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
-                    }
-                },
-                new
-                {
-                    type = "dashboard",
-                    alias = "redAnts.halle.led",
-                    name = "LED-Vorlagen",
-                    element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
-                    elementName = "show-admin-view",
-                    weight = 500,
-                    meta = new { label = "LED-Vorlagen", pathname = "led" },
+                    meta = new { label = "Übersicht", pathname = "uebersicht" },
                     conditions = new object[]
                     {
                         new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
