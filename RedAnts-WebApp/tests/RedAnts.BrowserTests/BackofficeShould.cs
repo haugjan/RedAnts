@@ -42,6 +42,18 @@ public sealed class BackofficeShould(BrowserFixture browser)
         await Assertions.Expect(page.Locator("body")).ToContainTextAsync("Zuschauer je Spiel", new() { Timeout = 30_000 });
     }
 
+    [E2EFact]
+    public async Task ShowTheFirstKeyOfAStartPageInTheDeckEditor()
+    {
+        var page = await LoginAsync();
+        await page.GotoAsync("/admin/show/decks");
+        await Assertions.Expect(page.Locator(".sa-deck")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await browser.ShotAsync(page, "admin-show-decks");
+
+        var tiles = await page.Locator(".sa-key").AllInnerTextsAsync();
+        Assert.DoesNotContain(tiles, tile => tile.Contains("Zurück", StringComparison.Ordinal));
+    }
+
     private async Task<IPage> LoginAsync()
     {
         var page = await browser.NewPageAsync();
