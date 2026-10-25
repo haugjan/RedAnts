@@ -452,7 +452,16 @@ else
             if (await DeckQuery.HandleAsync(new GetDeckView.Query(id, deck.Id, page)) is { } view)
                 _views[deck.Id] = view;
         }
+        await LearnMusicAsync();
         await FollowMusicAsync();
+    }
+
+    private async Task LearnMusicAsync()
+    {
+        var unknown = _views.Values
+            .SelectMany(view => view.Keys)
+            .Any(key => key.MusicId is { Length: > 0 } id && _music.All(item => item.Id != id));
+        if (unknown) _music = await MusicQuery.HandleAsync(new GetMusic.Query());
     }
 
     private async Task RefreshAsync()
@@ -510,6 +519,8 @@ else
             if (await NavigateAsync(deckId, key)) return;
             if (await ControlAsync(deckId, key)) return;
         }
+        if (key.MusicId is { Length: > 0 } wanted && _music.All(item => item.Id != wanted))
+            await LearnMusicAsync();
         if (MusicOf(key) is { } music)
         {
             if (_hallId is { Length: > 0 } hall)
