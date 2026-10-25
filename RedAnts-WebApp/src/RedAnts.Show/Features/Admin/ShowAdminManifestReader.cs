@@ -68,6 +68,20 @@ public sealed class ShowAdminManifestReader : IPackageManifestReader
                 new
                 {
                     type = "dashboard",
+                    alias = "redAnts.halle.spiele",
+                    name = "Spiele",
+                    element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",
+                    elementName = "show-admin-view",
+                    weight = 750,
+                    meta = new { label = "Spiele", pathname = "spiele" },
+                    conditions = new object[]
+                    {
+                        new { alias = "Umb.Condition.SectionAlias", match = SectionAlias }
+                    }
+                },
+                new
+                {
+                    type = "dashboard",
                     alias = "redAnts.halle.bedienung",
                     name = "Bedienung",
                     element = "/_content/RedAnts.Show/App_Plugins/Show/show-view.js",

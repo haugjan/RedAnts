@@ -21,6 +21,10 @@
         <div class="gs-head">
             <strong>@_game.Title</strong>
             <span>@_game.Id · @Source(_game.Source)</span>
+            @if (_game.Spectators > 0)
+            {
+                <span>👁 @_game.Spectators.ToString("N0") Zuschauer</span>
+            }
             <button class="gs-btn" @onclick="UnloadAsync" disabled="@_busy">Entladen</button>
             @if (_game.Source == GameSource.SwissUnihockey)
             {

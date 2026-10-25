@@ -26,6 +26,7 @@ public static class ShowFeatures
         typeof(LoadGameFromSwissUnihockey.Handler),
         typeof(ImportGameConfig.Handler),
         typeof(SaveGame.Handler),
+        typeof(RecordSpectators.Handler),
         typeof(RegisterAgent.Handler),
         typeof(UnregisterAgent.Handler),
         typeof(RecordAgentReport.Handler),

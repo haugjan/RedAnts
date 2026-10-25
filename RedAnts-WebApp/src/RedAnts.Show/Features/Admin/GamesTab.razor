@@ -1,0 +1,64 @@
+@inject GetGames.Handler GamesQuery
+
+<section class="sa-card">
+    <h2>Spiele <small>Zuschauer je Spiel</small></h2>
+    @if (_rows.Count == 0)
+    {
+        <p class="sa-hint">Noch kein Spiel geladen.</p>
+    }
+    else
+    {
+        <table class="sa-table">
+            <thead>
+                <tr>
+                    <th style="width:110px">Datum</th>
+                    <th>Spiel</th>
+                    <th style="width:200px">Heim</th>
+                    <th style="width:200px">Gast</th>
+                    <th style="width:140px">Quelle</th>
+                    <th style="width:110px">Zuschauer</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _rows)
+                {
+                    <tr @key="row.Id">
+                        <td>@(row.Date?.ToString("dd.MM.yyyy") ?? "")</td>
+                        <td>@row.Title <code>@row.Id</code></td>
+                        <td>@row.Home</td>
+                        <td>@row.Away</td>
+                        <td>@Source(row.Source)</td>
+                        <td>@(row.Spectators > 0 ? row.Spectators.ToString("N0") : "")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="sa-hint">
+            @_counted Spiele mit Zählung, @_total.ToString("N0") Zuschauer, Schnitt @_average.
+            Gezählt wird auf der Taste „Zuschauer“ im Deck, der Agent schreibt die Zahl ins Spiel.
+        </p>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<GameRow> _rows = [];
+    private int _counted;
+    private int _total;
+    private string _average = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rows = await GamesQuery.HandleAsync(new GetGames.Query());
+        var counted = _rows.Where(row => row.Spectators > 0).ToList();
+        _counted = counted.Count;
+        _total = counted.Sum(row => row.Spectators);
+        _average = _counted == 0 ? "" : ((int)Math.Round((double)_total / _counted)).ToString("N0");
+    }
+
+    private static string Source(GameSource source) => source switch
+    {
+        GameSource.SwissUnihockey => "swissunihockey",
+        GameSource.File => "Datei",
+        _ => "von Hand",
+    };
+}

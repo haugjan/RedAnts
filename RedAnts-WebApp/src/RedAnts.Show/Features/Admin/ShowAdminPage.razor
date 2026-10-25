@@ -31,6 +31,7 @@
             case "vmix": <TitlesTab /> break;
             case "led": <LedTab /> break;
             case "decks": <DecksTab /> break;
+            case "spiele": <GamesTab /> break;
             case "bedienung": <ControlTab /> <StatesTab /> break;
             default: <HallsTab OnHallsChanged="ReloadHallsAsync" /> break;
         }
@@ -45,6 +46,7 @@
         ("hallen", "Hallen"),
         ("musik", "Musik"),
         ("decks", "Decks"),
+        ("spiele", "Spiele"),
         ("bedienung", "Bedienung"),
         ("vmix", "vMix-Titel"),
         ("led", "LED-Vorlagen"),

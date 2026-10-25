@@ -8,7 +8,7 @@ namespace RedAnts.Show.Features.Admin;
 [Authorize(AuthenticationSchemes = Constants.Security.BackOfficeAuthenticationType)]
 public sealed class ShowAdminController : Controller
 {
-    public static readonly IReadOnlyList<string> Pages = ["hallen", "musik", "decks", "bedienung", "vmix", "led"];
+    public static readonly IReadOnlyList<string> Pages = ["hallen", "musik", "decks", "spiele", "bedienung", "vmix", "led"];
 
     [HttpGet("")]
     public IActionResult Index() => RedirectToAction(nameof(Page), new { page = Pages[0] });

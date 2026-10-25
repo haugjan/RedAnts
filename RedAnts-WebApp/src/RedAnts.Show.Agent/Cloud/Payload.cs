@@ -221,7 +221,8 @@ public sealed record Game(
     string Referee2,
     string Commentator1,
     string Commentator2,
-    DateTimeOffset LoadedAt)
+    DateTimeOffset LoadedAt,
+    int Spectators = 0)
 {
     public static readonly Game None = new("", GameSource.Manual, "", "", null, "", GameTeam.Empty, GameTeam.Empty, "", "", "", "", DateTimeOffset.MinValue);
 

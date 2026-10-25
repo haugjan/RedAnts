@@ -34,7 +34,6 @@ public sealed class Deck
     string _control = "";
     long _controlOrder;
     string _player = "";
-    int _spectators;
 
     public Deck(PayloadStore payload, LiveGame live, ShowStates states, KeyRunner runner, ILogger<Deck> log)
     {
@@ -167,7 +166,7 @@ public sealed class Deck
         away = _live.AwayScore,
         running = _live.ClockRunning,
         clock = _live.ClockLive,
-        spectators = _spectators,
+        spectators = _payload.Game.Spectators,
     };
 
     public string Title(string deckId)
@@ -543,15 +542,14 @@ public sealed class Deck
             var (label, delta) = steps[i];
             builder.Action(places[i], label, CNeutral, () =>
             {
-                _spectators = Math.Max(0, _spectators + delta);
-                Bump();
+                _payload.SetSpectators(Math.Max(0, _payload.Game.Spectators + delta));
                 return Task.CompletedTask;
             });
         }
         if (places.Count > 0)
-            builder.Action(places[^1], $"👁 {_spectators}\nanzeigen", CBack, async () =>
+            builder.Action(places[^1], $"👁 {_payload.Game.Spectators}\nanzeigen", CBack, async () =>
             {
-                await _runner.ShowTitleAsync("spectators", new KeyContext(Text: _spectators.ToString()), CancellationToken.None);
+                await _runner.ShowTitleAsync("spectators", new KeyContext(Text: _payload.Game.Spectators.ToString()), CancellationToken.None);
                 Home(deckId);
             });
     }

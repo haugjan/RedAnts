@@ -29,16 +29,44 @@ public sealed class PayloadStore(ILogger<PayloadStore> log)
 
     public void Apply(AgentPayload payload)
     {
-        lock (_gate) _current = payload;
+        lock (_gate)
+        {
+            payload = Kept(_current, payload);
+            _current = payload;
+        }
+        Save(payload);
+        log.LogInformation("Konfiguration übernommen: Halle {Hall}, {Decks} Decks, {Music} Musik-Befehle, Spiel {Game}",
+            payload.Hall.Name, payload.Hall.Decks?.Count ?? 0, payload.Music?.Count ?? 0,
+            payload.Game?.Title is { Length: > 0 } title ? title : "keines");
+        Changed?.Invoke();
+    }
+
+    public void SetSpectators(int count)
+    {
+        AgentPayload next;
+        lock (_gate)
+        {
+            if (_current.Game is not { } game || game.Spectators == count) return;
+            next = _current with { Game = game with { Spectators = count } };
+            _current = next;
+        }
+        Save(next);
+        Changed?.Invoke();
+    }
+
+    static AgentPayload Kept(AgentPayload current, AgentPayload fresh) =>
+        current.Game is { } local && fresh.Game is { Id.Length: > 0 } coming && local.Id == coming.Id
+            ? fresh with { Game = coming with { Spectators = local.Spectators } }
+            : fresh;
+
+    void Save(AgentPayload payload)
+    {
         try
         {
             Directory.CreateDirectory(AgentConfig.DataDir);
             System.IO.File.WriteAllText(File, JsonSerializer.Serialize(payload, PayloadJson.Pretty));
         }
         catch (IOException e) { log.LogWarning("Konfiguration konnte nicht gesichert werden: {Message}", e.Message); }
-        log.LogInformation("Konfiguration übernommen: Halle {Hall}, {Decks} Decks, {Music} Musik-Befehle, Spiel {Game}",
-            payload.Hall.Name, payload.Hall.Decks?.Count ?? 0, payload.Music?.Count ?? 0, payload.Game?.Title is { Length: > 0 } title ? title : "keines");
-        Changed?.Invoke();
     }
 
     static AgentPayload Load(ILogger log)

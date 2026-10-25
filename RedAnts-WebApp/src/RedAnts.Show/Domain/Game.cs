@@ -50,7 +50,8 @@ public sealed record Game(
     string Referee2,
     string Commentator1,
     string Commentator2,
-    DateTimeOffset LoadedAt)
+    DateTimeOffset LoadedAt,
+    int Spectators = 0)
 {
     public static Game Manual(string id, string title)
     {
@@ -82,6 +83,7 @@ public sealed record Game(
         {
             Commentator1 = Commentator1.Length > 0 ? Commentator1 : fresh.Commentator1,
             Commentator2 = Commentator2.Length > 0 ? Commentator2 : fresh.Commentator2,
+            Spectators = Spectators > 0 ? Spectators : fresh.Spectators,
             Home = MergeTeam(Home, fresh.Home),
             Away = MergeTeam(Away, fresh.Away),
         };

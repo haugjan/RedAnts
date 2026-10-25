@@ -14,7 +14,7 @@ public sealed class GameReader(ShowDatabase database) : IGameReader
         return rows
             .Select(r => JsonSerializer.Deserialize<Game>(r.Json, ShowJson.Options))
             .OfType<Game>()
-            .Select(g => new GameRow(g.Id, g.Title, g.Date, g.Home.LongName, g.Away.LongName, g.Source, g.LoadedAt))
+            .Select(g => new GameRow(g.Id, g.Title, g.Date, g.Home.LongName, g.Away.LongName, g.Source, g.LoadedAt, g.Spectators))
             .ToList();
     }
 }

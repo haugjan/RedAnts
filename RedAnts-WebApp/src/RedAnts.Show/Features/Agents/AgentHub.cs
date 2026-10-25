@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using RedAnts.Show.Features.Board;
+using RedAnts.Show.Features.Games;
 
 namespace RedAnts.Show.Features.Agents;
 
@@ -7,6 +8,7 @@ public sealed class AgentHub(
     RegisterAgent.Handler register,
     UnregisterAgent.Handler unregister,
     RecordAgentReport.Handler report,
+    RecordSpectators.Handler spectators,
     GetAgentPayload.Handler payload,
     RecordDeckView.Handler deck) : Hub
 {
@@ -49,6 +51,11 @@ public sealed class AgentHub(
         await unregister.HandleAsync(new UnregisterAgent.Command(Context.ConnectionId));
         await base.OnDisconnectedAsync(exception);
     }
+
+    public Task Spectators(int count) =>
+        Context.Items[HallItem] is string hall
+            ? spectators.HandleAsync(new RecordSpectators.Command(hall, count))
+            : Task.CompletedTask;
 
     public Task Report(string kind, string json) =>
         Context.Items[HallItem] is string hall

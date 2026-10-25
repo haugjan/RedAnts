@@ -24,6 +24,7 @@ public sealed class StatusReporter(
     readonly object _clockGate = new();
     DateTime _clockPushedAt = DateTime.MinValue;
     DateTimeOffset _statusSentAt = DateTimeOffset.MinValue;
+    string _spectatorsSent = "";
     IReadOnlyList<VmixInput> _inputs = [];
 
     public void ReportMusic(MusicItem music) =>
@@ -94,6 +95,8 @@ public sealed class StatusReporter(
 
         await SendIfChangedAsync("deck", new { decks = deck.Decks }, stop);
 
+        await SendSpectatorsAsync(stop);
+
         if (_inputs.Count > 0)
             await SendIfChangedAsync("vmix", new { inputs = _inputs.Select(i => new { title = i.Title, fields = i.Fields }) }, stop);
 
@@ -106,6 +109,16 @@ public sealed class StatusReporter(
             _statusSentAt = DateTimeOffset.Now;
             await cloud.ReportAsync("status", status, stop);
         }
+    }
+
+    async Task SendSpectatorsAsync(CancellationToken stop)
+    {
+        var game = payload.Game;
+        if (game.Id.Length == 0) return;
+        var mark = $"{game.Id}:{game.Spectators}";
+        if (mark == _spectatorsSent) return;
+        _spectatorsSent = mark;
+        await cloud.SendAsync("Spectators", stop, game.Spectators);
     }
 
     void PushClock()
