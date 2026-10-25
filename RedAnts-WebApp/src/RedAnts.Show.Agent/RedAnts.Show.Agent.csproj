@@ -20,6 +20,10 @@
     <Copy SourceFiles="../RedAnts.Show/wwwroot/show/hallboard.js" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
     <Copy SourceFiles="../RedAnts.Show/wwwroot/show/board.css" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
     <Copy SourceFiles="../RedAnts.Show/wwwroot/show/gamesetup.css" DestinationFolder="wwwroot/show" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <ShowIcons Include="../RedAnts.Show/wwwroot/show/icons/*.png" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ShowIcons)" DestinationFolder="Icons" SkipUnchangedFiles="true" />
   </Target>
 
 
