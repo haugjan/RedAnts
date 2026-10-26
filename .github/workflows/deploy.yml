@@ -119,8 +119,16 @@ jobs:
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
-          az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
-            --src-path app.zip --type zip --track-status false --restart false --timeout 600000 --clean true
+          # Kudu answers the zip upload with a 502 now and then; try again instead of failing the deploy.
+          for attempt in 1 2 3; do
+            if az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" \
+                 --src-path app.zip --type zip --track-status false --restart false --timeout 600000 --clean true; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed; trying again in 30 s."
+            sleep 30
+          done
+          exit 1
       - name: Configure app settings (dev — single write, one restart)
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
@@ -313,8 +321,16 @@ jobs:
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
         run: |
-          az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" --slot staging \
-            --src-path app.zip --type zip --track-status false --restart true --timeout 600000 --clean true
+          # Kudu answers the zip upload with a 502 now and then; try again instead of failing the deploy.
+          for attempt in 1 2 3; do
+            if az webapp deploy --resource-group RG_RedAnts --name "$WEBAPP" --slot staging \
+                 --src-path app.zip --type zip --track-status false --restart true --timeout 600000 --clean true; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed; trying again in 30 s."
+            sleep 30
+          done
+          exit 1
       - name: Warm up the staging slot
         env:
           WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
