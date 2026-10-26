@@ -29,6 +29,8 @@
                     }
                 </select>
             </label>
+            <button class="sa-btn small" @onclick="AddDeck">+ Deck</button>
+            <button class="sa-btn small danger" @onclick="RemoveDeck" disabled="@(_decks.Count < 2)">Deck löschen</button>
             <button class="sa-btn small" @onclick="AddPage">+ Seite</button>
             <button class="sa-btn small danger" @onclick="RemovePage" disabled="@(Page?.IsHome ?? true)">Seite löschen</button>
             <span class="sd-spacer"></span>
@@ -39,8 +41,15 @@
         @if (Deck is { } deck && Page is { } sheet)
         {
             <div class="sa-actions">
+                <label class="sa-inline">Name des Decks <input class="sa-input" value="@deck.Name" @onchange="RenameDeck" /></label>
+                <label class="sa-inline">Spalten <input class="sa-input sa-num" type="number" min="1" max="16" value="@deck.Columns" @onchange="e => SetGrid(e, columns: true)" /></label>
+                <label class="sa-inline">Zeilen <input class="sa-input sa-num" type="number" min="1" max="8" value="@deck.Rows" @onchange="e => SetGrid(e, columns: false)" /></label>
+                <label class="sa-inline">PANIC auf <input class="sa-input sa-num" type="number" min="1" max="@deck.Count" value="@deck.Panic" @onchange="e => SetFixed(e, panic: true)" /></label>
+                <label class="sa-inline">Zurück auf <input class="sa-input sa-num" type="number" min="1" max="@deck.Count" value="@deck.Back" @onchange="e => SetFixed(e, panic: false)" /></label>
+            </div>
+            <div class="sa-actions">
                 <label class="sa-inline">Name der Seite <input class="sa-input" value="@sheet.Name" @onchange="RenamePage" /></label>
-                <span class="sa-hint">@deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back (nur auf Unterseiten) · PANIC auf @deck.Panic</span>
+                <span class="sa-hint">@deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back (nur auf Unterseiten) · PANIC auf @deck.Panic · Kennung <code>@deck.Id</code></span>
             </div>
 
             <div class="sa-deckgrid">
@@ -451,6 +460,75 @@
     {
         var pages = deck.Pages.Select(p => p.Id == page.Id ? page : p).ToList();
         _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+    }
+
+    private void AddDeck()
+    {
+        var id = $"deck-{_decks.Count + 1}";
+        while (_decks.Any(d => d.Id == id)) id += "x";
+        var deck = new Deck(id, "Neues Deck", 5, 3,
+            [new DeckPage(DeckPage.HomeId, "Startseite", null, [])], PanicKey: 11, BackKey: 1);
+        _decks = [.. _decks, deck];
+        _deckId = id;
+        _pageId = DeckPage.HomeId;
+        _selected = 1;
+        Notify("Deck angelegt. Name und Raster anpassen, dann speichern; unter Hallen wird gewählt, wer es anbietet.");
+        Touch();
+    }
+
+    private void RemoveDeck()
+    {
+        if (Deck is not { } deck || _decks.Count < 2) return;
+        _decks = _decks.Where(d => d.Id != deck.Id).ToList();
+        _deckId = _decks[0].Id;
+        _pageId = DeckPage.HomeId;
+        _selected = 1;
+        Notify($"Deck „{deck.Name}“ entfernt. Hallen, die es anbieten, verlieren es beim Speichern.");
+        Touch();
+    }
+
+    private void RenameDeck(ChangeEventArgs e)
+    {
+        if (Deck is not { } deck) return;
+        var name = e.Value?.ToString() ?? "";
+        if (name.Trim().Length == 0) return;
+        _decks = _decks.Select(d => d.Id == deck.Id ? d with { Name = name.Trim() } : d).ToList();
+        Touch();
+    }
+
+    private void SetGrid(ChangeEventArgs e, bool columns)
+    {
+        if (Deck is not { } deck || Number(e.Value) is not { } value) return;
+        var wide = columns ? Math.Clamp(value, 1, 16) : deck.Columns;
+        var high = columns ? deck.Rows : Math.Clamp(value, 1, 8);
+        var count = wide * high;
+        var dropped = deck.Pages.Sum(page => page.Keys.Count(key => key.Number > count));
+        var pages = deck.Pages
+            .Select(page => page with { Keys = page.Keys.Where(key => key.Number <= count).ToList() })
+            .ToList();
+        _decks = _decks
+            .Select(d => d.Id == deck.Id
+                ? d with { Columns = wide, Rows = high, Pages = pages, PanicKey = Math.Min(d.Panic, count), BackKey = Math.Min(d.Back, count) }
+                : d)
+            .ToList();
+        if (_selected > count) _selected = 1;
+        if (dropped > 0) Notify($"{dropped} Tasten liegen ausserhalb des neuen Rasters und sind weg.");
+        Touch();
+    }
+
+    private void SetFixed(ChangeEventArgs e, bool panic)
+    {
+        if (Deck is not { } deck || Number(e.Value) is not { } value) return;
+        var place = Math.Clamp(value, 1, deck.Count);
+        if (place == (panic ? deck.Back : deck.Panic))
+        {
+            Fail("PANIC und Zurück brauchen verschiedene Plätze.");
+            return;
+        }
+        _decks = _decks
+            .Select(d => d.Id == deck.Id ? (panic ? d with { PanicKey = place } : d with { BackKey = place }) : d)
+            .ToList();
+        Touch();
     }
 
     private void AddPage()
