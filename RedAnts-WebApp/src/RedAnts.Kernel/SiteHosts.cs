@@ -67,6 +67,8 @@ public static class SiteHosts
         foreach (var shared in SharedPrefixes)
             if (StartsWithSegment(path, shared)) return null;
 
+        if (StartsWithSegment(path, "/dj/sound")) return null;
+
         if (StartsWithSegment(path, "/umbraco")
             || StartsWithSegment(path, "/umbraco-entra-signin")
             || StartsWithSegment(path, "/umbraco-entra-signout")
