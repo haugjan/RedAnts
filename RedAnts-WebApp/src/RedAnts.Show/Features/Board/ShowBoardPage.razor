@@ -232,6 +232,16 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        try { await ReadAllAsync(); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _note = "Die Halle konnte nicht geladen werden. Die Seite versucht es gleich wieder.";
+        }
+        _poll ??= new Timer(_ => _ = PollAsync(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task ReadAllAsync()
+    {
         var all = await HallsQuery.HandleAsync(new GetHalls.Query());
         _halls = all.Where(h => h.MusicOnly || !Online).ToList();
         _given = HallId;
@@ -244,7 +254,6 @@ else
         await LoadHallAsync();
         Feed.Changed += OnFeed;
         Playback.Changed += OnPlayback;
-        _poll = new Timer(_ => _ = PollAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
     }
 
     protected override async Task OnAfterRenderAsync(bool first)

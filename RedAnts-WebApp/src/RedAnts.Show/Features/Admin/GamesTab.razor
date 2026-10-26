@@ -2,7 +2,11 @@
 
 <section class="sa-card">
     <h2>Spiele <small>Zuschauer je Spiel</small></h2>
-    @if (_rows.Count == 0)
+    @if (_trouble.Length > 0)
+    {
+        <p class="sa-hint">@_trouble</p>
+    }
+    else if (_rows.Count == 0)
     {
         <p class="sa-hint">Noch kein Spiel geladen.</p>
     }
@@ -44,13 +48,20 @@
 
 @code {
     private IReadOnlyList<GameRow> _rows = [];
+    private string _trouble = "";
     private int _counted;
     private int _total;
     private string _average = "";
 
     protected override async Task OnInitializedAsync()
     {
-        _rows = await GamesQuery.HandleAsync(new GetGames.Query());
+        try { _rows = await GamesQuery.HandleAsync(new GetGames.Query()); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _rows = [];
+            _trouble = "Die Spiele konnten nicht geladen werden.";
+            return;
+        }
         var counted = _rows.Where(row => row.Spectators > 0).ToList();
         _counted = counted.Count;
         _total = counted.Sum(row => row.Spectators);

@@ -90,7 +90,8 @@
 
     private async Task ReloadHallsAsync()
     {
-        _halls = await HallsQuery.HandleAsync(new GetHalls.Query());
+        try { _halls = await HallsQuery.HandleAsync(new GetHalls.Query()); }
+        catch (Exception e) when (e is not OperationCanceledException) { _halls = []; }
         if (_halls.Count > 0 && !_halls.Any(h => h.Id == State.SelectedHallId))
             State.SelectedHallId = _halls[0].Id;
     }
