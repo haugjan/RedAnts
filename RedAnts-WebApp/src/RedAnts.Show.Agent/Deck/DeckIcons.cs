@@ -12,6 +12,10 @@ public static class DeckIcons
     public const string BestPlayer = "bestplayer";
     public const string Starting6 = "starting6";
     public const string Strafe = "strafe";
+    public const string Strafe2 = "strafe-2min";
+    public const string Strafe22 = "strafe-2-2min";
+    public const string Strafe10 = "strafe-10min";
+    public const string Spieldauerstrafe = "spieldauerstrafe-karte";
     public const string Meldung = "meldungen";
     public const string Drittel = "drittel";
     public const string Resultat = "resultat";
@@ -33,6 +37,16 @@ public static class DeckIcons
     public static string Dir => Path.Combine(AppContext.BaseDirectory, "Icons");
 
     public static bool Known(string icon) => File.Exists(Path.Combine(Dir, icon + ".png"));
+
+    public static bool IsName(string name) =>
+        name.Length is > 0 and <= 64 && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
+
+    public static string? NameOf(string? imageKey)
+    {
+        if (imageKey is not { Length: > 0 }) return null;
+        var parts = imageKey.Split('|');
+        return parts.Length == 3 && parts[0].Length > 0 ? parts[0] : null;
+    }
 
     public static string Key(string icon, string label, int textColor, string top = "") =>
         top.Length > 0 ? $"{icon}|{label}|{textColor:X6}|{top}" : $"{icon}|{label}|{textColor:X6}";
