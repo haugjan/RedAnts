@@ -8,6 +8,7 @@ class ShowAdminView extends HTMLElement {
     const iframe = document.createElement('iframe');
     iframe.src = '/admin/show/' + page;
     iframe.title = 'Show';
+    iframe.allow = 'clipboard-read; clipboard-write';
     iframe.style.cssText = 'width:100%;height:calc(100vh - 60px);border:none;display:block;';
     this.appendChild(iframe);
   }

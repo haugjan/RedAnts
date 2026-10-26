@@ -1,10 +1,16 @@
 @inherits SetupTab
+@using System.Text.Json
 @using RedAnts.Show.Features.Music
+@implements IAsyncDisposable
 @inject GetMusic.Handler MusicQuery
+@inject IJSRuntime JS
 
 <section class="sa-card">
     <h2>Decks <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
-    <p class="sa-hint">Die Decks gelten für alle Hallen. Unter Hallen wird gewählt, welche davon eine Halle anbietet.</p>
+    <p class="sa-hint">
+        Die Decks gelten für alle Hallen. Unter Hallen wird gewählt, welche davon eine Halle anbietet.
+        Eine belegte Kachel lässt sich auf eine freie ziehen; Strg+C kopiert die gewählte Taste, Strg+V fügt sie auf der gewählten Kachel ein, auch in einem anderen Tab.
+    </p>
 
         <div class="sa-actions">
             <label class="sa-inline">Gerät
@@ -44,8 +50,14 @@
                         var number = n;
                         var tile = sheet.KeyAt(number);
                         var locked = Locked(deck, sheet, number);
-                        <div class="sa-key @(number == _selected ? "selected" : "")"
+                        <div class="sa-key @(number == _selected ? "selected" : "") @(_dragFrom == number ? "dragging" : "") @(_dragFrom > 0 && Droppable(deck, sheet, number) ? "target" : "")"
                              style="background:@(locked is not null ? "#3a3f47" : tile.Color);color:#fff"
+                             draggable="@(Draggable(deck, sheet, number) ? "true" : "false")"
+                             @ondragstart="() => _dragFrom = number"
+                             @ondragend="() => _dragFrom = 0"
+                             @ondragover:preventDefault="true"
+                             @ondragenter:preventDefault="true"
+                             @ondrop="() => Drop(deck, sheet, number)"
                              @onclick="() => _selected = number">
                             <span class="sa-key-n">@number</span>
                             @if (locked is { } lockedLabel)
@@ -322,6 +334,79 @@
     {
         var color = e.Value?.ToString() ?? DeckKey.DefaultColor;
         Set(k => k with { Color = color });
+    }
+
+    private int _dragFrom;
+
+    private DotNetObjectReference<DecksTab>? _self;
+
+    private bool Draggable(Deck deck, DeckPage page, int number) =>
+        Locked(deck, page, number) is null && !page.KeyAt(number).IsEmpty;
+
+    private bool Droppable(Deck deck, DeckPage page, int number) =>
+        Locked(deck, page, number) is null && page.KeyAt(number).IsEmpty && number != _dragFrom;
+
+    private void Drop(Deck deck, DeckPage page, int number)
+    {
+        var from = _dragFrom;
+        _dragFrom = 0;
+        if (from == 0 || !Draggable(deck, page, from) || !Droppable(deck, page, number)) return;
+        var moved = page.KeyAt(from) with { Number = number };
+        Replace(deck, page.With(moved).With(new DeckKey(from, KeyKinds.Empty)));
+        _selected = number;
+        Touch();
+    }
+
+    [JSInvokable]
+    public string? CopyKey()
+    {
+        if (Page is not { } page) return null;
+        var key = page.KeyAt(_selected);
+        if (key.IsEmpty) { Notify("Die gewählte Kachel ist leer."); StateHasChanged(); return null; }
+        Notify($"Taste {_selected} kopiert.");
+        StateHasChanged();
+        return JsonSerializer.Serialize(key, ShowJson.Pretty);
+    }
+
+    [JSInvokable]
+    public void PasteKey(string? json)
+    {
+        if (Deck is not { } deck || Page is not { } page) return;
+        if (Locked(deck, page, _selected) is not null)
+        {
+            Fail($"Taste {_selected} gehört fest zu PANIC oder Zurück.");
+            StateHasChanged();
+            return;
+        }
+        DeckKey? key = null;
+        try { key = JsonSerializer.Deserialize<DeckKey>(json ?? "", ShowJson.Options); }
+        catch (JsonException) { }
+        if (key is null || !KeyKinds.All.Contains(key.Kind))
+        {
+            Fail("In der Zwischenablage steht keine Taste.");
+            StateHasChanged();
+            return;
+        }
+        Replace(deck, page.With(key with { Number = _selected }));
+        Touch();
+        Notify($"Taste {_selected} eingefügt.");
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (!first) return;
+        _self = DotNetObjectReference.Create(this);
+        try { await JS.InvokeVoidAsync("showAdmin.bindKeys", _self); }
+        catch (JSException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("showAdmin.unbindKeys"); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+        _self?.Dispose();
     }
 
     private void Set(Func<DeckKey, DeckKey> change)

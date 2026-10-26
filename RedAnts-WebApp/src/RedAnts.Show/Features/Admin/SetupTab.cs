@@ -50,4 +50,10 @@ public abstract class SetupTab : ComponentBase
         Status = text;
         StatusIsError = false;
     }
+
+    protected void Fail(string text)
+    {
+        Status = text;
+        StatusIsError = true;
+    }
 }

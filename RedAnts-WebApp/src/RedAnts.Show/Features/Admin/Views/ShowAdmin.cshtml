@@ -24,7 +24,7 @@
     <script>
         if (window.djBoard) djBoard.useServerTokens('/admin/dj/spotify/token');
         window.showAdmin = (function () {
-            var audio = null, timer = null, spotifyTimer = null, hook = null;
+            var audio = null, timer = null, spotifyTimer = null, hook = null, keys = null;
 
             function report(pos, dur) {
                 if (hook) { try { hook.invokeMethodAsync('OnCuePosition', pos || 0, dur || 0); } catch (e) { } }
@@ -52,6 +52,8 @@
                     document.body.appendChild(a); a.click(); a.remove();
                     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
                 },
+                bindKeys: function (ref) { keys = ref; },
+                unbindKeys: function () { keys = null; },
                 bindCue: function (ref) { hook = ref; },
                 unbindCue: function () { hook = null; halt(); },
                 preview: function (url, startSec) { api.play(url, startSec, null); },
@@ -107,6 +109,28 @@
                 },
                 stop: function () { halt(); reportStopped(); }
             };
+
+            document.addEventListener('keydown', async function (e) {
+                if (!keys || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+                var target = e.target || {};
+                var tag = (target.tagName || '').toLowerCase();
+                if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable) return;
+                var pressed = (e.key || '').toLowerCase();
+                if (pressed !== 'c' && pressed !== 'v') return;
+                e.preventDefault();
+                try {
+                    if (pressed === 'c') {
+                        var json = await keys.invokeMethodAsync('CopyKey');
+                        if (json) await navigator.clipboard.writeText(json);
+                    } else {
+                        var text = await navigator.clipboard.readText();
+                        await keys.invokeMethodAsync('PasteKey', text);
+                    }
+                } catch (err) {
+                    console.error('Zwischenablage', err);
+                    alert('Die Zwischenablage ist für diese Seite nicht freigegeben: ' + (err && err.message ? err.message : err));
+                }
+            });
 
             document.addEventListener('click', function (e) {
                 if (e.target && e.target.closest && e.target.closest('[data-preview-stop]')) { api.stop(); return; }

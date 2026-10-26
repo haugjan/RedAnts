@@ -28,6 +28,10 @@ a { color: var(--sa-accent); }
 .sa-subnav-hall { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); padding: 0 0.6rem; }
 .sa-subnav-hall .sa-input { width: auto; margin: 0; padding: 0.3rem 0.5rem; }
 
+.sa-key[draggable="true"] { cursor: grab; }
+.sa-key.dragging { opacity: 0.35; }
+.sa-key.target { outline: 2px dashed #5dade2; outline-offset: -3px; }
+
 .sa-status { padding: 0.25rem 0.6rem; border-radius: 999px; background: #e4f4ea; color: #1c7c43; font-size: 0.78rem; font-weight: 700; }
 .sa-status.error { background: #f6e2e4; color: #a3283a; }
 
