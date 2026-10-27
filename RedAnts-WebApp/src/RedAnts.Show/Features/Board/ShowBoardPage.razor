@@ -575,8 +575,9 @@ else
     {
         await CommandAsync("stop");
         if (_hallId is not { Length: > 0 } id) return;
-        if (!await Panic.HandleAsync(new PanicHall.Command(id)))
-            _note = "PANIC: Musik gestoppt. Ohne Agent bleiben Uhr, vMix und LED unberührt.";
+        _note = await Panic.HandleAsync(new PanicHall.Command(id))
+            ? "PANIC: Musik, Einblender und LED-Wand gestoppt."
+            : "PANIC: Musik gestoppt. Ohne Agent bleiben Uhr, vMix und LED unberührt.";
     }
 
     private async Task CommandAsync(string what)
