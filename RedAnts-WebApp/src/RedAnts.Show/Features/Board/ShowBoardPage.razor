@@ -70,7 +70,7 @@ else
                         @foreach (var key in view?.Keys ?? [])
                         {
                             var music = MusicOf(key);
-                            <button class="key @(key.Pressable ? "" : "flat") @(key.Active ? "active" : "") @(key.Top.Length > 0 ? "split" : "")"
+                            <button class="key @(key.Pressable ? "" : "flat") @(Playing(key) ? "playing" : "") @(key.Top.Length > 0 ? "split" : "")"
                                     style="background:@key.Color; color:@key.TextColor"
                                     disabled="@(!key.Pressable)"
                                     data-id="@(key.MusicId is { Length: > 0 } tile ? tile : $"{deck.Id}:{key.Number}")"
@@ -376,6 +376,12 @@ else
         await JS.InvokeVoidAsync("hallBoard.seekAt", e.ClientX);
     }
 
+    private string PlayingId => _hallId is { Length: > 0 } id ? Playback.Of(id).MusicId : "";
+
+    private bool Playing(DeckKeyRow key) =>
+        key.Active
+        || (key.MusicId is { Length: > 0 } id && string.Equals(id, PlayingId, StringComparison.OrdinalIgnoreCase));
+
     private MusicItem? MusicOf(DeckKeyRow key) =>
         key.MusicId is { Length: > 0 } id ? _music.FirstOrDefault(m => m.Id == id) : null;
 
@@ -538,6 +544,11 @@ else
     {
         _note = null;
         if (_hallId is { Length: > 0 } mine) Playback.Claim(mine, _board);
+        if (_decks.FirstOrDefault(d => d.Id == deckId) is { } board && key.Number == board.Panic)
+        {
+            await PanicAsync();
+            return;
+        }
         if (!Connected)
         {
             if (await NavigateAsync(deckId, key)) return;
@@ -563,8 +574,9 @@ else
     private async Task PanicAsync()
     {
         await CommandAsync("stop");
-        if (_hallId is { Length: > 0 } id && !await Panic.HandleAsync(new PanicHall.Command(id)))
-            _note = "Kein Agent verbunden.";
+        if (_hallId is not { Length: > 0 } id) return;
+        if (!await Panic.HandleAsync(new PanicHall.Command(id)))
+            _note = "PANIC: Musik gestoppt. Ohne Agent bleiben Uhr, vMix und LED unberührt.";
     }
 
     private async Task CommandAsync(string what)

@@ -53,7 +53,7 @@ else
                         @foreach (var slot in Deck.Slots(deckId))
                         {
                             var music = Payload.MusicOf(slot.MusicId);
-                            <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "active" : "") @(slot.Top.Length > 0 ? "split" : "")"
+                            <button class="key @(slot.Pressable ? "" : "flat") @(slot.Active ? "playing" : "") @(slot.Top.Length > 0 ? "split" : "")"
                                     style="background:@Hex(slot.Color); color:@Hex(slot.TextColor)"
                                     disabled="@(!slot.Pressable)"
                                     data-id="@(slot.MusicId is { Length: > 0 } tile ? tile : $"{deckId}:{slot.Number}")"
