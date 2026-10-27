@@ -71,7 +71,11 @@ else
                                 }
                                 else
                                 {
-                                    @if (slot.Symbol is { Length: > 0 } symbol)
+                                    @if (DeckIcons.NameOf(slot.ImageKey) is { Length: > 0 } icon)
+                                    {
+                                        <img src="/icons/@(icon).png" alt="" />
+                                    }
+                                    else if (slot.Symbol is { Length: > 0 } symbol)
                                     {
                                         <span class="symbol">@symbol</span>
                                     }

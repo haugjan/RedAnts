@@ -106,6 +106,13 @@ app.MapPost("/deck/home", (string? deckId) =>
 
 app.MapGet("/deck/image", (string? key) => Results.Json(new { image = DeckIcons.FromKey(key ?? "") }));
 
+app.MapGet("/icons/{name}.png", (string name) =>
+{
+    if (!DeckIcons.IsName(name)) return Results.NotFound();
+    var file = Path.Combine(DeckIcons.Dir, name + ".png");
+    return File.Exists(file) ? Results.File(file, "image/png") : Results.NotFound();
+});
+
 app.MapPost("/deck/press/{number:int}", async (int number, string? deckId) =>
 {
     var id = deckId is { Length: > 0 } ? deckId : deck.Decks.FirstOrDefault() ?? "";

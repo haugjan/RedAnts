@@ -367,7 +367,7 @@ public sealed class Deck
             var state = _states.Value(stateId);
             var on = state.Length > 0 && !state.Equals(_states.FirstValue(stateId), StringComparison.OrdinalIgnoreCase);
             builder.Action(key.Number, $"{label}\n{state}", on ? 0xC0201C : 0x1E7B34,
-                () => ToggleStateAsync(special, stateId), key.Icon, forceText: CWhite);
+                () => ToggleStateAsync(special, stateId), Picture(key.Icon), forceText: CWhite, symbol: Symbol(key.Icon));
             return;
         }
 
@@ -538,15 +538,21 @@ public sealed class Deck
     {
         var color = flow.Side == "away" ? CAway : CHome;
         var places = Places(deck).ToList();
-        var options = new[] { ("2'", "2"), ("2'+2'", "22"), ("10'", "10"), ("Spieldauer", "match") };
+        var options = new[]
+        {
+            ("2'", "2", DeckIcons.Strafe2),
+            ("2'+2'", "22", DeckIcons.Strafe22),
+            ("10'", "10", DeckIcons.Strafe10),
+            ("Spieldauer", "match", DeckIcons.Spieldauerstrafe),
+        };
         for (var i = 0; i < options.Length && i < places.Count; i++)
         {
-            var (label, value) = options[i];
+            var (label, value, icon) = options[i];
             builder.Action(places[i], label, color, () =>
             {
                 Open(deckId, flow with { Kind = FlowKind.Players, Penalty = value });
                 return Task.CompletedTask;
-            });
+            }, Picture(icon));
         }
     }
 
