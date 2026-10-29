@@ -412,6 +412,23 @@
     }
 
     [JSInvokable]
+    public void ClearKey()
+    {
+        if (Deck is not { } deck || Page is not { } page) return;
+        if (Locked(deck, page, _selected) is not null)
+        {
+            Fail($"Taste {_selected} gehört fest zu PANIC oder Zurück.");
+            StateHasChanged();
+            return;
+        }
+        if (page.KeyAt(_selected).IsEmpty) return;
+        Replace(deck, page.With(new DeckKey(_selected, KeyKinds.Empty)));
+        Touch();
+        Notify($"Taste {_selected} gelöscht.");
+        StateHasChanged();
+    }
+
+    [JSInvokable]
     public void PasteKey(string? json)
     {
         if (Deck is not { } deck || Page is not { } page) return;
