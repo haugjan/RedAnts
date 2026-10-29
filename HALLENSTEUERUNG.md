@@ -24,7 +24,7 @@ Ein lokal laufendes Programm auf dem Rechner in der Halle. Er ist die Zentrale u
 Es gibt n Hallen. Jede Halle legt fest:
 
 - **Schnittstellen**: Musik (immer vorhanden), LED-Wand, vMix, Matchuhr inklusive Typ (iCast, Bodet ScorePad). Oberseen ist Bodet.
-- **Streamdecks**: welche vorhanden sind und in welcher Grösse. Jedes Deck hat seine **eigene Startseite**, die Unterseiten teilen sich alle Decks mit demselben Raster.
+- **Streamdecks**: welche vorhanden sind und in welcher der beiden Grössen (Mk2 5 × 3, XL 8 × 4). Jedes Deck hat seine **eigene Startseite**, die Unterseiten teilen sich alle Decks derselben Grösse.
 - **Tasten** je Deck und Seite.
 - **Seiten**, hierarchisch verschachtelt.
 
@@ -188,6 +188,7 @@ Alle sieben Etappen sind gebaut, die Tests sind grün, und seit dem 20.10.2026 l
 - **Spielerin an die LED-Wand**: die Auswahl im Tor-, Strafen-, Best-Player- und Spielerin-Ablauf geht nach vMix und mit der Vorlage „spielerin“ auch an sedna; LED-Vorlagen kennen dieselben Platzhalter wie die Einblender.
 - **Companion**: ein universelles Modul, je Deck eine Instanz, Presets je Tastennummer, Musiksteuerung und PANIC.
 - **Zurück trägt den Seitentitel**: auf einer Unterseite ist die Zurück-Taste zweigeteilt, oben schwarz mit dem Namen der Taste, über die die Seite geöffnet wurde, unten grün mit „Zurück“. Dieselbe Unterseite lässt sich von mehreren Tasten aus öffnen; der Titel zeigt den Weg, und Zurück führt auf die zuletzt offene Seite, nicht auf eine fest eingetragene Elternseite.
+- **Zwei feste Deck-Grössen**: Streamdeck Mk2 (5 × 3) und Streamdeck XL (8 × 4). Die Grösse wird beim Anlegen gewählt und lässt sich danach nicht mehr ändern; sie entscheidet auch, welche Decks sich die Seiten teilen.
 - **Seiten gehören dem Raster, nicht dem Deck**: wer eine Unterseite anlegt oder ändert, tut das für jedes Deck mit gleich vielen Tasten (`Show:Sheets`, je Raster ein Satz). Nur die Startseite bleibt beim einzelnen Deck, deshalb zeigen zwei Decks desselben Rasters verschiedene Einstiege auf denselben Unterseiten. Die einmalige Umstellung hat die Seiten aus den Decks gehoben: gleiche Kennung und gleicher Inhalt wurden zu einer Seite, unterschiedlicher Inhalt blieb doppelt und trägt den Decknamen im Seitennamen. Der Stand davor liegt als `Show:DecksBeforeSharing` in den Einstellungen.
 - **Tasten richten sich nach der Halle**: dasselbe Deck läuft in mehreren Hallen. Eine Befehlsfolge führt nur die Schritte aus, die die Halle anbietet (eine Taste mit Ton und vMix spielt in einer reinen Soundhalle einfach nur den Ton, ohne Fehler). Eine Taste, die ohne ihr Gerät nichts tun kann, wird ausgeblendet: feste Funktionen mit Einblender brauchen vMix, die Musiksteuerung braucht Ton, der Automodus Pausenmusik zusätzlich die Matchuhr, und Anzeigen mit Zeit, Drittel oder Stand brauchen die Matchuhr.
 - **Passwort**: das Bord hängt an `Show:BoardPassword`, das die Pipeline aus dem GitHub-Secret `SHOW_BOARD_PASSWORD` in die App-Service-Einstellungen schreibt. Fehlt es, bleibt das Bord ausserhalb von Development zu (503) statt offen. Das Bord des Agenten hört nur auf `localhost`; `bind` im `agent.json` bringt es ins Hallennetz, aber nur zusammen mit `boardPassword`, sonst bleibt der Agent auf localhost. Die Maske `/spiel` hängt am selben Passwort.

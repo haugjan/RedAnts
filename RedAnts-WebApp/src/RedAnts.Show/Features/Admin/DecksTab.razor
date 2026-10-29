@@ -9,7 +9,7 @@
     <h2>Decks <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
     <p class="sa-hint">
         Die Decks gelten für alle Hallen. Unter Hallen wird gewählt, welche davon eine Halle anbietet.
-        Unterseiten gehören allen Decks gleicher Grösse: was hier geändert wird, gilt auf jedem Deck mit demselben Raster. Nur die Startseite gehört dem einzelnen Deck.
+        Die Grösse wird beim Anlegen gewählt und steht danach fest. Unterseiten gehören allen Decks derselben Grösse: was hier geändert wird, gilt auf jedem dieser Decks. Nur die Startseite gehört dem einzelnen Deck.
         Eine belegte Kachel lässt sich auf eine freie ziehen; Entf löscht die gewählte Taste, Strg+C kopiert sie, Strg+V fügt sie auf der gewählten Kachel ein, auch in einem anderen Tab.
     </p>
 
@@ -30,6 +30,14 @@
                     }
                 </select>
             </label>
+            <label class="sa-inline">Neues Deck
+                <select class="sa-input" value="@_format" @onchange="e => _format = e.Value?.ToString() ?? DeckFormat.Mk2">
+                    @foreach (var format in DeckFormat.All)
+                    {
+                        <option value="@format.Id">@format.Label</option>
+                    }
+                </select>
+            </label>
             <button class="sa-btn small" @onclick="AddDeck">+ Deck</button>
             <button class="sa-btn small danger" @onclick="RemoveDeck" disabled="@(_decks.Count < 2)">Deck löschen</button>
             <button class="sa-btn small" @onclick="AddPage">+ Seite</button>
@@ -43,15 +51,14 @@
         {
             <div class="sa-actions">
                 <label class="sa-inline">Name des Decks <input class="sa-input" value="@deck.Name" @onchange="RenameDeck" /></label>
-                <label class="sa-inline">Spalten <input class="sa-input sa-num" type="number" min="1" max="16" value="@deck.Columns" @onchange="e => SetGrid(e, columns: true)" /></label>
-                <label class="sa-inline">Zeilen <input class="sa-input sa-num" type="number" min="1" max="8" value="@deck.Rows" @onchange="e => SetGrid(e, columns: false)" /></label>
+                <span class="sa-inline">Grösse <strong class="sa-fixed">@DeckFormat.NameOf(deck)</strong></span>
                 <label class="sa-inline">PANIC auf <input class="sa-input sa-num" type="number" min="1" max="@deck.Count" value="@deck.Panic" @onchange="e => SetFixed(e, panic: true)" /></label>
                 <label class="sa-inline">Zurück auf <input class="sa-input sa-num" type="number" min="1" max="@deck.Count" value="@deck.Back" @onchange="e => SetFixed(e, panic: false)" /></label>
             </div>
             <div class="sa-actions">
                 <label class="sa-inline">Name der Seite <input class="sa-input" value="@sheet.Name" @onchange="RenamePage" /></label>
                 <span class="sa-hint">
-                    @deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back (nur auf Unterseiten) · PANIC auf @deck.Panic · Kennung <code>@deck.Id</code>
+                    Zurück auf @deck.Back (nur auf Unterseiten) · PANIC auf @deck.Panic · Kennung <code>@deck.Id</code>
                     @if (!sheet.IsHome)
                     {
                         <text> · geteilt mit @Sharing(deck)</text>
@@ -280,6 +287,7 @@
     private List<PageSet> _sets = [];
     private string _deckId = "";
     private string _pageId = DeckPage.HomeId;
+    private string _format = DeckFormat.Default.Id;
     private int _selected = 1;
 
     private Deck? Deck => _decks.FirstOrDefault(d => d.Id == _deckId);
@@ -529,15 +537,14 @@
 
     private void AddDeck()
     {
+        if (DeckFormat.Of(_format) is not { } format) return;
         var id = $"deck-{_decks.Count + 1}";
         while (_decks.Any(d => d.Id == id)) id += "x";
-        var deck = new Deck(id, "Neues Deck", 5, 3,
-            [new DeckPage(DeckPage.HomeId, "Startseite", null, [])], PanicKey: 11, BackKey: 1);
-        _decks = [.. _decks, deck];
+        _decks = [.. _decks, format.Create(id, $"Neues {format.Name}")];
         _deckId = id;
         _pageId = DeckPage.HomeId;
         _selected = 1;
-        Notify("Deck angelegt. Name und Raster anpassen, dann speichern; unter Hallen wird gewählt, wer es anbietet.");
+        Notify($"Deck mit {format.Label} angelegt. Die Grösse steht damit fest; die Unterseiten teilt es mit den anderen Decks dieser Grösse. Unter Hallen wird gewählt, wer es anbietet.");
         Touch();
     }
 
@@ -560,29 +567,6 @@
         var name = e.Value?.ToString() ?? "";
         if (name.Trim().Length == 0) return;
         _decks = _decks.Select(d => d.Id == deck.Id ? d with { Name = name.Trim() } : d).ToList();
-        Touch();
-    }
-
-    private void SetGrid(ChangeEventArgs e, bool columns)
-    {
-        if (Deck is not { } deck || Number(e.Value) is not { } value) return;
-        var wide = columns ? Math.Clamp(value, 1, 16) : deck.Columns;
-        var high = columns ? deck.Rows : Math.Clamp(value, 1, 8);
-        if (wide == deck.Columns && high == deck.Rows) return;
-        var count = wide * high;
-        var dropped = deck.Pages.Sum(page => page.Keys.Count(key => key.Number > count));
-        var pages = deck.Pages
-            .Select(page => page with { Keys = page.Keys.Where(key => key.Number <= count).ToList() })
-            .ToList();
-        _decks = _decks
-            .Select(d => d.Id == deck.Id
-                ? d with { Columns = wide, Rows = high, Pages = pages, PanicKey = Math.Min(d.Panic, count), BackKey = Math.Min(d.Back, count) }
-                : d)
-            .ToList();
-        if (_selected > count) _selected = 1;
-        _pageId = DeckPage.HomeId;
-        var lost = dropped > 0 ? $"{dropped} Tasten liegen ausserhalb des neuen Rasters und sind weg. " : "";
-        Notify($"{lost}Das Deck teilt die Unterseiten jetzt mit den Decks mit {wide} × {high} Tasten.");
         Touch();
     }
 

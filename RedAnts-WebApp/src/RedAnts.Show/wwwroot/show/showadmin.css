@@ -92,6 +92,7 @@ a { color: var(--sa-accent); }
 .sa-check { display: flex; flex-direction: row !important; align-items: center; gap: 0.4rem; font-weight: 400 !important; color: var(--sa-ink) !important; font-size: 0.88rem; }
 .sa-inline { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--sa-muted); }
 .sa-inline .sa-input { width: auto; margin: 0; }
+.sa-inline .sa-fixed { color: var(--sa-ink); font-weight: 700; }
 .sa-sub { border: 1px solid var(--sa-border); border-radius: 3px; padding: 0.7rem 0.85rem; margin-bottom: 0.7rem; background: #fafbfc; }
 .sa-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid var(--sa-border); }
 .sa-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.5rem; }
