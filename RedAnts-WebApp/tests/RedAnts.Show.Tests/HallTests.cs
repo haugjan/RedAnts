@@ -16,7 +16,7 @@ public class HallTests
         Assert.Equal(32, hall.AgentKey.Length);
         Assert.Equal(Hall.RedAntsWomen, hall.TeamId);
         Assert.Equal(8099, hall.Devices.VmixPort);
-        Assert.Contains(hall.LedTemplates, t => t.Event == "tor-heim");
+        Assert.Contains(hall.LedTemplates, t => t.Event == "stopp");
         Assert.True(hall.AcceptsKey(hall.AgentKey));
         Assert.False(hall.AcceptsKey("nope"));
         Assert.False(hall.AcceptsKey(null));
