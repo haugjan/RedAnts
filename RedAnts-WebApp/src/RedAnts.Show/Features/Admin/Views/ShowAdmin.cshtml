@@ -111,11 +111,18 @@
             };
 
             document.addEventListener('keydown', async function (e) {
-                if (!keys || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+                if (!keys || e.altKey) return;
                 var target = e.target || {};
                 var tag = (target.tagName || '').toLowerCase();
                 if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable) return;
                 var pressed = (e.key || '').toLowerCase();
+                if (pressed === 'delete' && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    try { await keys.invokeMethodAsync('ClearKey'); }
+                    catch (err) { console.error('Kachel löschen', err); }
+                    return;
+                }
+                if (!(e.ctrlKey || e.metaKey)) return;
                 if (pressed !== 'c' && pressed !== 'v') return;
                 e.preventDefault();
                 try {
