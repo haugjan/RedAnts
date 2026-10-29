@@ -4,6 +4,7 @@ using RedAnts.Show.Features.Agents;
 using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Setup;
+using RedAnts.Show.Features.Setup.Infrastructure;
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;
 
@@ -27,6 +28,9 @@ public sealed class ShowExampleSeeder(
     public const string MusicHallName = "Oberseen iPad";
     public const string NotebookHallId = "oberseen-notebook";
     public const string RennwegHallId = "rennweg-ipad";
+    public const string SharingKey = "Show:DeckPageSharing";
+    public const string SharingVersion = "seiten-je-raster";
+    public const string BackupKey = "Show:DecksBeforeSharing";
 
     private static readonly int[] TimeoutKeys = [3, 6];
 
@@ -39,6 +43,7 @@ public sealed class ShowExampleSeeder(
             await CollectDecksAsync();
             var library = await music.AllAsync();
             await TopUpMusicAsync(library);
+            await SharePagesAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
                 var hall = Example(library);
@@ -124,6 +129,26 @@ public sealed class ShowExampleSeeder(
 
         log.LogInformation("Decks gelten neu für alle Hallen: {Count} Decks, {Halls} Hallen zugeordnet",
             library.Count, chosen.Count);
+    }
+
+    private async Task SharePagesAsync()
+    {
+        await settings.LoadAsync();
+        if (settings.Get(SharingKey) == SharingVersion) return;
+
+        var show = await setup.GetAsync();
+        var shared = DeckSharing.Share(show.DeckLibrary, show.PageLibrary, tagNames: true);
+        var decks = shared.Decks.Select(deck => deck.Validated()).ToList();
+        var sets = shared.Sets.Select(set => set.Validated()).ToList();
+
+        if (settings.Get(ShowSetupRepository.DecksKey) is { Length: > 0 } before)
+            await settings.SetAsync(BackupKey, before);
+        await setup.SaveAsync(show with { Decks = decks, Sheets = sets });
+        await settings.SetAsync(SharingKey, SharingVersion);
+        await sync.PushAllAsync();
+
+        log.LogInformation("Unterseiten gelten neu für alle Decks gleicher Grösse: {Sets} Raster, {Pages} Seiten",
+            sets.Count, sets.Sum(set => set.Pages.Count));
     }
 
     private async Task TopUpMusicAsync(IReadOnlyList<MusicItem> library)

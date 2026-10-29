@@ -184,6 +184,38 @@ public sealed record DeckPage(string Id, string Name, string? ParentId, IReadOnl
     }
 }
 
+public sealed record PageSet(int Columns, int Rows, IReadOnlyList<DeckPage> Pages)
+{
+    public int Count => Columns * Rows;
+
+    public bool Fits(Deck deck) => deck.Columns == Columns && deck.Rows == Rows;
+
+    public DeckPage? Page(string? id) => id is null ? null : Pages.FirstOrDefault(p => p.Id == id);
+
+    public PageSet With(DeckPage page) =>
+        Page(page.Id) is null
+            ? this with { Pages = [.. Pages, page] }
+            : this with { Pages = Pages.Select(p => p.Id == page.Id ? page : p).ToList() };
+
+    public PageSet Without(string id) => this with { Pages = Pages.Where(p => p.Id != id).ToList() };
+
+    public PageSet Validated()
+    {
+        if (Columns is < 1 or > 16 || Rows is < 1 or > 8)
+            throw new ValidationException(nameof(Columns), "Seitensatz: 1 bis 16 Spalten, 1 bis 8 Zeilen.");
+        foreach (var page in Pages)
+        {
+            if (page.IsHome)
+                throw new ValidationException(nameof(Pages), "Die Startseite gehört zum Deck, nicht zu den geteilten Seiten.");
+            page.Validated(Count);
+        }
+        var twice = Pages.GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
+        if (twice is not null)
+            throw new ValidationException(nameof(Pages), $"Die Seitenkennung „{twice.Key}“ gibt es zweimal.");
+        return this;
+    }
+}
+
 public sealed record Deck(
     string Id,
     string Name,
