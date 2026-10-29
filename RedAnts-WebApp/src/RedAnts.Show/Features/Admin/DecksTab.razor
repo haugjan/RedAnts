@@ -9,7 +9,8 @@
     <h2>Decks <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
     <p class="sa-hint">
         Die Decks gelten für alle Hallen. Unter Hallen wird gewählt, welche davon eine Halle anbietet.
-        Eine belegte Kachel lässt sich auf eine freie ziehen; Strg+C kopiert die gewählte Taste, Strg+V fügt sie auf der gewählten Kachel ein, auch in einem anderen Tab.
+        Unterseiten gehören allen Decks gleicher Grösse: was hier geändert wird, gilt auf jedem Deck mit demselben Raster. Nur die Startseite gehört dem einzelnen Deck.
+        Eine belegte Kachel lässt sich auf eine freie ziehen; Entf löscht die gewählte Taste, Strg+C kopiert sie, Strg+V fügt sie auf der gewählten Kachel ein, auch in einem anderen Tab.
     </p>
 
         <div class="sa-actions">
@@ -49,7 +50,13 @@
             </div>
             <div class="sa-actions">
                 <label class="sa-inline">Name der Seite <input class="sa-input" value="@sheet.Name" @onchange="RenamePage" /></label>
-                <span class="sa-hint">@deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back (nur auf Unterseiten) · PANIC auf @deck.Panic · Kennung <code>@deck.Id</code></span>
+                <span class="sa-hint">
+                    @deck.Columns × @deck.Rows Tasten · Zurück auf @deck.Back (nur auf Unterseiten) · PANIC auf @deck.Panic · Kennung <code>@deck.Id</code>
+                    @if (!sheet.IsHome)
+                    {
+                        <text> · geteilt mit @Sharing(deck)</text>
+                    }
+                </span>
             </div>
 
             <div class="sa-deckgrid">
@@ -270,15 +277,40 @@
 @code {
     private IReadOnlyList<MusicItem> _music = [];
     private List<Deck> _decks = [];
+    private List<PageSet> _sets = [];
     private string _deckId = "";
     private string _pageId = DeckPage.HomeId;
     private int _selected = 1;
 
     private Deck? Deck => _decks.FirstOrDefault(d => d.Id == _deckId);
 
-    private DeckPage? Page => Deck?.Page(_pageId) ?? Deck?.Home;
+    private PageSet? Shared => Deck is { } deck ? _sets.FirstOrDefault(set => set.Fits(deck)) : null;
 
-    private IReadOnlyList<DeckPage> Pages => Deck?.Pages ?? [];
+    private DeckPage? Page => Pages.FirstOrDefault(p => p.Id == _pageId) ?? Deck?.Home;
+
+    private IReadOnlyList<DeckPage> Pages
+    {
+        get
+        {
+            if (Deck is not { } deck) return [];
+            var own = deck.Pages.Select(p => p.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            IEnumerable<DeckPage> shared = Shared is { } set ? set.Pages.Where(p => !p.IsHome && !own.Contains(p.Id)) : [];
+            return
+            [
+                deck.Home,
+                .. deck.Pages.Where(p => !p.IsHome).Concat(shared).OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase),
+            ];
+        }
+    }
+
+    private string Sharing(Deck deck)
+    {
+        var others = _decks
+            .Where(d => d.Id != deck.Id && d.Columns == deck.Columns && d.Rows == deck.Rows)
+            .Select(d => d.Name)
+            .ToList();
+        return others.Count == 0 ? "keinem weiteren Deck" : string.Join(", ", others);
+    }
 
     protected override async Task OnSetupLoadedAsync()
     {
@@ -290,7 +322,9 @@
 
     private void Load()
     {
-        _decks = Setup.DeckLibrary.Select(Copy).ToList();
+        var shared = DeckSharing.Share(Setup.DeckLibrary, Setup.PageLibrary);
+        _decks = shared.Decks.Select(Copy).ToList();
+        _sets = shared.Sets.ToList();
         _deckId = _decks.FirstOrDefault()?.Id ?? "";
         _pageId = DeckPage.HomeId;
         _selected = 1;
@@ -458,8 +492,22 @@
 
     private void Replace(Deck deck, DeckPage page)
     {
-        var pages = deck.Pages.Select(p => p.Id == page.Id ? page : p).ToList();
-        _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+        if (page.IsHome || deck.Pages.Any(p => p.Id == page.Id))
+        {
+            var pages = deck.Pages.Select(p => p.Id == page.Id ? page : p).ToList();
+            _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+            return;
+        }
+        Sheet(deck, set => set.With(page));
+    }
+
+    private void Sheet(Deck deck, Func<PageSet, PageSet> change)
+    {
+        var known = _sets.FirstOrDefault(set => set.Fits(deck));
+        var updated = change(known ?? new PageSet(deck.Columns, deck.Rows, []));
+        _sets = known is null
+            ? [.. _sets, updated]
+            : _sets.Select(set => set.Fits(deck) ? updated : set).ToList();
     }
 
     private void AddDeck()
@@ -479,6 +527,8 @@
     private void RemoveDeck()
     {
         if (Deck is not { } deck || _decks.Count < 2) return;
+        foreach (var page in deck.Pages.Where(p => !p.IsHome))
+            Sheet(deck, set => set.Page(page.Id) is null ? set.With(page) : set);
         _decks = _decks.Where(d => d.Id != deck.Id).ToList();
         _deckId = _decks[0].Id;
         _pageId = DeckPage.HomeId;
@@ -501,6 +551,7 @@
         if (Deck is not { } deck || Number(e.Value) is not { } value) return;
         var wide = columns ? Math.Clamp(value, 1, 16) : deck.Columns;
         var high = columns ? deck.Rows : Math.Clamp(value, 1, 8);
+        if (wide == deck.Columns && high == deck.Rows) return;
         var count = wide * high;
         var dropped = deck.Pages.Sum(page => page.Keys.Count(key => key.Number > count));
         var pages = deck.Pages
@@ -512,7 +563,9 @@
                 : d)
             .ToList();
         if (_selected > count) _selected = 1;
-        if (dropped > 0) Notify($"{dropped} Tasten liegen ausserhalb des neuen Rasters und sind weg.");
+        _pageId = DeckPage.HomeId;
+        var lost = dropped > 0 ? $"{dropped} Tasten liegen ausserhalb des neuen Rasters und sind weg. " : "";
+        Notify($"{lost}Das Deck teilt die Unterseiten jetzt mit den Decks mit {wide} × {high} Tasten.");
         Touch();
     }
 
@@ -534,22 +587,40 @@
     private void AddPage()
     {
         if (Deck is not { } deck) return;
-        var id = $"seite-{deck.Pages.Count}";
-        while (deck.Pages.Any(p => p.Id == id)) id += "x";
-        var pages = deck.Pages.Append(new DeckPage(id, "Neue Seite", DeckPage.HomeId, [])).ToList();
-        _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+        var taken = Pages.Select(p => p.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var id = $"seite-{taken.Count}";
+        while (taken.Contains(id)) id += "x";
+        Sheet(deck, set => set.With(new DeckPage(id, "Neue Seite", DeckPage.HomeId, [])));
         _pageId = id;
+        _selected = 1;
+        Notify($"Seite angelegt. Sie steht jedem Deck mit {deck.Columns} × {deck.Rows} Tasten zur Verfügung.");
         Touch();
     }
 
     private void RemovePage()
     {
         if (Deck is not { } deck || Page is not { } page || page.IsHome) return;
-        var pages = deck.Pages.Where(p => p.Id != page.Id).ToList();
-        _decks = _decks.Select(d => d.Id == deck.Id ? d with { Pages = pages } : d).ToList();
+        var opens = Opens(deck, page.Id);
+        if (deck.Pages.Any(p => p.Id == page.Id))
+            _decks = _decks
+                .Select(d => d.Id == deck.Id ? d with { Pages = d.Pages.Where(p => p.Id != page.Id).ToList() } : d)
+                .ToList();
+        else
+            Sheet(deck, set => set.Without(page.Id));
         _pageId = DeckPage.HomeId;
+        _selected = 1;
+        Notify(opens == 0
+            ? $"Seite „{page.Name}“ ist auf jedem Deck mit {deck.Columns} × {deck.Rows} Tasten weg."
+            : $"Seite „{page.Name}“ ist weg. {(opens == 1 ? "Eine Taste zeigt" : $"{opens} Tasten zeigen")} jetzt ins Leere.");
         Touch();
     }
+
+    private int Opens(Deck deck, string pageId) =>
+        _decks.Where(d => d.Columns == deck.Columns && d.Rows == deck.Rows)
+            .SelectMany(d => d.Pages)
+            .Concat(Shared?.Pages ?? [])
+            .SelectMany(page => page.Keys)
+            .Count(key => key.PageId == pageId);
 
     private void RenamePage(ChangeEventArgs e)
     {
@@ -560,17 +631,45 @@
 
     private void Defaults()
     {
-        _decks = DefaultDecks.All.Select(Copy).ToList();
+        var shared = DeckSharing.Share(DefaultDecks.All);
+        _decks = shared.Decks.Select(Copy).ToList();
+        _sets = shared.Sets.ToList();
         _deckId = _decks[0].Id;
         _pageId = DeckPage.HomeId;
+        _selected = 1;
         Touch();
     }
 
     private async Task SaveDecksAsync() => await Guarded(async () =>
     {
-        var decks = _decks.Select(Checked).ToList();
-        await SaveSetupAsync(setup => setup with { Decks = decks });
+        var shared = DeckSharing.Share(_decks, _sets);
+        var decks = shared.Decks.Select(Checked).ToList();
+        var sets = shared.Sets.Select(Checked).ToList();
+        await SaveSetupAsync(setup => setup with { Decks = decks, Sheets = sets });
     });
+
+    private static PageSet Checked(PageSet set)
+    {
+        try
+        {
+            return set.Validated();
+        }
+        catch (ValidationException e)
+        {
+            throw new ValidationException(e.Field, Spot(set) is { Length: > 0 } where ? where : e.Message);
+        }
+    }
+
+    private static string Spot(PageSet set)
+    {
+        foreach (var page in set.Pages)
+            foreach (var key in page.Keys)
+            {
+                try { key.Validated(set.Count); }
+                catch (ValidationException e) { return $"Seite „{page.Name}“, Taste {key.Number}: {e.Message}"; }
+            }
+        return "";
+    }
 
     private static Deck Checked(Deck deck)
     {
