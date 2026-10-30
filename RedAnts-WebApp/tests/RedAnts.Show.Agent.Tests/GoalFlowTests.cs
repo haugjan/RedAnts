@@ -20,10 +20,10 @@ public class GoalFlowTests
 
     static readonly GameTeam Guests = GameTeam.Empty with { ShortName = "GEG", Players = [new Player(5, "Gast Fünf")] };
 
-    static Deck.Deck Build(DeckLayout layout, GameTeam home, GameTeam? away = null, int teamId = 0)
+    static Deck.Deck Build(DeckLayout layout, GameTeam home, GameTeam? away = null, int teamId = 0, bool led = true)
     {
         var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
-        var hall = Hall.Offline with { Id = "win4", Name = "Win4", TeamId = teamId, Decks = [layout] };
+        var hall = Hall.Offline with { Id = "win4", Name = "Win4", TeamId = teamId, Decks = [layout], Offered = new HallCapabilities(Led: led) };
         store.Apply(new AgentPayload(hall, Game.None with { Id = "1", Home = home, Away = away ?? Guests }, DateTimeOffset.Now, []));
         var states = new ShowStates(NullLogger<ShowStates>.Instance);
         var live = new LiveGame();
@@ -76,6 +76,18 @@ public class GoalFlowTests
         await PressLabel(deck, "LED Torschützin\n#12 Lea Muster");
 
         Assert.Contains("✓ Fertig", Labels(deck));
+    }
+
+    [Fact]
+    public async Task A_hall_without_led_ends_the_home_goal_after_the_scorer()
+    {
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts, led: false);
+
+        await PressLabel(deck, "Tor");
+        await PressLabel(deck, "12\nLea Muster");
+
+        Assert.Contains("Tor", Labels(deck));
+        Assert.DoesNotContain("Assist?", Labels(deck));
     }
 
     [Fact]

@@ -706,7 +706,7 @@ public sealed class Deck
             "bestplayer" => "bestplayer",
             _ => "name",
         };
-        if (flow.Event == "goal" && !own && player is not null && Own(flow.Side))
+        if (flow.Event == "goal" && !own && player is not null && Own(flow.Side) && _payload.Hall.Offers.Led)
         {
             var opened = DateTimeOffset.UtcNow;
             Open(deckId, flow with { Kind = FlowKind.Assist, Scorer = player, Entry = "", Opened = opened });
