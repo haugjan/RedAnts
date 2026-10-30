@@ -123,9 +123,6 @@
                 <p class="sa-hint">Installation: <code>Install-ShowAgent.ps1 -Cloud @BaseUrl -Hall @Hall.Id -Key @Hall.AgentKey</code></p>
                 <button class="sa-btn" @onclick="RenewKeyAsync">Schlüssel erneuern</button>
 
-                <h3>Shortcut-Texte für Mitteilungen (eine Zeile je Text)</h3>
-                <textarea class="sa-input wide" rows="5" @bind="_shortcuts" @bind:after="Touch"></textarea>
-
                 <div class="sa-actions">
                     <button class="sa-btn primary" @onclick="SaveFormAsync" disabled="@(!Dirty)">💾 Halle speichern</button>
                     <button class="sa-btn danger" @onclick="DeleteAsync">Halle löschen</button>
@@ -141,7 +138,7 @@
 
     private IReadOnlyList<HallRow> _halls = [];
     private string _newId = "", _newName = "";
-    private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _clockSource = "", _imageFolder = "", _shortcuts = "";
+    private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _clockSource = "", _imageFolder = "";
     private int _teamId, _season, _vmixPort, _sednaPort, _clockPort, _periodMinutes;
     private bool _sound = true, _clock = true, _vmix = true, _led = true, _light;
     private string _breakSound = "";
@@ -174,7 +171,6 @@
         _clockSource = Hall.Devices.ClockSource;
         _periodMinutes = Hall.Devices.PeriodMinutes;
         _imageFolder = Hall.Devices.ImageFolder;
-        _shortcuts = string.Join("\n", Hall.Shortcuts);
         _sound = Hall.Offers.Sound;
         _clock = Hall.Offers.Clock;
         _vmix = Hall.Offers.Vmix;
@@ -217,7 +213,6 @@
             PeriodMinutes = _periodMinutes,
             ImageFolder = _imageFolder.Trim(),
         },
-        Shortcuts = _shortcuts.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList(),
         Offered = new HallCapabilities(_sound, _clock, _vmix, _led, _light),
         BreakMusicId = _breakSound,
         DeckIds = _library.Select(deck => deck.Id).Where(_deckIds.Contains).ToList(),

@@ -38,7 +38,6 @@ public sealed partial record Hall(
     HallDevices Devices,
     IReadOnlyList<LedTemplate> LedTemplates,
     IReadOnlyList<OverlayTitle> OverlayTitles,
-    IReadOnlyList<string> Shortcuts,
     string? ActiveGameId = null,
     IReadOnlyList<Deck>? Decks = null,
     HallCapabilities? Offered = null,
@@ -59,7 +58,7 @@ public sealed partial record Hall(
         if (!IdPattern().IsMatch(slug))
             throw new ValidationException(nameof(Id), "Kennung: nur Kleinbuchstaben, Ziffern und Bindestrich, 2 bis 40 Zeichen.");
         return new Hall(slug, name.Trim(), NewKey(), RedAntsWomen, SeasonOf(SwissTime.Today), new HallDevices(),
-            DefaultLedTemplates, DefaultOverlayTitles, DefaultShortcuts);
+            DefaultLedTemplates, DefaultOverlayTitles);
     }
 
     public static int SeasonOf(DateOnly day) => day.Month >= 7 ? day.Year : day.Year - 1;
@@ -278,16 +277,6 @@ public sealed partial record Hall(
         new("27-fleischlin", "start playlist -n \"27 Fleischlin\""),
         new("41-werz", "start playlist -n \"41 Werz\""),
         new("73-suter", "start playlist -n \"73 Suter\""),
-    ];
-
-    public static readonly IReadOnlyList<string> DefaultShortcuts =
-    [
-        "Entschuldigen Sie die technische Störung! Wir arbeiten mit Hochdruck an der Lösung!",
-        "Highlights",
-        "Leider heute ohne Kommentar",
-        "Highlights 1. Drittel",
-        "Highlights 2. Drittel",
-        "Highlights 3. Drittel",
     ];
 
     [GeneratedRegex("^[a-z0-9][a-z0-9-]{1,39}$")]

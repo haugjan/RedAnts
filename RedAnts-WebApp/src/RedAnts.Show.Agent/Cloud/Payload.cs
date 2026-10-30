@@ -169,13 +169,12 @@ public sealed record Hall(
     HallDevices Devices,
     IReadOnlyList<LedTemplate> LedTemplates,
     IReadOnlyList<OverlayTitle> OverlayTitles,
-    IReadOnlyList<string> Shortcuts,
     string? ActiveGameId = null,
     IReadOnlyList<DeckLayout>? Decks = null,
     HallCapabilities? Offered = null,
     string BreakMusicId = "")
 {
-    public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], [], []);
+    public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], []);
 
     public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
 
