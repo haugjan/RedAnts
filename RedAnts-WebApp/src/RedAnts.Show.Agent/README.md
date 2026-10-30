@@ -39,6 +39,7 @@ Das Programm heisst **Red Ants Board** (intern weiterhin Show-Agent). Einmal pro
 | Taste | Was sofort passiert | Danach auf dem Streamdeck |
 |---|---|---|
 | **Tor Red Ants** | Leinwand „Tor“ + Tor-Sound | 1. Torschützin antippen → sofort auf den Livestream · 2. Assist antippen (oder „Kein Assist“) · 3. grüner Knopf „LED Torschützin“ drücken, wenn der Speaker sie nennt · 4. grüner Knopf „LED Assist“ · 5. „✓ Fertig“ |
+| **Tor Red Ants, Halle ohne LED** | Tor-Sound | Torschützin antippen → Livestream, fertig (kein Assist, kein Speaker-Knopf) |
 | **Tor Gast** | Leinwand „Tor Gast“ + Sound | Torschützin antippen → nur Livestream, fertig |
 | **Strafe** | Strafe-Sound + Leinwand „Strafe“ | Dauer wählen (2', 2'+2', 10', Spieldauer) → Spielerin antippen → Livestream; bei den Red Ants zusätzlich die Spielerin auf der Leinwand |
 | **Starting 6 (Red Ants)** | Sound + Leinwand + Livestream „Starting 6“ | „▶▶ Weiter“ oder direkt auf einen Namen → diese Spielerin auf Livestream und Leinwand; nach der sechsten „✓ Fertig“ |
