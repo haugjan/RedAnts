@@ -8,6 +8,7 @@ public sealed record DeckSlot(int Number, string Label, string? ImageKey, int Co
 public sealed class Deck
 {
     static readonly TimeSpan GoalWindow = TimeSpan.FromSeconds(25);
+    static readonly TimeSpan SpeakerTimeout = TimeSpan.FromMinutes(3);
 
     const int CPanic = 0xFF0000;
     const int CBack = 0x1E7B34;
@@ -187,6 +188,8 @@ public sealed class Deck
         var flow = _flow.TryGetValue(deckId, out var current) ? current : Flow.None;
 
         if (flow.Kind == FlowKind.Players) Players(builder, deck, deckId, flow);
+        else if (flow.Kind == FlowKind.Assist) Assists(builder, deck, deckId, flow);
+        else if (flow.Kind == FlowKind.Speaker) Speaker(builder, deck, deckId, flow);
         else if (flow.Kind == FlowKind.Penalty) Penalty(builder, deck, deckId, flow);
         else if (flow.Kind == FlowKind.Starting6) Starting6(builder, deck, deckId, flow);
         else if (flow.Kind == FlowKind.Spectators) Spectators(builder, deck, deckId);
@@ -376,9 +379,9 @@ public sealed class Deck
         if (special is SpecialKeys.Starting6Home or SpecialKeys.Starting6Away)
         {
             var side = SpecialKeys.Side(special);
-            if (!_payload.Game.Side(side).HasStarting6)
+            if (Own(side) && !_payload.Game.Side(side).HasStarting6)
             {
-                builder.Label(key.Number, $"{label}\n(unvollständig)", CNeutral);
+                builder.Label(key.Number, "Starting 6 fehlt\n⚙ Spiel", CNeutral);
                 return;
             }
         }
@@ -487,7 +490,7 @@ public sealed class Deck
             case SpecialKeys.Starting6Home:
             case SpecialKeys.Starting6Away:
                 await _runner.RunAsync(key.Sequence, new KeyContext(side), CancellationToken.None);
-                Open(deckId, new Flow(FlowKind.Starting6, side, "starting6", $"Starting 6 {Team(side)}", key));
+                if (Own(side)) Open(deckId, new Flow(FlowKind.Starting6, side, "starting6", $"Starting 6 {Team(side)}", key));
                 break;
             case SpecialKeys.MusicStop:
                 _runner.StopMusic();
@@ -514,27 +517,122 @@ public sealed class Deck
     string Team(string side) =>
         _payload.Game.Side(side).ShortName is { Length: > 0 } name ? name : side == "away" ? "Gast" : "Heim";
 
+    bool Own(string side) => side.Equals(_payload.Game.OwnSide(_payload.Hall.TeamId), StringComparison.OrdinalIgnoreCase);
+
     void Players(Builder builder, DeckLayout deck, string deckId, Flow flow)
+    {
+        var team = _payload.Game.Side(flow.Side);
+        var extras = new List<(string, Func<Task>)>();
+        if (flow.Event == "goal") extras.Add(("Eigentor", () => PickAsync(deckId, flow, null, own: true)));
+        else if (team.TopScorerPlayer is { } top) extras.Add(($"Topscorer\n{Short(top.Name)}", () => PickAsync(deckId, flow, top)));
+        var prompt = flow.Event switch
+        {
+            "goal" => "Torschützin?",
+            "penalty" => $"Strafe {PenaltyLabel(flow.Penalty)}\nwer?",
+            _ => flow.Title,
+        };
+        Picker(builder, deck, deckId, flow, prompt, extras, player => PickAsync(deckId, flow, player));
+    }
+
+    void Assists(Builder builder, DeckLayout deck, string deckId, Flow flow) =>
+        Picker(builder, deck, deckId, flow, "Assist?", [("Kein Assist", () => ToSpeakerAsync(deckId, flow, null))],
+            player => ToSpeakerAsync(deckId, flow, player));
+
+    void Picker(Builder builder, DeckLayout deck, string deckId, Flow flow, string prompt,
+        IReadOnlyList<(string Label, Func<Task> Press)> extras, Func<Player, Task> pick)
     {
         var team = _payload.Game.Side(flow.Side);
         var color = flow.Side == "away" ? CAway : CHome;
         var places = Places(deck).ToList();
-        var index = 0;
-        var room = places.Count - (flow.Event == "goal" ? 3 : 2);
-        foreach (var player in team.Players)
+        if (places.Count == 0) return;
+        var keypad = team.Players.Count + extras.Count + 1 > places.Count && places.Count >= Keypad.Length + 2 + extras.Count;
+        if (!keypad)
         {
-            if (index >= room) break;
-            var number = places[index++];
-            var chosen = player;
-            builder.Action(number, $"{chosen.Display}\n{Short(chosen.Name)}", color, () => PickAsync(deckId, flow, chosen));
+            var index = 0;
+            foreach (var player in team.Players)
+            {
+                if (index >= places.Count - extras.Count - 1) break;
+                var chosen = player;
+                builder.Action(places[index++], $"{chosen.Display}\n{Short(chosen.Name)}", color, () => pick(chosen));
+            }
+            foreach (var (label, press) in extras)
+                if (index < places.Count - 1) builder.Action(places[index++], label, color, press);
+            builder.Label(places[^1], prompt, CHead);
+            return;
         }
-        if (places.Count > 0)
-            builder.Label(places[^1], _runner.OnAir.Length > 0 ? _runner.OnAir : flow.Title, CHead);
-        if (flow.Event == "goal" && index < places.Count)
-            builder.Action(places[index++], "Eigentor", color, () => PickAsync(deckId, flow, null, own: true));
-        if (team.TopScorerPlayer is { } top && index < places.Count)
-            builder.Action(places[index], $"Topscorer\n{Short(top.Name)}", color, () => PickAsync(deckId, flow, top));
+
+        for (var i = 0; i < Keypad.Length; i++)
+        {
+            var digit = Keypad[i];
+            builder.Action(places[i], digit, CNeutral, () => TypeAsync(deckId, flow, digit));
+        }
+        builder.Action(places[Keypad.Length], "⌫", CNeutral, () => TypeAsync(deckId, flow, null));
+        var display = places[Keypad.Length + 1];
+        var found = int.TryParse(flow.Entry, out var number) ? team.Find(number) : null;
+        if (flow.Entry.Length == 0) builder.Label(display, $"{prompt}\nNummer tippen", CHead);
+        else if (found is null) builder.Label(display, $"#{flow.Entry}\n?", CNeutral);
+        else builder.Action(display, $"#{found.Display} ✓\n{Short(found.Name)}", CActive, () => pick(found));
+        for (var i = 0; i < extras.Count; i++)
+            builder.Action(places[Keypad.Length + 2 + i], extras[i].Label, color, extras[i].Press);
     }
+
+    static readonly string[] Keypad = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+
+    Task TypeAsync(string deckId, Flow flow, string? digit)
+    {
+        var entry = digit is null
+            ? flow.Entry.Length > 0 ? flow.Entry[..^1] : ""
+            : flow.Entry.Length >= 2 ? digit : flow.Entry + digit;
+        Open(deckId, flow with { Entry = entry });
+        return Task.CompletedTask;
+    }
+
+    static string PenaltyLabel(string penalty) => penalty switch
+    {
+        "2" => "2'",
+        "22" => "2'+2'",
+        "10" => "10'",
+        "match" => "Spieldauer",
+        _ => "",
+    };
+
+    Task ToSpeakerAsync(string deckId, Flow flow, Player? assist)
+    {
+        Open(deckId, flow with { Kind = FlowKind.Speaker, Assist = assist, Position = 0, Entry = "" });
+        return Task.CompletedTask;
+    }
+
+    void Speaker(Builder builder, DeckLayout deck, string deckId, Flow flow)
+    {
+        var places = Places(deck).ToList();
+        if (places.Count == 0) return;
+        var big = places[places.Count / 2];
+        if (flow.Position == 0 && flow.Scorer is { } scorer)
+            builder.Action(big, $"LED Torschützin\n#{scorer.Display} {Short(scorer.Name)}", CBack,
+                () => SpeakerLedAsync(deckId, flow, scorer, assist: false), forceText: CWhite);
+        else if (flow.Position == 1 && flow.Assist is { } assist)
+            builder.Action(big, $"LED Assist\n#{assist.Display} {Short(assist.Name)}", CBack,
+                () => SpeakerLedAsync(deckId, flow, assist, assist: true), forceText: CWhite);
+        else
+            builder.Action(big, "✓ Fertig", CBack, () => { Home(deckId); return Task.CompletedTask; }, forceText: CWhite);
+        if (places[0] != big) builder.Label(places[0], "Drücken, wenn der\nSpeaker den Namen sagt", CHead);
+    }
+
+    async Task SpeakerLedAsync(string deckId, Flow flow, Player player, bool assist)
+    {
+        Open(deckId, flow with { Position = !assist && flow.Assist is not null ? 1 : 2 });
+        var ctx = new KeyContext(flow.Side, player, Event: assist ? "assist" : "goal");
+        if (assist) await _runner.ShowAssistOnLedAsync(ctx, CancellationToken.None);
+        else await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
+    }
+
+    void ForgetLater(string deckId, DateTimeOffset opened) =>
+        _ = Task.Delay(SpeakerTimeout).ContinueWith(_ =>
+        {
+            bool stale;
+            lock (_gate) stale = _flow.TryGetValue(deckId, out var flow) && flow.Opened == opened && flow.Kind is FlowKind.Assist or FlowKind.Speaker;
+            if (stale) Home(deckId);
+        }, TaskScheduler.Default);
 
     void Penalty(Builder builder, DeckLayout deck, string deckId, Flow flow)
     {
@@ -567,12 +665,13 @@ public sealed class Deck
         for (var i = 0; i < six.Count && i < places.Count - 1; i++)
         {
             var player = six[i];
-            var shown = flow.Position == i + 1;
+            var position = i + 1;
+            var shown = flow.Position == position;
             builder.Action(places[i], $"{player.Display}\n{Short(player.Name)}", shown ? CActive : color,
-                () => ShowSixAsync(deckId, flow, i + 1));
+                () => ShowSixAsync(deckId, flow, position));
         }
         if (places.Count > 0)
-            builder.Action(places[^1], "▶▶ Weiter", CBack, () => ShowSixAsync(deckId, flow, flow.Position + 1));
+            builder.Action(places[^1], flow.Position >= six.Count ? "✓ Fertig" : "▶▶ Weiter", CBack, () => ShowSixAsync(deckId, flow, flow.Position + 1));
     }
 
     void Spectators(Builder builder, DeckLayout deck, string deckId)
@@ -602,14 +701,22 @@ public sealed class Deck
         if (flow.Event == "goal") ctx = ctx with { Score = _live.GoalScore(flow.Side, GoalWindow) };
         var kind = flow.Event switch
         {
-            "goal" => own ? "player_event" : "player_event",
+            "goal" => "player_event",
             "penalty" => "penalty",
             "bestplayer" => "bestplayer",
             _ => "name",
         };
+        if (flow.Event == "goal" && !own && player is not null && Own(flow.Side))
+        {
+            var opened = DateTimeOffset.UtcNow;
+            Open(deckId, flow with { Kind = FlowKind.Assist, Scorer = player, Entry = "", Opened = opened });
+            ForgetLater(deckId, opened);
+            await _runner.ShowTitleAsync(kind, ctx, CancellationToken.None);
+            return;
+        }
         Home(deckId);
         await _runner.ShowTitleAsync(kind, ctx, CancellationToken.None);
-        await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
+        if (flow.Event != "goal") await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
     }
 
     async Task ShowSixAsync(string deckId, Flow flow, int position)
@@ -622,8 +729,10 @@ public sealed class Deck
             Home(deckId);
             return;
         }
-        Set(deckId, flow with { Position = position });
-        await _runner.ShowTitleAsync("starting6", new KeyContext(flow.Side, six[position - 1], Event: position.ToString()), CancellationToken.None);
+        Open(deckId, flow with { Position = position });
+        var ctx = new KeyContext(flow.Side, six[position - 1], Event: position.ToString());
+        await _runner.ShowTitleAsync("starting6", ctx, CancellationToken.None);
+        await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
     }
 
     void Fixed(Builder builder, DeckLayout deck, string deckId, Flow flow)
@@ -721,9 +830,10 @@ public sealed class Deck
 
     sealed record Step(string PageId, string Title);
 
-    enum FlowKind { None, Players, Penalty, Starting6, Spectators }
+    enum FlowKind { None, Players, Penalty, Starting6, Spectators, Assist, Speaker }
 
-    sealed record Flow(FlowKind Kind, string Side, string Event, string Title, DeckKey? Key, string Penalty = "", int Position = 0)
+    sealed record Flow(FlowKind Kind, string Side, string Event, string Title, DeckKey? Key, string Penalty = "", int Position = 0,
+        string Entry = "", Player? Scorer = null, Player? Assist = null, DateTimeOffset Opened = default)
     {
         public static readonly Flow None = new(FlowKind.None, "", "", "", null);
     }
