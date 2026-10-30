@@ -48,7 +48,7 @@ jobs:
               -p:Version="$VERSION" -o "$PACKAGE/$RID"
             echo "$VERSION" > "$PACKAGE/$RID/release.txt"
           done
-          cp Start-ShowAgent.ps1 Start-ShowAgent.cmd Install-ShowAgent.ps1 "$PACKAGE/win-x64/"
+          cp Start-ShowAgent.ps1 Start-ShowAgent.cmd "$PACKAGE/win-x64/"
           cp start-show-agent.sh install-show-agent.sh "$PACKAGE/linux-x64/"
           cp start-show-agent.sh install-show-agent.sh "$PACKAGE/linux-arm64/"
           chmod +x "$PACKAGE"/linux-*/RedAnts.Show.Agent "$PACKAGE"/linux-*/*.sh
