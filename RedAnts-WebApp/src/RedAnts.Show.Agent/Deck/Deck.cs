@@ -777,18 +777,23 @@ public sealed class Deck
     void Fixed(Builder builder, DeckLayout deck, string deckId, Flow flow)
     {
         var page = CurrentPage(deckId);
-        var deep = flow.Kind != FlowKind.None || (page is not null && !page.IsHome);
+        var inFlow = flow.Kind != FlowKind.None;
+        var deep = inFlow || (page is not null && !page.IsHome);
+        var back = inFlow ? FlowBack(deck) : deck.Back;
         if (deep)
-            builder.Action(deck.Back, "◀ Zurück", CBack, () => { Back(deckId); return Task.CompletedTask; },
+            builder.Action(back, "◀ Zurück", CBack, () => { Back(deckId); return Task.CompletedTask; },
                 forceText: CWhite, top: Title(deckId));
         else if (page is null || page.KeyAt(deck.Back).IsEmpty) builder.Empty(deck.Back);
         builder.Action(deck.Panic, "🚨 PANIC", CPanic, () => PanicAsync(CancellationToken.None), forceText: CWhite);
     }
 
+    static int FlowBack(DeckLayout deck) => deck.Panic == 1 ? deck.Back : 1;
+
     IEnumerable<int> Places(DeckLayout deck)
     {
+        var back = FlowBack(deck);
         for (var number = 1; number <= deck.Count; number++)
-            if (!deck.Reserved(number)) yield return number;
+            if (number != back && number != deck.Panic) yield return number;
     }
 
     static string Short(string name)
