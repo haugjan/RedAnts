@@ -9,6 +9,7 @@ param(
     [switch]$Silent,
     [switch]$NoShortcut,
     [switch]$Autostart,
+    [switch]$NoBrowser,
     [switch]$CheckOnly
 )
 
@@ -47,6 +48,15 @@ function Stop-Here([string]$text) {
         Read-Host "  Enter schliesst das Fenster"
     }
     exit 1
+}
+
+function Resolve-Cloud([string]$url) {
+    $url = $url.Trim().TrimEnd("/")
+    if (-not $url) { return $defaultCloud }
+    if ($url -notmatch "^https?://") { $url = "https://$url" }
+    $fixed = $url -replace "^(https?://)admin(-dev)?\.redants\.ch$", '$1show$2.redants.ch'
+    if ($fixed -ne $url) { Write-Warn "$url ist das Backoffice, der Agent verbindet sich mit $fixed." }
+    return $fixed
 }
 
 function Read-Json([string]$path) {
@@ -105,9 +115,7 @@ function Get-CloudHalls([string]$cloud, [string]$password) {
 function New-Hall {
     Write-Host ""
     Write-Host "  Neue Halle erfassen" -ForegroundColor White
-    $cloud = (Read-Host "  Cloud [$defaultCloud]").Trim()
-    if (-not $cloud) { $cloud = $defaultCloud }
-    $cloud = $cloud.TrimEnd("/")
+    $cloud = Resolve-Cloud (Read-Host "  Cloud [$defaultCloud]")
 
     if (-not $script:boardPassword) {
         $script:boardPassword = (Read-Host "  Bord-Passwort (dasselbe wie für $cloud/bord)").Trim()
@@ -160,7 +168,7 @@ function Select-Hall {
         $match = $halls | Where-Object { $_.id -eq $Hall.ToLowerInvariant() } | Select-Object -First 1
         if ($match) {
             if ($Key) { $match.key = $Key }
-            if ($Cloud) { $match.cloud = $Cloud.TrimEnd("/") }
+            if ($Cloud) { $match.cloud = $Cloud }
             return $match
         }
         if (-not $Key) { Stop-Here "Die Halle '$Hall' ist hier nicht erfasst. Einmal mit -Hall <kennung> -Key <schlüssel> starten." }
@@ -168,7 +176,7 @@ function Select-Hall {
             name  = $Hall
             id    = $Hall.ToLowerInvariant()
             key   = $Key
-            cloud = $(if ($Cloud) { $Cloud.TrimEnd("/") } else { $defaultCloud })
+            cloud = $(if ($Cloud) { $Cloud } else { $defaultCloud })
         }
         $halls += $fresh
         Save-Halls $halls $fresh.id
@@ -186,7 +194,7 @@ function Select-Hall {
 
     $standard = $halls | Where-Object { $_.id -eq $last } | Select-Object -First 1
     if (-not $standard) { $standard = $halls[0] }
-    if ($Silent -or $halls.Count -eq 1) { return $standard }
+    if ($Silent) { return $standard }
 
     while ($true) {
         Write-Host ""
@@ -220,6 +228,7 @@ function Select-Hall {
 }
 
 function Save-Choice($hall) {
+    $hall | Add-Member -NotePropertyName cloud -NotePropertyValue (Resolve-Cloud ([string]$hall.cloud)) -Force
     $halls = @(Get-Halls | Select-Object -ExpandProperty Halls)
     $halls = @($halls | Where-Object { $_.id -ne $hall.id }) + $hall
     Save-Halls $halls $hall.id
@@ -322,9 +331,36 @@ function New-Shortcut([string]$path, [string]$Hall = "", [switch]$Quiet) {
     $shortcut.Save()
 }
 
+function Get-BoardUrl {
+    $config = Read-Json $configFile
+    $port = if ($config -and $config.deckPort) { $config.deckPort } else { 5150 }
+    return "http://localhost:$port/bord"
+}
+
+function Open-BoardWhenReady([string]$url) {
+    if ($NoBrowser) { return $null }
+    $uri = [uri]$url
+    return Start-Job -ArgumentList $uri.Host, $uri.Port, $url -ScriptBlock {
+        param($hostName, $port, $url)
+        for ($i = 0; $i -lt 120; $i++) {
+            $client = New-Object Net.Sockets.TcpClient
+            try { $client.Connect($hostName, $port); Start-Process $url; return }
+            catch { Start-Sleep -Milliseconds 500 }
+            finally { $client.Dispose() }
+        }
+    }
+}
+
 function Set-Shortcuts {
     if ($NoShortcut) { return }
     $desktop = [Environment]::GetFolderPath("Desktop")
+    $board = Join-Path $desktop "Show-Bord.url"
+    $freshBoard = -not (Test-Path -LiteralPath $board)
+    try {
+        Set-Content -LiteralPath $board -Value "[InternetShortcut]`r`nURL=$(Get-BoardUrl)" -Encoding ASCII
+        if ($freshBoard) { Write-Ok "Verknüpfung 'Show-Bord' liegt auf dem Desktop." }
+    }
+    catch { Write-Warn "Verknüpfung zum Bord konnte nicht angelegt werden: $($_.Exception.Message)" }
     $menu = Join-Path $desktop "Show-Agent.lnk"
     $fresh = -not (Test-Path -LiteralPath $menu)
     try {
@@ -361,11 +397,10 @@ try {
     Save-Choice $chosen
     Set-Shortcuts
 
-    $config = Read-Json $configFile
-    $port = if ($config -and $config.deckPort) { $config.deckPort } else { 5150 }
+    $boardUrl = Get-BoardUrl
     Write-Host ""
     Write-Ok "Halle $($chosen.name) ($($chosen.id)) über $($chosen.cloud)"
-    Write-Note "Bord, Uhr und Status: http://localhost:$port/bord · /uhr · /status"
+    Write-Note "Bord, Uhr und Status: $boardUrl · /uhr · /status"
     Write-Note "Halle wechseln: dieses Fenster schliessen und die Verknüpfung neu starten."
     Write-Host ""
 
@@ -373,9 +408,12 @@ try {
     if (-not (Test-Path -LiteralPath $exe)) { Stop-Here "Der Agent fehlt unter $root." }
 
     Write-Step "Agent läuft. Mit Strg+C beenden."
+    if (-not $NoBrowser) { Write-Note "Das Bord öffnet sich im Browser, sobald der Agent bereit ist." }
     Write-Host ""
+    $browser = Open-BoardWhenReady $boardUrl
     & $exe
     $code = $LASTEXITCODE
+    if ($browser) { Remove-Job $browser -Force -ErrorAction SilentlyContinue }
     Write-Host ""
     if ($code -ne 0) { Stop-Here "Der Agent hat sich mit Fehlercode $code beendet." }
     Write-Ok "Der Agent wurde beendet."

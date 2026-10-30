@@ -27,16 +27,16 @@ Das Skript selbst: [Start-ShowAgent.ps1](Start-ShowAgent.ps1) ([direkt herunterl
 
 1. lädt die neuste Version nach `%LOCALAPPDATA%\RedAnts\ShowAgent`,
 2. fragt nach der Halle und merkt sie sich,
-3. legt **für jede erfasste Halle eine Verknüpfung auf dem Desktop** an, dazu eine Verknüpfung „Show-Agent" mit der Auswahl,
-4. startet den Agenten.
+3. legt **für jede erfasste Halle eine Verknüpfung auf dem Desktop** an, dazu eine Verknüpfung „Show-Agent" mit der Auswahl und „Show-Bord" für die Oberfläche,
+4. startet den Agenten und öffnet das Bord (`http://localhost:5150/bord`) im Browser, sobald er bereit ist.
 
 Ein Update braucht nichts weiter als einen Neustart über die Verknüpfung: das Skript vergleicht die installierte Version mit dem neusten Release und holt sie bei Bedarf. Ist GitHub nicht erreichbar, startet die installierte Version weiter.
 
 ## In welcher Halle bin ich?
 
-- **Beim ersten Start** fragt das Skript nach der Cloud (vorbelegt mit `https://show.redants.ch`, für Tests `https://show-dev.redants.ch`) und nach dem Bord-Passwort. Damit holt es die Hallen aus dem Backoffice und zeigt sie zur Auswahl; danach fehlt nur noch der **Agent-Schlüssel** der Halle, der im Backoffice unter Show > Hallen bei der Halle steht.
+- **Beim ersten Start** fragt das Skript nach der Cloud (vorbelegt mit `https://show.redants.ch`, für Tests `https://show-dev.redants.ch`; wer `admin[-dev].redants.ch` eingibt, landet automatisch auf der passenden `show`-Adresse) und nach dem Bord-Passwort. Damit holt es die Hallen aus dem Backoffice und zeigt sie zur Auswahl; danach fehlt nur noch der **Agent-Schlüssel** der Halle, der im Backoffice unter Show > Hallen bei der Halle steht.
 - **Danach** startet die Verknüpfung „Show-Agent <Halle>" direkt in dieser Halle. Für eine zweite Halle das Skript noch einmal laufen lassen und im Menü „n" wählen, dann liegt auch dafür eine Verknüpfung auf dem Desktop.
-- **Die Verknüpfung „Show-Agent"** zeigt alle erfassten Hallen, schlaegt die zuletzt benutzte vor und nimmt mit „n" eine neue auf.
+- **Die Verknüpfung „Show-Agent"** zeigt immer das Menü, auch wenn erst eine Halle erfasst ist: alle erfassten Hallen, die zuletzt benutzte vorgeschlagen (Enter), mit „n" eine neue.
 - Erfasste Hallen stehen in `data\hallen.json`, die aktive Halle in `data\agent.json`.
 
 ### Schalter des Skripts
@@ -50,6 +50,7 @@ Ein Update braucht nichts weiter als einen Neustart über die Verknüpfung: das 
 | `-Autostart` | legt zusätzlich eine Verknüpfung in den Autostart |
 | `-NoUpdate` | startet die installierte Version ohne Suche nach einer neuen |
 | `-NoShortcut` | legt keine Verknüpfungen an |
+| `-NoBrowser` | öffnet das Bord nicht automatisch im Browser |
 | `-CheckOnly` | prüft Update und Konfiguration, startet den Agenten nicht |
 | `-InstallDir <pfad>` | installiert woanders hin als `%LOCALAPPDATA%\RedAnts\ShowAgent` |
 
