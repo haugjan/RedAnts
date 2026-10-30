@@ -211,6 +211,21 @@ public class GoalFlowTests
     }
 
     [Fact]
+    public async Task On_the_xl_the_goal_pages_put_back_top_left_even_though_back_is_on_17()
+    {
+        var layout = new DeckLayout(DeckId, "Streamdeck XL", 8, 4,
+            [new DeckPage(DeckPage.HomeId, "Startseite", null, [Special(1, SpecialKeys.GoalHome, "Tor")])], PanicKey: 25, BackKey: 17);
+        var deck = Build(layout, RedAnts);
+
+        await PressLabel(deck, "Tor");
+        var slots = deck.Slots(DeckId);
+
+        Assert.Equal("◀ Zurück", slots.Single(s => s.Number == 1).Label);
+        Assert.Equal("Torschützin?", slots.Single(s => s.Number == 2).Label);
+        Assert.Equal("🚨 PANIC", slots.Single(s => s.Number == 25).Label);
+    }
+
+    [Fact]
     public async Task On_the_speaker_page_the_player_keys_work_like_the_green_key()
     {
         var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts);
