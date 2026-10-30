@@ -13,57 +13,84 @@ The hall agent is the local half of the Show module: a headless .NET service on 
 
 Music never runs on the agent: `sound.*` steps are reported to the cloud, the DJ board in the browser plays them.
 
-## Installation in a hall
+## Agent starten
 
-The agent brings its own .NET runtime, so nothing has to be installed first. It needs a notebook in the hall network that reaches the internet, and the devices of the hall (match clock, vMix, LED wall) on that same network.
+**Auf dem Notebook in der Halle die Desktop-Verknüpfung „Show-Agent <Halle>" doppelklicken.** Sie lädt vor jedem Start die neuste Version und verbindet sich mit der Halle. Fertig.
 
-1. **Set the hall up in the cloud**: backoffice `admin.redants.ch`, section Show > Hallen. Create the hall, switch on what it offers (sound, match clock plus its type, vMix, LED wall), pick its decks, then copy its **id** and its **agent key**.
-2. **Fetch the package**: the newest release under <https://github.com/haugjan/RedAnts/releases> carries the tag `show-agent-v<version>`. Windows takes `show-agent-<version>-win-x64.zip`, Linux `show-agent-<version>-linux-x64.tar.gz` or `-linux-arm64.tar.gz`. Unpack it anywhere, the installer copies what it needs.
-3. **Install once**:
-   - Windows, in PowerShell inside the unpacked folder:
-     ```powershell
-     .\Install-ShowAgent.ps1 -Cloud https://show.redants.ch -Hall <id> -Key <key> -Autostart
-     ```
-     It writes `%LOCALAPPDATA%\RedAnts\ShowAgent\data\agent.json`, puts a "Show-Agent" shortcut on the desktop (with `-Autostart` also into the user's autostart folder) and starts the agent right away.
-   - Linux:
-     ```bash
-     ./install-show-agent.sh --cloud https://show.redants.ch --hall <id> --key <key> --service
-     ```
-     `--service` registers the systemd user service `redants-show-agent` (`systemctl --user status redants-show-agent`, log with `journalctl --user -u redants-show-agent -f`).
-4. **Check**: `http://localhost:5150/status` lists what the agent sees (hub, clock, vMix, LED, current game). In the backoffice the hall shows as connected, and `show.redants.ch/bord` mirrors the deck of that hall.
+Liegt noch keine Verknüpfung da, einmal installieren: PowerShell öffnen und diese Zeile einfügen (das `&` gehört dazu, sonst meldet PowerShell „is not recognized as the name of a cmdlet"):
 
-Day to day the desktop shortcut is enough: `Start-ShowAgent.ps1` (`start-show-agent.sh`) loads the newest release into `%LOCALAPPDATA%\RedAnts\ShowAgent` (Linux `~/.local/share/redants/show-agent`) and starts it, so **an update is nothing but a restart through the shortcut**. `-NoUpdate` keeps the installed version, `--cloud`, `--hall`, `--key` and `--deck-port` override the configuration for one run.
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force; irm https://raw.githubusercontent.com/haugjan/RedAnts/main/RedAnts-WebApp/src/RedAnts.Show.Agent/Start-ShowAgent.ps1 -OutFile "$env:TEMP\Start-ShowAgent.ps1"; & "$env:TEMP\Start-ShowAgent.ps1"
+```
 
-### data/agent.json
+Das Skript selbst: [Start-ShowAgent.ps1](Start-ShowAgent.ps1) ([direkt herunterladen](https://raw.githubusercontent.com/haugjan/RedAnts/main/RedAnts-WebApp/src/RedAnts.Show.Agent/Start-ShowAgent.ps1)). Es
 
-| Key | Meaning |
+1. lädt die neuste Version nach `%LOCALAPPDATA%\RedAnts\ShowAgent`,
+2. fragt nach der Halle und merkt sie sich,
+3. legt **für jede erfasste Halle eine Verknüpfung auf dem Desktop** an, dazu eine Verknüpfung „Show-Agent" mit der Auswahl,
+4. startet den Agenten.
+
+Ein Update braucht nichts weiter als einen Neustart über die Verknüpfung: das Skript vergleicht die installierte Version mit dem neusten Release und holt sie bei Bedarf. Ist GitHub nicht erreichbar, startet die installierte Version weiter.
+
+## In welcher Halle bin ich?
+
+- **Beim ersten Start** fragt das Skript nach der Cloud (vorbelegt mit `https://show.redants.ch`, für Tests `https://show-dev.redants.ch`) und nach dem Bord-Passwort. Damit holt es die Hallen aus dem Backoffice und zeigt sie zur Auswahl; danach fehlt nur noch der **Agent-Schlüssel** der Halle, der im Backoffice unter Show > Hallen bei der Halle steht.
+- **Danach** startet die Verknüpfung „Show-Agent <Halle>" direkt in dieser Halle. Für eine zweite Halle das Skript noch einmal laufen lassen und im Menü „n" wählen, dann liegt auch dafür eine Verknüpfung auf dem Desktop.
+- **Die Verknüpfung „Show-Agent"** zeigt alle erfassten Hallen, schlaegt die zuletzt benutzte vor und nimmt mit „n" eine neue auf.
+- Erfasste Hallen stehen in `data\hallen.json`, die aktive Halle in `data\agent.json`.
+
+### Schalter des Skripts
+
+| Schalter | Wirkung |
 |---|---|
-| `cloudUrl` | `https://show.redants.ch` (dev: `https://show-dev.redants.ch`); the hub is `<cloudUrl>/hubs/halle` |
-| `hallId` | the id of the hall in the backoffice |
-| `key` | its agent key; it may be renewed in the backoffice, then the file needs the new one |
-| `deckPort` | port of the local endpoints, `5150` by default |
-| `bind` | `localhost` by default; `0.0.0.0` offers board, clock and game mask to the hall network |
-| `boardPassword` | required as soon as `bind` leaves localhost, otherwise the agent says so and stays local |
+| `-Hall <kennung>` | startet ohne Menü in dieser Halle (so laufen die Hallen-Verknüpfungen) |
+| `-Key <schlüssel>` | nimmt eine neue Halle gleich auf, zusammen mit `-Hall` |
+| `-Cloud <url>` | andere Cloud, etwa `https://show-dev.redants.ch` |
+| `-Silent` | kein Menü, keine Rückfrage: nimmt die zuletzt benutzte Halle |
+| `-Autostart` | legt zusätzlich eine Verknüpfung in den Autostart |
+| `-NoUpdate` | startet die installierte Version ohne Suche nach einer neuen |
+| `-NoShortcut` | legt keine Verknüpfungen an |
+| `-CheckOnly` | prüft Update und Konfiguration, startet den Agenten nicht |
+| `-InstallDir <pfad>` | installiert woanders hin als `%LOCALAPPDATA%\RedAnts\ShowAgent` |
 
-Without a configuration the agent asks for cloud URL, hall id and key on the console. `data/payload.json` keeps the last synced configuration, so it also starts when the cloud is out of reach, and `data/musik` caches the music.
+### Wenn PowerShell streikt
 
-### Ports
-
-| Direction | Port |
+| Meldung | Grund |
 |---|---|
-| Companion, board, match clock, game mask, status | TCP 5150 on the agent (local, or the hall network with `bind` plus `boardPassword`) |
-| iCast match clock → agent | UDP 50085 and 50086 |
-| Bodet ScorePad → agent | TCP 4001, the agent listens and the clock connects |
-| agent → vMix | TCP 8099 |
-| agent → sedna LED wall | TCP 27182 |
-| agent → cloud | HTTPS to `show.redants.ch` (WebSocket for the hub) |
+| `... is not recognized as the name of a cmdlet` | der Pfad wurde ohne `&` aufgerufen: `& "C:\...\Start-ShowAgent.ps1"` |
+| `running scripts is disabled on this system` | `Set-ExecutionPolicy -Scope Process Bypass -Force` voranstellen (gilt nur für dieses Fenster) |
+| Das Fenster schliesst sofort | die Verknüpfung benutzen; sie bleibt bei einem Fehler offen stehen |
 
-### When something is missing
+## Was wo liegt
 
-- The status page names every link and its last error; the deck keys of a device the hall does not offer stay empty instead of failing.
-- A key that needs vMix or the match clock is hidden in a hall without it, so the same deck runs in every hall.
-- The clock is read only: the agent listens to the hall clock and never starts or stops it. Without a telegram the score may be corrected on the deck.
-- A board on the hall network answers under `http://<notebook>:5150/bord` and asks for `boardPassword` once.
+| Pfad | Inhalt |
+|---|---|
+| `%LOCALAPPDATA%\RedAnts\ShowAgent` | `RedAnts.Show.Agent.exe`, `Start-ShowAgent.ps1`, `release.txt` |
+| `…\data\agent.json` | aktive Halle: `cloudUrl`, `hallId`, `key`, `deckPort`, dazu `bind` und `boardPassword` fürs Hallennetz |
+| `…\data\hallen.json` | alle erfassten Hallen, die zuletzt benutzte und das Bord-Passwort |
+| `…\data\payload.json` | letzte Konfiguration aus der Cloud, damit der Agent auch offline startet |
+| `…\data\musik` | zwischengespeicherte Stücke |
+
+## Ports
+
+| Richtung | Port |
+|---|---|
+| Companion, Bord, Uhr, Spielmaske, Status | TCP 5150 auf dem Agenten (lokal; mit `bind` plus `boardPassword` im Hallennetz) |
+| Matchuhr iCast → Agent | UDP 50085 und 50086 |
+| Bodet ScorePad → Agent | TCP 4001, der Agent hört, die Uhr verbindet sich |
+| Agent → vMix | TCP 8099 |
+| Agent → sedna LED-Wand | TCP 27182 |
+| Agent → Cloud | HTTPS zu `show.redants.ch` (WebSocket für den Hub) |
+
+`http://localhost:5150/status` zeigt, was der Agent sieht: Hub, Uhr, vMix, LED und das laufende Spiel. Eine Taste, deren Gerät die Halle nicht anbietet, bleibt leer statt zu scheitern; die Uhr wird nur gelesen, nie gestellt.
+
+## Linux
+
+```bash
+./install-show-agent.sh --cloud https://show.redants.ch --hall <kennung> --key <schlüssel> --service
+```
+
+`--service` registriert den systemd-Benutzerdienst `redants-show-agent` (`systemctl --user status redants-show-agent`, Log mit `journalctl --user -u redants-show-agent -f`). Danach startet `start-show-agent.sh` den Agenten und lädt vorher die neuste Version.
 
 ## Board and match clock
 
