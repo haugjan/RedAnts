@@ -27,7 +27,7 @@ public static class DeckIcons
     public const string Werbung = "werbung";
 
     const int Canvas = 144;
-    const int TextArea = Canvas / 3;
+    const int TextArea = Canvas / 2;
     const int IconArea = Canvas - TextArea;
     const int SidePad = 4;
 
@@ -88,12 +88,15 @@ public static class DeckIcons
         return Convert.ToBase64String(png.ToArray());
     }
 
-    static void Band(SKCanvas canvas, string text, float top, float bottom, float largest, float smallest, int lines)
+    static void Band(SKCanvas canvas, string text, float top, float bottom, float largest, float smallest, int lines) =>
+        Band(canvas, text, top, bottom, largest, smallest, lines, SKColors.White);
+
+    static void Band(SKCanvas canvas, string text, float top, float bottom, float largest, float smallest, int lines, SKColor color)
     {
         if (text.Length == 0) return;
         using var typeface = SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.SemiBold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
                              ?? SKTypeface.Default;
-        using var paint = new SKPaint { IsAntialias = true, Color = SKColors.White };
+        using var paint = new SKPaint { IsAntialias = true, Color = color };
         var maxWidth = Canvas - 2 * SidePad;
         for (var size = largest; size >= smallest; size -= 1f)
         {
@@ -105,8 +108,9 @@ public static class DeckIcons
         }
         using var tiny = new SKFont(typeface, smallest);
         var cut = text;
-        while (cut.Length > 1 && tiny.MeasureText(cut + "…") > maxWidth * lines) cut = cut[..^1];
-        Rows(canvas, tiny, paint, Wrap(tiny, cut + "…", maxWidth, lines) ?? [cut + "…"], top, bottom);
+        IReadOnlyList<string>? fitted;
+        while ((fitted = Wrap(tiny, cut + "…", maxWidth, lines)) is null && cut.Length > 1) cut = cut[..^1].TrimEnd();
+        Rows(canvas, tiny, paint, fitted ?? [cut + "…"], top, bottom);
     }
 
     static IReadOnlyList<string>? Wrap(SKFont font, string text, float maxWidth, int lines)
@@ -182,37 +186,9 @@ public static class DeckIcons
         return Convert.ToBase64String(png.ToArray());
     }
 
-    static void DrawLabel(SKCanvas canvas, string label, int textColor)
-    {
-        using var typeface = SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.SemiBold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-                             ?? SKTypeface.Default;
-        using var paint = new SKPaint
-        {
-            IsAntialias = true,
-            Color = new SKColor((byte)((textColor >> 16) & 0xFF), (byte)((textColor >> 8) & 0xFF), (byte)(textColor & 0xFF)),
-        };
-        var maxWidth = Canvas - 2 * SidePad;
-        var text = label.Replace('\n', ' ');
-        for (var size = 30f; size >= 12f; size -= 1f)
-        {
-            using var font = new SKFont(typeface, size);
-            if (font.MeasureText(text) > maxWidth) continue;
-            Draw(canvas, font, paint, text);
-            return;
-        }
-        using var smallest = new SKFont(typeface, 12f);
-        while (text.Length > 1 && smallest.MeasureText(text + "…") > maxWidth) text = text[..^1];
-        Draw(canvas, smallest, paint, text + "…");
-    }
-
-    static void Draw(SKCanvas canvas, SKFont font, SKPaint paint, string text)
-    {
-        var width = font.MeasureText(text);
-        var metrics = font.Metrics;
-        var x = (Canvas - width) / 2;
-        var y = (TextArea - (metrics.Descent - metrics.Ascent)) / 2 - metrics.Ascent;
-        canvas.DrawText(text, x, y, SKTextAlign.Left, font, paint);
-    }
+    static void DrawLabel(SKCanvas canvas, string label, int textColor) =>
+        Band(canvas, label, 0, TextArea, 36f, 16f, 2,
+            new SKColor((byte)((textColor >> 16) & 0xFF), (byte)((textColor >> 8) & 0xFF), (byte)(textColor & 0xFF)));
 
     static SKBitmap TrimTransparent(SKBitmap source)
     {
