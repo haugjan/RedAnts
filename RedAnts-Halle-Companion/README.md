@@ -44,8 +44,10 @@ versucht es alle drei Sekunden erneut.
 
 ## Was sonst noch im Modul steckt
 
-- **Musiksteuerung**: Aktionen für Stopp, Fade-out, nächstes Stück, voriges
-  Stück und Pause, dazu je ein Preset.
+- **Musiksteuerung und PANIC**: Aktionen für Stopp, Fade-out, nächstes Stück,
+  voriges Stück, Pause und PANIC, aber keine eigenen Presets: diese Tasten
+  liefert der Agent im Deck wie jede andere. Die Aktionen bleiben nur, damit
+  bestehende Belegungen weiter funktionieren.
 - **Startseite**: eine Aktion, die das Deck zurück auf die Startseite schickt.
 - **Variablen**: `$(halle:deck)`, `$(halle:seite)`, `$(halle:zeit)`,
   `$(halle:drittel)`, `$(halle:stand_heim)`, `$(halle:stand_gast)` und
