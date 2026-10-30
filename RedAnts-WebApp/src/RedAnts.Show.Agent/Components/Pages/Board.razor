@@ -34,7 +34,6 @@
     {
         <a class="setup" href="/spiel" title="Spielkonfiguration auf diesem Rechner, läuft auch ohne Internet">⚙ Spiel</a>
     }
-    <a class="setup" href="@CompanionDownload.Path" title="Companion-Modul fürs Streamdeck herunterladen (neuste Version)">⬇ Companion</a>
     <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>
 
@@ -103,7 +102,7 @@ else
                 </section>
             }
         </div>
-        <p class="hint">Musik spielt auf diesem Rechner, Tasten laufen in der Halle.</p>
+        <p class="hint">Musik spielt auf diesem Rechner, Tasten laufen in der Halle. <a class="quiet" href="@CompanionDownload.Path" title="Neustes Companion-Modul fürs Streamdeck herunterladen">Companion-Modul</a></p>
     </main>
 
     <footer class="now">
