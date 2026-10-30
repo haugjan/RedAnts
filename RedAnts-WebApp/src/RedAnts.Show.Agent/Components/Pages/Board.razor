@@ -16,7 +16,7 @@
 
 <div class="hb">
 <header class="bar">
-    <span class="hall">@Payload.Hall.Name</span>
+    <a class="hall" href="@HallChooser.SwitchPath" title="Halle wechseln" onclick="return confirm('Halle wechseln? Das Board startet neu.')">@(Payload.Hall.Name.Length > 0 ? Payload.Hall.Name : Config.HallName) ▾</a>
     <span class="lamp on"></span>
     @if (Payload.Hall.Offers.Clock)
     {

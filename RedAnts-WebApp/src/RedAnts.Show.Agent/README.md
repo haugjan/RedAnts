@@ -15,27 +15,25 @@ Music never runs on the agent: `sound.*` steps are reported to the cloud, the DJ
 
 ## Installation in der Halle auf einen Blick
 
-Einmal pro Notebook, danach reicht jeweils ein Doppelklick.
+Das Programm heisst **Red Ants Board** (intern weiterhin Show-Agent). Einmal pro Notebook installieren, danach reicht ein Doppelklick.
 
-1. **Agent installieren:** PowerShell öffnen, die Zeile unter [Agent starten](#agent-starten) einfügen und Enter drücken.
-2. **Halle einrichten:** Das Skript fragt nacheinander:
-   - **Cloud:** Enter (nimmt `https://show.redants.ch`, nicht `admin.redants.ch`)
-   - **Bord-Passwort:** dasselbe wie für `show.redants.ch/bord`
-   - **Welche Halle:** Nummer aus der Liste
-   - **Agent-Schlüssel:** Backoffice → Show → Hallen → bei der Halle
-   - **Anzeigename:** Enter
-3. **Bord benutzen:** Es öffnet sich von selbst, sobald der Agent läuft; sonst die Desktop-Verknüpfung „Show-Bord" oder `http://localhost:5150/bord`. Das PowerShell-Fenster offen lassen, solange die Show läuft.
+1. **Installieren:** PowerShell öffnen, die Zeile unter [Board starten](#board-starten) einfügen und Enter drücken. Danach liegt auf dem Desktop genau eine Verknüpfung **„Red Ants Board"** mit dem Ameisen-Icon.
+2. **Halle wählen:** Der Browser öffnet `http://localhost:5150/bord` und fragt als Erstes **„Welche Halle?"**. Beim allerersten Mal will er einmal das **Bord-Passwort** (dasselbe wie für `show.redants.ch/bord`); danach zeigt er alle Hallen aus dem Backoffice als grosse Buttons. **Ein Klick** verbindet das Board mit der Halle, den Agent-Schlüssel holt es selbst aus der Cloud. Die zuletzt benutzte Halle ist rot umrandet.
+3. **Bord benutzen:** Nach dem Klick erscheint das Bord. Das PowerShell-Fenster offen lassen, solange die Show läuft.
 4. **Companion einrichten** (nur mit Streamdeck):
-   - Im Bord ganz unten (unter den Tasten, kleine graue Zeile) auf **„Companion-Modul"** klicken: Das lädt das neuste Modul `redants-halle-*.tgz` (sonst von den Releases [`halle-companion-v…`](https://github.com/haugjan/RedAnts/releases)). In Companion unter **Modules → Import** importieren.
+   - Im Bord ganz unten (kleine graue Zeile unter den Tasten) auf **„Companion-Modul"** klicken: Das lädt das neuste Modul `redants-halle-*.tgz` (sonst von den Releases [`halle-companion-v…`](https://github.com/haugjan/RedAnts/releases)). In Companion unter **Modules → Import** importieren.
    - Unter **Connections** je Streamdeck eine Instanz „RedAnts Halle" anlegen: **Agent** `http://localhost:5150`, **Deck** `mk2` für das Streamdeck mit 15 Tasten, `xl` für das mit 32 Tasten.
-   - Unter **Buttons → Presets → RedAnts Halle** die Presets „Taste 1", „Taste 2", … der Reihe nach auf die Tasten ziehen, zeilenweise von links oben (Mk2: Taste 1–5 obere Reihe, 6–10 Mitte, 11–15 unten). Das geschieht einmal; was auf den Tasten steht, schickt der Agent.
-5. **Nächstes Mal:** Desktop-Verknüpfung „Show-Agent <Halle>" doppelklicken. Sie holt automatisch die neuste Version.
+   - Unter **Buttons → Presets → RedAnts Halle** die Presets „Taste 1", „Taste 2", … der Reihe nach auf die Tasten ziehen, zeilenweise von links oben (Mk2: Taste 1–5 obere Reihe, 6–10 Mitte, 11–15 unten). Das geschieht einmal; was auf den Tasten steht, schickt das Board.
+   - Nach einem Board-Update mit neuen Tastenbildern die Connection einmal aus- und wieder einschalten, weil Companion die Bilder zwischenspeichert.
+5. **Nächstes Mal:** Doppelklick auf **„Red Ants Board"**. Es holt automatisch die neuste Version und fragt wieder nach der Halle.
 
-**Halle wählen oder wechseln:** Den laufenden Agenten mit Strg+C beenden, dann die Desktop-Verknüpfung **„Show-Agent"** (ohne Hallenname) starten. Sie zeigt alle erfassten Hallen: Nummer eingeben, Enter für die zuletzt benutzte, `n` für eine neue Halle. Die Verknüpfungen „Show-Agent <Halle>" starten dagegen direkt in ihrer Halle, ohne Menü.
+**Halle wechseln, während das Board läuft:** oben links auf den Hallennamen (▾) klicken und bestätigen. Das Board startet neu und zeigt wieder „Welche Halle?".
 
-## Agent starten
+**Ohne Internet:** Erreicht das Board die Cloud nicht, bietet die Hallenwahl „Ohne Internet in <letzte Halle> starten" an.
 
-**Auf dem Notebook in der Halle die Desktop-Verknüpfung „Show-Agent <Halle>" doppelklicken.** Sie lädt vor jedem Start die neuste Version und verbindet sich mit der Halle. Fertig.
+## Board starten
+
+**Auf dem Notebook in der Halle die Desktop-Verknüpfung „Red Ants Board" doppelklicken.** Sie lädt vor jedem Start die neuste Version, dann folgt die Hallenwahl im Browser.
 
 Liegt noch keine Verknüpfung da, einmal installieren: PowerShell öffnen und diese Zeile einfügen (das `&` gehört dazu, sonst meldet PowerShell „is not recognized as the name of a cmdlet"):
 
@@ -46,18 +44,17 @@ Set-ExecutionPolicy -Scope Process Bypass -Force; irm https://raw.githubusercont
 Das Skript selbst: [Start-ShowAgent.ps1](Start-ShowAgent.ps1) ([direkt herunterladen](https://raw.githubusercontent.com/haugjan/RedAnts/main/RedAnts-WebApp/src/RedAnts.Show.Agent/Start-ShowAgent.ps1)). Es
 
 1. lädt die neuste Version nach `%LOCALAPPDATA%\RedAnts\ShowAgent`,
-2. fragt nach der Halle und merkt sie sich,
-3. legt **für jede erfasste Halle eine Verknüpfung auf dem Desktop** an, dazu eine Verknüpfung „Show-Agent" mit der Auswahl und „Show-Bord" für die Oberfläche,
-4. startet den Agenten und öffnet das Bord (`http://localhost:5150/bord`) im Browser, sobald er bereit ist.
+2. legt die Desktop-Verknüpfung „Red Ants Board" an und räumt die alten Verknüpfungen „Show-Agent …" und „Show-Bord" weg,
+3. startet das Board mit der Hallenwahl und öffnet sie im Browser.
 
 Ein Update braucht nichts weiter als einen Neustart über die Verknüpfung: das Skript vergleicht die installierte Version mit dem neusten Release und holt sie bei Bedarf. Ist GitHub nicht erreichbar, startet die installierte Version weiter.
 
-## In welcher Halle bin ich?
+## Welche Halle?
 
-- **Beim ersten Start** fragt das Skript nach der Cloud (vorbelegt mit `https://show.redants.ch`, für Tests `https://show-dev.redants.ch`; wer `admin[-dev].redants.ch` eingibt, landet automatisch auf der passenden `show`-Adresse) und nach dem Bord-Passwort. Damit holt es die Hallen aus dem Backoffice und zeigt sie zur Auswahl; danach fehlt nur noch der **Agent-Schlüssel** der Halle, der im Backoffice unter Show > Hallen bei der Halle steht.
-- **Danach** startet die Verknüpfung „Show-Agent <Halle>" direkt in dieser Halle. Für eine zweite Halle das Skript noch einmal laufen lassen und im Menü „n" wählen, dann liegt auch dafür eine Verknüpfung auf dem Desktop.
-- **Die Verknüpfung „Show-Agent"** zeigt immer das Menü, auch wenn erst eine Halle erfasst ist: alle erfassten Hallen, die zuletzt benutzte vorgeschlagen (Enter), mit „n" eine neue.
-- Erfasste Hallen stehen in `data\hallen.json`, die aktive Halle in `data\agent.json`.
+- Die Hallen kommen aus dem Backoffice (Show → Hallen) über `GET /bord/hallen`, der Agent-Schlüssel der gewählten Halle über `GET /bord/hallen/{id}/agent`. Beide liegen hinter dem Bord-Passwort der Cloud.
+- Das Bord-Passwort, die gewählte Halle und ihr Schlüssel stehen in `data\agent.json` (`cloudPassword`, `hallId`, `key`, `hallName`). Ein Passwort aus der früheren `data\hallen.json` übernimmt das Skript beim ersten Start.
+- Die Cloud ist `https://show.redants.ch`; `-Cloud https://show-dev.redants.ch` für Tests. Wer `admin[-dev].redants.ch` angibt, landet automatisch auf der passenden `show`-Adresse.
+- Das Programm startet mit `--choose-hall` in der Hallenwahl; ohne den Schalter (Linux-Dienst, `-Silent`) nimmt es die gespeicherte Halle. Beendet es sich mit Code 3, startet das Skript es neu in der Hallenwahl.
 
 ### Schalter des Skripts
 
@@ -66,8 +63,8 @@ Ein Update braucht nichts weiter als einen Neustart über die Verknüpfung: das 
 | `-Hall <kennung>` | startet ohne Menü in dieser Halle (so laufen die Hallen-Verknüpfungen) |
 | `-Key <schlüssel>` | nimmt eine neue Halle gleich auf, zusammen mit `-Hall` |
 | `-Cloud <url>` | andere Cloud, etwa `https://show-dev.redants.ch` |
-| `-Silent` | kein Menü, keine Rückfrage: nimmt die zuletzt benutzte Halle |
-| `-Autostart` | legt zusätzlich eine Verknüpfung in den Autostart |
+| `-Silent` | keine Hallenwahl, keine Rückfrage: nimmt die zuletzt benutzte Halle |
+| `-Autostart` | legt zusätzlich „Red Ants Board" in den Autostart (mit `-Silent`, also ohne Hallenwahl) |
 | `-NoUpdate` | startet die installierte Version ohne Suche nach einer neuen |
 | `-NoShortcut` | legt keine Verknüpfungen an |
 | `-NoBrowser` | öffnet das Bord nicht automatisch im Browser |
@@ -88,7 +85,7 @@ Ein Update braucht nichts weiter als einen Neustart über die Verknüpfung: das 
 |---|---|
 | `%LOCALAPPDATA%\RedAnts\ShowAgent` | `RedAnts.Show.Agent.exe`, `Start-ShowAgent.ps1`, `release.txt` |
 | `…\data\agent.json` | aktive Halle: `cloudUrl`, `hallId`, `key`, `deckPort`, dazu `bind` und `boardPassword` fürs Hallennetz |
-| `…\data\hallen.json` | alle erfassten Hallen, die zuletzt benutzte und das Bord-Passwort |
+| `…\data\hallen.json` | nur noch von früheren Versionen: daraus übernimmt das Skript einmal das Bord-Passwort |
 | `…\data\payload.json` | letzte Konfiguration aus der Cloud, damit der Agent auch offline startet |
 | `…\data\musik` | zwischengespeicherte Stücke |
 

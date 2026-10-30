@@ -16,12 +16,16 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch { }
+try { $Host.UI.RawUI.WindowTitle = "Red Ants Board" } catch { }
 
 $repo = "haugjan/RedAnts"
+$appName = "Red Ants Board"
 $defaultCloud = "https://show.redants.ch"
+$switchHallCode = 3
 $root = if ($InstallDir) { $InstallDir } else { Join-Path $env:LOCALAPPDATA "RedAnts\ShowAgent" }
 $dataDir = Join-Path $root "data"
 $exe = Join-Path $root "RedAnts.Show.Agent.exe"
+$icon = Join-Path $root "board.ico"
 $releaseFile = Join-Path $root "release.txt"
 $configFile = Join-Path $dataDir "agent.json"
 $hallsFile = Join-Path $dataDir "hallen.json"
@@ -30,7 +34,7 @@ $selfFile = Join-Path $root "Start-ShowAgent.ps1"
 function Write-Banner {
     Write-Host ""
     Write-Host "  ╔════════════════════════════════════════════╗" -ForegroundColor DarkRed
-    Write-Host "  ║           RED ANTS  ·  SHOW-AGENT          ║" -ForegroundColor Red
+    Write-Host "  ║           RED ANTS  ·  BOARD               ║" -ForegroundColor Red
     Write-Host "  ╚════════════════════════════════════════════╝" -ForegroundColor DarkRed
     Write-Host ""
 }
@@ -55,7 +59,7 @@ function Resolve-Cloud([string]$url) {
     if (-not $url) { return $defaultCloud }
     if ($url -notmatch "^https?://") { $url = "https://$url" }
     $fixed = $url -replace "^(https?://)admin(-dev)?\.redants\.ch$", '$1show$2.redants.ch'
-    if ($fixed -ne $url) { Write-Warn "$url ist das Backoffice, der Agent verbindet sich mit $fixed." }
+    if ($fixed -ne $url) { Write-Warn "$url ist das Backoffice, das Board verbindet sich mit $fixed." }
     return $fixed
 }
 
@@ -75,181 +79,38 @@ function Write-Json($value, [string]$path) {
     $value | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $path -Encoding UTF8
 }
 
-function Get-Halls {
-    $stored = Read-Json $hallsFile
-    $halls = @()
-    $last = ""
-    $script:boardPassword = ""
-    if ($stored) {
-        if ($stored.PSObject.Properties.Name -contains "hallen") { $halls = @($stored.hallen) } else { $halls = @($stored) }
-        if ($stored.PSObject.Properties.Name -contains "zuletzt") { $last = [string]$stored.zuletzt }
-        if ($stored.PSObject.Properties.Name -contains "bordPasswort") { $script:boardPassword = [string]$stored.bordPasswort }
-    }
-    $halls = @($halls | Where-Object { $_ -and $_.id })
-    if ($halls.Count -eq 0 -and (Test-Path -LiteralPath $configFile)) {
-        $config = Read-Json $configFile
-        if ($config -and $config.hallId) {
-            $halls = @([pscustomobject]@{ name = [string]$config.hallId; id = [string]$config.hallId; key = [string]$config.key; cloud = [string]$config.cloudUrl })
-            $last = [string]$config.hallId
-        }
-    }
-    return [pscustomobject]@{ Halls = $halls; Last = $last }
-}
-
-function Save-Halls($halls, [string]$last) {
-    Write-Json ([pscustomobject]@{ zuletzt = $last; bordPasswort = $script:boardPassword; hallen = @($halls) }) $hallsFile
-}
-
-function Get-CloudHalls([string]$cloud, [string]$password) {
-    try {
-        $url = "$($cloud.TrimEnd('/'))/bord/hallen?key=$([uri]::EscapeDataString($password))"
-        $answer = Invoke-RestMethod $url -Headers @{ "User-Agent" = "RedAnts-ShowAgent" } -TimeoutSec 30
-        return @($answer | Where-Object { $_.id })
-    }
-    catch {
-        Write-Warn "Die Hallenliste konnte nicht geladen werden ($($_.Exception.Message))."
-        return @()
-    }
-}
-
-function New-Hall {
-    Write-Host ""
-    Write-Host "  Neue Halle erfassen" -ForegroundColor White
-    $cloud = Resolve-Cloud (Read-Host "  Cloud [$defaultCloud]")
-
-    if (-not $script:boardPassword) {
-        $script:boardPassword = (Read-Host "  Bord-Passwort (dasselbe wie für $cloud/bord)").Trim()
-    }
-
-    $id = ""
-    $name = ""
-    $offered = @()
-    if ($script:boardPassword) {
-        Write-Step "Hole die Hallen von $cloud ..."
-        $offered = Get-CloudHalls $cloud $script:boardPassword
-    }
-
-    if ($offered.Count -gt 0) {
-        Write-Host ""
-        for ($i = 0; $i -lt $offered.Count; $i++) {
-            $hint = if ($offered[$i].agent) { "  (dort läuft schon ein Agent)" } else { "" }
-            Write-Host ("   [{0}] {1,-24} {2}{3}" -f ($i + 1), $offered[$i].name, $offered[$i].id, $hint) -ForegroundColor Gray
-        }
-        Write-Host "   [x] Kennung von Hand eingeben" -ForegroundColor DarkGray
-        $answer = (Read-Host "  Welche Halle").Trim()
-        $number = 0
-        if ([int]::TryParse($answer, [ref]$number) -and $number -ge 1 -and $number -le $offered.Count) {
-            $id = [string]$offered[$number - 1].id
-            $name = [string]$offered[$number - 1].name
-        }
-    }
-
-    if (-not $id) {
-        $id = (Read-Host "  Kennung der Halle").Trim()
-        if (-not $id) { return $null }
-    }
-
-    Write-Note "Der Agent-Schlüssel steht im Backoffice unter Show > Hallen bei der Halle."
-    $key = (Read-Host "  Agent-Schlüssel für $id").Trim()
-    if (-not $key) { return $null }
-    if (-not $name) { $name = $id }
-    $own = (Read-Host "  Anzeigename [$name]").Trim()
-    if ($own) { $name = $own }
-
-    return [pscustomobject]@{ name = $name; id = $id.ToLowerInvariant(); key = $key; cloud = $cloud }
-}
-
-function Select-Hall {
-    $known = Get-Halls
-    $halls = @($known.Halls)
-    $last = $known.Last
-
-    if ($Hall) {
-        $match = $halls | Where-Object { $_.id -eq $Hall.ToLowerInvariant() } | Select-Object -First 1
-        if ($match) {
-            if ($Key) { $match.key = $Key }
-            if ($Cloud) { $match.cloud = $Cloud }
-            return $match
-        }
-        if (-not $Key) { Stop-Here "Die Halle '$Hall' ist hier nicht erfasst. Einmal mit -Hall <kennung> -Key <schlüssel> starten." }
-        $fresh = [pscustomobject]@{
-            name  = $Hall
-            id    = $Hall.ToLowerInvariant()
-            key   = $Key
-            cloud = $(if ($Cloud) { $Cloud } else { $defaultCloud })
-        }
-        $halls += $fresh
-        Save-Halls $halls $fresh.id
-        return $fresh
-    }
-
-    if ($halls.Count -eq 0) {
-        if ($Silent) { Stop-Here "Keine Halle erfasst. Das Skript einmal ohne -Silent starten." }
-        Write-Step "Noch keine Halle erfasst."
-        $fresh = New-Hall
-        if (-not $fresh) { Stop-Here "Ohne Halle kann der Agent nicht starten." }
-        Save-Halls @($fresh) $fresh.id
-        return $fresh
-    }
-
-    $standard = $halls | Where-Object { $_.id -eq $last } | Select-Object -First 1
-    if (-not $standard) { $standard = $halls[0] }
-    if ($Silent) { return $standard }
-
-    while ($true) {
-        Write-Host ""
-        Write-Host "  In welcher Halle bist du?" -ForegroundColor White
-        for ($i = 0; $i -lt $halls.Count; $i++) {
-            $hall = $halls[$i]
-            $mark = if ($hall.id -eq $standard.id) { "  ← zuletzt" } else { "" }
-            Write-Host ("   [{0}] {1,-24} {2}{3}" -f ($i + 1), $hall.name, $hall.id, $mark) -ForegroundColor Gray
-        }
-        Write-Host "   [n] neue Halle erfassen" -ForegroundColor DarkGray
-        Write-Host "   [q] abbrechen" -ForegroundColor DarkGray
-        $answer = (Read-Host ("  Auswahl [" + ($halls.IndexOf($standard) + 1) + "]")).Trim()
-
-        if (-not $answer) { return $standard }
-        if ($answer -eq "q") { exit 0 }
-        if ($answer -eq "n") {
-            $fresh = New-Hall
-            if ($fresh) {
-                $halls = @($halls | Where-Object { $_.id -ne $fresh.id }) + $fresh
-                Save-Halls $halls $fresh.id
-                return $fresh
-            }
-            continue
-        }
-        $number = 0
-        if ([int]::TryParse($answer, [ref]$number) -and $number -ge 1 -and $number -le $halls.Count) {
-            return $halls[$number - 1]
-        }
-        Write-Warn "Bitte eine Zahl von 1 bis $($halls.Count), n oder q."
-    }
-}
-
-function Save-Choice($hall) {
-    $hall | Add-Member -NotePropertyName cloud -NotePropertyValue (Resolve-Cloud ([string]$hall.cloud)) -Force
-    $halls = @(Get-Halls | Select-Object -ExpandProperty Halls)
-    $halls = @($halls | Where-Object { $_.id -ne $hall.id }) + $hall
-    Save-Halls $halls $hall.id
-
+function Update-Config {
     $config = Read-Json $configFile
     if (-not $config) { $config = [pscustomobject]@{} }
-    $values = @{
-        cloudUrl = $(if ($hall.cloud) { $hall.cloud } else { $defaultCloud })
-        hallId   = $hall.id
-        key      = $hall.key
+    $names = @($config.PSObject.Properties.Name)
+    $values = @{}
+
+    $storedCloud = if ($names -contains "cloudUrl") { [string]$config.cloudUrl } else { "" }
+    $values.cloudUrl = Resolve-Cloud $(if ($Cloud) { $Cloud } else { $storedCloud })
+
+    if (-not ($names -contains "cloudPassword") -or -not $config.cloudPassword) {
+        $halls = Read-Json $hallsFile
+        if ($halls -and ($halls.PSObject.Properties.Name -contains "bordPasswort") -and $halls.bordPasswort) {
+            $values.cloudPassword = [string]$halls.bordPasswort
+        }
+    }
+
+    if ($Hall -and $Key) {
+        $values.hallId = $Hall.ToLowerInvariant()
+        $values.key = $Key
     }
     if ($DeckPort -gt 0) { $values.deckPort = $DeckPort }
-    elseif (-not ($config.PSObject.Properties.Name -contains "deckPort")) { $values.deckPort = 5150 }
+    elseif (-not ($names -contains "deckPort")) { $values.deckPort = 5150 }
+
     foreach ($name in $values.Keys) {
         $config | Add-Member -NotePropertyName $name -NotePropertyValue $values[$name] -Force
     }
     Write-Json $config $configFile
+    return $config
 }
 
 function Get-LatestRelease {
-    $headers = @{ "User-Agent" = "RedAnts-ShowAgent" }
+    $headers = @{ "User-Agent" = "RedAnts-Board" }
     for ($try = 1; $try -le 3; $try++) {
         try {
             $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases?per_page=30" -Headers $headers -TimeoutSec 30
@@ -270,7 +131,7 @@ function Update-Agent {
     catch { Write-Warn "GitHub ist nicht erreichbar ($($_.Exception.Message))." }
     if (-not $latest) {
         if (Test-Path -LiteralPath $exe) { Write-Warn "Es läuft die installierte Version weiter."; return }
-        Stop-Here "Kein Agent installiert und kein Download möglich. Internetverbindung prüfen."
+        Stop-Here "Das Board ist nicht installiert und kein Download möglich. Internetverbindung prüfen."
     }
 
     $version = $latest.tag_name -replace "^show-agent-v", ""
@@ -286,11 +147,11 @@ function Update-Agent {
     $zip = Join-Path $env:TEMP $asset.name
     Write-Step "Lade Version $version ($([math]::Round($asset.size / 1MB, 1)) MB) ..."
     try {
-        Invoke-WebRequest $asset.browser_download_url -OutFile $zip -Headers @{ "User-Agent" = "RedAnts-ShowAgent" } -TimeoutSec 600
+        Invoke-WebRequest $asset.browser_download_url -OutFile $zip -Headers @{ "User-Agent" = "RedAnts-Board" } -TimeoutSec 600
         if ((Get-Item -LiteralPath $zip).Length -lt 1MB) { throw "Die heruntergeladene Datei ist unvollständig." }
 
         Get-Process RedAnts.Show.Agent -ErrorAction SilentlyContinue | ForEach-Object {
-            Write-Warn "Ein laufender Agent wird beendet."
+            Write-Warn "Ein laufendes Board wird beendet."
             $_ | Stop-Process -Force
             Start-Sleep -Milliseconds 800
         }
@@ -317,24 +178,50 @@ function Install-Self {
     try { Unblock-File -LiteralPath $selfFile -ErrorAction SilentlyContinue } catch { }
 }
 
-function New-Shortcut([string]$path, [string]$Hall = "", [switch]$Quiet) {
+function New-Shortcut([string]$path, [switch]$Quiet) {
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($path)
     $shortcut.TargetPath = "powershell.exe"
     $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$selfFile`""
-    if ($Hall) { $arguments += " -Hall $Hall" }
     if ($Quiet) { $arguments += " -Silent" }
     $shortcut.Arguments = $arguments
     $shortcut.WorkingDirectory = $root
-    $shortcut.Description = "RedAnts Show-Agent: lädt die neuste Version und startet sie"
-    if (Test-Path -LiteralPath $exe) { $shortcut.IconLocation = $exe }
+    $shortcut.Description = "$($appName): lädt die neuste Version, fragt nach der Halle und startet"
+    if (Test-Path -LiteralPath $icon) { $shortcut.IconLocation = "$icon,0" }
+    elseif (Test-Path -LiteralPath $exe) { $shortcut.IconLocation = "$exe,0" }
     $shortcut.Save()
 }
 
-function Get-BoardUrl {
-    $config = Read-Json $configFile
-    $port = if ($config -and $config.deckPort) { $config.deckPort } else { 5150 }
-    return "http://localhost:$port/bord"
+function Remove-OldShortcuts([string]$folder) {
+    foreach ($pattern in @("Show-Agent*.lnk", "Show-Bord.url")) {
+        Get-ChildItem -LiteralPath $folder -Filter $pattern -ErrorAction SilentlyContinue | ForEach-Object {
+            try { Remove-Item -LiteralPath $_.FullName -Force; Write-Note "Alte Verknüpfung '$($_.Name)' entfernt." } catch { }
+        }
+    }
+}
+
+function Set-Shortcuts {
+    if ($NoShortcut) { return }
+    $desktop = [Environment]::GetFolderPath("Desktop")
+    Remove-OldShortcuts $desktop
+    $path = Join-Path $desktop "$appName.lnk"
+    $fresh = -not (Test-Path -LiteralPath $path)
+    try {
+        New-Shortcut $path
+        if ($fresh) { Write-Ok "Verknüpfung '$appName' liegt auf dem Desktop." }
+    }
+    catch { Write-Warn "Verknüpfung konnte nicht angelegt werden: $($_.Exception.Message)" }
+
+    $startup = [Environment]::GetFolderPath("Startup")
+    $hadAutostart = Test-Path -LiteralPath (Join-Path $startup "Show-Agent.lnk")
+    Remove-OldShortcuts $startup
+    if ($Autostart -or $hadAutostart) {
+        try {
+            New-Shortcut (Join-Path $startup "$appName.lnk") -Quiet
+            Write-Ok "Das Board startet mit Windows (letzte Halle, ohne Hallenwahl)."
+        }
+        catch { Write-Warn "Autostart konnte nicht angelegt werden: $($_.Exception.Message)" }
+    }
 }
 
 function Open-BoardWhenReady([string]$url) {
@@ -351,73 +238,47 @@ function Open-BoardWhenReady([string]$url) {
     }
 }
 
-function Set-Shortcuts {
-    if ($NoShortcut) { return }
-    $desktop = [Environment]::GetFolderPath("Desktop")
-    $board = Join-Path $desktop "Show-Bord.url"
-    $freshBoard = -not (Test-Path -LiteralPath $board)
-    try {
-        Set-Content -LiteralPath $board -Value "[InternetShortcut]`r`nURL=$(Get-BoardUrl)" -Encoding ASCII
-        if ($freshBoard) { Write-Ok "Verknüpfung 'Show-Bord' liegt auf dem Desktop." }
-    }
-    catch { Write-Warn "Verknüpfung zum Bord konnte nicht angelegt werden: $($_.Exception.Message)" }
-    $menu = Join-Path $desktop "Show-Agent.lnk"
-    $fresh = -not (Test-Path -LiteralPath $menu)
-    try {
-        New-Shortcut $menu
-        if ($fresh) { Write-Ok "Verknüpfung 'Show-Agent' liegt auf dem Desktop." }
-    }
-    catch { Write-Warn "Verknüpfung konnte nicht angelegt werden: $($_.Exception.Message)" }
-
-    foreach ($hall in @(Get-Halls | Select-Object -ExpandProperty Halls)) {
-        $label = "Show-Agent " + ($hall.name -replace '[\\/:*?"<>|]', " ")
-        $path = Join-Path $desktop ($label.Trim() + ".lnk")
-        $new = -not (Test-Path -LiteralPath $path)
-        try {
-            New-Shortcut $path -Hall $hall.id
-            if ($new) { Write-Ok "Verknüpfung '$label' liegt auf dem Desktop." }
-        }
-        catch { Write-Warn "Verknüpfung für $($hall.name) konnte nicht angelegt werden: $($_.Exception.Message)" }
-    }
-    if ($Autostart) {
-        try {
-            New-Shortcut (Join-Path ([Environment]::GetFolderPath("Startup")) "Show-Agent.lnk") -Quiet
-            Write-Ok "Der Agent startet ab jetzt mit Windows."
-        }
-        catch { Write-Warn "Autostart konnte nicht angelegt werden: $($_.Exception.Message)" }
-    }
-}
-
 try {
     Write-Banner
     Install-Self
     Update-Agent
-
-    $chosen = Select-Hall
-    Save-Choice $chosen
+    $config = Update-Config
     Set-Shortcuts
 
-    $boardUrl = Get-BoardUrl
+    $port = if ($config.deckPort) { $config.deckPort } else { 5150 }
+    $boardUrl = "http://localhost:$port/bord"
+    $choose = -not $Silent -and -not ($Hall -and $Key)
     Write-Host ""
-    Write-Ok "Halle $($chosen.name) ($($chosen.id)) über $($chosen.cloud)"
+    if ($choose) { Write-Ok "Die Halle wählst du gleich im Browser: $boardUrl" }
+    else { Write-Ok "Halle $($config.hallId) über $($config.cloudUrl)" }
     Write-Note "Bord, Uhr und Status: $boardUrl · /uhr · /status"
-    Write-Note "Halle wechseln: dieses Fenster schliessen und die Verknüpfung neu starten."
     Write-Host ""
 
-    if ($CheckOnly) { Write-Ok "Prüflauf beendet, der Agent wurde nicht gestartet."; exit 0 }
-    if (-not (Test-Path -LiteralPath $exe)) { Stop-Here "Der Agent fehlt unter $root." }
+    if ($CheckOnly) { Write-Ok "Prüflauf beendet, das Board wurde nicht gestartet."; exit 0 }
+    if (-not (Test-Path -LiteralPath $exe)) { Stop-Here "Das Board fehlt unter $root." }
 
-    Write-Step "Agent läuft. Mit Strg+C beenden."
-    if (-not $NoBrowser) { Write-Note "Das Bord öffnet sich im Browser, sobald der Agent bereit ist." }
+    Write-Step "Board läuft. Dieses Fenster offen lassen, mit Strg+C beenden."
     Write-Host ""
     $browser = Open-BoardWhenReady $boardUrl
     Push-Location -LiteralPath $root
-    try { & $exe; $code = $LASTEXITCODE }
+    try {
+        do {
+            $agentArgs = @()
+            if ($choose) { $agentArgs += "--choose-hall" }
+            & $exe @agentArgs
+            $code = $LASTEXITCODE
+            if ($code -eq $switchHallCode) {
+                $choose = $true
+                Write-Host ""
+                Write-Step "Halle wechseln: das Board startet neu."
+            }
+        } while ($code -eq $switchHallCode)
+    }
     finally { Pop-Location }
     if ($browser) { Remove-Job $browser -Force -ErrorAction SilentlyContinue }
     Write-Host ""
-    if ($code -ne 0) { Stop-Here "Der Agent hat sich mit Fehlercode $code beendet." }
-    Write-Ok "Der Agent wurde beendet."
+    if ($code -ne 0) { Stop-Here "Das Board hat sich mit Fehlercode $code beendet." }
+    Write-Ok "Das Board wurde beendet."
     if (-not $Silent) { Read-Host "  Enter schliesst das Fenster" }
 }
 catch {
