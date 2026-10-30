@@ -16,7 +16,9 @@ Die Zuordnung wird deshalb **einmal** angelegt und nie wieder geändert:
 - Aktion `press_slot` mit der Tastennummer
 - Feedback `slot` mit derselben Nummer (liefert Text, Farbe und Tastenbild)
 
-Für jede Taste gibt es ein fertiges Preset — einfach auf das Deck ziehen. Das
+Für jede Taste gibt es ein fertiges Preset „Taste 1“, „Taste 2“, … — einfach auf
+das Deck ziehen. Die Vorschau zeigt bewusst nur die Nummer; den Inhalt bekommt die
+Taste erst auf dem Deck, live vom Agenten. Das
 Raster ergibt sich aus dem Deck in der Hallenkonfiguration (Spalten × Zeilen,
 zeilenweise durchnummeriert von links oben).
 
