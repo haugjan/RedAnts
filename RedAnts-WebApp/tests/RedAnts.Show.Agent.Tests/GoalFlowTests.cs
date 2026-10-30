@@ -153,6 +153,82 @@ public class GoalFlowTests
     }
 
     [Fact]
+    public async Task A_missing_vmix_does_not_keep_the_penalised_player_off_the_led_wall()
+    {
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
+        var hall = Hall.Offline with
+        {
+            Id = "win4",
+            Decks = [Grid(8, 4, Special(2, SpecialKeys.PenaltyHome, "Strafe"))],
+            Offered = new HallCapabilities(),
+            Devices = new HallDevices(VmixHost: "127.0.0.1", VmixPort: 1, SednaHost: "127.0.0.1", SednaPort: port),
+            LedTemplates = [new LedTemplate("tor", "start playlist -n \"STR_RA_{player.number00}\"")],
+            OverlayTitles = [new OverlayTitle("penalty", "Spielerin", 1, new Dictionary<string, string>())],
+        };
+        store.Apply(new AgentPayload(hall, Game.None with { Id = "1", Home = RedAnts, Away = Guests }, DateTimeOffset.Now, []));
+        var states = new ShowStates(NullLogger<ShowStates>.Instance);
+        var live = new LiveGame();
+        var runner = new KeyRunner(store, live, states, new VmixLink(store, live, NullLogger<VmixLink>.Instance),
+            new SednaLink(store, NullLogger<SednaLink>.Instance), NullLogger<KeyRunner>.Instance);
+        var deck = new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        await PressLabel(deck, "Strafe");
+        await PressLabel(deck, "2'");
+        var heard = Task.Run(async () =>
+        {
+            using var client = await listener.AcceptTcpClientAsync(stop.Token);
+            var buffer = new byte[256];
+            var read = await client.GetStream().ReadAsync(buffer, stop.Token);
+            return System.Text.Encoding.UTF8.GetString(buffer, 0, read).Trim();
+        });
+        var note = await deck.PressAsync(DeckId, deck.Slots(DeckId).Single(s => s.Label == "12\nLea Muster").Number);
+
+        Assert.Null(note);
+        Assert.Equal("start playlist -n \"STR_RA_12\"", await heard);
+        Assert.Contains("vMix", deck.RecentFault);
+        listener.Stop();
+    }
+
+    [Fact]
+    public async Task The_question_sits_next_to_back_and_the_scorer_cannot_be_her_own_assist()
+    {
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts);
+
+        await PressLabel(deck, "Tor");
+        Assert.Equal("Torschützin?", deck.Slots(DeckId).Single(s => s.Number == 2).Label);
+
+        await PressLabel(deck, "12\nLea Muster");
+        var slots = deck.Slots(DeckId);
+        Assert.Equal("Assist?", slots.Single(s => s.Number == 2).Label);
+        var scorer = slots.Single(s => s.Label == "12\nLea Muster");
+        Assert.False(scorer.Pressable);
+        Assert.Equal(0xFFD400, scorer.Color);
+        Assert.Equal(0xFF8C1A, slots.Single(s => s.Label == "7\nAnna H.").Color);
+    }
+
+    [Fact]
+    public async Task On_the_speaker_page_the_player_keys_work_like_the_green_key()
+    {
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts);
+
+        await PressLabel(deck, "Tor");
+        await PressLabel(deck, "12\nLea Muster");
+        await PressLabel(deck, "7\nAnna H.");
+        Assert.StartsWith("Drücken, wenn der", deck.Slots(DeckId).Single(s => s.Number == 2).Label);
+        Assert.Equal("LED Torschützin\n#12 Lea Muster", deck.Slots(DeckId).Single(s => s.Number == 3).Label);
+
+        await PressLabel(deck, "12\nLea Muster");
+        Assert.Contains("LED Assist\n#7 Anna H.", Labels(deck));
+
+        await PressLabel(deck, "7\nAnna H.");
+        Assert.Contains("✓ Fertig", Labels(deck));
+    }
+
+    [Fact]
     public void Starting_six_without_a_lineup_says_where_to_enter_it()
     {
         var deck = Build(Grid(8, 4, Special(2, SpecialKeys.Starting6Home, "Starting 6")), RedAnts with { Starting6 = [] });

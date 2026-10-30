@@ -9,6 +9,7 @@ public sealed class Deck
 {
     static readonly TimeSpan GoalWindow = TimeSpan.FromSeconds(25);
     static readonly TimeSpan SpeakerTimeout = TimeSpan.FromMinutes(3);
+    static readonly TimeSpan FaultShown = TimeSpan.FromSeconds(20);
 
     const int CPanic = 0xFF0000;
     const int CBack = 0x1E7B34;
@@ -19,6 +20,7 @@ public sealed class Deck
     const int CHead = 0x1A1A1A;
     const int CHome = 0xFF7C80;
     const int CAway = 0xA6C9EC;
+    const int CAssist = 0xFF8C1A;
 
     readonly PayloadStore _payload;
     readonly LiveGame _live;
@@ -35,6 +37,8 @@ public sealed class Deck
     string _control = "";
     long _controlOrder;
     string _player = "";
+    string? _fault;
+    DateTimeOffset _faultAt;
 
     public Deck(PayloadStore payload, LiveGame live, ShowStates states, KeyRunner runner, ILogger<Deck> log)
     {
@@ -49,6 +53,7 @@ public sealed class Deck
         runner.MusicRequested += NoteMusic;
         runner.MusicStopped += () => NoteMusic(null);
         runner.MusicControl += NoteControl;
+        runner.Failed += NoteFault;
         live.Changed += Bump;
     }
 
@@ -60,6 +65,19 @@ public sealed class Deck
     public DeckLayout? Layout(string deckId) => _payload.Hall.DeckOf(deckId);
 
     public string Resolve(string? deckId) => _payload.Hall.ResolveDeck(deckId);
+
+    public string? RecentFault =>
+        _fault is { } fault && DateTimeOffset.UtcNow - _faultAt < FaultShown ? fault : null;
+
+    void NoteFault(string message)
+    {
+        lock (_gate)
+        {
+            _fault = message;
+            _faultAt = DateTimeOffset.UtcNow;
+        }
+        Bump();
+    }
 
     public string MusicId => _music;
 
@@ -221,6 +239,7 @@ public sealed class Deck
         catch (Exception e)
         {
             _log.LogWarning("Taste gescheitert: {Message}", e.Message);
+            NoteFault(e.Message);
             return e.Message;
         }
     }
@@ -237,6 +256,16 @@ public sealed class Deck
         await Safe(() => _runner.HideAllAsync(withClock: true, stop));
         _states.Set(ShowStates.AutoBreakMusic, "aus", "PANIC");
         Bump();
+    }
+
+    async Task Quietly(Func<Task> work)
+    {
+        try { await work(); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.LogWarning("Livestream-Titel ging nicht: {Message}", e.Message);
+            NoteFault($"Livestream: {e.Message}");
+        }
     }
 
     async Task Safe(Func<Task> work)
@@ -536,44 +565,48 @@ public sealed class Deck
 
     void Assists(Builder builder, DeckLayout deck, string deckId, Flow flow) =>
         Picker(builder, deck, deckId, flow, "Assist?", [("Kein Assist", () => ToSpeakerAsync(deckId, flow, null))],
-            player => ToSpeakerAsync(deckId, flow, player));
+            player => ToSpeakerAsync(deckId, flow, player), CAssist, flow.Scorer);
 
     void Picker(Builder builder, DeckLayout deck, string deckId, Flow flow, string prompt,
-        IReadOnlyList<(string Label, Func<Task> Press)> extras, Func<Player, Task> pick)
+        IReadOnlyList<(string Label, Func<Task> Press)> extras, Func<Player, Task> pick, int? tint = null, Player? taken = null)
     {
         var team = _payload.Game.Side(flow.Side);
-        var color = flow.Side == "away" ? CAway : CHome;
+        var color = tint ?? (flow.Side == "away" ? CAway : CHome);
         var places = Places(deck).ToList();
-        if (places.Count == 0) return;
-        var keypad = team.Players.Count + extras.Count + 1 > places.Count && places.Count >= Keypad.Length + 2 + extras.Count;
+        if (places.Count < 2) return;
+        var head = places[0];
+        var rest = places.Skip(1).ToList();
+        var keypad = team.Players.Count + extras.Count > rest.Count && rest.Count >= Keypad.Length + 1 + extras.Count;
         if (!keypad)
         {
+            builder.Label(head, prompt, tint ?? CHead);
             var index = 0;
             foreach (var player in team.Players)
             {
-                if (index >= places.Count - extras.Count - 1) break;
+                if (index >= rest.Count - extras.Count) break;
                 var chosen = player;
-                builder.Action(places[index++], $"{chosen.Display}\n{Short(chosen.Name)}", color, () => pick(chosen));
+                var label = $"{chosen.Display}\n{Short(chosen.Name)}";
+                if (chosen.Number == taken?.Number) builder.Label(rest[index++], label, CActive);
+                else builder.Action(rest[index++], label, color, () => pick(chosen));
             }
             foreach (var (label, press) in extras)
-                if (index < places.Count - 1) builder.Action(places[index++], label, color, press);
-            builder.Label(places[^1], prompt, CHead);
+                if (index < rest.Count) builder.Action(rest[index++], label, color, press);
             return;
         }
 
+        var found = int.TryParse(flow.Entry, out var number) ? team.Find(number) : null;
+        if (flow.Entry.Length == 0) builder.Label(head, $"{prompt}\nNummer tippen", tint ?? CHead);
+        else if (found is null) builder.Label(head, $"#{flow.Entry}\n?", CNeutral);
+        else if (found.Number == taken?.Number) builder.Label(head, $"#{found.Display}\nschoss das Tor", CActive);
+        else builder.Action(head, $"#{found.Display} ✓\n{Short(found.Name)}", CActive, () => pick(found));
         for (var i = 0; i < Keypad.Length; i++)
         {
             var digit = Keypad[i];
-            builder.Action(places[i], digit, CNeutral, () => TypeAsync(deckId, flow, digit));
+            builder.Action(rest[i], digit, tint ?? CNeutral, () => TypeAsync(deckId, flow, digit));
         }
-        builder.Action(places[Keypad.Length], "⌫", CNeutral, () => TypeAsync(deckId, flow, null));
-        var display = places[Keypad.Length + 1];
-        var found = int.TryParse(flow.Entry, out var number) ? team.Find(number) : null;
-        if (flow.Entry.Length == 0) builder.Label(display, $"{prompt}\nNummer tippen", CHead);
-        else if (found is null) builder.Label(display, $"#{flow.Entry}\n?", CNeutral);
-        else builder.Action(display, $"#{found.Display} ✓\n{Short(found.Name)}", CActive, () => pick(found));
+        builder.Action(rest[Keypad.Length], "⌫", CNeutral, () => TypeAsync(deckId, flow, null));
         for (var i = 0; i < extras.Count; i++)
-            builder.Action(places[Keypad.Length + 2 + i], extras[i].Label, color, extras[i].Press);
+            builder.Action(rest[Keypad.Length + 1 + i], extras[i].Label, color, extras[i].Press);
     }
 
     static readonly string[] Keypad = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
@@ -605,17 +638,23 @@ public sealed class Deck
     void Speaker(Builder builder, DeckLayout deck, string deckId, Flow flow)
     {
         var places = Places(deck).ToList();
-        if (places.Count == 0) return;
-        var big = places[places.Count / 2];
+        if (places.Count < 2) return;
+        builder.Label(places[0], "Drücken, wenn der\nSpeaker den Namen sagt", CHead);
         if (flow.Position == 0 && flow.Scorer is { } scorer)
-            builder.Action(big, $"LED Torschützin\n#{scorer.Display} {Short(scorer.Name)}", CBack,
+            builder.Action(places[1], $"LED Torschützin\n#{scorer.Display} {Short(scorer.Name)}", CBack,
                 () => SpeakerLedAsync(deckId, flow, scorer, assist: false), forceText: CWhite);
         else if (flow.Position == 1 && flow.Assist is { } assist)
-            builder.Action(big, $"LED Assist\n#{assist.Display} {Short(assist.Name)}", CBack,
+            builder.Action(places[1], $"LED Assist\n#{assist.Display} {Short(assist.Name)}", CBack,
                 () => SpeakerLedAsync(deckId, flow, assist, assist: true), forceText: CWhite);
         else
-            builder.Action(big, "✓ Fertig", CBack, () => { Home(deckId); return Task.CompletedTask; }, forceText: CWhite);
-        if (places[0] != big) builder.Label(places[0], "Drücken, wenn der\nSpeaker den Namen sagt", CHead);
+            builder.Action(places[1], "✓ Fertig", CBack, () => { Home(deckId); return Task.CompletedTask; }, forceText: CWhite);
+
+        if (places.Count > 2 && flow.Scorer is { } goal)
+            builder.Action(places[2], $"{goal.Display}\n{Short(goal.Name)}", flow.Position == 0 ? CActive : CNeutral,
+                () => SpeakerLedAsync(deckId, flow, goal, assist: false));
+        if (places.Count > 3 && flow.Assist is { } helper)
+            builder.Action(places[3], $"{helper.Display}\n{Short(helper.Name)}", flow.Position == 1 ? CAssist : CNeutral,
+                () => SpeakerLedAsync(deckId, flow, helper, assist: true));
     }
 
     async Task SpeakerLedAsync(string deckId, Flow flow, Player player, bool assist)
@@ -690,8 +729,8 @@ public sealed class Deck
         if (places.Count > 0)
             builder.Action(places[^1], $"👁 {_payload.Game.Spectators}\nanzeigen", CBack, async () =>
             {
-                await _runner.ShowTitleAsync("spectators", new KeyContext(Text: _payload.Game.Spectators.ToString()), CancellationToken.None);
                 Home(deckId);
+                await Quietly(() => _runner.ShowTitleAsync("spectators", new KeyContext(Text: _payload.Game.Spectators.ToString()), CancellationToken.None));
             });
     }
 
@@ -711,11 +750,11 @@ public sealed class Deck
             var opened = DateTimeOffset.UtcNow;
             Open(deckId, flow with { Kind = FlowKind.Assist, Scorer = player, Entry = "", Opened = opened });
             ForgetLater(deckId, opened);
-            await _runner.ShowTitleAsync(kind, ctx, CancellationToken.None);
+            await Quietly(() => _runner.ShowTitleAsync(kind, ctx, CancellationToken.None));
             return;
         }
         Home(deckId);
-        await _runner.ShowTitleAsync(kind, ctx, CancellationToken.None);
+        await Quietly(() => _runner.ShowTitleAsync(kind, ctx, CancellationToken.None));
         if (flow.Event != "goal") await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
     }
 
@@ -725,13 +764,13 @@ public sealed class Deck
         var six = team.Starting6Players;
         if (position > six.Count)
         {
-            await _runner.HideTitleAsync("starting6", CancellationToken.None);
             Home(deckId);
+            await Quietly(() => _runner.HideTitleAsync("starting6", CancellationToken.None));
             return;
         }
         Open(deckId, flow with { Position = position });
         var ctx = new KeyContext(flow.Side, six[position - 1], Event: position.ToString());
-        await _runner.ShowTitleAsync("starting6", ctx, CancellationToken.None);
+        await Quietly(() => _runner.ShowTitleAsync("starting6", ctx, CancellationToken.None));
         await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
     }
 

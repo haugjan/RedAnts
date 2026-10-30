@@ -19,6 +19,7 @@ public sealed class KeyRunner(
     public event Action? MusicStopped;
     public event Action<string>? MusicControl;
     public event Action? Changed;
+    public event Action<string>? Failed;
 
     public string Shown { get; private set; } = "";
 
@@ -40,6 +41,7 @@ public sealed class KeyRunner(
             catch (Exception e)
             {
                 log.LogWarning("Befehl {Action} gescheitert: {Message}", step.Action, e.Message);
+                Failed?.Invoke(e.Message);
             }
         }
     }
@@ -131,7 +133,11 @@ public sealed class KeyRunner(
         if (!payload.Hall.Offers.Led || ctx.Player is null) return;
         if (!ctx.Side.Equals(payload.Game.OwnSide(payload.Hall.TeamId), StringComparison.OrdinalIgnoreCase)) return;
         try { await LedAsync(playlist, ctx, stop); }
-        catch (Exception e) { log.LogWarning("Spielerin ging nicht an die LED-Wand: {Message}", e.Message); }
+        catch (Exception e)
+        {
+            log.LogWarning("Spielerin ging nicht an die LED-Wand: {Message}", e.Message);
+            Failed?.Invoke(e.Message);
+        }
     }
 
     public DateTime KeyMusicAt { get; private set; } = DateTime.MinValue;
