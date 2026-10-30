@@ -180,6 +180,19 @@ public sealed record Hall(
 
     public DeckLayout? DeckOf(string id) => Decks?.FirstOrDefault(d => d.Id == id);
 
+    public string ResolveDeck(string? requested)
+    {
+        if (Decks is not { Count: > 0 } decks) return requested ?? "";
+        if (requested is not { Length: > 0 }) return decks[0].Id;
+        if (decks.FirstOrDefault(d => d.Id.Equals(requested, StringComparison.OrdinalIgnoreCase)) is { } exact) return exact.Id;
+        var named = decks.Where(d => NameWords(d.Name).Contains(requested, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (named.Count == 1) return named[0].Id;
+        return decks.Count == 1 ? decks[0].Id : requested;
+    }
+
+    static string[] NameWords(string name) =>
+        name.Split(name.Where(c => !char.IsLetterOrDigit(c)).Distinct().ToArray(), StringSplitOptions.RemoveEmptyEntries);
+
     public string? LedCommand(string eventName) =>
         LedTemplates.FirstOrDefault(t => t.Event.Equals(eventName, StringComparison.OrdinalIgnoreCase))?.Command;
 

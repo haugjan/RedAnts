@@ -58,6 +58,8 @@ public sealed class Deck
 
     public DeckLayout? Layout(string deckId) => _payload.Hall.DeckOf(deckId);
 
+    public string Resolve(string? deckId) => _payload.Hall.ResolveDeck(deckId);
+
     public string MusicId => _music;
 
     public long MusicOrder => _musicOrder;
