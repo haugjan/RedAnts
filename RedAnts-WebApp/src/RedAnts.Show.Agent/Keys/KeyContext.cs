@@ -24,6 +24,7 @@ public static class Templates
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["player.number"] = player?.Display ?? "",
+            ["player.number00"] = Padded(player?.Display),
             ["player.name"] = player?.Name ?? "",
             ["player.position"] = player?.Position ?? "",
             ["player.sponsor"] = player?.Sponsor ?? "",
@@ -70,6 +71,12 @@ public static class Templates
         foreach (var (key, value) in values)
             result = result.Replace("{" + key + "}", value, StringComparison.OrdinalIgnoreCase);
         return result;
+    }
+
+    private static string Padded(string? number)
+    {
+        var digits = new string((number ?? "").Where(char.IsAsciiDigit).ToArray());
+        return digits.Length is > 0 and < 2 ? digits.PadLeft(2, '0') : digits;
     }
 
     private static string Half(string score, int index, string fallback)

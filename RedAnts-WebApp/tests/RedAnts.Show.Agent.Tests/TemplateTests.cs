@@ -42,6 +42,16 @@ public class TemplateTests
     }
 
     [Fact]
+    public void The_led_playlist_takes_the_number_with_two_digits()
+    {
+        var ctx = new KeyContext("home", Game.Home.Find(7));
+
+        Assert.Equal("STR_RA_EIN_07", Templates.Expand("STR_RA_EIN_{player.number00}", ctx, Game, Live()));
+        Assert.Equal("STR_RA_07", Templates.Expand("STR_RA_{player.number00}", ctx, Game, Live()));
+        Assert.Equal("STR_RA_", Templates.Expand("STR_RA_{player.number00}", KeyContext.None, Game, Live()));
+    }
+
+    [Fact]
     public void The_side_decides_which_team_the_short_name_comes_from()
     {
         var live = Live();
