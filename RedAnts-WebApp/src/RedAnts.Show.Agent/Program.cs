@@ -102,7 +102,7 @@ app.MapGet("/dj/sound/{**reference}", async (string reference, CancellationToken
 
 app.MapGet("/deck/view", async (string? deckId, long? since) =>
 {
-    var id = deckId is { Length: > 0 } ? deckId : deck.Decks.FirstOrDefault() ?? "";
+    var id = deck.Resolve(deckId);
     await deck.WaitAsync(since ?? 0, TimeSpan.FromSeconds(25), lifetime.ApplicationStopping);
     return Results.Json(deck.View(id), PayloadJson.Options);
 });
@@ -115,7 +115,7 @@ app.MapPost("/deck/music/{what}", async (string what) =>
 
 app.MapPost("/deck/home", (string? deckId) =>
 {
-    var id = deckId is { Length: > 0 } ? deckId : deck.Decks.FirstOrDefault() ?? "";
+    var id = deck.Resolve(deckId);
     deck.GoHome(id);
     return Results.Json(new { ok = true });
 });
@@ -131,7 +131,7 @@ app.MapGet("/icons/{name}.png", (string name) =>
 
 app.MapPost("/deck/press/{number:int}", async (int number, string? deckId) =>
 {
-    var id = deckId is { Length: > 0 } ? deckId : deck.Decks.FirstOrDefault() ?? "";
+    var id = deck.Resolve(deckId);
     var note = await deck.PressAsync(id, number);
     return Results.Json(new { ok = note is null, note });
 });
