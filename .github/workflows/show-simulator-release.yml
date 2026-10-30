@@ -7,6 +7,7 @@ on:
       - 'feature/**'
     paths:
       - 'RedAnts-WebApp/src/RedAnts.Show.Simulator/**'
+      - '!RedAnts-WebApp/src/RedAnts.Show.Simulator/**/*.md'
       - '.github/workflows/show-simulator-release.yml'
   workflow_dispatch:
 

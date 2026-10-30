@@ -7,6 +7,7 @@ on:
       - 'feature/**'
     paths:
       - 'RedAnts-WebApp/src/RedAnts.Show.Agent/**'
+      - '!RedAnts-WebApp/src/RedAnts.Show.Agent/**/*.md'
       - 'RedAnts-WebApp/tests/RedAnts.Show.Agent.Tests/**'
       - '.github/workflows/show-agent-release.yml'
   workflow_dispatch:
