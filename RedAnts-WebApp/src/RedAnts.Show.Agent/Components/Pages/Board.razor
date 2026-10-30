@@ -25,6 +25,10 @@
         <span class="period">@Live.PeriodLabel</span>
     }
     <span class="spacer"></span>
+    @if (Deck.RecentFault is { } fault)
+    {
+        <span class="pill fault" title="@fault">⚠ @fault</span>
+    }
     @foreach (var state in ShowStates.Known)
     {
         var value = States.Value(state.Id);
