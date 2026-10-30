@@ -26,7 +26,7 @@ Einmal pro Notebook, danach reicht jeweils ein Doppelklick.
    - **Anzeigename:** Enter
 3. **Bord benutzen:** Es öffnet sich von selbst, sobald der Agent läuft; sonst die Desktop-Verknüpfung „Show-Bord" oder `http://localhost:5150/bord`. Das PowerShell-Fenster offen lassen, solange die Show läuft.
 4. **Companion einrichten** (nur mit Streamdeck):
-   - Das Modul `redants-halle-*.tgz` vom neusten Release [`halle-companion-v…`](https://github.com/haugjan/RedAnts/releases) laden und in Companion unter **Modules → Import** importieren.
+   - Im Bord oben auf **„⬇ Companion"** klicken: Das lädt das neuste Modul `redants-halle-*.tgz` (sonst von den Releases [`halle-companion-v…`](https://github.com/haugjan/RedAnts/releases)). In Companion unter **Modules → Import** importieren.
    - Unter **Connections** je Streamdeck eine Instanz „RedAnts Halle" anlegen: **Agent** `http://localhost:5150`, **Deck** `mk2` für das Streamdeck mit 15 Tasten, `xl` für das mit 32 Tasten.
    - Unter **Buttons → Presets → RedAnts Halle** die Presets „Taste 1", „Taste 2", … der Reihe nach auf die Tasten ziehen, zeilenweise von links oben (Mk2: Taste 1–5 obere Reihe, 6–10 Mitte, 11–15 unten). Das geschieht einmal; was auf den Tasten steht, schickt der Agent.
 5. **Nächstes Mal:** Desktop-Verknüpfung „Show-Agent <Halle>" doppelklicken. Sie holt automatisch die neuste Version.

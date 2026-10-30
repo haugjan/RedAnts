@@ -76,6 +76,8 @@ app.MapGet("/info", () => Results.Text(
 
 app.MapGet("/status", () => Results.Json(reporter.Status(), PayloadJson.Options));
 
+app.MapCompanionDownload();
+
 var music = app.Services.GetRequiredService<MusicCache>();
 
 app.MapGet("/dj/sound/{**reference}", async (string reference, CancellationToken stop) =>
