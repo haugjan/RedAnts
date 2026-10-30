@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$Port = 5090,
     [switch]$NoUpdate,
     [switch]$NoBrowser
