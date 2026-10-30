@@ -92,6 +92,8 @@ public sealed class KeyRunner(
     }
 
     public const string PlayerPlaylist = "spielerin";
+    public const string NumberPlaylist = "tor";
+    public const string AssistPlaylist = "assist";
 
     public async Task LedAsync(string playlist, KeyContext ctx, CancellationToken stop)
     {
@@ -117,10 +119,18 @@ public sealed class KeyRunner(
         Changed?.Invoke();
     }
 
-    public async Task ShowPlayerOnLedAsync(KeyContext ctx, CancellationToken stop)
+    public Task ShowPlayerOnLedAsync(KeyContext ctx, CancellationToken stop) => PlayerLedAsync(PlayerLed, ctx, stop);
+
+    public Task ShowAssistOnLedAsync(KeyContext ctx, CancellationToken stop) =>
+        PlayerLedAsync(payload.Hall.LedCommand(AssistPlaylist) is not null ? AssistPlaylist : PlayerLed, ctx, stop);
+
+    string PlayerLed => payload.Hall.LedCommand(PlayerPlaylist) is not null ? PlayerPlaylist : NumberPlaylist;
+
+    async Task PlayerLedAsync(string playlist, KeyContext ctx, CancellationToken stop)
     {
         if (!payload.Hall.Offers.Led || ctx.Player is null) return;
-        try { await LedAsync(PlayerPlaylist, ctx, stop); }
+        if (!ctx.Side.Equals(payload.Game.OwnSide(payload.Hall.TeamId), StringComparison.OrdinalIgnoreCase)) return;
+        try { await LedAsync(playlist, ctx, stop); }
         catch (Exception e) { log.LogWarning("Spielerin ging nicht an die LED-Wand: {Message}", e.Message); }
     }
 

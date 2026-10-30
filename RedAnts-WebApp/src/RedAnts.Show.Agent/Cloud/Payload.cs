@@ -252,6 +252,9 @@ public sealed record Game(
 
     public GameTeam Side(string side) =>
         side.Equals("away", StringComparison.OrdinalIgnoreCase) ? Away : Home;
+
+    public string OwnSide(int teamId) =>
+        teamId > 0 && Away.TeamId == teamId && Home.TeamId != teamId ? "away" : "home";
 }
 
 public sealed record AgentPayload(

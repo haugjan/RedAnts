@@ -32,6 +32,22 @@ Das Programm heisst **Red Ants Board** (intern weiterhin Show-Agent). Einmal pro
 
 **Ohne Internet:** Erreicht das Board die Cloud nicht, bietet die Hallenwahl „Ohne Internet in <letzte Halle> starten" an.
 
+## Bedienung für Helfer (Streamdeck)
+
+**Merksatz Tor: „Tor drücken – Schützin und Assist antippen – grünen Knopf drücken, wenn der Speaker den Namen sagt.“**
+
+| Taste | Was sofort passiert | Danach auf dem Streamdeck |
+|---|---|---|
+| **Tor Red Ants** | Leinwand „Tor“ + Tor-Sound | 1. Torschützin antippen → sofort auf den Livestream · 2. Assist antippen (oder „Kein Assist“) · 3. grüner Knopf „LED Torschützin“ drücken, wenn der Speaker sie nennt · 4. grüner Knopf „LED Assist“ · 5. „✓ Fertig“ |
+| **Tor Gast** | Leinwand „Tor Gast“ + Sound | Torschützin antippen → nur Livestream, fertig |
+| **Strafe** | Strafe-Sound + Leinwand „Strafe“ | Dauer wählen (2', 2'+2', 10', Spieldauer) → Spielerin antippen → Livestream; bei den Red Ants zusätzlich die Spielerin auf der Leinwand |
+| **Starting 6 (Red Ants)** | Sound + Leinwand + Livestream „Starting 6“ | „▶▶ Weiter“ oder direkt auf einen Namen → diese Spielerin auf Livestream und Leinwand; nach der sechsten „✓ Fertig“ |
+| **Starting 6 Gast** | nur was auf der Taste eingestellt ist (z.B. Sound) | nichts weiter |
+
+- **Kleines Streamdeck (Mk2):** Statt Namen kommt ein Ziffernblock. Rückennummer tippen, das Feld zeigt Nummer und Name, darauf drücken. ⌫ löscht eine Ziffer.
+- **Vertippt:** „◀ Zurück“ bricht ab, nichts wird angezeigt. Bleibt der Speaker-Knopf 3 Minuten liegen, geht das Deck von selbst zur Startseite.
+- **„Starting 6 fehlt“:** Im Bord unter ⚙ Spiel bei sechs Spielerinnen die Position 1–6 eintragen.
+- Was beim ersten Druck sofort passiert (Sound, Leinwand, Livestream), stellt man im Backoffice bei der Taste ein. Die Spielerinnen kommen auf die Leinwand mit der LED-Vorlage `spielerin`, sonst `tor` (`start playlist -n "STR_RA_{player.number00}"`), der Assist mit `assist`, sonst derselben. Spielerinnen gibt es auf der Leinwand nur für die Red Ants.
 ## Board starten
 
 **Auf dem Notebook in der Halle die Desktop-Verknüpfung „Red Ants Board" doppelklicken.** Sie lädt vor jedem Start die neuste Version, dann folgt die Hallenwahl im Browser.
