@@ -1,12 +1,26 @@
 # RedAnts
 
-Public website and self-service ticketing application for Red Ants Rychenberg Winterthur, built on **Umbraco CMS 17 / .NET 10**.
+Public website, self-service ticketing and hall control for Red Ants Rychenberg Winterthur, built on **Umbraco CMS 17 / .NET 10**.
 
 ## Repository layout
 
 | Folder | Application |
 |---|---|
-| `RedAnts-WebApp/` | The Umbraco web app (`src/`, `tests/`, `RedAnts.slnx`, `docs/`, `deploy/`, `scripts/`). Only changes here (and to `.github/workflows/deploy.yml`) trigger a deployment. |
+| `RedAnts-WebApp/` | Everything that runs on .NET: the web app, the hall agent, the simulator, the tests (`src/`, `tests/`, `RedAnts.slnx`, `docs/`, `deploy/`, `scripts/`). Changes here (and to `.github/workflows/deploy.yml`) deploy the web app; the agent and the simulator have their own release workflows. |
+| `RedAnts-Halle-Companion/` | Bitfocus Companion module (Node/yarn, npm package `companion-module-redants-halle`) that drives a hall agent's deck through its `/deck` endpoints. Released by `.github/workflows/halle-companion-release.yml` under the tag `halle-companion-v<version>`. |
+
+## Applications
+
+Four things run, three of them in the hall:
+
+| Application | Runs where | What it does |
+|---|---|---|
+| **Web app** (`RedAnts.Host` + `RedAnts.Ticketing` + `RedAnts.Show`) | Azure App Service `app-redants-prod` / `-dev` | Public website, ticket shop, admission scanning, Umbraco backoffice, and the Show section: halls, music, decks, vMix titles and LED templates, the cloud board at `/bord` and the hub `/hubs/halle` the agents hang on. |
+| **Hall agent** (`RedAnts.Show.Agent`) | Streaming notebook in the hall | Reads the hall clock (iCast over UDP, Bodet ScorePad over TCP), drives vMix and the sedna LED wall, serves the 32-key deck for Companion plus its own board (`/bord`), match clock (`/uhr`) and game mask (`/spiel`) on port 5150, and reports score, clock and state back to the cloud. Installation: `RedAnts-WebApp/src/RedAnts.Show.Agent/README.md`. |
+| **Companion module** (`RedAnts-Halle-Companion`) | Bitfocus Companion on the same notebook | Turns a physical Streamdeck into the deck: one instance per deck, one preset per key number. It knows nothing but numbers, the configuration decides what a key shows and does. |
+| **Simulator** (`RedAnts.Show.Simulator`) | Any dev machine | Stands in for match clock, vMix and LED wall so the agent can be tested without a hall. |
+
+A hall without a notebook needs none of this: halls that only play music are opened as a browser board on `show.redants.ch/bord`. What the hall control does and why is written down in `HALLENSTEUERUNG.md`.
 
 All commands below are meant to be run from the repository root.
 
@@ -19,8 +33,9 @@ Each surface has its own custom domain, routed by host in `Program.cs`:
 | Public / tickets | `tickets.redants.ch` | `tickets-dev.redants.ch` |
 | Scanning | `scan.redants.ch` | `scan-dev.redants.ch` |
 | Admin / backoffice | `admin.redants.ch` | `admin-dev.redants.ch` |
+| Board / soundboard (Show) | `show.redants.ch` | `show-dev.redants.ch` |
 
-App Services `app-redants-prod` / `app-redants-dev` (Switzerland North). Only `tickets.redants.ch` is search-indexed; all other hosts (every `*-dev`, the scan/admin subdomains, `*.azurewebsites.net`) send `noindex`. Payrexx: prod uses the live `redants` instance, dev the `redants-test` instance.
+App Services `app-redants-prod` / `app-redants-dev` (Switzerland North). Prod runs on a Premium plan and every deployment goes through its `staging` slot, so a release swaps in without an HTTP interruption. Only `tickets.redants.ch` is search-indexed; all other hosts (every `*-dev`, the scan/admin subdomains, `*.azurewebsites.net`) send `noindex`. Payrexx: prod uses the live `redants` instance, dev the `redants-test` instance.
 
 ## Requirements
 
@@ -397,6 +412,9 @@ Availability for sale is resolved by `EventPricingReader`: a category is sold ou
 ## Documentation
 
 - `ARCHITECTURE.md`: design, layering, content-slice model, the ticketing data model, code-first seeding, and the runtime-compiled Razor caveats.
+- `HALLENSTEUERUNG.md`: what the hall control does, the deck model and the open points (German).
+- `RedAnts-WebApp/src/RedAnts.Show.Agent/README.md`: installing the hall agent, its ports, the key commands and the clock telegrams.
+- `RedAnts-Halle-Companion/README.md`: setting the Companion module up for a Streamdeck.
 - `CLAUDE.md` / `AGENTS.md`: working conventions for AI coding agents.
 
 ## Tech stack

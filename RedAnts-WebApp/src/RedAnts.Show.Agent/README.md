@@ -13,18 +13,57 @@ The hall agent is the local half of the Show module: a headless .NET service on 
 
 Music never runs on the agent: `sound.*` steps are reported to the cloud, the DJ board in the browser plays them.
 
-## Setup
+## Installation in a hall
 
-1. In the backoffice (`admin.redants.ch`, section Show) create the hall and copy its id and agent key.
-2. Install it once:
-   - Windows: `Install-ShowAgent.ps1 -Cloud https://show.redants.ch -Hall <id> -Key <key> [-Autostart]` writes `data\agent.json`, puts a shortcut on the desktop (and into Autostart) and starts the agent.
-   - Linux: `./install-show-agent.sh --cloud https://show.redants.ch --hall <id> --key <key> [--service]`; `--service` registers a systemd user service (`systemctl --user status redants-show-agent`).
-3. Afterwards `Start-ShowAgent.ps1` (or `start-show-agent.sh`) is enough: it fetches the newest GitHub release into `%LOCALAPPDATA%\RedAnts\ShowAgent` (Linux: `~/.local/share/redants/show-agent`) and starts it. Without any configuration the agent asks for cloud URL, hall id and key on the console; `--cloud`, `--hall`, `--key` and `--deck-port` override them.
-4. `data\payload.json` keeps the last synced configuration, so the agent also starts without the cloud.
+The agent brings its own .NET runtime, so nothing has to be installed first. It needs a notebook in the hall network that reaches the internet, and the devices of the hall (match clock, vMix, LED wall) on that same network.
 
-Without a hall in reach, `RedAnts.Show.Simulator` next to it stands in for the match clock, vMix and the LED wall.
+1. **Set the hall up in the cloud**: backoffice `admin.redants.ch`, section Show > Hallen. Create the hall, switch on what it offers (sound, match clock plus its type, vMix, LED wall), pick its decks, then copy its **id** and its **agent key**.
+2. **Fetch the package**: the newest release under <https://github.com/haugjan/RedAnts/releases> carries the tag `show-agent-v<version>`. Windows takes `show-agent-<version>-win-x64.zip`, Linux `show-agent-<version>-linux-x64.tar.gz` or `-linux-arm64.tar.gz`. Unpack it anywhere, the installer copies what it needs.
+3. **Install once**:
+   - Windows, in PowerShell inside the unpacked folder:
+     ```powershell
+     .\Install-ShowAgent.ps1 -Cloud https://show.redants.ch -Hall <id> -Key <key> -Autostart
+     ```
+     It writes `%LOCALAPPDATA%\RedAnts\ShowAgent\data\agent.json`, puts a "Show-Agent" shortcut on the desktop (with `-Autostart` also into the user's autostart folder) and starts the agent right away.
+   - Linux:
+     ```bash
+     ./install-show-agent.sh --cloud https://show.redants.ch --hall <id> --key <key> --service
+     ```
+     `--service` registers the systemd user service `redants-show-agent` (`systemctl --user status redants-show-agent`, log with `journalctl --user -u redants-show-agent -f`).
+4. **Check**: `http://localhost:5150/status` lists what the agent sees (hub, clock, vMix, LED, current game). In the backoffice the hall shows as connected, and `show.redants.ch/bord` mirrors the deck of that hall.
 
-`http://localhost:5150/status` shows what the agent sees (connections, clock, scene).
+Day to day the desktop shortcut is enough: `Start-ShowAgent.ps1` (`start-show-agent.sh`) loads the newest release into `%LOCALAPPDATA%\RedAnts\ShowAgent` (Linux `~/.local/share/redants/show-agent`) and starts it, so **an update is nothing but a restart through the shortcut**. `-NoUpdate` keeps the installed version, `--cloud`, `--hall`, `--key` and `--deck-port` override the configuration for one run.
+
+### data/agent.json
+
+| Key | Meaning |
+|---|---|
+| `cloudUrl` | `https://show.redants.ch` (dev: `https://show-dev.redants.ch`); the hub is `<cloudUrl>/hubs/halle` |
+| `hallId` | the id of the hall in the backoffice |
+| `key` | its agent key; it may be renewed in the backoffice, then the file needs the new one |
+| `deckPort` | port of the local endpoints, `5150` by default |
+| `bind` | `localhost` by default; `0.0.0.0` offers board, clock and game mask to the hall network |
+| `boardPassword` | required as soon as `bind` leaves localhost, otherwise the agent says so and stays local |
+
+Without a configuration the agent asks for cloud URL, hall id and key on the console. `data/payload.json` keeps the last synced configuration, so it also starts when the cloud is out of reach, and `data/musik` caches the music.
+
+### Ports
+
+| Direction | Port |
+|---|---|
+| Companion, board, match clock, game mask, status | TCP 5150 on the agent (local, or the hall network with `bind` plus `boardPassword`) |
+| iCast match clock → agent | UDP 50085 and 50086 |
+| Bodet ScorePad → agent | TCP 4001, the agent listens and the clock connects |
+| agent → vMix | TCP 8099 |
+| agent → sedna LED wall | TCP 27182 |
+| agent → cloud | HTTPS to `show.redants.ch` (WebSocket for the hub) |
+
+### When something is missing
+
+- The status page names every link and its last error; the deck keys of a device the hall does not offer stay empty instead of failing.
+- A key that needs vMix or the match clock is hidden in a hall without it, so the same deck runs in every hall.
+- The clock is read only: the agent listens to the hall clock and never starts or stops it. Without a telegram the score may be corrected on the deck.
+- A board on the hall network answers under `http://<notebook>:5150/bord` and asks for `boardPassword` once.
 
 ## Board and match clock
 
@@ -38,24 +77,22 @@ The three pages listen on `localhost` only. `agent.json` moves them into the hal
 
 A hall only starts what it offers. Sound, match clock (with its type), vMix, LED wall and light show are switched per hall in the backoffice; the agent skips the links it does not offer, refuses scene steps that need them and leaves the matching deck keys empty.
 
-## Scenes
+## What a key can do
 
-A scene is an ordered list of steps. The agent knows these actions:
+A key has a kind (`leer`, `Musik`, `Befehlsfolge`, `Feste Funktion`, `Seite öffnen`, `Anzeige`), set in the backoffice under Show > Decks. A command sequence runs step by step; a fixed function runs its sequence first and then takes over.
 
-| Action | Target | Behaviour |
+| Command | Target | Behaviour |
 |---|---|---|
-| `sound.play`, `sound.stop`, `sound.fade` | `tile:<id>` | reported to the cloud, the browser board plays |
-| `led.start` | `led:<event>` | looks up the hall's LED template for the event, expands placeholders, appends `-o`/`-fi` from the step and sends it to sedna |
-| `led.stop` | `led:<event>` (default `stopp`) | same, falls back to `stop playlist` |
-| `overlay.show` | `title:<kind>` | fills the fields of the hall's vMix title of that kind with the expanded templates and brings its overlay channel in |
-| `overlay.text` | `title:<kind>`, default `message` | shows that title with the text typed on the key, for a note like "Empty Net" |
-| `overlay.hide` | `title:<kind>` or `title:*` | takes the channel out, or every configured channel |
-| `light.scene` | `light:<id>` | reserved, logs only |
-| `deck.context` | `Main`, `GoalHome`, `PlayerAway`, … | switches the Streamdeck page |
-| `player.pick` | | waits until a player key is pressed on the deck (skipped when the run already carries a `player` argument) |
-| `wait` | `ms` | pause |
-| `wait.score` | `timeoutMs` | waits until the hall clock reports a new score, continues with a warning after the timeout |
-| `scene.run` | scene id | runs another scene inline |
+| `musik.start` | a music entry | reported to the cloud, the board in the browser plays it |
+| `musik.stopp`, `musik.fade` | | the same way, stop and fade out |
+| `vmix.ein` | `title:<kind>` | fills the fields of the hall's vMix title of that kind with the expanded templates and brings its overlay channel in |
+| `vmix.text` | `title:<kind>`, default `message` | shows that title with the text typed on the key, for a note like "Empty Net" |
+| `vmix.aus` | `title:<kind>` or empty | takes that channel out, empty takes out every configured channel |
+| `led.start` | `led:<event>` | looks up the hall's LED template for the event, expands placeholders and sends it to sedna |
+| `led.stopp` | `led:<event>` (default `stopp`) | the same, falls back to `stop playlist` |
+| `warten` | milliseconds | pause |
+
+The fixed functions carry their own flow: goal, penalty (2', 2'+2', 10', Spieldauer), best player, player, Starting 6 and the spectator counter open the player list on the deck or count on, the state keys switch overlay, clock, music and the automatic break music, and the music keys are stop, fade out, next, previous and pause.
 
 Placeholders in LED commands and title fields: `{player.number}`, `{player.name}`, `{player.position}`, `{player.sponsor}`, `{player.photo}`, `{team.short}`, `{team.long}`, `{team.coach}`, `{team.logo}`, `{team.starting6}`, `{home.*}`, `{away.*}`, `{score}`, `{score.home}`, `{score.away}`, `{clock}`, `{period}`, `{period.label}`, `{penalty}`, `{text}`, `{event}`, `{side}`, `{game.title}`, `{game.league}`, `{game.location}`, `{referee1}`, `{referee2}`, `{commentator1}`, `{commentator2}`.
 
@@ -63,7 +100,7 @@ The scoreboard is a title of kind `scoreboard`: its fields map the clock slots (
 
 ## Deck
 
-The field deck has four rows of eight keys, numbered 1 to 32. Key 17 is always "Zurück", key 25 always PANIC. Its start page carries: goal, coach, timeout and lineup per team in the first row; penalty, player, best player and Starting 6 in the second; message, period, both scores, highlight, result and opener in the third; PANIC, commentators, referees, the clock and the sponsor/overlay state keys in the fourth. The music deck is a Streamdeck Mk2 of fifteen keys: key 1 is "Zurück", key 11 PANIC, keys 12 to 15 are stop, pause, next and fade out, and the pages below it hold the songs of one league. A key whose scene is not configured in the cloud stays grey and does nothing. The clock itself is read-only: the agent only listens to the hall clock, it never starts or stops it.
+A deck is a Streamdeck Mk2 (5 × 3 keys) or a Streamdeck XL (8 × 4). Its size is chosen when it is created and stays fixed. Every deck has its own start page; its sub-pages belong to the size, so every deck with the same number of keys offers the same pages. PANIC and Zurück sit on a fixed place per deck, Zurück only on sub-pages, where it is split: the name of the key that opened the page above, "Zurück" below. A key whose device the hall does not offer stays empty, and the keys are the same on the Streamdeck, on the agent's board and on the cloud board.
 
 ## Match clock telegrams
 
