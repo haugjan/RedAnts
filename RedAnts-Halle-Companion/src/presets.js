@@ -8,6 +8,12 @@ const presetDefinitions = (instance) => {
 			category: 'Tasten',
 			name: 'Taste ' + slot,
 			style: { text: String(slot), size: '18', color: combineRgb(255, 255, 255), bgcolor: combineRgb(0, 0, 0) },
+			previewStyle: {
+				text: 'Taste\\n' + slot,
+				size: '18',
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(40, 44, 52),
+			},
 			steps: [{ down: [{ actionId: 'press_slot', options: { slot } }], up: [] }],
 			feedbacks: [{ feedbackId: 'slot', options: { slot } }],
 		}
