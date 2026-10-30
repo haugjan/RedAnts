@@ -33,7 +33,7 @@ public sealed class MusicCache(AgentConfig config, PayloadStore payload, ILogger
         {
             if (File.Exists(file)) return file;
             var path = string.Join('/', reference.Split('/').Select(Uri.EscapeDataString));
-            var url = $"{config.CloudUrl.TrimEnd('/')}/dj/sound/{path}";
+            var url = $"{config.Cloud}/dj/sound/{path}";
             using var answer = await _http.GetAsync(url, stop);
             if (!answer.IsSuccessStatusCode)
             {

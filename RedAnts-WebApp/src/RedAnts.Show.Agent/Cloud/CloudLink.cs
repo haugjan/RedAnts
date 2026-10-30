@@ -58,13 +58,13 @@ public sealed class CloudLink(AgentConfig config, PayloadStore payload, Deck.Dec
                     await hub.StartAsync(stop);
                     Fault = null;
                     ConnectedAt = DateTimeOffset.Now;
-                    log.LogInformation("Cloud {Url} verbunden als Halle {Hall}", config.CloudUrl, config.HallId);
+                    log.LogInformation("Cloud {Url} verbunden als Halle {Hall}", config.Cloud, config.HallId);
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception e)
                 {
                     Fault = e.Message;
-                    log.LogWarning("Cloud {Url} nicht erreichbar: {Message}", config.CloudUrl, e.Message);
+                    log.LogWarning("Cloud {Url} nicht erreichbar: {Message}", config.Cloud, e.Message);
                 }
             }
             try { await Task.Delay(RetryDelay, stop); }

@@ -4,8 +4,14 @@ using RedAnts.Show.Agent.Cloud;
 
 namespace RedAnts.Show.Agent;
 
-public sealed record AgentConfig(string CloudUrl = "", string HallId = "", string Key = "", int DeckPort = 5150, string Bind = "localhost", string BoardPassword = "")
+public sealed record AgentConfig(string CloudUrl = "", string HallId = "", string Key = "", int DeckPort = 5150, string Bind = "localhost", string BoardPassword = "", string CloudPassword = "", string HallName = "")
 {
+    public const string DefaultCloud = "https://show.redants.ch";
+
+    public const string ChooseHall = "--choose-hall";
+
+    public string Cloud => CloudUrl.Length > 0 ? CloudUrl.TrimEnd('/') : DefaultCloud;
+
     public static string DataDir => Path.Combine(AppContext.BaseDirectory, "data");
 
     public static string File => Path.Combine(DataDir, "agent.json");
@@ -15,9 +21,9 @@ public sealed record AgentConfig(string CloudUrl = "", string HallId = "", strin
         ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
         ?? "0.0.0";
 
-    public bool IsComplete => CloudUrl.Length > 0 && HallId.Length > 0 && Key.Length > 0;
+    public bool IsComplete => HallId.Length > 0 && Key.Length > 0;
 
-    public string HubUrl => CloudUrl.TrimEnd('/') + "/hubs/halle";
+    public string HubUrl => Cloud + "/hubs/halle";
 
     public string Wanted => Bind.Length > 0 ? Bind : "localhost";
 
@@ -64,25 +70,9 @@ public sealed record AgentConfig(string CloudUrl = "", string HallId = "", strin
                 case "--deck-port": config = config with { DeckPort = int.Parse(args[++i]) }; break;
                 case "--bind": config = config with { Bind = args[++i].Trim() }; break;
                 case "--board-password": config = config with { BoardPassword = args[++i].Trim() }; break;
+                case "--cloud-password": config = config with { CloudPassword = args[++i].Trim() }; break;
             }
         }
         return config;
-    }
-
-    public AgentConfig Prompted()
-    {
-        if (IsComplete || Console.IsInputRedirected) return this;
-        Console.WriteLine("Einrichtung des Hallen-Agenten (Werte stehen im Backoffice unter Show > Hallen):");
-        var cloud = Ask("Cloud-URL", CloudUrl.Length > 0 ? CloudUrl : "https://show.redants.ch");
-        var hall = Ask("Hallen-Kennung", HallId).ToLowerInvariant();
-        var key = Ask("Agent-Schlüssel", Key);
-        return this with { CloudUrl = cloud, HallId = hall, Key = key };
-    }
-
-    static string Ask(string label, string current)
-    {
-        Console.Write(current.Length > 0 ? $"{label} [{current}]: " : $"{label}: ");
-        var input = Console.ReadLine()?.Trim() ?? "";
-        return input.Length > 0 ? input : current;
     }
 }

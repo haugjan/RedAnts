@@ -7,6 +7,8 @@
     <AssemblyName>RedAnts.Show.Agent</AssemblyName>
     <Version>1.0.0</Version>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <ApplicationIcon>board.ico</ApplicationIcon>
+    <Product>Red Ants Board</Product>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +31,9 @@
 
   <ItemGroup>
     <Content Include="Icons/*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="board.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

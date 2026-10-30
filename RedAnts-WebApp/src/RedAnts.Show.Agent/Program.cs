@@ -11,16 +11,16 @@ using RedAnts.Show.Agent.Web;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 var stored = AgentConfig.Load();
-var config = stored.WithArgs(args).Prompted();
+var config = stored.WithArgs(args);
 if (config != stored) config.Save();
-if (!config.IsComplete)
+var hostArgs = args.Where(arg => arg != AgentConfig.ChooseHall).ToArray();
+if (args.Contains(AgentConfig.ChooseHall) || !config.IsComplete)
 {
-    Console.Error.WriteLine("Keine vollständige Einrichtung: Cloud-URL, Hallen-Kennung und Agent-Schlüssel fehlen.");
-    Console.Error.WriteLine($"Entweder {AgentConfig.File} ausfüllen oder starten mit --cloud <url> --hall <kennung> --key <schlüssel>.");
-    return 1;
+    if (await HallChooser.RunAsync(config, hostArgs) is not { } chosen) return 0;
+    config = chosen;
 }
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = hostArgs, ContentRootPath = AppContext.BaseDirectory });
 builder.WebHost.UseUrls($"http://{config.Host}:{config.DeckPort}");
 builder.Logging.ClearProviders();
 builder.Logging.AddSimpleConsole(o =>
@@ -72,7 +72,17 @@ vmixLink.InputsRead += inputs => reporter.ReportInputs(inputs);
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
 app.MapGet("/info", () => Results.Text(
-    $"RedAnts Show-Agent {AgentConfig.Version}\nHalle: {config.HallId}\nCloud: {config.CloudUrl}\nBord: http://localhost:{config.DeckPort}/bord\nMatchuhr: http://localhost:{config.DeckPort}/uhr\nStatus: /status\n"));
+    $"Red Ants Board {AgentConfig.Version}\nHalle: {config.HallId}\nCloud: {config.Cloud}\nBord: http://localhost:{config.DeckPort}/bord\nMatchuhr: http://localhost:{config.DeckPort}/uhr\nStatus: /status\n"));
+
+var switchHall = false;
+app.MapGet(HallChooser.SwitchPath, () =>
+{
+    switchHall = true;
+    _ = Task.Delay(TimeSpan.FromMilliseconds(500)).ContinueWith(_ => lifetime.StopApplication());
+    return Results.Content(HallChooser.SwitchingPage(), "text/html; charset=utf-8");
+});
+
+app.MapGet("/favicon.ico", () => Results.File(Path.Combine(AppContext.BaseDirectory, "board.ico"), "image/x-icon"));
 
 app.MapGet("/status", () => Results.Json(reporter.Status(), PayloadJson.Options));
 
@@ -122,8 +132,8 @@ app.MapPost("/deck/press/{number:int}", async (int number, string? deckId) =>
     return Results.Json(new { ok = note is null, note });
 });
 
-Console.WriteLine($"RedAnts Show-Agent {AgentConfig.Version}: Halle {config.HallId}, Cloud {config.CloudUrl}");
+Console.WriteLine($"Red Ants Board {AgentConfig.Version}: Halle {config.HallId}, Cloud {config.Cloud}");
 if (config.Warning is { } warning) Console.WriteLine(warning);
 Console.WriteLine($"Bord {config.BoardUrl}/bord, Matchuhr {config.BoardUrl}/uhr{(config.BoardPassword.Length > 0 ? " (Bord mit Passwort)" : "")}");
-app.Run();
-return 0;
+await app.RunAsync();
+return switchHall ? HallChooser.SwitchExitCode : 0;

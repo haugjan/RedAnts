@@ -176,7 +176,7 @@
     private string? _message;
     private bool _failed;
 
-    private string CloudGame => $"{Config.CloudUrl.TrimEnd('/')}/bord?halle={Config.HallId}&spiel=1";
+    private string CloudGame => $"{Config.Cloud}/bord?halle={Config.HallId}&spiel=1";
 
     protected override void OnInitialized()
     {
