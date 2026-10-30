@@ -411,8 +411,9 @@ try {
     if (-not $NoBrowser) { Write-Note "Das Bord öffnet sich im Browser, sobald der Agent bereit ist." }
     Write-Host ""
     $browser = Open-BoardWhenReady $boardUrl
-    & $exe
-    $code = $LASTEXITCODE
+    Push-Location -LiteralPath $root
+    try { & $exe; $code = $LASTEXITCODE }
+    finally { Pop-Location }
     if ($browser) { Remove-Job $browser -Force -ErrorAction SilentlyContinue }
     Write-Host ""
     if ($code -ne 0) { Stop-Here "Der Agent hat sich mit Fehlercode $code beendet." }

@@ -20,7 +20,7 @@ if (!config.IsComplete)
     return 1;
 }
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
 builder.WebHost.UseUrls($"http://{config.Host}:{config.DeckPort}");
 builder.Logging.ClearProviders();
 builder.Logging.AddSimpleConsole(o =>
