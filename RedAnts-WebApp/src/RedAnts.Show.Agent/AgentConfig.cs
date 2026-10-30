@@ -4,7 +4,7 @@ using RedAnts.Show.Agent.Cloud;
 
 namespace RedAnts.Show.Agent;
 
-public sealed record AgentConfig(string CloudUrl = "", string HallId = "", string Key = "", int DeckPort = 5150, string Bind = "localhost", string BoardPassword = "", string CloudPassword = "", string HallName = "")
+public sealed record AgentConfig(string CloudUrl = "", string HallId = "", string Key = "", int DeckPort = 5150, string Bind = "localhost", string BoardPassword = "", string CloudPassword = "", string HallName = "", int ClockPort = 80)
 {
     public const string DefaultCloud = "https://show.redants.ch";
 
@@ -39,7 +39,13 @@ public sealed record AgentConfig(string CloudUrl = "", string HallId = "", strin
         ? $"Das Bord soll im Netz hören ({Wanted}), hat aber kein Passwort (agent.json: boardPassword). Der Agent bleibt deshalb auf localhost."
         : null;
 
-    public string BoardUrl => $"http://{(OnNetwork ? Environment.MachineName.ToLowerInvariant() : "localhost")}:{DeckPort}";
+    public bool WantsClockPort => ClockPort > 0 && ClockPort != DeckPort;
+
+    public string ClockUrl => ClockPort == 80
+        ? $"http://{(OnNetwork ? Environment.MachineName.ToLowerInvariant() : "localhost")}/uhr"
+        : $"http://{(OnNetwork ? Environment.MachineName.ToLowerInvariant() : "localhost")}:{ClockPort}/uhr";
+
+    public string BoardUrl =>$"http://{(OnNetwork ? Environment.MachineName.ToLowerInvariant() : "localhost")}:{DeckPort}";
 
     public static AgentConfig Load()
     {
@@ -71,6 +77,7 @@ public sealed record AgentConfig(string CloudUrl = "", string HallId = "", strin
                 case "--bind": config = config with { Bind = args[++i].Trim() }; break;
                 case "--board-password": config = config with { BoardPassword = args[++i].Trim() }; break;
                 case "--cloud-password": config = config with { CloudPassword = args[++i].Trim() }; break;
+                case "--clock-port": config = config with { ClockPort = int.Parse(args[++i]) }; break;
             }
         }
         return config;

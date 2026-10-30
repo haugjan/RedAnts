@@ -21,7 +21,10 @@ if (args.Contains(AgentConfig.ChooseHall) || !config.IsComplete)
 }
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = hostArgs, ContentRootPath = AppContext.BaseDirectory });
-builder.WebHost.UseUrls($"http://{config.Host}:{config.DeckPort}");
+var clockOnOwnPort = config.WantsClockPort && ClockListener.IsFree(config.Host, config.ClockPort);
+builder.WebHost.UseUrls(clockOnOwnPort
+    ? [$"http://{config.Host}:{config.DeckPort}", $"http://{config.Host}:{config.ClockPort}"]
+    : [$"http://{config.Host}:{config.DeckPort}"]);
 builder.Logging.ClearProviders();
 builder.Logging.AddSimpleConsole(o =>
 {
@@ -56,6 +59,7 @@ builder.Services.AddSingleton<StatusReporter>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<StatusReporter>());
 
 var app = builder.Build();
+if (clockOnOwnPort) app.UseClockRoot(config.ClockPort);
 app.UseAntiforgery();
 app.UseBoardGate(config.BoardPassword, $"Halle {config.HallId}");
 app.MapStaticAssets();
@@ -135,5 +139,7 @@ app.MapPost("/deck/press/{number:int}", async (int number, string? deckId) =>
 Console.WriteLine($"Red Ants Board {AgentConfig.Version}: Halle {config.HallId}, Cloud {config.Cloud}");
 if (config.Warning is { } warning) Console.WriteLine(warning);
 Console.WriteLine($"Bord {config.BoardUrl}/bord, Matchuhr {config.BoardUrl}/uhr{(config.BoardPassword.Length > 0 ? " (Bord mit Passwort)" : "")}");
+if (clockOnOwnPort) Console.WriteLine($"Matchuhr auch unter {config.ClockUrl}");
+else if (config.WantsClockPort) Console.WriteLine($"Port {config.ClockPort} ist belegt, die Matchuhr läuft nur unter {config.BoardUrl}/uhr");
 await app.RunAsync();
 return switchHall ? HallChooser.SwitchExitCode : 0;
