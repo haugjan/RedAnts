@@ -28,6 +28,18 @@ public class ClubTeamsTests
             teams.Select(t => (t.Id, t.League)).ToList());
     }
 
+    [Theory]
+    [InlineData("heute", "19:00", "2026-10-31T19:00")]
+    [InlineData("Gestern", "14:30", "2026-10-30T14:30")]
+    [InlineData("morgen", "", "2026-11-01T00:00")]
+    [InlineData("21.11.2026", "16:00", "2026-11-21T16:00")]
+    public void Relative_days_from_swissunihockey_become_dates(string date, string time, string expected)
+    {
+        var parsed = SwissUnihockeyJson.ParseDate(date, time, new DateOnly(2026, 10, 31));
+
+        Assert.Equal(DateTime.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), parsed);
+    }
+
     [Fact]
     public void Only_games_with_the_red_ants_at_home_count()
     {

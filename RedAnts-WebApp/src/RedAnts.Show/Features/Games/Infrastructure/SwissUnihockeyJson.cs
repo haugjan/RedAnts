@@ -129,10 +129,20 @@ public static class SwissUnihockeyJson
             .ToList();
     }
 
-    private static DateTime? ParseDate(string? date, string? time)
+    private static DateTime? ParseDate(string? date, string? time) => ParseDate(date, time, SwissTime.Today);
+
+    public static DateTime? ParseDate(string? date, string? time, DateOnly today)
     {
         if (string.IsNullOrWhiteSpace(date)) return null;
-        var text = $"{date.Trim()} {(string.IsNullOrWhiteSpace(time) ? "00:00" : time.Trim())}";
+        var day = date.Trim().ToLowerInvariant() switch
+        {
+            "heute" => today,
+            "gestern" => today.AddDays(-1),
+            "morgen" => today.AddDays(1),
+            _ => (DateOnly?)null,
+        };
+        var dayText = day is { } relative ? relative.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture) : date.Trim();
+        var text = $"{dayText} {(string.IsNullOrWhiteSpace(time) ? "00:00" : time.Trim())}";
         return DateTime.TryParseExact(text, "dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) ? parsed : null;
     }
 }
