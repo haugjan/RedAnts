@@ -126,6 +126,23 @@ public sealed class KeyRunner(
     public Task ShowAssistOnLedAsync(KeyContext ctx, CancellationToken stop) =>
         PlayerLedAsync(payload.Hall.LedCommand(AssistPlaylist) is not null ? AssistPlaylist : PlayerLed, ctx, stop);
 
+    public async Task ShowGuestLogoOnLedAsync(KeyContext ctx, CancellationToken stop)
+    {
+        if (!payload.Hall.Offers.Led) return;
+        var team = payload.Game.Side(ctx.Side);
+        if (GuestTeams.EventOf(team) is not { } playlist)
+        {
+            log.LogWarning("Keine LED-Vorlage für den Gast {Team}", team.LongName);
+            return;
+        }
+        try { await LedAsync(playlist, ctx, stop); }
+        catch (Exception e)
+        {
+            log.LogWarning("Das Gastlogo ging nicht an die LED-Wand: {Message}", e.Message);
+            Failed?.Invoke(e.Message);
+        }
+    }
+
     string PlayerLed => payload.Hall.LedCommand(PlayerPlaylist) is not null ? PlayerPlaylist : NumberPlaylist;
 
     async Task PlayerLedAsync(string playlist, KeyContext ctx, CancellationToken stop)

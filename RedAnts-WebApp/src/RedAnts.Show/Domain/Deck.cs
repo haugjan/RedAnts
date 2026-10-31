@@ -65,6 +65,7 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
     public const string PlayerAway = "spieler-gast";
     public const string Starting6Home = "starting6-heim";
     public const string Starting6Away = "starting6-gast";
+    public const string GuestLogo = "logo-gast";
     public const string OverlayToggle = "einblender";
     public const string ClockToggle = "uhr";
     public const string MusicToggle = "musik-an-aus";
@@ -88,6 +89,7 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
         new(PlayerAway, "Spielerin Gast", "Spiel", "spieler"),
         new(Starting6Home, "Starting 6 Heim", "Spiel", "starting6"),
         new(Starting6Away, "Starting 6 Gast", "Spiel", "starting6"),
+        new(GuestLogo, "Logo Gast", "Spiel", "unihockey"),
         new(OverlayToggle, "Einblender an/aus", "Zustand", "einblender-ein"),
         new(ClockToggle, "Uhr an/aus", "Zustand", "⏱"),
         new(MusicToggle, "Musik an/aus", "Zustand", "🔊"),

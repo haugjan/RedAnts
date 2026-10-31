@@ -198,6 +198,39 @@ public class AgentDeckTests
     }
 
     [Fact]
+    public void One_key_carries_both_scores()
+    {
+        var board = Keys(out _, out _,
+            new DeckKey(1, KeyKinds.Live, "Stand", Live: "stand"),
+            new DeckKey(2, KeyKinds.Live, "Stand Heim", Live: "stand.heim"));
+
+        Assert.Equal("0:0", board.Slots(DeckId)[0].Label);
+        Assert.Equal("0", board.Slots(DeckId)[1].Label);
+        Assert.False(board.Slots(DeckId)[0].Pressable);
+    }
+
+    [Fact]
+    public async Task The_start_page_may_use_the_back_place_for_a_key_of_its_own()
+    {
+        var deck = new DeckLayout(DeckId, "Mk2", 3, 2,
+        [
+            new DeckPage(DeckPage.HomeId, "Startseite", null, [new DeckKey(4, KeyKinds.Page, "Teamlogos", PageId: "logos")]),
+            new DeckPage("logos", "Teamlogos", DeckPage.HomeId, [new DeckKey(1, KeyKinds.Music, "", MusicId: Break.Id)]),
+        ], BackKey: 4);
+        var board = Build(out _, out _, deck);
+
+        var slot = board.Slots(DeckId).Single(s => s.Number == 4);
+        Assert.Equal("Teamlogos", slot.Label);
+        Assert.True(slot.Pressable);
+
+        await board.PressAsync(DeckId, 4);
+        Assert.Equal("Teamlogos", board.Title(DeckId));
+
+        await board.PressAsync(DeckId, 4);
+        Assert.Equal("Startseite", board.Title(DeckId));
+    }
+
+    [Fact]
     public async Task Back_walks_the_way_it_came_through_several_pages()
     {
         var deck = new DeckLayout(DeckId, "Mk2", 3, 2,

@@ -1,5 +1,6 @@
 using RedAnts.Show.Agent.Cloud;
 using RedAnts.Show.Agent.Keys;
+using RedAnts.Show.Agent.Led;
 
 namespace RedAnts.Show.Agent.Deck;
 
@@ -364,7 +365,7 @@ public sealed class Deck
             KeyKinds.Steps => key.Sequence.Count == 0 || key.Sequence.Any(step => Runs(step, offers)),
             KeyKinds.Live => key.Live switch
             {
-                "zeit" or "drittel" or "stand.heim" or "stand.gast" => offers.Clock,
+                "zeit" or "drittel" or "stand" or "stand.heim" or "stand.gast" => offers.Clock,
                 "einblender" => offers.Vmix,
                 _ => true,
             },
@@ -384,6 +385,7 @@ public sealed class Deck
     {
         "zeit" => _live.Time,
         "drittel" => _live.PeriodLabel.Length > 0 ? _live.PeriodLabel : "Drittel",
+        "stand" => $"{_live.HomeScore}:{_live.AwayScore}",
         "stand.heim" => _live.HomeScore,
         "stand.gast" => _live.AwayScore,
         "einblender" => _runner.OnAir.Length > 0 ? _runner.OnAir : key.Label,
@@ -402,6 +404,19 @@ public sealed class Deck
             var on = state.Length > 0 && !state.Equals(_states.FirstValue(stateId), StringComparison.OrdinalIgnoreCase);
             builder.Action(key.Number, $"{label}\n{state}", on ? 0xC0201C : 0x1E7B34,
                 () => ToggleStateAsync(special, stateId), Picture(key.Icon), forceText: CWhite, symbol: Symbol(key.Icon));
+            return;
+        }
+
+        if (special is SpecialKeys.GuestLogo)
+        {
+            var guests = _payload.Game.Side("away");
+            if (GuestTeams.EventOf(guests) is not { } playlist)
+            {
+                builder.Label(key.Number, "Logo Gast\n⚙ Spiel", CNeutral);
+                return;
+            }
+            var name = guests.ShortName.Length > 0 ? guests.ShortName : label;
+            builder.Action(key.Number, name, color, () => SpecialAsync(deckId, key, special), Picture(GuestTeams.IconOf(playlist)));
             return;
         }
 
@@ -520,6 +535,7 @@ public sealed class Deck
             case SpecialKeys.Starting6Away:
                 await _runner.RunAsync(key.Sequence, new KeyContext(side), CancellationToken.None);
                 if (Own(side)) Open(deckId, new Flow(FlowKind.Starting6, side, "starting6", $"Starting 6 {Team(side)}", key));
+                else await _runner.ShowGuestLogoOnLedAsync(new KeyContext(side), CancellationToken.None);
                 break;
             case SpecialKeys.MusicStop:
                 _runner.StopMusic();
@@ -535,6 +551,10 @@ public sealed class Deck
                 break;
             case SpecialKeys.MusicPause:
                 _runner.Control("pause");
+                break;
+            case SpecialKeys.GuestLogo:
+                await _runner.RunAsync(key.Sequence, new KeyContext(side), CancellationToken.None);
+                await _runner.ShowGuestLogoOnLedAsync(new KeyContext(side), CancellationToken.None);
                 break;
             case SpecialKeys.Spectators:
                 Open(deckId, new Flow(FlowKind.Spectators, "", "", "Zuschauer", key));

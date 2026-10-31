@@ -102,6 +102,8 @@ Verhalten fest, Position frei wählbar.
 | **Musik an/aus** | Zeigt, ob Musik läuft, und schaltet sie aus. |
 | **Automodus Pausenmusik** | Zeigt, ob der Automodus an ist, und legt die Playlist fest. Automodus heisst: solange die Uhr zwischen 00:00 und der Drittelsdauer steht, läuft bei einem Spielunterbruch automatisch Musik. Vor dem Spiel und nach Ablauf des Drittels nicht. |
 | **Starting 6** | Öffnet eine Unterseite mit den sechs Spielerinnen. Ein Weiter-Knopf oder ein Klick auf eine Spielerin blendet sie in vMix als Starting Six ein, wahlweise auch auf der LED-Wand, dort nur für die Heimmannschaft. Die gerade gezeigte Spielerin leuchtet. |
+| **Starting 6 Gast** | Die Gästemannschaft hat keine Spielerliste auf der LED-Wand. Die Taste stellt stattdessen das Logo des Gastes auf die LED-Wand. |
+| **Logo Gast** | Trägt das Logo und das Kürzel der Mannschaft, die im geladenen Spiel als Gast steht, und stellt dieses Logo auf Knopfdruck auf die LED-Wand. Der Agent erkennt die Mannschaft an ihrer swissunihockey-Team-ID, sonst am Namen, und startet die Vorlage `gast-…`. Ist der Gast nicht hinterlegt, zeigt die Taste „⚙ Spiel“ und lässt sich nicht drücken. |
 | **Musiksteuerung** | Je eine Taste für Stopp, Fade-out, nächstes Stück, vorheriges Stück und Pause. |
 
 ### Weitere Einblender
@@ -112,6 +114,8 @@ Als frei platzierbare Tasten verfügbar, weil sie heute im Einsatz sind:
 - **Kommentatoren**, **Schiedsrichter**, **Opener**, **Resultat**, **Highlight**.
 - **Meldungen**: Störung Technik, Video, Audio, dazu die vordefinierten Kommentartexte.
 - **Zuschauerzähler**: +100, +10, +1, −1, −10, −100 und „Anzeigen“.
+- **Teamlogos**: eine Seite des XL-Decks mit je einer Taste pro Mannschaft der Gruppe, die das Logo auf die LED-Wand stellt (`led:logo` für die Red Ants, `led:gast-…` für die Gäste). Die Logos stehen zusätzlich als Icons `team-…` für jede beliebige Taste zur Verfügung.
+- **Anzeigen**: Spielzeit, Drittel, Stand (beide Zahlen auf einer Taste, `3:1`), Stand Heim und Stand Gast einzeln, sowie „Auf Sendung“. Der Stand auf einer Taste spart den Platz, den zwei getrennte Anzeigen brauchten.
 
 ### In vMix
 
@@ -172,7 +176,7 @@ Alle sieben Etappen sind gebaut, die Tests sind grün, und seit dem 20.10.2026 l
   Im Netz unter /bord erscheinen nur die Hallen, die ausschliesslich Musik anbieten: win4-sound, oberseen und rennweg-ipad.
 - **Decks gelten für alle Hallen**: die Decks liegen seit dem 20.10. in einer gemeinsamen Bibliothek (`Show:Decks`), die Halle wählt daraus aus. Einmal in der Bibliothek, fasst der Seeder ein Deck nicht mehr an.
 - **Deck-Modell**: Seiten statt fester Kontexte, Tastenarten leer, Musik, Befehlsfolge, feste Funktion, Seite, Anzeige; PANIC und Zurück liegen je Deck fest; eine Taste kann nach dem Druck auf die Startseite zurückspringen.
-- **Feste Funktionen**: Tor Heim/Gast, Strafe mit 2', 2'+2', 10' und Spieldauer, Best Player, Spielerin, Starting 6, Zuschauerzähler, die Zustandstasten (Einblender, Uhr, Musik, Automodus) und die Musiksteuerung. Ihre Musik und LED-Vorlage steht als Befehlsfolge auf derselben Taste und ist im Backoffice unter Show > Decks änderbar; sie läuft beim Druck, bevor die feste Funktion übernimmt.
+- **Feste Funktionen**: Tor Heim/Gast, Strafe mit 2', 2'+2', 10' und Spieldauer, Best Player, Spielerin, Starting 6, Logo Gast, Zuschauerzähler, die Zustandstasten (Einblender, Uhr, Musik, Automodus) und die Musiksteuerung. Ihre Musik und LED-Vorlage steht als Befehlsfolge auf derselben Taste und ist im Backoffice unter Show > Decks änderbar; sie läuft beim Druck, bevor die feste Funktion übernimmt.
 - **Auf Sendung**: nach der Spielerwahl zeigt eine tote Taste, was gerade eingeblendet ist (z. B. „Tor / 7 Nina Muster"); als Tastenart „Anzeige" lässt sich das auf jedes Deck legen.
 - **Musik**: bleibt im Soundboard und ist eine flache Liste. Die Hallensteuerung liest die Befehle über einen Port, das Bord spielt sie mit dem Player des Soundboards, ohne sichtbaren Player und ohne Netzrunde. Welche Taste welchen Eintrag spielt, steht unter Show > Decks.
 - **vMix-Titel und LED-Vorlagen** gelten für alle Hallen zusammen (Show > vMix-Titel, Show > LED-Vorlagen), dazu der Freitext-Einblender über die Befehlsfolge `vmix.text`.
