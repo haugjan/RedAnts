@@ -85,9 +85,10 @@ public static class SpecialKeys
     public const string MusicPause = "musik-pause";
     public const string Spectators = "zuschauer";
 
-    public static bool NeedsVmix(string special) => special is GoalHome or GoalAway or PenaltyHome or PenaltyAway
-        or BestPlayerHome or BestPlayerAway or PlayerHome or PlayerAway or Starting6Home or Starting6Away
-        or OverlayToggle or ClockToggle or Spectators;
+    public static bool ChoosesPlayer(string special) => special is GoalHome or GoalAway or PenaltyHome or PenaltyAway
+        or BestPlayerHome or BestPlayerAway or PlayerHome or PlayerAway or Starting6Home or Starting6Away;
+
+    public static bool NeedsVmix(string special) => special is OverlayToggle or ClockToggle or Spectators;
 
     public static bool NeedsSound(string special) => special is MusicToggle or AutoBreakMusic or MusicStop
         or MusicFade or MusicNext or MusicPrevious or MusicPause;
@@ -116,7 +117,9 @@ public sealed record DeckKey(
     string? PageId = null,
     string? Live = null,
     IReadOnlyList<KeyStep>? Steps = null,
-    bool HomeAfter = false)
+    bool HomeAfter = false,
+    bool Livestream = true,
+    bool Led = true)
 {
     public IReadOnlyList<KeyStep> Sequence => Steps ?? [];
 

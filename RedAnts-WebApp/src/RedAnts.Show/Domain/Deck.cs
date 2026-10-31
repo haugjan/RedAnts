@@ -102,6 +102,9 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
 
     public static SpecialKey? Of(string? id) => All.FirstOrDefault(s => s.Id == id);
 
+    public static bool ChoosesPlayer(string? id) => id is GoalHome or GoalAway or PenaltyHome or PenaltyAway
+        or BestPlayerHome or BestPlayerAway or PlayerHome or PlayerAway or Starting6Home or Starting6Away;
+
     public static bool NeedsVmix(string id) => id is GoalHome or GoalAway or PenaltyHome or PenaltyAway
         or BestPlayerHome or BestPlayerAway or PlayerHome or PlayerAway or Starting6Home or Starting6Away
         or OverlayToggle or ClockToggle or Spectators;
@@ -138,7 +141,9 @@ public sealed record DeckKey(
     string? PageId = null,
     string? Live = null,
     IReadOnlyList<KeyStep>? Steps = null,
-    bool HomeAfter = false)
+    bool HomeAfter = false,
+    bool Livestream = true,
+    bool Led = true)
 {
     public const string DefaultColor = "#2b3038";
 

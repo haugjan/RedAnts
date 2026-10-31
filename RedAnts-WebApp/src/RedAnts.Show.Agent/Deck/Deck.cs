@@ -360,7 +360,9 @@ public sealed class Deck
         return key.Kind switch
         {
             KeyKinds.Music => offers.Sound,
-            KeyKinds.Special => SpecialKeys.Offered(key.Special ?? "", offers),
+            KeyKinds.Special => SpecialKeys.ChoosesPlayer(key.Special ?? "")
+                ? Shows(key) || key.Sequence.Any(step => Runs(step, offers))
+                : SpecialKeys.Offered(key.Special ?? "", offers),
             KeyKinds.Steps => key.Sequence.Count == 0 || key.Sequence.Any(step => Runs(step, offers)),
             KeyKinds.Live => key.Live switch
             {
@@ -492,9 +494,25 @@ public sealed class Deck
         return "";
     }
 
+    bool Shows(DeckKey? key)
+    {
+        var offers = _payload.Hall.Offers;
+        return key is null || (key.Livestream && offers.Vmix) || (key.Led && offers.Led);
+    }
+
+    bool OnLivestream(Flow flow) => flow.Key?.Livestream ?? true;
+
+    bool OnLed(Flow flow) => (flow.Key?.Led ?? true) && _payload.Hall.Offers.Led;
+
     async Task SpecialAsync(string deckId, DeckKey key, string special)
     {
         var side = SpecialKeys.Side(special);
+        if (SpecialKeys.ChoosesPlayer(special) && !Shows(key))
+        {
+            await _runner.RunAsync(key.Sequence, new KeyContext(side), CancellationToken.None);
+            Bump();
+            return;
+        }
         switch (special)
         {
             case SpecialKeys.GoalHome:
@@ -745,17 +763,17 @@ public sealed class Deck
             "bestplayer" => "bestplayer",
             _ => "name",
         };
-        if (flow.Event == "goal" && !own && player is not null && Own(flow.Side) && _payload.Hall.Offers.Led)
+        if (flow.Event == "goal" && !own && player is not null && Own(flow.Side) && OnLed(flow))
         {
             var opened = DateTimeOffset.UtcNow;
             Open(deckId, flow with { Kind = FlowKind.Assist, Scorer = player, Entry = "", Opened = opened });
             ForgetLater(deckId, opened);
-            await Quietly(() => _runner.ShowTitleAsync(kind, ctx, CancellationToken.None));
+            if (OnLivestream(flow)) await Quietly(() => _runner.ShowTitleAsync(kind, ctx, CancellationToken.None));
             return;
         }
         Home(deckId);
-        await Quietly(() => _runner.ShowTitleAsync(kind, ctx, CancellationToken.None));
-        if (flow.Event != "goal") await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
+        if (OnLivestream(flow)) await Quietly(() => _runner.ShowTitleAsync(kind, ctx, CancellationToken.None));
+        if (flow.Event != "goal" && OnLed(flow)) await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
     }
 
     async Task ShowSixAsync(string deckId, Flow flow, int position)
@@ -765,13 +783,13 @@ public sealed class Deck
         if (position > six.Count)
         {
             Home(deckId);
-            await Quietly(() => _runner.HideTitleAsync("starting6", CancellationToken.None));
+            if (OnLivestream(flow)) await Quietly(() => _runner.HideTitleAsync("starting6", CancellationToken.None));
             return;
         }
         Open(deckId, flow with { Position = position });
         var ctx = new KeyContext(flow.Side, six[position - 1], Event: position.ToString());
-        await Quietly(() => _runner.ShowTitleAsync("starting6", ctx, CancellationToken.None));
-        await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
+        if (OnLivestream(flow)) await Quietly(() => _runner.ShowTitleAsync("starting6", ctx, CancellationToken.None));
+        if (OnLed(flow)) await _runner.ShowPlayerOnLedAsync(ctx, CancellationToken.None);
     }
 
     void Fixed(Builder builder, DeckLayout deck, string deckId, Flow flow)
