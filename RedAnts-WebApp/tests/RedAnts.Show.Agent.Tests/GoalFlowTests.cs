@@ -165,7 +165,7 @@ public class GoalFlowTests
             Decks = [Grid(8, 4, Special(2, SpecialKeys.PenaltyHome, "Strafe"))],
             Offered = new HallCapabilities(),
             Devices = new HallDevices(VmixHost: "127.0.0.1", VmixPort: 1, SednaHost: "127.0.0.1", SednaPort: port),
-            LedTemplates = [new LedTemplate("tor", "start playlist -n \"STR_RA_{player.number00}\"")],
+            LedTemplates = [new LedTemplate("spielerin", "start playlist -n \"Spielerin {team.short} {player.number}\" -o")],
             OverlayTitles = [new OverlayTitle("penalty", "Spielerin", 1, new Dictionary<string, string>())],
         };
         store.Apply(new AgentPayload(hall, Game.None with { Id = "1", Home = RedAnts, Away = Guests }, DateTimeOffset.Now, []));
@@ -188,7 +188,7 @@ public class GoalFlowTests
         var note = await deck.PressAsync(DeckId, deck.Slots(DeckId).Single(s => s.Label == "12\nLea Muster").Number);
 
         Assert.Null(note);
-        Assert.Equal("start playlist -n \"STR_RA_12\"", await heard);
+        Assert.Equal("start playlist -n \"Spielerin RA 12\" -o", await heard);
         Assert.Contains("vMix", deck.RecentFault);
         listener.Stop();
     }

@@ -127,9 +127,48 @@ public class LedTests
         var heard = HeardAsync(listener, stop.Token);
 
         var runner = Build(port, templates: [new LedTemplate("tor", "start playlist -n \"STR_RA_{player.number00}\"")]);
-        await runner.ShowPlayerOnLedAsync(new KeyContext("home", Home.Players[0]), stop.Token);
+        await runner.ShowPlayerOnLedAsync(new KeyContext("home", Home.Players[0], Event: KeyRunner.GoalEvent), stop.Token);
 
         Assert.Equal("start playlist -n \"STR_RA_07\"", await heard);
+        listener.Stop();
+    }
+
+    [Theory]
+    [InlineData("bestplayer")]
+    [InlineData("penalty")]
+    [InlineData("name")]
+    [InlineData("3")]
+    public async Task Without_a_spielerin_template_only_a_goal_reaches_the_led_wall(string occasion)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+        var runner = Build(port, templates:
+        [
+            new LedTemplate("tor", "start playlist -n \"STR_RA_{player.number00}\""),
+            new LedTemplate("best-player", "start playlist -n \"STR_RA_BestPlayer\""),
+            new LedTemplate("starting-six", "start playlist -n \"STR_RA_Starting\""),
+        ]);
+        await runner.ShowPlayerOnLedAsync(new KeyContext("home", Home.Players[0], Event: occasion), CancellationToken.None);
+
+        Assert.False(listener.Pending());
+        listener.Stop();
+    }
+
+    [Fact]
+    public async Task With_a_spielerin_template_every_occasion_uses_it()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var heard = HeardAsync(listener, stop.Token);
+
+        var runner = Build(port);
+        await runner.ShowPlayerOnLedAsync(new KeyContext("home", Home.Players[0], Event: "bestplayer"), stop.Token);
+
+        Assert.Equal("start playlist -n \"Spielerin RA 7\" -o", await heard);
         listener.Stop();
     }
 

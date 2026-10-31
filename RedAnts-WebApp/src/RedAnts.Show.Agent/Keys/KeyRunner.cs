@@ -96,6 +96,7 @@ public sealed class KeyRunner(
     public const string PlayerPlaylist = "spielerin";
     public const string NumberPlaylist = "tor";
     public const string AssistPlaylist = "assist";
+    public const string GoalEvent = "goal";
 
     public async Task LedAsync(string playlist, KeyContext ctx, CancellationToken stop)
     {
@@ -121,10 +122,11 @@ public sealed class KeyRunner(
         Changed?.Invoke();
     }
 
-    public Task ShowPlayerOnLedAsync(KeyContext ctx, CancellationToken stop) => PlayerLedAsync(PlayerLed, ctx, stop);
+    public Task ShowPlayerOnLedAsync(KeyContext ctx, CancellationToken stop) =>
+        PlayerLedAsync(PlayerLed(ctx.Event), ctx, stop);
 
     public Task ShowAssistOnLedAsync(KeyContext ctx, CancellationToken stop) =>
-        PlayerLedAsync(payload.Hall.LedCommand(AssistPlaylist) is not null ? AssistPlaylist : PlayerLed, ctx, stop);
+        PlayerLedAsync(payload.Hall.LedCommand(AssistPlaylist) is not null ? AssistPlaylist : PlayerLed(GoalEvent), ctx, stop);
 
     public async Task ShowGuestLogoOnLedAsync(KeyContext ctx, CancellationToken stop)
     {
@@ -143,11 +145,14 @@ public sealed class KeyRunner(
         }
     }
 
-    string PlayerLed => payload.Hall.LedCommand(PlayerPlaylist) is not null ? PlayerPlaylist : NumberPlaylist;
+    string PlayerLed(string occasion) =>
+        payload.Hall.LedCommand(PlayerPlaylist) is not null ? PlayerPlaylist
+        : occasion.Equals(GoalEvent, StringComparison.OrdinalIgnoreCase) ? NumberPlaylist
+        : "";
 
     async Task PlayerLedAsync(string playlist, KeyContext ctx, CancellationToken stop)
     {
-        if (!payload.Hall.Offers.Led || ctx.Player is null) return;
+        if (!payload.Hall.Offers.Led || ctx.Player is null || playlist.Length == 0) return;
         if (!ctx.Side.Equals(payload.Game.OwnSide(payload.Hall.TeamId), StringComparison.OrdinalIgnoreCase)) return;
         try { await LedAsync(playlist, ctx, stop); }
         catch (Exception e)
