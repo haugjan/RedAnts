@@ -109,18 +109,43 @@ function Update-Config {
     return $config
 }
 
-function Get-LatestRelease {
+function New-Release([string]$version, [string]$url, [long]$size) {
+    return [pscustomobject]@{ Version = $version; Url = $url; Name = ($url -split "/")[-1]; Size = $size }
+}
+
+function Get-FeedRelease {
     $headers = @{ "User-Agent" = "RedAnts-Board" }
-    for ($try = 1; $try -le 3; $try++) {
+    $feed = Invoke-WebRequest "https://github.com/$repo/releases.atom" -Headers $headers -UseBasicParsing -TimeoutSec 30
+    $tags = [regex]::Matches($feed.Content, "releases/tag/show-agent-v([0-9][0-9.]*)") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique
+    foreach ($version in @($tags | Select-Object -First 3)) {
+        $url = "https://github.com/$repo/releases/download/show-agent-v$version/show-agent-$version-win-x64.zip"
         try {
-            $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases?per_page=30" -Headers $headers -TimeoutSec 30
-            return $releases | Where-Object { $_.tag_name -like "show-agent-v*" -and -not $_.draft } | Select-Object -First 1
+            $head = Invoke-WebRequest $url -Method Head -Headers $headers -UseBasicParsing -TimeoutSec 30
+            $size = 0L
+            [void][long]::TryParse(("$($head.Headers['Content-Length'])" -split ",")[0], [ref]$size)
+            return New-Release $version $url $size
         }
-        catch {
-            if ($try -eq 3) { throw }
-            Start-Sleep -Seconds (2 * $try)
-        }
+        catch { Write-Note "Version $version hat noch kein Windows-Paket." }
     }
+    return $null
+}
+
+function Get-ApiRelease {
+    $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases?per_page=30" -Headers @{ "User-Agent" = "RedAnts-Board" } -TimeoutSec 30
+    $latest = $releases | Where-Object { $_.tag_name -like "show-agent-v*" -and -not $_.draft } | Select-Object -First 1
+    if (-not $latest) { return $null }
+    $asset = $latest.assets | Where-Object { $_.name -like "*win-x64.zip" } | Select-Object -First 1
+    if (-not $asset) { return $null }
+    return New-Release ($latest.tag_name -replace "^show-agent-v", "") $asset.browser_download_url $asset.size
+}
+
+function Get-LatestRelease {
+    try {
+        $release = Get-FeedRelease
+        if ($release) { return $release }
+    }
+    catch { Write-Note "Release-Seite von GitHub nicht lesbar ($($_.Exception.Message)), versuche die Schnittstelle." }
+    return Get-ApiRelease
 }
 
 function Update-Agent {
@@ -134,20 +159,15 @@ function Update-Agent {
         Stop-Here "Das Board ist nicht installiert und kein Download möglich. Internetverbindung prüfen."
     }
 
-    $version = $latest.tag_name -replace "^show-agent-v", ""
+    $version = $latest.Version
     $current = if (Test-Path -LiteralPath $releaseFile) { (Get-Content -LiteralPath $releaseFile -Raw).Trim() } else { "" }
     if ($version -eq $current -and (Test-Path -LiteralPath $exe)) { Write-Ok "Version $version ist aktuell."; return }
 
-    $asset = $latest.assets | Where-Object { $_.name -like "*win-x64.zip" } | Select-Object -First 1
-    if (-not $asset) {
-        if (Test-Path -LiteralPath $exe) { Write-Warn "Im Release fehlt das Windows-Paket, es läuft die installierte Version."; return }
-        Stop-Here "Im Release $version fehlt das Windows-Paket."
-    }
-
-    $zip = Join-Path $env:TEMP $asset.name
-    Write-Step "Lade Version $version ($([math]::Round($asset.size / 1MB, 1)) MB) ..."
+    $zip = Join-Path $env:TEMP $latest.Name
+    $size = if ($latest.Size -gt 0) { " ($([math]::Round($latest.Size / 1MB, 1)) MB)" } else { "" }
+    Write-Step "Lade Version $version$size ..."
     try {
-        Invoke-WebRequest $asset.browser_download_url -OutFile $zip -Headers @{ "User-Agent" = "RedAnts-Board" } -TimeoutSec 600
+        Invoke-WebRequest $latest.Url -OutFile $zip -Headers @{ "User-Agent" = "RedAnts-Board" } -UseBasicParsing -TimeoutSec 600
         if ((Get-Item -LiteralPath $zip).Length -lt 1MB) { throw "Die heruntergeladene Datei ist unvollständig." }
 
         Get-Process RedAnts.Show.Agent -ErrorAction SilentlyContinue | ForEach-Object {

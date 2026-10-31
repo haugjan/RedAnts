@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace RedAnts.Show.Agent.Web;
 
@@ -6,6 +7,7 @@ public static class CompanionDownload
 {
     public const string Path = "/bord/companion";
     const string Releases = "https://api.github.com/repos/haugjan/RedAnts/releases?per_page=50";
+    const string Feed = "https://github.com/haugjan/RedAnts/releases.atom";
     const string Fallback = "https://github.com/haugjan/RedAnts/releases?q=halle-companion";
     const string TagPrefix = "halle-companion-v";
     static readonly TimeSpan Fresh = TimeSpan.FromMinutes(10);
@@ -40,22 +42,50 @@ public static class CompanionDownload
         try
         {
             if (latest is { } known && DateTimeOffset.UtcNow - known.At < Fresh) return known.Url;
-            try
-            {
-                await using var body = await Http.GetStreamAsync(Releases, stop);
-                using var json = await JsonDocument.ParseAsync(body, cancellationToken: stop);
-                var url = Pick(json.RootElement);
-                if (url is not null) latest = (url, DateTimeOffset.UtcNow);
-                return url;
-            }
-            catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException)
-            {
-                return latest?.Url;
-            }
+            var url = await FromFeedAsync(stop) ?? await FromApiAsync(stop);
+            if (url is not null) latest = (url, DateTimeOffset.UtcNow);
+            return url ?? latest?.Url;
         }
         finally
         {
             Gate.Release();
+        }
+    }
+
+    public static string? PickFromFeed(string atom)
+    {
+        var match = Regex.Match(atom, @"releases/tag/halle-companion-v(\d[\d.]*\d)");
+        return match.Success
+            ? $"https://github.com/haugjan/RedAnts/releases/download/{TagPrefix}{match.Groups[1].Value}/redants-halle-{match.Groups[1].Value}.tgz"
+            : null;
+    }
+
+    static async Task<string?> FromFeedAsync(CancellationToken stop)
+    {
+        try
+        {
+            var url = PickFromFeed(await Http.GetStringAsync(Feed, stop));
+            if (url is null) return null;
+            using var head = await Http.SendAsync(new HttpRequestMessage(HttpMethod.Head, url), stop);
+            return head.IsSuccessStatusCode ? url : null;
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        {
+            return null;
+        }
+    }
+
+    static async Task<string?> FromApiAsync(CancellationToken stop)
+    {
+        try
+        {
+            await using var body = await Http.GetStreamAsync(Releases, stop);
+            using var json = await JsonDocument.ParseAsync(body, cancellationToken: stop);
+            return Pick(json.RootElement);
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return null;
         }
     }
 
