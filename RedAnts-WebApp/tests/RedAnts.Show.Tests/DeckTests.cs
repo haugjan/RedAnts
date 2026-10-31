@@ -147,6 +147,56 @@ public class DeckTests
     }
 
     [Fact]
+    public void The_field_deck_opens_a_page_with_the_logo_of_every_team()
+    {
+        var deck = DefaultDecks.Field().Validated();
+        var page = deck.Page(DefaultDecks.TeamLogoPage);
+
+        Assert.Equal(DefaultDecks.TeamLogoPage, deck.Home.KeyAt(17).PageId);
+        Assert.NotNull(page);
+        Assert.Equal(DeckPage.HomeId, page!.ParentId);
+        Assert.Equal(11, page.Keys.Count);
+        Assert.Equal("led:logo", page.KeyAt(1).Sequence[0].Target);
+        Assert.Equal("led:gast-chur", page.KeyAt(3).Sequence[0].Target);
+        Assert.Equal("team-chur", page.KeyAt(3).Icon);
+        Assert.Equal(SpecialKey.GuestLogo, page.KeyAt(11).Special);
+    }
+
+    [Fact]
+    public void The_start_page_shows_the_club_logo_where_the_period_used_to_be()
+    {
+        var home = DefaultDecks.Field().Validated().Home;
+
+        Assert.DoesNotContain(home.Keys, key => key.Live == LiveValues.Period);
+        Assert.Equal("team-redants", home.KeyAt(19).Icon);
+        Assert.Equal("led:logo", home.KeyAt(19).Sequence[0].Target);
+    }
+
+    [Fact]
+    public void Every_logo_key_names_a_led_template_of_the_hall()
+    {
+        var page = DefaultDecks.Field().Page(DefaultDecks.TeamLogoPage)!;
+
+        foreach (var key in page.Keys.Where(key => key.Kind == KeyKinds.Steps))
+        {
+            var step = Assert.Single(key.Sequence);
+            Assert.Equal(KeyActions.LedStart, step.Action);
+            var template = step.Target!["led:".Length..];
+            Assert.Contains(Hall.DefaultLedTemplates, known => known.Event == template);
+        }
+    }
+
+    [Fact]
+    public void Every_shipped_key_names_a_known_icon()
+    {
+        foreach (var deck in DefaultDecks.All)
+            foreach (var page in deck.Pages)
+                foreach (var key in page.Keys.Where(key => key.Icon is { Length: > 0 }))
+                    Assert.True(DeckIcons.Known(key.Icon) || DeckIcons.Symbols.Any(symbol => symbol.Glyph == key.Icon),
+                        $"{deck.Id}/{page.Id}: Taste {key.Number} nennt das unbekannte Symbol „{key.Icon}“");
+    }
+
+    [Fact]
     public void A_sub_page_of_the_field_deck_returns_home_after_a_message()
     {
         var page = DefaultDecks.Field().Page(DefaultDecks.MessagePage);

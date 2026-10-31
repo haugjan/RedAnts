@@ -80,7 +80,7 @@ public static class GetDeckView
             KeyKinds.Steps => key.Sequence.Count == 0 || key.Sequence.Any(step => Runs(step, offers)),
             KeyKinds.Live => key.Live switch
             {
-                LiveValues.Time or LiveValues.Period or LiveValues.HomeScore or LiveValues.AwayScore => offers.Clock,
+                LiveValues.Time or LiveValues.Period or LiveValues.Score or LiveValues.HomeScore or LiveValues.AwayScore => offers.Clock,
                 LiveValues.Overlay => offers.Vmix,
                 _ => true,
             },

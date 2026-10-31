@@ -44,6 +44,7 @@ public sealed class ShowExampleSeeder(
             var library = await music.AllAsync();
             await TopUpMusicAsync(library);
             await SharePagesAsync();
+            await TopUpTeamLogosAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
                 var hall = Example(library);
@@ -149,6 +150,23 @@ public sealed class ShowExampleSeeder(
 
         log.LogInformation("Unterseiten gelten neu für alle Decks gleicher Grösse: {Sets} Raster, {Pages} Seiten",
             sets.Count, sets.Sum(set => set.Pages.Count));
+    }
+
+    private async Task TopUpTeamLogosAsync()
+    {
+        await settings.LoadAsync();
+        if (settings.Get(TeamLogoTopUp.SettingKey) == TeamLogoTopUp.Version) return;
+
+        var show = await setup.GetAsync();
+        if (TeamLogoTopUp.Fill(show) is { } filled)
+        {
+            foreach (var deck in filled.DeckLibrary) deck.Validated();
+            foreach (var set in filled.PageLibrary) set.Validated();
+            await setup.SaveAsync(filled);
+            await sync.PushAllAsync();
+            log.LogInformation("Seite Teamlogos auf den Decks ergänzt");
+        }
+        await settings.SetAsync(TeamLogoTopUp.SettingKey, TeamLogoTopUp.Version);
     }
 
     private async Task TopUpMusicAsync(IReadOnlyList<MusicItem> library)
