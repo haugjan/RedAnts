@@ -26,6 +26,20 @@ public static class SwissUnihockeyJson
         return games;
     }
 
+    public static IReadOnlyList<(int Id, string Name)> ParseTeams(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (!document.RootElement.TryGetProperty("entries", out var entries)) return [];
+        var teams = new List<(int, string)>();
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("set_in_context", out var context) || !context.TryGetProperty("team_id", out var id) || !id.TryGetInt32(out var teamId)) continue;
+            var name = entry.TryGetProperty("text", out var text) ? text.GetString() ?? "" : "";
+            teams.Add((teamId, name));
+        }
+        return teams;
+    }
+
     public static Game ParseGame(string gameId, string detailJson, string homeLineupJson, string awayLineupJson)
     {
         using var detail = JsonDocument.Parse(detailJson);

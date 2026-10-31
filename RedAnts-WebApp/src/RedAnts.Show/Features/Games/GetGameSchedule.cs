@@ -16,7 +16,7 @@ public static class GetGameSchedule
         {
             var hall = await halls.GetByIdAsync(query.HallId)
                 ?? throw new DomainException($"Halle „{query.HallId}“ nicht gefunden.");
-            var games = await swissUnihockey.UpcomingAsync(hall.TeamId, hall.Season);
+            var games = await swissUnihockey.ClubHomeGamesAsync(hall.Season);
             return Split(games, SwissTime.Today.ToDateTime(TimeOnly.MinValue), query.DaysBack);
         }
 
