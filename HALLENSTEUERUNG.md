@@ -123,9 +123,11 @@ Die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard ink
 
 ### Die Uhr bleibt
 
+Animationen laufen als **Overlay** über dem Spielmodus: ihr sedna-Befehl endet auf `-o`. Die Hauptplaylist (`spiel-nla`, `spiel-u21`) läuft darunter durch und wird nie gestoppt, deshalb bleibt die Uhr während Tor, Strafe, Best Player, Starting 6 und den Gastlogos sichtbar. Ohne `-o` ersetzt die Animation die Hauptplaylist und nimmt die Uhr mit — in der Halle gemessen: `start playlist -n "STR_RA_TOR"` nimmt die Uhr weg, derselbe Befehl mit `-o` nicht. Vollbilder — Pause, Pausenloop, Pausenspiel, Intro, Sponsoren, LIDL, Mobiliar — bleiben bewusst ohne Flag, sie sind selbst das Hauptbild.
+
 Die Uhr auf der LED-Wand wird **nie** ausgeblendet. PANIC stoppt deshalb keine LED-Playlist mehr: es hält Musik an und nimmt die vMix-Einblender weg, die Wand bleibt unberührt. Wer eine LED-Playlist wirklich stoppen will, legt dafür eine Taste mit dem Befehl „LED-Playlist stoppen" an.
 
-Auch das Scoreboard in vMix bleibt stehen. Es verschwindet einzig über die feste Funktion **Uhr an/aus**, nicht über PANIC und nicht über das Ausblenden aller Einblender.
+Auch das Scoreboard in vMix bleibt stehen. Es verschwindet einzig über die feste Funktion **Uhr an/aus**, nicht über PANIC und nicht über das Ausblenden aller Einblender. Diese Taste wirkt **ausschliesslich auf vMix**: sie erreicht die LED-Wand nicht und kann die Uhr dort weder ein- noch ausschalten. Keine Taste und kein Ablauf nimmt die Uhr von der LED-Wand.
 
 ## Was entfällt
 

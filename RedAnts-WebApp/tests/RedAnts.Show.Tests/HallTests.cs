@@ -22,6 +22,52 @@ public class HallTests
         Assert.False(hall.AcceptsKey(null));
     }
 
+    private static string CommandOf(string led) =>
+        Hall.DefaultLedTemplates.Single(t => t.Event == led).Command;
+
+    [Theory]
+    [InlineData("tor")]
+    [InlineData("tor-gast")]
+    [InlineData("einlauf")]
+    [InlineData("best-player")]
+    [InlineData("starting-six")]
+    [InlineData("strafe")]
+    [InlineData("timeout")]
+    [InlineData("staff")]
+    [InlineData("gesucht")]
+    [InlineData("teamliste")]
+    [InlineData("live")]
+    [InlineData("replay")]
+    [InlineData("logo")]
+    [InlineData("gast-chur")]
+    [InlineData("gast-bern")]
+    [InlineData("gast-wizards")]
+    [InlineData("gast-zug")]
+    public void An_animation_runs_as_an_overlay_so_the_clock_stays(string led) =>
+        Assert.EndsWith(" -o", CommandOf(led));
+
+    [Theory]
+    [InlineData("spiel-nla")]
+    [InlineData("spiel-u21")]
+    [InlineData("pause")]
+    [InlineData("intermission")]
+    [InlineData("pausenspiel")]
+    [InlineData("intro")]
+    [InlineData("sponsoren")]
+    [InlineData("lidl-welcome")]
+    [InlineData("mobiliar")]
+    public void A_full_picture_stays_the_main_playlist(string led) =>
+        Assert.DoesNotContain(" -o", CommandOf(led));
+
+    [Fact]
+    public void Every_guest_logo_overlays_the_clock()
+    {
+        var guests = Hall.DefaultLedTemplates.Where(t => t.Event.StartsWith("gast-")).ToList();
+
+        Assert.Equal(9, guests.Count);
+        Assert.All(guests, t => Assert.EndsWith(" -o", t.Command));
+    }
+
     [Theory]
     [InlineData("a")]
     [InlineData("Halle Eins")]
