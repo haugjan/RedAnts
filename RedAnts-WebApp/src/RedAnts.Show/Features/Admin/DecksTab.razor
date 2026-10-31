@@ -190,6 +190,19 @@
                                     }
                                 </select>
                             </label>
+                            @if (SpecialKey.ChoosesPlayer(current.Special))
+                            {
+                                <p class="sa-hint">Die gewählte Spielerin erscheint auf:</p>
+                                <label class="sa-check">
+                                    <input type="checkbox" checked="@current.Livestream" @onchange="e => Set(k => k with { Livestream = e.Value is true })" />
+                                    Livestream (vMix-Titel)
+                                </label>
+                                <label class="sa-check">
+                                    <input type="checkbox" checked="@current.Led" @onchange="e => Set(k => k with { Led = e.Value is true })" />
+                                    LED-Wand (nur Red Ants)
+                                </label>
+                                <p class="sa-hint">Ohne beides öffnet die Taste keine Spielerinnen-Auswahl, es laufen nur ihre Befehle (z. B. Sound). Beim Tor gibt es Assist und Speaker-Knopf nur mit LED-Wand.</p>
+                            }
                         }
 
                         @if (current.Kind == KeyKinds.Page)
@@ -255,8 +268,33 @@
                                     {
                                         <input class="sa-input" value="@step.Text" placeholder="Text, z. B. Empty Net"
                                                @onchange="e => SetStep(index, s => s with { Text = e.Value?.ToString() ?? string.Empty })" />
-                                        <input class="sa-input" value="@step.Target" placeholder="title:message"
-                                               @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })" />
+                                        <select class="sa-input" value="@step.Target" @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })">
+                                            <option value="">Einblender wählen</option>
+                                            @foreach (var (value, label) in TitleChoices(step.Target))
+                                            {
+                                                <option value="@value">@label</option>
+                                            }
+                                        </select>
+                                    }
+                                    else if (step.Action is KeyActions.VmixShow or KeyActions.VmixHide)
+                                    {
+                                        <select class="sa-input" value="@step.Target" @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })">
+                                            <option value="">Einblender wählen</option>
+                                            @foreach (var (value, label) in TitleChoices(step.Target))
+                                            {
+                                                <option value="@value">@label</option>
+                                            }
+                                        </select>
+                                    }
+                                    else if (step.Action == KeyActions.LedStart)
+                                    {
+                                        <select class="sa-input" value="@step.Target" @onchange="e => SetStep(index, s => s with { Target = e.Value?.ToString() })">
+                                            <option value="">LED-Vorlage wählen</option>
+                                            @foreach (var (value, label) in LedChoices(step.Target))
+                                            {
+                                                <option value="@value">@label</option>
+                                            }
+                                        </select>
                                     }
                                     else
                                     {
@@ -375,6 +413,26 @@
         _ => "",
     };
 
+    private IReadOnlyList<(string Value, string Label)> TitleChoices(string? current) =>
+        Choices(Setup.Titles.Select(title => ("title:" + title.Kind, title.Kind)), current);
+
+    private IReadOnlyList<(string Value, string Label)> LedChoices(string? current) =>
+        Choices(Setup.Led.Select(led => ("led:" + led.Event, $"{led.Event} · {Playlist(led.Command)}")), current);
+
+    private static IReadOnlyList<(string Value, string Label)> Choices(IEnumerable<(string Value, string Label)> known, string? current)
+    {
+        var choices = known
+            .DistinctBy(choice => choice.Value, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(choice => choice.Label, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        if (current is { Length: > 0 } && !choices.Any(choice => choice.Value.Equals(current, StringComparison.OrdinalIgnoreCase)))
+            choices.Insert(0, (current, $"{current} (nicht mehr vorhanden)"));
+        return choices;
+    }
+
+    private static string Playlist(string command) =>
+        System.Text.RegularExpressions.Regex.Match(command, "-n\\s+\"([^\"]+)\"") is { Success: true } match ? match.Groups[1].Value : command;
+
     private void SetLabel(ChangeEventArgs e)
     {
         var text = e.Value?.ToString() ?? "";
@@ -491,7 +549,9 @@
         Set(k => new DeckKey(k.Number, kind, k.Label, k.Color, k.Icon,
             Steps: kind is KeyKinds.Steps or KeyKinds.Special ? k.Sequence : null,
             Live: kind == KeyKinds.Live ? k.Live ?? "" : null,
-            HomeAfter: k.HomeAfter));
+            HomeAfter: k.HomeAfter,
+            Livestream: k.Livestream,
+            Led: k.Led));
     }
 
     private void SetStep(int index, Func<KeyStep, KeyStep> change) =>

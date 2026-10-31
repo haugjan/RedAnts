@@ -45,6 +45,7 @@ Das Programm heisst **Red Ants Board** (intern weiterhin Show-Agent). Einmal pro
 | **Starting 6 (Red Ants)** | Sound + Leinwand + Livestream „Starting 6“ | „▶▶ Weiter“ oder direkt auf einen Namen → diese Spielerin auf Livestream und Leinwand; nach der sechsten „✓ Fertig“ |
 | **Starting 6 Gast** | nur was auf der Taste eingestellt ist (z.B. Sound) | nichts weiter |
 
+- **Wohin die Spielerin kommt:** Im Backoffice unter Show → Decks hat jede Spielerinnen-Taste (Tor, Strafe, Best Player, Spielerin, Starting 6) die Häkchen "Livestream" und "LED-Wand". Nur LED = nur Leinwand. Ohne beides öffnet die Taste keine Auswahl und spielt nur ihre Befehle (z.B. Sound). Beim Tor gibt es Assist und Speaker-Knopf nur mit LED.
 - **Kleines Streamdeck (Mk2):** Statt Namen kommt ein Ziffernblock. Rückennummer tippen, das Feld zeigt Nummer und Name, darauf drücken. ⌫ löscht eine Ziffer.
 - **Vertippt:** „◀ Zurück“ bricht ab, nichts wird angezeigt. Bleibt der Speaker-Knopf 3 Minuten liegen, geht das Deck von selbst zur Startseite.
 - **„Starting 6 fehlt“:** Im Bord unter ⚙ Spiel bei sechs Spielerinnen die Position 1–6 eintragen.

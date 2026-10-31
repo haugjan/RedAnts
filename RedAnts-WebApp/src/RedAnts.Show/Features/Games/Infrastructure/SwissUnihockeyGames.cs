@@ -7,10 +7,21 @@ public sealed class SwissUnihockeyGames(IHttpClientFactory clients) : ISwissUnih
     public const string ClientName = "swissunihockey";
     private const string Base = "https://api-v2.swissunihockey.ch/api";
 
-    public async Task<IReadOnlyList<UpcomingGame>> UpcomingAsync(int teamId, int season, CancellationToken cancellation = default)
+    public async Task<IReadOnlyList<UpcomingGame>> ClubHomeGamesAsync(int season, CancellationToken cancellation = default)
     {
-        var json = await Client().GetStringAsync($"{Base}/games?mode=team&team_id={teamId}&season={season}", cancellation);
-        return SwissUnihockeyJson.ParseGames(json);
+        var client = Client();
+        var teamsJson = await client.GetStringAsync($"{Base}/teams?mode=by_club&club_id={ClubTeams.RedAntsClubId}&season={season}", cancellation);
+        var teams = ClubTeams.Pick(SwissUnihockeyJson.ParseTeams(teamsJson));
+        var lists = await Task.WhenAll(teams.Select(async team =>
+        {
+            var json = await client.GetStringAsync($"{Base}/games?mode=team&team_id={team.Id}&season={season}&games_per_page=200", cancellation);
+            return SwissUnihockeyJson.ParseGames(json).Select(game => game with { League = team.League });
+        }));
+        return lists
+            .SelectMany(games => games)
+            .Where(ClubTeams.IsHome)
+            .DistinctBy(game => game.Id)
+            .ToList();
     }
 
     public async Task<Game> LoadAsync(string gameId, CancellationToken cancellation = default)

@@ -244,6 +244,58 @@ public class GoalFlowTests
     }
 
     [Fact]
+    public async Task A_goal_key_without_led_skips_assist_and_speaker()
+    {
+        var key = Special(2, SpecialKeys.GoalHome, "Tor") with { Led = false };
+        var deck = Build(Grid(8, 4, key), RedAnts);
+
+        await PressLabel(deck, "Tor");
+        await PressLabel(deck, "12\nLea Muster");
+
+        Assert.DoesNotContain("Assist?", Labels(deck));
+        Assert.Contains("Tor", Labels(deck));
+    }
+
+    [Fact]
+    public async Task A_player_key_without_any_output_only_runs_its_commands()
+    {
+        var key = Special(2, SpecialKeys.PlayerHome, "Spielerin") with { Led = false, Livestream = false };
+        var deck = Build(Grid(8, 4, key), RedAnts);
+
+        Assert.False(deck.Slots(DeckId).Single(s => s.Number == 2).Pressable);
+
+        var withSound = Build(Grid(8, 4, key with { Steps = [new KeyStep(KeyActions.MusicPlay, "x")] }), RedAnts);
+        await PressLabel(withSound, "Spielerin");
+        Assert.Contains("Spielerin", Labels(withSound));
+        Assert.DoesNotContain("Spielerin Heim RA", Labels(withSound));
+    }
+
+    [Fact]
+    public void A_led_only_player_key_works_in_a_hall_without_vmix()
+    {
+        var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
+        var key = Special(2, SpecialKeys.PlayerHome, "Spielerin") with { Livestream = false };
+        var hall = Hall.Offline with { Id = "win4", Decks = [Grid(8, 4, key)], Offered = new HallCapabilities(Vmix: false, Led: true) };
+        store.Apply(new AgentPayload(hall, Game.None with { Id = "1", Home = RedAnts, Away = Guests }, DateTimeOffset.Now, []));
+        var states = new ShowStates(NullLogger<ShowStates>.Instance);
+        var live = new LiveGame();
+        var runner = new KeyRunner(store, live, states, new VmixLink(store, live, NullLogger<VmixLink>.Instance),
+            new SednaLink(store, NullLogger<SednaLink>.Instance), NullLogger<KeyRunner>.Instance);
+        var deck = new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
+
+        Assert.True(deck.Slots(DeckId).Single(s => s.Number == 2).Pressable);
+    }
+
+    [Fact]
+    public void A_stored_key_without_the_new_switches_shows_on_livestream_and_led()
+    {
+        var key = System.Text.Json.JsonSerializer.Deserialize<DeckKey>("""{ "number": 2, "kind": "spezial", "special": "tor-heim" }""", PayloadJson.Options)!;
+
+        Assert.True(key.Livestream);
+        Assert.True(key.Led);
+    }
+
+    [Fact]
     public void Starting_six_without_a_lineup_says_where_to_enter_it()
     {
         var deck = Build(Grid(8, 4, Special(2, SpecialKeys.Starting6Home, "Starting 6")), RedAnts with { Starting6 = [] });
