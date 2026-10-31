@@ -157,6 +157,36 @@ public class LedTests
     }
 
     [Fact]
+    public async Task Panic_never_takes_the_clock_off_the_led_wall()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+        var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
+        var hall = Hall.Offline with
+        {
+            Id = "win4",
+            Decks = [new DeckLayout("xl", "Streamdeck XL", 8, 4,
+                [new DeckPage(DeckPage.HomeId, "Startseite", null, [])], PanicKey: 25, BackKey: 17)],
+            Offered = new HallCapabilities(Vmix: false),
+            Devices = new HallDevices(SednaHost: "127.0.0.1", SednaPort: port),
+            LedTemplates = [new LedTemplate("stopp", "stop playlist -o -fo 0.5")],
+        };
+        store.Apply(new AgentPayload(hall, Match, DateTimeOffset.Now, []));
+        var states = new ShowStates(NullLogger<ShowStates>.Instance);
+        var live = new LiveGame();
+        var runner = new KeyRunner(store, live, states, new VmixLink(store, live, NullLogger<VmixLink>.Instance),
+            new SednaLink(store, NullLogger<SednaLink>.Instance), NullLogger<KeyRunner>.Instance);
+        var deck = new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
+
+        await deck.PressAsync("xl", 25);
+
+        Assert.False(listener.Pending());
+        listener.Stop();
+    }
+
+    [Fact]
     public async Task With_a_spielerin_template_every_occasion_uses_it()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);

@@ -253,8 +253,7 @@ public sealed class Deck
             _flow.Clear();
         }
         _runner.StopMusic();
-        await Safe(() => _runner.LedStopAsync(stop));
-        await Safe(() => _runner.HideAllAsync(withClock: true, stop));
+        await Safe(() => _runner.HideAllAsync(stop));
         _states.Set(ShowStates.AutoBreakMusic, "aus", "PANIC");
         Bump();
     }

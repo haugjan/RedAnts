@@ -121,6 +121,12 @@ Als frei platzierbare Tasten verfügbar, weil sie heute im Einsatz sind:
 
 Die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard inklusive Strafboxen, Teamlogos und die Overlay-Kanäle. Dazu **Teamkürzel und Teamfarbe je Mannschaft** aus der Spielkonfiguration.
 
+### Die Uhr bleibt
+
+Die Uhr auf der LED-Wand wird **nie** ausgeblendet. PANIC stoppt deshalb keine LED-Playlist mehr: es hält Musik an und nimmt die vMix-Einblender weg, die Wand bleibt unberührt. Wer eine LED-Playlist wirklich stoppen will, legt dafür eine Taste mit dem Befehl „LED-Playlist stoppen" an.
+
+Auch das Scoreboard in vMix bleibt stehen. Es verschwindet einzig über die feste Funktion **Uhr an/aus**, nicht über PANIC und nicht über das Ausblenden aller Einblender.
+
 ## Was entfällt
 
 - **Uhrsteuerung vom Deck** (−1 s, +1 s, Start/Stop): die Hallenuhr ist die Quelle, sie wird am Zeitnehmertisch bedient.

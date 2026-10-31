@@ -206,12 +206,10 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
     static string Name(GameTeam team, string fallback) =>
         team.ShortName is { Length: > 0 } name ? name : fallback;
 
-    public async Task HideAllAsync(CancellationToken stop) => await HideAllAsync(false, stop);
-
-    public async Task HideAllAsync(bool withClock, CancellationToken stop)
+    public async Task HideAllAsync(CancellationToken stop)
     {
         var channels = payload.Hall.OverlayTitles
-            .Where(t => withClock || t.Kind != VmixScoreboard.Kind)
+            .Where(t => t.Kind != VmixScoreboard.Kind)
             .Select(t => t.Channel)
             .Where(c => c is >= 1 and <= OverlayChannels)
             .DefaultIfEmpty(1)

@@ -46,16 +46,13 @@ public sealed class KeyRunner(
         }
     }
 
-    public Task HideAllAsync(CancellationToken stop) => HideAllAsync(false, stop);
-
-    public async Task HideAllAsync(bool withClock, CancellationToken stop)
+    public async Task HideAllAsync(CancellationToken stop)
     {
-        if (vmix.Configured) await vmix.HideAllAsync(withClock, stop);
+        if (vmix.Configured) await vmix.HideAllAsync(stop);
         Shown = "";
         ShownSide = "";
         OnAir = "";
         states.Set(ShowStates.Overlay, "aus", "ausgeblendet");
-        if (withClock) states.Set(ShowStates.ClockVisible, "aus", "ausgeblendet");
         Changed?.Invoke();
     }
 
