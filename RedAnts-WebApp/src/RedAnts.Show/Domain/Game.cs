@@ -92,6 +92,7 @@ public sealed record Game(
         fresh with
         {
             Coach = kept.Coach.Length > 0 ? kept.Coach : fresh.Coach,
+            TopScorer = kept.TopScorer ?? fresh.TopScorer,
             Starting6 = kept.Starting6.Count > 0 ? kept.Starting6 : fresh.Starting6,
             Lines = kept.Lines.Count > 0 ? kept.Lines : fresh.Lines,
             Goalies = kept.Goalies.Count > 0 ? kept.Goalies : fresh.Goalies,

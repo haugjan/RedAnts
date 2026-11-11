@@ -56,7 +56,12 @@ Auf dem Bord, nicht im Admin:
 
 Teamkürzel und Teamfarbe gehen an vMix und an die LED-Wand, sie bestimmen also, wie Scoreboard und Einblender aussehen. Beide sind je Spiel einstellbar, die Halle gibt nur den Vorschlag für die Heimmannschaft vor.
 
-Der Eintrag `00=` aus der Spielkonfigurationsdatei ist der **Topscorer** der Mannschaft: die Nummer 00 wird nicht vergeben, und der Name steht im selben Abschnitt bereits mit der echten Nummer. Er erscheint deshalb nicht als Rückennummer im Kader, sondern als eigene Taste in der Spielerliste. Steht `00` in einer Aufstellung oder Linie, wird daraus die Spielerin oder der Spieler mit der echten Nummer.
+Der Eintrag `00=` aus der Spielkonfigurationsdatei ist der **Topscorer** der Mannschaft; die Nummer 00 wird nie als Rückennummer vergeben. Beim Einlesen gilt:
+
+- **Der Name steht im Abschnitt auch mit der echten Nummer** (so macht es der Generator von TCunihockey): die echte Nummer gilt, der Kader bekommt keine 00, und `00` in Aufstellung, Linie oder Torhüterliste wird zu dieser Nummer.
+- **Der Name steht nur als `00=`** (so macht es der Generator von unihockey.live, er ersetzt die echte Nummer): die Spielerin bleibt als 00 im Kader, damit sie wählbar ist. Erfunden wird nichts.
+
+Auf den Tasten der Spielerliste trägt sie in beiden Fällen **„Topscorer"** statt einer Nummer. An vMix geht die 00, weil dort das Topscorer-Logo erwartet wird; an die LED-Wand geht ihre echte Nummer, und **ohne echte Nummer bleibt sie auf der LED-Wand aus** — eine Playlist `STR_RA_00` gibt es nicht. Wer sie trotzdem auf der Wand haben will, trägt ihre Nummer in der Datei nach oder wählt den Topscorer unter `⚙ Spiel` von Hand; eine von Hand gesetzte Wahl überlebt ein erneutes Laden des Spiels.
 
 ## Matchuhr
 
@@ -210,4 +215,4 @@ Alle sieben Etappen sind gebaut, die Tests sind grün, und seit dem 20.10.2026 l
 1. **Bodet in der Halle messen**: das Protokoll ist nach dem Handbuch gebaut und mit den dokumentierten Rahmen getestet, aber noch an keiner echten ScorePad in Oberseen gehört. Beim ersten Spiel dort den Rohlog (`/status`) ansehen.
 2. **Sofortige Automatik braucht ein Signal, das iCast nicht sendet**: das Handbuch (Scoreboard Handball 2.0) listet alle Felder, ein Flag „Uhr läuft" ist nicht dabei; die beiden letzten Flags melden nur das Ende der Spielzeit und des Timeouts. Die Uhr sendet zwar zehnmal pro Sekunde, die Zeit selbst wechselt aber nur im Sekundentakt. Die Pausenmusik startet deshalb im Mittel nach einer halben Sekunde, in der letzten Minute (Zehntel) nach etwa einer Viertelsekunde. Beim Bodet ScorePad ist noch offen, ob das Attribut-Byte der Nachricht den Stillstand meldet.
 3. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
-4. Die Annahme zum Topscorer (`00=` ist der Topscorer, weil die Nummer 00 nicht vergeben wird) wird beim ersten echten Spiel überprüft.
+4. **Die 00 an vMix ist am Scoreboard geprüft, nicht an jedem Einblender**: dass vMix beim Topscorer das Logo statt der Nummer zeigt, ist mit einer echten Wahl auf dem Streamdeck bestätigt. Ob jeder weitere Titel dieselbe Erwartung hat, zeigt das erste echte Spiel.

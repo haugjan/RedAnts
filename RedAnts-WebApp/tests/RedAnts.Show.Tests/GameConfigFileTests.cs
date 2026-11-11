@@ -66,6 +66,8 @@ public class GameConfigFileTests
         Assert.Equal("Simon Meier", game.Home.Coach);
         Assert.Equal(7, game.Home.Players.Count);
         Assert.Equal("Simon Suter", game.Home.Find(0)!.Name);
+        Assert.Equal(0, game.Home.TopScorer);
+        Assert.Null(game.Away.TopScorer);
         Assert.Equal([46, 6, 0, 10, 12, 14], game.Home.Starting6);
         Assert.Equal(2, game.Home.Lines.Count);
         Assert.Equal([17, 0, 9, 22], game.Home.Lines[1]);
@@ -84,6 +86,56 @@ public class GameConfigFileTests
     [Fact]
     public void Rejects_duplicate_numbers() =>
         Assert.Throws<ValidationException>(() => GameConfigFile.Parse("[Game]\nGameNr=1\n[Home]\n5=A\n5=B"));
+
+    [Fact]
+    public void The_double_zero_names_the_top_scorer_and_her_real_number_wins()
+    {
+        var game = GameConfigFile.Parse("""
+            [Game]
+            GameNr=110644
+            [Home]
+            00=Lea Suter
+            8=Nadine Kehl
+            73=Lea Suter
+            Starting6=8,73,00,5,4,3
+            Line2=8,25,7,00,46
+            """);
+
+        Assert.Equal(73, game.Home.TopScorer);
+        Assert.Equal("Lea Suter", game.Home.TopScorerPlayer!.Name);
+        Assert.DoesNotContain(0, game.Home.Players.Select(p => p.Number));
+        Assert.Equal([8, 73, 5, 4, 3], game.Home.Starting6);
+        Assert.Equal([8, 25, 7, 73, 46], game.Home.Lines[0]);
+    }
+
+    [Fact]
+    public void A_top_scorer_without_a_real_number_stays_a_double_zero()
+    {
+        var game = GameConfigFile.Parse("""
+            [Game]
+            GameNr=110644
+            [Away]
+            00=Annika Morf
+            12=Nina Bürgi
+            Starting6=62,12,22,00,7,6
+            """);
+
+        Assert.Equal(0, game.Away.TopScorer);
+        Assert.Equal("Annika Morf", game.Away.TopScorerPlayer!.Name);
+        Assert.Equal([62, 12, 22, 0, 7, 6], game.Away.Starting6);
+    }
+
+    [Fact]
+    public void A_top_scorer_set_by_hand_survives_a_fresh_import()
+    {
+        var kept = GameConfigFile.Parse("[Game]\nGameNr=1\n[Home]\n73=Lea Suter");
+        var byHand = kept with { Home = kept.Home with { TopScorer = 73 } };
+
+        var merged = byHand.Merge(GameConfigFile.Parse("[Game]\nGameNr=1\n[Home]\n73=Lea Suter\n8=Nadine Kehl"));
+
+        Assert.Equal(73, merged.Home.TopScorer);
+        Assert.Equal(2, merged.Home.Players.Count);
+    }
 
     [Fact]
     public void Short_name_falls_back_to_initials()

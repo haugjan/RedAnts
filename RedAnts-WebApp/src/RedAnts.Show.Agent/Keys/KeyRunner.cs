@@ -151,6 +151,11 @@ public sealed class KeyRunner(
     {
         if (!payload.Hall.Offers.Led || ctx.Player is null || playlist.Length == 0) return;
         if (!ctx.Side.Equals(payload.Game.OwnSide(payload.Hall.TeamId), StringComparison.OrdinalIgnoreCase)) return;
+        if (ctx.Player.Number <= 0)
+        {
+            log.LogWarning("{Name} hat keine Rückennummer, auf der LED-Wand bleibt sie aus", ctx.Player.Name);
+            return;
+        }
         try { await LedAsync(playlist, ctx, stop); }
         catch (Exception e)
         {

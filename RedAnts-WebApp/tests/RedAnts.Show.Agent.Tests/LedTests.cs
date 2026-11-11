@@ -91,6 +91,20 @@ public class LedTests
     }
 
     [Fact]
+    public async Task A_top_scorer_without_a_number_never_goes_to_the_led_wall()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+        var runner = Build(port);
+        await runner.ShowPlayerOnLedAsync(new KeyContext("home", new Player(0, "Annika Morf"), Event: "goal"), CancellationToken.None);
+
+        Assert.False(listener.Pending());
+        listener.Stop();
+    }
+
+    [Fact]
     public async Task An_unreachable_led_wall_does_not_break_the_key()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);

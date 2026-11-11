@@ -26,15 +26,29 @@ public static class GameConfigFile
             SwissTime.Timestamp).Validated();
     }
 
+    public const int TopScorerMark = 0;
+
     private static GameTeam Team(List<(string Key, string Value)>? section, string color)
     {
         if (section is null) return GameTeam.Empty(color);
-        var players = section
+        var roster = section
             .Where(kv => int.TryParse(kv.Key, out _))
             .Select(kv => new Player(int.Parse(kv.Key, CultureInfo.InvariantCulture), kv.Value.Trim()))
             .Where(p => p.Name.Length > 0)
-            .OrderBy(p => p.Number)
             .ToList();
+        var marked = roster.LastOrDefault(p => p.Number == TopScorerMark)?.Name;
+        var players = roster.Where(p => p.Number != TopScorerMark).OrderBy(p => p.Number).ToList();
+        int? topScorer = null;
+        if (marked is not null)
+        {
+            if (players.FirstOrDefault(p => p.Name.Equals(marked, StringComparison.OrdinalIgnoreCase)) is { } known)
+                topScorer = known.Number;
+            else
+            {
+                players.Insert(0, new Player(TopScorerMark, marked));
+                topScorer = TopScorerMark;
+            }
+        }
         var longName = Value(section, "TeamLong");
         var shortName = Value(section, "TeamShort");
         return new GameTeam(
@@ -45,19 +59,22 @@ public static class GameConfigFile
             null,
             Value(section, "Coach"),
             players,
-            Numbers(Value(section, "Starting6")),
-            Enumerable.Range(1, 4).Select(i => Numbers(Value(section, $"Line{i}"))).Where(l => l.Count > 0).ToList(),
-            Numbers(Value(section, "Goal")));
+            Numbers(Value(section, "Starting6"), topScorer),
+            Enumerable.Range(1, 4).Select(i => Numbers(Value(section, $"Line{i}"), topScorer)).Where(l => l.Count > 0).ToList(),
+            Numbers(Value(section, "Goal"), topScorer),
+            topScorer);
     }
 
     private static string Value(List<(string Key, string Value)> section, string key) =>
         section.LastOrDefault(kv => kv.Key.Equals(key, StringComparison.OrdinalIgnoreCase)).Value ?? "";
 
-    private static IReadOnlyList<int> Numbers(string value) =>
+    private static IReadOnlyList<int> Numbers(string value, int? topScorer = null) =>
         value
             .Split(',', StringSplitOptions.TrimEntries)
             .Select(n => int.TryParse(n, out var number) ? number : -1)
             .Where(n => n >= 0)
+            .Select(n => n == TopScorerMark && topScorer is { } real ? real : n)
+            .Distinct()
             .ToList();
 
     private static DateTime? ParseDate(string date, string time)
