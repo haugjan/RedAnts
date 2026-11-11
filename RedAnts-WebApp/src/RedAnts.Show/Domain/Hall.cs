@@ -97,6 +97,10 @@ public sealed partial record Hall(
         public const string LineupAway = "LUPL-SU_team_lineup_away.gtzip";
     }
 
+    public const string HomeImage = "ImgHomeTeam.Source";
+    public const string AwayImage = "ImgAwayTeam.Source";
+    public const string TeamImage = "ImgTeam.Source";
+
     public static IReadOnlyList<OverlayTitle> DefaultOverlayTitles { get; } = BuildTitles();
 
     private static IReadOnlyList<OverlayTitle> BuildTitles() =>
@@ -127,6 +131,7 @@ public sealed partial record Hall(
             ["TxtName.Text"] = "{player.name}",
             ["TxtEvent.Text"] = "{score}",
             ["TxtBottom.Text"] = "{period.label} {clock}",
+            [TeamImage] = "{team.logofile}",
         }),
         new("penalty", TitleInputs.PlayerEvent, 1, new Dictionary<string, string>
         {
@@ -135,6 +140,7 @@ public sealed partial record Hall(
             ["TxtName.Text"] = "{player.name}",
             ["TxtEvent.Text"] = "{penalty}",
             ["TxtBottom.Text"] = "{team.long}",
+            [TeamImage] = "{team.logofile}",
         }),
         new("name", TitleInputs.PlayerName, 1, new Dictionary<string, string>
         {
@@ -142,6 +148,7 @@ public sealed partial record Hall(
             ["TxtNumber.Text"] = "{player.number}",
             ["TxtName.Text"] = "{player.name}",
             ["TxtBottom.Text"] = "{player.position}",
+            [TeamImage] = "{team.logofile}",
         }),
         new("bestplayer", TitleInputs.PlayerName, 1, new Dictionary<string, string>
         {
@@ -149,18 +156,21 @@ public sealed partial record Hall(
             ["TxtNumber.Text"] = "{player.number}",
             ["TxtName.Text"] = "{player.name}",
             ["TxtBottom.Text"] = "{team.long}",
+            [TeamImage] = "{team.logofile}",
         }),
         new("coach", TitleInputs.TeamInfo, 1, new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "COACH",
             ["TxtInfo.Text"] = "{team.coach}",
             ["TxtBottom.Text"] = "{team.long}",
+            [TeamImage] = "{team.logofile}",
         }),
         new("timeout", TitleInputs.TeamInfo, 1, new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "TIMEOUT",
             ["TxtInfo.Text"] = "{team.long}",
             ["TxtBottom.Text"] = "{period.label} {clock}",
+            [TeamImage] = "{team.logofile}",
         }),
         new("message", TitleInputs.LeagueInfo, 1, new Dictionary<string, string>
         {
@@ -186,6 +196,8 @@ public sealed partial record Hall(
             ["TxtHomeTeam.Text"] = "{home.long}",
             ["TxtAwayTeam.Text"] = "{away.long}",
             ["TxtBottom.Text"] = "{period.label}",
+            [HomeImage] = "{home.logofile}",
+            [AwayImage] = "{away.logofile}",
         }),
         new("highlight", TitleInputs.Board, 2, new Dictionary<string, string>
         {
@@ -194,6 +206,8 @@ public sealed partial record Hall(
             ["TxtHomeTeam.Text"] = "{home.long}",
             ["TxtAwayTeam.Text"] = "{away.long}",
             ["TxtBottom.Text"] = "{score}",
+            [HomeImage] = "{home.logofile}",
+            [AwayImage] = "{away.logofile}",
         }),
         new("opener", TitleInputs.Board, 2, new Dictionary<string, string>
         {
@@ -202,6 +216,8 @@ public sealed partial record Hall(
             ["TxtHomeTeam.Text"] = "{home.long}",
             ["TxtAwayTeam.Text"] = "{away.long}",
             ["TxtBottom.Text"] = "{game.location}",
+            [HomeImage] = "{home.logofile}",
+            [AwayImage] = "{away.logofile}",
         }),
         new("starting6", TitleInputs.StartingSix, 1, Lineup("STARTING 6", ["1", "2", "3", "4", "5", "6"], "starting6")),
         new("lineup_home", TitleInputs.LineupHome, 1, Lineup("AUFSTELLUNG", LineupSlots, "lineup")),

@@ -52,6 +52,21 @@ public class TemplateTests
     }
 
     [Fact]
+    public void The_team_logos_become_file_paths_from_the_image_folder()
+    {
+        var ctx = new KeyContext("away");
+        const string folder = @"C:\Livestream\Einblender\TeamLogos";
+
+        Assert.Equal(@"C:\Livestream\Einblender\TeamLogos\KDJ.png", Templates.Expand("{team.logofile}", ctx, Game, Live(), folder));
+        Assert.Equal(@"C:\Livestream\Einblender\TeamLogos\RAW.png", Templates.Expand("{home.logofile}", ctx, Game, Live(), folder));
+        Assert.Equal(@"C:\Livestream\Einblender\TeamLogos\KDJ.png", Templates.Expand("{away.logofile}", ctx, Game, Live(), folder));
+    }
+
+    [Fact]
+    public void Without_an_image_folder_no_logo_path_is_invented() =>
+        Assert.Equal("", Templates.Expand("{home.logofile}", new KeyContext("home"), Game, Live()));
+
+    [Fact]
     public void The_side_decides_which_team_the_short_name_comes_from()
     {
         var live = Live();

@@ -15,11 +15,15 @@ public sealed record KeyContext(
 
 public static class Templates
 {
-    public static string Expand(string template, KeyContext ctx, Game game, LiveGame live)
+    public static string Expand(string template, KeyContext ctx, Game game, LiveGame live, string imageFolder = "")
     {
         if (!template.Contains('{')) return template;
         var team = game.Side(ctx.Side);
         var player = ctx.Player;
+        string Logo(GameTeam of) =>
+            imageFolder.Length > 0 && of.ShortName is { Length: > 0 } name
+                ? Vmix.VmixScoreboard.LogoPath(imageFolder, name)
+                : "";
         var score = ctx.Score.Length > 0 ? ctx.Score : $"{live.HomeScore}:{live.AwayScore}";
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -33,6 +37,9 @@ public static class Templates
             ["team.long"] = team.LongName,
             ["team.coach"] = team.Coach,
             ["team.logo"] = team.LogoUrl ?? "",
+            ["team.logofile"] = Logo(team),
+            ["home.logofile"] = Logo(game.Home),
+            ["away.logofile"] = Logo(game.Away),
             ["team.color"] = team.Color,
             ["team.starting6"] = string.Join(", ", team.Starting6Players.Select(p => $"{p.Display} {p.Name}")),
             ["home.short"] = game.Home.ShortName,

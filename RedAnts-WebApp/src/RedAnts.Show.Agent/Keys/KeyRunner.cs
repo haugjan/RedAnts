@@ -66,7 +66,7 @@ public sealed class KeyRunner(
         if (!Offers(title)) return 0;
         var values = title.Fields.ToDictionary(
             field => field.Key,
-            field => Templates.Expand(field.Value, ctx, payload.Game, live),
+            field => Templates.Expand(field.Value, ctx, payload.Game, live, payload.Hall.Devices.ImageFolder),
             StringComparer.OrdinalIgnoreCase);
         await vmix.ShowTitleAsync(title, values, stop);
         Shown = kind;

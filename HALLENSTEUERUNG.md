@@ -63,6 +63,22 @@ Der Eintrag `00=` aus der Spielkonfigurationsdatei ist der **Topscorer** der Man
 
 Auf den Tasten der Spielerliste trägt sie in beiden Fällen **„Topscorer"** statt einer Nummer. An vMix geht die 00, weil dort das Topscorer-Logo erwartet wird; an die LED-Wand geht ihre echte Nummer, und **ohne echte Nummer bleibt sie auf der LED-Wand aus** — eine Playlist `STR_RA_00` gibt es nicht. Wer sie trotzdem auf der Wand haben will, trägt ihre Nummer in der Datei nach oder wählt den Topscorer unter `⚙ Spiel` von Hand; eine von Hand gesetzte Wahl überlebt ein erneutes Laden des Spiels.
 
+### Welches Bild auf der LED-Wand
+
+Nach der Spielerinnenwahl hängt es davon ab, was die Taste war:
+
+| Taste | LED-Wand |
+|---|---|
+| Tor | `STR_RA_<Nr>` — die Tor-Animation |
+| Assist | `STR_RA_EIN_<Nr>` — nur das Bild |
+| Best Player, Starting Six, Strafe, Name | `STR_RA_EIN_<Nr>` — nur das Bild |
+
+Hat die Halle eine eigene Vorlage `spielerin`, gilt die für alle Fälle. Fehlt auch `einlauf`, geht ausser beim Tor nichts hinaus und das Bild der Taste selbst bleibt stehen. Gästespielerinnen kommen nie auf die LED-Wand.
+
+### Teamlogos in den Einblendern
+
+Die Logos kommen aus dem **Bildordner der Halle** (`⚙ Halle`), eine Datei je Teamkürzel: `RAW.png`, `BEBU.png`. Dasselbe Verzeichnis versorgt die Uhr oben, den Resultatbalken unten und die Einblender für Coach, Timeout, Best Player und Spielerin. Fehlt der Ordner, bleiben die Bildflächen leer, der Rest wird trotzdem angezeigt. Fehlt nur eine Datei, bleibt dieses eine Logo leer — der Dateiname ist das Kürzel in Grossbuchstaben, Leerzeichen werden zu `_`.
+
 ## Matchuhr
 
 Die Matchuhr ist die Quelle der Wahrheit für **Zeit, Spielstand, Drittel und laufende Strafen**. Der Spielstand kommt also nicht mehr von Hand, sondern aus dem Telegramm.
