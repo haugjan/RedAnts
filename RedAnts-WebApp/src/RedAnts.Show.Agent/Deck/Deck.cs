@@ -22,6 +22,7 @@ public sealed class Deck
     const int CHome = 0xFF7C80;
     const int CAway = 0xA6C9EC;
     const int CAssist = 0xFF8C1A;
+    const string TopScorerLabel = "Topscorer";
 
     readonly PayloadStore _payload;
     readonly LiveGame _live;
@@ -590,7 +591,7 @@ public sealed class Deck
         var team = _payload.Game.Side(flow.Side);
         var extras = new List<(string, Func<Task>)>();
         if (flow.Event == "goal") extras.Add(("Eigentor", () => PickAsync(deckId, flow, null, own: true)));
-        else if (team.TopScorerPlayer is { } top) extras.Add(($"Topscorer\n{Short(top.Name)}", () => PickAsync(deckId, flow, top)));
+        else if (team.TopScorerPlayer is { } top) extras.Add(($"{TopScorerLabel}\n{Short(top.Name)}", () => PickAsync(deckId, flow, top)));
         var prompt = flow.Event switch
         {
             "goal" => "Torschützin?",
@@ -618,16 +619,24 @@ public sealed class Deck
         {
             builder.Label(head, prompt, tint ?? CHead);
             var index = 0;
+            var starShown = false;
             foreach (var player in team.Players)
             {
                 if (index >= rest.Count - extras.Count) break;
                 var chosen = player;
-                var label = $"{chosen.Display}\n{Short(chosen.Name)}";
+                var star = chosen.Number == team.TopScorer;
+                starShown |= star;
+                var label = star
+                    ? $"{TopScorerLabel}\n{Short(chosen.Name)}"
+                    : $"{chosen.Display}\n{Short(chosen.Name)}";
                 if (chosen.Number == taken?.Number) builder.Label(rest[index++], label, CActive);
                 else builder.Action(rest[index++], label, color, () => pick(chosen));
             }
             foreach (var (label, press) in extras)
+            {
+                if (starShown && label.StartsWith(TopScorerLabel, StringComparison.Ordinal)) continue;
                 if (index < rest.Count) builder.Action(rest[index++], label, color, press);
+            }
             return;
         }
 

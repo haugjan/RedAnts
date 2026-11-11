@@ -307,6 +307,20 @@ public class GoalFlowTests
     }
 
     [Fact]
+    public async Task The_top_scorer_wears_her_title_on_the_key_instead_of_her_number()
+    {
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts with { TopScorer = 12 });
+
+        await PressLabel(deck, "Tor");
+        var labels = Labels(deck);
+
+        Assert.Contains("Topscorer\nLea Muster", labels);
+        Assert.DoesNotContain("12\nLea Muster", labels);
+        Assert.Contains("7\nAnna H.", labels);
+        Assert.Single(labels, label => label.StartsWith("Topscorer"));
+    }
+
+    [Fact]
     public async Task Starting_six_of_the_guests_opens_no_lineup()
     {
         var deck = Build(Grid(8, 4, Special(2, SpecialKeys.Starting6Away, "Starting 6 Gast")), RedAnts);
