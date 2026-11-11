@@ -93,6 +93,7 @@ public sealed class KeyRunner(
     public const string PlayerPlaylist = "spielerin";
     public const string NumberPlaylist = "tor";
     public const string AssistPlaylist = "assist";
+    public const string EntryPlaylist = "einlauf";
     public const string GoalEvent = "goal";
 
     public async Task LedAsync(string playlist, KeyContext ctx, CancellationToken stop)
@@ -123,7 +124,7 @@ public sealed class KeyRunner(
         PlayerLedAsync(PlayerLed(ctx.Event), ctx, stop);
 
     public Task ShowAssistOnLedAsync(KeyContext ctx, CancellationToken stop) =>
-        PlayerLedAsync(payload.Hall.LedCommand(AssistPlaylist) is not null ? AssistPlaylist : PlayerLed(GoalEvent), ctx, stop);
+        PlayerLedAsync(Offered(AssistPlaylist, PlayerPlaylist, EntryPlaylist), ctx, stop);
 
     public async Task ShowGuestLogoOnLedAsync(KeyContext ctx, CancellationToken stop)
     {
@@ -143,9 +144,10 @@ public sealed class KeyRunner(
     }
 
     string PlayerLed(string occasion) =>
-        payload.Hall.LedCommand(PlayerPlaylist) is not null ? PlayerPlaylist
-        : occasion.Equals(GoalEvent, StringComparison.OrdinalIgnoreCase) ? NumberPlaylist
-        : "";
+        Offered(PlayerPlaylist, occasion.Equals(GoalEvent, StringComparison.OrdinalIgnoreCase) ? NumberPlaylist : EntryPlaylist);
+
+    string Offered(params string[] names) =>
+        names.FirstOrDefault(name => payload.Hall.LedCommand(name) is { Length: > 0 }) ?? "";
 
     async Task PlayerLedAsync(string playlist, KeyContext ctx, CancellationToken stop)
     {

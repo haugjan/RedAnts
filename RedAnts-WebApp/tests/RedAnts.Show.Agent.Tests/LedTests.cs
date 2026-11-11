@@ -152,7 +152,27 @@ public class LedTests
     [InlineData("penalty")]
     [InlineData("name")]
     [InlineData("3")]
-    public async Task Without_a_spielerin_template_only_a_goal_reaches_the_led_wall(string occasion)
+    public async Task Every_occasion_but_a_goal_shows_the_plain_picture(string occasion)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var heard = HeardAsync(listener, stop.Token);
+
+        var runner = Build(port, templates:
+        [
+            new LedTemplate("tor", "start playlist -n \"STR_RA_{player.number00}\" -o"),
+            new LedTemplate("einlauf", "start playlist -n \"STR_RA_EIN_{player.number00}\" -o"),
+        ]);
+        await runner.ShowPlayerOnLedAsync(new KeyContext("home", Home.Players[0], Event: occasion), stop.Token);
+
+        Assert.Equal("start playlist -n \"STR_RA_EIN_07\" -o", await heard);
+        listener.Stop();
+    }
+
+    [Fact]
+    public async Task Without_an_einlauf_template_the_animation_of_the_key_stays()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -162,9 +182,8 @@ public class LedTests
         [
             new LedTemplate("tor", "start playlist -n \"STR_RA_{player.number00}\""),
             new LedTemplate("best-player", "start playlist -n \"STR_RA_BestPlayer\""),
-            new LedTemplate("starting-six", "start playlist -n \"STR_RA_Starting\""),
         ]);
-        await runner.ShowPlayerOnLedAsync(new KeyContext("home", Home.Players[0], Event: occasion), CancellationToken.None);
+        await runner.ShowPlayerOnLedAsync(new KeyContext("home", Home.Players[0], Event: "bestplayer"), CancellationToken.None);
 
         Assert.False(listener.Pending());
         listener.Stop();
@@ -233,6 +252,26 @@ public class LedTests
         await runner.ShowAssistOnLedAsync(new KeyContext("home", Home.Players[0]), stop.Token);
 
         Assert.Equal("start playlist -n \"STR_RA_AS_07\"", await heard);
+        listener.Stop();
+    }
+
+    [Fact]
+    public async Task The_assist_shows_the_plain_picture_and_never_the_goal_animation()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var heard = HeardAsync(listener, stop.Token);
+
+        var runner = Build(port, templates:
+        [
+            new LedTemplate("tor", "start playlist -n \"STR_RA_{player.number00}\" -o"),
+            new LedTemplate("einlauf", "start playlist -n \"STR_RA_EIN_{player.number00}\" -o"),
+        ]);
+        await runner.ShowAssistOnLedAsync(new KeyContext("home", Home.Players[0], Event: "assist"), stop.Token);
+
+        Assert.Equal("start playlist -n \"STR_RA_EIN_07\" -o", await heard);
         listener.Stop();
     }
 }
