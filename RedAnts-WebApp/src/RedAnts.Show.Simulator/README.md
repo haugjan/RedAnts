@@ -22,3 +22,9 @@ For an end-to-end test set the hall's vMix host and sedna host to `127.0.0.1` in
 ## Einblender
 
 `wwwroot/titles` holds one JSON layout per GT title (position, size, colour, font and text of every element), the images extracted from the title files, the two Hurme fonts and the league team logos. The names match the vMix input titles (`LUPL-SU_scoreboard_clock.gtzip` and so on), which is how the stage picks the layout for an overlay. A new title package is converted with the same script that produced these files: flatten the GT compositions to absolute coordinates, write one JSON per title and copy the embedded bitmaps next to it.
+
+Beim ersten Start nach einem Update wartet `Start-ShowSimulator.ps1`, bis die entpackten Dateien vollständig lesbar
+sind, und öffnet den Browser erst, wenn `app.css` ausgeliefert wird. Ohne das startete der Simulator gelegentlich,
+während die Dateien noch geschrieben wurden: er verbuchte die vorkomprimierten `app.css.br` und `app.css.gz` dann als
+leer und lieferte jedem Browser, der `br` oder `gzip` anfragt, ein leeres Stylesheet aus — die Seite erschien ohne
+Gestaltung, bis der Simulator neu gestartet wurde.

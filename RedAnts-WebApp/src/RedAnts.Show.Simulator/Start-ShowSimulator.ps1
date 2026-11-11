@@ -11,6 +11,27 @@ $exe = Join-Path $installDir "RedAnts.Show.Simulator.exe"
 $releaseFile = Join-Path $installDir "release.txt"
 New-Item -ItemType Directory -Force $installDir | Out-Null
 
+function Test-Lesbar([string]$pfad) {
+    try {
+        $strom = [System.IO.File]::Open($pfad, "Open", "Read", "Read")
+        $strom.Dispose()
+        return $true
+    }
+    catch { return $false }
+}
+
+function Wait-Entpackt([string]$ordner) {
+    $wwwroot = Join-Path $ordner "wwwroot"
+    if (-not (Test-Path $wwwroot)) { return }
+    for ($versuch = 1; $versuch -le 40; $versuch++) {
+        $offen = @(Get-ChildItem $wwwroot -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Length -eq 0 -or -not (Test-Lesbar $_.FullName) })
+        if ($offen.Count -eq 0) { return }
+        Start-Sleep -Milliseconds 300
+    }
+    Write-Warning "Die entpackten Dateien waren nicht rechtzeitig vollstaendig lesbar. Falls die Seite ohne Gestaltung erscheint, das Fenster schliessen und neu starten."
+}
+
 if (-not $NoUpdate) {
     try {
         $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases?per_page=30" -Headers @{ "User-Agent" = "RedAnts-ShowSimulator" }
@@ -25,6 +46,7 @@ if (-not $NoUpdate) {
             Get-Process RedAnts.Show.Simulator -ErrorAction SilentlyContinue | Stop-Process -Force
             Expand-Archive $zip -DestinationPath $installDir -Force
             Remove-Item $zip
+            Wait-Entpackt $installDir
         }
     }
     catch {
@@ -38,5 +60,17 @@ if (-not (Test-Path $exe)) {
 
 $url = "http://localhost:$Port"
 Write-Host "Starte $exe auf $url"
-if (-not $NoBrowser) { Start-Job -ScriptBlock { Start-Sleep -Seconds 3; Start-Process $using:url } | Out-Null }
+if (-not $NoBrowser) {
+    Start-Job -ScriptBlock {
+        for ($versuch = 1; $versuch -le 60; $versuch++) {
+            try {
+                $css = Invoke-WebRequest "$using:url/app.css" -UseBasicParsing -TimeoutSec 2
+                if ($css.RawContentLength -gt 0) { break }
+            }
+            catch { }
+            Start-Sleep -Milliseconds 500
+        }
+        Start-Process $using:url
+    } | Out-Null
+}
 & $exe --urls $url
