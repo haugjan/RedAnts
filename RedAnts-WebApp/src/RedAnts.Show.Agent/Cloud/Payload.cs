@@ -101,7 +101,9 @@ public static class SpecialKeys
         (!NeedsSound(special) || offers.Sound) && (!NeedsClock(special) || offers.Clock) && (!NeedsVmix(special) || offers.Vmix);
 
     public static bool PicksPlayer(string special, HallCapabilities offers) =>
-        ChoosesPlayer(special) && offers.Players;
+        ChoosesPlayer(special) && offers.Players && !ShowsWithoutPlayer(special);
+
+    public static bool ShowsWithoutPlayer(string special) => special is BestPlayerAway;
 
     public static string Side(string special) =>
         special.EndsWith("-heim", StringComparison.Ordinal) ? "home"

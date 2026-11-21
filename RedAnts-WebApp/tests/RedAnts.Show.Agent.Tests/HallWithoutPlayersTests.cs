@@ -84,6 +84,43 @@ public class HallWithoutPlayersTests
     }
 
     [Fact]
+    public async Task The_best_player_of_the_guests_sends_its_command_and_asks_for_nobody()
+    {
+        var deck = Build(true, Special(2, SpecialKeys.BestPlayerAway, "Best Player Gast", LedTor));
+
+        await deck.PressAsync(DeckId, 2);
+
+        Assert.Contains("Best Player Gast", Labels(deck));
+        Assert.DoesNotContain("7\nAnna H.", Labels(deck));
+    }
+
+    [Fact]
+    public void The_best_player_of_the_guests_stays_on_a_deck_without_a_sequence()
+    {
+        var deck = Build(true, Special(2, SpecialKeys.BestPlayerAway, "Best Player Gast"));
+
+        Assert.Contains("Best Player Gast", Labels(deck));
+    }
+
+    [Fact]
+    public void A_key_that_only_picks_still_goes_without_players()
+    {
+        var deck = Build(false, Special(2, SpecialKeys.PlayerAway, "Spieler Gast"));
+
+        Assert.DoesNotContain("Spieler Gast", Labels(deck));
+    }
+
+    [Fact]
+    public async Task The_best_player_of_the_home_side_still_opens_the_list()
+    {
+        var deck = Build(true, Special(2, SpecialKeys.BestPlayerHome, "Best Player", LedTor));
+
+        await deck.PressAsync(DeckId, 2);
+
+        Assert.Contains("7\nAnna H.", Labels(deck));
+    }
+
+    [Fact]
     public void A_hall_offers_players_unless_it_says_otherwise() =>
         Assert.True(HallCapabilities.Default.Players);
 

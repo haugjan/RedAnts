@@ -97,8 +97,11 @@ Jede Halle sagt unter `⚙ Halle` → Angebot, ob sie **mit Spielerinnen** arbei
 |---|---|---|
 | Tor, Strafe, Best Player | Musik und Einblender, danach die Spielerliste | nur Musik und Einblender |
 | Spielerin (LED), Starting 6 | öffnet die Auswahl | verschwindet, sofern die Taste sonst nichts tut |
+| Best Player **Gast** | sendet den Einblender direkt | sendet den Einblender direkt |
 
 Eine Taste bleibt also stehen, solange sie ohne Spielerwahl noch etwas zu tun hat — Musik oder LED-Vorlage. Eine Taste, die ausschliesslich der Auswahl dient, wird ausgeblendet, wie jede Taste ohne ihr Gerät.
+
+**Best Player Gast** fragt grundsätzlich nie nach einer Person, auch nicht in einer Halle mit Spielerinnen: der Druck spielt die Befehlsfolge der Taste und blendet den Best-Player-Titel mit der Gästemannschaft ein. Bei uns wird kein Gast namentlich gewürdigt, und die LED-Wand zeigt ohnehin nur eigene Spielerinnen.
 
 ### Hallen ausblenden
 
