@@ -73,6 +73,32 @@ Auf den Tasten der Spielerliste trägt sie in beiden Fällen **„Topscorer"** s
 
 Die erste Meldung kommt vor der zweiten: zuerst die Nummer nachtragen, danach den Topscorer bestätigen. Eine Mannschaft ganz ohne Kader wird nicht geprüft.
 
+### Schnell am Spiel, ruhig beim Aufruf
+
+Das Spielgeschehen und die Aufrufe des Speakers sind getrennt, weil zwischen Tor und Aufruf Minuten liegen können und das Spiel längst wieder läuft.
+
+**Während des Spiels** — schnell, ohne Nachfragen:
+
+```
+Tor drücken      → Musik und Einblender Tor         sofort
+Schützin wählen  → sie erscheint auf vMix           sofort
+                 → zurück auf der Startseite
+```
+
+Das gilt für **Heim und Gast** gleichermassen. Auf die LED-Wand geht dabei niemand.
+
+**Wenn der Speaker so weit ist** — über die Taste `Spieler (LED)`:
+
+```
+Spieler (LED) → Tor · Assist · Strafe · Opening → Spielerin wählen → auf die LED-Wand
+```
+
+Nach jeder Spielerin bist du zurück bei der Wahl `Tor · Assist · Strafe · Opening`, kannst also direkt die nächste aufrufen — etwa zuerst die Schützin unter „Tor", dann die Vorlage unter „Assist".
+
+**Beim Opening bleibst du auf der Spielerliste**, damit du beim Einlauf Spielerin für Spielerin durchgehen kannst, ohne jedes Mal neu zu wählen.
+
+Es gibt kein Zeitlimit mehr. Die alte Sprecherseite, die nach drei Minuten verfiel und das Deck solange blockierte, ist weg.
+
 ### Welches Bild auf der LED-Wand
 
 Nach der Spielerinnenwahl hängt es davon ab, was die Taste war:

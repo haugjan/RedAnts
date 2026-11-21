@@ -43,7 +43,7 @@ public class GoalFlowTests
     static List<string> Labels(Deck.Deck deck) => deck.Slots(DeckId).Select(s => s.Label).ToList();
 
     [Fact]
-    public async Task A_home_goal_asks_scorer_then_assist_and_leaves_the_led_to_the_speaker_key()
+    public async Task A_home_goal_asks_the_scorer_and_is_then_done()
     {
         var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts);
 
@@ -51,31 +51,50 @@ public class GoalFlowTests
         Assert.Contains("Torschützin?", Labels(deck));
 
         await PressLabel(deck, "12\nLea Muster");
-        Assert.Contains("Assist?", Labels(deck));
-        Assert.Contains("Kein Assist", Labels(deck));
 
-        await PressLabel(deck, "7\nAnna H.");
-        Assert.Contains("LED Torschützin\n#12 Lea Muster", Labels(deck));
-
-        await PressLabel(deck, "LED Torschützin\n#12 Lea Muster");
-        Assert.Contains("LED Assist\n#7 Anna H.", Labels(deck));
-
-        await PressLabel(deck, "LED Assist\n#7 Anna H.");
-        await PressLabel(deck, "✓ Fertig");
         Assert.Contains("Tor", Labels(deck));
+        Assert.DoesNotContain("Assist?", Labels(deck));
     }
 
     [Fact]
-    public async Task Without_an_assist_the_speaker_key_goes_from_the_scorer_straight_to_done()
+    public async Task The_led_page_offers_the_four_occasions()
     {
-        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts);
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.PlayerHome, "Spieler (LED)")), RedAnts);
 
+        await PressLabel(deck, "Spieler (LED)");
+
+        Assert.Contains("Tor", Labels(deck));
+        Assert.Contains("Assist", Labels(deck));
+        Assert.Contains("Strafe", Labels(deck));
+        Assert.Contains("Opening", Labels(deck));
+    }
+
+    [Fact]
+    public async Task After_a_player_the_led_page_comes_back_for_the_next_one()
+    {
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.PlayerHome, "Spieler (LED)")), RedAnts);
+
+        await PressLabel(deck, "Spieler (LED)");
         await PressLabel(deck, "Tor");
-        await PressLabel(deck, "12\nLea Muster");
-        await PressLabel(deck, "Kein Assist");
-        await PressLabel(deck, "LED Torschützin\n#12 Lea Muster");
+        Assert.Contains("12\nLea Muster", Labels(deck));
 
-        Assert.Contains("✓ Fertig", Labels(deck));
+        await PressLabel(deck, "12\nLea Muster");
+
+        Assert.Contains("Assist", Labels(deck));
+        Assert.Contains("Opening", Labels(deck));
+    }
+
+    [Fact]
+    public async Task The_opening_stays_on_the_list_for_the_next_player()
+    {
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.PlayerHome, "Spieler (LED)")), RedAnts);
+
+        await PressLabel(deck, "Spieler (LED)");
+        await PressLabel(deck, "Opening");
+        await PressLabel(deck, "12\nLea Muster");
+
+        Assert.Contains("7\nAnna H.", Labels(deck));
+        Assert.DoesNotContain("Opening", Labels(deck));
     }
 
     [Fact]
@@ -103,7 +122,7 @@ public class GoalFlowTests
     }
 
     [Fact]
-    public async Task When_the_red_ants_play_away_their_goal_gets_the_assist_and_speaker_steps()
+    public async Task When_the_red_ants_play_away_their_goal_also_ends_after_the_scorer()
     {
         var home = Guests with { TeamId = 1 };
         var away = RedAnts with { TeamId = 428665 };
@@ -112,7 +131,8 @@ public class GoalFlowTests
         await PressLabel(deck, "Tor RA");
         await PressLabel(deck, "12\nLea Muster");
 
-        Assert.Contains("Assist?", Labels(deck));
+        Assert.Contains("Tor RA", Labels(deck));
+        Assert.DoesNotContain("Assist?", Labels(deck));
     }
 
     [Fact]
@@ -134,8 +154,7 @@ public class GoalFlowTests
         await PressLabel(deck, "9");
         await PressLabel(deck, "#9 ✓\nSpielerin 9");
 
-        Assert.Contains("Assist?\nNummer tippen", Labels(deck));
-        Assert.Contains("Kein Assist", Labels(deck));
+        Assert.Contains("Tor", Labels(deck));
     }
 
     [Fact]
@@ -153,7 +172,7 @@ public class GoalFlowTests
     }
 
     [Fact]
-    public async Task A_missing_vmix_does_not_keep_the_penalised_player_off_the_led_wall()
+    public async Task A_missing_vmix_does_not_keep_the_led_page_off_the_wall()
     {
         var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
         listener.Start();
@@ -162,7 +181,7 @@ public class GoalFlowTests
         var hall = Hall.Offline with
         {
             Id = "win4",
-            Decks = [Grid(8, 4, Special(2, SpecialKeys.PenaltyHome, "Strafe"))],
+            Decks = [Grid(8, 4, Special(2, SpecialKeys.PlayerHome, "Spieler (LED)"))],
             Offered = new HallCapabilities(),
             Devices = new HallDevices(VmixHost: "127.0.0.1", VmixPort: 1, SednaHost: "127.0.0.1", SednaPort: port),
             LedTemplates = [new LedTemplate("spielerin", "start playlist -n \"Spielerin {team.short} {player.number}\" -o")],
@@ -176,8 +195,8 @@ public class GoalFlowTests
         var deck = new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
+        await PressLabel(deck, "Spieler (LED)");
         await PressLabel(deck, "Strafe");
-        await PressLabel(deck, "2'");
         var heard = Task.Run(async () =>
         {
             using var client = await listener.AcceptTcpClientAsync(stop.Token);
@@ -189,25 +208,21 @@ public class GoalFlowTests
 
         Assert.Null(note);
         Assert.Equal("start playlist -n \"Spielerin RA 12\" -o", await heard);
-        Assert.Contains("vMix", deck.RecentFault);
+        Assert.Null(deck.RecentFault);
         listener.Stop();
     }
 
     [Fact]
-    public async Task The_question_sits_next_to_back_and_the_scorer_cannot_be_her_own_assist()
+    public async Task The_question_sits_next_to_back()
     {
         var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts);
 
         await PressLabel(deck, "Tor");
-        Assert.Equal("Torschützin?", deck.Slots(DeckId).Single(s => s.Number == 2).Label);
-
-        await PressLabel(deck, "12\nLea Muster");
         var slots = deck.Slots(DeckId);
-        Assert.Equal("Assist?", slots.Single(s => s.Number == 2).Label);
-        var scorer = slots.Single(s => s.Label == "12\nLea Muster");
-        Assert.False(scorer.Pressable);
-        Assert.Equal(0xFFD400, scorer.Color);
-        Assert.Equal(0xFF8C1A, slots.Single(s => s.Label == "7\nAnna H.").Color);
+
+        Assert.Equal("◀ Zurück", slots.Single(s => s.Number == 1).Label);
+        Assert.Equal("Torschützin?", slots.Single(s => s.Number == 2).Label);
+        Assert.True(slots.Single(s => s.Label == "12\nLea Muster").Pressable);
     }
 
     [Fact]
@@ -226,21 +241,15 @@ public class GoalFlowTests
     }
 
     [Fact]
-    public async Task On_the_speaker_page_the_player_keys_work_like_the_green_key()
+    public async Task The_led_page_says_which_team_it_shows()
     {
-        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.GoalHome, "Tor")), RedAnts);
+        var deck = Build(Grid(8, 4, Special(2, SpecialKeys.PlayerHome, "Spieler (LED)")), RedAnts);
 
-        await PressLabel(deck, "Tor");
-        await PressLabel(deck, "12\nLea Muster");
-        await PressLabel(deck, "7\nAnna H.");
-        Assert.StartsWith("Drücken, wenn der", deck.Slots(DeckId).Single(s => s.Number == 2).Label);
-        Assert.Equal("LED Torschützin\n#12 Lea Muster", deck.Slots(DeckId).Single(s => s.Number == 3).Label);
+        await PressLabel(deck, "Spieler (LED)");
+        Assert.Equal("Auf LED zeigen\nRA", deck.Slots(DeckId).Single(s => s.Number == 2).Label);
 
-        await PressLabel(deck, "12\nLea Muster");
-        Assert.Contains("LED Assist\n#7 Anna H.", Labels(deck));
-
-        await PressLabel(deck, "7\nAnna H.");
-        Assert.Contains("✓ Fertig", Labels(deck));
+        await PressLabel(deck, "Strafe");
+        Assert.Equal("Strafe RA\nauf LED", deck.Slots(DeckId).Single(s => s.Number == 2).Label);
     }
 
     [Fact]
