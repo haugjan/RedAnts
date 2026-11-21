@@ -16,7 +16,7 @@ public class GameReadyToSaveTests
         Assert.Throws<ValidationException>(() => game.ReadyToSave()).Message;
 
     [Fact]
-    public void A_squad_with_a_chosen_best_player_saves()
+    public void A_squad_with_a_chosen_top_scorer_saves()
     {
         var game = With(Squad(new Player(7, "Nora Stark"), new Player(73, "Lea Suter")) with { TopScorer = 73 });
 
@@ -24,8 +24,8 @@ public class GameReadyToSaveTests
     }
 
     [Fact]
-    public void Without_a_best_player_nothing_is_saved() =>
-        Assert.Contains($"{Game.MarkLabel} fehlt", Refused(With(Squad(new Player(7, "Nora Stark")))));
+    public void Without_a_top_scorer_nothing_is_saved() =>
+        Assert.Contains($"{Game.TopScorerLabel} fehlt", Refused(With(Squad(new Player(7, "Nora Stark")))));
 
     [Fact]
     public void A_player_still_carrying_the_double_zero_blocks_the_save()
@@ -46,7 +46,7 @@ public class GameReadyToSaveTests
     }
 
     [Fact]
-    public void A_best_player_who_left_the_squad_blocks_the_save() =>
+    public void A_top_scorer_who_left_the_squad_blocks_the_save() =>
         Assert.Contains("steht nicht im Kader",
             Refused(With(Squad(new Player(7, "Nora Stark")) with { TopScorer = 99 })));
 

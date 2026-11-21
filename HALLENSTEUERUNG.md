@@ -52,26 +52,26 @@ Auf dem Bord, nicht im Admin:
 
 1. Spiel von der **swissunihockey-API** laden.
 2. Oder eine **Spielkonfigurationsdatei** einlesen.
-3. Danach ist alles **überschreibbar**, insbesondere Kommentatoren, Schiedsrichter, Teamnamen, **Teamkürzel**, **Teamfarbe für Heim und Gast**, Kader, Aufstellung und Best Player.
+3. Danach ist alles **überschreibbar**, insbesondere Kommentatoren, Schiedsrichter, Teamnamen, **Teamkürzel**, **Teamfarbe für Heim und Gast**, Kader, Aufstellung und Topscorer.
 
 Teamkürzel und Teamfarbe gehen an vMix und an die LED-Wand, sie bestimmen also, wie Scoreboard und Einblender aussehen. Beide sind je Spiel einstellbar, die Halle gibt nur den Vorschlag für die Heimmannschaft vor.
 
-Der Eintrag `00=` aus der Spielkonfigurationsdatei ist der **Best Player** der Mannschaft; die Nummer 00 wird nie als Rückennummer vergeben. Beim Einlesen gilt:
+Der Eintrag `00=` aus der Spielkonfigurationsdatei ist der **Topscorer** der Mannschaft; die Nummer 00 wird nie als Rückennummer vergeben. Beim Einlesen gilt:
 
 - **Der Name steht im Abschnitt auch mit der echten Nummer** (so macht es der Generator von TCunihockey): die echte Nummer gilt, der Kader bekommt keine 00, und `00` in Aufstellung, Linie oder Torhüterliste wird zu dieser Nummer.
 - **Der Name steht nur als `00=`** (so macht es der Generator von unihockey.live, er ersetzt die echte Nummer): die Spielerin bleibt als 00 im Kader, damit sie wählbar ist. Erfunden wird nichts.
 
-Auf den Tasten der Spielerliste trägt sie in beiden Fällen **„Best Player"** statt einer Nummer. An vMix geht die 00, weil dort das entsprechende Logo erwartet wird; an die LED-Wand geht ihre echte Nummer, und **ohne echte Nummer bleibt sie auf der LED-Wand aus** — eine Playlist `STR_RA_00` gibt es nicht. Eine von Hand gesetzte Wahl überlebt ein erneutes Laden des Spiels.
+Auf den Tasten der Spielerliste trägt sie in beiden Fällen **„Topscorer"** statt einer Nummer. An vMix geht die 00, weil dort das entsprechende Logo erwartet wird; an die LED-Wand geht ihre echte Nummer, und **ohne echte Nummer bleibt sie auf der LED-Wand aus** — eine Playlist `STR_RA_00` gibt es nicht. Eine von Hand gesetzte Wahl überlebt ein erneutes Laden des Spiels.
 
 **Ohne saubere Angaben lässt sich das Spiel nicht speichern.** Die Maske `⚙ Spiel` prüft je Mannschaft mit Kader:
 
 | Lage | Meldung |
 |---|---|
 | Eine Spielerin steht noch als `00` im Kader | „… ist als 00 erfasst. Bitte die echte Rückennummer eintragen." |
-| Kein Best Player gewählt | „Best Player fehlt. Bitte auswählen." |
-| Gewählte Nummer steht nicht im Kader | „Best Player mit Nummer … steht nicht im Kader." |
+| Kein Topscorer gewählt | „Topscorer fehlt. Bitte auswählen." |
+| Gewählte Nummer steht nicht im Kader | „Topscorer mit Nummer … steht nicht im Kader." |
 
-Die erste Meldung kommt vor der zweiten: zuerst die Nummer nachtragen, danach die Wahl bestätigen. Eine Mannschaft ganz ohne Kader wird nicht geprüft.
+Die erste Meldung kommt vor der zweiten: zuerst die Nummer nachtragen, danach den Topscorer bestätigen. Eine Mannschaft ganz ohne Kader wird nicht geprüft.
 
 ### Welches Bild auf der LED-Wand
 
@@ -123,7 +123,7 @@ Verhalten fest, Position frei wählbar.
 
 | Taste | Verhalten |
 |---|---|
-| **Tor Heim** | Spielt Musik (Song konfigurierbar), blendet auf der LED-Wand ein (konfigurierbar), öffnet die Spielerliste der Heimmannschaft inklusive **Eigentor** und **Best Player**. Nach der Wahl geht die Spielerin an vMix und an die LED-Wand, in der Farbe und mit dem Kürzel der Mannschaft. Unten zeigt ein toter Knopf mit schwarzem Hintergrund an, dass gerade ein Tor gewählt wird. |
+| **Tor Heim** | Spielt Musik (Song konfigurierbar), blendet auf der LED-Wand ein (konfigurierbar), öffnet die Spielerliste der Heimmannschaft inklusive **Eigentor** und **Topscorer**. Nach der Wahl geht die Spielerin an vMix und an die LED-Wand, in der Farbe und mit dem Kürzel der Mannschaft. Unten zeigt ein toter Knopf mit schwarzem Hintergrund an, dass gerade ein Tor gewählt wird. |
 | **Tor Gast** | Wie Tor Heim, mit der Gästemannschaft. |
 | **Strafe Heim** | Wie Tor Heim, aber zwischen Taste und Spielerwahl kommt die Strafenseite: 2', 2'+2', 10', Spieldauer. |
 | **Strafe Gast** | Wie Strafe Heim, mit der Gästemannschaft. |
@@ -156,7 +156,9 @@ Die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard ink
 
 Animationen laufen als **Overlay** über dem Spielmodus: ihr sedna-Befehl endet auf `-o`. Die Hauptplaylist (`spiel-nla`, `spiel-u21`) läuft darunter durch und wird nie gestoppt, deshalb bleibt die Uhr während Tor, Strafe, Best Player, Starting 6 und den Gastlogos sichtbar. Ohne `-o` ersetzt die Animation die Hauptplaylist und nimmt die Uhr mit — in der Halle gemessen: `start playlist -n "STR_RA_TOR"` nimmt die Uhr weg, derselbe Befehl mit `-o` nicht. Vollbilder — Pause, Pausenloop, Pausenspiel, Intro, Sponsoren, LIDL, Mobiliar — bleiben bewusst ohne Flag, sie sind selbst das Hauptbild.
 
-Die Uhr auf der LED-Wand wird **nie** ausgeblendet. PANIC stoppt deshalb keine LED-Playlist mehr: es hält Musik an und nimmt die vMix-Einblender weg, die Wand bleibt unberührt. Wer eine LED-Playlist wirklich stoppen will, legt dafür eine Taste mit dem Befehl „LED-Playlist stoppen" an.
+Die Uhr auf der LED-Wand wird **nie** ausgeblendet. PANIC hält die Musik an, nimmt die vMix-Einblender weg und setzt die LED-Wand zurück: es stoppt das **Overlay** und startet darunter wieder **LED Spiel L-UPL** (`spiel-nla`). Die Hauptebene wird dabei nie gestoppt, nur neu besetzt — und weil genau diese Playlist die Uhr trägt, bringt PANIC die Uhr zurück, statt sie zu gefährden. Fehlt der Halle diese Vorlage, bleibt die Hauptebene unangetastet und nur das Overlay verschwindet.
+
+Spielt U21, zeigt PANIC trotzdem die L-UPL-Playlist. Wer das anders braucht, sagt Bescheid.
 
 Auch das Scoreboard in vMix bleibt stehen. Es verschwindet einzig über die feste Funktion **Uhr an/aus**, nicht über PANIC und nicht über das Ausblenden aller Einblender. Diese Taste wirkt **ausschliesslich auf vMix**: sie erreicht die LED-Wand nicht und kann die Uhr dort weder ein- noch ausschalten. Keine Taste und kein Ablauf nimmt die Uhr von der LED-Wand.
 
@@ -228,7 +230,7 @@ Alle sieben Etappen sind gebaut, die Tests sind grün, und seit dem 20.10.2026 l
 - **Spielkonfiguration**: die Taste „⚙ Spiel“ öffnet im Cloud-Bord die Maske direkt auf der Seite und im Bord des Agenten dieselbe Maske lokal unter `/spiel`. Die lokale Maske läuft **ohne Internet**: sie schreibt in die Kopie des Agenten und schickt die Änderung in die Cloud, sobald der Hub wieder steht; ein neueres Spiel aus der Cloud gewinnt. Ein anderes Spiel laden (swissunihockey, Datei, von Hand) bleibt in der Cloud.
 - **Zuschauerzähler**: die Taste zählt in das laufende Spiel, der Agent hält die Zahl lokal und meldet sie über den Hub. Im Backoffice listet Show > Spiele alle Spiele mit ihrer Zahl, dazu Summe und Schnitt.
 - **Matchuhr**: iCast über UDP und Bodet ScorePad über TCP (der Agent hört auf dem Port, die Uhr verbindet sich); Rahmen mit SOH/STX/ETX und LRC, Zeit, Stand, Drittel, beide Strafboxen und die Nummern der bestraften Spielerinnen.
-- **Spielerin an die LED-Wand**: die Auswahl im Tor-, Strafen-, Best-Player- und Spielerin-Ablauf geht nach vMix und mit der Vorlage „spielerin“ auch an sedna; LED-Vorlagen kennen dieselben Platzhalter wie die Einblender. Fehlt „spielerin“, geht nur beim **Tor** die nummerierte Vorlage „tor“ raus; bei Best Player, Starting 6 und Strafe bleibt die Animation stehen, welche die Taste selbst gestartet hat.
+- **Spielerin an die LED-Wand**: die Auswahl im Tor-, Strafen-, Best-Player- und Spielerin-Ablauf geht nach vMix und mit der Vorlage „spielerin“ auch an sedna; LED-Vorlagen kennen dieselben Platzhalter wie die Einblender. Fehlt „spielerin“, geht beim **Tor** die nummerierte Vorlage „tor“ raus und bei Assist, Best Player, Starting 6 und Strafe die Vorlage „einlauf“ — das Bild der Spielerin ohne Toranimation. Fehlt auch „einlauf“, bleibt ausser beim Tor die Animation stehen, welche die Taste selbst gestartet hat.
 - **Companion**: ein universelles Modul, je Deck eine Instanz, Presets je Tastennummer, Musiksteuerung und PANIC.
 - **Zurück trägt den Seitentitel**: auf einer Unterseite ist die Zurück-Taste zweigeteilt, oben schwarz mit dem Namen der Taste, über die die Seite geöffnet wurde, unten grün mit „Zurück“. Dieselbe Unterseite lässt sich von mehreren Tasten aus öffnen; der Titel zeigt den Weg, und Zurück führt auf die zuletzt offene Seite, nicht auf eine fest eingetragene Elternseite.
 - **Zwei feste Deck-Grössen**: Streamdeck Mk2 (5 × 3) und Streamdeck XL (8 × 4). Die Grösse wird beim Anlegen gewählt und lässt sich danach nicht mehr ändern; sie entscheidet auch, welche Decks sich die Seiten teilen.
@@ -241,4 +243,4 @@ Alle sieben Etappen sind gebaut, die Tests sind grün, und seit dem 20.10.2026 l
 1. **Bodet in der Halle messen**: das Protokoll ist nach dem Handbuch gebaut und mit den dokumentierten Rahmen getestet, aber noch an keiner echten ScorePad in Oberseen gehört. Beim ersten Spiel dort den Rohlog (`/status`) ansehen.
 2. **Sofortige Automatik braucht ein Signal, das iCast nicht sendet**: das Handbuch (Scoreboard Handball 2.0) listet alle Felder, ein Flag „Uhr läuft" ist nicht dabei; die beiden letzten Flags melden nur das Ende der Spielzeit und des Timeouts. Die Uhr sendet zwar zehnmal pro Sekunde, die Zeit selbst wechselt aber nur im Sekundentakt. Die Pausenmusik startet deshalb im Mittel nach einer halben Sekunde, in der letzten Minute (Zehntel) nach etwa einer Viertelsekunde. Beim Bodet ScorePad ist noch offen, ob das Attribut-Byte der Nachricht den Stillstand meldet.
 3. **Spielerliste im Cloud-Bord**: die Spielerwahl läuft über den Agenten, ohne Agent zeigt das Bord die Seite nicht.
-4. **Die 00 an vMix ist am Scoreboard geprüft, nicht an jedem Einblender**: dass vMix beim Best Player das Logo statt der Nummer zeigt, ist mit einer echten Wahl auf dem Streamdeck bestätigt. Ob jeder weitere Titel dieselbe Erwartung hat, zeigt das erste echte Spiel.
+4. **Die 00 an vMix ist am Scoreboard geprüft, nicht an jedem Einblender**: dass vMix beim Topscorer das Logo statt der Nummer zeigt, ist mit einer echten Wahl auf dem Streamdeck bestätigt. Ob jeder weitere Titel dieselbe Erwartung hat, zeigt das erste echte Spiel.

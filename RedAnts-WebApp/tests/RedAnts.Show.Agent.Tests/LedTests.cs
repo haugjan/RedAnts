@@ -189,14 +189,8 @@ public class LedTests
         listener.Stop();
     }
 
-    [Fact]
-    public async Task Panic_never_takes_the_clock_off_the_led_wall()
+    static Deck.Deck PanicDeck(int port, PayloadStore store, params LedTemplate[] templates)
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-
-        var store = new PayloadStore(NullLogger<PayloadStore>.Instance);
         var hall = Hall.Offline with
         {
             Id = "win4",
@@ -204,17 +198,73 @@ public class LedTests
                 [new DeckPage(DeckPage.HomeId, "Startseite", null, [])], PanicKey: 25, BackKey: 17)],
             Offered = new HallCapabilities(Vmix: false),
             Devices = new HallDevices(SednaHost: "127.0.0.1", SednaPort: port),
-            LedTemplates = [new LedTemplate("stopp", "stop playlist -o -fo 0.5")],
+            LedTemplates = templates,
         };
         store.Apply(new AgentPayload(hall, Match, DateTimeOffset.Now, []));
         var states = new ShowStates(NullLogger<ShowStates>.Instance);
         var live = new LiveGame();
         var runner = new KeyRunner(store, live, states, new VmixLink(store, live, NullLogger<VmixLink>.Instance),
             new SednaLink(store, NullLogger<SednaLink>.Instance), NullLogger<KeyRunner>.Instance);
-        var deck = new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
+        return new Deck.Deck(store, live, states, runner, NullLogger<Deck.Deck>.Instance);
+    }
+
+    [Fact]
+    public async Task Panic_clears_the_overlay_and_puts_the_game_back_on_the_wall()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var cleared = HeardAsync(listener, stop.Token);
+
+        var deck = PanicDeck(port, new PayloadStore(NullLogger<PayloadStore>.Instance),
+            new LedTemplate(KeyRunner.StopPlaylist, "stop playlist -o -fo 0.5"),
+            new LedTemplate(KeyRunner.GamePlaylist, "start playlist -n \"STR_Default_Game_NLA\""));
 
         await deck.PressAsync("xl", 25);
 
+        Assert.Equal("stop playlist -o -fo 0.5", await cleared);
+        Assert.Equal("start playlist -n \"STR_Default_Game_NLA\"", await HeardAsync(listener, stop.Token));
+        listener.Stop();
+    }
+
+    [Fact]
+    public async Task Panic_never_takes_the_clock_off_the_led_wall()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var first = HeardAsync(listener, stop.Token);
+        var second = HeardAsync(listener, stop.Token);
+
+        var deck = PanicDeck(port, new PayloadStore(NullLogger<PayloadStore>.Instance),
+            new LedTemplate(KeyRunner.StopPlaylist, "stop playlist -o -fo 0.5"),
+            new LedTemplate(KeyRunner.GamePlaylist, "start playlist -n \"STR_Default_Game_NLA\""));
+
+        await deck.PressAsync("xl", 25);
+
+        foreach (var command in new[] { await first, await second })
+            Assert.True(!command.StartsWith("stop playlist", StringComparison.OrdinalIgnoreCase) || command.Contains(" -o "),
+                $"PANIC hat '{command}' geschickt und damit die Hauptebene gestoppt, auf der die Uhr läuft.");
+        listener.Stop();
+    }
+
+    [Fact]
+    public async Task Panic_without_a_game_template_leaves_the_main_layer_alone()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var cleared = HeardAsync(listener, stop.Token);
+
+        var deck = PanicDeck(port, new PayloadStore(NullLogger<PayloadStore>.Instance),
+            new LedTemplate(KeyRunner.StopPlaylist, "stop playlist -o -fo 0.5"));
+
+        await deck.PressAsync("xl", 25);
+
+        Assert.Equal("stop playlist -o -fo 0.5", await cleared);
         Assert.False(listener.Pending());
         listener.Stop();
     }

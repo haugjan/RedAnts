@@ -314,10 +314,10 @@ public class GoalFlowTests
         await PressLabel(deck, "Tor");
         var labels = Labels(deck);
 
-        Assert.Contains($"{Game.MarkLabel}\nLea Muster", labels);
+        Assert.Contains($"{Game.TopScorerLabel}\nLea Muster", labels);
         Assert.DoesNotContain("12\nLea Muster", labels);
         Assert.Contains("7\nAnna H.", labels);
-        Assert.Single(labels, label => label.StartsWith(Game.MarkLabel));
+        Assert.Single(labels, label => label.StartsWith(Game.TopScorerLabel));
     }
 
     [Fact]

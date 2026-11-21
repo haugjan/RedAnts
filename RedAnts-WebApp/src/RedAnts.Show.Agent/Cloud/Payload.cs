@@ -254,7 +254,7 @@ public sealed record Game(
 {
     public static readonly Game None = new("", GameSource.Manual, "", "", null, "", GameTeam.Empty, GameTeam.Empty, "", "", "", "", DateTimeOffset.MinValue);
 
-    public const string MarkLabel = "Best Player";
+    public const string TopScorerLabel = "Topscorer";
 
     public string? WhatStopsSaving()
     {
@@ -264,9 +264,9 @@ public sealed record Game(
             if (team.Players.FirstOrDefault(p => p.Number <= 0) is { } unnumbered)
                 return $"{label}: {unnumbered.Name} ist als 00 erfasst. Bitte die echte Rückennummer eintragen.";
             if (team.TopScorer is not { } marked)
-                return $"{label}: {MarkLabel} fehlt. Bitte auswählen.";
+                return $"{label}: {TopScorerLabel} fehlt. Bitte auswählen.";
             if (team.Find(marked) is null)
-                return $"{label}: {MarkLabel} mit Nummer {marked} steht nicht im Kader.";
+                return $"{label}: {TopScorerLabel} mit Nummer {marked} steht nicht im Kader.";
         }
         return null;
     }

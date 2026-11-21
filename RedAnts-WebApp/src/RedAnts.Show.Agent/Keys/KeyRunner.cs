@@ -111,13 +111,31 @@ public sealed class KeyRunner(
         Changed?.Invoke();
     }
 
+    public const string StopPlaylist = "stopp";
+    public const string GamePlaylist = "spiel-nla";
+
     public async Task LedStopAsync(CancellationToken stop)
     {
         if (!payload.Hall.Offers.Led) return;
-        if (payload.Hall.LedCommand("stopp") is { Length: > 0 } command) await led.SendAsync(command, stop);
+        if (payload.Hall.LedCommand(StopPlaylist) is { Length: > 0 } command) await led.SendAsync(command, stop);
         states.Set(ShowStates.Led, "aus", "gestoppt");
         states.Set(ShowStates.Sponsors, "aus", "gestoppt");
         Changed?.Invoke();
+    }
+
+    public async Task LedBackToGameAsync(CancellationToken stop)
+    {
+        if (!payload.Hall.Offers.Led) return;
+        if (payload.Hall.LedCommand(StopPlaylist) is { Length: > 0 } clear) await led.SendAsync(clear, stop);
+        states.Set(ShowStates.Sponsors, "aus", "PANIC");
+        if (payload.Hall.LedCommand(GamePlaylist) is not { Length: > 0 })
+        {
+            log.LogWarning("Keine LED-Vorlage für {Event}", GamePlaylist);
+            states.Set(ShowStates.Led, "aus", "PANIC");
+            Changed?.Invoke();
+            return;
+        }
+        await LedAsync(GamePlaylist, KeyContext.None, stop);
     }
 
     public Task ShowPlayerOnLedAsync(KeyContext ctx, CancellationToken stop) =>

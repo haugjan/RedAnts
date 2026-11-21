@@ -60,7 +60,7 @@ public sealed record Game(
             GameTeam.Empty(GameTeam.HomeColor), GameTeam.Empty(GameTeam.AwayColor), "", "", "", "", SwissTime.Timestamp);
     }
 
-    public const string MarkLabel = "Best Player";
+    public const string TopScorerLabel = "Topscorer";
 
     public Game ReadyToSave()
     {
@@ -72,9 +72,9 @@ public sealed record Game(
                 throw new ValidationException(field,
                     $"{label}: {unnumbered.Name} ist als 00 erfasst. Bitte die echte Rückennummer eintragen.");
             if (team.TopScorer is not { } marked)
-                throw new ValidationException(field, $"{label}: {MarkLabel} fehlt. Bitte auswählen.");
+                throw new ValidationException(field, $"{label}: {TopScorerLabel} fehlt. Bitte auswählen.");
             if (team.Find(marked) is null)
-                throw new ValidationException(field, $"{label}: {MarkLabel} mit Nummer {marked} steht nicht im Kader.");
+                throw new ValidationException(field, $"{label}: {TopScorerLabel} mit Nummer {marked} steht nicht im Kader.");
         }
         return this;
     }

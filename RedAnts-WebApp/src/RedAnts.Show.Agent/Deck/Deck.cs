@@ -22,7 +22,7 @@ public sealed class Deck
     const int CHome = 0xFF7C80;
     const int CAway = 0xA6C9EC;
     const int CAssist = 0xFF8C1A;
-    const string TopScorerLabel = Game.MarkLabel;
+    const string TopScorerLabel = Game.TopScorerLabel;
 
     readonly PayloadStore _payload;
     readonly LiveGame _live;
@@ -255,6 +255,7 @@ public sealed class Deck
         }
         _runner.StopMusic();
         await Safe(() => _runner.HideAllAsync(stop));
+        await Safe(() => _runner.LedBackToGameAsync(stop));
         _states.Set(ShowStates.AutoBreakMusic, "aus", "PANIC");
         Bump();
     }
