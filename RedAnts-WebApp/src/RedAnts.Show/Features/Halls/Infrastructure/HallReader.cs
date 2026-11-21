@@ -17,7 +17,7 @@ public sealed class HallReader(ShowDatabase database) : IHallReader
         return rows
             .Select(r => JsonSerializer.Deserialize<Hall>(r.Json, ShowJson.Options))
             .OfType<Hall>()
-            .Select(h => new HallRow(h.Id, h.Name, h.ActiveGameId, false, MusicOnly(h)))
+            .Select(h => new HallRow(h.Id, h.Name, h.ActiveGameId, false, MusicOnly(h), h.Hidden))
             .ToList();
     }
 }

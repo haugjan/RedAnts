@@ -363,7 +363,7 @@ public sealed class Deck
         {
             KeyKinds.Music => offers.Sound,
             KeyKinds.Special => SpecialKeys.ChoosesPlayer(key.Special ?? "")
-                ? Shows(key) || key.Sequence.Any(step => Runs(step, offers))
+                ? (SpecialKeys.PicksPlayer(key.Special ?? "", offers) && Shows(key)) || key.Sequence.Any(step => Runs(step, offers))
                 : SpecialKeys.Offered(key.Special ?? "", offers),
             KeyKinds.Steps => key.Sequence.Count == 0 || key.Sequence.Any(step => Runs(step, offers)),
             KeyKinds.Live => key.Live switch
@@ -523,7 +523,7 @@ public sealed class Deck
     async Task SpecialAsync(string deckId, DeckKey key, string special)
     {
         var side = SpecialKeys.Side(special);
-        if (SpecialKeys.ChoosesPlayer(special) && !Shows(key))
+        if (SpecialKeys.ChoosesPlayer(special) && (!Shows(key) || !_payload.Hall.Offers.Players))
         {
             await _runner.RunAsync(key.Sequence, new KeyContext(side), CancellationToken.None);
             Bump();

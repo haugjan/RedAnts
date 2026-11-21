@@ -10,7 +10,9 @@ public sealed class ShowBoardController : Controller
     public async Task<IActionResult> Halls([FromServices] GetHalls.Handler halls)
     {
         var rows = await halls.HandleAsync(new GetHalls.Query());
-        return Json(rows.Select(row => new { id = row.Id, name = row.Name, agent = row.AgentConnected }));
+        return Json(rows
+            .Where(row => !row.Hidden)
+            .Select(row => new { id = row.Id, name = row.Name, agent = row.AgentConnected }));
     }
 
     [HttpGet("hallen/{id}/agent")]

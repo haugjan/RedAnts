@@ -24,6 +24,7 @@ public sealed class ShowExampleSeeder(
     public const string HallName = "WIN4 Stratos";
     public const string SoundHallId = "win4-sound";
     public const string StreamHallId = "win4-livestream";
+    public const string SoundLedHallId = "win4-sound-led";
     public const string MusicHallId = "oberseen";
     public const string MusicHallName = "Oberseen iPad";
     public const string NotebookHallId = "oberseen-notebook";
@@ -260,6 +261,7 @@ public sealed class ShowExampleSeeder(
     [
         (SoundHallId, library => SoundOnly(SoundHallId, "WIN4 nur Sound", library)),
         (StreamHallId, StreamOnly),
+        (SoundLedHallId, SoundAndLed),
         (MusicHallId, library => SoundOnly(MusicHallId, MusicHallName, library)),
         (NotebookHallId, Notebook),
         (RennwegHallId, library => SoundOnly(RennwegHallId, "Rennweg iPad", library)),
@@ -286,6 +288,18 @@ public sealed class ShowExampleSeeder(
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
         };
         return hall with { Decks = [DefaultDecks.Music() with { Name = "Bord" }] };
+    }
+
+    public static Hall SoundAndLed(IReadOnlyList<MusicItem> library)
+    {
+        var hall = Hall.Create(SoundLedHallId, "WIN4 Sound + LED (U17, U21)") with
+        {
+            Devices = new HallDevices(SednaHost: "172.20.1.49", ClockType: "iCast", ClockPort: 50086),
+            Offered = new HallCapabilities(Sound: true, Clock: true, Vmix: false, Led: true, Players: false),
+            DefaultScreen = "spiel-u21",
+            BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
+        };
+        return hall with { Decks = [Field(library)] };
     }
 
     public static Hall StreamOnly(IReadOnlyList<MusicItem> library)

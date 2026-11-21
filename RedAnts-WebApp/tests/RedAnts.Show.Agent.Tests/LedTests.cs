@@ -219,7 +219,7 @@ public class LedTests
 
         var deck = PanicDeck(port, new PayloadStore(NullLogger<PayloadStore>.Instance),
             new LedTemplate(KeyRunner.StopPlaylist, "stop playlist -o -fo 0.5"),
-            new LedTemplate(KeyRunner.GamePlaylist, "start playlist -n \"STR_Default_Game_NLA\""));
+            new LedTemplate(Hall.FallbackScreen, "start playlist -n \"STR_Default_Game_NLA\""));
 
         await deck.PressAsync("xl", 25);
 
@@ -240,7 +240,7 @@ public class LedTests
 
         var deck = PanicDeck(port, new PayloadStore(NullLogger<PayloadStore>.Instance),
             new LedTemplate(KeyRunner.StopPlaylist, "stop playlist -o -fo 0.5"),
-            new LedTemplate(KeyRunner.GamePlaylist, "start playlist -n \"STR_Default_Game_NLA\""));
+            new LedTemplate(Hall.FallbackScreen, "start playlist -n \"STR_Default_Game_NLA\""));
 
         await deck.PressAsync("xl", 25);
 

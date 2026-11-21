@@ -89,6 +89,21 @@ Hat die Halle eine eigene Vorlage `spielerin`, gilt die für alle Fälle. Fehlt 
 
 Die Logos kommen aus dem **Bildordner der Halle** (`⚙ Halle`), eine Datei je Teamkürzel: `RAW.png`, `BEBU.png`. Dasselbe Verzeichnis versorgt die Uhr oben, den Resultatbalken unten und die Einblender für Coach, Timeout, Best Player und Spielerin. Fehlt der Ordner, bleiben die Bildflächen leer, der Rest wird trotzdem angezeigt. Fehlt nur eine Datei, bleibt dieses eine Logo leer — der Dateiname ist das Kürzel in Grossbuchstaben, Leerzeichen werden zu `_`.
 
+### Hallen ohne Spielerinnen
+
+Jede Halle sagt unter `⚙ Halle` → Angebot, ob sie **mit Spielerinnen** arbeitet. Ohne sie fragt keine Taste mehr nach einer Person:
+
+| Taste | mit Spielerinnen | ohne Spielerinnen |
+|---|---|---|
+| Tor, Strafe, Best Player | Musik und Einblender, danach die Spielerliste | nur Musik und Einblender |
+| Spielerin (LED), Starting 6 | öffnet die Auswahl | verschwindet, sofern die Taste sonst nichts tut |
+
+Eine Taste bleibt also stehen, solange sie ohne Spielerwahl noch etwas zu tun hat — Musik oder LED-Vorlage. Eine Taste, die ausschliesslich der Auswahl dient, wird ausgeblendet, wie jede Taste ohne ihr Gerät.
+
+### Hallen ausblenden
+
+Eine Halle, die du gerade nicht brauchst, blendest du unter `⚙ Halle` → Sichtbarkeit aus, statt sie zu löschen. Sie bleibt mit allen Einstellungen erhalten und im Backoffice bearbeitbar, erscheint aber nicht mehr in der Hallenauswahl beim Start des Bords.
+
 ## Matchuhr
 
 Die Matchuhr ist die Quelle der Wahrheit für **Zeit, Spielstand, Drittel und laufende Strafen**. Der Spielstand kommt also nicht mehr von Hand, sondern aus dem Telegramm.
@@ -156,9 +171,9 @@ Die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard ink
 
 Animationen laufen als **Overlay** über dem Spielmodus: ihr sedna-Befehl endet auf `-o`. Die Hauptplaylist (`spiel-nla`, `spiel-u21`) läuft darunter durch und wird nie gestoppt, deshalb bleibt die Uhr während Tor, Strafe, Best Player, Starting 6 und den Gastlogos sichtbar. Ohne `-o` ersetzt die Animation die Hauptplaylist und nimmt die Uhr mit — in der Halle gemessen: `start playlist -n "STR_RA_TOR"` nimmt die Uhr weg, derselbe Befehl mit `-o` nicht. Vollbilder — Pause, Pausenloop, Pausenspiel, Intro, Sponsoren, LIDL, Mobiliar — bleiben bewusst ohne Flag, sie sind selbst das Hauptbild.
 
-Die Uhr auf der LED-Wand wird **nie** ausgeblendet. PANIC hält die Musik an, nimmt die vMix-Einblender weg und setzt die LED-Wand zurück: es stoppt das **Overlay** und startet darunter wieder **LED Spiel L-UPL** (`spiel-nla`). Die Hauptebene wird dabei nie gestoppt, nur neu besetzt — und weil genau diese Playlist die Uhr trägt, bringt PANIC die Uhr zurück, statt sie zu gefährden. Fehlt der Halle diese Vorlage, bleibt die Hauptebene unangetastet und nur das Overlay verschwindet.
+Die Uhr auf der LED-Wand wird **nie** ausgeblendet. PANIC hält die Musik an, nimmt die vMix-Einblender weg und setzt die LED-Wand zurück: es stoppt das **Overlay** und startet darunter wieder das **Standardbild der Halle**. Die Hauptebene wird dabei nie gestoppt, nur neu besetzt — und weil genau diese Playlist die Uhr trägt, bringt PANIC die Uhr zurück, statt sie zu gefährden. Fehlt der Halle die Vorlage, bleibt die Hauptebene unangetastet und nur das Overlay verschwindet.
 
-Spielt U21, zeigt PANIC trotzdem die L-UPL-Playlist. Wer das anders braucht, sagt Bescheid.
+Das Standardbild stellst du je Halle ein (`⚙ Halle` → LED-Wand → Standardbild): `spiel-nla` für L-UPL, `spiel-u21` für U21. Ohne Auswahl gilt `spiel-nla`.
 
 Auch das Scoreboard in vMix bleibt stehen. Es verschwindet einzig über die feste Funktion **Uhr an/aus**, nicht über PANIC und nicht über das Ausblenden aller Einblender. Diese Taste wirkt **ausschliesslich auf vMix**: sie erreicht die LED-Wand nicht und kann die Uhr dort weder ein- noch ausschalten. Keine Taste und kein Ablauf nimmt die Uhr von der LED-Wand.
 

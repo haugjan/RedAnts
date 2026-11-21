@@ -20,7 +20,8 @@ public sealed record HallCapabilities(
     bool Clock = true,
     bool Vmix = true,
     bool Led = true,
-    bool Light = false)
+    bool Light = false,
+    bool Players = true)
 {
     public static readonly HallCapabilities Default = new();
 }
@@ -42,9 +43,15 @@ public sealed partial record Hall(
     IReadOnlyList<Deck>? Decks = null,
     HallCapabilities? Offered = null,
     string BreakMusicId = "",
-    IReadOnlyList<string>? DeckIds = null)
+    IReadOnlyList<string>? DeckIds = null,
+    bool Hidden = false,
+    string DefaultScreen = "")
 {
     public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
+
+    public const string FallbackScreen = "spiel-nla";
+
+    public string Screen => DefaultScreen is { Length: > 0 } chosen ? chosen : FallbackScreen;
 
     public IReadOnlyList<Deck> DeckLayouts => Decks is { Count: > 0 } decks ? decks : DefaultDecks.All;
 

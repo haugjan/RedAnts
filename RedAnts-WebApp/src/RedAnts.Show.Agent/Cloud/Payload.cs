@@ -30,7 +30,8 @@ public sealed record HallCapabilities(
     bool Clock = true,
     bool Vmix = true,
     bool Led = true,
-    bool Light = false)
+    bool Light = false,
+    bool Players = true)
 {
     public static readonly HallCapabilities Default = new();
 }
@@ -98,6 +99,9 @@ public static class SpecialKeys
 
     public static bool Offered(string special, HallCapabilities offers) =>
         (!NeedsSound(special) || offers.Sound) && (!NeedsClock(special) || offers.Clock) && (!NeedsVmix(special) || offers.Vmix);
+
+    public static bool PicksPlayer(string special, HallCapabilities offers) =>
+        ChoosesPlayer(special) && offers.Players;
 
     public static string Side(string special) =>
         special.EndsWith("-heim", StringComparison.Ordinal) ? "home"
@@ -176,11 +180,16 @@ public sealed record Hall(
     string? ActiveGameId = null,
     IReadOnlyList<DeckLayout>? Decks = null,
     HallCapabilities? Offered = null,
-    string BreakMusicId = "")
+    string BreakMusicId = "",
+    string DefaultScreen = "")
 {
     public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], []);
 
     public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
+
+    public const string FallbackScreen = "spiel-nla";
+
+    public string Screen => DefaultScreen is { Length: > 0 } chosen ? chosen : FallbackScreen;
 
     public DeckLayout? DeckOf(string id) => Decks?.FirstOrDefault(d => d.Id == id);
 

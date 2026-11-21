@@ -50,7 +50,19 @@
                     <label class="sa-check"><input type="checkbox" @bind="_vmix" @bind:after="Touch" /> vMix</label>
                     <label class="sa-check"><input type="checkbox" @bind="_led" @bind:after="Touch" /> LED-Wand</label>
                     <label class="sa-check"><input type="checkbox" @bind="_light" @bind:after="Touch" /> Lichtshow</label>
+                    <label class="sa-check"><input type="checkbox" @bind="_players" @bind:after="Touch" /> Spielerinnen</label>
                 </div>
+                <p class="sa-hint">
+                    Ohne <strong>Spielerinnen</strong> fragt keine Taste mehr nach einer Person: Tor und Strafe spielen
+                    nur noch Musik und Einblender, Tasten, die ausschliesslich der Spielerwahl dienen, verschwinden.
+                </p>
+
+                <h3>Sichtbarkeit</h3>
+                <label class="sa-check"><input type="checkbox" @bind="_hidden" @bind:after="Touch" /> Diese Halle ausblenden</label>
+                <p class="sa-hint">
+                    Eine ausgeblendete Halle bleibt vollständig erhalten und hier bearbeitbar, erscheint aber nicht mehr
+                    in der Hallenauswahl des Bords.
+                </p>
 
                 <h3>Decks dieser Halle</h3>
                 <p class="sa-hint">Die Decks selbst stehen unter Decks und gelten für alle Hallen. Ohne Auswahl bietet die Halle alle an.</p>
@@ -110,7 +122,20 @@
                     <div class="sa-form">
                         <label>sedna Host <input class="sa-input" @bind="_sednaHost" @bind:after="Touch" /></label>
                         <label>sedna Port <input class="sa-input" type="number" @bind="_sednaPort" @bind:after="Touch" /></label>
+                        <label>Standardbild
+                            <select class="sa-input" @bind="_screen" @bind:after="Touch">
+                                <option value="">@Hall.FallbackScreen (Vorgabe)</option>
+                                @foreach (var template in Hall.LedTemplates.OrderBy(t => t.Event, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    <option value="@template.Event">@template.Event</option>
+                                }
+                            </select>
+                        </label>
                     </div>
+                    <p class="sa-hint">
+                        Auf dieses Bild stellt PANIC die LED-Wand zurück, zum Beispiel <code>spiel-nla</code> für L-UPL
+                        oder <code>spiel-u21</code> für U21.
+                    </p>
                 }
                 @if (_light)
                 {
@@ -138,9 +163,9 @@
 
     private IReadOnlyList<HallRow> _halls = [];
     private string _newId = "", _newName = "";
-    private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _clockSource = "", _imageFolder = "";
+    private string _name = "", _vmixHost = "", _sednaHost = "", _clockType = "iCast", _clockSource = "", _imageFolder = "", _screen = "";
     private int _teamId, _season, _vmixPort, _sednaPort, _clockPort, _periodMinutes;
-    private bool _sound = true, _clock = true, _vmix = true, _led = true, _light;
+    private bool _sound = true, _clock = true, _vmix = true, _led = true, _light, _players = true, _hidden;
     private string _breakSound = "";
     private IReadOnlyList<MusicItem> _sounds = [];
     private IReadOnlyList<Deck> _library = [];
@@ -176,6 +201,9 @@
         _vmix = Hall.Offers.Vmix;
         _led = Hall.Offers.Led;
         _light = Hall.Offers.Light;
+        _players = Hall.Offers.Players;
+        _hidden = Hall.Hidden;
+        _screen = Hall.DefaultScreen;
         _breakSound = Hall.BreakMusicId;
         _deckIds = Hall.DeckIds is { Count: > 0 } chosen
             ? chosen.ToHashSet(StringComparer.OrdinalIgnoreCase)
@@ -213,7 +241,9 @@
             PeriodMinutes = _periodMinutes,
             ImageFolder = _imageFolder.Trim(),
         },
-        Offered = new HallCapabilities(_sound, _clock, _vmix, _led, _light),
+        Offered = new HallCapabilities(_sound, _clock, _vmix, _led, _light, _players),
+        Hidden = _hidden,
+        DefaultScreen = _screen.Trim(),
         BreakMusicId = _breakSound,
         DeckIds = _library.Select(deck => deck.Id).Where(_deckIds.Contains).ToList(),
     });
