@@ -60,6 +60,25 @@ public sealed record Game(
             GameTeam.Empty(GameTeam.HomeColor), GameTeam.Empty(GameTeam.AwayColor), "", "", "", "", SwissTime.Timestamp);
     }
 
+    public const string MarkLabel = "Best Player";
+
+    public Game ReadyToSave()
+    {
+        Validated();
+        foreach (var (team, field, label) in new[] { (Home, nameof(Home), "Heim"), (Away, nameof(Away), "Gast") })
+        {
+            if (team.Players.Count == 0) continue;
+            if (team.Players.FirstOrDefault(p => p.Number <= 0) is { } unnumbered)
+                throw new ValidationException(field,
+                    $"{label}: {unnumbered.Name} ist als 00 erfasst. Bitte die echte Rückennummer eintragen.");
+            if (team.TopScorer is not { } marked)
+                throw new ValidationException(field, $"{label}: {MarkLabel} fehlt. Bitte auswählen.");
+            if (team.Find(marked) is null)
+                throw new ValidationException(field, $"{label}: {MarkLabel} mit Nummer {marked} steht nicht im Kader.");
+        }
+        return this;
+    }
+
     public Game Validated()
     {
         ValidationException.ThrowIfBlank(Id, nameof(Id), "Spielnummer");

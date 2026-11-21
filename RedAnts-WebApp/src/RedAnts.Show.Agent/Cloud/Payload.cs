@@ -254,6 +254,23 @@ public sealed record Game(
 {
     public static readonly Game None = new("", GameSource.Manual, "", "", null, "", GameTeam.Empty, GameTeam.Empty, "", "", "", "", DateTimeOffset.MinValue);
 
+    public const string MarkLabel = "Best Player";
+
+    public string? WhatStopsSaving()
+    {
+        foreach (var (team, label) in new[] { (Home, "Heim"), (Away, "Gast") })
+        {
+            if (team.Players.Count == 0) continue;
+            if (team.Players.FirstOrDefault(p => p.Number <= 0) is { } unnumbered)
+                return $"{label}: {unnumbered.Name} ist als 00 erfasst. Bitte die echte Rückennummer eintragen.";
+            if (team.TopScorer is not { } marked)
+                return $"{label}: {MarkLabel} fehlt. Bitte auswählen.";
+            if (team.Find(marked) is null)
+                return $"{label}: {MarkLabel} mit Nummer {marked} steht nicht im Kader.";
+        }
+        return null;
+    }
+
     public GameTeam Side(string side) =>
         side.Equals("away", StringComparison.OrdinalIgnoreCase) ? Away : Home;
 

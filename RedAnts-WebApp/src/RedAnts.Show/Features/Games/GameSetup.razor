@@ -56,7 +56,7 @@
                             </span>
                         </label>
                         <label>Coach <input @bind="side.Coach.Value" /></label>
-                        <label>Topscorer
+                        <label>@Game.MarkLabel
                             <select @bind="side.Scorer.Value">
                                 <option value="">keine</option>
                                 @foreach (var player in side.Roster)

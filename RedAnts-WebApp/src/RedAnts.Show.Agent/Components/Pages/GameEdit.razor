@@ -75,7 +75,7 @@
                                     </span>
                                 </label>
                                 <label>Coach <input @bind="side.Coach.Value" /></label>
-                                <label>Topscorer
+                                <label>@Game.MarkLabel
                                     <select @bind="side.Scorer.Value">
                                         <option value="">keine</option>
                                         @foreach (var player in side.Roster)
@@ -257,6 +257,12 @@
                 TopScorer = int.TryParse(side.Scorer.Value, out var number) ? number : null,
             };
             game = side.Key == "away" ? game with { Away = fresh } : game with { Home = fresh };
+        }
+
+        if (game.WhatStopsSaving() is { } problem)
+        {
+            Fail(problem);
+            return;
         }
 
         Payload.ApplyGame(game);

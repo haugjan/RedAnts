@@ -11,7 +11,7 @@ public static class SaveGame
     {
         public async Task<Game> HandleAsync(Command command)
         {
-            var game = command.Game.Validated() with { LoadedAt = SwissTime.Timestamp };
+            var game = command.Game.ReadyToSave() with { LoadedAt = SwissTime.Timestamp };
             await games.SaveAsync(game);
             await sync.PushGameAsync(game.Id);
             return game;

@@ -22,7 +22,7 @@ public sealed class Deck
     const int CHome = 0xFF7C80;
     const int CAway = 0xA6C9EC;
     const int CAssist = 0xFF8C1A;
-    const string TopScorerLabel = "Topscorer";
+    const string TopScorerLabel = Game.MarkLabel;
 
     readonly PayloadStore _payload;
     readonly LiveGame _live;
