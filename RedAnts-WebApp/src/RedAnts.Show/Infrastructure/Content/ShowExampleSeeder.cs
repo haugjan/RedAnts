@@ -47,6 +47,7 @@ public sealed class ShowExampleSeeder(
             await SharePagesAsync();
             await TopUpTeamLogosAsync();
             await TopUpTitleLogosAsync();
+            await TopUpClockPortAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
                 var hall = Example(library);
@@ -171,6 +172,22 @@ public sealed class ShowExampleSeeder(
         await settings.SetAsync(TeamLogoTopUp.SettingKey, TeamLogoTopUp.Version);
     }
 
+    private async Task TopUpClockPortAsync()
+    {
+        await settings.LoadAsync();
+        if (settings.Get(ClockPortTopUp.SettingKey) == ClockPortTopUp.Version) return;
+
+        foreach (var id in new[] { HallId, StreamHallId, SoundLedHallId })
+        {
+            if (await halls.GetByIdAsync(id) is not { } hall) continue;
+            if (ClockPortTopUp.Fill(hall) is not { } corrected) continue;
+            await halls.SaveAsync(corrected);
+            await sync.PushAsync(corrected.Id);
+            log.LogInformation("Matchuhr der Halle {Hall} hört neu auf {Port}", corrected.Name, ClockPortTopUp.Right);
+        }
+        await settings.SetAsync(ClockPortTopUp.SettingKey, ClockPortTopUp.Version);
+    }
+
     private async Task TopUpTitleLogosAsync()
     {
         await settings.LoadAsync();
@@ -250,7 +267,7 @@ public sealed class ShowExampleSeeder(
     {
         var hall = Hall.Create(HallId, HallName) with
         {
-            Devices = new HallDevices(VmixHost: "127.0.0.1", SednaHost: "127.0.0.1", ClockType: "iCast", ClockPort: 50086),
+            Devices = new HallDevices(VmixHost: "127.0.0.1", SednaHost: "127.0.0.1", ClockType: "iCast"),
             Offered = new HallCapabilities(Sound: true, Clock: true, Vmix: true, Led: true),
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
         };
@@ -294,7 +311,7 @@ public sealed class ShowExampleSeeder(
     {
         var hall = Hall.Create(SoundLedHallId, "WIN4 Sound + LED (U17, U21)") with
         {
-            Devices = new HallDevices(SednaHost: "172.20.1.49", ClockType: "iCast", ClockPort: 50086),
+            Devices = new HallDevices(SednaHost: "172.20.1.49", ClockType: "iCast"),
             Offered = new HallCapabilities(Sound: true, Clock: true, Vmix: false, Led: true, Players: false),
             DefaultScreen = "spiel-u21",
             BreakMusicId = Find(library, "Spielunterbruch")?.Id ?? "",
@@ -306,7 +323,7 @@ public sealed class ShowExampleSeeder(
     {
         var hall = Hall.Create(StreamHallId, "WIN4 nur Livestream") with
         {
-            Devices = new HallDevices(VmixHost: "127.0.0.1", ClockType: "iCast", ClockPort: 50086),
+            Devices = new HallDevices(VmixHost: "127.0.0.1", ClockType: "iCast"),
             Offered = new HallCapabilities(Sound: false, Clock: true, Vmix: true, Led: false),
         };
         return hall with { Decks = [DefaultDecks.Field()] };

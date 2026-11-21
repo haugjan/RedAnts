@@ -8,7 +8,7 @@ The hall agent is the local half of the Show module: a headless .NET service on 
 | Agent → cloud | `Report(kind, json)`: `status` (lamps for vMix, Uhr, LED plus details), `score`, `clock`, `deck`, `overlay`, `sound`, `log` |
 | Agent → vMix | scoreboard fields from the hall clock, overlay titles for scenes (TCP 8099, `SetText`/`SetColor`/`SetImage`, `OverlayInput<n>In/Out`) |
 | Agent → LED wall | sedna presenter commands (TCP 27182), templates per event from the hall settings |
-| Hall clock → agent | iCast telegrams on UDP 50085/50086 (UTF-32 BE) or a Bodet ScorePad on TCP 4001, both documented below; manual score fallback on the deck when no telegram arrives |
+| Hall clock → agent | iCast telegrams on UDP 50085 (the clock broadcasts, sedna listens there too) (UTF-32 BE) or a Bodet ScorePad on TCP 4001, both documented below; manual score fallback on the deck when no telegram arrives |
 | Companion → agent | the fixed 32-key deck: `GET /deck/view?since=`, `GET /deck/image?key=`, `POST /deck/press/{1..32}` on `http://localhost:5150` (Companion module `companion-module-redants-halle`) |
 
 Music never runs on the agent: `sound.*` steps are reported to the cloud, the DJ board in the browser plays them.
@@ -113,7 +113,7 @@ Ein Update braucht nichts weiter als einen Neustart über die Verknüpfung: das 
 | Richtung | Port |
 |---|---|
 | Companion, Bord, Uhr, Spielmaske, Status | TCP 5150 auf dem Agenten (lokal; mit `bind` plus `boardPassword` im Hallennetz) |
-| Matchuhr iCast → Agent | UDP 50085 und 50086 |
+| Matchuhr iCast → Agent | UDP 50085 (Broadcast, sedna hört mit) |
 | Bodet ScorePad → Agent | TCP 4001, der Agent hört, die Uhr verbindet sich |
 | Agent → vMix | TCP 8099 |
 | Agent → sedna LED-Wand | TCP 27182 |

@@ -251,7 +251,7 @@ Alle sieben Etappen sind gebaut, die Tests sind grün, und seit dem 20.10.2026 l
 
 - **Hallenkonfiguration** im Backoffice unter „Show”: Angebot, Geräte, Einblender, LED-Vorlagen, Decks mit Seiten und Tasten.
 - **Hallenkonfigurationen**: sechs Konfigurationen werden beim Start angelegt, jede mit eigenem Agent-Schlüssel, damit sich zwei Hallen nicht gegenseitig die Musik stoppen.
-  - `win4` WIN4 Stratos: Sound, Matchuhr iCast auf UDP 50086, vMix, LED-Wand; Decks XL und Mk2.
+  - `win4` WIN4 Stratos: Sound, Matchuhr iCast auf UDP 50085, vMix, LED-Wand; Decks XL und Mk2.
   - `win4-sound` WIN4 nur Sound: nur Soundboard, auch im Netz unter /bord bedienbar; ein Bord-Deck.
   - `win4-livestream` WIN4 nur Livestream: vMix und Matchuhr iCast, kein Sound, keine LED, keine automatische Pausenmusik; nur das XL-Deck.
   - `oberseen` Oberseen iPad: nur Sound, im Netz bedienbar.
