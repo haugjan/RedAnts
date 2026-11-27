@@ -76,6 +76,7 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
     public const string MusicPrevious = "musik-zurueck";
     public const string MusicPause = "musik-pause";
     public const string Spectators = "zuschauer";
+    public const string SponsorNext = "sponsor-vor";
 
     public static IReadOnlyList<SpecialKey> All { get; } =
     [
@@ -100,6 +101,7 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
         new(MusicPrevious, "Vorheriges Stück", "Musik", "⏮"),
         new(MusicPause, "Pause und Weiter", "Musik", "⏸"),
         new(Spectators, "Zuschauerzähler", "Spiel"),
+        new(SponsorNext, "Nächster Sponsor", "Spiel", "sponsor-gold"),
     ];
 
     public static SpecialKey? Of(string? id) => All.FirstOrDefault(s => s.Id == id);
@@ -109,7 +111,7 @@ public sealed record SpecialKey(string Id, string Label, string Group, string Ic
 
     public static bool NeedsVmix(string id) => id is GoalHome or GoalAway or PenaltyHome or PenaltyAway
         or BestPlayerHome or BestPlayerAway or PlayerHome or PlayerAway or Starting6Home or Starting6Away
-        or OverlayToggle or ClockToggle or Spectators;
+        or OverlayToggle or ClockToggle or Spectators or SponsorNext;
 
     public static bool NeedsSound(string id) => id is MusicToggle or AutoBreakMusic or MusicStop
         or MusicFade or MusicNext or MusicPrevious or MusicPause;

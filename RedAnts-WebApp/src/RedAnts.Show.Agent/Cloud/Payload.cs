@@ -137,11 +137,12 @@ public static class SpecialKeys
     public const string MusicPrevious = "musik-zurueck";
     public const string MusicPause = "musik-pause";
     public const string Spectators = "zuschauer";
+    public const string SponsorNext = "sponsor-vor";
 
     public static bool ChoosesPlayer(string special) => special is GoalHome or GoalAway or PenaltyHome or PenaltyAway
         or BestPlayerHome or BestPlayerAway or PlayerHome or PlayerAway or Starting6Home or Starting6Away;
 
-    public static bool NeedsVmix(string special) => special is OverlayToggle or ClockToggle or Spectators;
+    public static bool NeedsVmix(string special) => special is OverlayToggle or ClockToggle or Spectators or SponsorNext;
 
     public static bool NeedsSound(string special) => special is MusicToggle or AutoBreakMusic or MusicStop
         or MusicFade or MusicNext or MusicPrevious or MusicPause;

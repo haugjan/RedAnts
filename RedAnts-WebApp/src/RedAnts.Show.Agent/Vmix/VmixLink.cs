@@ -184,14 +184,20 @@ public sealed class VmixLink(PayloadStore payload, LiveGame live, ILogger<VmixLi
         var scoreboard = title.Kind.Equals(VmixScoreboard.Kind, StringComparison.OrdinalIgnoreCase);
         var commands = scoreboard
             ? new List<string>()
-            : values
-                .Select(kv => VmixConnection.Function(VmixScoreboard.FunctionFor(kv.Key), ("Input", title.Input), ("SelectedName", kv.Key), ("Value", kv.Value)))
-                .ToList();
+            : values.Select(kv => FieldCommand(title, kv.Key, kv.Value)).ToList();
         if (Overlay(title) is { } channel) commands.Add(VmixConnection.Function($"OverlayInput{channel}In", ("Input", title.Input)));
         else if (scoreboard) throw new InvalidOperationException("Die Uhr hat keinen Overlay-Kanal (vMix-Titel, Kanal 1 bis 4)");
         await SendAsync(commands, stop);
         LiveTitle = title.Kind;
     }
+
+    public Task UpdateFieldAsync(OverlayTitle title, string field, string value, CancellationToken stop) =>
+        SendAsync([FieldCommand(title, field, value)], stop);
+
+    static string FieldCommand(OverlayTitle title, string field, string value) =>
+        VmixScoreboard.IsVisibility(field)
+            ? VmixConnection.Function(VmixScoreboard.VisibilityFunction(value), ("Input", title.Input), ("SelectedName", VmixScoreboard.SelectedName(field)))
+            : VmixConnection.Function(VmixScoreboard.FunctionFor(field), ("Input", title.Input), ("SelectedName", field), ("Value", value));
 
     public async Task HideTitleAsync(OverlayTitle title, CancellationToken stop)
     {

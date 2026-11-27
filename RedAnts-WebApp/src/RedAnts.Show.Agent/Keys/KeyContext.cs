@@ -29,8 +29,9 @@ public static class Templates
         var score = ctx.Score.Length > 0 ? ctx.Score : $"{live.HomeScore}:{live.AwayScore}";
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["player.number"] = player?.Display ?? "",
+            ["player.number"] = Number(player, team),
             ["player.number00"] = Padded(player?.Display),
+            ["player.topscorer"] = IsTopScorer(team, player) ? "on" : "off",
             ["player.name"] = player?.Name ?? "",
             ["player.position"] = player?.Position ?? "",
             ["player.sponsor"] = sponsor,
@@ -84,14 +85,29 @@ public static class Templates
         return result;
     }
 
+    public static bool IsTopScorer(GameTeam team, Player? player) => player is not null && team.TopScorer == player.Number;
+
+    public static string Number(Player? player, GameTeam team) =>
+        player is null ? "" : IsTopScorer(team, player) ? PersonalSponsors.TopScorerKey : player.Display;
+
+    public static string SponsorKey(Player? player, GameTeam team, string title) =>
+        title.Equals(PersonalSponsors.CoachKey, StringComparison.OrdinalIgnoreCase) ? PersonalSponsors.CoachKey
+        : player is null ? ""
+        : IsTopScorer(team, player) ? PersonalSponsors.TopScorerKey
+        : player.Number.ToString();
+
+    public static int SponsorCount(string side, Player? player, GameTeam team, PersonalSponsors? sponsors, string title)
+    {
+        if (sponsors is null || !sponsors.Shows(title) || sponsors.Folder(side).Length == 0) return 0;
+        var key = SponsorKey(player, team, title);
+        return key.Length == 0 ? 0 : sponsors.Count(side, key);
+    }
+
     private static string Sponsor(string side, Player? player, GameTeam team, PersonalSponsors? sponsors, string title)
     {
         if (player?.Sponsor is { Length: > 0 } own) return own;
         if (sponsors is null || !sponsors.Shows(title)) return "";
-        var key = title.Equals(PersonalSponsors.CoachKey, StringComparison.OrdinalIgnoreCase) ? PersonalSponsors.CoachKey
-            : player is null ? ""
-            : team.TopScorer == player.Number ? PersonalSponsors.TopScorerKey
-            : player.Number.ToString();
+        var key = SponsorKey(player, team, title);
         return key.Length == 0 ? "" : sponsors.Logo(side, key) ?? "";
     }
 

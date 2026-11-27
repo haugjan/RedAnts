@@ -123,10 +123,25 @@ public sealed partial record Hall(
 
     public static readonly IReadOnlyList<string> SponsoredTitles = ["player_event", "penalty", "name", "bestplayer", PersonalSponsors.CoachKey];
 
+    public const string TopScorerVisible = "ImgTopscorer.Visible";
+
+    public static readonly IReadOnlyDictionary<string, string> TopScorerFields = new Dictionary<string, string>
+    {
+        [TopScorerVisible] = "{player.topscorer}",
+    };
+
+    public static readonly IReadOnlyList<string> PlayerTitles = ["player_event", "penalty", "name", "bestplayer"];
+
     private static Dictionary<string, string> Sponsored(Dictionary<string, string> fields)
     {
         foreach (var (name, template) in SponsorFields) fields[name] = template;
         return fields;
+    }
+
+    private static Dictionary<string, string> PlayerTitle(Dictionary<string, string> fields)
+    {
+        foreach (var (name, template) in TopScorerFields) fields[name] = template;
+        return Sponsored(fields);
     }
 
     public static IReadOnlyList<OverlayTitle> DefaultOverlayTitles { get; } = BuildTitles();
@@ -152,7 +167,7 @@ public sealed partial record Hall(
             ["homeLogo"] = "ImgHomeTeam.Source",
             ["awayLogo"] = "ImgAwayTeam.Source",
         }),
-        new("player_event", TitleInputs.PlayerEvent, 1, Sponsored(new Dictionary<string, string>
+        new("player_event", TitleInputs.PlayerEvent, 1, PlayerTitle(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "TOR",
             ["TxtNumber.Text"] = "{player.number}",
@@ -161,7 +176,7 @@ public sealed partial record Hall(
             ["TxtBottom.Text"] = "{period.label} {clock}",
             [TeamImage] = "{team.logofile}",
         })),
-        new("penalty", TitleInputs.PlayerEvent, 1, Sponsored(new Dictionary<string, string>
+        new("penalty", TitleInputs.PlayerEvent, 1, PlayerTitle(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "STRAFE",
             ["TxtNumber.Text"] = "{player.number}",
@@ -170,7 +185,7 @@ public sealed partial record Hall(
             ["TxtBottom.Text"] = "{team.long}",
             [TeamImage] = "{team.logofile}",
         })),
-        new("name", TitleInputs.PlayerName, 1, Sponsored(new Dictionary<string, string>
+        new("name", TitleInputs.PlayerName, 1, PlayerTitle(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "{team.short}",
             ["TxtNumber.Text"] = "{player.number}",
@@ -178,7 +193,7 @@ public sealed partial record Hall(
             ["TxtBottom.Text"] = "{player.position}",
             [TeamImage] = "{team.logofile}",
         })),
-        new("bestplayer", TitleInputs.PlayerName, 1, Sponsored(new Dictionary<string, string>
+        new("bestplayer", TitleInputs.PlayerName, 1, PlayerTitle(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "BEST PLAYER",
             ["TxtNumber.Text"] = "{player.number}",

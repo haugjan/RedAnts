@@ -432,6 +432,20 @@ public sealed class Deck
             }
         }
 
+        if (special is SpecialKeys.SponsorNext)
+        {
+            var name = key.Label.Length > 0 ? key.Label : "Sponsor";
+            if (_runner.SponsorCount < 2)
+            {
+                builder.Label(key.Number, $"{name}\n–", CNeutral);
+                return;
+            }
+            var next = _runner.SponsorIndex % _runner.SponsorCount + 1;
+            builder.Action(key.Number, $"{name}\n{next}/{_runner.SponsorCount}", color, () => SpecialAsync(deckId, key, special),
+                Picture(key.Icon), symbol: Symbol(key.Icon));
+            return;
+        }
+
         builder.Action(key.Number, label, color, () => SpecialAsync(deckId, key, special), Picture(key.Icon), symbol: Symbol(key.Icon));
     }
 
@@ -579,6 +593,9 @@ public sealed class Deck
                 break;
             case SpecialKeys.Spectators:
                 Open(deckId, new Flow(FlowKind.Spectators, "", "", "Zuschauer", key));
+                break;
+            case SpecialKeys.SponsorNext:
+                await _runner.NextSponsorAsync(CancellationToken.None);
                 break;
         }
         Bump();

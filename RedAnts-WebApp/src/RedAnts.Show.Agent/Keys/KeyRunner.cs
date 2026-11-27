@@ -30,6 +30,33 @@ public sealed class KeyRunner(
 
     public string ShownSide { get; private set; } = "";
 
+    public const string SponsorImage = "ImgSponsor.Source";
+
+    public int SponsorCount { get; private set; }
+
+    public int SponsorIndex { get; private set; }
+
+    OverlayTitle? _sponsorTitle;
+    KeyContext _sponsorCtx = KeyContext.None;
+
+    public async Task NextSponsorAsync(CancellationToken stop)
+    {
+        if (_sponsorTitle is not { } title || SponsorCount < 2 || !Offers(title)) return;
+        var key = Templates.SponsorKey(_sponsorCtx.Player, payload.Game.Side(_sponsorCtx.Side), title.Kind);
+        var index = SponsorIndex % SponsorCount + 1;
+        if (payload.Hall.SponsorLogos.Logo(_sponsorCtx.Side, key, index) is not { } logo) return;
+        await vmix.UpdateFieldAsync(title, SponsorImage, logo, stop);
+        SponsorIndex = index;
+        Changed?.Invoke();
+    }
+
+    void ForgetSponsors()
+    {
+        _sponsorTitle = null;
+        SponsorCount = 0;
+        SponsorIndex = 0;
+    }
+
     public async Task RunAsync(IReadOnlyList<KeyStep> steps, KeyContext ctx, CancellationToken stop)
     {
         var shown = 0L;
@@ -52,6 +79,7 @@ public sealed class KeyRunner(
         Shown = "";
         ShownSide = "";
         OnAir = "";
+        ForgetSponsors();
         states.Set(ShowStates.Overlay, "aus", "ausgeblendet");
         Changed?.Invoke();
     }
@@ -72,6 +100,10 @@ public sealed class KeyRunner(
         Shown = kind;
         ShownSide = ctx.Side;
         OnAir = OnAirText(kind, ctx);
+        _sponsorTitle = title;
+        _sponsorCtx = ctx;
+        SponsorCount = Templates.SponsorCount(ctx.Side, ctx.Player, payload.Game.Side(ctx.Side), payload.Hall.SponsorLogos, kind);
+        SponsorIndex = SponsorCount > 0 ? 1 : 0;
         _shown = Interlocked.Increment(ref _tokens);
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "an", kind);
         Changed?.Invoke();
@@ -85,7 +117,7 @@ public sealed class KeyRunner(
         if (payload.Hall.Title(kind) is not { } title || !Offers(title)) return;
         if (shown != 0 && shown != _shown) return;
         await vmix.HideTitleAsync(title, stop);
-        if (Shown == kind) { Shown = ""; ShownSide = ""; OnAir = ""; }
+        if (Shown == kind) { Shown = ""; ShownSide = ""; OnAir = ""; ForgetSponsors(); }
         states.Set(Scoreboard(kind) ? ShowStates.ClockVisible : ShowStates.Overlay, "aus", kind);
         Changed?.Invoke();
     }

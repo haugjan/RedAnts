@@ -38,7 +38,29 @@ public class TemplateTests
 
         var text = Templates.Expand("{player.number} {player.name} ({player.sponsor}) {team.short} {score} {event} {referee1}", ctx, Game, live);
 
-        Assert.Equal("7 Nora Stark (Kempa) RAW 3:1 goal M. Muster", text);
+        Assert.Equal("00 Nora Stark (Kempa) RAW 3:1 goal M. Muster", text);
+    }
+
+    [Fact]
+    public void The_topscorer_goes_to_vmix_as_00_with_the_icon_on_and_to_the_led_wall_with_her_number()
+    {
+        var topscorer = new KeyContext("home", Game.Home.Find(7));
+        var other = new KeyContext("home", Game.Home.Find(41));
+
+        Assert.Equal("00 on", Templates.Expand("{player.number} {player.topscorer}", topscorer, Game, Live()));
+        Assert.Equal("STR_RA_07", Templates.Expand("STR_RA_{player.number00}", topscorer, Game, Live()));
+        Assert.Equal("41 off", Templates.Expand("{player.number} {player.topscorer}", other, Game, Live()));
+        Assert.Equal(" off", Templates.Expand("{player.number} {player.topscorer}", KeyContext.None, Game, Live()));
+    }
+
+    [Fact]
+    public void The_sponsor_count_follows_the_key_of_the_shown_player()
+    {
+        Assert.Equal(2, Templates.SponsorCount("home", Game.Home.Find(41), Game.Home, Sponsors, "player_event"));
+        Assert.Equal(1, Templates.SponsorCount("home", Game.Home.Find(7), Game.Home, Sponsors, "name"));
+        Assert.Equal(0, Templates.SponsorCount("home", Game.Home.Find(41), Game.Home, Sponsors, "penalty"));
+        Assert.Equal(1, Templates.SponsorCount("home", null, Game.Home, Sponsors, "coach"));
+        Assert.Equal(0, Templates.SponsorCount("home", Game.Home.Find(41), Game.Home, null, "player_event"));
     }
 
     [Fact]

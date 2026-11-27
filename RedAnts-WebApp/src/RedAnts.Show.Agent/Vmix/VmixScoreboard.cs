@@ -84,10 +84,20 @@ public static class VmixScoreboard
             yield return (field.Replace(DigitMarker, DigitPositions[i]), padded[i] is ' ' ? "" : padded[i].ToString());
     }
 
+    public const string VisibleSuffix = ".Visible";
+
     public static string FunctionFor(string field) =>
         field.EndsWith(".Source", StringComparison.OrdinalIgnoreCase) ? "SetImage"
         : field.EndsWith(".Color", StringComparison.OrdinalIgnoreCase) ? "SetColor"
         : "SetText";
+
+    public static bool IsVisibility(string field) => field.EndsWith(VisibleSuffix, StringComparison.OrdinalIgnoreCase);
+
+    public static string VisibilityFunction(string value) =>
+        value.Equals("on", StringComparison.OrdinalIgnoreCase) ? "SetImageVisibleOn" : "SetImageVisibleOff";
+
+    public static string SelectedName(string field) =>
+        IsVisibility(field) ? field[..^VisibleSuffix.Length] + ".Source" : field;
 
     static string[] Penalties(IReadOnlyList<Penalty> penalties)
     {
