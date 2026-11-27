@@ -63,6 +63,7 @@ jobs:
           tar -czf "dist/show-agent-$VERSION-linux-arm64.tar.gz" -C "$PACKAGE/linux-arm64" .
 
       - name: Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: show-agent-v${{ steps.version.outputs.version }}
