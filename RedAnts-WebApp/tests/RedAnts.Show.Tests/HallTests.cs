@@ -47,12 +47,16 @@ public class HallTests
         Assert.EndsWith(" -o", CommandOf(led));
 
     [Theory]
+    [InlineData("pause")]
+    [InlineData("intro")]
+    public void The_break_and_the_intro_overlay_the_clock(string led) =>
+        Assert.EndsWith(" -o", CommandOf(led));
+
+    [Theory]
     [InlineData("spiel-nla")]
     [InlineData("spiel-u21")]
-    [InlineData("pause")]
     [InlineData("intermission")]
     [InlineData("pausenspiel")]
-    [InlineData("intro")]
     [InlineData("sponsoren")]
     [InlineData("lidl-welcome")]
     [InlineData("mobiliar")]

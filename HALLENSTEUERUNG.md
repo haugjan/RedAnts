@@ -198,7 +198,11 @@ Die echten L-UPL-Einblender mit vollständiger Feldzuordnung, das Scoreboard ink
 
 ### Die Uhr bleibt
 
-Animationen laufen als **Overlay** über dem Spielmodus: ihr sedna-Befehl endet auf `-o`. Die Hauptplaylist (`spiel-nla`, `spiel-u21`) läuft darunter durch und wird nie gestoppt, deshalb bleibt die Uhr während Tor, Strafe, Best Player, Starting 6 und den Gastlogos sichtbar. Ohne `-o` ersetzt die Animation die Hauptplaylist und nimmt die Uhr mit — in der Halle gemessen: `start playlist -n "STR_RA_TOR"` nimmt die Uhr weg, derselbe Befehl mit `-o` nicht. Vollbilder — Pause, Pausenloop, Pausenspiel, Intro, Sponsoren, LIDL, Mobiliar — bleiben bewusst ohne Flag, sie sind selbst das Hauptbild.
+Animationen laufen als **Overlay** über dem Spielmodus: ihr sedna-Befehl endet auf `-o`. Die Hauptplaylist (`spiel-nla`, `spiel-u21`) läuft darunter durch und wird nie gestoppt, deshalb bleibt die Uhr während Tor, Strafe, Best Player, Starting 6 und den Gastlogos sichtbar. Ohne `-o` ersetzt die Animation die Hauptplaylist und nimmt die Uhr mit — in der Halle gemessen: `start playlist -n "STR_RA_TOR"` nimmt die Uhr weg, derselbe Befehl mit `-o` nicht. **Pause und Intro laufen ebenfalls als Overlay**, seit in der Halle gemessen wurde, dass sie sonst Uhr *und* LED-Bande mitnehmen: beide hängen an der Hauptplaylist, und wer die ersetzt, löscht sie. Als Overlay bleiben Uhr und Bande darunter sichtbar, das Pausenbild legt sich darum herum.
+
+Nur echte Vollbilder bleiben ohne Flag — Pausenloop, Pausenspiel, Sponsoren, LIDL, Mobiliar. Sie sind selbst das Hauptbild und nehmen Uhr und Bande bewusst mit.
+
+**Nach Pause und Intro muss das Overlay wieder weg**, sonst liegt das Bild über dem Spiel. Das macht PANIC, oder eine Taste mit dem Befehl „LED-Playlist stoppen".
 
 Die Uhr auf der LED-Wand wird **nie** ausgeblendet. PANIC hält die Musik an, nimmt die vMix-Einblender weg und setzt die LED-Wand zurück: es stoppt das **Overlay** und startet darunter wieder das **Standardbild der Halle**. Die Hauptebene wird dabei nie gestoppt, nur neu besetzt — und weil genau diese Playlist die Uhr trägt, bringt PANIC die Uhr zurück, statt sie zu gefährden. Fehlt der Halle die Vorlage, bleibt die Hauptebene unangetastet und nur das Overlay verschwindet.
 

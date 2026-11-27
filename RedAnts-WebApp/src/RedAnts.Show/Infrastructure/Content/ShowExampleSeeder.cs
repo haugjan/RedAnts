@@ -50,6 +50,7 @@ public sealed class ShowExampleSeeder(
             await TopUpTitleSponsorsAsync();
             await TopUpTitleTopScorerAsync();
             await TopUpClockPortAsync();
+            await TopUpOverlayAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
                 var hall = Example(library);
@@ -172,6 +173,21 @@ public sealed class ShowExampleSeeder(
             log.LogInformation("Seite Teamlogos auf den Decks ergänzt");
         }
         await settings.SetAsync(TeamLogoTopUp.SettingKey, TeamLogoTopUp.Version);
+    }
+
+    private async Task TopUpOverlayAsync()
+    {
+        await settings.LoadAsync();
+        if (settings.Get(OverlayTopUp.SettingKey) == OverlayTopUp.Version) return;
+
+        var show = await setup.GetAsync();
+        if (OverlayTopUp.Fill(show) is { } filled)
+        {
+            await setup.SaveAsync(filled);
+            await sync.PushAllAsync();
+            log.LogInformation("LED-Vorlagen {Events} laufen neu als Overlay", string.Join(", ", OverlayTopUp.Events));
+        }
+        await settings.SetAsync(OverlayTopUp.SettingKey, OverlayTopUp.Version);
     }
 
     private async Task TopUpClockPortAsync()
