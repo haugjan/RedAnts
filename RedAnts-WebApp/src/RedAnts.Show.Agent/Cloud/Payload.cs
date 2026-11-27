@@ -38,6 +38,57 @@ public sealed record HallCapabilities(
 
 public sealed record LedTemplate(string Event, string Command);
 
+public sealed record PersonalSponsors(
+    string HomeFolder = "",
+    string AwayFolder = "",
+    IReadOnlyDictionary<string, int>? Home = null,
+    IReadOnlyDictionary<string, int>? Away = null,
+    bool OnGoal = true,
+    bool OnPenalty = true,
+    bool OnName = true,
+    bool OnBestPlayer = true,
+    string BorderColor = PersonalSponsors.DefaultBorder)
+{
+    public const string DefaultBorder = "#FFF000";
+    public const string CoachKey = "coach";
+    public const string TopScorerKey = "00";
+
+    public static readonly PersonalSponsors None = new();
+
+    private static readonly IReadOnlyDictionary<string, int> Nothing = new Dictionary<string, int>();
+
+    public string Folder(string side) => IsAway(side) ? AwayFolder : HomeFolder;
+
+    public int Count(string side, string key) =>
+        ((IsAway(side) ? Away : Home) ?? Nothing).TryGetValue(key, out var count) ? count : 0;
+
+    public string? Logo(string side, string key, int index = 1) =>
+        index >= 1 && Count(side, key) >= index && Folder(side).Length > 0
+            ? Join(Folder(side), $"{key}_{index}.png")
+            : null;
+
+    public bool Shows(string titleKind) => titleKind.ToLowerInvariant() switch
+    {
+        "player_event" => OnGoal,
+        "penalty" => OnPenalty,
+        "name" => OnName,
+        "bestplayer" => OnBestPlayer,
+        CoachKey => true,
+        _ => false,
+    };
+
+    public string Border => BorderColor is { Length: > 0 } chosen ? chosen : DefaultBorder;
+
+    private static bool IsAway(string side) => side.Equals("away", StringComparison.OrdinalIgnoreCase);
+
+    private static string Join(string folder, string file)
+    {
+        var trimmed = folder.TrimEnd('/', '\\');
+        var separator = trimmed.Contains('/') && !trimmed.Contains('\\') ? "/" : "\\";
+        return trimmed + separator + file;
+    }
+}
+
 public sealed record AutomationRule(string StateId, string Value, string SceneId);
 
 public static class KeyKinds
@@ -183,11 +234,14 @@ public sealed record Hall(
     IReadOnlyList<DeckLayout>? Decks = null,
     HallCapabilities? Offered = null,
     string BreakMusicId = "",
-    string DefaultScreen = "")
+    string DefaultScreen = "",
+    PersonalSponsors? Sponsors = null)
 {
     public static readonly Hall Offline = new("", "Keine Halle", 0, 0, new HallDevices(), [], []);
 
     public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
+
+    public PersonalSponsors SponsorLogos => Sponsors ?? PersonalSponsors.None;
 
     public const string FallbackScreen = "spiel-nla";
 

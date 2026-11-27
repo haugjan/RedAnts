@@ -47,6 +47,7 @@ public sealed class ShowExampleSeeder(
             await SharePagesAsync();
             await TopUpTeamLogosAsync();
             await TopUpTitleLogosAsync();
+            await TopUpTitleSponsorsAsync();
             await TopUpClockPortAsync();
             if (await halls.GetByIdAsync(HallId) is not { } known)
             {
@@ -201,6 +202,21 @@ public sealed class ShowExampleSeeder(
             log.LogInformation("Teamlogos in den vMix-Titeln ergänzt");
         }
         await settings.SetAsync(TitleLogoTopUp.SettingKey, TitleLogoTopUp.Version);
+    }
+
+    private async Task TopUpTitleSponsorsAsync()
+    {
+        await settings.LoadAsync();
+        if (settings.Get(TitleSponsorTopUp.SettingKey) == TitleSponsorTopUp.Version) return;
+
+        var show = await setup.GetAsync();
+        if (TitleSponsorTopUp.Fill(show) is { } filled)
+        {
+            await setup.SaveAsync(filled);
+            await sync.PushAllAsync();
+            log.LogInformation("Persönliche Sponsoren in den vMix-Titeln ergänzt");
+        }
+        await settings.SetAsync(TitleSponsorTopUp.SettingKey, TitleSponsorTopUp.Version);
     }
 
     private async Task TopUpMusicAsync(IReadOnlyList<MusicItem> library)

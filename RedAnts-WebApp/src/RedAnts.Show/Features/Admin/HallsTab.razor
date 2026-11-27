@@ -115,6 +115,27 @@
                         <label>Port <input class="sa-input" type="number" @bind="_vmixPort" @bind:after="Touch" /></label>
                         <label>Bilderordner auf dem vMix-Rechner <input class="sa-input" @bind="_imageFolder" @bind:after="Touch" placeholder="C:\Livestream\Bilder" /></label>
                     </div>
+
+                    <h3>Persönliche Sponsoren</h3>
+                    <div class="sa-form">
+                        <label>Ordner Heim auf dem vMix-Rechner <input class="sa-input" @bind="_sponsorHome" @bind:after="Touch" placeholder="C:\Livestream\PersonalSponsors" /></label>
+                        <label>Ordner Gast auf dem vMix-Rechner <input class="sa-input" @bind="_sponsorAway" @bind:after="Touch" /></label>
+                        <label>Rahmenfarbe <input class="sa-input" @bind="_sponsorBorder" @bind:after="Touch" placeholder="@PersonalSponsors.DefaultBorder" /></label>
+                    </div>
+                    <div class="sa-offer">
+                        <label class="sa-check"><input type="checkbox" @bind="_sponsorOnGoal" @bind:after="Touch" /> Tor</label>
+                        <label class="sa-check"><input type="checkbox" @bind="_sponsorOnPenalty" @bind:after="Touch" /> Strafe</label>
+                        <label class="sa-check"><input type="checkbox" @bind="_sponsorOnName" @bind:after="Touch" /> Name</label>
+                        <label class="sa-check"><input type="checkbox" @bind="_sponsorOnBestPlayer" @bind:after="Touch" /> Best Player</label>
+                    </div>
+                    <label>Anzahl Logos je Nummer
+                        <textarea class="sa-input" rows="8" @bind="_sponsorCounts" @bind:after="Touch" placeholder="[Home]&#10;7=2&#10;00=1&#10;coach=1&#10;[Away]"></textarea>
+                    </label>
+                    <p class="sa-hint">
+                        Dateinamen wie bei TCunihockey: <code>&lt;Nummer&gt;_1.png</code>, <code>&lt;Nummer&gt;_2.png</code> … im Ordner,
+                        <code>00</code> ist die Topscorerin, <code>coach</code> der Coach. Die Datei <code>PersSponsorLUPL.txt</code> lässt sich
+                        hier eins zu eins einfügen. Ohne Eintrag bleibt das Sponsorenfeld im Einblender leer.
+                    </p>
                 }
                 @if (_led)
                 {
@@ -167,6 +188,8 @@
     private int _teamId, _season, _vmixPort, _sednaPort, _clockPort, _periodMinutes;
     private bool _sound = true, _clock = true, _vmix = true, _led = true, _light, _players = true, _hidden;
     private string _breakSound = "";
+    private string _sponsorHome = "", _sponsorAway = "", _sponsorBorder = PersonalSponsors.DefaultBorder, _sponsorCounts = "";
+    private bool _sponsorOnGoal = true, _sponsorOnPenalty = true, _sponsorOnName = true, _sponsorOnBestPlayer = true;
     private IReadOnlyList<MusicItem> _sounds = [];
     private IReadOnlyList<Deck> _library = [];
     private HashSet<string> _deckIds = new(StringComparer.OrdinalIgnoreCase);
@@ -205,6 +228,15 @@
         _hidden = Hall.Hidden;
         _screen = Hall.DefaultScreen;
         _breakSound = Hall.BreakMusicId;
+        var sponsors = Hall.SponsorLogos;
+        _sponsorHome = sponsors.HomeFolder;
+        _sponsorAway = sponsors.AwayFolder;
+        _sponsorBorder = sponsors.BorderColor;
+        _sponsorCounts = sponsors.Ini;
+        _sponsorOnGoal = sponsors.OnGoal;
+        _sponsorOnPenalty = sponsors.OnPenalty;
+        _sponsorOnName = sponsors.OnName;
+        _sponsorOnBestPlayer = sponsors.OnBestPlayer;
         _deckIds = Hall.DeckIds is { Count: > 0 } chosen
             ? chosen.ToHashSet(StringComparer.OrdinalIgnoreCase)
             : _library.Select(deck => deck.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -246,6 +278,16 @@
         DefaultScreen = _screen.Trim(),
         BreakMusicId = _breakSound,
         DeckIds = _library.Select(deck => deck.Id).Where(_deckIds.Contains).ToList(),
+        Sponsors = PersonalSponsors.Parse(_sponsorCounts) with
+        {
+            HomeFolder = _sponsorHome.Trim(),
+            AwayFolder = _sponsorAway.Trim(),
+            BorderColor = _sponsorBorder.Trim() is { Length: > 0 } border ? border : PersonalSponsors.DefaultBorder,
+            OnGoal = _sponsorOnGoal,
+            OnPenalty = _sponsorOnPenalty,
+            OnName = _sponsorOnName,
+            OnBestPlayer = _sponsorOnBestPlayer,
+        },
     });
 
     private async Task CreateAsync() => await Guarded(async () =>

@@ -36,5 +36,6 @@ public static class TitleLogoTopUp
 
     private static bool IsImage(string field) =>
         field.StartsWith("Img", StringComparison.OrdinalIgnoreCase)
-        && field.EndsWith(".Source", StringComparison.OrdinalIgnoreCase);
+        && field.EndsWith(".Source", StringComparison.OrdinalIgnoreCase)
+        && !Hall.SponsorFields.ContainsKey(field);
 }

@@ -45,9 +45,12 @@ public sealed partial record Hall(
     string BreakMusicId = "",
     IReadOnlyList<string>? DeckIds = null,
     bool Hidden = false,
-    string DefaultScreen = "")
+    string DefaultScreen = "",
+    PersonalSponsors? Sponsors = null)
 {
     public HallCapabilities Offers => Offered ?? HallCapabilities.Default;
+
+    public PersonalSponsors SponsorLogos => Sponsors ?? PersonalSponsors.None;
 
     public const string FallbackScreen = "spiel-nla";
 
@@ -107,6 +110,24 @@ public sealed partial record Hall(
     public const string HomeImage = "ImgHomeTeam.Source";
     public const string AwayImage = "ImgAwayTeam.Source";
     public const string TeamImage = "ImgTeam.Source";
+    public const string SponsorImage = "ImgSponsor.Source";
+    public const string SponsorBackground = "RectSponsBackgr.Fill.Color";
+    public const string SponsorBorder = "RectSponsBorder.Fill.Color";
+
+    public static readonly IReadOnlyDictionary<string, string> SponsorFields = new Dictionary<string, string>
+    {
+        [SponsorImage] = "{player.sponsor}",
+        [SponsorBackground] = "{sponsor.background}",
+        [SponsorBorder] = "{sponsor.border}",
+    };
+
+    public static readonly IReadOnlyList<string> SponsoredTitles = ["player_event", "penalty", "name", "bestplayer", PersonalSponsors.CoachKey];
+
+    private static Dictionary<string, string> Sponsored(Dictionary<string, string> fields)
+    {
+        foreach (var (name, template) in SponsorFields) fields[name] = template;
+        return fields;
+    }
 
     public static IReadOnlyList<OverlayTitle> DefaultOverlayTitles { get; } = BuildTitles();
 
@@ -131,7 +152,7 @@ public sealed partial record Hall(
             ["homeLogo"] = "ImgHomeTeam.Source",
             ["awayLogo"] = "ImgAwayTeam.Source",
         }),
-        new("player_event", TitleInputs.PlayerEvent, 1, new Dictionary<string, string>
+        new("player_event", TitleInputs.PlayerEvent, 1, Sponsored(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "TOR",
             ["TxtNumber.Text"] = "{player.number}",
@@ -139,8 +160,8 @@ public sealed partial record Hall(
             ["TxtEvent.Text"] = "{score}",
             ["TxtBottom.Text"] = "{period.label} {clock}",
             [TeamImage] = "{team.logofile}",
-        }),
-        new("penalty", TitleInputs.PlayerEvent, 1, new Dictionary<string, string>
+        })),
+        new("penalty", TitleInputs.PlayerEvent, 1, Sponsored(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "STRAFE",
             ["TxtNumber.Text"] = "{player.number}",
@@ -148,30 +169,30 @@ public sealed partial record Hall(
             ["TxtEvent.Text"] = "{penalty}",
             ["TxtBottom.Text"] = "{team.long}",
             [TeamImage] = "{team.logofile}",
-        }),
-        new("name", TitleInputs.PlayerName, 1, new Dictionary<string, string>
+        })),
+        new("name", TitleInputs.PlayerName, 1, Sponsored(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "{team.short}",
             ["TxtNumber.Text"] = "{player.number}",
             ["TxtName.Text"] = "{player.name}",
             ["TxtBottom.Text"] = "{player.position}",
             [TeamImage] = "{team.logofile}",
-        }),
-        new("bestplayer", TitleInputs.PlayerName, 1, new Dictionary<string, string>
+        })),
+        new("bestplayer", TitleInputs.PlayerName, 1, Sponsored(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "BEST PLAYER",
             ["TxtNumber.Text"] = "{player.number}",
             ["TxtName.Text"] = "{player.name}",
             ["TxtBottom.Text"] = "{team.long}",
             [TeamImage] = "{team.logofile}",
-        }),
-        new("coach", TitleInputs.TeamInfo, 1, new Dictionary<string, string>
+        })),
+        new("coach", TitleInputs.TeamInfo, 1, Sponsored(new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "COACH",
             ["TxtInfo.Text"] = "{team.coach}",
             ["TxtBottom.Text"] = "{team.long}",
             [TeamImage] = "{team.logofile}",
-        }),
+        })),
         new("timeout", TitleInputs.TeamInfo, 1, new Dictionary<string, string>
         {
             ["TxtTop.Text"] = "TIMEOUT",

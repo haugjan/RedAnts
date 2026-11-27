@@ -51,6 +51,59 @@ public class TemplateTests
         Assert.Equal("STR_RA_", Templates.Expand("STR_RA_{player.number00}", KeyContext.None, Game, Live()));
     }
 
+    static readonly PersonalSponsors Sponsors = new(
+        @"C:\Livestream\PersonalSponsors", @"C:\Livestream\PersonalSponsorsAway",
+        new Dictionary<string, int> { ["41"] = 2, ["00"] = 1, ["coach"] = 1 },
+        new Dictionary<string, int> { ["9"] = 1 },
+        OnPenalty: false);
+
+    [Fact]
+    public void A_goal_takes_the_first_sponsor_logo_of_the_number_from_the_home_folder()
+    {
+        var ctx = new KeyContext("home", Game.Home.Find(41));
+
+        Assert.Equal(@"C:\Livestream\PersonalSponsors\41_1.png", Templates.Expand("{player.sponsor}", ctx, Game, Live(), "", Sponsors, "player_event"));
+        Assert.Equal("#FFFFFFFF", Templates.Expand("{sponsor.background}", ctx, Game, Live(), "", Sponsors, "player_event"));
+        Assert.Equal("#FFF000FF", Templates.Expand("{sponsor.border}", ctx, Game, Live(), "", Sponsors, "player_event"));
+    }
+
+    [Fact]
+    public void The_topscorer_is_looked_up_as_00_like_tcunihockey_does()
+    {
+        var ctx = new KeyContext("home", Game.Home.Find(7)! with { Sponsor = null });
+
+        Assert.Equal(@"C:\Livestream\PersonalSponsors\00_1.png", Templates.Expand("{player.sponsor}", ctx, Game, Live(), "", Sponsors, "name"));
+    }
+
+    [Fact]
+    public void Without_an_entry_the_sponsor_box_stays_empty_and_transparent()
+    {
+        var game = Game with { Home = Game.Home with { Players = [new Player(14, "Ohne Sponsor")] } };
+        var ctx = new KeyContext("home", game.Home.Find(14));
+
+        Assert.Equal("", Templates.Expand("{player.sponsor}", ctx, game, Live(), "", Sponsors, "player_event"));
+        Assert.Equal("#FFFFFF00", Templates.Expand("{sponsor.background}", ctx, game, Live(), "", Sponsors, "player_event"));
+        Assert.Equal("#FFF00000", Templates.Expand("{sponsor.border}", ctx, game, Live(), "", Sponsors, "player_event"));
+    }
+
+    [Fact]
+    public void A_title_the_hall_switched_off_shows_no_sponsor()
+    {
+        var ctx = new KeyContext("home", Game.Home.Find(41));
+
+        Assert.Equal("", Templates.Expand("{player.sponsor}", ctx, Game, Live(), "", Sponsors, "penalty"));
+        Assert.Equal(@"C:\Livestream\PersonalSponsors\41_1.png", Templates.Expand("{player.sponsor}", ctx, Game, Live(), "", Sponsors, "bestplayer"));
+    }
+
+    [Fact]
+    public void The_coach_title_and_the_away_side_use_their_own_key_and_folder()
+    {
+        Assert.Equal(@"C:\Livestream\PersonalSponsors\coach_1.png", Templates.Expand("{player.sponsor}", new KeyContext("home"), Game, Live(), "", Sponsors, "coach"));
+        var away = Game with { Away = Game.Away with { Players = [new Player(9, "Gast Neun")] } };
+        Assert.Equal(@"C:\Livestream\PersonalSponsorsAway\9_1.png", Templates.Expand("{player.sponsor}", new KeyContext("away", away.Away.Find(9)), away, Live(), "", Sponsors, "player_event"));
+        Assert.Equal("", Templates.Expand("{player.sponsor}", new KeyContext("home", Game.Home.Find(41)), Game, Live(), "", null, "player_event"));
+    }
+
     [Fact]
     public void The_team_logos_become_file_paths_from_the_image_folder()
     {

@@ -15,11 +15,13 @@ public sealed record KeyContext(
 
 public static class Templates
 {
-    public static string Expand(string template, KeyContext ctx, Game game, LiveGame live, string imageFolder = "")
+    public static string Expand(string template, KeyContext ctx, Game game, LiveGame live, string imageFolder = "",
+        PersonalSponsors? sponsors = null, string title = "")
     {
         if (!template.Contains('{')) return template;
         var team = game.Side(ctx.Side);
         var player = ctx.Player;
+        var sponsor = Sponsor(ctx.Side, player, team, sponsors, title);
         string Logo(GameTeam of) =>
             imageFolder.Length > 0 && of.ShortName is { Length: > 0 } name
                 ? Vmix.VmixScoreboard.LogoPath(imageFolder, name)
@@ -31,7 +33,9 @@ public static class Templates
             ["player.number00"] = Padded(player?.Display),
             ["player.name"] = player?.Name ?? "",
             ["player.position"] = player?.Position ?? "",
-            ["player.sponsor"] = player?.Sponsor ?? "",
+            ["player.sponsor"] = sponsor,
+            ["sponsor.background"] = sponsor.Length > 0 ? "#FFFFFFFF" : "#FFFFFF00",
+            ["sponsor.border"] = (sponsors ?? PersonalSponsors.None).Border + (sponsor.Length > 0 ? "FF" : "00"),
             ["player.photo"] = player?.Photo ?? "",
             ["team.short"] = team.ShortName,
             ["team.long"] = team.LongName,
@@ -78,6 +82,17 @@ public static class Templates
         foreach (var (key, value) in values)
             result = result.Replace("{" + key + "}", value, StringComparison.OrdinalIgnoreCase);
         return result;
+    }
+
+    private static string Sponsor(string side, Player? player, GameTeam team, PersonalSponsors? sponsors, string title)
+    {
+        if (player?.Sponsor is { Length: > 0 } own) return own;
+        if (sponsors is null || !sponsors.Shows(title)) return "";
+        var key = title.Equals(PersonalSponsors.CoachKey, StringComparison.OrdinalIgnoreCase) ? PersonalSponsors.CoachKey
+            : player is null ? ""
+            : team.TopScorer == player.Number ? PersonalSponsors.TopScorerKey
+            : player.Number.ToString();
+        return key.Length == 0 ? "" : sponsors.Logo(side, key) ?? "";
     }
 
     private static string Padded(string? number)
