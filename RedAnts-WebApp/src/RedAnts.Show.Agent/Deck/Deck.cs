@@ -27,6 +27,7 @@ public sealed class Deck
     readonly LiveGame _live;
     readonly ShowStates _states;
     readonly KeyRunner _runner;
+    readonly TabSession? _tabs;
     readonly ILogger<Deck> _log;
     readonly object _gate = new();
     readonly Dictionary<string, List<Step>> _trail = new(StringComparer.OrdinalIgnoreCase);
@@ -41,8 +42,10 @@ public sealed class Deck
     string? _fault;
     DateTimeOffset _faultAt;
 
-    public Deck(PayloadStore payload, LiveGame live, ShowStates states, KeyRunner runner, ILogger<Deck> log)
+    public Deck(PayloadStore payload, LiveGame live, ShowStates states, KeyRunner runner, ILogger<Deck> log, TabSession? tabs = null)
     {
+        _tabs = tabs;
+        if (tabs is not null) tabs.Changed += Restart;
         _payload = payload;
         _live = live;
         _states = states;
@@ -63,7 +66,17 @@ public sealed class Deck
     public IReadOnlyList<string> Decks =>
         _payload.Hall.Decks is { Count: > 0 } decks ? decks.Select(d => d.Id).ToList() : [];
 
-    public DeckLayout? Layout(string deckId) => _payload.Hall.DeckOf(deckId);
+    public DeckLayout? Layout(string deckId) => _tabs?.Variant(deckId) ?? _payload.Hall.DeckOf(deckId);
+
+    void Restart()
+    {
+        lock (_gate)
+        {
+            _trail.Clear();
+            _flow.Clear();
+        }
+        Bump();
+    }
 
     public string Resolve(string? deckId) => _payload.Hall.ResolveDeck(deckId);
 

@@ -45,3 +45,11 @@ a { color: #8ecaff; }
 #components-reconnect-modal.components-reconnect-show,
 #components-reconnect-modal.components-reconnect-failed,
 #components-reconnect-modal.components-reconnect-rejected { display: block; }
+
+.tabbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; background: #15161b; border-bottom: 1px solid #2a2c33; }
+.tabbar .spacer { flex: 1; }
+.tabbar .tab { border: 1px solid #3a3d46; background: #22242b; color: #e9edf1; border-radius: 6px; padding: 10px 18px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.tabbar .tab.on { background: #c8102e; border-color: #c8102e; }
+.tabbar .tab.quiet { font-weight: 400; font-size: 13px; padding: 8px 12px; color: #aab1ba; }
+.tabbar .league { background: #22242b; color: #e9edf1; border: 1px solid #3a3d46; border-radius: 6px; padding: 9px 10px; font-size: 15px; }
+.tabbar .tabhint { color: #aab1ba; font-size: 14px; }

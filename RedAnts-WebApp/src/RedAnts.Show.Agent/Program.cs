@@ -45,6 +45,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<VmixLink>());
 builder.Services.AddSingleton<ClockFeed>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ClockFeed>());
 builder.Services.AddSingleton<KeyRunner>();
+builder.Services.AddSingleton<TabSession>();
 builder.Services.AddSingleton<Deck>();
 builder.Services.AddSingleton<GameOutbox>();
 builder.Services.AddSingleton<CloudLink>();

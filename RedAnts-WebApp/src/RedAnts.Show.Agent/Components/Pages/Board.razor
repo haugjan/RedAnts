@@ -11,6 +11,7 @@
 @inject ShowStates States
 @inject IJSRuntime JS
 @inject AgentConfig Config
+@inject TabSession Tabs
 
 <PageTitle>@Payload.Hall.Name</PageTitle>
 
@@ -40,6 +41,39 @@
     }
     <button class="panic" @onclick="PanicAsync">PANIC</button>
 </header>
+
+@if (Tabs.Board is { } tabBoard)
+{
+    <nav class="tabbar">
+        @if (Tabs.Active)
+        {
+            @foreach (var tab in tabBoard.Tabs)
+            {
+                var id = tab.Id;
+                <button class="tab @(id == Tabs.Tab ? "on" : "")" @key="id" @onclick="() => Tabs.Choose(id)">@tab.Name</button>
+            }
+            <span class="spacer"></span>
+            <select class="league" value="@Tabs.League" @onchange="e => Tabs.ChooseLeague(e.Value?.ToString() ?? string.Empty)" title="Liga">
+                @foreach (var league in tabBoard.Leagues)
+                {
+                    <option value="@league.Id">@league.Name</option>
+                }
+            </select>
+            <button class="tab quiet" @onclick="Tabs.Stop" title="Zurück zum bisherigen Bord">Bisheriges Bord</button>
+        }
+        else
+        {
+            <span class="tabhint">Neues Tab-Bord</span>
+            <select class="league" @bind="_league" title="Liga">
+                @foreach (var league in tabBoard.Leagues)
+                {
+                    <option value="@league.Id">@league.Name</option>
+                }
+            </select>
+            <button class="tab on" @onclick="StartTabs">Starten</button>
+        }
+    </nav>
+}
 
 @if (Decks.Count == 0)
 {
@@ -131,11 +165,13 @@ else
     private CancellationTokenSource? _watch;
     private DotNetObjectReference<Board>? _self;
     private bool _ready;
+    private string _league = "";
 
     private IReadOnlyList<string> Decks => Deck.Decks;
 
     protected override void OnInitialized()
     {
+        _league = Tabs.League;
         _watch = new CancellationTokenSource();
         _ = WatchAsync(_watch.Token);
     }
@@ -169,6 +205,8 @@ else
         }
         await Deck.PressAsync(deckId, slot.Number);
     }
+
+    private void StartTabs() => Tabs.Start(_league.Length > 0 ? _league : Tabs.League);
 
     private Task PanicAsync()
     {
