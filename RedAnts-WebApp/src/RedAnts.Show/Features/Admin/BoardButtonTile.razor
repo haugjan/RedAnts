@@ -1,0 +1,40 @@
+@using RedAnts.Show.Domain
+
+<div class="sa-key @(Selected ? "selected" : "") @(Muted ? "muted" : "")"
+     style="background:@(Button?.Color ?? "#1e2228");color:#fff"
+     title="@(Button?.Label ?? "")"
+     @onclick="OnClick">
+    @if (Number is { } number)
+    {
+        <span class="sa-key-n">@number</span>
+    }
+    @if (Button is { } button)
+    {
+        @if (button.Icon is { Length: > 0 } symbol)
+        {
+            @if (DeckIcons.Known(symbol))
+            {
+                <img class="sa-key-icon" src="@DeckIcons.FileOf(symbol)" alt="" />
+            }
+            else
+            {
+                <span class="sa-key-symbol">@symbol</span>
+            }
+        }
+        <span class="sa-key-lbl">@(Position is { } position ? $"{position}. {button.Label}" : button.Label)</span>
+    }
+    else if (Caption is { Length: > 0 } caption)
+    {
+        <span class="sa-key-lbl">@caption</span>
+    }
+</div>
+
+@code {
+    [Parameter] public BoardButton? Button { get; set; }
+    [Parameter] public int? Number { get; set; }
+    [Parameter] public int? Position { get; set; }
+    [Parameter] public string? Caption { get; set; }
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public bool Muted { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+}
