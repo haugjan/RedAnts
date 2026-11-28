@@ -14,7 +14,6 @@ public sealed class AgentSync(
     IMusicLibrary music,
     IShowSetup setup,
     ITabBoardRepository boards,
-    IBoardSessionRepository sessions,
     IAgentChannel channel,
     IAgentConnections connections)
 {
@@ -29,21 +28,29 @@ public sealed class AgentSync(
             AgentKey = "",
             OverlayTitles = show.Titles,
             LedTemplates = show.Led,
-            Decks = await DecksAsync(hall, show, game),
+            Decks = show.DecksOf(hall),
         };
-        return new AgentPayload(configured, game, SwissTime.Timestamp, await music.AllAsync());
+        return new AgentPayload(configured, game, SwissTime.Timestamp, await music.AllAsync(), await TabsAsync(configured.Decks ?? [], game));
     }
 
-    private async Task<IReadOnlyList<Deck>> DecksAsync(Hall hall, ShowSetup show, Game? game)
+    private async Task<TabBoardPayload?> TabsAsync(IReadOnlyList<Deck> decks, Game? game)
     {
-        var decks = show.DecksOf(hall);
-        if (await sessions.GetAsync(hall.Id) is not { Active: true } session) return decks;
         var board = await boards.GetAsync();
-        var league = board.Leagues.Any(l => l.Id == session.League) ? session.League : board.LeagueOf(game?.League);
-        return decks.Select(deck => board.DeckFitting(deck) is { } tabs && board.Drives(tabs, session.Tab)
-                ? board.Compile(tabs, session.Tab, league, deck.Id)
-                : deck)
+        var variants = (
+            from deck in decks
+            let tabs = board.DeckFitting(deck)
+            where tabs is not null
+            from league in board.Leagues
+            from tab in BoardTabs.All
+            where board.Drives(tabs, tab.Id)
+            select new TabDeckVariant(deck.Id, league.Id, tab.Id, board.Compile(tabs, tab.Id, league.Id, deck.Id)))
             .ToList();
+        if (variants.Count == 0) return null;
+        return new TabBoardPayload(
+            board.Leagues.Select(l => new TabChoice(l.Id, l.Name)).ToList(),
+            BoardTabs.All.Select(t => new TabChoice(t.Id, t.Label)).ToList(),
+            board.LeagueOf(game?.League),
+            variants);
     }
 
     public async Task PushAllAsync()

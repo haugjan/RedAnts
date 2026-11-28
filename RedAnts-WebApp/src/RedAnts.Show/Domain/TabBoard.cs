@@ -302,10 +302,6 @@ public sealed record TabBoard(
     }
 }
 
-public sealed record BoardSession(bool Active, string Venue, string League, string Tab)
-{
-    public static BoardSession Off(string league) => new(false, "", league, BoardTabs.Before);
-}
 
 public static class BoardCompiler
 {
