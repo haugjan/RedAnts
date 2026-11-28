@@ -55,6 +55,20 @@ public class GameFromAgentTests
         public AgentConnection? Of(string hallId) => null;
     }
 
+    private sealed class NoBoard : RedAnts.Show.Features.TabBoards.ITabBoardRepository
+    {
+        public Task<TabBoard> GetAsync() => Task.FromResult(TabBoard.Empty);
+
+        public Task SaveAsync(TabBoard board) => Task.CompletedTask;
+    }
+
+    private sealed class NoSessions : RedAnts.Show.Features.TabBoards.IBoardSessionRepository
+    {
+        public Task<BoardSession?> GetAsync(string hallId) => Task.FromResult<BoardSession?>(null);
+
+        public Task SaveAsync(string hallId, BoardSession session) => Task.CompletedTask;
+    }
+
     private static Game Loaded() =>
         Game.Manual("4711", "Red Ants – Piranha") with { Commentator1 = "alt" };
 
@@ -64,7 +78,7 @@ public class GameFromAgentTests
         var games = new Games(Loaded());
         var halls = new Halls(hall);
         var silent = new Silent();
-        var sync = new AgentSync(halls, new NoHalls(), games, new NoMusic(), new Setup(), silent, silent);
+        var sync = new AgentSync(halls, new NoHalls(), games, new NoMusic(), new Setup(), new NoBoard(), new NoSessions(), silent, silent);
         return (new SaveGameFromAgent.Handler(halls, games, sync, NullLogger<SaveGameFromAgent.Handler>.Instance), games);
     }
 

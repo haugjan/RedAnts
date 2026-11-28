@@ -49,6 +49,8 @@ public static class ShowFeatures
         typeof(SaveShowSetup.Handler),
         typeof(GetTabBoard.Handler),
         typeof(SaveTabBoard.Handler),
+        typeof(GetBoardSession.Handler),
+        typeof(ChooseBoardSession.Handler),
         typeof(GetDJProfiles.Handler),
         typeof(SaveDJProfiles.Handler),
         typeof(FindUnusedSounds.Handler),

@@ -39,6 +39,7 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddScoped<IMusicLibrary, DJMusicLibrary>();
         builder.Services.AddSingleton<IShowSetup, ShowSetupRepository>();
         builder.Services.AddSingleton<ITabBoardRepository, TabBoardRepository>();
+        builder.Services.AddSingleton<IBoardSessionRepository, BoardSessionRepository>();
         builder.Services.AddSingleton<IAgentConnections, AgentConnections>();
         builder.Services.AddSingleton<IAgentReports, AgentReports>();
         builder.Services.AddSingleton<IAgentChannel, AgentChannel>();

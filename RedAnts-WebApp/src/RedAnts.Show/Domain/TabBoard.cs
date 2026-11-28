@@ -301,3 +301,49 @@ public sealed record TabBoard(
             throw new ValidationException(what, $"{what}: die Kennung „{twice.Key}“ gibt es zweimal.");
     }
 }
+
+public sealed record BoardSession(bool Active, string Venue, string League, string Tab)
+{
+    public static BoardSession Off(string league) => new(false, "", league, BoardTabs.Before);
+}
+
+public static class BoardCompiler
+{
+    public static Deck Compile(this TabBoard board, BoardDeck deck, string tab, string league, string? id = null) =>
+        new(
+            id ?? deck.Id,
+            deck.Name,
+            deck.Columns,
+            deck.Rows,
+            [new DeckPage(DeckPage.HomeId, BoardTabs.Label(tab), null, board.Resolve(deck, tab, league)
+                .Where(key => key.OnDeck)
+                .Select(ToKey)
+                .ToList())],
+            deck.Panic,
+            deck.Back);
+
+    public static string LeagueOf(this TabBoard board, string? gameLeague) =>
+        board.Leagues.FirstOrDefault(l => l.Name.Equals(gameLeague ?? "", StringComparison.OrdinalIgnoreCase)
+                || l.Id.Equals(gameLeague ?? "", StringComparison.OrdinalIgnoreCase))?.Id
+            ?? board.Leagues.FirstOrDefault()?.Id
+            ?? "";
+
+    public static bool Drives(this TabBoard board, BoardDeck deck, string tab) =>
+        board.LayoutOf(deck, tab).ButtonIds.Any() || (deck.Fixed?.ButtonIds.Any() ?? false);
+
+    public static BoardDeck? DeckFitting(this TabBoard board, Deck deck) =>
+        board.Decks.FirstOrDefault(d => d.Columns == deck.Columns && d.Rows == deck.Rows);
+
+    private static DeckKey ToKey(ResolvedKey key) => new(
+        key.Number,
+        key.Action.Kind,
+        key.Position is { } position ? $"{position}. {key.Button.Label}" : key.Button.Label,
+        key.Button.Color,
+        key.Button.Icon,
+        key.Action.MusicId,
+        key.Action.Special,
+        Live: key.Action.Live,
+        Steps: key.Action.Steps,
+        Livestream: key.Action.Livestream,
+        Led: key.Action.Led);
+}

@@ -176,3 +176,48 @@ public class TabBoardTests
         Assert.Equal(board.Resolve(Xl, BoardTabs.Before, U21).Select(k => k.Number), back.Resolve(Xl, BoardTabs.Before, U21).Select(k => k.Number));
     }
 }
+
+public class BoardCompilerTests
+{
+    private static readonly BoardDeck Xl = new("tabs-xl", "XL", 8, 4, PanicKey: 25, BackKey: 17);
+
+    private static TabBoard Board() => new(
+        [],
+        [new League("lupl", "L-UPL"), new League("u21", "U21")],
+        [
+            new BoardButton("mobiliar", "Mobiliar", "#111111", new ButtonAction(KeyKinds.Music, MusicId: "m"), Leagues: ["lupl"]),
+            new BoardButton("bully", "Bully", "#222222", new ButtonAction(KeyKinds.Music, MusicId: "b"),
+                PerLeague: new Dictionary<string, ButtonAction> { ["u21"] = new(KeyKinds.Music, MusicId: "b21") }),
+            new BoardButton("nur-bord", "Nur Bord", "#333333", new ButtonAction(KeyKinds.Music, MusicId: "x")),
+        ],
+        [new TabLayout(BoardTabs.Before, 8, 4, new BoardLayout(
+            Keys: [new Placement(1, "nur-bord", OnDeck: false)],
+            Runs: [new NumberedRun("einlaufen", "Einlaufen", 9, ["mobiliar", "bully"])]))],
+        [Xl]);
+
+    [Fact]
+    public void A_tab_becomes_an_ordinary_deck_page_for_the_league()
+    {
+        var deck = Board().Compile(Xl, BoardTabs.Before, "u21", "xl");
+
+        Assert.Equal(("xl", 25, 17), (deck.Id, deck.PanicKey, deck.BackKey));
+        var key = Assert.Single(Assert.Single(deck.Pages).Keys);
+        Assert.Equal((9, "1. Bully", "b21"), (key.Number, key.Label, key.MusicId));
+    }
+
+    [Fact]
+    public void A_key_for_the_board_only_stays_off_the_deck() =>
+        Assert.DoesNotContain(Board().Compile(Xl, BoardTabs.Before, "lupl").Pages[0].Keys, k => k.Label == "Nur Bord");
+
+    [Fact]
+    public void A_deck_without_anything_on_the_tab_is_left_alone() =>
+        Assert.False(Board().Drives(Xl, BoardTabs.After));
+
+    [Theory]
+    [InlineData("U21", "u21")]
+    [InlineData("L-UPL", "lupl")]
+    [InlineData("Cup", "lupl")]
+    [InlineData(null, "lupl")]
+    public void The_game_picks_the_league(string? game, string league) =>
+        Assert.Equal(league, Board().LeagueOf(game));
+}
