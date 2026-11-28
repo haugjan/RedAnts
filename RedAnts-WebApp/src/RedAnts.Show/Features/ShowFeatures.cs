@@ -6,6 +6,7 @@ using RedAnts.Show.Features.Halls;
 using RedAnts.Show.Features.Music;
 using RedAnts.Show.Features.Setup;
 using RedAnts.Show.Features.Sounds;
+using RedAnts.Show.Features.TabBoards;
 
 namespace RedAnts.Show.Features;
 
@@ -46,6 +47,8 @@ public static class ShowFeatures
         typeof(DeleteMusicEntry.Handler),
         typeof(GetShowSetup.Handler),
         typeof(SaveShowSetup.Handler),
+        typeof(GetTabBoard.Handler),
+        typeof(SaveTabBoard.Handler),
         typeof(GetDJProfiles.Handler),
         typeof(SaveDJProfiles.Handler),
         typeof(FindUnusedSounds.Handler),

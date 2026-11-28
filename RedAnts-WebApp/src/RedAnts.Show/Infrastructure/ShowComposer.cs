@@ -14,6 +14,8 @@ using RedAnts.Show.Features.Sounds;
 using RedAnts.Show.Features.Setup;
 using RedAnts.Show.Features.Setup.Infrastructure;
 using RedAnts.Show.Features.Sounds.Infrastructure;
+using RedAnts.Show.Features.TabBoards;
+using RedAnts.Show.Features.TabBoards.Infrastructure;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.Notifications;
 using Umbraco.Cms.Infrastructure.Manifest;
@@ -27,6 +29,7 @@ public sealed class ShowComposer : IComposer
         builder.AddComponent<ShowMigrationComponent>();
         builder.AddComponent<DJMigrationComponent>();
         builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, Content.ShowExampleSeeder>();
+        builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, Content.TabBoardSeeder>();
         builder.Services.AddSingleton<ShowDatabase>();
         builder.Services.AddSingleton<IHallRepository, HallRepository>();
         builder.Services.AddSingleton<IHallReader, HallReader>();
@@ -35,6 +38,7 @@ public sealed class ShowComposer : IComposer
         builder.Services.AddSingleton<ISwissUnihockeyGames, SwissUnihockeyGames>();
         builder.Services.AddScoped<IMusicLibrary, DJMusicLibrary>();
         builder.Services.AddSingleton<IShowSetup, ShowSetupRepository>();
+        builder.Services.AddSingleton<ITabBoardRepository, TabBoardRepository>();
         builder.Services.AddSingleton<IAgentConnections, AgentConnections>();
         builder.Services.AddSingleton<IAgentReports, AgentReports>();
         builder.Services.AddSingleton<IAgentChannel, AgentChannel>();
