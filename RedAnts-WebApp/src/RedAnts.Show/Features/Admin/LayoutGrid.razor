@@ -17,12 +17,8 @@
                              Position="slot.Position"
                              Caption="slot.Caption"
                              Selected="@(!ReadOnly && number == Selected)"
-                             Muted="@(slot.Kind == LayoutSlotKind.Always || !slot.OnDeck)" />
-            @if (!slot.OnDeck)
-            {
-                <span class="ly-badge">nur Bord</span>
-            }
-            else if (slot.Kind == LayoutSlotKind.Always && !ReadOnly)
+                             Muted="@(slot.Kind == LayoutSlotKind.Always)" />
+            @if (slot.Kind == LayoutSlotKind.Always && !ReadOnly)
             {
                 <span class="ly-badge">jeder Tab</span>
             }

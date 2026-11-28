@@ -17,5 +17,4 @@ public sealed record LayoutSlot(
     BoardButton? Button = null,
     string? Caption = null,
     int? Position = null,
-    string? RunId = null,
-    bool OnDeck = true);
+    string? RunId = null);

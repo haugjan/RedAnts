@@ -133,7 +133,7 @@ public static class ButtonIds
     }
 }
 
-public sealed record Placement(int Number, string Button, bool OnDeck = true);
+public sealed record Placement(int Number, string Button);
 
 public sealed record NumberedRun(string Id, string Name, int Start, IReadOnlyList<string> Buttons)
 {
@@ -176,7 +176,7 @@ public sealed record BoardDeck(
     public bool Reserved(int number) => number == Panic || number == Back;
 }
 
-public sealed record ResolvedKey(int Number, BoardButton Button, ButtonAction Action, int? Position, bool OnDeck);
+public sealed record ResolvedKey(int Number, BoardButton Button, ButtonAction Action, int? Position);
 
 public sealed record TabBoard(
     IReadOnlyList<Venue> Venues,
@@ -210,7 +210,7 @@ public sealed record TabBoard(
             {
                 if (keys.ContainsKey(placement.Number) || deck.Reserved(placement.Number)) continue;
                 if (Button(placement.Button) is not { } button || !button.OfferedIn(league)) continue;
-                keys[placement.Number] = new ResolvedKey(placement.Number, button, button.ActionIn(league), null, placement.OnDeck);
+                keys[placement.Number] = new ResolvedKey(placement.Number, button, button.ActionIn(league), null);
             }
             foreach (var run in layout.Sequences)
             {
@@ -219,7 +219,7 @@ public sealed record TabBoard(
                 {
                     var number = run.Start + index;
                     if (keys.ContainsKey(number) || deck.Reserved(number) || number > deck.Count) continue;
-                    keys[number] = new ResolvedKey(number, offered[index], offered[index].ActionIn(league), index + 1, true);
+                    keys[number] = new ResolvedKey(number, offered[index], offered[index].ActionIn(league), index + 1);
                 }
             }
         }
@@ -312,7 +312,6 @@ public static class BoardCompiler
             deck.Columns,
             deck.Rows,
             [new DeckPage(DeckPage.HomeId, BoardTabs.Label(tab), null, board.Resolve(deck, tab, league)
-                .Where(key => key.OnDeck)
                 .Select(ToKey)
                 .ToList())],
             deck.Panic,

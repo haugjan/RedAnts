@@ -355,10 +355,6 @@
                         <div class="sa-hint">Kennung <code>@placement?.Button</code></div>
                     </div>
                 </div>
-                <label class="sa-check">
-                    <input type="checkbox" checked="@(placement is { OnDeck: false })" @onchange="() => Edit(layout => LayoutEdits.ToggleOnDeck(layout, _selected))" />
-                    nur auf dem Bord, nicht auf dem Deck
-                </label>
                 <div class="sa-actions">
                     <button class="sa-btn small" @onclick="() => _picking = true">Ersetzen</button>
                     <LayoutConfirm Label="Entfernen" Confirm="Wirklich entfernen" OnConfirm="RemovePlacement" />

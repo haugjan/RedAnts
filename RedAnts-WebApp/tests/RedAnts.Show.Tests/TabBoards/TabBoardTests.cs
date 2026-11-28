@@ -188,10 +188,8 @@ public class BoardCompilerTests
             new BoardButton("mobiliar", "Mobiliar", "#111111", new ButtonAction(KeyKinds.Music, MusicId: "m"), Leagues: ["lupl"]),
             new BoardButton("bully", "Bully", "#222222", new ButtonAction(KeyKinds.Music, MusicId: "b"),
                 PerLeague: new Dictionary<string, ButtonAction> { ["u21"] = new(KeyKinds.Music, MusicId: "b21") }),
-            new BoardButton("nur-bord", "Nur Bord", "#333333", new ButtonAction(KeyKinds.Music, MusicId: "x")),
         ],
         [new TabLayout(BoardTabs.Before, 8, 4, new BoardLayout(
-            Keys: [new Placement(1, "nur-bord", OnDeck: false)],
             Runs: [new NumberedRun("einlaufen", "Einlaufen", 9, ["mobiliar", "bully"])]))],
         [Xl]);
 
@@ -204,10 +202,6 @@ public class BoardCompilerTests
         var key = Assert.Single(Assert.Single(deck.Pages).Keys);
         Assert.Equal((9, "1. Bully", "b21"), (key.Number, key.Label, key.MusicId));
     }
-
-    [Fact]
-    public void A_key_for_the_board_only_stays_off_the_deck() =>
-        Assert.DoesNotContain(Board().Compile(Xl, BoardTabs.Before, "lupl").Pages[0].Keys, k => k.Label == "Nur Bord");
 
     [Fact]
     public void A_deck_without_anything_on_the_tab_is_left_alone() =>

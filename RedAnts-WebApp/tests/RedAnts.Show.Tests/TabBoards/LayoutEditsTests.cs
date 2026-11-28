@@ -36,13 +36,11 @@ public class LayoutEditsTests
     }
 
     [Fact]
-    public void Placing_again_on_a_placed_slot_replaces_the_button_and_keeps_its_deck_flag()
+    public void Placing_again_on_a_placed_slot_replaces_the_button()
     {
-        var layout = LayoutEdits.ToggleOnDeck(LayoutEdits.Place(BoardLayout.Empty, Xl, 3, "logo"), 3);
+        var replaced = LayoutEdits.Place(LayoutEdits.Place(BoardLayout.Empty, Xl, 3, "logo"), Xl, 3, "bully");
 
-        var replaced = LayoutEdits.Place(layout, Xl, 3, "bully");
-
-        Assert.Equal(new Placement(3, "bully", OnDeck: false), Assert.Single(replaced.Placements));
+        Assert.Equal(new Placement(3, "bully"), Assert.Single(replaced.Placements));
     }
 
     [Theory]

@@ -83,10 +83,6 @@ else
                                 <span class="symbol">@symbol</span>
                             }
                             <span class="label"><span>@(key.Position is { } position ? $"{position}. {key.Button.Label}" : key.Button.Label)</span></span>
-                            @if (!key.OnDeck)
-                            {
-                                <span class="sub">nur Bord</span>
-                            }
                         }
                         else if (reserved)
                         {

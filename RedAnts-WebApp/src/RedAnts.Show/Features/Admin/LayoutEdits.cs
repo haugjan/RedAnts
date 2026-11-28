@@ -50,7 +50,7 @@ public static class LayoutEdits
     private static LayoutSlot? Occupied(TabBoard board, BoardLayout layout, int number, LayoutSlotKind placed, LayoutSlotKind inRun)
     {
         if (PlacementAt(layout, number) is { } placement)
-            return new LayoutSlot(number, placed, board.Button(placement.Button), Missing(board, placement.Button), OnDeck: placement.OnDeck);
+            return new LayoutSlot(number, placed, board.Button(placement.Button), Missing(board, placement.Button));
         if (RunAt(layout, number) is not { } run)
             return null;
         if (run.Buttons.Count == 0)
@@ -73,7 +73,7 @@ public static class LayoutEdits
                 slots.Add(new LayoutSlot(number, LayoutSlotKind.Reserved, Caption: number == deck.Panic ? "PANIC" : "Zurück"));
             else if (keys.TryGetValue(number, out var key))
                 slots.Add(new LayoutSlot(number, key.Position is null ? LayoutSlotKind.Placed : LayoutSlotKind.Run,
-                    key.Button, Position: key.Position, OnDeck: key.OnDeck));
+                    key.Button, Position: key.Position));
             else
                 slots.Add(new LayoutSlot(number, LayoutSlotKind.Free));
         }
@@ -90,9 +90,6 @@ public static class LayoutEdits
 
     public static BoardLayout Remove(BoardLayout layout, int number) =>
         With(layout, layout.Placements.Where(p => p.Number != number));
-
-    public static BoardLayout ToggleOnDeck(BoardLayout layout, int number) =>
-        With(layout, layout.Placements.Select(p => p.Number == number ? p with { OnDeck = !p.OnDeck } : p));
 
     public static BoardLayout Move(BoardLayout layout, BoardDeck deck, int from, int to, BoardLayout? behind = null)
     {
