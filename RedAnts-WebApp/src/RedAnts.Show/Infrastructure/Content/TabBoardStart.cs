@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using RedAnts.Show.Domain;
 
@@ -106,24 +105,12 @@ public static class TabBoardStart
         return new BoardLayout(Keys: Transport.Zip(free, (id, number) => new Placement(number, id)).ToList());
     }
 
-    public static string Slug(string label)
-    {
-        var text = label.ToLowerInvariant()
-            .Replace("ä", "ae").Replace("ö", "oe").Replace("ü", "ue").Replace("ß", "ss");
-        var slug = new StringBuilder();
-        foreach (var c in text)
-        {
-            if (char.IsAsciiLetterOrDigit(c)) slug.Append(c);
-            else if (slug.Length > 0 && slug[^1] != '-') slug.Append('-');
-        }
-        var result = slug.ToString().Trim('-');
-        return result.Length > 0 ? result : "button";
-    }
+    public static string Slug(string label) => ButtonIds.Slug(label);
 
     private static string UniqueId(string slug, HashSet<string> taken)
     {
-        var id = slug;
-        for (var n = 2; !taken.Add(id); n++) id = $"{slug}-{n}";
+        var id = ButtonIds.Next(slug, taken);
+        taken.Add(id);
         return id;
     }
 }

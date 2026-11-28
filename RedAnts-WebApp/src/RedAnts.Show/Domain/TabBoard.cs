@@ -109,6 +109,31 @@ public sealed record BoardButton(
     }
 }
 
+public static class ButtonIds
+{
+    public static string Slug(string label)
+    {
+        var text = label.ToLowerInvariant().Replace("ä", "ae").Replace("ö", "oe").Replace("ü", "ue").Replace("ß", "ss");
+        var slug = new System.Text.StringBuilder();
+        foreach (var c in text)
+        {
+            if (char.IsAsciiLetterOrDigit(c)) slug.Append(c);
+            else if (slug.Length > 0 && slug[^1] != '-') slug.Append('-');
+        }
+        var result = slug.ToString().Trim('-');
+        return result.Length > 0 ? result : "button";
+    }
+
+    public static string Next(string label, IEnumerable<string> taken)
+    {
+        var used = taken.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var slug = Slug(label);
+        var id = slug;
+        for (var n = 2; used.Contains(id); n++) id = $"{slug}-{n}";
+        return id;
+    }
+}
+
 public sealed record Placement(int Number, string Button, bool OnDeck = true);
 
 public sealed record NumberedRun(string Id, string Name, int Start, IReadOnlyList<string> Buttons)
@@ -201,6 +226,8 @@ public sealed record TabBoard(
         }
         return keys.Values.OrderBy(k => k.Number).ToList();
     }
+
+    public string NewButtonId(string label) => ButtonIds.Next(label, Buttons.Select(b => b.Id));
 
     public IReadOnlyList<string> UsesOf(string buttonId)
     {
