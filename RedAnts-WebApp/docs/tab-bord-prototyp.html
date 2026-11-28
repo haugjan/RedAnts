@@ -1,0 +1,363 @@
+<title>Red Ants Bord</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Barlow:wght@500;600&display=swap">
+<style>
+:root{--bg:#121417;--panel:#1b1f25;--line:#2d333b;--ink:#f3f4f6;--muted:#9aa3ad;--warn:#FFD400;--red:#D02D38;--gold:#e8a33c;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.2 Barlow,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+.disp{font-family:Oswald,"Arial Narrow",Impact,sans-serif;letter-spacing:.03em}
+.num{font-variant-numeric:tabular-nums}
+.lab{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+#start{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:32px 16px}
+#start h1{margin:0;font-size:38px;font-weight:600}
+.choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;width:min(700px,100%)}
+.choice .dk{aspect-ratio:1.4;font-size:24px}
+
+#board{padding:0 16px;padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));min-height:100%}
+.ctx{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.ctx .where{font-size:22px;font-weight:600;line-height:1}
+.ctx .where span{color:var(--red);margin-left:8px}
+.ctx .game{color:var(--muted);font-size:14px}
+.clock{display:flex;align-items:baseline;gap:12px;margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px 14px}
+.clock .t{font-size:30px;font-weight:600;line-height:1}
+.clock.run .t{color:var(--warn)}
+.clock .p{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.clock .s{font-size:30px;font-weight:600;line-height:1}
+.clock .s .h{color:#ff6b74}.clock .s .a{color:#7fb2f0}
+
+.tabs{display:flex;gap:8px;margin:12px auto 0;max-width:1240px;flex-wrap:wrap}
+.tab{padding:12px 22px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-family:Oswald,sans-serif;font-size:19px;font-weight:500;letter-spacing:.04em;color:var(--muted);position:relative}
+.tab.cur{background:var(--red);border-color:var(--red);color:#fff}
+.tab.auto::after{content:"";position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.tab.q{margin-left:auto;color:var(--gold);border-color:var(--gold)}
+
+.deck{display:grid;gap:8px;margin:12px auto 0;width:100%}
+.deck.xl{grid-template-columns:repeat(8,1fr);max-width:1240px}
+.deck.mk2{grid-template-columns:repeat(5,1fr);max-width:780px}
+.dk{aspect-ratio:1;border-radius:10px;background:#2b3038;border:1px solid #3a4049;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-weight:600;font-size:clamp(11px,1.15vw,17px);line-height:1.12;padding:6px;color:#fff;gap:3px;min-width:0;position:relative;overflow:hidden}
+.dk small{font-weight:500;font-size:.78em;color:#c8ced6}
+.dk:hover{filter:brightness(1.15)}
+.dk.home{background:#8f1f27;border-color:#b0303a}.dk.away{background:#214f85;border-color:#2f67a8}
+.dk.panic{background:#b80f0f;border-color:#e23a3a;font-family:Oswald,sans-serif;letter-spacing:.1em;font-size:1.25em}
+.dk.back{background:#1E7B34;border-color:#2a9d46}
+.dk.back .top{position:absolute;top:0;left:0;right:0;height:40%;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85em;padding:0 4px}
+.dk.back .bot{margin-top:40%}
+.dk.on{background:#C0201C;border-color:#e23a3a}.dk.off{background:#1E7B34;border-color:#2a9d46}
+.dk.live{background:#000;border-color:#000;color:var(--warn);font-size:1.15em}
+.dk.live small{color:#d8c25a}
+.dk.empty{background:#181b20;border:1px dashed #262b32}
+.dk.gold{background:#8a6418;border-color:#e8a33c}
+.dk.gold small{color:#ffe7b0}
+.dk.dim{background:#22262c;color:#8b939d}
+.dk.led{box-shadow:inset 0 4px 0 #5aa0e6}.dk.vmix{box-shadow:inset 0 4px 0 #b78cff}
+.dk.playing{background:#b89a00;border-color:#ffd400;color:#000}.dk.playing small{color:#333}
+.dk.done{opacity:.5}
+.dk.six{box-shadow:inset 0 0 0 2px var(--red)}
+.dk.gk{color:#9cc5f5}
+.dk.sent{opacity:.4}
+.dk.ping{box-shadow:inset 0 0 0 3px var(--gold)}
+.dk.ping small{color:#ffe7b0}
+.dk.idle{opacity:.5}
+.dk.liga::before{content:"L";position:absolute;left:6px;top:4px;font:600 10px/1 Oswald,sans-serif;color:#aab;border:1px solid #556;border-radius:3px;padding:1px 3px}
+
+.foot{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-top:1px solid var(--line);padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:14px}
+.foot b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px}
+.foot span{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:auto}
+.foot em{font-style:normal}
+.foot em.LED{color:#5aa0e6}.foot em.vMix{color:#b78cff}.foot em.Musik{color:#6fd48a}
+
+.dimmer{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;display:flex;justify-content:flex-end}
+.sheet{width:min(560px,100%);height:100%;background:var(--panel);border-left:1px solid var(--line);padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));overflow:auto;display:flex;flex-direction:column;gap:14px}
+.sheet .head{display:flex;align-items:center;gap:12px}
+.sheet .head b{font-family:Oswald,sans-serif;font-size:26px;font-weight:600}
+.sheet .head button{margin-left:auto;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:600}
+.sheet table{border-collapse:collapse;width:100%;font-size:15px}
+.sheet td,.sheet th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.sheet th{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.sheet tr.cur td{color:var(--warn)}
+.sheet .mut{color:var(--muted)}
+.mon{aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);flex-direction:column;gap:6px}
+.mon b{color:#fff;font-family:Oswald,sans-serif;font-size:22px}
+.sheet .row{display:flex;gap:8px}
+.sheet .row .dk{aspect-ratio:2.2;flex:1}
+</style>
+
+<div id="app"></div>
+
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+
+/* Stammdaten (Prod, 25.11.2026) */
+const HALLS = {win4:{name:"WIN 4",fmt:"xl",sound:true,clock:true,vmix:true,led:true,gastro:true},oberseen:{name:"Oberseen",fmt:"mk2",sound:true,clock:false,vmix:false,led:false,gastro:false},rennweg:{name:"Rennweg",fmt:"mk2",sound:true,clock:false,vmix:false,led:false,gastro:false}};
+const LIGEN = ["L-UPL","U21","U17","1. Liga"];
+const SCREEN = {"L-UPL":"spiel-nla","U21":"spiel-u21","U17":"spiel-u21","1. Liga":"spiel-nla"};
+const TABS = [["vor","Vor dem Spiel"],["spiel","Während dem Spiel"],["pause","Pause"],["nach","Nach dem Spiel"],["sonst","Sonstiges"]];
+const HOME = [{nr:4,n:"Vier",six:true},{nr:5,n:"Fünf"},{nr:7,n:"Sieben",six:true},{nr:8,n:"Acht"},{nr:9,n:"Neun",six:true},{nr:10,n:"Zehn"},{nr:11,n:"Elf",six:true},{nr:12,n:"Zwölf"},{nr:14,n:"Vierzehn",six:true},{nr:17,n:"Siebzehn"},{nr:19,n:"Neunzehn"},{nr:21,n:"Einundzwanzig"},{nr:23,n:"Topscorer",ts:true},{nr:27,n:"Siebenundzwanzig"},{nr:88,n:"Achtundachtzig"},{nr:1,n:"Goalie",gk:true,six:true},{nr:31,n:"Goalie",gk:true}];
+const AWAY = [3,6,7,9,10,13,15,16,18,22,24,25,29,33,1,20].map(n=>({nr:n,n:"Gast",gk:n===1||n===20}));
+const LUPL = ["L-UPL"];
+const LEDSPIEL = {liga:{"L-UPL":"led:spiel-nla","U21":"led:spiel-u21","U17":"led:spiel-u21","1. Liga":"led:spiel-nla"},sub:{"L-UPL":"spiel-nla","U21":"spiel-u21","U17":"spiel-u21","1. Liga":"spiel-nla"}};
+
+/* Tasten je Tab: slot = Platz auf dem XL (1..24, 30, 31), mk = Platz auf dem Mk2 (1..10) */
+const m = (slot, mk, l, name, o) => Object.assign({slot, mk, l, a:"music:"+name, ch:"Musik"}, o||{});
+const L = (slot, mk, l, t, o) => Object.assign({slot, mk, l, a:"led:"+t, ch:"LED", c:"led"}, o||{});
+const V = (slot, mk, l, t, o) => Object.assign({slot, mk, l, a:"vmix:"+t, ch:"vMix", c:"vmix"}, o||{});
+const PAGES = {
+  vor:[
+    m(1,1,"Mobiliar","Mobiliar Unihockey (Nur L-UPL)",{nur:LUPL,seq:"vor"}), m(2,2,"Wartesong","Wartesong bis Teams bereit",{seq:"vor"}), m(3,3,"LIDL","LIDL L-UPL vor Spiel (nur L-UPL)",{nur:LUPL,seq:"vor"}),
+    Object.assign({slot:4,mk:4,l:"Einlaufmusik",ch:"Musik",seq:"vor"},{liga:{"L-UPL":"music:Einlaufmusik mit Intro (L-UPL)","U21":"music:Einlaufmusik (U21)","U17":"music:Einlaufmusik (U17)","1. Liga":"music:Einlaufmusik (1 Liga)"},sub:{"L-UPL":"mit Intro","U21":"U21","U17":"U17","1. Liga":"1. Liga"}}),
+    m(5,5,"Torbeschwörung","Torbeschwörung",{seq:"vor"}), m(6,6,"Starting Six Gegner","Starting Six Gegner",{seq:"vor"}), m(7,7,"Starting Six Red Ants","Starting Six Red Ants",{seq:"vor"}), m(8,8,"Bully","Bully",{seq:"vor"}),
+    m(9,9,"Aufwärmmusik","Aufwärmmusik vor Spiel"), m(10,10,"Werbung Gastro","Gastro Werbung",{halle:["win4"]}), m(11,null,"Werbung Pausenspiel","Pausengewinnspiel"),
+    {slot:12,l:"Starting 6",a:"page:six",ch:"vMix",c:"vmix"}, V(13,null,"Opener","opener"), V(14,null,"Kommentar","commentary"), V(15,null,"Schiri","referee"), V(16,null,"Aufstellung Heim","lineup_home"),
+    V(17,null,"Aufstellung Gast","lineup_away"), V(18,null,"Coach Heim","coach (home)"), V(19,null,"Coach Gast","coach (away)"),
+    Object.assign({slot:20,l:"LED Spiel",ch:"LED",c:"led"},LEDSPIEL), L(21,null,"LED Staff","staff"), L(22,null,"Red Ants Logo","logo"), L(23,null,"LED LIDL Welcome","lidl-welcome",{nur:LUPL}), L(24,null,"Logo Gast","gast-chur"),
+  ],
+  spiel:[
+    {slot:1,mk:1,l:"Tor Heim",subtext:"1. Sofort",a:"tor:home",c:"home"},{slot:2,l:"Tor Heim",a:"speaker:home",c:"home",live:"speaker",ch:"LED"},{slot:3,mk:3,l:"Strafe Heim",a:"strafe:home",c:"home"},{slot:4,l:"Timeout Heim",a:"timeout:home",c:"home",ch:"vMix"},
+    {slot:5,l:"Timeout Gast",a:"timeout:away",c:"away",ch:"vMix"},{slot:6,mk:4,l:"Strafe Gast",a:"strafe:away",c:"away"},{slot:7,mk:2,l:"Tor Gast",a:"tor:away",c:"away"},
+    {slot:9,l:"Spielerin Heim",a:"page:announce-home",c:"home",ch:"vMix"},{slot:10,l:"Spielerin Gast",a:"page:announce-away",c:"away",ch:"vMix"},{slot:11,l:"Rückgängig",a:"undo"},{slot:12,l:"",a:"noop",c:"live",live:"onair",ch:"vMix"},{slot:13,l:"Einblender aus",a:"vmixoff",ch:"vMix",c:"vmix"},
+    m(14,6,"Spielunterbruch","Spielunterbruch"),{slot:15,mk:7,l:"Automodus",a:"toggle:auto",c:"tog",ch:"Musik"},m(16,8,"Penalty","Penalty"),
+    m(17,9,"Verlängerung","Special Situations · Bring En Hei (Verlängerung)"),{slot:18,l:"Empty Net",a:"vmixtext:Empty Net",ch:"vMix",c:"vmix"},{slot:19,l:"Meldung",a:"page:meldung",ch:"vMix",c:"vmix"},L(20,null,"Replay","replay"),{slot:21,l:"Zuschauer",a:"page:zuschauer",ch:"vMix",c:"vmix",live:"spect"},m(22,10,"Happy Birthday","Special Situations · Happy Birthday"),
+    m(null,5,"Time Out","Time Out"),
+  ],
+  pause:[
+    m(1,1,"Gastrowerbung","Gastro Werbung",{halle:["win4"],seq:"pause"}),{slot:2,mk:2,l:"Gewinnspiel",a:"gewinnspiel",ch:"Musik",nur:LUPL,seq:"pause"},m(3,3,"Musik Gewinnspiel","Musik während Gewinnspiel",{nur:LUPL,seq:"pause"}),m(4,4,"Pausenmusik","Pausenmusik",{seq:"pause"}),
+    {slot:5,mk:5,l:"Sponsoren-Ansagen",a:"page:sponsoren",ch:"Musik",ohneLed:true},m(6,6,"Happy Birthday","Special Situations · Happy Birthday"),m(7,7,"Spielunterbruch","Spielunterbruch"),{slot:8,mk:8,l:"Automodus",a:"toggle:auto",c:"tog",ch:"Musik"},
+    L(9,null,"LED Pause","pause"),L(10,null,"LED Pausenloop","intermission"),L(11,null,"LED Sponsoren","sponsoren"),L(12,null,"LED LIDL Pause","lidl-pause",{nur:LUPL}),L(13,null,"LED Pausenspiel","pausenspiel"),Object.assign({slot:14,l:"LED Spiel",ch:"LED",c:"led"},LEDSPIEL),
+    V(17,null,"Highlight","highlight"),V(18,null,"Resultat","result"),{slot:19,l:"Zuschauer",a:"page:zuschauer",ch:"vMix",c:"vmix",live:"spect"},{slot:20,l:"Einblender aus",a:"vmixoff",ch:"vMix",c:"vmix"},
+  ],
+  nach:[
+    {slot:1,l:"Best Player Heim",a:"bestplayer:home",c:"home",ch:"vMix"},{slot:2,l:"Best Player Gast",a:"bestplayer:away",c:"away",ch:"vMix"},m(null,1,"Best Player","Bestplayer"),
+    m(3,2,"Mobiliar","Mobiliar Unihockey (Nur L-UPL)",{nur:LUPL,seq:"nach"}),m(4,3,"LIDL","Lidl nach Spiel (nur L-UPL)",{nur:LUPL,seq:"nach"}),m(5,4,"Sieg","Nach Spiel (Sieg Red Ants)",{seq:"nach"}),m(6,5,"Niederlage","Nach dem Spiel (Niederlage Red Ants)",{seq:"nach",alt:true}),m(7,6,"Happy Birthday","Special Situations · Happy Birthday"),
+    L(9,null,"LED LIDL Ende","lidl-ende",{nur:LUPL}),L(10,null,"Ruhebild","ruhebild"),L(11,null,"LED Sponsoren","sponsoren"),L(12,null,"Logo Gast","gast-chur"),V(13,null,"Resultat","result"),V(14,null,"Highlight","highlight"),{slot:15,l:"Einblender aus",a:"vmixoff",ch:"vMix",c:"vmix"},
+  ],
+  sonst:[
+    {slot:1,l:"Teamlogos",a:"page:teamlogos",ch:"LED",c:"led"},L(2,null,"LED Sponsoren","sponsoren"),L(3,null,"LED Gesucht","gesucht"),L(4,null,"LED Mobiliar","mobiliar"),L(5,null,"LED LIDL Welcome","lidl-welcome",{nur:LUPL}),L(6,null,"LED Staff","staff"),L(7,null,"Red Ants Logo","logo"),L(8,null,"Logo Gast","gast-chur"),
+    {slot:9,l:"Meldung",a:"page:meldung",ch:"vMix",c:"vmix"},{slot:10,l:"Zuschauer",a:"page:zuschauer",ch:"vMix",c:"vmix",live:"spect"},{slot:11,l:"Uhr",a:"toggle:scoreboard",c:"tog2",ch:"vMix"},{slot:12,l:"Einblender",a:"toggle:overlay",c:"tog3",ch:"vMix"},
+    {slot:13,mk:1,l:"Musik",a:"toggle:music",c:"tog4",ch:"Musik"},{slot:14,mk:2,l:"Automodus",a:"toggle:auto",c:"tog",ch:"Musik"},{slot:15,mk:3,l:"Belegung zeigen",a:"toggle:belegung",c:"tog5"},{slot:16,mk:4,l:"⚙ Spiel",a:"page:setup"},
+    m(17,5,"Happy Birthday","Special Situations · Happy Birthday"),m(18,6,"Verlängerung","Special Situations · Bring En Hei (Verlängerung)"),m(19,7,"Penalty","Penalty"),{slot:20,l:"LED-Bild",a:"monitor",ch:"LED",c:"led"},{slot:21,mk:8,l:"Reihen",a:"toggle:seq",live:"seqmode"},
+  ],
+};
+const GUESTS = [["Red Ants","logo"],["Berner Oberland","gast-bern"],["Chur United","gast-chur"],["Jets","gast-jets"],["Laupen","gast-laupen"],["Riders","gast-riders"],["Skorpion","gast-skorps"],["Uri","gast-uri"],["Wizards","gast-wizards"],["Zug United","gast-zug"]];
+const SPONSOREN = ["Goldsponsoren","Mobiliar Unihockey (Nur L-UPL)","Lidl Pausendurchsage (nur L-UPL)","Silbersponsoren","Nachwuchs","Bronzesponsoren","Medicalpartner","Medienpartner","Kooperationspartner","Pausengewinnspiel","Pausenmusik"];
+
+/* Zustand */
+const S = {hall:null, liga:null, fmt:"xl", tab:"vor", manual:null, lastAuto:"vor", page:null,
+  clock:{started:false,running:false,sec:0,period:1,home:0,away:0,speed:1},
+  events:[], seq:0, done:{}, sent:{}, playing:null, paused:false, auto:false, overlay:false, scoreboard:true, belegung:false,
+  last:[], goalFromClock:false, spectators:0, devOverride:{}, info:null, monitor:null, seqMode:"pack"};
+let timer=null, lastRender=0;
+const hall = () => HALLS[S.hall];
+const dev = k => (k in S.devOverride) ? S.devOverride[k] : hall()[k];
+const has = ch => ({Musik:dev("sound"), vMix:dev("vmix"), LED:dev("led"), Uhr:dev("clock")})[ch];
+const fmt = s => String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+const pad = n => String(n).padStart(2,"0");
+const periodLabel = () => S.clock.period<=3 ? S.clock.period+". Drittel" : S.clock.period===4 ? "Verlängerung" : "Penaltys";
+
+/* Wirkungen */
+const mu = w => ({ch:"Musik",what:w}), ld = w => ({ch:"LED",what:w}), vx = w => ({ch:"vMix",what:w});
+function fire(fx){ const out=[]; fx.forEach(f=>{ if(!has(f.ch)) return; if(f.ch==="Musik"){ if(f.what==="stop") S.playing=null; else { S.playing=f.what; S.paused=false; } } if(f.ch==="vMix") S.overlay=f.what!=="aus"; out.push(f); }); S.last=out.length?out:[{ch:"Info",what:"kein Gerät dafür in dieser Halle"}]; render(); }
+const note = t => { S.last=[{ch:"Info",what:t}]; render(); };
+
+/* Tab aus der Uhr */
+function autoTab(){ const c=S.clock; if(!c.started) return "vor"; if(c.running) return "spiel"; if(c.sec>=1200&&c.period>=3) return "nach"; if(c.sec>=1200||c.sec===0) return "pause"; return "spiel"; }
+function sync(){ if(!has("Uhr")){ S.tab=S.manual||S.tab; return; } const p=autoTab(); if(p!==S.lastAuto){ S.lastAuto=p; S.manual=null; } S.tab=S.manual||p; }
+function tick(){ const c=S.clock; if(!c.running) return; c.sec+=1; if(c.sec>=1200){ c.sec=1200; c.running=false; } const b=S.tab; sync(); const now=Date.now(); if(b!==S.tab||!c.running||now-lastRender>250){ lastRender=now; render(); } }
+function setSpeed(n){ S.clock.speed=n; if(timer) clearInterval(timer); timer=setInterval(tick,1000/n); }
+
+/* Ereignisse: Tor sofort, Ansage später */
+const newEv = (type,side) => ({id:++S.seq,type,side,period:periodLabel(),time:fmt(S.clock.sec),player:null,assist:null,penalty:null,said:false,assistSaid:false,score:null});
+const evTitle = e => (e.type==="tor"?"Tor":e.type==="strafe"?"Strafe "+(e.penalty||""):e.type==="timeout"?"Timeout":"Best Player")+" "+(e.side==="home"?"RA":"Gast");
+const pending = () => S.events.filter(e=>!e.said&&(e.type==="tor"||e.type==="strafe"));
+function tor(side){ const ev=newEv("tor",side); if(side==="home") S.clock.home++; else S.clock.away++; ev.score=S.clock.home+":"+S.clock.away; if(side==="away"||!has("LED")) ev.said=true; S.events.push(ev); fire([mu(side==="home"?"Tor Red Ants":"Tor Gegner"), ...(side==="home"?[ld("tor-gast")]:[])]); if(has("vMix")) S.page={kind:"players",evId:ev.id,side,field:"player",title:"Tor "+ev.score+" · Schützin"}; render(); }
+function speaker(){
+  const ev=S.events.find(e=>!e.said&&e.type==="tor"&&e.side==="home");
+  if(!ev){ note("kein Tor offen"); return; }
+  if(ev.player==null){ S.page={kind:"players",evId:ev.id,side:"home",field:"player",title:"Tor "+ev.score+" · Schützin",from:"speaker"}; render(); return; }
+  ev.said=true;
+  if(ev.player==="ET"){ note("Eigentor, nur gesprochen"); return; }
+  fire([ld("tor STR_RA_"+pad(ev.player))]);
+  S.page={kind:"players",evId:ev.id,side:"home",field:"assist",title:"Tor "+ev.score+" · Assist",from:"speaker"}; render();
+}
+function strafe(side){ const ev=newEv("strafe",side); S.events.push(ev); fire([mu(side==="home"?"Strafe Red Ants":"Strafe Gegner"), ld("strafe")]); if(has("vMix")) S.page={kind:"penalty",evId:ev.id,side,title:"Strafe "+(side==="home"?"Red Ants":"Gast")}; render(); }
+function timeout(side){ const ev=newEv("timeout",side); ev.said=true; S.events.push(ev); fire([mu("Time Out"), vx("timeout "+(side==="home"?"Red Ants":"Gast")), ld("timeout")]); }
+function bestplayer(side){ const ev=newEv("bestplayer",side); ev.said=true; S.events.push(ev); if(side==="away"){ fire([mu("Bestplayer"), vx("bestplayer Gast")]); return; } fire([mu("Bestplayer"), ld("best-player")]); S.page={kind:"players",evId:ev.id,side,field:"player",title:"Best Player"}; render(); }
+function pick(nr){
+  const p=S.page; if(!p) return;
+  if(p.field==="announce"){ fire([vx("name "+nr), ...(p.side==="home"?[ld("einlauf STR_RA_EIN_"+pad(nr))]:[])]); S.sent[nr]=true; return; }
+  if(p.field==="six"){ fire([vx("starting6 Nr. "+nr), ld("einlauf STR_RA_EIN_"+pad(nr))]); S.sent[nr]=true; return; }
+  const ev=S.events.find(e=>e.id===p.evId); if(!ev){ S.page=null; render(); return; }
+  S.page=null;
+  if(p.field==="assist"){ ev.assist=nr; if(p.from==="speaker"){ ev.assistSaid=true; fire([ld("einlauf STR_RA_EIN_"+pad(nr))]); } else render(); return; }
+  ev.player=nr;
+  if(ev.type==="tor"){ fire([vx("player_event TOR "+nr+" "+ev.score)]); if(p.from==="speaker") speaker(); }
+  else if(ev.type==="strafe") fire([vx("penalty "+nr+" "+ev.penalty)]);
+  else fire([vx("bestplayer "+nr), ld("einlauf STR_RA_EIN_"+pad(nr))]);
+}
+function undo(){ const ev=S.events.pop(); if(!ev){ note("nichts offen"); return; } if(ev.type==="tor"){ if(ev.side==="home") S.clock.home=Math.max(0,S.clock.home-1); else S.clock.away=Math.max(0,S.clock.away-1); } fire([mu("stop"), ld(SCREEN[S.liga]), vx("aus")]); }
+function panic(){ S.page=null; S.auto=false; fire([mu("stop"), vx("aus"), ld(SCREEN[S.liga])]); }
+function onair(){ const e=S.events[S.events.length-1]; if(!e) return "–"; return evTitle(e)+(e.score?" "+e.score:"")+(e.player!=null?"<small>Nr. "+e.player+(e.assist!=null?" · A "+e.assist:"")+"</small>":"<small>Spielerin?</small>"); }
+
+/* Aktionen */
+function act(a, keyDef){
+  if(S.belegung && keyDef && !/^(toggle:belegung|page:back)/.test(a)){ S.info=keyDef; render(); return; }
+  const [k,v]=a.split(/:(.*)/s);
+  switch(k){
+    case "hall": S.hall=v; S.fmt=HALLS[v].fmt; S.devOverride={}; render(); break;
+    case "liga": S.liga=v; S.done={}; if(!timer) setSpeed(1); render(); break;
+    case "restart": S.hall=null; S.liga=null; S.page=null; render(); break;
+    case "tab": S.manual=v; S.tab=v; S.page=null; render(); break;
+    case "page": if(v==="back"){ S.page=null; } else if(v==="six"){ S.page={kind:"players",side:"home",field:"six",title:"Starting 6 · Einlauf"}; } else if(v.startsWith("announce-")){ const side=v.slice(9); S.page={kind:"players",side,field:"announce",title:"Spielerin "+(side==="home"?"Red Ants":"Gast")}; } else S.page={kind:v,title:{meldung:"Meldung",zuschauer:"Zuschauer",teamlogos:"Teamlogos",sponsoren:"Sponsoren-Ansagen",setup:"⚙ Spiel",ansage:"Ansage"}[v]}; render(); break;
+    case "tor": tor(v); break; case "strafe": strafe(v); break; case "timeout": timeout(v); break; case "bestplayer": bestplayer(v); break;
+    case "speaker": speaker(); break;
+    case "undo": undo(); break; case "panic": panic(); break;
+    case "music": S.done[a]=true; fire([mu(v)]); break;
+    case "gewinnspiel": S.done[a]=true; fire([mu("Pausengewinnspiel"), ld("pausenspiel")]); break;
+    case "stop": fire([mu("stop")]); break;
+    case "fade": if(S.playing){ S.playing=null; note("Fade-out"); } break;
+    case "mpause": S.paused=!S.paused; render(); break;
+    case "mnext": note("nächstes Stück"); break;
+    case "led": fire([ld(v)]); break; case "vmix": fire([vx(v)]); break;
+    case "vmixtext": S.page=null; fire([vx("message „"+v+"“ 8 s")]); break;
+    case "vmixoff": fire([vx("aus")]); break;
+    case "toggle": if(v==="auto") S.auto=!S.auto; if(v==="overlay"){ if(S.overlay) fire([vx("aus")]); else fire([vx("Einblender zeigen")]); return; } if(v==="scoreboard") S.scoreboard=!S.scoreboard; if(v==="music"&&S.playing){ fire([mu("stop")]); return; } if(v==="belegung"){ S.belegung=!S.belegung; S.info=null; } if(v==="seq") S.seqMode=S.seqMode==="pack"?"hold":"pack"; render(); break;
+    case "spect": if(v==="show"){ fire([vx("spectators "+S.spectators)]); S.page=null; } else { S.spectators=Math.max(0,S.spectators+(+v)); render(); } break;
+    case "pick": pick(v==="ET"?v:+v); break;
+    case "penalty": { const ev=S.events.find(e=>e.id===S.page.evId); ev.penalty=v; S.page={kind:"players",evId:ev.id,side:ev.side,field:"player",title:"Strafe "+v}; render(); } break;
+    case "later": S.page=null; render(); break;
+    case "info": S.info=null; render(); break;
+    case "monitor": S.monitor=v||"1"; render(); break;
+    case "monitoroff": S.monitor=null; render(); break;
+    case "fmt": S.fmt=v; render(); break;
+    case "dev": S.devOverride[v]=!dev(v); render(); break;
+    case "clock": clockCmd(v); break;
+    case "speed": setSpeed(+v); render(); break;
+    case "gfc": S.goalFromClock=!S.goalFromClock; render(); break;
+    case "reset": Object.assign(S.clock,{started:false,running:false,sec:0,period:1,home:0,away:0}); S.events=[]; S.done={}; S.sent={}; S.manual=null; S.lastAuto="vor"; S.playing=null; S.spectators=0; S.last=[]; sync(); render(); break;
+    case "noop": break;
+  }
+}
+function clockCmd(v){ const c=S.clock;
+  if(v==="start"){ c.started=true; c.running=true; } if(v==="stop") c.running=false; if(v==="end"){ c.started=true; c.running=false; c.sec=1200; }
+  if(v==="next"&&c.sec>=1200&&c.period<5){ c.period++; c.sec=0; c.running=false; }
+  if(v==="goalh"||v==="goala"){ const side=v==="goalh"?"home":"away"; if(S.goalFromClock){ tor(side); return; } if(side==="home") c.home++; else c.away++; note("Stand "+c.home+":"+c.away+" aus der Uhr"); }
+  sync(); render(); }
+
+/* Sichtbarkeit und Befehl je Liga */
+function visible(k){ if(k.ch&&!has(k.ch)) return false; if(k.nur&&!k.nur.includes(S.liga)) return false; if(k.halle&&!k.halle.includes(S.hall)) return false; if(k.ohneLed&&has("LED")) return false; if(k.liga&&!k.liga[S.liga]) return false; return true; }
+const cmd = k => k.liga ? k.liga[S.liga] : k.a;
+
+/* Nummerierte Reihen: nachrücken (Lücken schliessen, neu zählen) oder Platz halten (ausgegraut, Nummer bleibt) */
+function layoutPage(keys, slotOf, size, idx){
+  const content=new Array(size).fill(null); const groups={};
+  keys.forEach(k=>{ const s=slotOf(k); if(!s) return; if(k.seq){ (groups[k.seq]=groups[k.seq]||[]).push(k); } else if(visible(k)) content[idx(s)]=k; });
+  Object.values(groups).forEach(g=>{
+    g.sort((a,b)=>slotOf(a)-slotOf(b));
+    const slots=g.map(slotOf); let n=0, next=0;
+    g.forEach(k=>{
+      const vis=visible(k);
+      if(S.seqMode==="pack"){ if(!vis) return; if(!k.alt) n++; content[idx(slots[next++])]=Object.assign({},k,{l:n+". "+k.l}); }
+      else { if(!k.alt) n++; content[idx(slotOf(k))]= vis ? Object.assign({},k,{l:n+". "+k.l}) : {l:n+". "+k.l,a:"noop",c:"dim",nur:k.nur,subtext:"entfällt"}; }
+    });
+  });
+  return content;
+}
+
+/* Rendern */
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+function dk(k){
+  if(!k) return '<div class="dk empty"></div>';
+  let cls=k.c||"";
+  if(cls==="tog") cls=S.auto?"on":"off"; if(cls==="tog2") cls=S.scoreboard?"on":"off"; if(cls==="tog3") cls=S.overlay?"on":"off"; if(cls==="tog4") cls=S.playing?"on":"off"; if(cls==="tog5") cls=S.belegung?"on":"off";
+  const a=cmd(k); let label=k.l, sub=k.sub?k.sub[S.liga]:(k.subtext||"");
+  if(k.live==="onair") label=onair();
+  if(k.live==="spect") sub=String(S.spectators);
+  if(k.live==="seqmode") sub=S.seqMode==="pack"?"nachrücken":"Platz halten";
+  if(k.live==="speaker"){ const q=S.events.filter(e=>!e.said&&e.type==="tor"&&e.side==="home"); if(q.length){ const f=q[0]; cls+=" ping"; sub="2. Speaker · "+(q.length>1?q.length+" offen · ":"")+f.score+(f.player!=null?" Nr. "+f.player:" Schützin?"); } else { cls+=" idle"; sub="2. Speaker"; } }
+  if(/^tog/.test(k.c||"")) sub=cls==="on"?"an":"aus";
+  if(S.playing&&a==="music:"+S.playing) cls+=" playing";
+  if(S.done[a]&&/^\d\./.test(k.l)) cls+=" done";
+  if(k.liga||k.nur) cls+=" liga";
+  return '<button class="dk '+cls+'" data-act="'+esc(a)+'">'+label+(sub?'<small>'+esc(sub)+'</small>':'')+'</button>';
+}
+const back = title => '<button class="dk back" data-act="page:back"><span class="top">'+esc(title)+'</span><span class="bot">Zurück</span></button>';
+function render(){
+  const app=$("#app");
+  if(!S.hall){ app.innerHTML='<section id="start"><h1 class="disp">Red Ants Bord</h1><span class="lab">Halle</span><div class="choice">'+Object.entries(HALLS).map(([id,h])=>'<button class="dk disp" data-act="hall:'+id+'">'+h.name+'</button>').join("")+'</div></section>'; return; }
+  if(!S.liga){ app.innerHTML='<section id="start"><h1 class="disp">'+hall().name+'</h1><span class="lab">Liga</span><div class="choice">'+LIGEN.map(l=>'<button class="dk disp" data-act="liga:'+l+'">'+l+'</button>').join("")+'</div></section>'; return; }
+  app.innerHTML='<section id="board">'+ctx()+tabs()+(S.fmt==="xl"?xl():mk2())+'</section>'+foot()+info()+monitor();
+}
+function ctx(){
+  const c=S.clock;
+  const clock = has("Uhr") ? '<div class="clock num '+(c.running?"run":"")+'"><span class="t disp">'+fmt(c.sec)+'</span><span class="p">'+periodLabel()+'</span><span class="s disp"><span class="h">'+c.home+'</span>:<span class="a">'+c.away+'</span></span></div>' : '<div class="clock num"><span class="s disp"><span class="h">'+c.home+'</span>:<span class="a">'+c.away+'</span></span></div>';
+  return '<header class="ctx"><span class="where disp">'+hall().name+'<span>'+S.liga+'</span></span><span class="game">Red Ants – Chur Unihockey</span>'+clock+'</header>';
+}
+function tabs(){
+  const auto=has("Uhr")&&!S.manual?autoTab():null;
+  return '<nav class="tabs">'+TABS.map(([id,name])=>'<button class="tab '+(S.tab===id?"cur":"")+(auto===id?" auto":"")+'" data-act="tab:'+id+'">'+name+'</button>').join("")+'</nav>';
+}
+function pageKeys(){
+  const p=S.page; if(!p) return null; const slots=[]; const put=(i,k)=>{ slots[i]=k; };
+  if(p.kind==="players"){ const r=(p.side==="home"?HOME:AWAY); let i=0; const ev=S.events.find(e=>e.id===p.evId); r.forEach(pl=>{ const chosen=ev&&(p.field==="assist"?ev.assist:ev.player)===pl.nr; const isShooter=ev&&p.field==="assist"&&ev.player===pl.nr; put(i++,{l:pl.ts?"Topscorer":String(pl.nr),subtext:isShooter?"Schützin":pl.n,a:isShooter?"noop":"pick:"+pl.nr,c:(pl.six?"six ":"")+(pl.gk?"gk ":"")+(isShooter?"dim ":"")+(S.sent[pl.nr]&&(p.field==="announce"||p.field==="six")?"sent ":"")+(chosen?"gold":"")}); }); if(ev&&ev.type==="tor"&&p.field==="player") put(i++,{l:"ET",subtext:"Eigentor",a:"pick:ET"}); if(p.field==="player") put(i++,{l:"…",subtext:"später",a:"later"}); if(p.field==="assist") put(i++,{l:"–",subtext:"kein Assist",a:"later"}); }
+  if(p.kind==="penalty") ["2'","2'+2'","10'","Spieldauer"].forEach((x,i)=>put(i,{l:x,a:"penalty:"+x}));
+  if(p.kind==="meldung") ["Technik","Video","Audio","Ohne Kommentar","Live aus der Stratos-Halle","Highlights"].forEach((x,i)=>put(i,{l:x,a:"vmixtext:"+x,c:"vmix"}));
+  if(p.kind==="zuschauer"){ [["+1","1"],["+10","10"],["+100","100"],["−1","-1"],["−10","-10"],["−100","-100"]].forEach((x,i)=>put(i,{l:x[0],a:"spect:"+x[1]})); put(7,{l:String(S.spectators),subtext:"anzeigen",a:"spect:show",c:"gold"}); }
+  if(p.kind==="teamlogos") GUESTS.forEach((g,i)=>put(i,{l:g[0],a:"led:"+g[1],c:"led"}));
+  if(p.kind==="sponsoren") SPONSOREN.forEach((s,i)=>put(i,{l:(i+1)+". "+s.replace(/ \(.*\)/,""),a:"music:"+s}));
+  if(p.kind==="setup"){ const c=S.clock; const t=(k,l)=>({l,a:"dev:"+k,c:dev(k)?"on":"off",subtext:dev(k)?"an":"aus"});
+    [t("sound","Ton"),t("clock","Matchuhr"),t("vmix","vMix"),t("led","LED-Wand"),{l:"Format",subtext:S.fmt==="xl"?"XL 8 × 4":"Mk2 5 × 3",a:"fmt:"+(S.fmt==="xl"?"mk2":"xl")},{l:"Halle · Liga",subtext:"neu wählen",a:"restart"},null,null,
+     {l:c.running?"Uhr Stopp":"Uhr Start",a:c.running?"clock:stop":"clock:start",c:c.running?"on":"off"},{l:"Drittel beenden",a:"clock:end"},{l:"Nächstes Drittel",a:"clock:next"},{l:"Stand +1 Heim",a:"clock:goalh",c:"home"},{l:"Stand +1 Gast",a:"clock:goala",c:"away"},{l:"Tor aus Telegramm",subtext:S.goalFromClock?"an":"aus",a:"gfc",c:S.goalFromClock?"on":"off"},{l:"Tempo",subtext:"×"+c.speed,a:"speed:"+(c.speed===1?10:c.speed===10?60:1)},{l:"Spiel zurücksetzen",a:"reset"}].forEach((k,i)=>put(i,k)); }
+  return slots;
+}
+function xl(){
+  const sub=pageKeys(); let content;
+  if(sub){ content=new Array(26).fill(null); sub.forEach((k,i)=>{ if(i<26) content[i]=k; }); }
+  else content=layoutPage(PAGES[S.tab], k=>k.slot, 26, s=>s<=24?s-1:s-6);
+  const cells=[];
+  for(let i=0;i<24;i++) cells.push(dk(content[i]));
+  cells.push(S.page?back(S.page.title||""):'<div class="dk empty"></div>');
+  cells.push('<button class="dk" data-act="stop">⏹<small>Stopp</small></button>','<button class="dk" data-act="fade">🔉<small>Fade</small></button>','<button class="dk" data-act="mpause">'+(S.paused?"▶":"⏸")+'<small>'+(S.paused?"Weiter":"Pause")+'</small></button>','<button class="dk" data-act="mnext">⏭<small>Vor</small></button>');
+  cells.push(dk(content[24]),dk(content[25]));
+  cells.push('<button class="dk panic" data-act="panic">PANIC</button>');
+  return '<div class="deck xl">'+cells.join("")+'</div>';
+}
+function mk2(){
+  const sub=pageKeys(); let content;
+  if(sub){ content=new Array(10).fill(null); sub.forEach((k,i)=>{ if(i<10) content[i]=k; }); }
+  else content=layoutPage(PAGES[S.tab], k=>k.mk, 10, s=>s-1);
+  const cells=[];
+  cells.push(S.page?back(S.page.title||""):dk(content[0]));
+  for(let i=1;i<10;i++) cells.push(dk(content[i]));
+  cells.push('<button class="dk panic" data-act="panic">PANIC</button>');
+  cells.push('<button class="dk" data-act="stop">⏹<small>Stopp</small></button>','<button class="dk" data-act="mpause">'+(S.paused?"▶":"⏸")+'<small>'+(S.paused?"Weiter":"Pause")+'</small></button>','<button class="dk" data-act="mnext">⏭<small>Vor</small></button>','<button class="dk" data-act="fade">🔉<small>Fade</small></button>');
+  return '<div class="deck mk2">'+cells.join("")+'</div>';
+}
+function foot(){
+  const last=S.last.map(f=>'<em class="'+f.ch+'">'+(f.ch==="Info"?"":f.ch+" ")+esc(f.what)+'</em>').join(" · ");
+  return '<footer class="foot"><b>'+(has("Musik")?(S.playing?(S.paused?"⏸ ":"▶ ")+esc(S.playing):"–"):"kein Ton")+'</b><span>'+last+'</span></footer>';
+}
+function info(){
+  const k=S.info; if(!k) return "";
+  const rows=LIGEN.map(l=>{ const vis=!(k.nur&&!k.nur.includes(l))&&!(k.liga&&!k.liga[l]); const c=k.liga?k.liga[l]:k.a; return '<tr class="'+(l===S.liga?"cur":"")+'"><td>'+l+'</td><td>'+(vis?esc(c.replace(/^music:/,"Musik: ").replace(/^led:/,"LED: ").replace(/^vmix:/,"vMix: ").replace(/^page:/,"Seite: ")):'<span class="mut">ausgeblendet</span>')+'</td></tr>'; }).join("");
+  const extra=[k.ch?"Gerät: "+k.ch:"", k.halle?"Nur Halle: "+k.halle.map(h=>HALLS[h].name).join(", "):"", k.ohneLed?"Nur ohne LED-Wand":""].filter(Boolean).join(" · ");
+  return '<div class="dimmer" data-act="info"><div class="sheet" data-stop><div class="head"><b class="disp">'+esc(k.l.replace(/<[^>]+>/g,""))+'</b><button data-act="info">Schliessen</button></div><table><tr><th>Liga</th><th>Befehl</th></tr>'+rows+'</table>'+(extra?'<span class="mut">'+extra+'</span>':'')+'</div></div>';
+}
+function monitor(){
+  if(!S.monitor) return "";
+  return '<div class="dimmer" data-act="monitoroff"><div class="sheet" data-stop><div class="head"><b class="disp">LED-Wand</b><button data-act="monitoroff">Schliessen</button></div><div class="mon"><b>NDI Ausgang '+S.monitor+'</b><span>Bild kommt über den Agenten (NDI → MJPEG)</span></div><div class="row"><button class="dk '+(S.monitor==="1"?"gold":"")+'" data-act="monitor:1">Ausgang 1</button><button class="dk '+(S.monitor==="2"?"gold":"")+'" data-act="monitor:2">Ausgang 2</button></div></div></div>';
+}
+
+document.addEventListener("click", e=>{
+  const stop=e.target.closest("[data-stop]"); const el=e.target.closest("[data-act]"); if(!el) return;
+  if(el.classList.contains("dimmer")&&stop) return;
+  const a=el.getAttribute("data-act"); let def=null;
+  if(S.hall&&S.liga&&!S.page) def=PAGES[S.tab].find(k=>cmd(k)===a)||null;
+  act(a, def);
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ if(S.info) S.info=null; else if(S.monitor) S.monitor=null; else if(S.page) S.page=null; render(); } });
+render();
+})();
+</script>
