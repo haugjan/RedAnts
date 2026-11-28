@@ -78,7 +78,8 @@ public sealed record BoardButton(
     string? Icon = null,
     IReadOnlyList<string>? Leagues = null,
     IReadOnlyDictionary<string, ButtonAction>? PerLeague = null,
-    string? State = null)
+    string? State = null,
+    string? Category = null)
 {
     public bool OfferedIn(string league) =>
         Leagues is not { Count: > 0 } only || only.Contains(league, StringComparer.OrdinalIgnoreCase);

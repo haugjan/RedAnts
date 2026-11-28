@@ -27,3 +27,6 @@
 @media (max-width: 1100px) {
     .bt-layout { grid-template-columns: 1fr; }
 }
+.bt-category { flex-basis: 100%; margin: 10px 0 0; color: #c7cdd3 !important; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #8a929c; }
+.bt-category:first-child { margin-top: 0; }
+.bt-category-grid { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; }

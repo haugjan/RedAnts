@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using RedAnts.Show.Domain;
 
 namespace RedAnts.Show.Infrastructure.Content;
@@ -68,24 +69,127 @@ public static class TabBoardStart
             new ButtonAction(KeyKinds.Special, Special: special.Id),
             special.Icon is { Length: > 0 } icon ? icon : null));
 
+    public static class Categories
+    {
+        public const string Before = "Vor dem Spiel";
+        public const string Break = "Pause";
+        public const string After = "Nach dem Spiel";
+        public const string Special = "Spezielle Situationen";
+        public const string Music = "Musik";
+        public const string Players = "Spielerinnen";
+        public const string MusicControl = "Musiksteuerung";
+        public const string Vmix = "vMix";
+        public const string Led = "LED";
+        public const string TeamLogos = "Teamlogos";
+        public const string Messages = "Meldungen";
+        public const string Live = "Anzeige";
+        public const string Functions = "Funktionen";
+    }
+
+    private sealed record Source(DeckKey Key, string Label, string? League, string Category, ButtonAction Action);
+
     private static IEnumerable<BoardButton> ButtonsFrom(ShowSetup show)
     {
-        var seen = new HashSet<string>();
-        var ids = new HashSet<string>(Transport, StringComparer.OrdinalIgnoreCase);
-        var keys = show.DeckLibrary
+        var sources = show.DeckLibrary
             .SelectMany(deck => show.PagesOf(deck))
-            .SelectMany(page => page.Keys)
-            .Where(key => ButtonAction.Kinds.Contains(key.Kind))
-            .Where(key => !(key.Kind == KeyKinds.Special && Transport.Contains(key.Special)));
-        foreach (var key in keys)
+            .SelectMany(page => page.Keys.Select(key => (page, key)))
+            .Where(pair => ButtonAction.Kinds.Contains(pair.key.Kind))
+            .Where(pair => !(pair.key.Kind == KeyKinds.Special && Transport.Contains(pair.key.Special)))
+            .Where(pair => !(pair.key.Kind == KeyKinds.Live && string.IsNullOrWhiteSpace(pair.key.Live)))
+            .Select(pair => new Source(
+                pair.key,
+                CleanLabel(pair.key),
+                LeagueOf(pair.page.Name),
+                CategoryOf(pair.page, pair.key),
+                new ButtonAction(pair.key.Kind, pair.key.MusicId, pair.key.Special, pair.key.Live, pair.key.Steps, pair.key.Livestream, pair.key.Led)))
+            .Where(source => Valid(source.Action, source.Label))
+            .ToList();
+
+        var groups = sources
+            .GroupBy(source => source.Key.Kind == KeyKinds.Music
+                ? source.Label.ToLowerInvariant() + "|music"
+                : source.Label.ToLowerInvariant() + "|" + Signature(source.Action))
+            .ToList();
+        var collisions = groups.GroupBy(g => g.First().Label, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1).SelectMany(g => g).Select(g => g.Key).ToHashSet();
+        var ids = new HashSet<string>(Transport, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in groups)
         {
-            var action = new ButtonAction(key.Kind, key.MusicId, key.Special, key.Live, key.Steps, key.Livestream, key.Led);
-            var label = key.Label is { Length: > 0 } text ? text : SpecialKey.Of(key.Special)?.Label ?? KeyKinds.Label(key.Kind);
-            var signature = label + "|" + key.Color + "|" + key.Icon + "|" + JsonSerializer.Serialize(action, ShowJson.Options);
-            if (!seen.Add(signature)) continue;
-            if (!Valid(action, label)) continue;
-            yield return new BoardButton(UniqueId(Slug(label), ids), label, key.Color, action, key.Icon);
+            var main = group.FirstOrDefault(s => s.League == Lupl) ?? group.First();
+            var label = collisions.Contains(group.Key) ? Distinct(main) : main.Label;
+            var leagues = group.Where(s => s.League is not null).Select(s => s.League!).Distinct().ToList();
+            var everywhere = group.Any(s => s.League is null) || Leagues.All(l => leagues.Contains(l.Id));
+            var variants = group
+                .Where(s => s.League is not null && s.League != main.League && Signature(s.Action) != Signature(main.Action))
+                .GroupBy(s => s.League!)
+                .ToDictionary(g => g.Key, g => g.First().Action);
+            yield return new BoardButton(
+                UniqueId(Slug(label), ids),
+                label,
+                main.Key.Color,
+                main.Action,
+                main.Key.Icon is { Length: > 0 } icon ? icon : null,
+                Leagues: everywhere ? null : leagues,
+                PerLeague: variants.Count > 0 ? variants : null,
+                Category: main.Category);
         }
+    }
+
+    private static string Signature(ButtonAction action) => JsonSerializer.Serialize(action, ShowJson.Options);
+
+    private static string Distinct(Source source)
+    {
+        if (source.Key.Kind == KeyKinds.Special && SpecialKey.Of(source.Key.Special) is { } special) return special.Label;
+        var steps = Signature(source.Action);
+        if (steps.Contains("home", StringComparison.OrdinalIgnoreCase)) return source.Label + " Heim";
+        if (steps.Contains("away", StringComparison.OrdinalIgnoreCase)) return source.Label + " Gast";
+        return source.Label;
+    }
+
+    public static string CleanLabel(DeckKey key)
+    {
+        var label = key.Label is { Length: > 0 } text ? text : SpecialKey.Of(key.Special)?.Label ?? KeyKinds.Label(key.Kind);
+        label = Regex.Replace(label, @"^\d+\.\s+", "");
+        label = Regex.Replace(label, @"\s*\((?:nur\s+)?(?:L-UPL|U21|U17|1\.?\s*Liga)[^)]*\)", "", RegexOptions.IgnoreCase);
+        label = Regex.Replace(label, @"\s+L-UPL$", "", RegexOptions.IgnoreCase);
+        return label.Trim();
+    }
+
+    public static string? LeagueOf(string page)
+    {
+        if (page.Contains("L-UPL", StringComparison.OrdinalIgnoreCase)) return Lupl;
+        if (page.Contains("U21", StringComparison.OrdinalIgnoreCase)) return U21;
+        if (page.Contains("U17", StringComparison.OrdinalIgnoreCase)) return U17;
+        if (Regex.IsMatch(page, @"1\.?\s*Liga", RegexOptions.IgnoreCase)) return FirstLeague;
+        return null;
+    }
+
+    private static string CategoryOf(DeckPage page, DeckKey key)
+    {
+        if (key.Kind == KeyKinds.Live) return Categories.Live;
+        if (key.Kind == KeyKinds.Special)
+        {
+            if (SpecialKey.ChoosesPlayer(key.Special) || key.Special is { } id && (id.StartsWith("spieler-") || id.StartsWith("bestplayer-") || id.StartsWith("starting6-")))
+                return Categories.Players;
+            if (key.Special is { } music && (music.StartsWith("musik-") || music == SpecialKey.AutoBreakMusic)) return Categories.MusicControl;
+            return Categories.Functions;
+        }
+        var name = page.Name;
+        if (name.Contains("Teamlogo", StringComparison.OrdinalIgnoreCase)) return Categories.TeamLogos;
+        if (name.Contains("Meldung", StringComparison.OrdinalIgnoreCase)) return Categories.Messages;
+        if (key.Kind == KeyKinds.Music)
+        {
+            if (name.StartsWith("Vor", StringComparison.OrdinalIgnoreCase)) return Categories.Before;
+            if (name.StartsWith("Pause", StringComparison.OrdinalIgnoreCase)) return Categories.Break;
+            if (name.StartsWith("Nach", StringComparison.OrdinalIgnoreCase)) return Categories.After;
+            if (name.Contains("Special", StringComparison.OrdinalIgnoreCase)) return Categories.Special;
+            return Categories.Music;
+        }
+        var steps = key.Steps ?? [];
+        if (steps.Count > 0 && steps.All(s => s.Action.StartsWith("led.") || s.Action == KeyActions.Wait)) return Categories.Led;
+        if (steps.Any(s => s.Action.StartsWith("vmix."))) return Categories.Vmix;
+        return Categories.Functions;
     }
 
     private static bool Valid(ButtonAction action, string label)

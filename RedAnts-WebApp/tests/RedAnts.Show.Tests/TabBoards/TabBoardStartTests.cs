@@ -65,11 +65,11 @@ public class TabBoardStartTests
     }
 
     [Fact]
-    public void Buttons_with_the_same_text_get_distinct_ids()
+    public void Buttons_with_the_same_text_but_other_commands_get_distinct_ids()
     {
         var board = TabBoardStart.Build(Setup(
-            new DeckKey(1, KeyKinds.Music, "Tor", MusicId: "a"),
-            new DeckKey(2, KeyKinds.Music, "Tor", MusicId: "b")), NoHalls);
+            new DeckKey(1, KeyKinds.Steps, "Tor", Steps: [new KeyStep(KeyActions.MusicPlay, "a")]),
+            new DeckKey(2, KeyKinds.Steps, "Tor", Steps: [new KeyStep(KeyActions.MusicPlay, "b")])), NoHalls);
 
         Assert.Equal(["tor", "tor-2"], board.Buttons.Where(b => b.Label == "Tor").Select(b => b.Id));
     }
@@ -99,10 +99,64 @@ public class TabBoardStartTests
         new DeckKey(1, KeyKinds.Special, "Tor", Special: SpecialKey.GoalHome),
         new DeckKey(2, KeyKinds.Music, "Einlauf", MusicId: "makina")), NoHalls).Validated();
 
+    private static ShowSetup Pages(params (string Name, DeckKey[] Keys)[] pages) => new([], [],
+    [
+        new Deck("xl", "Streamdeck XL", 8, 4,
+            [new DeckPage(DeckPage.HomeId, "Start", null, []), .. pages.Select((p, i) => new DeckPage($"p{i}", p.Name, DeckPage.HomeId, p.Keys))],
+            PanicKey: 25, BackKey: 17),
+    ]);
+
     [Fact]
-    public void A_label_only_key_becomes_a_button() =>
-        Assert.Contains(TabBoardStart.Build(Setup(new DeckKey(1, KeyKinds.Live, "Vor/Nach Spiel, Pause")), NoHalls).Validated().Buttons,
-            b => b.Label == "Vor/Nach Spiel, Pause" && b.Action.Live is null);
+    public void A_page_header_is_left_out() =>
+        Assert.DoesNotContain(TabBoardStart.Build(Setup(new DeckKey(1, KeyKinds.Live, "Vor/Nach Spiel, Pause")), NoHalls).Buttons,
+            b => b.Label == "Vor/Nach Spiel, Pause");
+
+    [Fact]
+    public void The_same_step_in_every_league_becomes_one_button_with_its_league_music()
+    {
+        var board = TabBoardStart.Build(Pages(
+            ("Vor Spiel L-UPL", [new DeckKey(1, KeyKinds.Music, "8. Bully", MusicId: "a")]),
+            ("Vor Spiel U21", [new DeckKey(1, KeyKinds.Music, "6. Bully", MusicId: "b")]),
+            ("Vor Spiel U17", [new DeckKey(1, KeyKinds.Music, "6. Bully", MusicId: "c")]),
+            ("Vor Spiel 1. Liga", [new DeckKey(1, KeyKinds.Music, "6. Bully", MusicId: "a")])), NoHalls).Validated();
+
+        var bully = Assert.Single(board.Buttons, b => b.Label == "Bully");
+        Assert.Null(bully.Leagues);
+        Assert.Equal("a", bully.ActionIn(TabBoardStart.Lupl).MusicId);
+        Assert.Equal("b", bully.ActionIn(TabBoardStart.U21).MusicId);
+        Assert.Equal("c", bully.ActionIn(TabBoardStart.U17).MusicId);
+        Assert.Equal("a", bully.ActionIn(TabBoardStart.FirstLeague).MusicId);
+        Assert.Equal(TabBoardStart.Categories.Before, bully.Category);
+    }
+
+    [Fact]
+    public void A_step_of_one_league_only_is_offered_there_only()
+    {
+        var board = TabBoardStart.Build(Pages(
+            ("Vor Spiel L-UPL", [new DeckKey(1, KeyKinds.Music, "3. LIDL L-UPL", MusicId: "l")]),
+            ("Nach Spiel L-UPL", [new DeckKey(1, KeyKinds.Music, "Lidl nach Spiel (nur L-UPL)", MusicId: "n")])), NoHalls);
+
+        Assert.Equal([TabBoardStart.Lupl], board.Buttons.Single(b => b.Label == "LIDL").Leagues!);
+        Assert.Equal(TabBoardStart.Categories.After, board.Buttons.Single(b => b.Label == "Lidl nach Spiel").Category);
+    }
+
+    [Fact]
+    public void Home_and_away_twins_keep_apart_with_their_side_in_the_text()
+    {
+        var board = TabBoardStart.Build(Setup(
+            new DeckKey(1, KeyKinds.Special, "Tor", Special: SpecialKey.GoalHome),
+            new DeckKey(2, KeyKinds.Special, "Tor", Special: SpecialKey.GoalAway)), NoHalls);
+
+        Assert.Equal(["Tor Heim", "Tor Gast"], board.Buttons.Where(b => b.Category == TabBoardStart.Categories.Players).Select(b => b.Label));
+    }
+
+    [Theory]
+    [InlineData("4. Einlaufmusik (L-UPL, andere siehe unten)", "Einlaufmusik")]
+    [InlineData("2. Einlaufmusik (1 Liga)", "Einlaufmusik")]
+    [InlineData("Nach Spiel (Sieg Red Ants)", "Nach Spiel (Sieg Red Ants)")]
+    [InlineData("3. LIDL L-UPL", "LIDL")]
+    public void The_text_loses_its_number_and_league(string label, string clean) =>
+        Assert.Equal(clean, TabBoardStart.CleanLabel(new DeckKey(1, KeyKinds.Music, label, MusicId: "x")));
 
     [Fact]
     public void A_broken_key_is_left_out_instead_of_stopping_the_start() =>

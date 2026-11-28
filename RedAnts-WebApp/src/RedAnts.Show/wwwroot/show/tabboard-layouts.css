@@ -37,3 +37,4 @@
 .ly-runpos { width: 1.6rem; text-align: right; font-weight: 700; color: var(--sa-muted); }
 .ly-runname { flex: 1; font-weight: 700; }
 .ly-runslot { color: var(--sa-muted); font-size: 0.72rem; }
+.ly-picker-category { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--sa-muted, #8a929c); }

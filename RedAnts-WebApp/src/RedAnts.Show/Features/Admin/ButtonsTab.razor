@@ -11,7 +11,7 @@
     </p>
 
     <div class="sa-actions">
-        <input class="sa-input bt-search" type="search" placeholder="Suchen nach Text oder Kennung" @bind="_search" @bind:event="oninput" />
+        <input class="sa-input bt-search" type="search" placeholder="Suchen nach Text, Kennung oder Kategorie" @bind="_search" @bind:event="oninput" />
         <span class="sa-hint">@Filtered.Count von @_buttons.Count Buttons</span>
         <button class="sa-btn small" @onclick="Add">+ Button</button>
         <span class="sd-spacer"></span>
@@ -29,10 +29,16 @@
             {
                 <p class="sa-hint">@(_buttons.Count == 0 ? "Noch keine Buttons. Mit „+ Button“ den ersten anlegen." : "Kein Button passt zur Suche.")</p>
             }
-            @foreach (var button in Filtered)
+            @foreach (var group in ButtonLibrary.Grouped(_buttons, _search))
             {
-                var id = button.Id;
-                <BoardButtonTile @key="id" Button="button" Selected="@(id == _selectedId)" OnClick="() => Select(id)" />
+                <h3 class="bt-category">@group.Key <span class="sa-hint">@group.Count()</span></h3>
+                <div class="bt-category-grid">
+                    @foreach (var button in group)
+                    {
+                        var id = button.Id;
+                        <BoardButtonTile @key="id" Button="button" Selected="@(id == _selectedId)" OnClick="() => Select(id)" />
+                    }
+                </div>
             }
         </div>
 
@@ -61,6 +67,15 @@
 
                 <div class="sa-form">
                     <label>Text <input class="sa-input" value="@current.Label" @onchange="SetLabel" /></label>
+                    <label>Kategorie
+                        <input class="sa-input" list="bt-categories" value="@(current.Category ?? "")" @onchange="SetCategory" placeholder="wählen oder neu eingeben" />
+                        <datalist id="bt-categories">
+                            @foreach (var category in ButtonLibrary.Categories(_buttons))
+                            {
+                                <option value="@category"></option>
+                            }
+                        </datalist>
+                    </label>
                     <label>Farbe
                         <span class="bt-color">
                             <input class="sa-input" type="color" value="@ColorValue(current.Color)" @onchange="SetColor" />
@@ -269,6 +284,12 @@
             return;
         }
         Change(b => b with { Label = text });
+    }
+
+    private void SetCategory(ChangeEventArgs e)
+    {
+        var text = (e.Value?.ToString() ?? "").Trim();
+        Change(b => b with { Category = text.Length > 0 ? text : null });
     }
 
     private void SetColor(ChangeEventArgs e)

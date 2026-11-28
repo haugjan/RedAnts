@@ -3,7 +3,7 @@
 <div class="ly-picker">
     <div class="ly-picker-head">
         <strong>@Title</strong>
-        <input class="sa-input" placeholder="Suchen: Text oder Kennung" value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
+        <input class="sa-input" placeholder="Suchen: Text, Kennung oder Kategorie" value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
         <button class="sa-btn small" @onclick="OnCancel">Abbrechen</button>
     </div>
     @if (Matches.Count == 0)
@@ -12,8 +12,11 @@
     }
     else
     {
+        @foreach (var group in ButtonLibrary.Grouped(Buttons, _search))
+        {
+        <h4 class="ly-picker-category">@group.Key</h4>
         <div class="ly-picker-grid">
-            @foreach (var button in Matches)
+            @foreach (var button in group)
             {
                 var id = button.Id;
                 <div class="ly-pick" title="@button.Id">
@@ -26,6 +29,7 @@
                 </div>
             }
         </div>
+        }
     }
 </div>
 
@@ -38,13 +42,7 @@
     [Parameter] public EventCallback<string> OnPick { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
-    private IReadOnlyList<BoardButton> Matches =>
-        Buttons
-            .Where(b => _search.Trim().Length == 0
-                || b.Label.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase)
-                || b.Id.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
-            .OrderBy(b => b.Label, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+    private IReadOnlyList<BoardButton> Matches => ButtonLibrary.Find(Buttons, _search);
 
     private string Restriction(BoardButton button) =>
         button.Leagues is { Count: > 0 } only
