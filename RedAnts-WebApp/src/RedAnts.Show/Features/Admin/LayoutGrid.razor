@@ -1,0 +1,77 @@
+@using RedAnts.Show.Domain
+
+<div class="sa-deck ly-deck @(ReadOnly ? "preview" : "")" style="grid-template-columns:repeat(@Columns, 92px)">
+    @foreach (var slot in Slots)
+    {
+        var number = slot.Number;
+        <div class="ly-slot @ClassOf(slot)"
+             draggable="@(Draggable(slot) ? "true" : "false")"
+             @ondragstart="() => _dragFrom = number"
+             @ondragend="() => _dragFrom = 0"
+             @ondragover:preventDefault="true"
+             @ondragenter:preventDefault="true"
+             @ondrop="() => DropAsync(number)"
+             @onclick="() => SelectAsync(number)">
+            <BoardButtonTile Button="slot.Button"
+                             Number="number"
+                             Position="slot.Position"
+                             Caption="slot.Caption"
+                             Selected="@(!ReadOnly && number == Selected)"
+                             Muted="@(slot.Kind == LayoutSlotKind.Always || !slot.OnDeck)" />
+            @if (!slot.OnDeck)
+            {
+                <span class="ly-badge">nur Bord</span>
+            }
+            else if (slot.Kind == LayoutSlotKind.Always && !ReadOnly)
+            {
+                <span class="ly-badge">jeder Tab</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private int _dragFrom;
+
+    [Parameter] public int Columns { get; set; }
+    [Parameter] public IReadOnlyList<LayoutSlot> Slots { get; set; } = [];
+    [Parameter] public int Selected { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public string? ActiveRun { get; set; }
+    [Parameter] public int? NextSlot { get; set; }
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
+
+    private string ClassOf(LayoutSlot slot) => string.Join(' ', new[]
+    {
+        slot.Kind switch
+        {
+            LayoutSlotKind.Reserved => "locked",
+            LayoutSlotKind.Run => "run",
+            LayoutSlotKind.Always => "always",
+            LayoutSlotKind.Free => "free",
+            _ => "placed",
+        },
+        slot.RunId is not null && slot.RunId == ActiveRun ? "active" : "",
+        !ReadOnly && slot.Number == NextSlot ? "next" : "",
+        _dragFrom == slot.Number ? "dragging" : "",
+        _dragFrom > 0 && slot.Kind == LayoutSlotKind.Free ? "target" : "",
+    }.Where(c => c.Length > 0));
+
+    private bool Draggable(LayoutSlot slot) => !ReadOnly && slot.Kind == LayoutSlotKind.Placed;
+
+    private async Task SelectAsync(int number)
+    {
+        if (ReadOnly) return;
+        await OnSelect.InvokeAsync(number);
+    }
+
+    private async Task DropAsync(int number)
+    {
+        var from = _dragFrom;
+        _dragFrom = 0;
+        if (ReadOnly || from == 0 || from == number) return;
+        if (Slots.FirstOrDefault(s => s.Number == number)?.Kind != LayoutSlotKind.Free) return;
+        await OnMove.InvokeAsync((from, number));
+    }
+}

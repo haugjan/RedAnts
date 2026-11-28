@@ -1,6 +1,403 @@
 @inherits TabBoardTab
 
-<section class="sa-card">
-    <h2>Bord (Tabs) <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
-    <p class="sa-hint">@Board.Decks.Count Decks, @Board.Layouts.Count Tab-Belegungen.</p>
+<section class="sa-card ly">
+    <h2>
+        Bord (Tabs)
+        <StatusLine Text="@Status" IsError="@StatusIsError" />
+        @if (Dirty)
+        {
+            <span class="sa-pill on">ungespeicherte Änderungen</span>
+        }
+    </h2>
+    <p class="sa-hint">
+        Jeder Button hat einen festen Platz und bleibt dort in jeder Liga; gibt es ihn in einer Liga nicht, bleibt sein Platz leer.
+        Nur in einer Reihe wird durchnummeriert und nachgerückt. Decks, die dem Tab folgen, teilen sich die Belegung mit allen Decks derselben Grösse.
+    </p>
+
+    @if (_decks.Count == 0)
+    {
+        <p class="sa-hint">Auf dem Bord gibt es noch kein Deck.</p>
+    }
+    else if (Deck is { } deck)
+    {
+        <div class="sa-actions">
+            <label class="sa-inline">Deck
+                <select class="sa-input" value="@_deckId" @onchange="OnDeckChanged">
+                    @foreach (var row in _decks)
+                    {
+                        <option value="@row.Id">@row.Name (@row.Columns × @row.Rows)</option>
+                    }
+                </select>
+            </label>
+            <label class="sa-inline">Vorschau für Liga
+                <select class="sa-input" value="@_league" @onchange="OnLeagueChanged">
+                    <option value="">keine, bearbeiten</option>
+                    @foreach (var league in Board.Leagues)
+                    {
+                        <option value="@league.Id">@league.Name</option>
+                    }
+                </select>
+            </label>
+            <span class="sd-spacer"></span>
+            <LayoutConfirm Label="Verwerfen" Confirm="Änderungen verwerfen" Disabled="@(!Dirty)" OnConfirm="DiscardAsync" />
+            <button class="sa-btn primary" @onclick="SaveAsync" disabled="@(!Dirty)">💾 Speichern</button>
+        </div>
+
+        <div class="sa-actions">
+            <label class="sa-inline">Name des Decks <input class="sa-input" value="@deck.Name" @onchange="RenameDeck" /></label>
+            <label class="sa-check">
+                <input type="checkbox" checked="@deck.FollowsTab" @onchange="e => SetFollows(e.Value is true)" />
+                folgt dem Tab auf dem Bord
+            </label>
+            <span class="sa-hint">PANIC auf @deck.Panic · Zurück auf @deck.Back · @Sharing(deck)</span>
+        </div>
+
+        <div class="sa-choice ly-tabs">
+            @if (deck.FollowsTab)
+            {
+                @foreach (var (id, label) in BoardTabs.All)
+                {
+                    var tab = id;
+                    <button class="@(!_always && _tab == tab ? "active" : "")" @onclick="() => ChooseTab(tab)">@label</button>
+                }
+            }
+            else
+            {
+                <button class="@(!_always ? "active" : "")" @onclick="() => ChooseTab(_tab)">Eigene Seite</button>
+            }
+            <button class="ly-always @(_always ? "active" : "")" @onclick="ChooseAlways">Auf jedem Tab</button>
+        </div>
+
+        <div class="sa-deckgrid">
+            <div>
+                @if (Previewing)
+                {
+                    <p class="ly-caption">Vorschau @LeagueName · @(deck.FollowsTab ? BoardTabs.Label(_tab) : "eigene Seite"), so wie das Deck sie zeigt</p>
+                    <LayoutGrid Columns="deck.Columns" Slots="LayoutEdits.Preview(Draft, deck, _tab, _league)" ReadOnly="true" />
+                }
+                else
+                {
+                    <p class="ly-caption">@Where(deck)</p>
+                    <LayoutGrid Columns="deck.Columns"
+                                Slots="LayoutEdits.Slots(Draft, deck, Editing, Behind)"
+                                Selected="_selected"
+                                ActiveRun="@ActiveRun?.Id"
+                                NextSlot="@(ActiveRun is { Buttons.Count: > 0 } run ? LayoutEdits.NextSlot(run) : null)"
+                                OnSelect="Select"
+                                OnMove="Move" />
+                }
+            </div>
+
+            <div class="sa-keyeditor ly-panel">
+                @if (Previewing)
+                {
+                    <p class="sa-hint">Die Vorschau lässt sich nicht bearbeiten. Ohne Liga wird wieder die Belegung gezeigt.</p>
+                }
+                else if (_picking)
+                {
+                    <ButtonPicker Title="@PickTitle" Buttons="Board.Buttons" Leagues="Board.Leagues" OnPick="Pick" OnCancel="() => _picking = false" />
+                }
+                else if (_selected == 0)
+                {
+                    <p class="sa-hint">Einen Platz im Raster wählen. Einen einzelnen Button kann man auf einen freien Platz ziehen.</p>
+                }
+                else
+                {
+                    <h3>Platz @_selected</h3>
+                    @SlotPanel(deck)
+                }
+            </div>
+        </div>
+    }
 </section>
+
+@code {
+    private List<BoardDeck> _decks = [];
+    private List<TabLayout> _layouts = [];
+    private string _deckId = "";
+    private string _tab = BoardTabs.Before;
+    private bool _always;
+    private string _league = "";
+    private int _selected;
+    private bool _picking;
+    private bool _newRun;
+    private string _runName = "";
+
+    private BoardDeck? Deck => _decks.FirstOrDefault(d => d.Id == _deckId);
+
+    private TabBoard Draft => Board with { Decks = _decks, Layouts = _layouts };
+
+    private bool Previewing => _league.Length > 0;
+
+    private string LeagueName => Board.Leagues.FirstOrDefault(l => l.Id == _league)?.Name ?? _league;
+
+    private BoardLayout Editing => Deck is not { } deck
+        ? BoardLayout.Empty
+        : _always ? deck.Fixed ?? BoardLayout.Empty : Draft.LayoutOf(deck, _tab);
+
+    private BoardLayout? Behind => _always ? null : Deck?.Fixed;
+
+    private LayoutSlot? Current => Deck is { } deck && _selected > 0
+        ? LayoutEdits.Slots(Draft, deck, Editing, Behind).FirstOrDefault(s => s.Number == _selected)
+        : null;
+
+    private NumberedRun? ActiveRun => _selected > 0 ? LayoutEdits.RunAt(Editing, _selected) : null;
+
+    private string PickTitle => ActiveRun is { } run ? $"Button für die Reihe „{run.Name}“" : $"Button für Platz {_selected}";
+
+    protected override Task OnBoardLoadedAsync()
+    {
+        _decks = Board.Decks.ToList();
+        _layouts = Board.Layouts.ToList();
+        if (Deck is null) _deckId = _decks.FirstOrDefault()?.Id ?? "";
+        Reset();
+        return Task.CompletedTask;
+    }
+
+    private void Reset()
+    {
+        _selected = 0;
+        _picking = false;
+        _newRun = false;
+        _runName = "";
+    }
+
+    private string Where(BoardDeck deck) => _always
+        ? "Auf jedem Tab: diese Tasten liegen immer da, ein Button des Tabs geht vor"
+        : deck.FollowsTab ? $"{BoardTabs.Label(_tab)} auf {deck.Columns} × {deck.Rows} Tasten" : "Eigene Seite, unabhängig vom Tab";
+
+    private string Sharing(BoardDeck deck)
+    {
+        if (!deck.FollowsTab) return "zeigt immer seine eigene Seite";
+        var others = _decks.Where(d => d.Id != deck.Id && d.FollowsTab && d.Columns == deck.Columns && d.Rows == deck.Rows).Select(d => d.Name).ToList();
+        return others.Count == 0 ? "Tab-Belegung mit keinem weiteren Deck geteilt" : $"Tab-Belegung geteilt mit {string.Join(", ", others)}";
+    }
+
+    private void OnDeckChanged(ChangeEventArgs e)
+    {
+        _deckId = e.Value?.ToString() ?? "";
+        _always = false;
+        Reset();
+    }
+
+    private void OnLeagueChanged(ChangeEventArgs e)
+    {
+        _league = e.Value?.ToString() ?? "";
+        Reset();
+    }
+
+    private void ChooseTab(string tab)
+    {
+        _tab = tab;
+        _always = false;
+        Reset();
+    }
+
+    private void ChooseAlways()
+    {
+        _always = true;
+        Reset();
+    }
+
+    private void Select(int number)
+    {
+        _selected = number;
+        _picking = false;
+        _newRun = false;
+    }
+
+    private void Move((int From, int To) move)
+    {
+        if (Deck is not { } deck) return;
+        if (Apply(layout => LayoutEdits.Move(layout, deck, move.From, move.To, Behind))) _selected = move.To;
+    }
+
+    private void Pick(string buttonId)
+    {
+        if (Deck is not { } deck) return;
+        _picking = false;
+        if (ActiveRun is { } run)
+            Apply(layout => LayoutEdits.AddToRun(layout, deck, run.Id, buttonId, Behind));
+        else
+            Apply(layout => LayoutEdits.Place(layout, deck, _selected, buttonId, Behind));
+    }
+
+    private void CreateRun()
+    {
+        if (Deck is not { } deck) return;
+        var start = _selected;
+        var name = _runName;
+        if (Apply(layout => LayoutEdits.AddRun(layout, deck, name, start, Behind).Layout))
+        {
+            _newRun = false;
+            _runName = "";
+            _picking = true;
+        }
+    }
+
+    private void MoveRun(NumberedRun run, int start)
+    {
+        if (Deck is not { } deck) return;
+        if (Apply(layout => LayoutEdits.MoveRun(layout, deck, run.Id, start, Behind))) _selected = start;
+    }
+
+    private void DeleteRun(NumberedRun run)
+    {
+        if (Apply(layout => LayoutEdits.DeleteRun(layout, run.Id))) Notify($"Reihe „{run.Name}“ gelöscht.");
+    }
+
+    private void RemovePlacement()
+    {
+        Apply(layout => LayoutEdits.Remove(layout, _selected));
+    }
+
+    private void Edit(Func<BoardLayout, BoardLayout> change) => Apply(change);
+
+    private bool Apply(Func<BoardLayout, BoardLayout> change)
+    {
+        if (Deck is not { } deck) return false;
+        try
+        {
+            Store(deck, change(Editing));
+            Touch();
+            return true;
+        }
+        catch (ValidationException e)
+        {
+            Fail(e.Message);
+            return false;
+        }
+    }
+
+    private void Store(BoardDeck deck, BoardLayout layout)
+    {
+        if (_always)
+            Replace(deck with { Fixed = LayoutEdits.IsEmpty(layout) ? null : layout });
+        else if (!deck.FollowsTab)
+            Replace(deck with { Own = LayoutEdits.IsEmpty(layout) ? null : layout });
+        else
+        {
+            var others = _layouts.Where(l => !(l.Tab == _tab && l.Columns == deck.Columns && l.Rows == deck.Rows));
+            _layouts = LayoutEdits.IsEmpty(layout)
+                ? others.ToList()
+                : [.. others, new TabLayout(_tab, deck.Columns, deck.Rows, layout)];
+        }
+    }
+
+    private void Replace(BoardDeck deck) =>
+        _decks = _decks.Select(d => d.Id == deck.Id ? deck : d).ToList();
+
+    private void RenameDeck(ChangeEventArgs e)
+    {
+        if (Deck is not { } deck) return;
+        var name = e.Value?.ToString()?.Trim() ?? "";
+        if (name.Length == 0)
+        {
+            Fail("Das Deck braucht einen Namen.");
+            return;
+        }
+        Replace(deck with { Name = name });
+        Touch();
+    }
+
+    private void SetFollows(bool follows)
+    {
+        if (Deck is not { } deck) return;
+        Replace(deck with { FollowsTab = follows });
+        _always = false;
+        Reset();
+        Touch();
+    }
+
+    private async Task DiscardAsync()
+    {
+        await LoadAsync();
+        Notify("Änderungen verworfen.");
+    }
+
+    private async Task SaveAsync()
+    {
+        var decks = _decks.ToList();
+        var layouts = _layouts.ToList();
+        await SaveBoardAsync(board => board with { Decks = decks, Layouts = layouts });
+    }
+
+    private IReadOnlyList<string> HiddenBy(BoardDeck deck, int number)
+    {
+        if (!_always) return [];
+        if (!deck.FollowsTab)
+            return deck.Own is { } own && LayoutEdits.Claimed(own, number) ? ["der eigenen Seite"] : [];
+        return _layouts
+            .Where(l => l.Columns == deck.Columns && l.Rows == deck.Rows && LayoutEdits.Claimed(l.Layout, number))
+            .Select(l => BoardTabs.Label(l.Tab))
+            .ToList();
+    }
+
+    private RenderFragment SlotPanel(BoardDeck deck) => __builder =>
+    {
+        var slot = Current;
+        if (slot is null) return;
+        switch (slot.Kind)
+        {
+            case LayoutSlotKind.Reserved:
+                <p class="sa-hint">Dieser Platz gehört fest zu @slot.Caption und liegt auf jeder Seite gleich.</p>
+                break;
+            case LayoutSlotKind.Always:
+                <p class="sa-hint">Hier liegt @(slot.Button?.Label ?? slot.Caption) auf jedem Tab. Das wird unter „Auf jedem Tab“ bearbeitet.</p>
+                <button class="sa-btn small" @onclick="ChooseAlways">Auf jedem Tab bearbeiten</button>
+                break;
+            case LayoutSlotKind.Placed:
+                var placement = LayoutEdits.PlacementAt(Editing, _selected);
+                <div class="ly-current">
+                    <BoardButtonTile Button="slot.Button" Caption="slot.Caption" />
+                    <div>
+                        <strong>@(slot.Button?.Label ?? slot.Caption)</strong>
+                        <div class="sa-hint">Kennung <code>@placement?.Button</code></div>
+                    </div>
+                </div>
+                <label class="sa-check">
+                    <input type="checkbox" checked="@(placement is { OnDeck: false })" @onchange="() => Edit(layout => LayoutEdits.ToggleOnDeck(layout, _selected))" />
+                    nur auf dem Bord, nicht auf dem Deck
+                </label>
+                <div class="sa-actions">
+                    <button class="sa-btn small" @onclick="() => _picking = true">Ersetzen</button>
+                    <LayoutConfirm Label="Entfernen" Confirm="Wirklich entfernen" OnConfirm="RemovePlacement" />
+                </div>
+                break;
+            case LayoutSlotKind.Run when ActiveRun is { } run:
+                <LayoutRunPanel Run="run" Board="Draft" Count="deck.Count"
+                                 OnRename="name => Edit(layout => LayoutEdits.RenameRun(layout, run.Id, name))"
+                                 OnStart="start => MoveRun(run, start)"
+                                 OnShift="shift => Edit(layout => LayoutEdits.Shift(layout, run.Id, shift.Index, shift.Delta))"
+                                 OnRemove="index => Edit(layout => LayoutEdits.RemoveFromRun(layout, run.Id, index))"
+                                 OnAdd="() => _picking = true"
+                                 OnDelete="() => DeleteRun(run)" />
+                break;
+            default:
+                @if (HiddenBy(deck, _selected) is { Count: > 0 } hidden)
+                {
+                    <p class="sa-hint">Achtung: auf @string.Join(", ", hidden) liegt hier schon ein Button, der dort vorgeht.</p>
+                }
+                @if (_newRun)
+                {
+                    <div class="ly-newrun">
+                        <label class="sa-inline">Name der Reihe <input class="sa-input" placeholder="z. B. Einlaufen" value="@_runName" @oninput="e => _runName = e.Value?.ToString() ?? string.Empty" /></label>
+                        <p class="sa-hint">Die Reihe beginnt auf Platz @_selected und wächst mit jedem Button nach rechts, am Zeilenende weiter in der nächsten Zeile.</p>
+                        <div class="sa-actions">
+                            <button class="sa-btn small primary" @onclick="CreateRun">Reihe anlegen</button>
+                            <button class="sa-btn small" @onclick="() => _newRun = false">Abbrechen</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="sa-hint">Der Platz ist frei.</p>
+                    <div class="sa-actions">
+                        <button class="sa-btn small primary" @onclick="() => _picking = true">Button setzen</button>
+                        <button class="sa-btn small" @onclick="() => _newRun = true">+ Reihe</button>
+                    </div>
+                }
+                break;
+        }
+    };
+}

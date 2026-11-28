@@ -1,0 +1,56 @@
+@using RedAnts.Show.Domain
+
+<div class="ly-run">
+    <h3>Reihe „@Run.Name“</h3>
+    <p class="sa-hint">
+        Die Buttons werden ab Platz @Run.Start durchnummeriert und lückenlos gepackt. Fehlt ein Button in einer Liga, rücken die folgenden nach.
+        Die Reihe belegt @(Run.Buttons.Count == 0 ? "vorerst nur ihren Startplatz" : $"die Plätze {Run.Start} bis {Run.Start + Run.Buttons.Count - 1}").
+    </p>
+    <div class="sa-actions">
+        <label class="sa-inline">Name <input class="sa-input" value="@Run.Name" @onchange="e => OnRename.InvokeAsync(e.Value?.ToString() ?? string.Empty)" /></label>
+        <label class="sa-inline">Start auf <input class="sa-input sa-num" type="number" min="1" max="@Count" value="@Run.Start" @onchange="ChangeStartAsync" /></label>
+    </div>
+
+    <ol class="ly-runlist">
+        @for (var i = 0; i < Run.Buttons.Count; i++)
+        {
+            var index = i;
+            var id = Run.Buttons[index];
+            var button = Board.Button(id);
+            <li>
+                <span class="ly-runpos">@(index + 1).</span>
+                <span class="sa-swatch" style="background:@(button?.Color ?? "#1e2228")"></span>
+                <span class="ly-runname">@(button?.Label ?? $"fehlt: {id}")</span>
+                <small class="ly-runslot">Platz @(Run.Start + index)</small>
+                <span class="sa-rowops">
+                    <button class="sa-btn small" title="nach oben" disabled="@(index == 0)" @onclick="() => OnShift.InvokeAsync((index, -1))">↑</button>
+                    <button class="sa-btn small" title="nach unten" disabled="@(index == Run.Buttons.Count - 1)" @onclick="() => OnShift.InvokeAsync((index, 1))">↓</button>
+                    <button class="sa-btn small danger" title="aus der Reihe nehmen" @onclick="() => OnRemove.InvokeAsync(index)">✕</button>
+                </span>
+            </li>
+        }
+    </ol>
+
+    <div class="sa-actions">
+        <button class="sa-btn small" @onclick="OnAdd">+ Button in die Reihe</button>
+        <span class="sd-spacer"></span>
+        <LayoutConfirm Label="Reihe löschen" Confirm="Reihe wirklich löschen" OnConfirm="OnDelete" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public NumberedRun Run { get; set; } = default!;
+    [Parameter, EditorRequired] public TabBoard Board { get; set; } = default!;
+    [Parameter] public int Count { get; set; }
+    [Parameter] public EventCallback<string> OnRename { get; set; }
+    [Parameter] public EventCallback<int> OnStart { get; set; }
+    [Parameter] public EventCallback<(int Index, int Delta)> OnShift { get; set; }
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+    [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private async Task ChangeStartAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var start)) await OnStart.InvokeAsync(start);
+    }
+}

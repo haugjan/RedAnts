@@ -1,0 +1,53 @@
+@using RedAnts.Show.Domain
+
+<div class="ly-picker">
+    <div class="ly-picker-head">
+        <strong>@Title</strong>
+        <input class="sa-input" placeholder="Suchen: Text oder Kennung" value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
+        <button class="sa-btn small" @onclick="OnCancel">Abbrechen</button>
+    </div>
+    @if (Matches.Count == 0)
+    {
+        <p class="sa-hint">@(Buttons.Count == 0 ? "Die Bibliothek ist leer. Buttons werden unter „Buttons“ angelegt." : "Kein Button passt zur Suche.")</p>
+    }
+    else
+    {
+        <div class="ly-picker-grid">
+            @foreach (var button in Matches)
+            {
+                var id = button.Id;
+                <div class="ly-pick" title="@button.Id">
+                    <BoardButtonTile Button="button" OnClick="() => OnPick.InvokeAsync(id)" />
+                    <span class="ly-pick-id">@button.Id</span>
+                    @if (Restriction(button) is { Length: > 0 } only)
+                    {
+                        <span class="ly-pick-only">nur @only</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string _search = "";
+
+    [Parameter] public string Title { get; set; } = "Button wählen";
+    [Parameter] public IReadOnlyList<BoardButton> Buttons { get; set; } = [];
+    [Parameter] public IReadOnlyList<League> Leagues { get; set; } = [];
+    [Parameter] public EventCallback<string> OnPick { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private IReadOnlyList<BoardButton> Matches =>
+        Buttons
+            .Where(b => _search.Trim().Length == 0
+                || b.Label.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase)
+                || b.Id.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .OrderBy(b => b.Label, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    private string Restriction(BoardButton button) =>
+        button.Leagues is { Count: > 0 } only
+            ? string.Join(", ", only.Select(id => Leagues.FirstOrDefault(l => l.Id.Equals(id, StringComparison.OrdinalIgnoreCase))?.Name ?? id))
+            : "";
+}
