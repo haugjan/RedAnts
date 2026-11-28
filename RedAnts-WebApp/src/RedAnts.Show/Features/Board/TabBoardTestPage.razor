@@ -1,9 +1,12 @@
 @using RedAnts.Show.Domain
+@using RedAnts.Show.Features.Games
 @using RedAnts.Show.Features.Music
 @using RedAnts.Show.Features.TabBoards
 @implements IDisposable
 @inject GetTabBoard.Handler BoardQuery
 @inject GetMusic.Handler MusicQuery
+@inject GetGames.Handler GamesQuery
+@inject GetGame.Handler GameQuery
 @inject IJSRuntime JS
 
 <div class="hb">
@@ -82,7 +85,15 @@
                     </label>
                 }
             </div>
-            <button class="tw-go" @onclick="Start">Starten</button>
+            <h2>4. Spiel <span class="tw-why">für die Spielerinnen-Auswahl, freiwillig</span></h2>
+            <select class="tw-game" @bind="_gameId">
+                <option value="">Kein Spiel, Beispiel-Spielerinnen</option>
+                @foreach (var game in _games)
+                {
+                    <option value="@game.Id">@GameLabel(game)</option>
+                }
+            </select>
+            <button class="tw-go" @onclick="StartAsync">Starten</button>
         }
     </main>
 }
@@ -110,6 +121,41 @@ else
     </nav>
 
     <main>
+        @if (_pick is { } pick)
+        {
+            <section class="tw-pick">
+                <header>
+                    <strong>@PickPrompt(pick)</strong>
+                    <span class="spacer"></span>
+                    <button class="tw-pick-done" @onclick="() => _pick = null">@(pick.Many ? "Fertig" : "Abbrechen")</button>
+                </header>
+                @if (pick.Action.Special is SpecialKey.PenaltyHome or SpecialKey.PenaltyAway)
+                {
+                    <div class="tw-penalties">
+                        @foreach (var length in BoardPreview.Penalties)
+                        {
+                            var chosen = length;
+                            <button class="tw-tab @(chosen == _penalty ? "on" : "")" @onclick="() => _penalty = chosen">@chosen</button>
+                        }
+                    </div>
+                }
+                @if (_roster.Count == 0)
+                {
+                    <p class="hint">Kein Spiel gewählt oder keine Spielerinnen erfasst. Auf dem Regie-PC kommen sie aus dem Spiel.</p>
+                }
+                <div class="tw-players">
+                    @foreach (var player in Roster(pick))
+                    {
+                        var chosen = player;
+                        <button class="tw-player @(pick.Done.Contains(chosen.Number) ? "done" : "")" @key="chosen.Number" @onclick="() => Pick(pick, chosen)">
+                            <b>@(chosen.Number > 0 ? chosen.Number : "–")</b><span>@chosen.Name</span>
+                        </button>
+                    }
+                </div>
+            </section>
+        }
+        else
+        {
         <section class="deck">
             <div class="grid" style="--cols:@current.Columns">
                 @for (var n = 1; n <= current.Count; n++)
@@ -150,6 +196,7 @@ else
                 }
             </div>
         </section>
+        }
     </main>
 
     <footer class="now">
@@ -201,15 +248,60 @@ else
         if (Venue is { } venue && League is { } league) _functions = BoardFunctions.Defaults(venue, league);
     }
 
-    private void Start()
+    private async Task StartAsync()
     {
+        var game = _gameId.Length > 0 ? await GameQuery.HandleAsync(new GetGame.Query(_gameId)) : null;
+        _game = game;
+        _roster = game is null ? [] : PreviewTeams.Team(game, "home").Players.Concat(PreviewTeams.Team(game, "away").Players).ToList();
+        _pick = null;
         if (Venue is { } venue) _functions = _functions.Within(BoardFunctions.Available(venue));
         _tab = BoardTabs.Before;
-        _preview = BoardPreview.Start;
+        _preview = BoardPreview.Start with { Names = game is null ? null : PreviewTeams.From(game) };
         _started = true;
     }
     private string? _playing;
     private BoardPreview _preview = BoardPreview.Start;
+    private IReadOnlyList<GameRow> _games = [];
+    private string _gameId = "";
+    private Game? _game;
+    private IReadOnlyList<Player> _roster = [];
+    private PlayerPick? _pick;
+    private string _penalty = "2'";
+
+    private sealed record PlayerPick(ButtonAction Action, string Side, bool Many)
+    {
+        public HashSet<int> Done { get; } = [];
+    }
+
+    private static string GameLabel(GameRow game) =>
+        $"{(game.Date is { } date ? date.ToString("dd.MM.yyyy") + " · " : "")}{game.Home} – {game.Away}";
+
+    private string PickPrompt(PlayerPick pick) => pick.Action.Special switch
+    {
+        SpecialKey.GoalHome or SpecialKey.GoalAway => $"Torschützin {_preview.Teams.Of(pick.Side)}?",
+        SpecialKey.PenaltyHome or SpecialKey.PenaltyAway => $"Strafe {_preview.Teams.Of(pick.Side)}: wer?",
+        SpecialKey.BestPlayerHome or SpecialKey.BestPlayerAway => $"Best Player {_preview.Teams.Of(pick.Side)}?",
+        SpecialKey.Starting6Home or SpecialKey.Starting6Away => $"Starting Six {_preview.Teams.Of(pick.Side)}: der Reihe nach antippen",
+        _ => $"Spielerin {_preview.Teams.Of(pick.Side)}?",
+    };
+
+    private IReadOnlyList<Player> Roster(PlayerPick pick)
+    {
+        if (_game is not { } game) return [BoardPreview.SamplePlayer(pick.Side)];
+        var team = PreviewTeams.Team(game, pick.Side);
+        if (team.Players.Count == 0) return [BoardPreview.SamplePlayer(pick.Side)];
+        var starting = pick.Action.Special is SpecialKey.Starting6Home or SpecialKey.Starting6Away && team.HasStarting6
+            ? team.Starting6.Select(n => team.Find(n)!).ToList()
+            : [];
+        return starting.Count > 0 ? starting : team.Players.OrderBy(p => p.Number).ToList();
+    }
+
+    private void Pick(PlayerPick pick, Player player)
+    {
+        _preview = _preview.Picked(pick.Action, player, _functions, _penalty);
+        pick.Done.Add(player.Number);
+        if (!pick.Many) _pick = null;
+    }
     private int _press;
 
     private bool LedInHall => Venue is not { } venue || BoardFunctions.Available(venue).Led;
@@ -225,6 +317,7 @@ else
     {
         _board = await BoardQuery.HandleAsync(new GetTabBoard.Query());
         _music = await MusicQuery.HandleAsync(new GetMusic.Query());
+        _games = (await GamesQuery.HandleAsync(new GetGames.Query())).Take(40).ToList();
         _deckId = _board.Decks.FirstOrDefault(d => d.FollowsTab)?.Id ?? _board.Decks.FirstOrDefault()?.Id ?? "";
         _league = "";
     }
@@ -247,7 +340,16 @@ else
 
     private async Task PressAsync(ResolvedKey? key, WebKey web, MusicItem? music)
     {
-        if (key is not null) _ = PreviewAsync(key.Action);
+        if (key is not null)
+        {
+            _ = PreviewAsync(key.Action);
+            if (BoardPreview.Picks(key.Action) && _functions.Players)
+            {
+                _penalty = BoardPreview.Penalties[0];
+                _pick = new PlayerPick(key.Action, BoardPreview.SideOf(key.Action),
+                    key.Action.Special is SpecialKey.Starting6Home or SpecialKey.Starting6Away);
+            }
+        }
         if (music is not null)
         {
             if (_playing == music.Id)

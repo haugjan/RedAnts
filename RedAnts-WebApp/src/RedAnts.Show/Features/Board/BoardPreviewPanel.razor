@@ -21,8 +21,8 @@
                         <b class="b" style="left:calc(295*var(--u));top:calc(118*var(--u));width:calc(141*var(--u));height:calc(40*var(--u))"></b>
                         <b style="left:calc(268*var(--u));top:calc(73*var(--u));width:calc(8*var(--u));height:calc(15*var(--u));background:#e32412"></b>
                         <b style="left:calc(456*var(--u));top:calc(73*var(--u));width:calc(8*var(--u));height:calc(15*var(--u));background:#1f4e79"></b>
-                        <em style="left:calc(135*var(--u));top:calc(72*var(--u));width:calc(135*var(--u));font-size:calc(30*var(--u))">@BoardPreview.HomeShort</em>
-                        <em style="left:calc(462*var(--u));top:calc(72*var(--u));width:calc(135*var(--u));font-size:calc(30*var(--u))">@BoardPreview.AwayShort</em>
+                        <em style="left:calc(135*var(--u));top:calc(72*var(--u));width:calc(135*var(--u));font-size:calc(30*var(--u))">@Preview.Teams.HomeShort</em>
+                        <em style="left:calc(462*var(--u));top:calc(72*var(--u));width:calc(135*var(--u));font-size:calc(30*var(--u))">@Preview.Teams.AwayShort</em>
                         <em class="dark" style="left:calc(287*var(--u));top:calc(69*var(--u));width:calc(55*var(--u));font-size:calc(34*var(--u))">@Preview.Home</em>
                         <em class="dark" style="left:calc(390*var(--u));top:calc(69*var(--u));width:calc(55*var(--u));font-size:calc(34*var(--u))">@Preview.Away</em>
                         <em style="left:calc(351*var(--u));top:calc(85*var(--u));width:calc(31*var(--u));font-size:calc(23*var(--u))">@(Functions.Clock ? "1" : "")</em>
@@ -118,18 +118,18 @@
                             }
                             else
                             {
-                                <span class="led-name">@BoardPreview.HomeTeam</span>
+                                <span class="led-name">@Preview.Teams.Home</span>
                             }
                             break;
                         case "guest-goal":
-                            <span class="led-mid">Tor @BoardPreview.AwayTeam</span>
+                            <span class="led-mid">Tor @Preview.Teams.Away</span>
                             break;
                         case "player":
                             <span class="led-number">@LedNumber</span>
                             <span class="led-name">@LedName</span>
                             break;
                         case "guest":
-                            <span class="led-mid">@BoardPreview.AwayTeam</span>
+                            <span class="led-mid">@Preview.Teams.Away</span>
                             <span class="led-small">Gästelogo</span>
                             break;
                         case "intro":
@@ -155,9 +155,9 @@
                     }
                 </div>
                 <div class="led-clock">
-                    <span>@BoardPreview.HomeShort</span>
+                    <span>@Preview.Teams.HomeShort</span>
                     <strong>@Preview.Home : @Preview.Away</strong>
-                    <span>@BoardPreview.AwayShort</span>
+                    <span>@Preview.Teams.AwayShort</span>
                     <time>@(Functions.Clock ? "12:34" : "--:--")</time>
                 </div>
             }
