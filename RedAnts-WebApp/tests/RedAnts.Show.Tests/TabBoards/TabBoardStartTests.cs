@@ -136,8 +136,8 @@ public class TabBoardStartTests
             ("Vor Spiel L-UPL", [new DeckKey(1, KeyKinds.Music, "3. LIDL L-UPL", MusicId: "l")]),
             ("Nach Spiel L-UPL", [new DeckKey(1, KeyKinds.Music, "Lidl nach Spiel (nur L-UPL)", MusicId: "n")])), NoHalls);
 
-        Assert.Equal([TabBoardStart.Lupl], board.Buttons.Single(b => b.Label == "LIDL").Leagues!);
-        Assert.Equal(TabBoardStart.Categories.After, board.Buttons.Single(b => b.Label == "Lidl nach Spiel").Category);
+        Assert.Equal([TabBoardStart.Lupl], board.Buttons.Single(b => b.Label == "LIDL Welcome").Leagues!);
+        Assert.Equal(TabBoardStart.Categories.After, board.Buttons.Single(b => b.Label == "LIDL Ende").Category);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class TabBoardStartTests
             new DeckKey(1, KeyKinds.Special, "Tor", Special: SpecialKey.GoalHome),
             new DeckKey(2, KeyKinds.Special, "Tor", Special: SpecialKey.GoalAway)), NoHalls);
 
-        Assert.Equal(["Tor Heim", "Tor Gast"], board.Buttons.Where(b => b.Category == TabBoardStart.Categories.Players).Select(b => b.Label));
+        Assert.Equal(["Tor Speaker Red Ants", "Tor Speaker Gegner"], board.Buttons.Where(b => b.Action.Special is SpecialKey.GoalHome or SpecialKey.GoalAway).Select(b => b.Label));
     }
 
     [Theory]

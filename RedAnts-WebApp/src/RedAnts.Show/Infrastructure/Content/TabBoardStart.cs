@@ -28,10 +28,10 @@ public static class TabBoardStart
         (Rennweg, ["rennweg-ipad"]),
     ];
 
-    public static TabBoard Build(ShowSetup show, IReadOnlyDictionary<string, Hall> halls)
+    public static TabBoard Build(ShowSetup show, IReadOnlyDictionary<string, Hall> halls, IReadOnlyList<(string Id, string Name)>? music = null)
     {
         var buttons = TransportButtons().Concat(ButtonsFrom(show)).ToList();
-        return new TabBoard(Venues(halls), Leagues, buttons, [], Decks(show));
+        return TabBoardPhases.Arrange(new TabBoard(Venues(halls), Leagues, buttons, [], Decks(show)), music ?? []);
     }
 
     public static IReadOnlyList<League> Leagues { get; } =
