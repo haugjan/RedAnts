@@ -33,8 +33,8 @@
 </header>
 
 <p class="tw-warning">
-    Testmodus im Web: Hier läuft nur die Musik, und zwar in diesem Browser.
-    Livestream (vMix) und LED-Wand funktionieren nur auf dem Bord des Regie-PC. Ihre Tasten sind deshalb ausgegraut.
+    Testmodus im Web: Die Musik läuft in diesem Browser. Livestream (vMix) und LED-Wand werden nicht angesteuert,
+    rechts siehst du nur eine Vorschau davon. Echt laufen sie nur auf dem Bord des Regie-PC.
 </p>
 
 @if (!_started)
@@ -92,6 +92,8 @@ else if (Deck is not { } current)
 }
 else
 {
+  <div class="tw-split">
+   <div class="tw-board">
     <nav class="tw-tabs">
         @if (current.FollowsTab)
         {
@@ -118,13 +120,14 @@ else
                     var web = key is null || switchedOff ? WebKey.Nothing : WebKey.Of(key.Action);
                     var music = web.MusicId is { } musicId ? _music.FirstOrDefault(m => m.Id == musicId) : null;
                     var reserved = current.Reserved(number);
-                    <button class="key @(web.Works ? "" : "flat") @(music is not null && music.Id == _playing ? "playing" : "")"
+                    var works = key is not null && !switchedOff;
+                    <button class="key @(works ? "" : "flat") @(music is not null && music.Id == _playing ? "playing" : "")"
                             style="background:@(key?.Button.Color ?? (reserved ? "#3a3f47" : "#111"));color:#fff"
-                            disabled="@(!web.Works)"
-                            title="@(switchedOff ? "Für dieses Spiel ausgeschaltet" : key is not null && !web.Works ? "Läuft nur auf dem Regie-PC" : "")"
+                            disabled="@(!works)"
+                            title="@(switchedOff ? "Für dieses Spiel ausgeschaltet" : key is not null && !web.Works ? "Livestream und LED nur als Vorschau" : "")"
                             data-play="@(music is null ? null : "songs")"
                             data-label="@(key?.Button.Label)"
-                            @onclick="() => PressAsync(web, music)"
+                            @onclick="() => PressAsync(key, web, music)"
                             @key="number">
                         @if (key is not null)
                         {
@@ -157,6 +160,9 @@ else
         <button class="ctl" @onclick="@(() => ControlAsync("fade"))">Fade</button>
         <button class="ctl stop" @onclick="@(() => ControlAsync("stop"))">Stopp</button>
     </footer>
+   </div>
+   <BoardPreviewPanel Preview="_preview" Functions="_functions" LedInHall="LedInHall" Playing="@(_playing is null ? null : _label)" />
+  </div>
 }
 </div>
 
@@ -199,9 +205,14 @@ else
     {
         if (Venue is { } venue) _functions = _functions.Within(BoardFunctions.Available(venue));
         _tab = BoardTabs.Before;
+        _preview = BoardPreview.Start;
         _started = true;
     }
     private string? _playing;
+    private BoardPreview _preview = BoardPreview.Start;
+    private int _press;
+
+    private bool LedInHall => Venue is not { } venue || BoardFunctions.Available(venue).Led;
     private string? _label;
     private DotNetObjectReference<TabBoardTestPage>? _self;
 
@@ -234,8 +245,9 @@ else
         return InvokeAsync(StateHasChanged);
     }
 
-    private async Task PressAsync(WebKey web, MusicItem? music)
+    private async Task PressAsync(ResolvedKey? key, WebKey web, MusicItem? music)
     {
+        if (key is not null) _ = PreviewAsync(key.Action);
         if (music is not null)
         {
             if (_playing == music.Id)
@@ -257,5 +269,22 @@ else
         await JS.InvokeVoidAsync("hallBoard.control", what);
     }
 
-    public void Dispose() => _self?.Dispose();
+    private async Task PreviewAsync(ButtonAction action)
+    {
+        var press = ++_press;
+        _preview = _preview.Press(action, _functions);
+        foreach (var (ms, steps) in BoardPreview.Phases(action).Skip(1))
+        {
+            await Task.Delay(ms);
+            if (press != _press) return;
+            _preview = _preview.Run(steps, _functions);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        _press++;
+        _self?.Dispose();
+    }
 }

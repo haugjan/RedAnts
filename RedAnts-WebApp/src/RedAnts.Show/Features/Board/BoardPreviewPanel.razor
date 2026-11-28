@@ -1,0 +1,214 @@
+@using RedAnts.Show.Domain
+
+<aside class="pv">
+    <section class="pv-box">
+        <h3>Livestream <span>swissunihockey.tv</span></h3>
+        <div class="pv-screen pv-tv">
+            <div class="pv-field"><i class="pv-mid"></i><i class="pv-circle"></i><i class="pv-goal l"></i><i class="pv-goal r"></i></div>
+            @if (!Functions.Livestream)
+            {
+                <div class="pv-off">Livestream für dieses Spiel ausgeschaltet</div>
+            }
+            else
+            {
+                @if (Preview.Scoreboard)
+                {
+                    <div class="su sb">
+                        <b class="r" style="left:calc(128*var(--u));top:calc(71*var(--u));width:calc(150*var(--u));height:calc(47*var(--u))"></b>
+                        <b class="w" style="left:calc(278*var(--u));top:calc(71*var(--u));width:calc(176*var(--u));height:calc(47*var(--u))"></b>
+                        <b class="k" style="left:calc(349*var(--u));top:calc(86*var(--u));width:calc(34*var(--u));height:calc(32*var(--u))"></b>
+                        <b class="r" style="left:calc(454*var(--u));top:calc(71*var(--u));width:calc(150*var(--u));height:calc(47*var(--u))"></b>
+                        <b class="b" style="left:calc(295*var(--u));top:calc(118*var(--u));width:calc(141*var(--u));height:calc(40*var(--u))"></b>
+                        <b style="left:calc(268*var(--u));top:calc(73*var(--u));width:calc(8*var(--u));height:calc(15*var(--u));background:#e32412"></b>
+                        <b style="left:calc(456*var(--u));top:calc(73*var(--u));width:calc(8*var(--u));height:calc(15*var(--u));background:#1f4e79"></b>
+                        <em style="left:calc(135*var(--u));top:calc(72*var(--u));width:calc(135*var(--u));font-size:calc(30*var(--u))">@BoardPreview.HomeShort</em>
+                        <em style="left:calc(462*var(--u));top:calc(72*var(--u));width:calc(135*var(--u));font-size:calc(30*var(--u))">@BoardPreview.AwayShort</em>
+                        <em class="dark" style="left:calc(287*var(--u));top:calc(69*var(--u));width:calc(55*var(--u));font-size:calc(34*var(--u))">@Preview.Home</em>
+                        <em class="dark" style="left:calc(390*var(--u));top:calc(69*var(--u));width:calc(55*var(--u));font-size:calc(34*var(--u))">@Preview.Away</em>
+                        <em style="left:calc(351*var(--u));top:calc(85*var(--u));width:calc(31*var(--u));font-size:calc(23*var(--u))">@(Functions.Clock ? "1" : "")</em>
+                        <em class="time" style="left:calc(305*var(--u));top:calc(122*var(--u));width:calc(124*var(--u));font-size:calc(28*var(--u))">@(Functions.Clock ? "12:34" : "")</em>
+                    </div>
+                }
+                @if (Preview.Title is { } title)
+                {
+                    <div class="su lt" @key="@($"{title.Kind}-{title.Side}-{title.Name}")">
+                        @switch (BoardPreview.TemplateOf(title))
+                        {
+                            case "number2":
+                                <b class="r" style="left:calc(130*var(--u));top:calc(860*var(--u));width:calc(98*var(--u));height:calc(63*var(--u))"></b>
+                                <b class="w" style="left:calc(228*var(--u));top:calc(860*var(--u));width:calc(654*var(--u));height:calc(63*var(--u))"></b>
+                                <b class="k" style="left:calc(882*var(--u));top:calc(860*var(--u));width:calc(136*var(--u));height:calc(63*var(--u))"></b>
+                                <b class="b" style="left:calc(228*var(--u));top:calc(923*var(--u));width:calc(790*var(--u));height:calc(45*var(--u))"></b>
+                                <em style="left:calc(139*var(--u));top:calc(861*var(--u));width:calc(81*var(--u));font-size:calc(42*var(--u))">@title.Number</em>
+                                <em class="dark left" style="left:calc(252*var(--u));top:calc(861*var(--u));width:calc(618*var(--u));font-size:calc(42*var(--u))">@title.Name</em>
+                                <em style="left:calc(888*var(--u));top:calc(861*var(--u));width:calc(120*var(--u));font-size:calc(42*var(--u))">@title.Event</em>
+                                <em class="left" style="left:calc(252*var(--u));top:calc(923*var(--u));width:calc(756*var(--u));font-size:calc(30*var(--u))">@title.Info</em>
+                                break;
+                            case "number1":
+                                <b class="r" style="left:calc(132*var(--u));top:calc(861*var(--u));width:calc(96*var(--u));height:calc(60*var(--u))"></b>
+                                <b class="w" style="left:calc(228*var(--u));top:calc(861*var(--u));width:calc(732*var(--u));height:calc(60*var(--u))"></b>
+                                <b class="k" style="left:calc(960*var(--u));top:calc(861*var(--u));width:calc(57*var(--u));height:calc(60*var(--u))"></b>
+                                <b class="b" style="left:calc(228*var(--u));top:calc(924*var(--u));width:calc(789*var(--u));height:calc(45*var(--u))"></b>
+                                <em style="left:calc(139*var(--u));top:calc(861*var(--u));width:calc(81*var(--u));font-size:calc(42*var(--u))">@title.Number</em>
+                                <em class="dark left" style="left:calc(252*var(--u));top:calc(861*var(--u));width:calc(696*var(--u));font-size:calc(42*var(--u))">@title.Name</em>
+                                <em class="left" style="left:calc(252*var(--u));top:calc(924*var(--u));width:calc(756*var(--u));font-size:calc(30*var(--u))">@title.Info</em>
+                                break;
+                            case "card":
+                                <b class="k" style="left:calc(492*var(--u));top:calc(645*var(--u));width:calc(930*var(--u));height:calc(54*var(--u))"></b>
+                                <b class="w" style="left:calc(492*var(--u));top:calc(702*var(--u));width:calc(930*var(--u));height:calc(75*var(--u))"></b>
+                                <b class="b" style="left:calc(492*var(--u));top:calc(780*var(--u));width:calc(930*var(--u));height:calc(138*var(--u))"></b>
+                                <em style="left:calc(492*var(--u));top:calc(651*var(--u));width:calc(930*var(--u));font-size:calc(30*var(--u))">@title.Info</em>
+                                <em class="red" style="left:calc(492*var(--u));top:calc(712*var(--u));width:calc(930*var(--u));font-size:calc(42*var(--u))">@title.Name</em>
+                                <em style="left:calc(492*var(--u));top:calc(820*var(--u));width:calc(930*var(--u));font-size:calc(34*var(--u))">@Preview.Home : @Preview.Away</em>
+                                break;
+                            case "lineup":
+                                <b class="k" style="left:calc(258*var(--u));top:calc(135*var(--u));width:calc(1383*var(--u));height:calc(105*var(--u))"></b>
+                                <b class="b" style="left:calc(258*var(--u));top:calc(243*var(--u));width:calc(1383*var(--u));height:calc(732*var(--u))"></b>
+                                <em class="left" style="left:calc(284*var(--u));top:calc(140*var(--u));width:calc(400*var(--u));font-size:calc(24*var(--u))">@title.Info</em>
+                                <em class="left red" style="left:calc(283*var(--u));top:calc(187*var(--u));width:calc(1137*var(--u));font-size:calc(36*var(--u))">@title.Name</em>
+                                @for (var line = 0; line < 4; line++)
+                                {
+                                    var top = 293 + line * 148;
+                                    <em class="left" style="left:calc(294*var(--u));top:calc(@(top + 18)*var(--u));width:calc(108*var(--u));font-size:calc(26*var(--u))">@(line + 1). Linie</em>
+                                    @foreach (var x in new[] { 420, 816, 1212 })
+                                    {
+                                        <b class="r" style="left:calc(@(x)*var(--u));top:calc(@(top)*var(--u));width:calc(48*var(--u));height:calc(28*var(--u))"></b>
+                                        <b class="w" style="left:calc(@(x + 50)*var(--u));top:calc(@(top)*var(--u));width:calc(290*var(--u));height:calc(28*var(--u))"></b>
+                                    }
+                                }
+                                break;
+                            case "lines2":
+                                <b class="w" style="left:calc(132*var(--u));top:calc(861*var(--u));width:calc(828*var(--u));height:calc(60*var(--u))"></b>
+                                <b class="k" style="left:calc(960*var(--u));top:calc(861*var(--u));width:calc(57*var(--u));height:calc(60*var(--u))"></b>
+                                <b class="b" style="left:calc(132*var(--u));top:calc(924*var(--u));width:calc(885*var(--u));height:calc(45*var(--u))"></b>
+                                <em class="dark left" style="left:calc(149*var(--u));top:calc(861*var(--u));width:calc(796*var(--u));font-size:calc(42*var(--u))">@title.Name</em>
+                                <em class="left" style="left:calc(149*var(--u));top:calc(924*var(--u));width:calc(796*var(--u));font-size:calc(30*var(--u))">@title.Info</em>
+                                break;
+                            default:
+                                <b class="w" style="left:calc(132*var(--u));top:calc(861*var(--u));width:calc(828*var(--u));height:calc(60*var(--u))"></b>
+                                <b class="k" style="left:calc(960*var(--u));top:calc(861*var(--u));width:calc(57*var(--u));height:calc(60*var(--u))"></b>
+                                <b class="b" style="left:calc(132*var(--u));top:calc(924*var(--u));width:calc(885*var(--u));height:calc(6*var(--u))"></b>
+                                <em class="dark left" style="left:calc(149*var(--u));top:calc(861*var(--u));width:calc(796*var(--u));font-size:calc(42*var(--u))">@title.Name</em>
+                                break;
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </section>
+
+    <section class="pv-box">
+        <h3>LED-Wand</h3>
+        <div class="pv-screen pv-led">
+            @if (!Functions.Led)
+            {
+                <div class="pv-off">@(LedInHall ? "LED-Wand für dieses Spiel ausgeschaltet" : "Diese Halle hat keine LED-Wand")</div>
+            }
+            else
+            {
+                <div class="led-show led-@LedLook" @key="@($"{Preview.Led}-{Preview.LedText}")">
+                    @switch (LedLook)
+                    {
+                        case "goal":
+                            <span class="led-big">TOR!</span>
+                            @if (LedNumber.Length > 0)
+                            {
+                                <span class="led-number">@LedNumber</span>
+                                <span class="led-name">@LedName</span>
+                            }
+                            else
+                            {
+                                <span class="led-name">@BoardPreview.HomeTeam</span>
+                            }
+                            break;
+                        case "guest-goal":
+                            <span class="led-mid">Tor @BoardPreview.AwayTeam</span>
+                            break;
+                        case "player":
+                            <span class="led-number">@LedNumber</span>
+                            <span class="led-name">@LedName</span>
+                            break;
+                        case "guest":
+                            <span class="led-mid">@BoardPreview.AwayTeam</span>
+                            <span class="led-small">Gästelogo</span>
+                            break;
+                        case "intro":
+                            <span class="led-big">RED ANTS</span>
+                            <span class="led-small">Rychenberg Winterthur</span>
+                            break;
+                        case "pause":
+                            <span class="led-mid">Pause</span>
+                            <span class="led-small led-loop">Sponsoren · Gastro · Fanshop</span>
+                            break;
+                        case "sponsors":
+                            <span class="led-mid">Sponsoren</span>
+                            <span class="led-small led-loop">Danke für die Unterstützung</span>
+                            break;
+                        case "other":
+                            <span class="led-mid">@Preview.Led</span>
+                            <span class="led-small">LED-Vorlage</span>
+                            break;
+                        default:
+                            <span class="led-mid">RED ANTS</span>
+                            <span class="led-small">Grundbild</span>
+                            break;
+                    }
+                </div>
+                <div class="led-clock">
+                    <span>@BoardPreview.HomeShort</span>
+                    <strong>@Preview.Home : @Preview.Away</strong>
+                    <span>@BoardPreview.AwayShort</span>
+                    <time>@(Functions.Clock ? "12:34" : "--:--")</time>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="pv-box">
+        <h3>Musikboxen</h3>
+        <div class="pv-sound @(Playing is { Length: > 0 } && Functions.Sound ? "on" : "")">
+            @if (!Functions.Sound)
+            {
+                <span class="pv-quiet">Musik für dieses Spiel ausgeschaltet</span>
+            }
+            else if (Playing is { Length: > 0 } now)
+            {
+                <span class="pv-bars"><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="pv-song">@now</span>
+            }
+            else
+            {
+                <span class="pv-quiet">Stille</span>
+            }
+        </div>
+    </section>
+
+    <p class="pv-note">Spielerin, Spielstand und Uhr sind Beispiele. Echte Werte kommen am Regie-PC von der Hallenuhr und aus der Spielerinnen-Auswahl.</p>
+</aside>
+
+@code {
+    [Parameter, EditorRequired] public BoardPreview Preview { get; set; } = BoardPreview.Start;
+
+    [Parameter, EditorRequired] public BoardFunctions Functions { get; set; } = new(true, true, true, true, true);
+
+    [Parameter] public bool LedInHall { get; set; } = true;
+
+    [Parameter] public string? Playing { get; set; }
+
+    private string LedNumber => Preview.LedText.Split('|') is [var number, _] ? number : "";
+
+    private string LedName => Preview.LedText.Split('|') is [_, var name] ? name : "";
+
+    private string LedLook => Preview.Led switch
+    {
+        null or "" or "logo" => "screen",
+        "tor-heim" or "tor" => "goal",
+        "tor-gast" => "guest-goal",
+        "spielerin" or "einlauf" or "assist" => "player",
+        "intro" => "intro",
+        "pause" or "intermission" or "led-pausenloop" => "pause",
+        "sponsoren" => "sponsors",
+        var name when name.StartsWith("gast", StringComparison.OrdinalIgnoreCase) => "guest",
+        _ => "other",
+    };
+}
