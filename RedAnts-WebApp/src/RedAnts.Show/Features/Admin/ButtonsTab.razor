@@ -1,6 +1,360 @@
 @inherits TabBoardTab
+@using RedAnts.Show.Features.Setup
+@inject GetMusic.Handler MusicQuery
+@inject GetShowSetup.Handler SetupQuery
 
 <section class="sa-card">
     <h2>Buttons <StatusLine Text="@Status" IsError="@StatusIsError" /></h2>
-    <p class="sa-hint">@Board.Buttons.Count Buttons in der Bibliothek.</p>
+    <p class="sa-hint">
+        Jeder Button wird hier einmal angelegt: Text, Symbol, Farbe und was er tut. Auf den Decks und Tabs wird er danach nur noch ausgewählt.
+        Ein Button kann auf einzelne Ligen beschränkt sein oder je Liga etwas anderes abspielen.
+    </p>
+
+    <div class="sa-actions">
+        <input class="sa-input bt-search" type="search" placeholder="Suchen nach Text oder Kennung" @bind="_search" @bind:event="oninput" />
+        <span class="sa-hint">@Filtered.Count von @_buttons.Count Buttons</span>
+        <button class="sa-btn small" @onclick="Add">+ Button</button>
+        <span class="sd-spacer"></span>
+        @if (Dirty)
+        {
+            <span class="bt-dirty">ungespeicherte Änderungen</span>
+            <button class="sa-btn small" @onclick="Discard">Verwerfen</button>
+        }
+        <button class="sa-btn primary" @onclick="SaveAsync" disabled="@(!Dirty)">💾 Speichern</button>
+    </div>
+
+    <div class="bt-layout">
+        <div class="bt-library">
+            @if (Filtered.Count == 0)
+            {
+                <p class="sa-hint">@(_buttons.Count == 0 ? "Noch keine Buttons. Mit „+ Button“ den ersten anlegen." : "Kein Button passt zur Suche.")</p>
+            }
+            @foreach (var button in Filtered)
+            {
+                var id = button.Id;
+                <BoardButtonTile @key="id" Button="button" Selected="@(id == _selectedId)" OnClick="() => Select(id)" />
+            }
+        </div>
+
+        @if (Selected is { } current)
+        {
+            var uses = Board.UsesOf(current.Id);
+            <div class="bt-editor">
+                <div class="bt-head">
+                    <BoardButtonTile Button="current" />
+                    <div>
+                        <h3>@current.Label</h3>
+                        <span class="sa-hint">Kennung <code>@current.Id</code></span>
+                    </div>
+                </div>
+
+                <p class="bt-uses">
+                    @if (uses.Count == 0)
+                    {
+                        <text>Wird noch nirgends verwendet.</text>
+                    }
+                    else
+                    {
+                        <text>Wird an @uses.Count @(uses.Count == 1 ? "Stelle" : "Stellen") verwendet: @string.Join(", ", uses)</text>
+                    }
+                </p>
+
+                <div class="sa-form">
+                    <label>Text <input class="sa-input" value="@current.Label" @onchange="SetLabel" /></label>
+                    <label>Farbe
+                        <span class="bt-color">
+                            <input class="sa-input" type="color" value="@ColorValue(current.Color)" @onchange="SetColor" />
+                            <input class="sa-input" value="@current.Color" maxlength="7" @onchange="SetColor" />
+                        </span>
+                    </label>
+                </div>
+
+                <h4>Symbol</h4>
+                <div class="sa-iconrow">
+                    <span class="sa-iconrow-lbl">Grafiken</span>
+                    <div class="sa-icons">
+                        <button class="sa-icon @(current.Icon is null ? "on" : "")" title="kein Icon" @onclick="() => Change(b => b with { Icon = null })">∅</button>
+                        @foreach (var icon in DeckIcons.All)
+                        {
+                            var name = icon;
+                            <button class="sa-icon @(current.Icon == name ? "on" : "")" title="@name" @onclick="() => Change(b => b with { Icon = name })">
+                                <img src="@DeckIcons.FileOf(name)" alt="@name" />
+                            </button>
+                        }
+                    </div>
+                </div>
+                @foreach (var band in DeckIcons.Symbols.GroupBy(s => s.Group))
+                {
+                    <div class="sa-iconrow">
+                        <span class="sa-iconrow-lbl">@band.Key</span>
+                        <div class="sa-icons">
+                            @foreach (var entry in band)
+                            {
+                                var glyph = entry.Glyph;
+                                <button class="sa-icon glyph @(current.Icon == glyph ? "on" : "")" title="@entry.Label" @onclick="() => Change(b => b with { Icon = glyph })">@glyph</button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <h4>Aktion</h4>
+                <ButtonActionFields Action="current.Action" ActionChanged="a => Change(b => b with { Action = a })"
+                                    Music="_music" Titles="_titles" Led="_led" />
+
+                <h4>Ligen</h4>
+                @if (Board.Leagues.Count == 0)
+                {
+                    <p class="sa-hint">Es sind noch keine Ligen angelegt; der Button gilt überall.</p>
+                }
+                else
+                {
+                    <div class="bt-choice">
+                        <label class="sa-check">
+                            <input type="radio" name="bt-leagues" checked="@(current.Leagues is null)" @onchange="() => LimitLeagues(false)" />
+                            in allen Ligen
+                        </label>
+                        <label class="sa-check">
+                            <input type="radio" name="bt-leagues" checked="@(current.Leagues is not null)" @onchange="() => LimitLeagues(true)" />
+                            nur in bestimmten Ligen
+                        </label>
+                    </div>
+                    @if (current.Leagues is { } only)
+                    {
+                        <div class="bt-leagues">
+                            @foreach (var league in Board.Leagues)
+                            {
+                                var leagueId = league.Id;
+                                <label class="sa-check">
+                                    <input type="checkbox" checked="@only.Contains(leagueId, StringComparer.OrdinalIgnoreCase)" @onchange="e => ToggleLeague(leagueId, e.Value is true)" />
+                                    @league.Name
+                                </label>
+                            }
+                        </div>
+                        @if (only.Count == 0)
+                        {
+                            <p class="sa-hint">Keine Liga gewählt: so gilt der Button wieder in allen Ligen.</p>
+                        }
+                    }
+
+                    <label class="sa-check">
+                        <input type="checkbox" checked="@(current.PerLeague is not null)" @onchange="e => VaryPerLeague(e.Value is true)" />
+                        Je Liga unterschiedlich
+                    </label>
+                    @if (current.PerLeague is { } variants)
+                    {
+                        <p class="sa-hint">Ligen ohne eigene Aktion verwenden die Aktion oben.</p>
+                        @foreach (var league in OfferedLeagues(current))
+                        {
+                            var leagueId = league.Id;
+                            var variant = Variant(variants, leagueId);
+                            <div class="bt-variant">
+                                <label class="sa-check">
+                                    <input type="checkbox" checked="@(variant is not null)" @onchange="e => OwnAction(leagueId, e.Value is true)" />
+                                    <strong>@league.Name</strong>&nbsp;eigene Aktion
+                                </label>
+                                @if (variant is not null)
+                                {
+                                    <ButtonActionFields Action="variant" ActionChanged="a => SetVariant(leagueId, a)"
+                                                        Music="_music" Titles="_titles" Led="_led" />
+                                }
+                                else
+                                {
+                                    <span class="sa-hint">wie oben</span>
+                                }
+                            </div>
+                        }
+                    }
+                }
+
+                <h4>Live-Anzeige</h4>
+                <label class="bt-state">Leuchtet, solange
+                    <select class="sa-input" value="@(current.State ?? "")" @onchange="SetState">
+                        <option value="">nichts</option>
+                        @foreach (var state in DefaultStates.All)
+                        {
+                            <option value="@state.Id">@state.Name</option>
+                        }
+                    </select>
+                    aktiv ist
+                </label>
+
+                <div class="sa-actions">
+                    @if (uses.Count > 0)
+                    {
+                        <button class="sa-btn small danger" disabled>Löschen</button>
+                        <span class="sa-hint">Löschen geht erst, wenn der Button nirgends mehr verwendet wird: @string.Join(", ", uses)</span>
+                    }
+                    else if (_confirmDelete)
+                    {
+                        <button class="sa-btn small danger" @onclick="Delete">Wirklich löschen</button>
+                        <button class="sa-btn small" @onclick="() => _confirmDelete = false">Abbrechen</button>
+                    }
+                    else
+                    {
+                        <button class="sa-btn small danger" @onclick="() => _confirmDelete = true">Löschen</button>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="bt-editor">
+                <p class="sa-hint">Einen Button anklicken, um ihn zu bearbeiten.</p>
+            </div>
+        }
+    </div>
 </section>
+
+@code {
+    private IReadOnlyList<MusicItem> _music = [];
+    private IReadOnlyList<OverlayTitle> _titles = [];
+    private IReadOnlyList<LedTemplate> _led = [];
+    private List<BoardButton> _buttons = [];
+    private string? _selectedId;
+    private string _search = "";
+    private bool _confirmDelete;
+
+    private BoardButton? Selected => _buttons.FirstOrDefault(b => b.Id == _selectedId);
+
+    private IReadOnlyList<BoardButton> Filtered => ButtonLibrary.Find(_buttons, _search);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _music = (await MusicQuery.HandleAsync(new GetMusic.Query()))
+            .OrderBy(item => item.Display, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        var setup = await SetupQuery.HandleAsync(new GetShowSetup.Query());
+        _titles = setup.Titles;
+        _led = setup.Led;
+        await base.OnInitializedAsync();
+    }
+
+    protected override Task OnBoardLoadedAsync()
+    {
+        _buttons = Board.Buttons.ToList();
+        if (Selected is null) _selectedId = null;
+        _confirmDelete = false;
+        return Task.CompletedTask;
+    }
+
+    private void Select(string id)
+    {
+        _selectedId = id;
+        _confirmDelete = false;
+    }
+
+    private void Add()
+    {
+        var id = (Board with { Buttons = _buttons }).NewButtonId("Neuer Button");
+        _buttons.Add(new BoardButton(id, "Neuer Button", DeckKey.DefaultColor, new ButtonAction(KeyKinds.Music)));
+        _search = "";
+        Select(id);
+        Touch();
+    }
+
+    private void Change(Func<BoardButton, BoardButton> change)
+    {
+        var index = _buttons.FindIndex(b => b.Id == _selectedId);
+        if (index < 0) return;
+        _buttons[index] = change(_buttons[index]);
+        Touch();
+    }
+
+    private void SetLabel(ChangeEventArgs e)
+    {
+        var text = (e.Value?.ToString() ?? "").Trim();
+        if (text.Length == 0)
+        {
+            Fail("Ein Button braucht einen Text.");
+            return;
+        }
+        Change(b => b with { Label = text });
+    }
+
+    private void SetColor(ChangeEventArgs e)
+    {
+        var color = (e.Value?.ToString() ?? "").Trim();
+        if (!color.StartsWith('#')) color = "#" + color;
+        if (!ButtonLibrary.IsColor(color))
+        {
+            Fail("Farbe bitte als #rrggbb angeben, z. B. #d02d38.");
+            return;
+        }
+        Change(b => b with { Color = color.ToLowerInvariant() });
+    }
+
+    private static string ColorValue(string color) => ButtonLibrary.IsColor(color) ? color : DeckKey.DefaultColor;
+
+    private void SetState(ChangeEventArgs e)
+    {
+        var state = e.Value?.ToString() is { Length: > 0 } chosen ? chosen : null;
+        Change(b => b with { State = state });
+    }
+
+    private void LimitLeagues(bool limited) =>
+        Change(b => b with { Leagues = limited ? b.Leagues ?? [] : null });
+
+    private void ToggleLeague(string league, bool on) =>
+        Change(b =>
+        {
+            var only = (b.Leagues ?? []).Where(l => !l.Equals(league, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (on) only.Add(league);
+            return b with { Leagues = Board.Leagues.Select(l => l.Id).Where(id => only.Contains(id, StringComparer.OrdinalIgnoreCase)).ToList() };
+        });
+
+    private IEnumerable<League> OfferedLeagues(BoardButton button) =>
+        Board.Leagues.Where(l => button.Leagues is not { Count: > 0 } || button.OfferedIn(l.Id)
+            || (button.PerLeague?.Keys.Contains(l.Id, StringComparer.OrdinalIgnoreCase) ?? false));
+
+    private static ButtonAction? Variant(IReadOnlyDictionary<string, ButtonAction> variants, string league) =>
+        variants.FirstOrDefault(v => v.Key.Equals(league, StringComparison.OrdinalIgnoreCase)).Value;
+
+    private void VaryPerLeague(bool on) =>
+        Change(b => b with { PerLeague = on ? b.PerLeague ?? new Dictionary<string, ButtonAction>() : null });
+
+    private void OwnAction(string league, bool on) =>
+        Change(b =>
+        {
+            var variants = Without(b.PerLeague, league);
+            if (on) variants[league] = b.Action;
+            return b with { PerLeague = variants };
+        });
+
+    private void SetVariant(string league, ButtonAction action) =>
+        Change(b =>
+        {
+            var variants = Without(b.PerLeague, league);
+            variants[league] = action;
+            return b with { PerLeague = variants };
+        });
+
+    private static Dictionary<string, ButtonAction> Without(IReadOnlyDictionary<string, ButtonAction>? variants, string league) =>
+        (variants ?? new Dictionary<string, ButtonAction>())
+            .Where(v => !v.Key.Equals(league, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(v => v.Key, v => v.Value, StringComparer.OrdinalIgnoreCase);
+
+    private void Delete()
+    {
+        if (Selected is not { } button || Board.UsesOf(button.Id).Count > 0) return;
+        _buttons.Remove(button);
+        _selectedId = null;
+        _confirmDelete = false;
+        Notify($"Button „{button.Label}“ entfernt. Erst mit Speichern ist er endgültig weg.");
+        Touch();
+    }
+
+    private void Discard()
+    {
+        _buttons = Board.Buttons.ToList();
+        if (Selected is null) _selectedId = null;
+        _confirmDelete = false;
+        Dirty = false;
+        Notify("Änderungen verworfen.");
+    }
+
+    private async Task SaveAsync()
+    {
+        var buttons = _buttons.Select(ButtonLibrary.Normalized).ToList();
+        await SaveBoardAsync(board => board with { Buttons = buttons });
+    }
+}

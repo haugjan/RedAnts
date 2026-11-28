@@ -1,0 +1,223 @@
+<div class="bt-action">
+    <label>Art
+        <select class="sa-input" value="@Action.Kind" @onchange="e => SetKind(e.Value?.ToString())">
+            @foreach (var kind in ButtonAction.Kinds)
+            {
+                <option value="@kind">@KeyKinds.Label(kind)</option>
+            }
+        </select>
+    </label>
+
+    @if (Action.Kind == KeyKinds.Music)
+    {
+        <label>Musik
+            <select class="sa-input" value="@(Action.MusicId ?? "")" @onchange="e => Set(a => a with { MusicId = Blank(e.Value) })">
+                <option value="">bitte wählen</option>
+                @foreach (var (value, label) in MusicChoices(Action.MusicId))
+                {
+                    <option value="@value">@label</option>
+                }
+            </select>
+        </label>
+        <p class="sa-hint">Die Stücke werden unter <a href="/admin/show/musik" target="_top">Musik</a> gepflegt.</p>
+    }
+
+    @if (Action.Kind == KeyKinds.Special)
+    {
+        <label>Funktion
+            <select class="sa-input" value="@(Action.Special ?? "")" @onchange="e => Set(a => a with { Special = Blank(e.Value) })">
+                <option value="">bitte wählen</option>
+                @foreach (var group in SpecialKey.All.GroupBy(s => s.Group))
+                {
+                    <optgroup label="@group.Key">
+                        @foreach (var special in group)
+                        {
+                            <option value="@special.Id">@special.Label</option>
+                        }
+                    </optgroup>
+                }
+            </select>
+        </label>
+    }
+
+    @if (Action.Kind == KeyKinds.Live)
+    {
+        <label>Anzeige
+            <select class="sa-input" value="@(Action.Live ?? "")" @onchange="e => Set(a => a with { Live = Blank(e.Value) })">
+                <option value="">bitte wählen</option>
+                @foreach (var value in LiveValues.All)
+                {
+                    <option value="@value">@LiveValues.Label(value)</option>
+                }
+            </select>
+        </label>
+        <p class="sa-hint">Eine Anzeige lässt sich nicht drücken, sie zeigt den gewählten Wert live auf dem Button.</p>
+    }
+
+    @if (Action.Kind is KeyKinds.Steps or KeyKinds.Special)
+    {
+        <h4>Befehle</h4>
+        @if (Action.Kind == KeyKinds.Special)
+        {
+            <p class="sa-hint">Laufen beim Druck, bevor die feste Funktion übernimmt, etwa Musik und LED-Vorlage von Tor, Strafe und Best Player.</p>
+        }
+        @for (var i = 0; i < Action.Sequence.Count; i++)
+        {
+            var index = i;
+            var step = Action.Sequence[index];
+            <div class="sa-step">
+                <select class="sa-input" value="@step.Action" @onchange="e => SetStep(index, s => s with { Action = e.Value?.ToString() ?? KeyActions.Wait })">
+                    @foreach (var action in KeyActions.All)
+                    {
+                        <option value="@action">@KeyActions.Label(action)</option>
+                    }
+                </select>
+                @if (step.Action == KeyActions.Wait)
+                {
+                    <input class="sa-input" type="number" value="@step.Ms" @onchange="e => SetStep(index, s => s with { Ms = Number(e.Value) })" placeholder="Millisekunden" />
+                }
+                else if (step.Action == KeyActions.MusicPlay)
+                {
+                    <select class="sa-input" value="@(step.Target ?? "")" @onchange="e => SetStep(index, s => s with { Target = Blank(e.Value) })">
+                        <option value="">bitte wählen</option>
+                        @foreach (var (value, label) in MusicChoices(step.Target))
+                        {
+                            <option value="@value">@label</option>
+                        }
+                    </select>
+                }
+                else if (step.Action == KeyActions.VmixText)
+                {
+                    <input class="sa-input" value="@step.Text" placeholder="Text, z. B. Empty Net"
+                           @onchange="e => SetStep(index, s => s with { Text = e.Value?.ToString() ?? string.Empty })" />
+                    <select class="sa-input" value="@(step.Target ?? "")" @onchange="e => SetStep(index, s => s with { Target = Blank(e.Value) })">
+                        <option value="">Einblender wählen</option>
+                        @foreach (var (value, label) in TitleChoices(step.Target))
+                        {
+                            <option value="@value">@label</option>
+                        }
+                    </select>
+                }
+                else if (step.Action is KeyActions.VmixShow or KeyActions.VmixHide)
+                {
+                    <select class="sa-input" value="@(step.Target ?? "")" @onchange="e => SetStep(index, s => s with { Target = Blank(e.Value) })">
+                        <option value="">Einblender wählen</option>
+                        @foreach (var (value, label) in TitleChoices(step.Target))
+                        {
+                            <option value="@value">@label</option>
+                        }
+                    </select>
+                }
+                else if (step.Action == KeyActions.LedStart)
+                {
+                    <select class="sa-input" value="@(step.Target ?? "")" @onchange="e => SetStep(index, s => s with { Target = Blank(e.Value) })">
+                        <option value="">LED-Vorlage wählen</option>
+                        @foreach (var (value, label) in LedChoices(step.Target))
+                        {
+                            <option value="@value">@label</option>
+                        }
+                    </select>
+                }
+                <button class="sa-btn small" title="nach oben" disabled="@(index == 0)" @onclick="() => MoveStep(index, -1)">↑</button>
+                <button class="sa-btn small" title="nach unten" disabled="@(index == Action.Sequence.Count - 1)" @onclick="() => MoveStep(index, 1)">↓</button>
+                <button class="sa-btn small danger" title="Befehl entfernen" @onclick="() => RemoveStep(index)">✕</button>
+            </div>
+        }
+        <button class="sa-btn small" @onclick="AddStep">+ Befehl</button>
+    }
+
+    @if (Action.Kind != KeyKinds.Live)
+    {
+        <div class="bt-outputs">
+            <label class="sa-check">
+                <input type="checkbox" checked="@Action.Livestream" @onchange="e => Set(a => a with { Livestream = e.Value is true })" />
+                Livestream
+            </label>
+            <label class="sa-check">
+                <input type="checkbox" checked="@Action.Led" @onchange="e => Set(a => a with { Led = e.Value is true })" />
+                LED-Wand
+            </label>
+        </div>
+        @if (SpecialKey.ChoosesPlayer(Action.Special) && Action.Kind == KeyKinds.Special)
+        {
+            <p class="sa-hint">Die gewählte Spielerin erscheint dort, wo ein Haken gesetzt ist. Ohne beides öffnet der Button keine Spielerinnen-Auswahl, es laufen nur seine Befehle.</p>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ButtonAction Action { get; set; } = new(KeyKinds.Music);
+    [Parameter] public EventCallback<ButtonAction> ActionChanged { get; set; }
+    [Parameter] public IReadOnlyList<MusicItem> Music { get; set; } = [];
+    [Parameter] public IReadOnlyList<OverlayTitle> Titles { get; set; } = [];
+    [Parameter] public IReadOnlyList<LedTemplate> Led { get; set; } = [];
+
+    private Task Set(Func<ButtonAction, ButtonAction> change) => ActionChanged.InvokeAsync(change(Action));
+
+    private Task SetKind(string? kind)
+    {
+        if (kind is null || kind == Action.Kind) return Task.CompletedTask;
+        return ActionChanged.InvokeAsync(new ButtonAction(
+            kind,
+            MusicId: kind == KeyKinds.Music ? Action.MusicId : null,
+            Special: kind == KeyKinds.Special ? Action.Special : null,
+            Live: kind == KeyKinds.Live ? Action.Live : null,
+            Steps: kind is KeyKinds.Steps or KeyKinds.Special && Action.Sequence.Count > 0 ? Action.Sequence : null,
+            Livestream: Action.Livestream,
+            Led: Action.Led));
+    }
+
+    private Task SetStep(int index, Func<KeyStep, KeyStep> change) => Set(a =>
+    {
+        var steps = a.Sequence.ToList();
+        if (index < 0 || index >= steps.Count) return a;
+        steps[index] = change(steps[index]);
+        return a with { Steps = steps };
+    });
+
+    private Task AddStep() => Set(a => a with { Steps = a.Sequence.Append(new KeyStep(KeyActions.VmixShow)).ToList() });
+
+    private Task RemoveStep(int index) => Set(a =>
+    {
+        var steps = a.Sequence.ToList();
+        if (index < 0 || index >= steps.Count) return a;
+        steps.RemoveAt(index);
+        return a with { Steps = steps.Count > 0 ? steps : null };
+    });
+
+    private Task MoveStep(int index, int by) => Set(a =>
+    {
+        var steps = a.Sequence.ToList();
+        var target = index + by;
+        if (index < 0 || index >= steps.Count || target < 0 || target >= steps.Count) return a;
+        (steps[index], steps[target]) = (steps[target], steps[index]);
+        return a with { Steps = steps };
+    });
+
+    private static string? Blank(object? value) => value?.ToString() is { Length: > 0 } text ? text : null;
+
+    private static int? Number(object? value) => int.TryParse(value?.ToString(), out var number) ? number : null;
+
+    private IReadOnlyList<(string Value, string Label)> MusicChoices(string? current) =>
+        Choices(Music.Select(item => (item.Id, item.Display)), current);
+
+    private IReadOnlyList<(string Value, string Label)> TitleChoices(string? current) =>
+        Choices(Titles.Select(title => ("title:" + title.Kind, title.Kind)), current);
+
+    private IReadOnlyList<(string Value, string Label)> LedChoices(string? current) =>
+        Choices(Led.Select(led => ("led:" + led.Event, $"{led.Event} · {Playlist(led.Command)}")), current);
+
+    private static IReadOnlyList<(string Value, string Label)> Choices(IEnumerable<(string Value, string Label)> known, string? current)
+    {
+        var choices = known
+            .DistinctBy(choice => choice.Value, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(choice => choice.Label, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        if (current is { Length: > 0 } && !choices.Any(choice => choice.Value.Equals(current, StringComparison.OrdinalIgnoreCase)))
+            choices.Insert(0, (current, $"{current} (nicht mehr vorhanden)"));
+        return choices;
+    }
+
+    private static string Playlist(string command) =>
+        System.Text.RegularExpressions.Regex.Match(command, "-n\\s+\"([^\"]+)\"") is { Success: true } match ? match.Groups[1].Value : command;
+}
