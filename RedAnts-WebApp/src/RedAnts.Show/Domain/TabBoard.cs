@@ -65,8 +65,6 @@ public sealed record ButtonAction(
             throw new ValidationException(nameof(MusicId), $"Button „{button}“: bitte eine Musik wählen.");
         if (Kind == KeyKinds.Special && SpecialKey.Of(Special) is null)
             throw new ValidationException(nameof(Special), $"Button „{button}“: bitte eine feste Funktion wählen.");
-        if (Kind == KeyKinds.Live && string.IsNullOrWhiteSpace(Live))
-            throw new ValidationException(nameof(Live), $"Button „{button}“: bitte eine Anzeige wählen.");
         foreach (var step in Sequence) step.Validated();
         return this;
     }

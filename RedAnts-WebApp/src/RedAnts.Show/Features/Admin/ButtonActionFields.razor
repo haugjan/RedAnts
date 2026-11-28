@@ -44,7 +44,7 @@
     {
         <label>Anzeige
             <select class="sa-input" value="@(Action.Live ?? "")" @onchange="e => Set(a => a with { Live = Blank(e.Value) })">
-                <option value="">bitte wählen</option>
+                <option value="">nur Beschriftung</option>
                 @foreach (var value in LiveValues.All)
                 {
                     <option value="@value">@LiveValues.Label(value)</option>
@@ -126,22 +126,20 @@
         <button class="sa-btn small" @onclick="AddStep">+ Befehl</button>
     }
 
-    @if (Action.Kind != KeyKinds.Live)
+    @if (Action.Kind == KeyKinds.Special && SpecialKey.ChoosesPlayer(Action.Special))
     {
+        <p class="sa-hint">Die gewählte Spielerin erscheint auf:</p>
         <div class="bt-outputs">
             <label class="sa-check">
                 <input type="checkbox" checked="@Action.Livestream" @onchange="e => Set(a => a with { Livestream = e.Value is true })" />
-                Livestream
+                Livestream (vMix-Titel)
             </label>
             <label class="sa-check">
                 <input type="checkbox" checked="@Action.Led" @onchange="e => Set(a => a with { Led = e.Value is true })" />
                 LED-Wand
             </label>
         </div>
-        @if (SpecialKey.ChoosesPlayer(Action.Special) && Action.Kind == KeyKinds.Special)
-        {
-            <p class="sa-hint">Die gewählte Spielerin erscheint dort, wo ein Haken gesetzt ist. Ohne beides öffnet der Button keine Spielerinnen-Auswahl, es laufen nur seine Befehle.</p>
-        }
+        <p class="sa-hint">Ohne beide Haken öffnet der Button keine Spielerinnen-Auswahl, es laufen nur seine Befehle.</p>
     }
 </div>
 

@@ -83,8 +83,15 @@ public static class TabBoardStart
             var label = key.Label is { Length: > 0 } text ? text : SpecialKey.Of(key.Special)?.Label ?? KeyKinds.Label(key.Kind);
             var signature = label + "|" + key.Color + "|" + key.Icon + "|" + JsonSerializer.Serialize(action, ShowJson.Options);
             if (!seen.Add(signature)) continue;
+            if (!Valid(action, label)) continue;
             yield return new BoardButton(UniqueId(Slug(label), ids), label, key.Color, action, key.Icon);
         }
+    }
+
+    private static bool Valid(ButtonAction action, string label)
+    {
+        try { action.Validated(label); return true; }
+        catch (ValidationException) { return false; }
     }
 
     private static IReadOnlyList<BoardDeck> Decks(ShowSetup show)

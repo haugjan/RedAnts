@@ -99,6 +99,16 @@ public class TabBoardStartTests
         new DeckKey(1, KeyKinds.Special, "Tor", Special: SpecialKey.GoalHome),
         new DeckKey(2, KeyKinds.Music, "Einlauf", MusicId: "makina")), NoHalls).Validated();
 
+    [Fact]
+    public void A_label_only_key_becomes_a_button() =>
+        Assert.Contains(TabBoardStart.Build(Setup(new DeckKey(1, KeyKinds.Live, "Vor/Nach Spiel, Pause")), NoHalls).Validated().Buttons,
+            b => b.Label == "Vor/Nach Spiel, Pause" && b.Action.Live is null);
+
+    [Fact]
+    public void A_broken_key_is_left_out_instead_of_stopping_the_start() =>
+        Assert.DoesNotContain(TabBoardStart.Build(Setup(new DeckKey(1, KeyKinds.Music, "Ohne Musik")), NoHalls).Validated().Buttons,
+            b => b.Label == "Ohne Musik");
+
     [Theory]
     [InlineData("Torbeschwörung", "torbeschwoerung")]
     [InlineData("Starting 6 Gast", "starting-6-gast")]
