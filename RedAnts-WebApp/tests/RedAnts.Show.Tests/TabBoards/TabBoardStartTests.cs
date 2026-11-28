@@ -36,11 +36,11 @@ public class TabBoardStartTests
     [Fact]
     public void A_hall_brings_its_devices_into_the_venue()
     {
-        var win4 = Hall.Create("win4", "WIN4 Alles") with { Devices = new HallDevices(SednaHost: "172.20.1.49") };
+        var win4 = Hall.Create("win4", "WIN4 Alles") with { Devices = new HallDevices(SednaHost: "sedna.local") };
 
         var venue = TabBoardStart.Build(Setup(), new Dictionary<string, Hall> { ["win4"] = win4 }).Venues.Single(v => v.Id == "win4");
 
-        Assert.Equal("172.20.1.49", venue.Devices.SednaHost);
+        Assert.Equal("sedna.local", venue.Devices.SednaHost);
     }
 
     [Fact]
