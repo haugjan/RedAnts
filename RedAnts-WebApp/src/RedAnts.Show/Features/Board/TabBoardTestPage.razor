@@ -1,0 +1,176 @@
+@using RedAnts.Show.Domain
+@using RedAnts.Show.Features.Music
+@using RedAnts.Show.Features.TabBoards
+@implements IDisposable
+@inject GetTabBoard.Handler BoardQuery
+@inject GetMusic.Handler MusicQuery
+@inject IJSRuntime JS
+
+<div class="hb">
+<header class="bar">
+    <span class="hall">Tab-Bord · Test im Web</span>
+    <span class="spacer"></span>
+    @if (_board.Decks.Count > 1)
+    {
+        <select class="pick" @bind="_deckId" title="Deck">
+            @foreach (var deck in _board.Decks)
+            {
+                <option value="@deck.Id">@deck.Name</option>
+            }
+        </select>
+    }
+    <select class="pick" @bind="_league" title="Liga">
+        @foreach (var league in _board.Leagues)
+        {
+            <option value="@league.Id">@league.Name</option>
+        }
+    </select>
+    <button class="panic" @onclick="@(() => ControlAsync("stop"))">Stopp</button>
+</header>
+
+<p class="tw-warning">
+    Testmodus im Web: Hier läuft nur die Musik, und zwar in diesem Browser.
+    Livestream (vMix) und LED-Wand funktionieren nur auf dem Bord des Regie-PC. Ihre Tasten sind deshalb ausgegraut.
+</p>
+
+@if (Deck is not { } current)
+{
+    <main><p class="hint">Auf dem Tab-Bord ist noch kein Deck eingerichtet.</p></main>
+}
+else
+{
+    <nav class="tw-tabs">
+        @if (current.FollowsTab)
+        {
+            @foreach (var (id, name) in BoardTabs.All)
+            {
+                var tab = id;
+                <button class="tw-tab @(tab == _tab ? "on" : "")" @key="tab" @onclick="() => _tab = tab">@name</button>
+            }
+        }
+        else
+        {
+            <span class="tw-own">Eigene Seite, gleich auf jedem Tab</span>
+        }
+    </nav>
+
+    <main>
+        <section class="deck">
+            <div class="grid" style="--cols:@current.Columns">
+                @for (var n = 1; n <= current.Count; n++)
+                {
+                    var number = n;
+                    var key = Keys.GetValueOrDefault(number);
+                    var web = key is null ? WebKey.Nothing : WebKey.Of(key.Action);
+                    var music = web.MusicId is { } musicId ? _music.FirstOrDefault(m => m.Id == musicId) : null;
+                    var reserved = current.Reserved(number);
+                    <button class="key @(web.Works ? "" : "flat") @(music is not null && music.Id == _playing ? "playing" : "")"
+                            style="background:@(key?.Button.Color ?? (reserved ? "#3a3f47" : "#111"));color:#fff"
+                            disabled="@(!web.Works)"
+                            title="@(key is not null && !web.Works ? "Läuft nur auf dem Regie-PC" : "")"
+                            data-play="@(music is null ? null : "songs")"
+                            data-label="@(key?.Button.Label)"
+                            @onclick="() => PressAsync(web, music)"
+                            @key="number">
+                        @if (key is not null)
+                        {
+                            @if (key.Button.Icon is { Length: > 0 } icon && DeckIcons.Known(icon))
+                            {
+                                <img src="@DeckIcons.FileOf(icon)" alt="" />
+                            }
+                            else if (key.Button.Icon is { Length: > 0 } symbol)
+                            {
+                                <span class="symbol">@symbol</span>
+                            }
+                            <span class="label"><span>@(key.Position is { } position ? $"{position}. {key.Button.Label}" : key.Button.Label)</span></span>
+                            @if (!key.OnDeck)
+                            {
+                                <span class="sub">nur Bord</span>
+                            }
+                        }
+                        else if (reserved)
+                        {
+                            <span class="label"><span>@(number == current.Panic ? "PANIC" : "Zurück")</span></span>
+                        }
+                        <em>@number</em>
+                    </button>
+                }
+            </div>
+        </section>
+    </main>
+
+    <footer class="now">
+        <span class="np">@(_label is { Length: > 0 } now ? now : "keine Musik")</span>
+        <button class="ctl" @onclick="@(() => ControlAsync("pause"))">Pause</button>
+        <button class="ctl" @onclick="@(() => ControlAsync("previous"))">◀◀</button>
+        <button class="ctl" @onclick="@(() => ControlAsync("next"))">▶▶</button>
+        <button class="ctl" @onclick="@(() => ControlAsync("fade"))">Fade</button>
+        <button class="ctl stop" @onclick="@(() => ControlAsync("stop"))">Stopp</button>
+    </footer>
+}
+</div>
+
+@code {
+    private TabBoard _board = TabBoard.Empty;
+    private IReadOnlyList<MusicItem> _music = [];
+    private string _deckId = "";
+    private string _league = "";
+    private string _tab = BoardTabs.Before;
+    private string? _playing;
+    private string? _label;
+    private DotNetObjectReference<TabBoardTestPage>? _self;
+
+    private BoardDeck? Deck => _board.Deck(_deckId) ?? _board.Decks.FirstOrDefault();
+
+    private IReadOnlyDictionary<int, ResolvedKey> Keys =>
+        Deck is { } deck ? _board.Resolve(deck, _tab, _league).ToDictionary(k => k.Number) : new Dictionary<int, ResolvedKey>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _board = await BoardQuery.HandleAsync(new GetTabBoard.Query());
+        _music = await MusicQuery.HandleAsync(new GetMusic.Query());
+        _deckId = _board.Decks.FirstOrDefault(d => d.FollowsTab)?.Id ?? _board.Decks.FirstOrDefault()?.Id ?? "";
+        _league = _board.Leagues.FirstOrDefault()?.Id ?? "";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (!first) return;
+        _self = DotNetObjectReference.Create(this);
+        try { await JS.InvokeVoidAsync("hallBoard.start", _self); }
+        catch (JSException) { }
+    }
+
+    [JSInvokable]
+    public Task Playing(string label)
+    {
+        _label = label.Length > 0 ? label : null;
+        if (_label is null) _playing = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task PressAsync(WebKey web, MusicItem? music)
+    {
+        if (music is not null)
+        {
+            if (_playing == music.Id)
+            {
+                await ControlAsync("fade");
+                _playing = null;
+                return;
+            }
+            _playing = music.Id;
+            await JS.InvokeVoidAsync("hallBoard.play", music.Id, music.SongsJson, music.Random, music.Display);
+            return;
+        }
+        if (web.Control is { } control) await ControlAsync(control);
+    }
+
+    private async Task ControlAsync(string what)
+    {
+        if (what == "stop") _playing = null;
+        await JS.InvokeVoidAsync("hallBoard.control", what);
+    }
+
+    public void Dispose() => _self?.Dispose();
+}

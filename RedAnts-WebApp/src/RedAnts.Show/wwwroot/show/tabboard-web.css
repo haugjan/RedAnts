@@ -1,0 +1,6 @@
+.tw-warning { margin: 0; padding: 10px 14px; background: #5c3b00; color: #ffe3a6; font-size: 14px; line-height: 1.4; }
+.tw-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; background: #15161b; border-bottom: 1px solid #2a2c33; }
+.tw-tab { border: 1px solid #3a3d46; background: #22242b; color: #e9edf1; border-radius: 6px; padding: 10px 18px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.tw-tab.on { background: #c8102e; border-color: #c8102e; }
+.tw-own { color: #aab1ba; font-size: 14px; padding: 8px 0; }
+.hb .key.flat { opacity: .45; }

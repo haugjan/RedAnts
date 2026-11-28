@@ -24,6 +24,9 @@ public sealed class ShowBoardController : Controller
         return Json(new { id = hall.Id, name = hall.Name, key = hall.AgentKey });
     }
 
+    [HttpGet("tabs")]
+    public IActionResult Tabs() => View("TabBoard");
+
     [HttpGet("")]
     [HttpGet("{**path}")]
     public IActionResult Index() => View("Board");
