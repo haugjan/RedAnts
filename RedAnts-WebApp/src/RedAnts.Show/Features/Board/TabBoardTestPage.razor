@@ -8,8 +8,17 @@
 
 <div class="hb">
 <header class="bar">
-    <span class="hall">Tab-Bord · Test im Web</span>
+    @if (_started)
+    {
+        <button class="hall tw-change" @onclick="() => _started = false" title="Zurück zum Anfang: Halle, Liga und Funktionen neu wählen">@VenueName · @LeagueName ▾</button>
+    }
+    else
+    {
+        <span class="hall">Tab-Bord · Test im Web</span>
+    }
     <span class="spacer"></span>
+    @if (_started)
+    {
     @if (_board.Decks.Count > 1)
     {
         <select class="pick" @bind="_deckId" title="Deck">
@@ -19,12 +28,7 @@
             }
         </select>
     }
-    <select class="pick" @bind="_league" title="Liga">
-        @foreach (var league in _board.Leagues)
-        {
-            <option value="@league.Id">@league.Name</option>
-        }
-    </select>
+    }
     <button class="panic" @onclick="@(() => ControlAsync("stop"))">Stopp</button>
 </header>
 
@@ -33,7 +37,56 @@
     Livestream (vMix) und LED-Wand funktionieren nur auf dem Bord des Regie-PC. Ihre Tasten sind deshalb ausgegraut.
 </p>
 
-@if (Deck is not { } current)
+@if (!_started)
+{
+    <main class="tw-start">
+        <h2>1. Halle</h2>
+        <div class="tw-choices">
+            @foreach (var venue in _board.Venues)
+            {
+                var id = venue.Id;
+                <button class="tw-choice @(id == _venue ? "on" : "")" @key="id" @onclick="() => ChooseVenue(id)">@venue.Name</button>
+            }
+        </div>
+
+        @if (Venue is not null)
+        {
+            <h2>2. Liga</h2>
+            <div class="tw-choices">
+                @foreach (var league in _board.Leagues)
+                {
+                    var id = league.Id;
+                    <button class="tw-choice @(id == _league ? "on" : "")" @key="id" @onclick="() => ChooseLeague(id)">@league.Name</button>
+                }
+            </div>
+        }
+
+        @if (Venue is { } venue2 && League is not null)
+        {
+            var available = BoardFunctions.Available(venue2);
+            <h2>3. Funktionen</h2>
+            <p class="hint">Vorgegeben von Halle und Liga, hier für dieses Spiel änderbar.</p>
+            <div class="tw-functions">
+                @foreach (var (id, label) in BoardFunctions.All)
+                {
+                    var function = id;
+                    var possible = available.On(function);
+                    <label class="tw-function @(possible ? "" : "off")" @key="function">
+                        <input type="checkbox" checked="@_functions.On(function)" disabled="@(!possible)"
+                               @onchange="e => _functions = _functions.With(function, e.Value is true)" />
+                        @label
+                        @if (!possible)
+                        {
+                            <span class="tw-why">gibt es in dieser Halle nicht</span>
+                        }
+                    </label>
+                }
+            </div>
+            <button class="tw-go" @onclick="Start">Starten</button>
+        }
+    </main>
+}
+else if (Deck is not { } current)
 {
     <main><p class="hint">Auf dem Tab-Bord ist noch kein Deck eingerichtet.</p></main>
 }
@@ -61,13 +114,14 @@ else
                 {
                     var number = n;
                     var key = Keys.GetValueOrDefault(number);
-                    var web = key is null ? WebKey.Nothing : WebKey.Of(key.Action);
+                    var switchedOff = key is not null && !_functions.Runs(key.Action);
+                    var web = key is null || switchedOff ? WebKey.Nothing : WebKey.Of(key.Action);
                     var music = web.MusicId is { } musicId ? _music.FirstOrDefault(m => m.Id == musicId) : null;
                     var reserved = current.Reserved(number);
                     <button class="key @(web.Works ? "" : "flat") @(music is not null && music.Id == _playing ? "playing" : "")"
                             style="background:@(key?.Button.Color ?? (reserved ? "#3a3f47" : "#111"));color:#fff"
                             disabled="@(!web.Works)"
-                            title="@(key is not null && !web.Works ? "Läuft nur auf dem Regie-PC" : "")"
+                            title="@(switchedOff ? "Für dieses Spiel ausgeschaltet" : key is not null && !web.Works ? "Läuft nur auf dem Regie-PC" : "")"
                             data-play="@(music is null ? null : "songs")"
                             data-label="@(key?.Button.Label)"
                             @onclick="() => PressAsync(web, music)"
@@ -112,6 +166,41 @@ else
     private string _deckId = "";
     private string _league = "";
     private string _tab = BoardTabs.Before;
+    private string _venue = "";
+    private bool _started;
+    private BoardFunctions _functions = new(true, true, true, true, true);
+
+    private Venue? Venue => _board.Venues.FirstOrDefault(v => v.Id == _venue);
+
+    private League? League => _board.Leagues.FirstOrDefault(l => l.Id == _league);
+
+    private string VenueName => Venue?.Name ?? "Halle";
+
+    private string LeagueName => League?.Name ?? "Liga";
+
+    private void ChooseVenue(string id)
+    {
+        _venue = id;
+        Defaults();
+    }
+
+    private void ChooseLeague(string id)
+    {
+        _league = id;
+        Defaults();
+    }
+
+    private void Defaults()
+    {
+        if (Venue is { } venue && League is { } league) _functions = BoardFunctions.Defaults(venue, league);
+    }
+
+    private void Start()
+    {
+        if (Venue is { } venue) _functions = _functions.Within(BoardFunctions.Available(venue));
+        _tab = BoardTabs.Before;
+        _started = true;
+    }
     private string? _playing;
     private string? _label;
     private DotNetObjectReference<TabBoardTestPage>? _self;
@@ -126,7 +215,7 @@ else
         _board = await BoardQuery.HandleAsync(new GetTabBoard.Query());
         _music = await MusicQuery.HandleAsync(new GetMusic.Query());
         _deckId = _board.Decks.FirstOrDefault(d => d.FollowsTab)?.Id ?? _board.Decks.FirstOrDefault()?.Id ?? "";
-        _league = _board.Leagues.FirstOrDefault()?.Id ?? "";
+        _league = "";
     }
 
     protected override async Task OnAfterRenderAsync(bool first)

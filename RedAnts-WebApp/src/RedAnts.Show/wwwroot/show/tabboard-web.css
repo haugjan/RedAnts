@@ -4,3 +4,15 @@
 .tw-tab.on { background: #c8102e; border-color: #c8102e; }
 .tw-own { color: #aab1ba; font-size: 14px; padding: 8px 0; }
 .hb .key.flat { opacity: .45; }
+.tw-start { padding: 16px; max-width: 900px; }
+.tw-start h2 { margin: 18px 0 8px; font-size: 18px; color: #e9edf1; }
+.tw-choices { display: flex; flex-wrap: wrap; gap: 10px; }
+.tw-choice { min-width: 140px; padding: 18px 22px; font-size: 18px; font-weight: 700; border-radius: 8px; border: 1px solid #3a3d46; background: #22242b; color: #e9edf1; cursor: pointer; }
+.tw-choice.on { background: #c8102e; border-color: #c8102e; }
+.tw-functions { display: flex; flex-direction: column; gap: 8px; }
+.tw-function { display: flex; align-items: center; gap: 10px; font-size: 17px; color: #e9edf1; }
+.tw-function input { width: 22px; height: 22px; }
+.tw-function.off { color: #6b7280; }
+.tw-why { font-size: 13px; color: #8a929c; }
+.tw-go { margin-top: 18px; padding: 16px 40px; font-size: 20px; font-weight: 900; border: 0; border-radius: 8px; background: #1e7b34; color: #fff; cursor: pointer; }
+.hb .bar .tw-change { background: none; border: 1px solid #3a3d46; border-radius: 6px; color: inherit; font: inherit; padding: 6px 12px; cursor: pointer; }

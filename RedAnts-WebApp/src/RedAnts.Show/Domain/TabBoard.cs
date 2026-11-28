@@ -342,3 +342,86 @@ public static class BoardCompiler
         Livestream: key.Action.Livestream,
         Led: key.Action.Led);
 }
+
+public sealed record BoardFunctions(bool Sound, bool Clock, bool Livestream, bool Led, bool Players)
+{
+    public const string SoundId = "musik";
+    public const string ClockId = "uhr";
+    public const string LivestreamId = "livestream";
+    public const string LedId = "led";
+    public const string PlayersId = "spielerinnen";
+
+    public static IReadOnlyList<(string Id, string Label)> All { get; } =
+    [
+        (SoundId, "Musik"),
+        (ClockId, "Uhr"),
+        (LivestreamId, "Livestream (vMix)"),
+        (LedId, "LED-Wand"),
+        (PlayersId, "Spielerinnen"),
+    ];
+
+    public static BoardFunctions Available(Venue venue) =>
+        new(venue.Equipment.Sound, venue.Equipment.Clock, venue.Equipment.Vmix, venue.Equipment.Led,
+            venue.Equipment.Players && (venue.Equipment.Vmix || venue.Equipment.Led));
+
+    public static BoardFunctions Defaults(Venue venue, League league)
+    {
+        var available = Available(venue);
+        return available with
+        {
+            Livestream = available.Livestream && league.Livestream,
+            Players = available.Players && league.Players,
+        };
+    }
+
+    public bool On(string id) => id switch
+    {
+        SoundId => Sound,
+        ClockId => Clock,
+        LivestreamId => Livestream,
+        LedId => Led,
+        PlayersId => Players,
+        _ => false,
+    };
+
+    public BoardFunctions With(string id, bool on) => id switch
+    {
+        SoundId => this with { Sound = on },
+        ClockId => this with { Clock = on },
+        LivestreamId => this with { Livestream = on },
+        LedId => this with { Led = on },
+        PlayersId => this with { Players = on },
+        _ => this,
+    };
+
+    public BoardFunctions Within(BoardFunctions available) =>
+        new(Sound && available.Sound, Clock && available.Clock, Livestream && available.Livestream, Led && available.Led, Players && available.Players);
+
+    public bool Runs(ButtonAction action) => Uses(action).Any(On);
+
+    public static IReadOnlySet<string> Uses(ButtonAction action)
+    {
+        var uses = new HashSet<string>();
+        if (action.Kind == KeyKinds.Music) uses.Add(SoundId);
+        foreach (var step in action.Sequence)
+        {
+            if (step.Action.StartsWith("musik.")) uses.Add(SoundId);
+            else if (step.Action.StartsWith("vmix.")) uses.Add(LivestreamId);
+            else if (step.Action.StartsWith("led.")) uses.Add(LedId);
+        }
+        if (action.Kind == KeyKinds.Special && action.Special is { } special)
+        {
+            if (special.StartsWith("musik-")) uses.Add(SoundId);
+            else if (special == SpecialKey.AutoBreakMusic) { uses.Add(SoundId); uses.Add(ClockId); }
+            else if (SpecialKey.ChoosesPlayer(special) || special.StartsWith("spieler-") || special.StartsWith("bestplayer-") || special.StartsWith("starting6-"))
+            {
+                if (action.Livestream) uses.Add(LivestreamId);
+                if (action.Led) uses.Add(LedId);
+                if (uses.Overlaps([LivestreamId, LedId])) uses.Add(PlayersId);
+            }
+            else uses.Add(LivestreamId);
+        }
+        if (action.Kind == KeyKinds.Live) uses.Add(ClockId);
+        return uses;
+    }
+}
